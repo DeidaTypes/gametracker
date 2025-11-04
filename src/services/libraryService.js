@@ -102,7 +102,7 @@ export function removeGameFromList(listId, gameId) {
 }
 
 // Create a custom list
-export function createCustomList(listName) {
+export function createCustomList(listName, description = '', initialGames = []) {
   const library = getLibrary() || initializeLibrary()
   
   // Generate a unique ID
@@ -114,7 +114,11 @@ export function createCustomList(listName) {
   
   library.customLists[listId] = {
     name: listName,
-    games: [],
+    description: description,
+    games: initialGames.map(game => ({
+      ...game,
+      addedAt: new Date().toISOString(),
+    })),
     createdAt: new Date().toISOString(),
   }
   
@@ -182,6 +186,7 @@ export function getListInfo(listId) {
     return {
       id: listId,
       name: library.customLists[listId].name,
+      description: library.customLists[listId].description || '',
       isCustom: true,
       createdAt: library.customLists[listId].createdAt,
     }

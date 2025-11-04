@@ -3,7 +3,7 @@
 }
 
 .add-to-list-button {
-  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
   color: #ffffff;
   border: none;
   padding: 12px 24px;
@@ -13,12 +13,13 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.25);
+  letter-spacing: -0.01em;
 }
 
 .add-to-list-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+  box-shadow: 0 6px 20px rgba(74, 158, 255, 0.35);
 }
 
 .dropdown-overlay {
@@ -125,7 +126,7 @@
 }
 
 .check-mark {
-  color: #1db954;
+  color: #4A9EFF;
   font-weight: 700;
   font-size: 16px;
 }

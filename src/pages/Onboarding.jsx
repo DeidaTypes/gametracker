@@ -60,7 +60,7 @@ function Onboarding() {
       <div className="onboarding-container">
         {step === 1 && (
           <>
-            <h1>Welcome to GameTracker! 🎮</h1>
+            <h1>Welcome to GameTracker</h1>
             <p className="onboarding-subtitle">
               Select your favorite game genres to personalize your experience
             </p>

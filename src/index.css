@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 * {
   margin: 0;
@@ -6,21 +6,21 @@
   box-sizing: border-box;
 }
 
-/* Circular font - Using Inter as a close alternative since Circular is proprietary */
-/* Inter is very similar to Circular and provides a modern, clean look */
-
+/* Modern 2025 font stack - Letterboxd-inspired, easy on the eyes */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
+    'SF Pro Display', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #121212;
-  color: #ffffff;
+  background-color: #0d0d0d;
+  color: #e5e5e5;
   overflow-x: hidden;
   /* Prevent text selection on mobile for better UX */
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
 }
 
 /* Mobile-specific optimizations */

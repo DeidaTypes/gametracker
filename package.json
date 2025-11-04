@@ -4,12 +4,14 @@
   "description": "A video game tracking app similar to Goodreads with Spotify-like UI",
   "scripts": {
     "dev": "vite",
+    "dev:network": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
@@ -17,4 +19,3 @@
     "vite": "^5.0.8"
   }
 }
-

@@ -30,7 +30,6 @@ function Reviews() {
 
       {reviews.length === 0 ? (
         <div className="empty-reviews">
-          <div className="empty-icon">📝</div>
           <h2>No reviews yet</h2>
           <p>Start reviewing games to share your thoughts!</p>
         </div>

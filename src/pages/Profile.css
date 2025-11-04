@@ -149,7 +149,7 @@
 }
 
 .browse-button {
-  background-color: #1db954;
+  background-color: #4A9EFF;
   color: #ffffff;
   border: none;
   padding: 12px 24px;
@@ -158,16 +158,18 @@
   font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  letter-spacing: -0.01em;
 }
 
 .browse-button:hover {
-  background-color: #1ed760;
+  background-color: #5B9FFF;
 }
 
 @media (max-width: 768px) {
   .profile-page {
     padding: 24px 16px;
-    padding-top: 80px; /* Space for mobile nav */
+    padding-top: 16px;
+    padding-bottom: 90px; /* Space for bottom nav */
   }
 
   .profile-stats {

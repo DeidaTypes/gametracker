@@ -15,29 +15,60 @@ export async function getPersonalizedRecommendations() {
   const recommendations = {}
   
   try {
-    // ALWAYS FETCH POPULAR AND RECENT FIRST - these go at the top
+    // ALWAYS FETCH MOST POPULAR FIRST - this is the main focus
+    // Fetch more games to ensure we have enough content
     const [popular, recent] = await Promise.all([
-      getPopularGames(8).catch(() => []),
-      getRecentlyReleasedGames(8).catch(() => [])
+      getPopularGames(30).catch(() => []), // Increased to 30 for more content
+      getRecentlyReleasedGames(16).catch(() => []) // Increased from 12 to 16
     ])
 
-    // Add popular and recent games FIRST (so they appear at the top)
+    // Remove duplicates and limit to 24 games for "Most Popular" section
+    const uniquePopular = popular.filter((game, index, self) => 
+      index === self.findIndex(g => g.id === game.id)
+    ).slice(0, 24)
+
+    // Add MOST POPULAR first (main focus of home screen)
+    if (uniquePopular.length > 0) {
+      recommendations['Most Popular'] = uniquePopular
+    }
+    
+    // Add recent releases second
     if (recent.length > 0) {
       recommendations['New Releases'] = recent
     }
-    if (popular.length > 0) {
-      recommendations['Trending Now'] = popular
-    }
 
-    // Get games for each favorite genre (up to 4 genres for more content)
-    const favoriteGenres = prefs.favoriteGenres.slice(0, 4)
+    // Get games for each favorite genre - create "Made for You" playlist
+    const favoriteGenres = prefs.favoriteGenres.slice(0, 6) // Increased from 5 to 6
     
     const genrePromises = favoriteGenres.map(genre => 
-      getGamesByGenre(genre, 8).catch(() => [])
+      getGamesByGenre(genre, 16).catch(() => []) // Increased from 12 to 16
     )
     
     const genreResults = await Promise.all(genrePromises)
     
+    // Create "Made for You" section with top games from user's favorite genres
+    const madeForYouGames = []
+    genreResults.forEach((games, index) => {
+      if (games && games.length > 0) {
+        // Take top 5-6 games from each genre for "Made for You" (more content)
+        madeForYouGames.push(...games.slice(0, 6))
+      }
+    })
+    
+    // Remove duplicates and shuffle, then limit "Made for You" to 24 games
+    const uniqueMadeForYou = madeForYouGames.filter((game, index, self) => 
+      index === self.findIndex(g => g.id === game.id)
+    )
+    
+    const shuffledMadeForYou = uniqueMadeForYou
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 24)
+    
+    if (shuffledMadeForYou.length > 0) {
+      recommendations['Made for You'] = shuffledMadeForYou
+    }
+    
+    // Also add individual genre sections
     favoriteGenres.forEach((genre, index) => {
       if (genreResults[index] && genreResults[index].length > 0) {
         recommendations[`Top ${genre} Games`] = genreResults[index]
@@ -50,7 +81,7 @@ export async function getPersonalizedRecommendations() {
       // Use the most recent search term
       const recentSearch = searchHistory[0]
       try {
-        const searchResults = await searchGames(recentSearch, 6)
+        const searchResults = await searchGames(recentSearch, 16) // Increased from 10 to 16
         if (searchResults.length > 0) {
           recommendations['Based on Your Searches'] = searchResults
         }
@@ -70,21 +101,30 @@ export async function getPersonalizedRecommendations() {
 // Get default recommendations (when user hasn't onboarded)
 async function getDefaultRecommendations() {
   try {
-    const [popular, recent, rpg, indie, action, adventure, strategy] = await Promise.all([
-      getPopularGames(8).catch(() => []),
-      getRecentlyReleasedGames(8).catch(() => []),
-      getGamesByGenre('Role-playing (RPG)', 8).catch(() => []),
-      getGamesByGenre('Indie', 8).catch(() => []),
-      getGamesByGenre('Action', 8).catch(() => []),
-      getGamesByGenre('Adventure', 8).catch(() => []),
-      getGamesByGenre('Strategy', 8).catch(() => []),
+    const [popular, recent, rpg, indie, action, adventure, strategy, puzzle, racing] = await Promise.all([
+      getPopularGames(30).catch(() => []), // Increased to 30 for more content
+      getRecentlyReleasedGames(16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Role-playing (RPG)', 16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Indie', 16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Action', 16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Adventure', 16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Strategy', 16).catch(() => []), // Increased from 12 to 16
+      getGamesByGenre('Puzzle', 14).catch(() => []), // Increased from 10 to 14
+      getGamesByGenre('Racing', 14).catch(() => []), // Increased from 10 to 14
     ])
 
     const sections = {}
     
-    // Add New Releases and Trending Now FIRST (at the top)
+    // Remove duplicates and limit to 24 games for "Most Popular" section
+    const uniquePopular = popular.filter((game, index, self) => 
+      index === self.findIndex(g => g.id === game.id)
+    ).slice(0, 24)
+    
+    // Add MOST POPULAR FIRST (main focus)
+    if (uniquePopular.length > 0) sections['Most Popular'] = uniquePopular
+    
+    // Add New Releases second
     if (recent.length > 0) sections['New Releases'] = recent
-    if (popular.length > 0) sections['Trending Now'] = popular
     
     // Then add genre-based sections
     if (rpg.length > 0) sections['Popular RPGs'] = rpg
@@ -92,6 +132,8 @@ async function getDefaultRecommendations() {
     if (action.length > 0) sections['Top Action Games'] = action
     if (adventure.length > 0) sections['Best Adventure Games'] = adventure
     if (strategy.length > 0) sections['Strategy Favorites'] = strategy
+    if (puzzle.length > 0) sections['Puzzle Games'] = puzzle
+    if (racing.length > 0) sections['Racing Games'] = racing
 
     return sections
   } catch (error) {
@@ -109,12 +151,22 @@ export async function getRecommendationsFromViewed() {
   }
 
   // Extract genres from viewed games (simplified - would need game data)
-  // For now, just return popular games
+  // For now, return popular games and similar genres
   try {
-    const popular = await getPopularGames(6)
-    return {
-      'You Might Also Like': popular,
+    const [popular, similar] = await Promise.all([
+      getPopularGames(10).catch(() => []),
+      getGamesByGenre('Action', 10).catch(() => [])
+    ])
+    
+    const sections = {}
+    if (popular.length > 0) {
+      sections['You Might Also Like'] = popular
     }
+    if (similar.length > 0) {
+      sections['Similar to What You Viewed'] = similar
+    }
+    
+    return sections
   } catch (error) {
     console.error('Error fetching viewed-based recommendations:', error)
     return {}

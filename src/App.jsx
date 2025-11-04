@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
+import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 import Search from './pages/Search'
 import Library from './pages/Library'
@@ -49,6 +51,7 @@ function AppContent() {
 
   return (
     <div className="app">
+      <TopNav />
       <MobileNav />
       {showSidebar && <Sidebar />}
       <div className="main-content" style={!showSidebar ? { marginLeft: 0 } : {}}>
@@ -63,6 +66,7 @@ function AppContent() {
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </div>
+      <BottomNav />
     </div>
   )
 }

@@ -95,8 +95,8 @@
 
 .mobile-nav-header h1 {
   font-size: 20px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+  font-weight: 700;
+  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -142,9 +142,9 @@
 }
 
 .mobile-nav-item.active {
-  color: #1db954;
-  background: linear-gradient(90deg, rgba(29, 185, 84, 0.15) 0%, transparent 100%);
-  border-left-color: #1db954;
+  color: #4A9EFF;
+  background: rgba(74, 158, 255, 0.1);
+  border-left-color: #4A9EFF;
   font-weight: 600;
 }
 

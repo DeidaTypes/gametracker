@@ -58,7 +58,8 @@
 @media (max-width: 768px) {
   .wishlist-page {
     padding: 24px 16px;
-    padding-top: 80px; /* Space for mobile nav */
+    padding-top: 16px;
+    padding-bottom: 90px; /* Space for bottom nav */
   }
 
   .game-grid {

@@ -1,35 +1,67 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { searchGames } from '../services/igdb'
 import { addToSearchHistory } from '../services/userPreferences'
 import GameCard from '../components/GameCard'
 import './Search.css'
 
 function Search() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialQuery = searchParams.get('q') || ''
+  const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [hasSearched, setHasSearched] = useState(false)
+  const [lastSearchedQuery, setLastSearchedQuery] = useState('')
 
-  const handleSearch = async (e) => {
-    e.preventDefault()
-    if (!searchTerm.trim()) return
+  useEffect(() => {
+    const query = searchParams.get('q')
+    if (query && query.trim()) {
+      // Update search term if it changed
+      if (query !== searchTerm) {
+        setSearchTerm(query)
+      }
+      // Only perform search if this is a new query (prevents duplicate searches)
+      if (query !== lastSearchedQuery) {
+        performSearch(query)
+        setLastSearchedQuery(query)
+      }
+    } else if (!query && hasSearched) {
+      // Clear results if query is removed
+      setGames([])
+      setHasSearched(false)
+      setLastSearchedQuery('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const performSearch = async (term) => {
+    if (!term.trim()) return
 
     setLoading(true)
     setError(null)
     setHasSearched(true)
 
     try {
-      const results = await searchGames(searchTerm, 50)
+      const results = await searchGames(term, 50)
       setGames(results)
       // Track search in user preferences
-      addToSearchHistory(searchTerm)
+      addToSearchHistory(term)
     } catch (err) {
       console.error('Search error:', err)
       setError('Failed to search games. Please check your IGDB API credentials.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!searchTerm.trim()) return
+    
+    setSearchParams({ q: searchTerm.trim() })
+    await performSearch(searchTerm.trim())
   }
 
   return (

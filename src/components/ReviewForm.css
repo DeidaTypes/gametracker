@@ -86,7 +86,7 @@
 
 .review-text-area textarea:focus {
   outline: none;
-  border-color: #1db954;
+  border-color: #4A9EFF;
 }
 
 .review-text-area textarea::placeholder {
@@ -123,13 +123,13 @@
 }
 
 .submit-button {
-  background-color: #1db954;
+  background-color: #4A9EFF;
   color: #ffffff;
   border: none;
 }
 
 .submit-button:hover:not(:disabled) {
-  background-color: #1ed760;
+  background-color: #5B9FFF;
 }
 
 .submit-button:disabled {

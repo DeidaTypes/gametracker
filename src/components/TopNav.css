@@ -1,0 +1,174 @@
+.top-nav {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  background: rgba(13, 13, 13, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 1000;
+  padding: 0 40px;
+}
+
+.top-nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+.top-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.top-nav-logo:hover {
+  opacity: 0.8;
+}
+
+.logo-icon {
+  font-size: 24px;
+}
+
+.logo-text {
+  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.top-nav-search {
+  position: relative;
+  flex: 0 0 auto;
+  width: 280px;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 36px 8px 12px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.search-input:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.search-input.focused {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(74, 158, 255, 0.3);
+}
+
+.search-input.focused::placeholder {
+  color: transparent;
+}
+
+.search-icon-button {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+  outline: none;
+  border-radius: 4px;
+}
+
+.search-icon-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.search-icon-button:active {
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.search-icon {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.search-input.focused ~ .search-icon-button .search-icon {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.top-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.top-nav-link {
+  padding: 8px 14px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.top-nav-link:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.top-nav-link.active {
+  color: #4A9EFF;
+  background: rgba(74, 158, 255, 0.1);
+}
+
+/* Desktop only - show top nav */
+@media (min-width: 769px) {
+  .top-nav {
+    display: block;
+  }
+}
+
+/* Hide sidebar on desktop when top nav is shown */
+@media (min-width: 769px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* Adjust main content margin for top nav - handled in App.css */
+

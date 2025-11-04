@@ -30,7 +30,6 @@ function Wishlist() {
 
       {wishlistGames.length === 0 ? (
         <div className="empty-wishlist">
-          <div className="empty-icon">⭐</div>
           <h2>Your wishlist is empty</h2>
           <p>Start adding games you want to play!</p>
         </div>

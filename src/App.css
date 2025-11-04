@@ -1,7 +1,7 @@
 .app {
   display: flex;
   height: 100vh;
-  background-color: #121212;
+  background-color: #0d0d0d;
 }
 
 .main-content {
@@ -9,7 +9,7 @@
   overflow-y: auto;
   margin-left: 240px;
   padding: 0;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 30%, #121212 60%);
+  background: linear-gradient(180deg, #0f0f14 0%, #0d0d0d 100%);
   position: relative;
 }
 
@@ -20,9 +20,22 @@
   left: 240px;
   right: 0;
   height: 300px;
-  background: radial-gradient(ellipse at top, rgba(29, 185, 84, 0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse at top, rgba(74, 158, 255, 0.08) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* Desktop - remove sidebar margin, full width, add padding for top nav */
+@media (min-width: 769px) {
+  .main-content {
+    margin-left: 0;
+    padding-top: 72px;
+  }
+
+  .main-content::before {
+    left: 0;
+    top: 72px;
+  }
 }
 
 /* Mobile Responsive */
@@ -66,8 +79,8 @@
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #333;
-  border-top-color: #1db954;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4A9EFF;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;

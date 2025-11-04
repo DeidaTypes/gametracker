@@ -91,14 +91,15 @@ function Home() {
     )
   }
 
-  // Sort sections to prioritize "New Releases" and "Trending Now" at the top
+  // Sort sections to prioritize "Most Popular" first, then "Made for You", then "New Releases"
   const sectionEntries = Object.entries(gameSections).sort(([titleA], [titleB]) => {
-    // Priority order: New Releases first, then Trending Now, then everything else
+    // Priority order: Most Popular first, then Made for You, then New Releases, then everything else
     const priority = {
-      'New Releases': 1,
-      'New Releases (Last 12 Months)': 1,
-      'Trending Now': 2,
-      'Most Popular': 2,
+      'Most Popular': 1,
+      'Made for You': 2,
+      'New Releases': 3,
+      'New Releases (Last 12 Months)': 3,
+      'Trending Now': 4,
     }
     
     const priorityA = priority[titleA] || 99

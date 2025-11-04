@@ -64,8 +64,8 @@
 }
 
 .genre-button.selected {
-  background-color: #1db954;
-  border-color: #1db954;
+  background-color: #4A9EFF;
+  border-color: #4A9EFF;
   color: #ffffff;
 }
 
@@ -101,13 +101,13 @@
 }
 
 .continue-button {
-  background-color: #1db954;
+  background-color: #4A9EFF;
   color: #ffffff;
   border: none;
 }
 
 .continue-button:hover:not(:disabled) {
-  background-color: #1ed760;
+  background-color: #5B9FFF;
 }
 
 .continue-button:disabled {
@@ -136,7 +136,7 @@
 }
 
 .selected-genre-tag {
-  background-color: #1db954;
+  background-color: #4A9EFF;
   color: #ffffff;
   padding: 8px 16px;
   border-radius: 20px;

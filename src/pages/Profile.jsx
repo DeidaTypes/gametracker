@@ -50,7 +50,6 @@ function Profile() {
 
       <div className="profile-stats">
         <div className="stat-card">
-          <div className="stat-icon">📝</div>
           <div className="stat-info">
             <div className="stat-value">{reviewCount}</div>
             <div className="stat-label">Reviews Written</div>
@@ -93,7 +92,6 @@ function Profile() {
 
       {reviewCount === 0 && (
         <div className="empty-profile">
-          <div className="empty-icon">👤</div>
           <h2>Start reviewing games!</h2>
           <p>Your review count will appear here as you write reviews.</p>
           <button 
