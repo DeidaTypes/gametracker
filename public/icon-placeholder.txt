@@ -1,0 +1,15 @@
+ICON PLACEHOLDERS NEEDED
+
+To complete the mobile app setup, you need to add two icon files to the /public folder:
+
+1. icon-192.png (192x192 pixels)
+2. icon-512.png (512x512 pixels)
+
+These icons will be used for:
+- iOS home screen icon
+- Android app icon
+- PWA manifest
+
+You can create these using any image editor or online icon generator.
+Make sure they have a transparent background and represent your GameTracker app.
+

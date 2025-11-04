@@ -1,0 +1,186 @@
+.profile-page {
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.profile-header {
+  margin-bottom: 32px;
+}
+
+.profile-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.stat-card {
+  background-color: #181818;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.stat-card:hover {
+  background-color: #282828;
+}
+
+.stat-icon {
+  font-size: 48px;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #b3b3b3;
+}
+
+.recent-reviews-section {
+  margin-top: 48px;
+}
+
+.recent-reviews-section h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 24px;
+}
+
+.recent-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recent-review-item {
+  background-color: #181818;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  gap: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.recent-review-item:hover {
+  background-color: #282828;
+}
+
+.recent-review-image {
+  width: 80px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.recent-review-content {
+  flex: 1;
+}
+
+.recent-review-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.recent-review-rating {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.recent-review-text {
+  font-size: 14px;
+  color: #b3b3b3;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.recent-review-date {
+  font-size: 12px;
+  color: #808080;
+}
+
+.empty-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  color: #b3b3b3;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.empty-profile h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.empty-profile p {
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.browse-button {
+  background-color: #1db954;
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.browse-button:hover {
+  background-color: #1ed760;
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 24px 16px;
+    padding-top: 80px; /* Space for mobile nav */
+  }
+
+  .profile-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .recent-review-item {
+    flex-direction: column;
+  }
+
+  .recent-review-image {
+    width: 100%;
+    height: 200px;
+  }
+}
+
