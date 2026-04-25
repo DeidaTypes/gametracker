@@ -35,7 +35,7 @@ function Wishlist() {
         </div>
       ) : (
         <div className="wishlist-content">
-          <div className="game-grid">
+          <div className="games-grid">
             {wishlistGames.map((game) => (
               <GameCard key={game.id} game={game} />
             ))}

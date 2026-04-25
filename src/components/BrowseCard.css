@@ -1,0 +1,109 @@
+/* ============================================
+   BROWSE CARD — Spotify-style category card
+   ============================================ */
+
+@keyframes browseCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.browse-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 110px;
+  border-radius: 12px;
+  border: none;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: browseCardFadeIn 0.4s ease both;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.browse-card:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.browse-card--pressed {
+  transform: scale(0.96);
+}
+
+/* ---- Category label ---- */
+.browse-card__label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 40%;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  line-height: 1.2;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* ---- Cover art image (bottom-right, rotated like Spotify) ---- */
+.browse-card__art {
+  position: absolute;
+  bottom: -6px;
+  right: -10px;
+  height: 85%;
+  width: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 6px;
+  transform: rotate(12deg);
+  box-shadow: -3px 3px 14px rgba(0, 0, 0, 0.55);
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.browse-card__art--loaded {
+  opacity: 1;
+}
+
+/* ---- Skeleton placeholder card ---- */
+.browse-card-skeleton {
+  width: 100%;
+  height: 110px;
+  border-radius: 12px;
+  background-size: 200% 100%;
+  animation: browseCardFadeIn 0.4s ease both, skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ---- Responsive ---- */
+@media (min-width: 769px) {
+  .browse-card {
+    height: 130px;
+  }
+
+  .browse-card__label {
+    font-size: 18px;
+    top: 14px;
+    left: 14px;
+  }
+
+  .browse-card-skeleton {
+    height: 130px;
+  }
+}

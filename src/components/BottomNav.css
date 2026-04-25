@@ -1,47 +1,59 @@
+/* =============================================
+   BOTTOM NAV — Editorial minimal tab bar
+   ============================================= */
+
 .bottom-nav {
   display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+  height: var(--bottom-nav-height);
+  background: rgba(12, 19, 34, 0.95);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border-top: 1px solid var(--color-border);
   justify-content: space-around;
-  align-items: center;
-  padding: 6px 0;
-  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  align-items: stretch;
+  padding: 0;
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
   z-index: 1000;
 }
 
-/* Mobile only - show bottom nav */
+/* Mobile only */
 @media (max-width: 768px) {
   .bottom-nav {
     display: flex;
   }
+
+  .mobile-nav-toggle {
+    display: none !important;
+  }
+
+  .main-content {
+    padding-bottom: 74px !important;
+  }
 }
 
+/* ---- Nav item ---- */
 .bottom-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
-  padding: 6px 4px;
+  padding: 8px var(--spacing-xs) 6px;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.5);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--color-text-muted);
+  transition: color var(--transition-normal);
   min-width: 0;
   position: relative;
-  opacity: 0.6;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bottom-nav-item:active {
-  transform: scale(0.92);
-  opacity: 0.8;
+  transform: scale(0.90);
 }
 
 .bottom-nav-icon {
@@ -49,79 +61,52 @@
   width: 22px;
   height: 22px;
   line-height: 1;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0.7;
-  stroke-width: 1.5;
+  flex-shrink: 0;
+  transition: color var(--transition-normal), transform var(--transition-smooth);
 }
 
 .bottom-nav-label {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  opacity: 0.6;
-  transition: opacity 0.25s ease;
+  text-transform: uppercase;
+  transition: color var(--transition-normal);
 }
 
+/* ---- Active state ---- */
 .bottom-nav-item.active {
-  color: #ffffff;
-  opacity: 1;
+  color: var(--color-text-secondary);
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
-  opacity: 1;
-  stroke-width: 2;
-  transform: scale(1);
+  color: var(--color-brand-primary);
+  transform: translateY(-1px);
 }
 
 .bottom-nav-item.active .bottom-nav-label {
-  opacity: 0.9;
+  color: var(--color-brand-primary);
 }
 
-.bottom-nav-item:not(.active):hover {
-  opacity: 0.8;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.bottom-nav-item:not(.active):hover .bottom-nav-icon {
-  opacity: 0.85;
-}
-
-/* Subtle active indicator */
-.bottom-nav-item.active::after {
+/* Active indicator dot above icon */
+.bottom-nav-item.active::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 3px;
-  height: 3px;
-  background: #4A9EFF;
-  border-radius: 50%;
-  opacity: 0.6;
+  width: 4px;
+  height: 4px;
+  background: var(--color-brand-primary);
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 8px rgba(200, 150, 90, 0.7);
 }
 
-/* Mobile only - show bottom nav */
-@media (max-width: 768px) {
-  .bottom-nav {
-    display: flex;
-  }
+/* Inactive hover */
+.bottom-nav-item:not(.active):hover {
+  color: var(--color-text-tertiary);
 }
-
-/* Hide hamburger menu on mobile when bottom nav is shown */
-@media (max-width: 768px) {
-  .mobile-nav-toggle {
-    display: none !important;
-  }
-}
-
-/* Add padding to main content to prevent overlap with bottom nav */
-@media (max-width: 768px) {
-  .main-content {
-    padding-bottom: 90px !important;
-  }
-}
-

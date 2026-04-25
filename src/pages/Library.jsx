@@ -214,13 +214,14 @@ function Library() {
         {/* Expanded view - show all games */}
         {isSelected && games.length > 0 && (
           <div className="list-item-content">
-            <div className="game-grid">
-              {games.map((game) => (
+            <div className="game-stack-container">
+              {games.map((game, index) => (
                 <LibraryGameCard 
                   key={game.id} 
                   game={game} 
                   listId={listId}
                   onDelete={handleDeleteGame}
+                  index={index}
                 />
               ))}
             </div>

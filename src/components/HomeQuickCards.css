@@ -1,0 +1,206 @@
+/* =============================================
+   HOME QUICK CARDS — side-by-side duo
+   "Want to Play" + "Stats" (reference-inspired)
+   ============================================= */
+
+.hqc-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: 0 var(--container-padding);
+}
+
+/* ── Shared card base ── */
+
+.hqc-card {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    transform var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.hqc-card:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+}
+
+.hqc-card:active {
+  transform: scale(0.98);
+}
+
+/* ── Card header ── */
+
+.hqc-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hqc-card-title {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.2px;
+}
+
+.hqc-card-chevron {
+  font-size: 20px;
+  color: var(--color-text-tertiary);
+  line-height: 1;
+  transition: transform var(--transition-fast);
+}
+
+.hqc-card:hover .hqc-card-chevron {
+  transform: translateX(2px);
+  color: var(--color-brand-primary);
+}
+
+/* =============================================
+   WANT TO PLAY CARD
+   ============================================= */
+
+.hqc-wtp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+}
+
+.hqc-wtp-cover {
+  width: 80px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-cover);
+}
+
+.hqc-wtp-placeholder {
+  width: 80px;
+  height: 112px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hqc-wtp-placeholder-icon {
+  font-size: 28px;
+  opacity: 0.4;
+}
+
+
+/* =============================================
+   STATS CARD — heatmap + mini stats
+   ============================================= */
+
+.hqc-stats-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+/* ── Heatmap grid: 7 rows × 4 cols ── */
+
+.hqc-heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.hqc-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+.hqc-cell--0 {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hqc-cell--1 {
+  background: rgba(200, 150, 90, 0.2);
+}
+
+.hqc-cell--2 {
+  background: rgba(200, 150, 90, 0.4);
+}
+
+.hqc-cell--3 {
+  background: rgba(200, 150, 90, 0.6);
+}
+
+.hqc-cell--4 {
+  background: rgba(200, 150, 90, 0.85);
+}
+
+
+/* =============================================
+   Responsive
+   ============================================= */
+
+@media (max-width: 359px) {
+  .hqc-row {
+    gap: var(--spacing-xs);
+  }
+
+  .hqc-card {
+    padding: var(--spacing-sm);
+  }
+
+  .hqc-card-title {
+    font-size: var(--font-size-body);
+  }
+
+  .hqc-wtp-cover,
+  .hqc-wtp-placeholder {
+    width: 64px;
+    height: 90px;
+  }
+
+  .hqc-heatmap {
+    gap: 2px;
+  }
+
+}
+
+@media (min-width: 480px) {
+  .hqc-card {
+    padding: var(--spacing-lg);
+  }
+
+  .hqc-wtp-cover,
+  .hqc-wtp-placeholder {
+    width: 90px;
+    height: 126px;
+  }
+
+  .hqc-heatmap {
+    gap: 4px;
+  }
+}
+
+@media (min-width: 769px) {
+  .hqc-row {
+    gap: var(--spacing-md);
+  }
+}

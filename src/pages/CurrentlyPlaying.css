@@ -1,0 +1,238 @@
+/* =============================================
+   CURRENTLY PLAYING — dedicated page
+   ============================================= */
+
+.cp-page {
+  min-height: 100vh;
+  background: var(--color-bg-primary);
+  padding-bottom: var(--bottom-nav-safe-area);
+}
+
+/* ── Header ── */
+
+.cp-page-header {
+  padding: var(--spacing-lg) var(--container-padding) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.cp-page-back {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-sm);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-brand-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.cp-page-back:hover {
+  opacity: 0.8;
+}
+
+.cp-page-title {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+}
+
+.cp-page-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+/* ── Game list ── */
+
+.cp-page-list {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-md) var(--container-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.cp-page-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-md);
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    transform var(--transition-smooth);
+}
+
+.cp-page-card:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+}
+
+.cp-page-card:active {
+  transform: scale(0.985);
+}
+
+.cp-page-card-cover {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.cp-page-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cp-page-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-page-card-title {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cp-page-card-genre {
+  font-size: var(--font-size-meta);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.cp-page-card-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.cp-page-card-pct {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-brand-primary);
+}
+
+.cp-page-card-hours {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-meta);
+  color: var(--color-text-tertiary);
+}
+
+.cp-page-card-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.cp-page-card-bar-fill {
+  height: 100%;
+  background: var(--color-brand-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.cp-page-card-arrow {
+  flex: 0 0 auto;
+  font-size: var(--font-size-subtitle);
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.cp-page-card:hover .cp-page-card-arrow {
+  color: var(--color-brand-primary);
+  transform: translateX(3px);
+}
+
+/* ── Empty ── */
+
+.cp-page-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-3xl) var(--container-padding);
+  gap: var(--spacing-sm);
+}
+
+.cp-page-empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.cp-page-empty-title {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.cp-page-empty-body {
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  max-width: 280px;
+  line-height: var(--line-height-relaxed);
+}
+
+/* ── Responsive ── */
+
+@media (min-width: 480px) {
+  .cp-page-title {
+    font-size: 36px;
+  }
+
+  .cp-page-card-cover {
+    flex: 0 0 88px;
+    width: 88px;
+    height: 122px;
+  }
+}
+
+@media (min-width: 769px) {
+  .cp-page-title {
+    font-size: 42px;
+  }
+
+  .cp-page-list {
+    gap: var(--spacing-md);
+  }
+}

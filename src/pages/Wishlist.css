@@ -1,76 +1,84 @@
+/* ============================================
+   WISHLIST PAGE — Clean Collection Design
+   ============================================ */
+
 .wishlist-page {
-  padding: 32px;
+  padding: 0;
   min-height: 100vh;
+  padding-bottom: var(--bottom-nav-safe-area);
+  background: transparent;
 }
 
+/* ---- Header ---- */
 .wishlist-header {
-  margin-bottom: 32px;
+  padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .wishlist-header h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8px;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 4px 0;
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .wishlist-subtitle {
-  font-size: 16px;
-  color: #b3b3b3;
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
 }
 
+/* ---- Content ---- */
 .wishlist-content {
-  margin-top: 32px;
+  padding: var(--spacing-xl) var(--page-padding) 0;
 }
 
-.game-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-}
-
+/* ---- Empty State ---- */
 .empty-wishlist {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
   text-align: center;
-  color: #b3b3b3;
+  padding: var(--spacing-3xl) var(--page-padding);
+  gap: var(--spacing-md);
+  min-height: 320px;
 }
 
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 24px;
+.empty-wishlist::before {
+  content: '🎮';
+  font-size: 48px;
+  opacity: 0.25;
+  margin-bottom: var(--spacing-sm);
 }
 
 .empty-wishlist h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8px;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
 }
 
 .empty-wishlist p {
-  font-size: 16px;
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  max-width: 260px;
+  line-height: var(--line-height-relaxed);
 }
 
-@media (max-width: 768px) {
-  .wishlist-page {
-    padding: 24px 16px;
-    padding-top: 16px;
-    padding-bottom: 90px; /* Space for bottom nav */
+/* ---- Desktop ---- */
+@media (min-width: 769px) {
+  .wishlist-header {
+    padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-xl);
+    max-width: var(--page-max-width);
+    margin: 0 auto;
   }
 
-  .game-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .game-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .wishlist-content {
+    padding: var(--spacing-xl) var(--page-padding-desktop) 0;
+    max-width: var(--page-max-width);
+    margin: 0 auto;
   }
 }
-

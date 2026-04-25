@@ -33,9 +33,9 @@ function MobileNav() {
 
       <nav className={`mobile-nav ${isOpen ? 'open' : ''}`}>
         <div className="mobile-nav-header">
-          <h1>🎮 GameTracker</h1>
+          <h1>GameTracker</h1>
           <button className="mobile-nav-close" onClick={closeNav} aria-label="Close navigation">
-            ✕
+            ×
           </button>
         </div>
         <div className="mobile-nav-links">
@@ -44,15 +44,20 @@ function MobileNav() {
             className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
             onClick={closeNav}
           >
-            <span className="nav-icon">🏠</span>
             <span>Home</span>
+          </NavLink>
+          <NavLink 
+            to="/explore" 
+            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+            onClick={closeNav}
+          >
+            <span>Explore</span>
           </NavLink>
           <NavLink 
             to="/search" 
             className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
             onClick={closeNav}
           >
-            <span className="nav-icon">🔍</span>
             <span>Search</span>
           </NavLink>
           <NavLink 
@@ -60,31 +65,13 @@ function MobileNav() {
             className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
             onClick={closeNav}
           >
-            <span className="nav-icon">📚</span>
             <span>Your Library</span>
-          </NavLink>
-          <NavLink 
-            to="/wishlist" 
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-            onClick={closeNav}
-          >
-            <span className="nav-icon">⭐</span>
-            <span>Wishlist</span>
-          </NavLink>
-          <NavLink 
-            to="/reviews" 
-            className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-            onClick={closeNav}
-          >
-            <span className="nav-icon">📝</span>
-            <span>Reviews</span>
           </NavLink>
           <NavLink 
             to="/profile" 
             className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
             onClick={closeNav}
           >
-            <span className="nav-icon">👤</span>
             <span>Profile</span>
           </NavLink>
         </div>

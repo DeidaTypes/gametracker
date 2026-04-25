@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAllReviews } from '../services/reviewService'
+import StarRating from '../components/StarRating'
 import './Reviews.css'
 
 function Reviews() {
@@ -34,30 +35,25 @@ function Reviews() {
           <p>Start reviewing games to share your thoughts!</p>
         </div>
       ) : (
-        <div className="reviews-content">
+        <div className="reviews-grid">
           {reviews.map((review, index) => (
             <div 
               key={index} 
-              className="review-card"
+              className="review-box"
               onClick={() => handleGameClick(review.gameId)}
             >
-              {review.gameImage && (
-                <img 
-                  src={review.gameImage} 
-                  alt={review.gameTitle}
-                  className="review-game-image"
-                />
-              )}
-              <div className="review-card-content">
-                <div className="review-header">
-                  <h3 className="review-game-title">{review.gameTitle}</h3>
-                  <div className="review-rating">
-                    {'⭐'.repeat(Math.floor(review.rating))}
-                  </div>
-                </div>
-                <p className="review-text">{review.text}</p>
-                <div className="review-date">
+              <div className="review-box-content">
+                <h3 className="review-box-title">{review.gameTitle}</h3>
+                <p className="review-box-text">{review.text}</p>
+                <div className="review-box-date">
                   {new Date(review.date).toLocaleDateString()}
+                  {review.hoursPlayed > 0 && ` • ${review.hoursPlayed}h played`}
+                </div>
+              </div>
+              <div className="review-box-footer">
+                <div className="review-box-rating">
+                  <label className="rating-label">Rating</label>
+                  <StarRating rating={parseFloat(review.rating)} size={20} />
                 </div>
               </div>
             </div>

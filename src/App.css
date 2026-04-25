@@ -1,94 +1,64 @@
+/* =============================================
+   APP SHELL — global layout chrome
+   ============================================= */
+
 .app {
   display: flex;
-  height: 100vh;
-  background-color: #0d0d0d;
-}
-
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  margin-left: 240px;
-  padding: 0;
-  background: linear-gradient(180deg, #0f0f14 0%, #0d0d0d 100%);
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-bg-primary);
   position: relative;
 }
 
-.main-content::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 240px;
-  right: 0;
-  height: 300px;
-  background: radial-gradient(ellipse at top, rgba(74, 158, 255, 0.08) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+/* ---- Main scrollable content area ---- */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--color-bg-primary);
+  position: relative;
+  z-index: 1;
+  /* Mobile: no margin needed — sidebar hidden, bottom nav fixed */
+  margin-left: 0;
 }
 
-/* Desktop - remove sidebar margin, full width, add padding for top nav */
+/* Desktop: offset for fixed top nav */
 @media (min-width: 769px) {
   .main-content {
-    margin-left: 0;
-    padding-top: 72px;
-  }
-
-  .main-content::before {
-    left: 0;
-    top: 72px;
-  }
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .main-content {
+    padding-top: var(--top-nav-height);
     margin-left: 0;
   }
-
-  .main-content::before {
-    left: 0;
-  }
 }
 
-.main-content::-webkit-scrollbar {
-  width: 12px;
-}
-
-.main-content::-webkit-scrollbar-track {
-  background: #121212;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 6px;
-}
-
-.main-content::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
+/* ---- Full-page loading state ---- */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  text-align: center;
-  color: #b3b3b3;
+  min-height: 100vh;
+  gap: var(--spacing-lg);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-wider);
+  text-transform: uppercase;
 }
 
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #4A9EFF;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
+/* Scrollbar */
+.main-content::-webkit-scrollbar {
+  width: 8px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.main-content::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
 }
 
+.main-content::-webkit-scrollbar-thumb {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-full);
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

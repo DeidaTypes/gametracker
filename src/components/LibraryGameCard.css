@@ -1,15 +1,11 @@
 .library-game-card {
   cursor: pointer;
   user-select: none;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 10px;
-  overflow: hidden;
+  transition: transform var(--transition-smooth);
+  border-radius: var(--radius-md);
+  overflow: visible;
   background: transparent;
   position: relative;
-}
-
-.library-game-card:hover {
-  transform: translateY(-4px);
 }
 
 .library-game-card-image-container {
@@ -17,14 +13,17 @@
   width: 100%;
   padding-bottom: 135%;
   overflow: hidden;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(42, 42, 42, 0.6) 0%, rgba(26, 26, 26, 0.8) 100%);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-  transition: box-shadow 0.3s ease;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-smooth);
 }
 
 .library-game-card:hover .library-game-card-image-container {
-  box-shadow: 0 4px 20px rgba(74, 158, 255, 0.2);
+  box-shadow: var(--shadow-xl), var(--shadow-glow);
+  border-color: var(--color-border-hover);
+  transform: translateY(-4px);
 }
 
 .library-game-card-image {
@@ -38,7 +37,7 @@
 }
 
 .library-game-card:hover .library-game-card-image {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .library-game-card-gradient-overlay {
@@ -46,11 +45,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60%;
+  height: 65%;
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.9) 0%,
-    rgba(0, 0, 0, 0.7) 50%,
+    rgba(10, 10, 15, 0.95) 0%,
+    rgba(10, 10, 15, 0.7) 40%,
+    rgba(10, 10, 15, 0.3) 70%,
     transparent 100%
   );
   z-index: 1;
@@ -61,50 +61,51 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 14px 10px 10px;
+  padding: var(--spacing-md) var(--spacing-sm) var(--spacing-sm);
   z-index: 2;
 }
 
 .library-game-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
   margin: 0;
   line-height: 1.3;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.3s ease;
+  transition: color var(--transition-fast);
   letter-spacing: -0.01em;
 }
 
 .library-game-card:hover .library-game-card-title {
-  color: #4A9EFF;
+  color: var(--color-brand-primary);
 }
 
 .delete-game-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  color: #ff4444;
-  border: 1px solid rgba(255, 68, 68, 0.3);
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  color: var(--color-accent-pink);
+  border: 1px solid var(--glass-border);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  transition: all 0.2s ease;
+  transition: all var(--transition-smooth);
   opacity: 0;
-  animation: fadeInButton 0.2s ease forwards;
+  animation: fadeInButton var(--transition-fast) ease forwards;
 }
 
 @keyframes fadeInButton {
@@ -114,10 +115,11 @@
 }
 
 .delete-game-button:hover {
-  background-color: rgba(255, 68, 68, 0.9);
-  color: #ffffff;
-  border-color: #ff4444;
+  background: var(--color-accent-pink);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-pink);
   transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(244, 114, 182, 0.4);
 }
 
 .delete-game-button:active {
@@ -126,12 +128,13 @@
 
 /* Mobile touch-friendly */
 @media (max-width: 768px) {
+  .library-game-card:active {
+    transform: scale(0.96);
+  }
+
   .delete-game-button {
-    opacity: 1; /* Always visible on mobile */
+    opacity: 1;
     width: 32px;
     height: 32px;
-    top: 6px;
-    right: 6px;
   }
 }
-

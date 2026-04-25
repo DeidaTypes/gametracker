@@ -1,38 +1,46 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
+import { 
+  HiOutlineHome, HiHome,
+  HiOutlineGlobe, HiGlobe,
+  HiOutlineSearch, HiSearch,
+  HiOutlineBookOpen, HiBookOpen,
+  HiOutlineUser, HiUser
+} from 'react-icons/hi'
 import './Sidebar.css'
+
+const navItems = [
+  { to: '/', label: 'Home', Icon: HiOutlineHome, IconActive: HiHome },
+  { to: '/explore', label: 'Explore', Icon: HiOutlineGlobe, IconActive: HiGlobe },
+  { to: '/search', label: 'Search', Icon: HiOutlineSearch, IconActive: HiSearch },
+  { to: '/library', label: 'Library', Icon: HiOutlineBookOpen, IconActive: HiBookOpen },
+  { to: '/profile', label: 'Profile', Icon: HiOutlineUser, IconActive: HiUser },
+]
 
 function Sidebar() {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <h1>🎮 GameTracker</h1>
+        <h1>GameTracker</h1>
       </div>
       <nav className="sidebar-nav">
-        <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">🏠</span>
-          <span>Home</span>
-        </NavLink>
-        <NavLink to="/search" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">🔍</span>
-          <span>Search</span>
-        </NavLink>
-        <NavLink to="/library" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📚</span>
-          <span>Your Library</span>
-        </NavLink>
-        <NavLink to="/wishlist" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">⭐</span>
-          <span>Wishlist</span>
-        </NavLink>
-        <NavLink to="/reviews" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📝</span>
-          <span>Reviews</span>
-        </NavLink>
-        <NavLink to="/profile" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">👤</span>
-          <span>Profile</span>
-        </NavLink>
+        {navItems.map(({ to, label, Icon, IconActive }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          >
+            {({ isActive }) => (
+              <>
+                <span className="nav-icon">
+                  {isActive ? <IconActive /> : <Icon />}
+                </span>
+                <span>{label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
     </div>
   )

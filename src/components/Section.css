@@ -1,0 +1,35 @@
+/* Section Component for Vertical Spacing */
+
+.section {
+  width: 100%;
+}
+
+/* Spacing variants */
+.section-spacing-sm {
+  padding-top: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+}
+
+.section-spacing-md {
+  padding-top: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+}
+
+.section-spacing-lg {
+  padding-top: var(--spacing-xl);
+  padding-bottom: var(--spacing-xl);
+}
+
+.section-spacing-xl {
+  padding-top: var(--spacing-2xl);
+  padding-bottom: var(--spacing-2xl);
+}
+
+/* Border variants */
+.section-border-top {
+  border-top: 1px solid var(--color-border);
+}
+
+.section-border-bottom {
+  border-bottom: 1px solid var(--color-border);
+}

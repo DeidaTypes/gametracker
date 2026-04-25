@@ -1,0 +1,100 @@
+/* Mobile-First Responsive Grid System for Game Cards */
+
+/* Standard game grid - mobile optimized */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+/* Each grid child must allow text to shrink */
+.games-grid > * {
+  min-width: 0;
+}
+
+/* Extra small screens (320px) */
+@media (max-width: 359px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: var(--spacing-xs);
+  }
+}
+
+/* Small tablets and larger phones (414px+) */
+@media (min-width: 414px) and (max-width: 768px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Tablets (768px+) */
+@media (min-width: 769px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--spacing-md);
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Horizontal scrolling game row - used on Home, Explore */
+.games-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.games-row::-webkit-scrollbar {
+  display: none;
+}
+
+.games-row > * {
+  flex: 0 0 auto;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+/* Adjust row card size for small screens */
+@media (max-width: 359px) {
+  .games-row > * {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+  }
+}
+
+/* Text clamping utilities for grid cards */
+.grid-card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.grid-card-meta {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+}

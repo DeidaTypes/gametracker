@@ -1,67 +1,87 @@
+/* ============================================
+   SIDEBAR — Premium Desktop Navigation
+   ============================================ */
+
 .sidebar {
   position: fixed;
   left: 0;
   top: 0;
   width: 240px;
   height: 100vh;
-  background: #0a0a0a;
-  padding: 24px;
+  background: var(--color-bg-secondary);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  padding: var(--spacing-xl) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   z-index: 100;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  border-right: 1px solid var(--color-border);
 }
 
 .sidebar-logo {
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-xs) var(--spacing-xs);
 }
 
 .sidebar-logo h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.4px;
+  background: var(--color-brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin: 0;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  color: rgba(255, 255, 255, 0.6);
+  gap: var(--spacing-sm);
+  padding: 10px var(--spacing-md);
+  color: var(--color-text-tertiary);
   text-decoration: none;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-smooth);
   letter-spacing: -0.01em;
+  font-size: var(--font-size-body);
 }
 
 .nav-item:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
 }
 
 .nav-item.active {
-  color: #4A9EFF;
-  background: rgba(74, 158, 255, 0.1);
-  border-left: 3px solid #4A9EFF;
-  padding-left: 13px;
-  font-weight: 600;
+  color: var(--color-text-primary);
+  background: rgba(91, 143, 255, 0.12);
+  font-weight: var(--font-weight-semibold);
 }
 
 .nav-icon {
   font-size: 20px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--color-brand-primary);
 }
 
 /* Mobile Responsive - Hide sidebar on mobile */
@@ -70,4 +90,3 @@
     display: none;
   }
 }
-

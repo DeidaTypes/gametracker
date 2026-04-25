@@ -1,148 +1,311 @@
+/* =====================================================
+   ADD TO LIST — Bottom Sheet (portaled to body)
+   z-index: scrim 50, sheet 60, tab bar 40
+   ===================================================== */
+
 .add-to-list-container {
   position: relative;
 }
 
+.add-to-list-container--icon {
+  display: inline-flex;
+}
+
 .add-to-list-button {
-  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
-  color: #ffffff;
+  background: var(--color-brand-gradient);
+  color: var(--color-text-primary);
   border: none;
-  padding: 12px 24px;
-  border-radius: 24px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.25);
-  letter-spacing: -0.01em;
+  transition: all var(--transition-smooth);
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-glow);
 }
 
 .add-to-list-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(74, 158, 255, 0.35);
+  box-shadow: 0 8px 24px rgba(200, 150, 90, 0.35);
 }
 
-.dropdown-overlay {
+.add-to-list-button:active {
+  transform: translateY(0);
+}
+
+/* ── Portal (full-screen layer, rendered into body) ── */
+.bs-portal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 998;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-.add-to-list-dropdown {
+/* ── Backdrop/Scrim ── */
+.bs-backdrop {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background-color: #181818;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  min-width: 280px;
-  max-width: 320px;
-  z-index: 999;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: bs-fadeIn 0.2s ease-out;
+}
+
+@keyframes bs-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sheet ── */
+.bs-sheet {
+  position: relative;
+  z-index: 1;
+  background: var(--color-bg-tertiary, #152035);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: bs-slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+  transition: transform 0.1s ease-out;
+  box-shadow:
+    0 -8px 40px rgba(0, 0, 0, 0.5),
+    0 -2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bs-sheet--dragging {
+  transition: none;
+}
+
+@keyframes bs-slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Drag Handle ── */
+.bs-drag-zone {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.bs-handle {
+  width: 36px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Sheet Header ── */
+.bs-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bs-header-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
   overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-bg-elevated, #1C2A44);
 }
 
-.dropdown-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #333;
+.bs-header-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.dropdown-header h3 {
-  font-size: 16px;
+.bs-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bs-header-title {
+  font-size: 17px;
   font-weight: 600;
-  color: #ffffff;
-  margin: 0;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
-.dropdown-content {
-  max-height: 400px;
+.bs-header-status {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.bs-close-btn,
+.bs-share-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bs-close-btn:hover,
+.bs-share-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.bs-close-btn:active,
+.bs-share-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── Body (scrollable) ── */
+.bs-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 16px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
 }
 
-.dropdown-content::-webkit-scrollbar {
-  width: 8px;
+.bs-body::-webkit-scrollbar {
+  width: 0;
+  display: none;
 }
 
-.dropdown-content::-webkit-scrollbar-track {
-  background: #1a1a1a;
+/* ── Status Tile Grid (2×2) ── */
+.bs-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
-.dropdown-content::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
+.bs-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  padding: 20px 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.55);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.list-section {
-  padding: 8px 0;
+.bs-tile:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.section-title {
-  padding: 8px 20px;
-  font-size: 12px;
+.bs-tile:active {
+  transform: scale(0.95);
+}
+
+.bs-tile--active {
+  background: rgba(200, 150, 90, 0.15);
+  border-color: rgba(200, 150, 90, 0.45);
+  color: var(--color-brand-primary);
+}
+
+.bs-tile--active:hover {
+  background: rgba(200, 150, 90, 0.22);
+  border-color: rgba(200, 150, 90, 0.55);
+  color: var(--color-brand-secondary);
+}
+
+.bs-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bs-tile-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
   font-weight: 600;
-  color: #808080;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.3;
 }
 
-.list-item {
+/* ── My Lists Section ── */
+.bs-lists-section {
+  margin-top: 24px;
+}
+
+.bs-lists-heading {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0 0 12px;
+}
+
+.bs-list-row {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  color: #ffffff;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  text-align: left;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.list-item:hover:not(:disabled) {
-  background-color: #282828;
+.bs-list-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-.list-item:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.bs-list-row:active {
+  transform: scale(0.98);
 }
 
-.list-item.in-list {
-  background-color: #1a1a1a;
+.bs-list-row--active {
+  border-color: rgba(200, 150, 90, 0.3);
+  background: rgba(200, 150, 90, 0.08);
 }
 
-.list-icon {
-  font-size: 18px;
+.bs-list-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bs-list-check {
+  color: var(--color-brand-primary);
   flex-shrink: 0;
 }
-
-.list-item span:not(.list-icon):not(.check-mark) {
-  flex: 1;
-}
-
-.check-mark {
-  color: #4A9EFF;
-  font-weight: 700;
-  font-size: 16px;
-}
-
-@media (max-width: 768px) {
-  .add-to-list-dropdown {
-    right: auto;
-    left: 0;
-    width: 100%;
-    max-width: 100%;
-    max-height: 80vh;
-  }
-
-  .list-item {
-    padding: 16px 20px;
-    font-size: 16px;
-  }
-}
-

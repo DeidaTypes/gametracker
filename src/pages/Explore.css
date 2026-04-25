@@ -1,0 +1,180 @@
+/* =============================================
+   EXPLORE PAGE — editorial discovery surface
+   ============================================= */
+
+.explore-page {
+  padding: 0 0 var(--bottom-nav-safe-area);
+  min-height: 100vh;
+  background: transparent;
+}
+
+/* ---- Sections with staggered entrance ---- */
+.explore-section {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: exploreSectionIn 0.5s ease forwards;
+}
+
+.explore-section--0 { animation-delay: 0ms; }
+.explore-section--1 { animation-delay: 50ms; }
+.explore-section--2 { animation-delay: 100ms; }
+.explore-section--3 { animation-delay: 150ms; }
+.explore-section--4 { animation-delay: 200ms; }
+.explore-section--5 { animation-delay: 250ms; }
+.explore-section--6 { animation-delay: 300ms; }
+.explore-section--7 { animation-delay: 350ms; }
+
+@keyframes exploreSectionIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explore-section {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ---- Vertical rhythm between sections ---- */
+.explore-section + .explore-section {
+  margin-top: 40px;
+}
+
+.explore-section:first-child + .explore-section {
+  margin-top: 32px;
+}
+
+/* ---- Section inner padding ---- */
+.explore-section__pad {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* ---- Horizontal scroll rows ---- */
+.explore-scroll-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 16px 8px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline-start: 16px;
+  overscroll-behavior-x: contain;
+}
+
+.explore-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Genre 2-col grid ---- */
+.explore-genre-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ---- Game cards in scroll rows ---- */
+.explore-scroll-row .game-card {
+  flex: 0 0 144px;
+  width: 144px;
+  min-width: 144px;
+  scroll-snap-align: start;
+}
+
+/* ---- Empty state ---- */
+.explore-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: var(--spacing-3xl) var(--container-padding);
+  gap: var(--spacing-md);
+}
+
+.explore-empty-state__title {
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.explore-empty-state__body {
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  max-width: 260px;
+  line-height: var(--line-height-relaxed);
+}
+
+/* ---- Error banner ---- */
+.explore-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(196, 99, 78, 0.1);
+  border: 1px solid rgba(196, 99, 78, 0.2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body);
+  color: var(--color-accent-rust);
+}
+
+.explore-error-banner p {
+  margin: 0;
+}
+
+.explore-error-banner__retry {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-rust);
+  background: transparent;
+  border: 1px solid rgba(196, 99, 78, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+
+.explore-error-banner__retry:hover {
+  background: rgba(196, 99, 78, 0.15);
+}
+
+/* =============================================
+   DESKTOP (769px+)
+   ============================================= */
+@media (min-width: 769px) {
+  .explore-section__pad {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  .explore-scroll-row {
+    padding-left: 48px;
+    padding-right: 48px;
+    gap: 16px;
+    scroll-padding-inline-start: 48px;
+  }
+
+  .explore-scroll-row .game-card {
+    flex: 0 0 190px;
+    width: 190px;
+    min-width: 190px;
+  }
+
+  .explore-genre-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}

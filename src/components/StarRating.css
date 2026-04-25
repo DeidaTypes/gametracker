@@ -1,0 +1,28 @@
+.star-rating-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+}
+
+.rating-star {
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.rating-star.full {
+  filter: drop-shadow(0 0 6px rgba(200, 150, 90, 0.5));
+  color: var(--color-brand-primary);
+}
+
+.rating-star.half {
+  filter: drop-shadow(0 0 4px rgba(200, 150, 90, 0.3));
+  color: var(--color-brand-primary);
+}
+
+.rating-star.empty {
+  opacity: 0.3;
+  color: var(--color-text-tertiary);
+}
+

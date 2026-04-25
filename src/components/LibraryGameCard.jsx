@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
 import './LibraryGameCard.css'
 
-function LibraryGameCard({ game, onDelete, listId }) {
+function LibraryGameCard({ game, onDelete, listId, index = 0 }) {
   const navigate = useNavigate()
   const [showDelete, setShowDelete] = useState(false)
 
@@ -22,9 +22,19 @@ function LibraryGameCard({ game, onDelete, listId }) {
     }
   }
 
+  // Calculate stack offset - each card is slightly offset to the right
+  const stackOffset = index * 4; // 4px offset per card (tighter spacing)
+  const maxOffset = 24; // Maximum offset to prevent too much spread
+  const offset = Math.min(stackOffset, maxOffset);
+
   return (
     <div 
       className="library-game-card"
+      style={{ 
+        '--stack-offset': `${offset}px`,
+        '--card-index': index,
+        zIndex: 100 - index // Higher index = lower z-index (behind)
+      }}
       onClick={handleClick}
       onMouseEnter={() => setShowDelete(true)}
       onMouseLeave={() => setShowDelete(false)}

@@ -1,0 +1,67 @@
+/* =============================================
+   StatPills — metric badges row
+   ============================================= */
+
+.stat-pills-row {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.stat-pill {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-smooth);
+}
+
+.stat-pill:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+}
+
+.stat-pill-value {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.stat-pill-label {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-widest);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+@media (min-width: 480px) {
+  .stat-pill-value {
+    font-size: 26px;
+  }
+
+  .stat-pill {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+}
+
+@media (min-width: 769px) {
+  .stat-pill-value {
+    font-size: 30px;
+  }
+
+  .stat-pill-label {
+    font-size: var(--font-size-label);
+  }
+}

@@ -1,150 +1,575 @@
-.review-form-container {
-  background-color: #181818;
-  padding: 24px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-}
-
-.review-form h3 {
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 20px;
-}
-
-.rating-selector {
-  margin-bottom: 20px;
-}
-
-.rating-selector label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #b3b3b3;
-  margin-bottom: 8px;
-}
-
-.stars-input {
+/* ============================================================
+   Modal Backdrop
+   ============================================================ */
+.review-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  z-index: 9999;
+  padding: var(--spacing-lg);
+  animation: fadeIn var(--transition-fast) ease;
 }
 
-.star-button {
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 4px;
-  transition: transform 0.2s ease;
-  filter: grayscale(100%);
-  opacity: 0.5;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.star-button:hover {
-  transform: scale(1.2);
-  filter: grayscale(0%);
-  opacity: 1;
-}
-
-.star-button.active {
-  filter: grayscale(0%);
-  opacity: 1;
-}
-
-.rating-text {
-  margin-left: 8px;
-  font-size: 16px;
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.review-text-area {
-  margin-bottom: 20px;
-}
-
-.review-text-area label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #b3b3b3;
-  margin-bottom: 8px;
-}
-
-.review-text-area textarea {
+/* ============================================================
+   Modal Container
+   ============================================================ */
+.review-modal {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  max-width: 900px;
   width: 100%;
-  padding: 12px;
-  background-color: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
-  color: #ffffff;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  resize: vertical;
-  transition: border-color 0.2s ease;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  animation: slideUp var(--transition-smooth) ease;
+  box-shadow: var(--shadow-xl);
 }
 
-.review-text-area textarea:focus {
-  outline: none;
-  border-color: #4A9EFF;
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-.review-text-area textarea::placeholder {
-  color: #808080;
-}
-
-.review-form-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-.cancel-button,
-.submit-button {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
+/* ============================================================
+   Close Button
+   ============================================================ */
+.review-modal-close {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-smooth);
+  z-index: 10;
+  line-height: 1;
+  padding: 0;
 }
 
-.cancel-button {
+.review-modal-close:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  transform: rotate(90deg) scale(1.05);
+}
+
+/* ============================================================
+   Modal Content Layout (two-column: poster | form)
+   ============================================================ */
+.review-modal-content {
+  display: flex;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-2xl);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.review-modal-content::-webkit-scrollbar { width: 8px; }
+.review-modal-content::-webkit-scrollbar-track { background: var(--color-surface); }
+.review-modal-content::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-xs);
+}
+
+/* ============================================================
+   Left Side – Large Poster (desktop)
+   ============================================================ */
+.review-modal-left {
+  flex-shrink: 0;
+}
+
+.review-modal-poster {
+  width: 200px;
+  height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border);
+}
+
+/* ============================================================
+   Right Side – Form
+   ============================================================ */
+.review-modal-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Header ---------------------------------------------------- */
+.review-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Small thumbnail shown inside header on mobile, hidden on desktop */
+.review-modal-thumb {
+  display: none;
+}
+
+.review-modal-title {
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.review-modal-year {
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+  margin-left: var(--spacing-xs);
+}
+
+/* Form ------------------------------------------------------ */
+.review-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--spacing-lg);
+}
+
+/* Mobile compact fields row (hidden on desktop) */
+.review-fields-mobile {
+  display: none;
+}
+
+.review-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+/* Textarea wrapper ------------------------------------------ */
+.review-textarea-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-modal-textarea {
+  width: 100%;
+  min-height: 250px;
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-relaxed);
+  resize: vertical;
+  transition: all var(--transition-smooth);
+  box-sizing: border-box;
+}
+
+.review-modal-textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-hover);
+  box-shadow: 0 0 0 3px rgba(91, 143, 255, 0.1);
+}
+
+.review-modal-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Expand/Collapse toggle (desktop: hidden) */
+.textarea-expand-toggle {
+  display: none;
+}
+
+/* Hours Played (desktop: shown below textarea) -------------- */
+.hours-played-input {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.hours-played-input label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  color: var(--color-text-secondary);
+}
+
+.hours-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--font-size-body);
+  transition: all var(--transition-smooth);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.hours-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-hover);
+  box-shadow: 0 0 0 3px rgba(91, 143, 255, 0.1);
+}
+
+.hours-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Footer (desktop: rating left + save right) ---------------- */
+.review-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: auto;
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.review-modal-footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.review-modal-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   Star Rating
+   ============================================================ */
+.review-modal-stars {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+/* Each star slot: 44×44 tap target, star SVG centered inside */
+.star-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.star-icon {
+  pointer-events: none;
+  flex-shrink: 0;
+  display: block;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.star-icon .star-outline {
+  stroke: var(--color-border-hover);
+  transition: stroke 0.2s;
+}
+
+.star-icon.filled .star-fill,
+.star-icon.half .star-fill {
+  fill: var(--color-brand-primary);
+  filter: drop-shadow(0 0 6px rgba(200, 150, 90, 0.5));
+}
+
+.star-icon.empty .star-fill {
+  fill: transparent;
+}
+
+.star-container:hover .star-icon {
+  transform: scale(1.15);
+}
+
+.star-container:hover .star-icon.filled .star-fill,
+.star-container:hover .star-icon.half .star-fill {
+  fill: var(--color-brand-secondary);
+  filter: drop-shadow(0 0 10px rgba(200, 150, 90, 0.8));
+}
+
+.star-container:hover .star-icon.filled .star-outline,
+.star-container:hover .star-icon.half .star-outline {
+  stroke: var(--color-brand-secondary);
+}
+
+.star-container:hover .star-icon.empty .star-outline {
+  stroke: var(--color-brand-primary);
+}
+
+.star-container:hover .star-icon.empty .star-fill {
+  fill: rgba(200, 150, 90, 0.3);
+}
+
+/* Transparent hit zones — cover left/right halves */
+.star-half-button {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  padding: 0;
+  margin: 0;
   background: transparent;
-  border: 1px solid #333;
-  color: #b3b3b3;
-}
-
-.cancel-button:hover {
-  background-color: #1a1a1a;
-  border-color: #555;
-  color: #ffffff;
-}
-
-.submit-button {
-  background-color: #4A9EFF;
-  color: #ffffff;
   border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1;
 }
 
-.submit-button:hover:not(:disabled) {
-  background-color: #5B9FFF;
+.star-half-button.left  { left: 0; }
+.star-half-button.right { right: 0; }
+
+/* ============================================================
+   Save Button
+   ============================================================ */
+.review-modal-save {
+  background: var(--color-brand-gradient);
+  color: var(--color-text-primary);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-2xl);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-body);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  box-shadow: var(--shadow-glow);
 }
 
-.submit-button:disabled {
-  opacity: 0.6;
+.review-modal-save--full {
+  width: 100%;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.review-modal-save:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(91, 143, 255, 0.4);
+}
+
+.review-modal-save:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.review-modal-save:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
+/* Mobile sticky footer (hidden on desktop) */
+.review-sticky-footer {
+  display: none;
+}
+
+/* ============================================================
+   Desktop (≥769px) – restore/enhance default sizes
+   ============================================================ */
+@media (min-width: 769px) {
+  .review-modal {
+    max-width: 1000px;
+  }
+
+  .review-modal-poster {
+    width: 240px;
+    height: 336px;
+  }
+
+  .review-modal-title {
+    font-size: 32px;
+  }
+}
+
+/* ============================================================
+   Mobile (≤768px) – iPhone 15/16/17 optimised
+   Target: 390–430 px wide, 844–932 px tall
+   ============================================================ */
 @media (max-width: 768px) {
-  .review-form-actions {
+
+  /* --- Backdrop: no padding; aligns modal flush to screen --- */
+  .review-modal-backdrop {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  /* --- Modal: full-screen flex column for sticky footer --- */
+  .review-modal {
+    max-width: 100%;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    display: flex;
     flex-direction: column;
   }
 
-  .cancel-button,
-  .submit-button {
+  /* --- Scrollable body: flex-grow fills space between header and sticky footer --- */
+  .review-modal-content {
+    flex: 1;
+    flex-direction: column;
+    /* top padding clears the absolute close button (top:12 + height:40 + gap ≈ 56px) */
+    padding: 56px var(--spacing-md) var(--spacing-md);
+    gap: var(--spacing-sm);
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* --- Hide the large desktop poster --- */
+  .review-modal-left {
+    display: none;
+  }
+
+  /* --- Compact header: thumbnail + title/year in a row --- */
+  .review-modal-header {
+    margin-bottom: var(--spacing-md);
+    padding-top: 0;
+    align-items: center;
+  }
+
+  .review-modal-thumb {
+    display: block;
+    width: 48px;
+    height: 66px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    border: 1px solid var(--color-border);
+  }
+
+  .review-modal-title {
+    font-size: 17px;
+    line-height: 1.3;
+    letter-spacing: -0.2px;
+  }
+
+  .review-modal-year {
+    display: block;
+    font-size: 13px;
+    margin-left: 0;
+    margin-top: 2px;
+  }
+
+  /* --- Form: tighter gap on mobile --- */
+  .review-modal-form {
+    gap: var(--spacing-md);
+  }
+
+  /* --- Mobile 2-column row: Rating | Hours Played --- */
+  .review-fields-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+  }
+
+  /* --- Compact star size so 5 stars fit in one column --- */
+  .review-modal-stars--compact {
+    gap: 2px;
+  }
+
+  .review-modal-stars--compact .star-container {
+    width: 32px;
+    height: 32px;
+  }
+
+  .review-modal-stars--compact .star-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* --- Textarea: compact height; expand toggle visible --- */
+  .review-modal-textarea {
+    min-height: unset;
+    resize: none;
+    /* square off bottom corners so toggle appears joined */
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .textarea-expand-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
+    padding: 7px var(--spacing-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background var(--transition-smooth);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .textarea-expand-toggle:hover {
+    background: var(--color-surface-hover);
+  }
+
+  /* --- Hide desktop-only form sections --- */
+  .hours-played-input {
+    display: none;
+  }
+
+  .review-modal-footer {
+    display: none;
+  }
+
+  /* --- Sticky Save footer anchored outside the scroll area --- */
+  .review-sticky-footer {
+    display: block;
+    flex-shrink: 0;
+    padding: var(--spacing-md);
+    /* respect iPhone home indicator */
+    padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom, 0px));
+    background: var(--color-bg-elevated);
+    border-top: 1px solid var(--color-border);
   }
 }
-

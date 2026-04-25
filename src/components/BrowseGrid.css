@@ -1,0 +1,103 @@
+/* ============================================
+   BROWSE GRID — 2-column Spotify-style layout
+   ============================================ */
+
+@keyframes browseGridSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.browse-grid-section {
+  padding: 0 16px;
+}
+
+.browse-grid-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.browse-grid-title {
+  font-size: var(--font-size-hero);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.browse-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.browse-grid--animate {
+  animation: browseGridSlideUp 0.45s ease-out both;
+}
+
+.browse-grid-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-lg) 0;
+  gap: var(--spacing-sm);
+}
+
+.browse-grid-error p {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.browse-grid-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  min-height: 44px;
+  min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.browse-grid-retry:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-hover);
+}
+
+.browse-grid-retry:active {
+  transform: scale(0.97);
+}
+
+/* Desktop */
+@media (min-width: 769px) {
+  .browse-grid-section {
+    padding: 0 var(--page-padding-desktop);
+    max-width: var(--page-max-width);
+    margin: 0 auto;
+  }
+
+  .browse-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .browse-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

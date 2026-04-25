@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Diagnostic Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-button {
+            background: #1db954;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #1ed760;
+        }
+        .test-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #1a1a1a;
+            border-left: 3px solid #1db954;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            border-left-color: #e22134;
+            color: #ff6b6b;
+        }
+        .success {
+            border-left-color: #1db954;
+            color: #1db954;
+        }
+        .warning {
+            border-left-color: #ffa500;
+            color: #ffa500;
+        }
+        h1 {
+            color: #1db954;
+        }
+        h2 {
+            margin-top: 0;
+            color: #1ed760;
+        }
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #1db954;
+        }
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 API Diagnostic Test</h1>
+    
+    <div class="info">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Make sure your dev server is running: <code>npm run dev</code></li>
+            <li>This page tests the API connections through the Vite proxy</li>
+            <li>Click the test buttons below to check each API</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Environment Check</h2>
+        <button class="test-button" onclick="checkEnvironment()">Check Environment Variables</button>
+        <div id="env-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. IGDB API Test (via Twitch OAuth)</h2>
+        <button class="test-button" onclick="testIGDB()">Test IGDB Connection</button>
+        <div id="igdb-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Search Test</h2>
+        <input type="text" id="search-input" placeholder="Enter game name (e.g., Zelda)" 
+               style="padding: 10px; width: 300px; border-radius: 4px; border: 1px solid #444; background: #1a1a1a; color: #fff; margin-right: 10px;">
+        <button class="test-button" onclick="testSearch()">Test Search</button>
+        <div id="search-result"></div>
+    </div>
+
+    <script type="module">
+        window.checkEnvironment = function() {
+            const resultDiv = document.getElementById('env-result');
+            resultDiv.innerHTML = '<div class="result loading">Checking environment...</div>';
+            
+            // Check if environment variables are accessible
+            const clientId = import.meta.env.VITE_IGDB_CLIENT_ID;
+            const clientSecret = import.meta.env.VITE_IGDB_CLIENT_SECRET;
+            const rawgKey = import.meta.env.VITE_RAWG_API_KEY;
+            
+            let html = '<div class="result">';
+            html += '<strong>Environment Variables Status:</strong>\n\n';
+            
+            if (clientId && clientId !== 'YOUR_CLIENT_ID') {
+                html += '✅ VITE_IGDB_CLIENT_ID: Set\n';
+            } else {
+                html += '❌ VITE_IGDB_CLIENT_ID: Missing or placeholder\n';
+            }
+            
+            if (clientSecret && clientSecret !== 'YOUR_CLIENT_SECRET') {
+                html += '✅ VITE_IGDB_CLIENT_SECRET: Set\n';
+            } else {
+                html += '❌ VITE_IGDB_CLIENT_SECRET: Missing or placeholder\n';
+            }
+            
+            if (rawgKey && rawgKey !== '') {
+                html += '✅ VITE_RAWG_API_KEY: Set\n';
+            } else {
+                html += '⚠️  VITE_RAWG_API_KEY: Not set (optional)\n';
+            }
+            
+            html += '\n<strong>Note:</strong> If environment variables are not set correctly,\n';
+            html += 'make sure to RESTART your dev server after updating .env file.';
+            html += '</div>';
+            
+            resultDiv.innerHTML = html;
+        };
+
+        window.testIGDB = async function() {
+            const resultDiv = document.getElementById('igdb-result');
+            resultDiv.innerHTML = '<div class="result loading">Testing IGDB API connection...</div>';
+            
+            try {
+                console.log('🔑 Step 1: Getting Twitch OAuth token...');
+                const clientId = import.meta.env.VITE_IGDB_CLIENT_ID;
+                const clientSecret = import.meta.env.VITE_IGDB_CLIENT_SECRET;
+                
+                if (!clientId || clientId === 'YOUR_CLIENT_ID') {
+                    throw new Error('IGDB Client ID not configured');
+                }
+                
+                if (!clientSecret || clientSecret === 'YOUR_CLIENT_SECRET') {
+                    throw new Error('IGDB Client Secret not configured');
+                }
+                
+                // Get OAuth token from Twitch
+                const tokenResponse = await fetch('/api/twitch/oauth2/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        grant_type: 'client_credentials',
+                    }),
+                });
+
+                console.log('Token response status:', tokenResponse.status);
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    throw new Error(`OAuth failed (${tokenResponse.status}): ${errorText}`);
+                }
+
+                const tokenData = await tokenResponse.json();
+                console.log('✅ Got access token');
+
+                // Test IGDB API with the token
+                console.log('🎮 Step 2: Testing IGDB games endpoint...');
+                const gamesResponse = await fetch('/api/igdb/v4/games', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Client-ID': clientId,
+                        'Authorization': `Bearer ${tokenData.access_token}`,
+                    },
+                    body: 'fields name, cover.url; limit 5;',
+                });
+
+                console.log('Games response status:', gamesResponse.status);
+
+                if (!gamesResponse.ok) {
+                    const errorText = await gamesResponse.text();
+                    throw new Error(`IGDB API failed (${gamesResponse.status}): ${errorText}`);
+                }
+
+                const games = await gamesResponse.json();
+                console.log('✅ Got games:', games);
+
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ IGDB API Connection Successful!</strong>\n\n
+                        Retrieved ${games.length} sample games:\n
+                        ${games.map((g, i) => `${i + 1}. ${g.name}`).join('\n')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ IGDB test failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ IGDB API Test Failed</strong>\n\n
+                        Error: ${error.message}\n\n
+                        Possible causes:\n
+                        1. Invalid API credentials in .env file\n
+                        2. Dev server not restarted after updating .env\n
+                        3. Network/firewall issues\n
+                        4. Twitch API is down\n\n
+                        Check browser console (F12) for more details.
+                    </div>
+                `;
+            }
+        };
+
+        window.testSearch = async function() {
+            const searchInput = document.getElementById('search-input');
+            const searchTerm = searchInput.value.trim();
+            const resultDiv = document.getElementById('search-result');
+            
+            if (!searchTerm) {
+                resultDiv.innerHTML = '<div class="result warning">⚠️  Please enter a search term</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = `<div class="result loading">Searching for "${searchTerm}"...</div>`;
+            
+            try {
+                console.log('🔍 Searching for:', searchTerm);
+                const clientId = import.meta.env.VITE_IGDB_CLIENT_ID;
+                const clientSecret = import.meta.env.VITE_IGDB_CLIENT_SECRET;
+                
+                // Get OAuth token
+                const tokenResponse = await fetch('/api/twitch/oauth2/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        grant_type: 'client_credentials',
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to get OAuth token');
+                }
+
+                const tokenData = await tokenResponse.json();
+                
+                // Search games
+                const escapedTerm = searchTerm.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                const query = `fields name, cover.url, rating; search "${escapedTerm}"; limit 10;`;
+                
+                const searchResponse = await fetch('/api/igdb/v4/games', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Client-ID': clientId,
+                        'Authorization': `Bearer ${tokenData.access_token}`,
+                    },
+                    body: query,
+                });
+
+                if (!searchResponse.ok) {
+                    const errorText = await searchResponse.text();
+                    throw new Error(`Search failed (${searchResponse.status}): ${errorText}`);
+                }
+
+                const games = await searchResponse.json();
+                console.log('✅ Search results:', games);
+
+                if (games.length === 0) {
+                    resultDiv.innerHTML = `
+                        <div class="result warning">
+                            <strong>⚠️  No games found for "${searchTerm}"</strong>\n\n
+                            The search API is working, but no results matched your query.
+                            Try a different search term.
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>✅ Search Successful!</strong>\n\n
+                            Found ${games.length} games for "${searchTerm}":\n\n
+                            ${games.map((g, i) => {
+                                const rating = g.rating ? ` (${(g.rating / 20).toFixed(1)}⭐)` : '';
+                                return `${i + 1}. ${g.name}${rating}`;
+                            }).join('\n')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Search test failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Search Test Failed</strong>\n\n
+                        Error: ${error.message}\n\n
+                        Check browser console (F12) for more details.
+                    </div>
+                `;
+            }
+        };
+        
+        // Auto-run environment check on page load
+        window.addEventListener('load', () => {
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>
+

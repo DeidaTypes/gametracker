@@ -1,132 +1,125 @@
+/* =============================================
+   TOP NAV — Editorial minimal header
+   ============================================= */
+
 .top-nav {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 72px;
-  background: rgba(13, 13, 13, 0.7);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  height: var(--top-nav-height);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border-bottom: 1px solid var(--color-border);
   z-index: 1000;
-  padding: 0 40px;
+  padding: 0 var(--spacing-xl);
 }
 
 .top-nav-container {
-  max-width: 1400px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 48px;
+  gap: var(--spacing-xl);
+  position: relative;
+  z-index: 1;
 }
 
+/* ---- Logo / Wordmark ---- */
 .top-nav-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.5px;
   flex-shrink: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-fast);
 }
 
 .top-nav-logo:hover {
   opacity: 0.8;
 }
 
-.logo-icon {
-  font-size: 24px;
-}
-
 .logo-text {
-  background: linear-gradient(135deg, #4A9EFF 0%, #5B9FFF 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
 }
 
+/* ---- Search form ---- */
 .top-nav-search {
   position: relative;
   flex: 0 0 auto;
-  width: 280px;
+  width: 300px;
   display: flex;
   align-items: center;
 }
 
 .search-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 8px 36px 8px 12px;
-  color: #ffffff;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 9px 40px 9px var(--spacing-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-normal);
   letter-spacing: -0.01em;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all var(--transition-smooth);
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-muted);
 }
 
 .search-input:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .search-input.focused {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(74, 158, 255, 0.3);
-}
-
-.search-input.focused::placeholder {
-  color: transparent;
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(200, 150, 90, 0.1);
 }
 
 .search-icon-button {
   position: absolute;
-  right: 6px;
+  right: 8px;
   background: transparent;
   border: none;
-  padding: 6px;
+  padding: var(--spacing-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s ease;
+  transition: all var(--transition-fast);
   outline: none;
-  border-radius: 4px;
+  border-radius: var(--radius-full);
 }
 
 .search-icon-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.search-icon-button:active {
-  opacity: 0.7;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface);
 }
 
 .search-icon {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.4);
-  transition: color 0.2s ease;
+  font-size: 17px;
+  color: var(--color-text-tertiary);
   pointer-events: none;
+  transition: color var(--transition-fast);
 }
 
 .search-input.focused ~ .search-icon-button .search-icon {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-brand-primary);
 }
 
+/* ---- Nav links ---- */
 .top-nav-links {
   display: flex;
   align-items: center;
@@ -135,40 +128,157 @@
 }
 
 .top-nav-link {
-  padding: 8px 14px;
+  padding: 7px var(--spacing-md);
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-sans);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
   letter-spacing: -0.01em;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
 
 .top-nav-link:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .top-nav-link.active {
-  color: #4A9EFF;
-  background: rgba(74, 158, 255, 0.1);
+  color: var(--color-brand-primary);
+  background: rgba(200, 150, 90, 0.08);
+  border-color: rgba(200, 150, 90, 0.2);
 }
 
-/* Desktop only - show top nav */
+/* ---- Suggestions dropdown ---- */
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  z-index: 1001;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.search-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: var(--color-surface-hover);
+}
+
+.suggestion-item.loading,
+.suggestion-item.no-results {
+  cursor: default;
+  justify-content: center;
+  padding: var(--spacing-md);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-meta);
+  font-family: var(--font-sans);
+}
+
+.suggestion-image {
+  width: 36px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+.suggestion-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.suggestion-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-meta);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
+}
+
+.suggestion-meta span:not(:last-child)::after {
+  content: '·';
+  margin-left: var(--spacing-xs);
+  color: var(--color-text-muted);
+}
+
+.loading-text {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+}
+
+.loading-text::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--color-border);
+  border-top-color: var(--color-brand-primary);
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Desktop: show top nav ---- */
 @media (min-width: 769px) {
   .top-nav {
     display: block;
   }
-}
 
-/* Hide sidebar on desktop when top nav is shown */
-@media (min-width: 769px) {
+  /* hide sidebar when top nav is visible */
   .sidebar {
     display: none;
   }
 }
-
-/* Adjust main content margin for top nav - handled in App.css */
-

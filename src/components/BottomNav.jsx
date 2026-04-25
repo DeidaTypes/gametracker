@@ -3,12 +3,12 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { 
   HiOutlineHome, 
   HiHome,
+  HiOutlineGlobe,
+  HiGlobe,
   HiOutlineSearch, 
   HiSearch,
   HiOutlineBookOpen, 
   HiBookOpen,
-  HiOutlineHeart, 
-  HiHeart,
   HiOutlineUser, 
   HiUser
 } from 'react-icons/hi'
@@ -40,6 +40,21 @@ function BottomNav() {
         )}
       </NavLink>
       <NavLink 
+        to="/explore" 
+        className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+      >
+        {({ isActive }) => (
+          <>
+            {isActive ? (
+              <HiGlobe className="bottom-nav-icon" />
+            ) : (
+              <HiOutlineGlobe className="bottom-nav-icon" />
+            )}
+            <span className="bottom-nav-label">Explore</span>
+          </>
+        )}
+      </NavLink>
+      <NavLink 
         to="/search" 
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
@@ -66,21 +81,6 @@ function BottomNav() {
               <HiOutlineBookOpen className="bottom-nav-icon" />
             )}
             <span className="bottom-nav-label">Library</span>
-          </>
-        )}
-      </NavLink>
-      <NavLink 
-        to="/wishlist" 
-        className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
-      >
-        {({ isActive }) => (
-          <>
-            {isActive ? (
-              <HiHeart className="bottom-nav-icon" />
-            ) : (
-              <HiOutlineHeart className="bottom-nav-icon" />
-            )}
-            <span className="bottom-nav-label">Wishlist</span>
           </>
         )}
       </NavLink>

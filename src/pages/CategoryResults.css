@@ -1,0 +1,98 @@
+/* ============================================
+   CATEGORY RESULTS PAGE
+   ============================================ */
+
+.category-results-page {
+  min-height: 100vh;
+  padding-bottom: var(--bottom-nav-safe-area);
+  background: var(--color-bg-primary);
+}
+
+.category-results-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-bg-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: var(--spacing-md) var(--page-padding);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.category-results-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-brand-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.category-results-back:active {
+  opacity: 0.6;
+}
+
+.category-results-title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: var(--letter-spacing-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl) var(--page-padding);
+}
+
+.category-results-loading,
+.category-results-error,
+.category-results-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-3xl) var(--page-padding);
+  gap: var(--spacing-md);
+  color: var(--color-text-tertiary);
+}
+
+/* Desktop */
+@media (min-width: 769px) {
+  .category-results-header {
+    padding: var(--spacing-lg) var(--page-padding-desktop);
+    max-width: var(--page-max-width);
+    margin: 0 auto;
+  }
+
+  .category-results-grid {
+    grid-template-columns: repeat(3, 1fr);
+    padding: var(--spacing-xl) var(--page-padding-desktop);
+    max-width: var(--page-max-width);
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1100px) {
+  .category-results-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

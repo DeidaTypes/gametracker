@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { searchGames } from '../services/igdb'
+import { searchGames } from '../services/searchService'
 import { isGameInList } from '../services/libraryService'
 import './AddGamesModal.css'
 

@@ -1,0 +1,180 @@
+/* =============================================
+   CONTINUE PLAYING — horizontal rail
+   ============================================= */
+
+.cp-section {
+  /* Header gets container padding; rail scrolls edge-to-edge */
+  padding: 0 var(--container-padding);
+}
+
+.cp-rail {
+  display: flex;
+  gap: var(--spacing-md);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px var(--container-padding) var(--spacing-sm);
+  margin: 0 calc(-1 * var(--container-padding));
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.cp-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Card ── */
+
+.cp-card {
+  flex: 0 0 140px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--transition-fast);
+}
+
+.cp-card:hover {
+  transform: translateY(-4px);
+}
+
+.cp-card:active {
+  transform: scale(0.97);
+}
+
+/* ── Cover ── */
+
+.cp-cover-wrap {
+  position: relative;
+  width: 140px;
+  height: 196px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-xs);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.cp-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.cp-card:hover .cp-cover {
+  transform: scale(1.04);
+}
+
+/* Hover overlay with CTA */
+.cp-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.25s ease;
+}
+
+.cp-card:hover .cp-overlay {
+  opacity: 1;
+}
+
+.cp-cta {
+  background: var(--color-brand-primary);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-semibold);
+  transform: translateY(6px);
+  transition: transform 0.25s ease;
+}
+
+.cp-card:hover .cp-cta {
+  transform: translateY(0);
+}
+
+/* Progress bar at bottom of cover */
+.cp-bar-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.cp-bar-fill {
+  height: 100%;
+  background: var(--color-brand-primary);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.3s ease;
+}
+
+/* ── Info ── */
+
+.cp-info {
+  padding: 0 2px;
+}
+
+.cp-title {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 2px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cp-meta {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-meta);
+  color: var(--color-brand-primary);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.2px;
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+
+@media (max-width: 359px) {
+  .cp-card {
+    flex: 0 0 120px;
+  }
+  .cp-cover-wrap {
+    width: 120px;
+    height: 168px;
+  }
+}
+
+@media (min-width: 480px) {
+  .cp-card {
+    flex: 0 0 152px;
+  }
+  .cp-cover-wrap {
+    width: 152px;
+    height: 213px;
+  }
+}
+
+@media (min-width: 769px) {
+  .cp-card {
+    flex: 0 0 168px;
+  }
+  .cp-cover-wrap {
+    width: 168px;
+    height: 235px;
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { searchGames } from '../services/igdb'
+import { searchGames } from '../services/searchService'
 import './CreateListModal.css'
 
 function CreateListModal({ isOpen, onClose, onCreate }) {

@@ -1,0 +1,5 @@
+/* AppShell — provides scoped content area within the main layout */
+.app-shell-content {
+  width: 100%;
+  min-height: 100%;
+}
