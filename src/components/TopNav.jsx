@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { HiOutlineSearch } from 'react-icons/hi'
 import { searchGames } from '../services/searchService'
+import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import './TopNav.css'
 
 function TopNav() {
@@ -145,9 +146,7 @@ function TopNav() {
           {showSuggestions && (
             <div className="search-suggestions" ref={suggestionsRef}>
               {isLoadingSuggestions ? (
-                <div className="suggestion-item loading">
-                  <span className="loading-text">Searching...</span>
-                </div>
+                <SearchResultSkeletonList count={4} />
               ) : suggestions.length > 0 ? (
                 suggestions.map((game, index) => (
                   <div

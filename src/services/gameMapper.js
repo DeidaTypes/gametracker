@@ -1,5 +1,4 @@
-// Game Mapper Service - Maps RAWG games to IGDB for better art and info
-// Uses RAWG for popularity/trending, IGDB for art/info
+// Game Mapper Service - Maps game data to IGDB for art and info
 
 import { searchGames as igdbSearchGames } from './igdb'
 
@@ -33,10 +32,10 @@ function normalizeTitle(title) {
     .trim()
 }
 
-// Map a single RAWG game to IGDB game
+// Map a single game to its IGDB equivalent
 export async function mapRawgToIgdb(rawgGame) {
   if (!rawgGame || !rawgGame.title) {
-    return rawgGame // Return as-is if invalid
+    return rawgGame
   }
 
   // Check cache first
@@ -67,11 +66,9 @@ export async function mapRawgToIgdb(rawgGame) {
       return igdbResults[0]
     }
   } catch (err) {
-    // Silently fallback to RAWG if IGDB fails
     console.warn(`⚠️ IGDB mapping failed for "${rawgGame.title}":`, err.message)
   }
   
-  // Fallback to RAWG data if IGDB doesn't have it or fails
   return rawgGame
 }
 
@@ -82,19 +79,18 @@ function isIgdbConfigured() {
   return clientId && clientId !== 'YOUR_CLIENT_ID' && clientSecret && clientSecret !== 'YOUR_CLIENT_SECRET'
 }
 
-// Map multiple RAWG games to IGDB games (with timeout and fallback)
+// Map multiple games to IGDB (with timeout and fallback)
 export async function mapRawgGamesToIgdb(rawgGames) {
   if (!rawgGames || rawgGames.length === 0) {
     return []
   }
 
-  // Quick check: if IGDB isn't configured, skip mapping entirely
   if (!isIgdbConfigured()) {
-    console.log('ℹ️ IGDB not configured, using RAWG games directly')
+    console.log('ℹ️ IGDB not configured, returning games as-is')
     return rawgGames
   }
 
-  console.log(`🔄 Mapping ${rawgGames.length} RAWG games to IGDB...`)
+  console.log(`🔄 Mapping ${rawgGames.length} games to IGDB...`)
   
   // Quick test to see if IGDB is actually working
   try {
@@ -103,7 +99,7 @@ export async function mapRawgGamesToIgdb(rawgGames) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('IGDB timeout')), 1500))
     ])
   } catch (err) {
-    console.warn('⚠️ IGDB not available, using RAWG games directly:', err.message)
+    console.warn('⚠️ IGDB not available, returning games as-is:', err.message)
     return rawgGames
   }
   
@@ -121,7 +117,7 @@ export async function mapRawgGamesToIgdb(rawgGames) {
         }
         return mapped
       } catch (err) {
-        return rawgGame // Fallback to RAWG
+        return rawgGame
       }
     })
   )
@@ -134,15 +130,14 @@ export async function mapRawgGamesToIgdb(rawgGames) {
       )
     ])
     
-    // Combine mapped games with remaining RAWG games
     const remainingRawgGames = rawgGames.slice(20)
     const allResults = [...results, ...remainingRawgGames]
     
-    console.log(`✅ Mapped ${results.length} games to IGDB (${remainingRawgGames.length} using RAWG)`)
+    console.log(`✅ Mapped ${results.length} games to IGDB (${remainingRawgGames.length} unmapped)`)
     return allResults
   } catch (err) {
-    console.warn('⚠️ Mapping timed out or failed, using RAWG games:', err.message)
-    return rawgGames // Fallback to RAWG games
+    console.warn('⚠️ Mapping timed out or failed, returning games as-is:', err.message)
+    return rawgGames
   }
 }
 

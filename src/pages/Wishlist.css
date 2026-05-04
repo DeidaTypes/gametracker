@@ -16,15 +16,19 @@
 }
 
 .wishlist-header h1 {
-  font-size: var(--font-size-display);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0 0 4px 0;
-  letter-spacing: var(--letter-spacing-tight);
 }
 
 .wishlist-subtitle {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
 }
@@ -54,18 +58,20 @@
 }
 
 .empty-wishlist h2 {
-  font-size: var(--font-size-subtitle);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .empty-wishlist p {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
   max-width: 260px;
-  line-height: var(--line-height-relaxed);
 }
 
 /* ---- Desktop ---- */

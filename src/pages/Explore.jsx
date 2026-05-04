@@ -1,186 +1,178 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  useFeaturedGame,
+  useTrendingThisWeek,
+  useJustFinished,
   useRecentReviews,
-  useEditorialStats,
-  useCurrentlyPlaying,
-  useGenres,
+  useNewReleases,
 } from '../hooks/useExploreData'
 import SectionHeader from '../components/SectionHeader'
-import HeroFeature from '../components/explore/HeroFeature'
-import ReviewCard from '../components/explore/ReviewCard'
-import EditorialStrip from '../components/explore/EditorialStrip'
-import GenreTile from '../components/explore/GenreTile'
-import GameCard from '../components/GameCard'
+import TrendingCard from '../components/explore/TrendingCard'
+import JustFinishedCard from '../components/explore/JustFinishedCard'
+import ReviewFeedRow from '../components/explore/ReviewFeedRow'
+import NewReleaseCard from '../components/explore/NewReleaseCard'
+import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
+import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
+import { ReviewRowSkeletonList } from '../components/skeletons/ReviewRowSkeleton'
 import './Explore.css'
 
-function RowSkeleton({ count = 3, width = 280, height = 160 }) {
+// ─── Section primitives ────────────────────────────────────────────────────
+
+function ErrorBanner({ message }) {
+  return (
+    <div className="explore-section__pad">
+      <div className="explore-error-banner">
+        <p>{message}</p>
+      </div>
+    </div>
+  )
+}
+
+function ScrollRow({ items, render }) {
   return (
     <div className="explore-scroll-row">
-      {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className="skeleton"
-          style={{ flex: `0 0 ${width}px`, width, minWidth: width, height, borderRadius: 14 }}
-        />
-      ))}
+      {items.map(render)}
     </div>
   )
 }
 
-function GenreGridSkeleton() {
-  return (
-    <div className="explore-genre-grid">
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="skeleton" style={{ aspectRatio: '1/1', borderRadius: 14 }} />
-      ))}
-    </div>
-  )
-}
-
-function ExploreEmpty() {
-  const navigate = useNavigate()
-  return (
-    <div className="explore-empty-state">
-      <p className="explore-empty-state__title">Nothing to explore yet</p>
-      <p className="explore-empty-state__body">Be the first to log a game and start building your library.</p>
-      <button className="cta-button" onClick={() => navigate('/search')}>
-        Find games
-      </button>
-    </div>
-  )
-}
-
-function ErrorBanner({ message, onRetry }) {
-  return (
-    <div className="explore-error-banner">
-      <p>{message}</p>
-      {onRetry && (
-        <button className="explore-error-banner__retry" onClick={onRetry} type="button">
-          Try again
-        </button>
-      )}
-    </div>
-  )
-}
+// ─── Page ──────────────────────────────────────────────────────────────────
 
 function Explore() {
   const navigate = useNavigate()
-  const featured = useFeaturedGame()
+
+  // Each hook fires immediately on mount; they run concurrently.
+  // The community mock service shares a single in-flight pool fetch so the
+  // three community sections only pay one IGDB roundtrip between them.
+  const trending = useTrendingThisWeek()
+  const finished = useJustFinished()
   const reviews = useRecentReviews()
-  const stats = useEditorialStats()
-  const currentlyPlaying = useCurrentlyPlaying()
-  const genres = useGenres()
+  const releases = useNewReleases()
 
-  const anyLoading = featured.loading || reviews.loading || genres.loading
-  const anyData = featured.data || reviews.data || stats.data || currentlyPlaying.data || genres.data
-  const allDone = !featured.loading && !reviews.loading && !stats.loading && !currentlyPlaying.loading && !genres.loading
+  const sections = []
 
-  if (allDone && !anyData && !featured.error && !genres.error) {
-    return (
-      <div className="explore-page">
-        <ExploreEmpty />
+  // 1. Trending this week
+  sections.push(
+    <section key="trending" className="explore-section">
+      <div className="explore-section__pad">
+        <SectionHeader title="Trending this week" />
       </div>
-    )
-  }
+      {trending.loading ? (
+        <GameCardSkeletonRow count={6} />
+      ) : trending.error ? (
+        <ErrorBanner message="Could not load trending games." />
+      ) : trending.data && trending.data.length > 0 ? (
+        <ScrollRow
+          items={trending.data}
+          render={(entry) => <TrendingCard key={entry.game.id} entry={entry} />}
+        />
+      ) : (
+        <div className="explore-section__pad">
+          <p className="explore-section-empty">No trending activity yet — check back later.</p>
+        </div>
+      )}
+    </section>
+  )
 
-  let sectionIndex = 0
+  // 2. Just finished
+  sections.push(
+    <section key="finished" className="explore-section">
+      <div className="explore-section__pad">
+        <SectionHeader title="Just finished" />
+      </div>
+      {finished.loading ? (
+        <GameCardSkeletonRow count={6} />
+      ) : finished.error ? (
+        <ErrorBanner message="Could not load recently finished games." />
+      ) : finished.data && finished.data.length > 0 ? (
+        <ScrollRow
+          items={finished.data}
+          render={(entry) => <JustFinishedCard key={entry.id} entry={entry} />}
+        />
+      ) : (
+        <div className="explore-section__pad">
+          <p className="explore-section-empty">Nobody finished a game in the last 24 hours.</p>
+        </div>
+      )}
+    </section>
+  )
+
+  // 3. Recent reviews (vertical feed)
+  sections.push(
+    <section key="reviews" className="explore-section">
+      <div className="explore-section__pad">
+        <SectionHeader
+          title="Recent reviews"
+          action="Your reviews"
+          onAction={() => navigate('/reviews')}
+        />
+      </div>
+      {reviews.loading ? (
+        <ReviewRowSkeletonList count={4} />
+      ) : reviews.error ? (
+        <ErrorBanner message="Could not load reviews." />
+      ) : reviews.data && reviews.data.length > 0 ? (
+        <div className="explore-review-feed">
+          {reviews.data.map((r) => (
+            <ReviewFeedRow key={r.id} review={r} />
+          ))}
+        </div>
+      ) : (
+        <div className="explore-section__pad">
+          <p className="explore-section-empty">No reviews yet — be the first to write one.</p>
+        </div>
+      )}
+    </section>
+  )
+
+  // 4. New releases
+  sections.push(
+    <section key="releases" className="explore-section">
+      <div className="explore-section__pad">
+        <SectionHeader title="New releases" />
+      </div>
+      {releases.loading ? (
+        <GameCardSkeletonRow count={6} />
+      ) : releases.error ? (
+        <ErrorBanner message="Could not load upcoming releases." />
+      ) : releases.data && releases.data.length > 0 ? (
+        <ScrollRow
+          items={releases.data}
+          render={(g) => <NewReleaseCard key={g.id} game={g} />}
+        />
+      ) : (
+        <div className="explore-section__pad">
+          <p className="explore-section-empty">No new releases in the next 30 days.</p>
+        </div>
+      )}
+    </section>
+  )
+
+  // The same game can show up across Trending / Just Finished / Recent
+  // Reviews / New Releases. Drop the layoutId on duplicates so Motion has
+  // exactly one source for the cover-to-hero flight.
+  const duplicateIds = useMemo(() => {
+    const trendingGames = (trending.data || []).map((e) => e.game)
+    const finishedGames = (finished.data || []).map((e) => e.game)
+    // Real Supabase review rows expose `igdb_game_id`; the legacy mock
+    // shape exposes `r.game.id`. Coerce both into the { id, image } shape
+    // findDuplicateGameIds expects.
+    const reviewGames = (reviews.data || []).map((r) =>
+      r.game ? r.game : { id: r.igdb_game_id, image: r.game_image }
+    )
+    const releaseGames = releases.data || []
+    return findDuplicateGameIds(
+      trendingGames,
+      finishedGames,
+      reviewGames,
+      releaseGames
+    )
+  }, [trending.data, finished.data, reviews.data, releases.data])
 
   return (
-    <div className="explore-page">
-      {/* Hero: featured game from real API */}
-      {(featured.loading || featured.data) && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <HeroFeature game={featured.data} loading={featured.loading} />
-        </section>
-      )}
-      {!featured.loading && featured.error && !featured.data && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <ErrorBanner message="Could not load featured game." />
-          </div>
-        </section>
-      )}
-
-      {/* Recent reviews from localStorage */}
-      {!reviews.loading && reviews.data && reviews.data.length > 0 && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <SectionHeader
-              title="Your recent reviews"
-              action="See all"
-              onAction={() => navigate('/reviews')}
-            />
-          </div>
-          <div className="explore-scroll-row">
-            {reviews.data.map((r) => (
-              <ReviewCard key={r.id} review={r} />
-            ))}
-          </div>
-        </section>
-      )}
-      {reviews.loading && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <SectionHeader title="Your recent reviews" />
-          </div>
-          <RowSkeleton count={3} width={280} height={160} />
-        </section>
-      )}
-
-      {/* Editorial stat strip — real local counts */}
-      {!stats.loading && stats.data && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <EditorialStrip stats={stats.data} loading={false} />
-        </section>
-      )}
-
-      {/* Currently playing from local library */}
-      {!currentlyPlaying.loading && currentlyPlaying.data && currentlyPlaying.data.length > 0 && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <SectionHeader
-              title="Currently playing"
-              action="See all"
-              onAction={() => navigate('/currently-playing')}
-            />
-          </div>
-          <div className="explore-scroll-row">
-            {currentlyPlaying.data.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Browse by category — real data from RAWG/IGDB */}
-      {(genres.loading || genres.data) && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <SectionHeader title="Browse by category" />
-          </div>
-          <div className="explore-section__pad">
-            {genres.loading ? (
-              <GenreGridSkeleton />
-            ) : (
-              <div className="explore-genre-grid">
-                {genres.data.map((g) => (
-                  <GenreTile key={g.key} genre={g} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-      {!genres.loading && genres.error && !genres.data && (
-        <section className={`explore-section explore-section--${sectionIndex++}`}>
-          <div className="explore-section__pad">
-            <ErrorBanner message="Could not load categories." />
-          </div>
-        </section>
-      )}
-    </div>
+    <SharedCoverScope duplicateIds={duplicateIds}>
+      <div className="explore-page">{sections}</div>
+    </SharedCoverScope>
   )
 }
 

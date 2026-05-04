@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchCategoryGames, getCategoryDefinitions } from '../services/browseService'
 import GameCard from '../components/GameCard'
+import { GameCardSkeletonGrid } from '../components/skeletons/GameCardSkeleton'
 import './CategoryResults.css'
 
 function CategoryResults() {
@@ -58,12 +59,7 @@ function CategoryResults() {
         <h1 className="category-results-title">{categoryLabel}</h1>
       </div>
 
-      {loading && (
-        <div className="category-results-loading">
-          <div className="loading-spinner"></div>
-          <p>Loading games...</p>
-        </div>
-      )}
+      {loading && <GameCardSkeletonGrid count={12} />}
 
       {error && (
         <div className="category-results-error">

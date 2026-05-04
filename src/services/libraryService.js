@@ -1,4 +1,6 @@
 // Library Service - manages game lists and trackers
+import { logActivity } from './activityService'
+import { queueCelebration } from './celebrationService'
 
 const LIBRARY_STORAGE_KEY = 'gameLibrary'
 const PROGRESS_STORAGE_KEY = 'gameProgress'
@@ -156,6 +158,21 @@ export function deleteCustomList(listId) {
   return false
 }
 
+// Restore a previously-deleted custom list (used for undo)
+export function restoreCustomList(listId, snapshot) {
+  const library = getLibrary() || initializeLibrary()
+  if (!library.customLists) library.customLists = {}
+  library.customLists[listId] = snapshot
+  saveLibrary(library)
+  return true
+}
+
+// Get raw snapshot of a custom list (use before deleting, for undo)
+export function getCustomListSnapshot(listId) {
+  const library = getLibrary() || initializeLibrary()
+  return library.customLists?.[listId] ?? null
+}
+
 // Rename a custom list
 export function renameCustomList(listId, newName) {
   const library = getLibrary() || initializeLibrary()
@@ -238,90 +255,169 @@ export function getGameStatus(gameId) {
 /**
  * Moves a game between status lists. If the game isn't in any list yet,
  * `game` object must be passed so it can be added.
+ *
+ * First-time-Played celebration trigger
+ *   When the transition lands on `played` AND the per-game
+ *   `playedFirstAt` timestamp on gameProgress is null, set the timestamp
+ *   and enqueue a celebration. The timestamp is only ever written once
+ *   per-game (see updateGameProgress + getGameProgress) so toggling
+ *   played → playing → played does NOT re-celebrate. This is the
+ *   "first-time-ever-Played per game" semantics from the design spec.
  */
 export function setGameStatus(gameId, newStatus, game = null) {
-  const id = String(gameId)
-  const targetList = STATUS_LIST_MAP[newStatus]
-  if (!targetList) return false
+  try {
+    const id = String(gameId)
+    const targetList = STATUS_LIST_MAP[newStatus]
+    if (!targetList) return false
 
-  const currentStatus = getGameStatus(id)
-  if (currentStatus === newStatus) return true
+    const currentStatus = getGameStatus(id)
+    if (currentStatus === newStatus) return true
 
-  const library = getLibrary() || initializeLibrary()
+    const library = getLibrary() || initializeLibrary()
 
-  // Remove from any existing status list
-  let gameObj = game
-  for (const listId of Object.keys(LIST_STATUS_MAP)) {
-    const list = library.lists[listId]
-    if (!list || !list.games) continue
-    const idx = list.games.findIndex(g => String(g.id) === id)
-    if (idx !== -1) {
-      gameObj = list.games[idx]
-      list.games.splice(idx, 1)
+    let gameObj = game
+    for (const listId of Object.keys(LIST_STATUS_MAP)) {
+      const list = library.lists[listId]
+      if (!list || !list.games) continue
+      const idx = list.games.findIndex(g => String(g.id) === id)
+      if (idx !== -1) {
+        gameObj = list.games[idx]
+        list.games.splice(idx, 1)
+      }
     }
+
+    if (!gameObj) return false
+
+    if (!library.lists[targetList].games) {
+      library.lists[targetList].games = []
+    }
+    library.lists[targetList].games.push({
+      ...gameObj,
+      addedAt: gameObj.addedAt || new Date().toISOString(),
+    })
+
+    saveLibrary(library)
+
+    if (newStatus === 'currently') {
+      updateGameProgress(id, { lastPlayedAt: new Date().toISOString() })
+    }
+
+    // First-time-Played celebration. Only fires when the row has never
+    // had `playedFirstAt` set — by design, a previous Played → Playing →
+    // Played re-toggle does NOT re-celebrate.
+    if (newStatus === 'played' && currentStatus !== 'played') {
+      const existing = getGameProgress(id)
+      if (!existing.playedFirstAt) {
+        const completedAt = new Date().toISOString()
+        updateGameProgress(id, { playedFirstAt: completedAt })
+        // Pass a snapshot of the game object so the celebration can
+        // render synchronously without hitting localStorage / IGDB again.
+        queueCelebration({
+          igdbGameId: id,
+          completedAt,
+          game: {
+            id: gameObj.id,
+            title: gameObj.title,
+            image: gameObj.image,
+            year: gameObj.year,
+            developers: gameObj.developers,
+            addedAt: gameObj.addedAt,
+          },
+          previousStatus: currentStatus || null,
+        })
+      }
+    }
+
+    window.dispatchEvent(new Event('libraryUpdated'))
+
+    // Activity log — fire-and-forget AFTER the local save succeeds. The
+    // service-side try/catch in logActivity prevents activity-log failures
+    // from rolling back the status change.
+    logActivity({
+      activityType: 'status_changed',
+      igdbGameId: gameId,
+      metadata: {
+        from_status: currentStatus || null,
+        to_status: newStatus,
+        game_title: gameObj.title || null,
+      },
+    })
+
+    return true
+  } catch (err) {
+    console.error('setGameStatus failed:', err)
+    return false
   }
-
-  if (!gameObj) return false
-
-  if (!library.lists[targetList].games) {
-    library.lists[targetList].games = []
-  }
-  library.lists[targetList].games.push({
-    ...gameObj,
-    addedAt: gameObj.addedAt || new Date().toISOString(),
-  })
-
-  saveLibrary(library)
-
-  // Touch lastPlayedAt when moving to "currently"
-  if (newStatus === 'currently') {
-    updateGameProgress(id, { lastPlayedAt: new Date().toISOString() })
-  }
-
-  window.dispatchEvent(new Event('libraryUpdated'))
-  return true
 }
 
 /**
  * Removes a game from whichever status list it belongs to.
  */
 export function clearGameStatus(gameId) {
-  const id = String(gameId)
-  const library = getLibrary() || initializeLibrary()
+  try {
+    const id = String(gameId)
+    const library = getLibrary() || initializeLibrary()
 
-  for (const listId of Object.keys(LIST_STATUS_MAP)) {
-    const list = library.lists[listId]
-    if (!list || !list.games) continue
-    const idx = list.games.findIndex(g => String(g.id) === id)
-    if (idx !== -1) {
-      list.games.splice(idx, 1)
-      break
+    for (const listId of Object.keys(LIST_STATUS_MAP)) {
+      const list = library.lists[listId]
+      if (!list || !list.games) continue
+      const idx = list.games.findIndex(g => String(g.id) === id)
+      if (idx !== -1) {
+        list.games.splice(idx, 1)
+        break
+      }
     }
-  }
 
-  saveLibrary(library)
-  window.dispatchEvent(new Event('libraryUpdated'))
+    saveLibrary(library)
+    window.dispatchEvent(new Event('libraryUpdated'))
+    return true
+  } catch (err) {
+    console.error('clearGameStatus failed:', err)
+    return false
+  }
 }
 
 /**
- * Get progress data for a game: { progressPercent, lastPlayedAt, hoursPlayed }
+ * Get progress data for a game.
+ * Shape: { progressPercent, lastPlayedAt, hoursPlayed, playedFirstAt }
+ *
+ * `playedFirstAt` is the lifetime "first time this game was marked
+ * Played" timestamp. Once set, it is never updated — see
+ * updateGameProgress for the write-once guard.
  */
 export function getGameProgress(gameId) {
   const all = getAllProgress()
-  return all[String(gameId)] || { progressPercent: null, lastPlayedAt: null, hoursPlayed: null }
+  return (
+    all[String(gameId)] || {
+      progressPercent: null,
+      lastPlayedAt: null,
+      hoursPlayed: null,
+      playedFirstAt: null,
+    }
+  )
 }
 
 /**
  * Merge-update progress fields for a game.
+ *
+ * `playedFirstAt` is write-once: if it's already non-null on the existing
+ * row, subsequent writes are silently ignored. This is what makes the
+ * first-time-Played celebration fire exactly once per (game, lifetime).
  */
 export function updateGameProgress(gameId, data) {
   const all = getAllProgress()
   const id = String(gameId)
   const existing = all[id] || {}
+  // Write-once guard for playedFirstAt. Spec: "if not null, no celebration."
+  const nextPlayedFirstAt =
+    existing.playedFirstAt
+      ? existing.playedFirstAt
+      : (data.playedFirstAt !== undefined ? data.playedFirstAt : null)
   all[id] = {
     progressPercent: data.progressPercent !== undefined ? data.progressPercent : (existing.progressPercent ?? null),
     lastPlayedAt: data.lastPlayedAt !== undefined ? data.lastPlayedAt : (existing.lastPlayedAt ?? null),
     hoursPlayed: data.hoursPlayed !== undefined ? data.hoursPlayed : (existing.hoursPlayed ?? null),
+    playedFirstAt: nextPlayedFirstAt,
   }
   saveAllProgress(all)
   window.dispatchEvent(new Event('libraryUpdated'))

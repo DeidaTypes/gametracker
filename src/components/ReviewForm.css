@@ -7,18 +7,18 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
+  background-color: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   padding: var(--spacing-lg);
-  animation: fadeIn var(--transition-fast) ease;
+  animation: reviewFadeIn var(--transition-fast) ease;
 }
 
-@keyframes fadeIn {
+@keyframes reviewFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
@@ -30,18 +30,20 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  max-width: 900px;
+  max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow: hidden;
   position: relative;
-  animation: slideUp var(--transition-smooth) ease;
-  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  animation: reviewSlideUp var(--transition-smooth) ease;
+  box-shadow: var(--surface-2-shadow);
 }
 
-@keyframes slideUp {
+@keyframes reviewSlideUp {
   from {
-    transform: translateY(30px);
+    transform: translateY(32px);
     opacity: 0;
   }
   to {
@@ -57,519 +59,424 @@
   position: absolute;
   top: var(--spacing-md);
   right: var(--spacing-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--color-text-primary);
-  font-size: 28px;
   cursor: pointer;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  transition: all var(--transition-smooth);
+  transition: background-color var(--transition-smooth), border-color var(--transition-smooth);
   z-index: 10;
-  line-height: 1;
   padding: 0;
 }
 
 .review-modal-close:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-  transform: rotate(90deg) scale(1.05);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 /* ============================================================
-   Modal Content Layout (two-column: poster | form)
+   Scrollable body
    ============================================================ */
-.review-modal-content {
-  display: flex;
-  gap: var(--spacing-xl);
-  padding: var(--spacing-2xl);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.review-modal-content::-webkit-scrollbar { width: 8px; }
-.review-modal-content::-webkit-scrollbar-track { background: var(--color-surface); }
-.review-modal-content::-webkit-scrollbar-thumb {
-  background: var(--color-border-hover);
-  border-radius: var(--radius-xs);
-}
-
-/* ============================================================
-   Left Side – Large Poster (desktop)
-   ============================================================ */
-.review-modal-left {
-  flex-shrink: 0;
-}
-
-.review-modal-poster {
-  width: 200px;
-  height: 280px;
-  object-fit: cover;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--color-border);
-}
-
-/* ============================================================
-   Right Side – Form
-   ============================================================ */
-.review-modal-right {
+.review-modal-scroll {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Header ---------------------------------------------------- */
+.review-modal-scroll::-webkit-scrollbar { width: 6px; }
+.review-modal-scroll::-webkit-scrollbar-track { background: transparent; }
+.review-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+/* ============================================================
+   Header
+   ============================================================ */
 .review-modal-header {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  /* leave room for the close button */
+  padding-right: 56px;
 }
 
-/* Small thumbnail shown inside header on mobile, hidden on desktop */
-.review-modal-thumb {
-  display: none;
+/* Cover wrapper — contains the glow layer behind the cover */
+.review-cover-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 80px;
+  height: 120px;
 }
 
-.review-modal-title {
-  font-size: 28px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
+/* Blurred duplicate of the cover image creates a soft color-extracted glow */
+.review-cover-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: var(--radius-md);
+  background-size: cover;
+  background-position: center;
+  filter: blur(16px) saturate(1.8) brightness(0.7);
+  opacity: 0.55;
+  z-index: 0;
 }
 
-.review-modal-year {
-  font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text-tertiary);
-  margin-left: var(--spacing-xs);
+.review-cover-img {
+  position: relative;
+  z-index: 1;
+  width: 80px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: block;
+  box-shadow: var(--shadow-md);
 }
 
-/* Form ------------------------------------------------------ */
-.review-modal-form {
-  display: flex;
-  flex-direction: column;
+/* Header text block */
+.review-header-meta {
   flex: 1;
-  gap: var(--spacing-lg);
-}
-
-/* Mobile compact fields row (hidden on desktop) */
-.review-fields-mobile {
-  display: none;
-}
-
-.review-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
   min-width: 0;
+  padding-top: 2px;
 }
 
-/* Textarea wrapper ------------------------------------------ */
-.review-textarea-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-.review-modal-textarea {
-  width: 100%;
-  min-height: 250px;
-  padding: var(--spacing-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  font-family: 'Inter', sans-serif;
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-relaxed);
-  resize: vertical;
-  transition: all var(--transition-smooth);
-  box-sizing: border-box;
-}
-
-.review-modal-textarea:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-  background: var(--color-surface-hover);
-  box-shadow: 0 0 0 3px rgba(91, 143, 255, 0.1);
-}
-
-.review-modal-textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-/* Expand/Collapse toggle (desktop: hidden) */
-.textarea-expand-toggle {
-  display: none;
-}
-
-/* Hours Played (desktop: shown below textarea) -------------- */
-.hours-played-input {
-  margin-top: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.hours-played-input label {
+.review-eyebrow {
+  display: block;
+  font-family: var(--font-sans);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wider);
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
+  margin-bottom: 6px;
 }
 
-.hours-input {
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+.review-game-title {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
-  font-family: 'Inter', sans-serif;
-  font-size: var(--font-size-body);
-  transition: all var(--transition-smooth);
-  box-sizing: border-box;
-  width: 100%;
+  margin: 0 0 6px;
+  /* Clamp to 2 lines — very long titles wrap gracefully */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.hours-input:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-  background: var(--color-surface-hover);
-  box-shadow: 0 0 0 3px rgba(91, 143, 255, 0.1);
+.review-game-sub {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  margin: 0;
 }
 
-.hours-input::placeholder {
-  color: var(--color-text-muted);
+/* Header divider */
+.review-header-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0;
 }
 
-/* Footer (desktop: rating left + save right) ---------------- */
-.review-modal-footer {
+/* ============================================================
+   Form
+   ============================================================ */
+.review-form {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: auto;
-  padding-top: var(--spacing-xl);
-  border-top: 1px solid var(--color-border);
+  flex-direction: column;
+  gap: 0;
 }
 
-.review-modal-footer-left {
+/* Each section: padding + bottom border */
+.review-section {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.review-modal-label {
+.review-section:last-child {
+  border-bottom: none;
+}
+
+/* Eyebrow section label */
+.review-section-label {
+  font-family: var(--font-sans);
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wider);
-  color: var(--color-text-secondary);
-}
-
-/* ============================================================
-   Star Rating
-   ============================================================ */
-.review-modal-stars {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-
-/* Each star slot: 44×44 tap target, star SVG centered inside */
-.star-container {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-}
-
-.star-icon {
-  pointer-events: none;
-  flex-shrink: 0;
-  display: block;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.star-icon .star-outline {
-  stroke: var(--color-border-hover);
-  transition: stroke 0.2s;
-}
-
-.star-icon.filled .star-fill,
-.star-icon.half .star-fill {
-  fill: var(--color-brand-primary);
-  filter: drop-shadow(0 0 6px rgba(200, 150, 90, 0.5));
-}
-
-.star-icon.empty .star-fill {
-  fill: transparent;
-}
-
-.star-container:hover .star-icon {
-  transform: scale(1.15);
-}
-
-.star-container:hover .star-icon.filled .star-fill,
-.star-container:hover .star-icon.half .star-fill {
-  fill: var(--color-brand-secondary);
-  filter: drop-shadow(0 0 10px rgba(200, 150, 90, 0.8));
-}
-
-.star-container:hover .star-icon.filled .star-outline,
-.star-container:hover .star-icon.half .star-outline {
-  stroke: var(--color-brand-secondary);
-}
-
-.star-container:hover .star-icon.empty .star-outline {
-  stroke: var(--color-brand-primary);
-}
-
-.star-container:hover .star-icon.empty .star-fill {
-  fill: rgba(200, 150, 90, 0.3);
-}
-
-/* Transparent hit zones — cover left/right halves */
-.star-half-button {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 50%;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  z-index: 1;
-}
-
-.star-half-button.left  { left: 0; }
-.star-half-button.right { right: 0; }
-
-/* ============================================================
-   Save Button
-   ============================================================ */
-.review-modal-save {
-  background: var(--color-brand-gradient);
-  color: var(--color-text-primary);
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-2xl);
-  border-radius: var(--radius-full);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ============================================================
+   Rating description
+   ============================================================ */
+.review-rating-desc {
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  box-shadow: var(--shadow-glow);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  min-height: 1.5em;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
 }
 
-.review-modal-save--full {
-  width: 100%;
-  padding-top: 14px;
-  padding-bottom: 14px;
-}
-
-.review-modal-save:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(91, 143, 255, 0.4);
-}
-
-.review-modal-save:active:not(:disabled) {
+.review-rating-desc--visible {
+  opacity: 1;
   transform: translateY(0);
 }
 
-.review-modal-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Mobile sticky footer (hidden on desktop) */
-.review-sticky-footer {
-  display: none;
-}
-
 /* ============================================================
-   Desktop (≥769px) – restore/enhance default sizes
+   Textarea override — enforce min-height 200px
    ============================================================ */
-@media (min-width: 769px) {
-  .review-modal {
-    max-width: 1000px;
-  }
-
-  .review-modal-poster {
-    width: 240px;
-    height: 336px;
-  }
-
-  .review-modal-title {
-    font-size: 32px;
-  }
+.review-textarea-field .form-field__textarea {
+  min-height: 200px;
+  max-height: 360px;
 }
 
 /* ============================================================
-   Mobile (≤768px) – iPhone 15/16/17 optimised
-   Target: 390–430 px wide, 844–932 px tall
+   Formatting tip hint
+   ============================================================ */
+.review-format-hint {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.review-format-hint em {
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+.review-format-hint code {
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ============================================================
+   Toggles row (Liked + Contains spoilers)
+   ============================================================ */
+.review-toggles-row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  padding-top: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+}
+
+.review-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-toggle__input {
+  /* visually hidden but still accessible */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Custom checkbox box */
+.review-toggle__box {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.review-toggle__input:checked + .review-toggle__box {
+  border-color: var(--color-brand-primary);
+  background: rgba(200, 150, 90, 0.18);
+}
+
+.review-toggle__input:checked + .review-toggle__box::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: 1.5px solid var(--color-brand-primary);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.review-toggle__input:focus-visible + .review-toggle__box,
+.review-toggle__input:focus-visible ~ .review-heart-icon {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.review-toggle__text {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+/* Heart toggle */
+.review-toggle--heart {
+  gap: 6px;
+}
+
+.review-heart-icon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.review-heart-icon--filled {
+  color: var(--color-brand-primary);
+  transform: scale(1.12);
+}
+
+/* ============================================================
+   Sticky footer
+   ============================================================ */
+.review-sticky-footer {
+  flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  background: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.review-modal-submit {
+  width: 100%;
+}
+
+.review-footer-hint {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* ============================================================
+   Mobile (≤ 768px) — full-height sheet
    ============================================================ */
 @media (max-width: 768px) {
-
-  /* --- Backdrop: no padding; aligns modal flush to screen --- */
   .review-modal-backdrop {
     padding: 0;
-    align-items: stretch;
+    align-items: flex-end;
   }
 
-  /* --- Modal: full-screen flex column for sticky footer --- */
   .review-modal {
     max-width: 100%;
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
-    border: none;
-    display: flex;
-    flex-direction: column;
+    max-height: 96dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
   }
 
-  /* --- Scrollable body: flex-grow fills space between header and sticky footer --- */
-  .review-modal-content {
-    flex: 1;
-    flex-direction: column;
-    /* top padding clears the absolute close button (top:12 + height:40 + gap ≈ 56px) */
-    padding: 56px var(--spacing-md) var(--spacing-md);
-    gap: var(--spacing-sm);
-    max-height: none;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* --- Hide the large desktop poster --- */
-  .review-modal-left {
-    display: none;
-  }
-
-  /* --- Compact header: thumbnail + title/year in a row --- */
-  .review-modal-header {
-    margin-bottom: var(--spacing-md);
+  .review-modal-scroll {
+    /* pull content below the close button on small screens */
     padding-top: 0;
-    align-items: center;
   }
 
-  .review-modal-thumb {
-    display: block;
-    width: 48px;
-    height: 66px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-    border: 1px solid var(--color-border);
+  .review-modal-header {
+    padding-top: var(--spacing-lg);
   }
 
-  .review-modal-title {
-    font-size: 17px;
-    line-height: 1.3;
-    letter-spacing: -0.2px;
+  .review-game-title {
+    font-size: var(--font-size-title);
+    line-height: var(--line-height-title);
+    font-family: var(--font-serif);
   }
 
-  .review-modal-year {
-    display: block;
-    font-size: 13px;
-    margin-left: 0;
-    margin-top: 2px;
-  }
-
-  /* --- Form: tighter gap on mobile --- */
-  .review-modal-form {
-    gap: var(--spacing-md);
-  }
-
-  /* --- Mobile 2-column row: Rating | Hours Played --- */
-  .review-fields-mobile {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-  }
-
-  /* --- Compact star size so 5 stars fit in one column --- */
-  .review-modal-stars--compact {
-    gap: 2px;
-  }
-
-  .review-modal-stars--compact .star-container {
-    width: 32px;
-    height: 32px;
-  }
-
-  .review-modal-stars--compact .star-icon {
-    width: 22px;
-    height: 22px;
-  }
-
-  /* --- Textarea: compact height; expand toggle visible --- */
-  .review-modal-textarea {
-    min-height: unset;
-    resize: none;
-    /* square off bottom corners so toggle appears joined */
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-  }
-
-  .textarea-expand-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 7px var(--spacing-md);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-top: none;
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
-    color: var(--color-text-secondary);
-    font-size: 11px;
-    font-family: 'Inter', sans-serif;
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background var(--transition-smooth);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .textarea-expand-toggle:hover {
-    background: var(--color-surface-hover);
-  }
-
-  /* --- Hide desktop-only form sections --- */
-  .hours-played-input {
-    display: none;
-  }
-
-  .review-modal-footer {
-    display: none;
-  }
-
-  /* --- Sticky Save footer anchored outside the scroll area --- */
   .review-sticky-footer {
-    display: block;
-    flex-shrink: 0;
-    padding: var(--spacing-md);
-    /* respect iPhone home indicator */
-    padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom, 0px));
-    background: var(--color-bg-elevated);
-    border-top: 1px solid var(--color-border);
+    /* Clear the tab bar + home indicator on mobile */
+    padding-bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .review-cover-wrap {
+    width: 64px;
+    height: 96px;
+  }
+
+  .review-cover-img {
+    width: 64px;
+    height: 96px;
+  }
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .review-modal-backdrop,
+  .review-modal {
+    animation: none;
+  }
+
+  .review-modal-close {
+    transition: none;
+  }
+
+  .review-rating-desc {
+    transition: none;
+    transform: none;
+  }
+
+  .review-heart-icon {
+    transition: none;
+    transform: none;
+  }
+
+  .review-heart-icon--filled {
+    transform: none;
+  }
+
+  .review-toggle__box {
+    transition: none;
   }
 }

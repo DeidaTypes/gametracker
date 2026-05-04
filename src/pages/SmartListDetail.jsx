@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import AppShell from '../components/AppShell'
+import SharedCover from '../components/SharedCover'
 import { getBestImageUrl } from '../services/imageUtils'
 import { getMostPlayed, getUnfinished, getTopRated } from '../services/smartListService'
 import './SmartListDetail.css'
@@ -74,34 +75,43 @@ function SmartListDetail() {
           </div>
         ) : (
           <ul className="sld-list">
-            {games.map((game, idx) => (
+            {games.map((game, idx) => {
+              const imgUrl = getBestImageUrl(game, 200) || game.image
+              return (
               <li
                 key={game.id}
                 className="sld-item"
-                onClick={() => navigate(`/game/${game.id}`)}
+                onClick={() =>
+                  navigate(`/game/${game.id}`, {
+                    state: { coverImage: imgUrl },
+                  })
+                }
               >
                 <span className="sld-rank">{idx + 1}</span>
                 <div className="sld-cover">
-                  <img
-                    src={getBestImageUrl(game, 200) || game.image}
-                    alt={game.title}
-                    className="sld-cover-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.src =
-                        game.image ||
-                        `https://via.placeholder.com/120x180/152035/C8965A?text=${encodeURIComponent(
-                          game.title
-                        )}`
-                    }}
-                  />
+                  <SharedCover gameId={game.id} imageSrc={imgUrl}>
+                    <img
+                      src={imgUrl}
+                      alt={game.title}
+                      className="sld-cover-img"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.src =
+                          game.image ||
+                          `https://via.placeholder.com/120x180/152035/C8965A?text=${encodeURIComponent(
+                            game.title
+                          )}`
+                      }}
+                    />
+                  </SharedCover>
                 </div>
                 <div className="sld-info">
                   <p className="sld-game-title">{game.title}</p>
                   <span className="sld-badge">{config.badge(game)}</span>
                 </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </div>

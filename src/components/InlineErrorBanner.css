@@ -16,8 +16,10 @@
 
 .inline-error-banner__message {
   flex: 1;
-  font-size: 15px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -34,8 +36,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
   color: var(--color-brand-primary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

@@ -1,14 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { updateProfile, generateDefaultAvatar } from '../services/profileService'
+import { useAuth } from '../contexts/AuthContext'
+import { showToast } from './Toast'
+import { AUTH_ERRORS } from '../services/auth'
+import {
+  TextField,
+  TextArea,
+  SubmitButton,
+  SecondaryButton,
+  DestructiveButton,
+} from './forms'
+import './CreateListModal.css'
 import './EditProfileModal.css'
 
+const DISPLAY_NAME_MAX = 50
+const USERNAME_MAX = 20
+const BIO_MAX = 160
+
 function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
+  const navigate = useNavigate()
+  const { logOut } = useAuth()
   const [displayName, setDisplayName] = useState(profile?.displayName || '')
   const [username, setUsername] = useState(profile?.username || '')
   const [bio, setBio] = useState(profile?.bio || '')
   const [avatar, setAvatar] = useState(profile?.avatar || null)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [errors, setErrors] = useState({})
+  const [loggingOut, setLoggingOut] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -17,7 +36,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setUsername(profile.username || '')
       setBio(profile.bio || '')
       setAvatar(profile.avatar)
-      setAvatarPreview(profile.avatar?.type === 'data' ? profile.avatar.data : null)
+      setAvatarPreview(
+        profile.avatar?.type === 'data' ? profile.avatar.data : null
+      )
     }
   }, [profile])
 
@@ -29,13 +50,11 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setErrors({ ...errors, avatar: 'Please select an image file' })
       return
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       setErrors({ ...errors, avatar: 'Image must be less than 2MB' })
       return
@@ -44,10 +63,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     const reader = new FileReader()
     reader.onloadend = () => {
       const base64String = reader.result
-      setAvatar({
-        type: 'data',
-        data: base64String,
-      })
+      setAvatar({ type: 'data', data: base64String })
       setAvatarPreview(base64String)
       setErrors({ ...errors, avatar: null })
     }
@@ -66,24 +82,22 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     e.preventDefault()
     const newErrors = {}
 
-    // Validate display name
     if (!displayName.trim()) {
       newErrors.displayName = 'Display name is required'
-    } else if (displayName.length > 50) {
-      newErrors.displayName = 'Display name must be 50 characters or less'
+    } else if (displayName.length > DISPLAY_NAME_MAX) {
+      newErrors.displayName = `Display name must be ${DISPLAY_NAME_MAX} characters or less`
     }
 
-    // Validate username (if provided)
     if (username.trim()) {
       const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/
       if (!usernamePattern.test(username)) {
-        newErrors.username = 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
+        newErrors.username =
+          'Username must be 3–20 characters and contain only letters, numbers, and underscores'
       }
     }
 
-    // Validate bio length
-    if (bio.length > 160) {
-      newErrors.bio = 'Bio must be 160 characters or less'
+    if (bio.length > BIO_MAX) {
+      newErrors.bio = `Bio must be ${BIO_MAX} characters or less`
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -91,7 +105,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       return
     }
 
-    // Update profile
     const updated = updateProfile({
       displayName: displayName.trim(),
       username: username.trim() || null,
@@ -104,26 +117,43 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   }
 
   const handleCancel = () => {
-    // Reset form
     if (profile) {
       setDisplayName(profile.displayName || '')
       setUsername(profile.username || '')
       setBio(profile.bio || '')
       setAvatar(profile.avatar)
-      setAvatarPreview(profile.avatar?.type === 'data' ? profile.avatar.data : null)
+      setAvatarPreview(
+        profile.avatar?.type === 'data' ? profile.avatar.data : null
+      )
     }
     setErrors({})
     onClose()
   }
 
-  // Generate avatar preview
+  const handleLogOut = async () => {
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await logOut()
+      onClose()
+      navigate('/login', { replace: true })
+    } catch (err) {
+      const code = err?.code
+      if (code === AUTH_ERRORS.NETWORK) {
+        showToast(
+          "Couldn't reach the server. Check your connection.",
+          'error'
+        )
+      } else {
+        showToast(err?.message || 'Failed to log out. Try again.', 'error')
+      }
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
   const getAvatarDisplay = () => {
-    if (avatarPreview) {
-      return avatarPreview
-    }
-    if (avatar?.type === 'generated') {
-      return null // Will render generated avatar
-    }
+    if (avatarPreview) return avatarPreview
     return null
   }
 
@@ -133,25 +163,27 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
   return (
     <div className="modal-overlay" onClick={handleCancel}>
-      <div className="modal-content edit-profile-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content edit-profile-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Edit Profile</h2>
-        <form onSubmit={handleSubmit}>
-          {/* Avatar Section */}
-          <div className="form-group avatar-group">
-            <label>Avatar</label>
+        <form onSubmit={handleSubmit} className="edit-profile-form">
+          <div className="avatar-group">
+            <span className="avatar-group__label">Avatar</span>
             <div className="avatar-upload-container">
-              <div 
+              <div
                 className="avatar-preview-container"
                 onClick={handleAvatarClick}
               >
                 {getAvatarDisplay() ? (
-                  <img 
-                    src={getAvatarDisplay()} 
+                  <img
+                    src={getAvatarDisplay()}
                     alt="Avatar preview"
                     className="avatar-preview-image"
                   />
                 ) : (
-                  <div 
+                  <div
                     className="avatar-generated"
                     style={{ backgroundColor: defaultAvatar.color }}
                   >
@@ -184,68 +216,54 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
             )}
           </div>
 
-          {/* Display Name */}
-          <div className="form-group">
-            <label htmlFor="display-name">Display Name *</label>
-            <input
-              id="display-name"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your display name"
-              maxLength={50}
-              required
-            />
-            {errors.displayName && (
-              <div className="error-message">{errors.displayName}</div>
-            )}
-          </div>
+          <TextField
+            label="Display Name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your display name"
+            maxLength={DISPLAY_NAME_MAX}
+            required
+          />
+          {errors.displayName && (
+            <div className="error-message">{errors.displayName}</div>
+          )}
 
-          {/* Username */}
-          <div className="form-group">
-            <label htmlFor="username">Username (Optional)</label>
-            <div className="username-input-container">
-              <span className="username-prefix">@</span>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="username"
-                maxLength={20}
-                pattern="[a-zA-Z0-9_]{3,20}"
-              />
-            </div>
-            <p className="form-hint">3-20 characters, letters, numbers, and underscores only</p>
-            {errors.username && (
-              <div className="error-message">{errors.username}</div>
-            )}
-          </div>
+          <TextField
+            label="Username"
+            value={username}
+            onChange={(e) =>
+              setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+            }
+            placeholder="username"
+            maxLength={USERNAME_MAX}
+            hint="3–20 characters, letters, numbers, and underscores only"
+          />
+          {errors.username && (
+            <div className="error-message">{errors.username}</div>
+          )}
 
-          {/* Bio */}
-          <div className="form-group">
-            <label htmlFor="bio">Bio</label>
-            <textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself..."
-              rows="4"
-              maxLength={160}
-            />
-            <div className="char-count">{bio.length}/160</div>
-            {errors.bio && (
-              <div className="error-message">{errors.bio}</div>
-            )}
-          </div>
+          <TextArea
+            label="Bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Tell us about yourself..."
+            maxLength={BIO_MAX}
+          />
+          {errors.bio && <div className="error-message">{errors.bio}</div>}
 
           <div className="modal-actions">
-            <button type="button" onClick={handleCancel} className="cancel-button">
-              Cancel
-            </button>
-            <button type="submit" className="save-button">
-              Save Changes
-            </button>
+            <SecondaryButton onClick={handleCancel}>Cancel</SecondaryButton>
+            <SubmitButton type="submit">Save Changes</SubmitButton>
+          </div>
+
+          <div className="edit-profile-logout">
+            <DestructiveButton
+              type="button"
+              onClick={handleLogOut}
+              disabled={loggingOut}
+            >
+              {loggingOut ? 'Logging out…' : 'Log out'}
+            </DestructiveButton>
           </div>
         </form>
       </div>
@@ -254,4 +272,3 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 }
 
 export default EditProfileModal
-

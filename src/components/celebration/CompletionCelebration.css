@@ -1,0 +1,243 @@
+/* ============================================================
+   COMPLETION CELEBRATION — full-screen first-time-Played overlay
+   Above everything (including bottom tab bar). Vertical gradient
+   backdrop using the game's extracted dominant color, plus Lottie
+   confetti and a centered cover with stats + CTAs.
+   ============================================================ */
+
+.completion-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 24px calc(env(safe-area-inset-bottom, 0) + 24px);
+  overflow-y: auto;
+  /* Background is set inline (vertical gradient using extracted color
+     fading to navy). Fallback color in case JS hasn't applied it yet. */
+  background-color: #0C1322;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Confetti layer — anchored top-center, full-width, falling toward
+   the cover. pointer-events:none so taps still hit CTAs underneath. */
+.completion-celebration__confetti {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 540px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Reduced-motion fallback — static amber check ring, top-center,
+   replacing the confetti. */
+.completion-celebration__static-mark {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 0), 32px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 24px rgba(200, 150, 90, 0.35));
+}
+
+.completion-celebration__content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: clamp(48px, 12vh, 120px);
+}
+
+.completion-celebration__eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brand-primary);
+  margin-bottom: 24px;
+}
+
+/* Cover — 200×300, glow shadow at extracted color, 30% opacity, 60px blur */
+.completion-celebration__cover-wrap {
+  position: relative;
+  width: 200px;
+  height: 300px;
+  margin-bottom: 32px;
+  /* Hint for the spring entrance. */
+  will-change: transform, opacity;
+}
+
+.completion-celebration__cover-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: var(--radius-xl);
+  filter: blur(60px);
+  opacity: 0.3;
+  z-index: 0;
+}
+
+.completion-celebration__cover {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.6),
+    0 6px 16px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.completion-celebration__cover--fallback {
+  background: linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-tertiary) 100%);
+}
+
+.completion-celebration__title {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+  /* Cap to two lines so very long titles don't push CTAs offscreen. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.completion-celebration__subtitle {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: 0 0 32px;
+}
+
+/* ---- Stats summary card ---- */
+.completion-celebration__stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 12px;
+  width: 100%;
+  padding: 20px 16px;
+  background: rgba(255, 248, 238, 0.04);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 28px;
+  box-shadow: var(--surface-1-shadow);
+}
+
+.completion-celebration__stat {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.completion-celebration__stat-num {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.completion-celebration__stat-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+.completion-celebration__stat-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* ---- CTAs ---- */
+.completion-celebration__ctas {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.completion-celebration__cta-primary,
+.completion-celebration__cta-secondary {
+  width: 100%;
+}
+
+/* ---- Offscreen share-card host ---- */
+/* Render the 1080×1920 share card outside the visible viewport so
+   html-to-image can walk a real, painted DOM subtree without flashing
+   it on the user's screen. We use top:-100000px (not display:none)
+   because html-to-image needs computed styles + layout to capture. */
+.completion-celebration__share-host {
+  position: fixed;
+  top: -100000px;
+  left: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* ---- Sprint-4 verification preview ---- */
+.completion-celebration__preview {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  width: 180px;
+  height: 320px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  background: var(--color-bg-tertiary);
+  z-index: 10001;
+  pointer-events: none;
+  border: 1px solid var(--color-border);
+}
+
+.completion-celebration__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .completion-celebration__cover-wrap {
+    will-change: auto;
+  }
+}

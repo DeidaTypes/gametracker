@@ -61,31 +61,82 @@ src/
 
 ### Typography Scale
 
-| Token | Size | Use Case |
-|-------|------|----------|
-| `--font-size-display` | 32px | Page titles (h1) |
-| `--font-size-title` | 20px | Section headers (h2) |
-| `--font-size-subtitle` | 16px | Subsections (h3) |
-| `--font-size-body` | 14px | Body text, buttons |
-| `--font-size-meta` | 12px | Secondary info, timestamps |
-| `--font-size-label` | 10px | Small labels (uppercase) |
+The type scale is intentionally varied across six semantic roles. Each role defines
+size + line-height + weight + family + letterspacing as a single, opinionated
+"voice." Avoid creating new sizes outside of this scale — pick the role that
+matches the content's purpose instead.
 
-### Line Heights
+| Role | Token | Size | Line height | Weight | Family | Letter-spacing | Use case |
+|------|-------|------|-------------|--------|--------|----------------|----------|
+| **Display XL** | `--font-size-display-xl` | 36px | 1.05 | 700 | serif | -0.02em | Screen headers ("Currently Playing", "Your Library", "Edit Profile") |
+| **Display L**  | `--font-size-display-l`  | 28px | 1.10 | 700 | serif | -0.02em | Section headers within a screen ("Trending this week") |
+| **Title**      | `--font-size-title`      | 18px | 1.30 | 600 | sans  | 0       | Game titles in lists, card titles |
+| **Body**       | `--font-size-body`       | 15px | 1.50 | 400 | sans  | 0       | Descriptions, review text, paragraph copy |
+| **Caption**    | `--font-size-caption`    | 13px | 1.40 | 500 | sans  | 0       | Genre tags, timestamps, "X games" counts (muted) |
+| **Label**      | `--font-size-label`      | 11px | 1.20 | 600 | sans  | +0.08em | Section labels: "TRACKERS", "DETAILS", "ABOUT" (uppercase, muted) |
 
-```css
---line-height-tight:   1.2  /* Headlines */
---line-height-normal:  1.5  /* UI text */
---line-height-relaxed: 1.7  /* Body text */
-```
-
-### Letter Spacing
+#### Letterspacing rules
 
 ```css
---letter-spacing-tight:  -0.8px  /* Display text */
---letter-spacing-normal: -0.4px  /* Titles */
---letter-spacing-wide:    0.5px  /* Labels */
---letter-spacing-wider:   0.8px  /* Uppercase labels */
+--letter-spacing-display: -0.02em  /* tight, premium feel for serif display */
+--letter-spacing-body:    0         /* default for body and captions */
+--letter-spacing-label:   0.08em   /* wide, refined feel for small uppercase */
 ```
+
+#### Line heights
+
+Line heights are paired with size so each role has a tuned, intrinsic rhythm:
+
+```css
+--line-height-display-xl: 1.05
+--line-height-display-l:  1.1
+--line-height-title:      1.3
+--line-height-body:       1.5
+--line-height-caption:    1.4
+--line-height-label:      1.2
+```
+
+#### Font weights
+
+```css
+--font-weight-normal:    400
+--font-weight-medium:    500
+--font-weight-semibold:  600
+--font-weight-bold:      700
+```
+
+#### Font families
+
+```css
+--font-serif: 'Playfair Display', Georgia, serif;  /* Display XL & Display L */
+--font-sans:  'Inter', system-ui, sans-serif;       /* Title, Body, Caption, Label */
+```
+
+#### Choosing the right role
+
+- "What is this text?" → match it to the role above, not to a pixel value.
+- A screen-level page header is **Display XL**, even on small phones.
+- A section header *inside* a screen ("Trending this week", "Your Stats") is **Display L**.
+- A clickable card title or list item title is **Title**.
+- Body copy, review text, descriptions, secondary buttons → **Body**.
+- Genre tags, timestamps, "12 games" counts → **Caption** (muted color).
+- All-caps section labels above grids/lists ("TRACKERS", "DETAILS") → **Label**
+  (always with `text-transform: uppercase` and the wide tracking).
+
+#### Legacy aliases
+
+These older tokens are kept as aliases so existing CSS continues to render, but
+all new code should use the canonical names above:
+
+| Legacy token | Maps to |
+|--------------|---------|
+| `--font-size-display`   | `--font-size-display-xl` |
+| `--font-size-hero`      | `--font-size-display-l`  |
+| `--font-size-subtitle`  | `--font-size-title`      |
+| `--font-size-meta`      | `--font-size-caption`    |
+| `--letter-spacing-tight`, `--letter-spacing-normal` | `--letter-spacing-display` |
+| `--letter-spacing-wide` | `--letter-spacing-body` |
+| `--letter-spacing-wider`, `--letter-spacing-widest` | `--letter-spacing-label` |
 
 ### Colors
 
@@ -189,27 +240,33 @@ import Section from '../components/Section'
 
 ## Typography Utilities
 
-Pre-built CSS classes for common typography patterns:
+Pre-built CSS classes that bake every property of a role (size, line-height,
+weight, family, letterspacing) into a single class. Prefer these over manually
+applying individual tokens:
 
 ```jsx
-// Display text (page titles)
-<h1 className="text-display">Welcome to Games</h1>
+// Display XL — screen headers
+<h1 className="text-display-xl">Currently Playing</h1>
 
-// Section titles
-<h2 className="text-title">Popular This Week</h2>
+// Display L — section headers inside a screen
+<h2 className="text-display-l">Trending this week</h2>
 
-// Subtitles
-<h3 className="text-subtitle">Featured Games</h3>
+// Title — game titles in lists, card titles
+<h3 className="text-title">Hollow Knight: Silksong</h3>
 
-// Body text
-<p className="text-body">This is readable body text...</p>
+// Body — descriptions, review text
+<p className="text-body">A sprawling action RPG…</p>
 
-// Metadata (timestamps, secondary info)
-<span className="text-meta">2 hours ago</span>
+// Caption — timestamps, genre tags, counts
+<span className="text-caption">12 games · 2 hours ago</span>
 
-// Labels (small, uppercase)
-<span className="text-label">Developer</span>
+// Label — small uppercase section labels
+<span className="text-label">Trackers</span>
 ```
+
+Legacy classes (`text-display`, `text-subtitle`, `text-meta`) are still
+available as aliases for backward compatibility but new components should
+use the role-named utilities above.
 
 ---
 
@@ -459,10 +516,12 @@ When creating a new page:
 | Remove padding (full-bleed) | `<Container noPadding>` |
 | Vertical spacing | `<Section spacing="lg">` |
 | Top/bottom borders | `<Section borderTop borderBottom>` |
-| Page title | `text-display` (32px) |
-| Section header | `text-title` (20px) |
-| Body text | `text-body` (14px) |
-| Small labels | `text-label` (10px, uppercase) |
+| Screen header | `text-display-xl` (36px serif, tight) |
+| Section header | `text-display-l` (28px serif, tight) |
+| Card / list title | `text-title` (18px sans, semibold) |
+| Body text | `text-body` (15px sans, regular) |
+| Captions / metadata | `text-caption` (13px sans, muted) |
+| Uppercase labels | `text-label` (11px sans, +0.08em tracking, muted) |
 | Tight spacing | `var(--spacing-xs)` (8px) |
 | Standard spacing | `var(--spacing-md)` (16px) |
 | Section spacing | `var(--spacing-lg)` (24px) |

@@ -2,19 +2,18 @@
  * @fileoverview Canonical Game model for the entire application.
  *
  * All game data flowing through the app conforms to this shape.
- * Raw API results (IGDB / RAWG) are converted at the service boundary
+ * Raw API results (IGDB) are converted at the service boundary
  * via normalizeGame() in services/normalizeGame.js before reaching any UI.
  */
 
 /**
  * @typedef {Object} RawIds
  * @property {number|string|undefined} igdb  - IGDB numeric game ID
- * @property {string|undefined}        rawg  - RAWG ID (stringified)
- * @property {string|undefined}        slug  - RAWG URL slug
+ * @property {string|undefined}        slug  - URL slug
  */
 
 /**
- * @typedef {'igdb'|'rawg'|'unknown'} GameSource
+ * @typedef {'igdb'|'unknown'} GameSource
  */
 
 /**
@@ -26,7 +25,7 @@
  * ── Identity ────────────────────────────────────────────────────────────────
  * @property {string|number}  id                 - API-native ID used for routing & API calls
  * @property {string}         gameId             - Stable slug-based app ID: "{title-slug}-{year}"
- * @property {string|undefined} slug             - RAWG URL slug (when available)
+ * @property {string|undefined} slug             - URL slug (when available)
  *
  * ── Display ─────────────────────────────────────────────────────────────────
  * @property {string}         title              - Whitespace-normalised display title
@@ -35,7 +34,7 @@
  *
  * ── Images ──────────────────────────────────────────────────────────────────
  * @property {string|null}    image              - Primary cover image URL
- * @property {string|null}    imageHD            - High-resolution cover URL (RAWG only)
+ * @property {string|null}    imageHD            - High-resolution cover URL
  * @property {string|null}    coverUrl           - Semantic alias for `image`
  *
  * ── Metadata ────────────────────────────────────────────────────────────────
@@ -52,12 +51,12 @@
  * @property {string[]}       websites           - Website URLs
  *
  * ── Style / Similarity ──────────────────────────────────────────────────────
- * @property {string[]}       themes             - IGDB theme names (or RAWG tag subset)
+ * @property {string[]}       themes             - IGDB theme names
  * @property {string[]}       playerPerspectives - Player perspective labels
  * @property {string[]}       gameModes          - Game mode labels
  * @property {string[]}       keywords           - IGDB keyword names
- * @property {string[]}       tags               - RAWG tag names
- * @property {number[]}       tagIds             - RAWG tag IDs (for similarity matching)
+ * @property {string[]}       tags               - Tag names
+ * @property {number[]}       tagIds             - Tag IDs (for similarity matching)
  *
  * ── Provenance ──────────────────────────────────────────────────────────────
  * @property {GameSource}     source             - Which API this game originates from

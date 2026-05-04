@@ -1,0 +1,593 @@
+/* ============================================================
+   FORM SYSTEM — Editorial / Recessed Fill
+   Used by TextField, TextArea, NumericField, SubmitButton,
+   SecondaryButton, StarRating.
+   ============================================================ */
+
+/* Shared screen-reader-only utility (form context) */
+.form-field .sr-only,
+.form-button .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:root {
+  /* Form-system local tokens */
+  --form-field-bg: rgba(255, 255, 255, 0.04);
+  --form-field-bg-focus: rgba(255, 255, 255, 0.06);
+  --form-field-recess: inset 0 1px 0 rgba(0, 0, 0, 0.28);
+  --form-field-bottom: rgba(255, 255, 255, 0.08);
+  --form-field-bottom-focus: var(--color-brand-primary);
+  --form-field-bottom-error: rgba(160, 72, 72, 0.7);
+  --form-field-text: rgba(255, 255, 255, 0.95);
+  --form-field-placeholder: rgba(255, 255, 255, 0.32);
+  --form-field-radius: 10px;
+  --form-field-pad-x: 14px;
+  --form-field-pad-y: 12px;
+
+  --form-label-color: rgba(255, 255, 255, 0.55);
+  --form-counter-color: rgba(255, 255, 255, 0.6);
+  --form-hint-color: rgba(255, 255, 255, 0.45);
+  --form-error-color: rgba(196, 130, 130, 0.95);
+
+  --form-button-radius: 12px;
+  --form-button-min-h: 52px;
+  --form-button-pad-y: 16px;
+  --form-button-pad-x: 24px;
+}
+
+/* ============================================================
+   Field row (label + counter)
+   ============================================================ */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+}
+
+.form-field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.form-field__label {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--form-label-color);
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.form-field__required {
+  color: var(--color-brand-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form-field__counter {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-caption);
+  color: var(--form-counter-color);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Recessed-fill input (TextField, TextArea, NumericField)
+   ============================================================ */
+.form-field__control {
+  width: 100%;
+  display: block;
+  background: var(--form-field-bg);
+  border: none;
+  border-radius: var(--form-field-radius);
+  padding: var(--form-field-pad-y) var(--form-field-pad-x);
+  color: var(--form-field-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -1px 0 var(--form-field-bottom);
+  transition: box-shadow 200ms ease, background-color 200ms ease;
+}
+
+.form-field__control::placeholder {
+  color: var(--form-field-placeholder);
+}
+
+.form-field__control:hover:not(:focus) {
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.form-field__control:focus {
+  background: var(--form-field-bg-focus);
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -2px 0 var(--form-field-bottom-focus);
+}
+
+.form-field--error .form-field__control,
+.form-field--error .form-field__control:focus {
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -2px 0 var(--form-field-bottom-error);
+}
+
+.form-field--disabled .form-field__control {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hint + error messages */
+.form-field__meta {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.form-field__hint {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-caption);
+  color: var(--form-hint-color);
+  margin: 0;
+}
+
+.form-field__error {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--form-error-color);
+  margin: 0;
+}
+
+/* ============================================================
+   TextArea-specific
+   ============================================================ */
+.form-field__textarea {
+  min-height: 96px;
+  max-height: 200px;
+  resize: none;
+  line-height: 1.55;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.form-field__textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-field__textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.form-field__textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+/* ============================================================
+   NumericField (steppers + suffix)
+   ============================================================ */
+.form-numeric {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: var(--form-field-bg);
+  border-radius: var(--form-field-radius);
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -1px 0 var(--form-field-bottom);
+  transition: box-shadow 200ms ease, background-color 200ms ease;
+}
+
+.form-numeric:focus-within {
+  background: var(--form-field-bg-focus);
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -2px 0 var(--form-field-bottom-focus);
+}
+
+.form-numeric__step {
+  flex: 0 0 auto;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--form-label-color);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms ease, background-color 150ms ease;
+  border-radius: var(--form-field-radius);
+}
+
+.form-numeric__step:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.form-numeric__step:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.form-numeric__step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.form-numeric__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  -moz-appearance: textfield;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  color: var(--form-field-text);
+  padding: var(--form-field-pad-y) 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-numeric__input::-webkit-outer-spin-button,
+.form-numeric__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.form-numeric__input::placeholder {
+  color: var(--form-field-placeholder);
+}
+
+.form-numeric__suffix {
+  display: inline-flex;
+  align-items: center;
+  padding-right: 14px;
+  padding-left: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--form-label-color);
+  user-select: none;
+  pointer-events: none;
+}
+
+.form-field--error .form-numeric,
+.form-field--error .form-numeric:focus-within {
+  box-shadow:
+    var(--form-field-recess),
+    inset 0 -2px 0 var(--form-field-bottom-error);
+}
+
+/* ============================================================
+   SubmitButton (primary)
+   ============================================================ */
+.form-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  padding: var(--form-button-pad-y) var(--form-button-pad-x);
+  min-height: var(--form-button-min-h);
+  border-radius: var(--form-button-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    filter 150ms ease,
+    transform 120ms ease,
+    box-shadow 180ms ease;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.form-button:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.form-button--primary {
+  background: var(--color-brand-primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.form-button--primary:hover:not(:disabled) {
+  background: #D2A26A;
+  filter: brightness(1.05);
+}
+
+.form-button--primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.form-button--primary:disabled,
+.form-button--primary[aria-disabled='true'] {
+  background: var(--color-bg-tertiary);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.form-button--loading {
+  pointer-events: none;
+  cursor: progress;
+}
+
+/* ============================================================
+   SecondaryButton
+   ============================================================ */
+.form-button--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.form-button--secondary:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  filter: brightness(1.05);
+}
+
+.form-button--secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.form-button--secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   DestructiveButton — muted-red border + text, same shape as Secondary
+   ============================================================ */
+.form-button--destructive {
+  background: transparent;
+  border-color: rgba(160, 72, 72, 0.5);
+  color: #a04848;
+}
+
+.form-button--destructive:hover:not(:disabled) {
+  background: rgba(160, 72, 72, 0.08);
+  border-color: rgba(160, 72, 72, 0.75);
+  color: #bf5959;
+  filter: none;
+}
+
+.form-button--destructive:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.form-button--destructive:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Loading dots (for SubmitButton)
+   ============================================================ */
+.form-button__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.form-button__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  opacity: 0.35;
+  animation: formDotPulse 1.1s ease-in-out infinite;
+}
+
+.form-button__dot:nth-child(1) { animation-delay: 0ms; }
+.form-button__dot:nth-child(2) { animation-delay: 160ms; }
+.form-button__dot:nth-child(3) { animation-delay: 320ms; }
+
+@keyframes formDotPulse {
+  0%, 60%, 100% { opacity: 0.35; transform: scale(0.85); }
+  30% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ============================================================
+   StarRating
+   ============================================================ */
+.form-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.form-stars--readonly {
+  cursor: default;
+}
+
+.form-star {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--color-brand-primary);
+}
+
+.form-stars--readonly .form-star {
+  cursor: default;
+}
+
+.form-star__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.form-star__outline {
+  stroke: rgba(255, 255, 255, 0.2);
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.form-star--filled .form-star__outline,
+.form-star--half .form-star__outline {
+  stroke: var(--color-brand-primary);
+}
+
+.form-star__fill {
+  fill: var(--color-brand-primary);
+  transition: opacity 150ms ease;
+}
+
+.form-star--empty .form-star__fill {
+  opacity: 0;
+}
+
+.form-star--preview .form-star__fill {
+  opacity: 0.6;
+}
+
+.form-star__half-btn {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1;
+}
+
+.form-star__half-btn--left { left: 0; }
+.form-star__half-btn--right { right: 0; }
+
+.form-star--punch .form-star__icon {
+  animation: formStarPunch 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes formStarPunch {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Sizes */
+.form-stars--sm .form-star { width: 20px; height: 20px; }
+.form-stars--md .form-star { width: 32px; height: 32px; }
+.form-stars--lg .form-star { width: 40px; height: 40px; }
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .form-field__control,
+  .form-numeric,
+  .form-button,
+  .form-star__icon,
+  .form-button__dot {
+    transition: none;
+    animation: none;
+  }
+
+  .form-button--primary:hover:not(:disabled),
+  .form-button--secondary:hover:not(:disabled) {
+    filter: none;
+  }
+
+  .form-button--primary:active:not(:disabled),
+  .form-button--secondary:active:not(:disabled),
+  .form-button--destructive:active:not(:disabled) {
+    transform: none;
+  }
+
+  /* Non-motion press feedback. Without the scale-down the button looked
+     completely inert on tap; flash the surface instead so the press still
+     reads visually. */
+  .form-button--primary:active:not(:disabled) {
+    background: #B0824D;
+  }
+
+  .form-button--secondary:active:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .form-button--destructive:active:not(:disabled) {
+    background: rgba(160, 72, 72, 0.16);
+    border-color: rgba(160, 72, 72, 0.85);
+  }
+
+  .form-star--punch .form-star__icon {
+    animation: none;
+  }
+}

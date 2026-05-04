@@ -19,36 +19,78 @@
   --container-padding: 20px;
   --container-padding-sm: 16px;
 
-  /* ---- Typography Scale ---- */
-  --font-size-display: 36px;
-  --font-size-hero: 26px;
-  --font-size-title: 20px;
-  --font-size-subtitle: 16px;
-  --font-size-body: 14px;
-  --font-size-meta: 12px;
-  --font-size-label: 10px;
-
   /* ---- Font Families ---- */
   --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* ---- Line Heights ---- */
-  --line-height-tight: 1.15;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.7;
+  /* =============================================
+     TYPOGRAPHY SCALE — six intentional roles
+     Each role pairs a size, line-height, weight, family, and tracking.
+     Use the .text-* utility classes whenever possible; the raw tokens
+     below exist for component-level overrides only.
+     ============================================= */
+
+  /* Display XL — screen headers (Currently Playing, Your Library, Edit Profile)
+     36 / 1.05 / 700 / serif / -0.02em */
+  --font-size-display-xl: 36px;
+  --line-height-display-xl: 1.05;
+
+  /* Display L — section headers within a screen (Trending this week)
+     28 / 1.1 / 700 / serif / -0.02em */
+  --font-size-display-l: 28px;
+  --line-height-display-l: 1.1;
+
+  /* Title — game titles in lists, list-item names
+     18 / 1.3 / 600 / sans / 0 */
+  --font-size-title: 18px;
+  --line-height-title: 1.3;
+
+  /* Body — descriptions, review text
+     15 / 1.5 / 400 / sans / 0 */
+  --font-size-body: 15px;
+  --line-height-body: 1.5;
+
+  /* Caption — genre tags, timestamps, "X games" counts
+     13 / 1.4 / 500 / sans / 0 */
+  --font-size-caption: 13px;
+  --line-height-caption: 1.4;
+
+  /* Label — uppercase section labels (TRACKERS, DETAILS, ABOUT)
+     11 / 1.2 / 600 / sans / +0.08em */
+  --font-size-label: 11px;
+  --line-height-label: 1.2;
 
   /* ---- Letter Spacing ---- */
-  --letter-spacing-tight: -0.6px;
-  --letter-spacing-normal: -0.3px;
-  --letter-spacing-wide: 0.5px;
-  --letter-spacing-wider: 0.8px;
-  --letter-spacing-widest: 1.5px;
+  --letter-spacing-display: -0.02em;   /* display sizes — tight, premium */
+  --letter-spacing-body: 0;            /* body + caption */
+  --letter-spacing-label: 0.08em;      /* small uppercase labels */
 
   /* ---- Font Weights ---- */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+
+  /* =============================================
+     LEGACY TYPE TOKEN ALIASES
+     Older component CSS still references these names. They map onto the
+     new scale so existing call sites stay consistent automatically.
+     New code should prefer the role-named tokens above.
+     ============================================= */
+  --font-size-display: var(--font-size-display-xl);
+  --font-size-hero: var(--font-size-display-l);
+  --font-size-subtitle: var(--font-size-title);
+  --font-size-meta: var(--font-size-caption);
+
+  --line-height-tight: var(--line-height-display-l);
+  --line-height-normal: var(--line-height-body);
+  --line-height-relaxed: 1.7;
+
+  --letter-spacing-tight: var(--letter-spacing-display);
+  --letter-spacing-normal: var(--letter-spacing-body);
+  --letter-spacing-wide: var(--letter-spacing-label);
+  --letter-spacing-wider: var(--letter-spacing-label);
+  --letter-spacing-widest: var(--letter-spacing-label);
 
   /* =============================================
      COLOR SYSTEM — Deep Navy + Warm Amber
@@ -60,6 +102,16 @@
   --color-bg-tertiary: #152035;     /* cards, panels */
   --color-bg-elevated: #1C2A44;     /* highest elevation */
 
+  /* Ambient app gradient — base navy ±4% lightness */
+  --color-bg-gradient-top: #111B31;     /* base +4% lightness */
+  --color-bg-gradient-bottom: #070B13;  /* base -4% lightness */
+  --color-bg-gradient: linear-gradient(
+    180deg,
+    var(--color-bg-gradient-top) 0%,
+    var(--color-bg-primary) 50%,
+    var(--color-bg-gradient-bottom) 100%
+  );
+
   /* Text — warm-cream spectrum */
   --color-text-primary: #EDE8DF;    /* warm cream white */
   --color-text-secondary: #A2AFBF;  /* muted blue-gray */
@@ -69,7 +121,13 @@
   /* Brand — warm amber/gold (replaces electric blue) */
   --color-brand-primary: #C8965A;
   --color-brand-secondary: #E8C49A;
+  --color-brand-primary-dark: #A17236;   /* amber -15% lightness, for vertical gradients */
   --color-brand-gradient: linear-gradient(135deg, #C8965A 0%, #E8C49A 100%);
+  --color-brand-vertical-gradient: linear-gradient(
+    180deg,
+    var(--color-brand-primary) 0%,
+    var(--color-brand-primary-dark) 100%
+  );
 
   /* Accent palette */
   --color-accent-sage: #7BA68C;
@@ -112,6 +170,14 @@
   --shadow-glow: 0 0 24px rgba(200, 150, 90, 0.18), 0 0 48px rgba(200, 150, 90, 0.08);
   --shadow-cover: 4px 8px 24px rgba(0, 0, 0, 0.65);
 
+  /* ---- Surface Elevations ----
+     Surface 1 — default cards: card bg + 1px inner top edge highlight
+     Surface 2 — elevated (modals, currently-playing cards): Surface 1 + soft drop shadow
+  */
+  --surface-1-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --surface-2-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                      0 8px 24px rgba(0, 0, 0, 0.4);
+
   /* ---- Transitions ---- */
   --transition-fast: 0.12s ease;
   --transition-normal: 0.22s ease;
@@ -126,6 +192,8 @@
   --top-nav-height: 60px;
   --bottom-nav-height: 58px;
   --bottom-nav-safe-area: 80px;
+  /* Alias used by modal footers for safe-area calculations */
+  --tab-bar-height: var(--bottom-nav-height);
 
   /* ---- Page Layout ---- */
   --page-padding: 20px;
@@ -158,7 +226,13 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background: var(--color-bg-primary);
+  /* Ambient vertical gradient: subtle navy lift at the top, deeper navy at the
+     bottom. Stays anchored to the viewport so every page reads as one
+     continuous depth. */
+  background-color: var(--color-bg-primary);
+  background-image: var(--color-bg-gradient);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   line-height: var(--line-height-normal);
@@ -167,52 +241,106 @@ body {
   overflow-x: hidden;
 }
 
+/* Soften the gradient on small screens — the ±4% spread can read as a hard band
+   on narrow viewports. Pull both ends in toward the base navy. */
+@media (max-width: 480px) {
+  :root {
+    --color-bg-gradient-top: #0F1729;     /* base +2% */
+    --color-bg-gradient-bottom: #090F1A;  /* base -2% */
+  }
+}
+
 /* =============================================
    TYPOGRAPHY UTILITIES
+   Six roles. Use these classes — don't hand-roll font-size in component CSS.
    ============================================= */
-.text-display {
+
+/* Screen headers — "Currently Playing", "Your Library", "Edit Profile" */
+.text-display-xl {
   font-family: var(--font-serif);
-  font-size: var(--font-size-display);
+  font-size: var(--font-size-display-xl);
   font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
 }
 
+/* Section headers within a screen — "Trending this week" */
+.text-display-l {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+/* Game titles in lists, list-item names */
 .text-title {
+  font-family: var(--font-sans);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-normal);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
 }
 
-.text-subtitle {
-  font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-normal);
-  color: var(--color-text-primary);
-}
-
+/* Descriptions, review text, paragraph copy */
 .text-body {
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-relaxed);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-secondary);
 }
 
-.text-meta {
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-normal);
+/* Genre tags, timestamps, "X games" counts */
+.text-caption {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-tertiary);
 }
 
+/* Section labels — "TRACKERS", "DETAILS", "ABOUT" */
 .text-label {
+  font-family: var(--font-sans);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
+  color: var(--color-text-tertiary);
+}
+
+/* Legacy class aliases — older JSX still references these names. */
+.text-display { /* alias of .text-display-xl */
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+.text-subtitle { /* alias of .text-title */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-text-primary);
+}
+
+.text-meta { /* alias of .text-caption */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-tertiary);
 }
 
@@ -267,6 +395,12 @@ body {
   border-radius: var(--radius-sm);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
 /* =============================================
    PAGE CONTAINER
    ============================================= */
@@ -283,8 +417,9 @@ body {
 .eyebrow {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
+  letter-spacing: var(--letter-spacing-label);
   color: var(--color-brand-primary);
   display: block;
   margin-bottom: 4px;
@@ -301,7 +436,8 @@ body {
   border-radius: var(--radius-full);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.3px;
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
 }
 
@@ -358,18 +494,20 @@ body {
 }
 
 .empty-state-title {
-  font-size: var(--font-size-subtitle);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .empty-state-body {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
   max-width: 260px;
-  line-height: var(--line-height-relaxed);
 }
 
 /* =============================================
@@ -404,6 +542,19 @@ body {
 }
 
 /* =============================================
+   SURFACE ELEVATIONS
+   Reusable depth treatments. Pair the inset top-edge highlight with the
+   existing background tokens — this is the "lit from above" feel.
+   ============================================= */
+.surface-1 {
+  box-shadow: var(--surface-1-shadow);
+}
+
+.surface-2 {
+  box-shadow: var(--surface-2-shadow);
+}
+
+/* =============================================
    SECTION DIVIDER
    ============================================= */
 .section-divider {
@@ -430,6 +581,60 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+
+/* =============================================
+   TACTILE FEEDBACK — Sprint 2
+   CSS-only press/hover feedback for all interactive surfaces.
+   Keyframes live here so they're available to every component.
+   Component-specific rules live in each component's CSS file.
+   ============================================= */
+
+/* Global button hover: +5% brightness lift on pointer devices.
+   Applied via filter so it stacks on top of any background-color change
+   without overriding it. Uses @media (hover: hover) to skip on touch-only
+   devices where :hover can get stuck. */
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    filter: brightness(1.05);
+  }
+}
+
+/* Global button active: scale press-down.
+   Component-level :active rules with the same or stricter specificity will
+   still override (e.g. form-button already sets scale(0.97)). */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+  transition: transform 80ms ease-out !important;
+}
+
+/* Keyframe: status chip "punch" — runs once when the --active class is added */
+@keyframes statusChipPunch {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Keyframe: bottom-nav icon "pop" on tap */
+@keyframes navTabPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Collapse all tactile scale/filter changes to instant color shifts only */
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    filter: none;
+  }
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* =============================================

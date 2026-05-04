@@ -1,0 +1,78 @@
+/* =============================================
+   GAME CARD SKELETON
+   Mirrors the visual shape of <GameCard />.
+   Shimmer is provided by the .skeleton utility
+   class defined in src/styles/theme.css.
+   ============================================= */
+
+.gcs-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 2:3 cover rectangle */
+.gcs-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+}
+
+/* Title placeholder — 60% wide, 14px tall */
+.gcs-title {
+  width: 60%;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  margin-top: 8px;
+}
+
+/* Caption placeholder — 40% wide, 12px tall */
+.gcs-caption {
+  width: 40%;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  margin-top: 4px;
+}
+
+/* ── Horizontal scroll row (mirrors explore-scroll-row) ── */
+.gcs-scroll-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 16px 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.gcs-scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.gcs-scroll-row .gcs-wrap {
+  flex: 0 0 144px;
+  width: 144px;
+  min-width: 144px;
+}
+
+/* ── Grid (mirrors category-results-grid / dev-detail-grid) ── */
+.gcs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+  padding: 0 var(--container-padding);
+}
+
+@media (min-width: 480px) {
+  .gcs-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 769px) {
+  .gcs-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--spacing-md);
+  }
+}

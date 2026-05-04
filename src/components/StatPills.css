@@ -29,39 +29,27 @@
 
 .stat-pill-value {
   font-family: var(--font-sans);
-  font-size: 22px;
+  font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: -1px;
   line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
 }
 
 .stat-pill-label {
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 @media (min-width: 480px) {
-  .stat-pill-value {
-    font-size: 26px;
-  }
-
   .stat-pill {
     padding: var(--spacing-md) var(--spacing-sm);
   }
-}
-
-@media (min-width: 769px) {
-  .stat-pill-value {
-    font-size: 30px;
-  }
-
-  .stat-pill-label {
-    font-size: var(--font-size-label);
-  }
+  /* Display L is the canonical pill-value size at every breakpoint. */
 }

@@ -1,19 +1,15 @@
 /* =============================================
-   HOME QUICK CARDS — side-by-side duo
-   "Want to Play" + "Stats" (reference-inspired)
+   HOME QUICK CARDS — Want to Play
    ============================================= */
 
 .hqc-row {
-  display: flex;
-  gap: var(--spacing-sm);
   padding: 0 var(--container-padding);
 }
 
-/* ── Shared card base ── */
+/* ── Card base ── */
 
 .hqc-card {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
@@ -49,10 +45,11 @@
 
 .hqc-card-title {
   font-family: var(--font-sans);
-  font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
-  letter-spacing: -0.2px;
 }
 
 .hqc-card-chevron {
@@ -105,64 +102,11 @@
   opacity: 0.4;
 }
 
-
-/* =============================================
-   STATS CARD — heatmap + mini stats
-   ============================================= */
-
-.hqc-stats-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-}
-
-/* ── Heatmap grid: 7 rows × 4 cols ── */
-
-.hqc-heatmap {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 3px;
-}
-
-.hqc-cell {
-  aspect-ratio: 1;
-  border-radius: 3px;
-  transition: background var(--transition-fast);
-}
-
-.hqc-cell--0 {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.hqc-cell--1 {
-  background: rgba(200, 150, 90, 0.2);
-}
-
-.hqc-cell--2 {
-  background: rgba(200, 150, 90, 0.4);
-}
-
-.hqc-cell--3 {
-  background: rgba(200, 150, 90, 0.6);
-}
-
-.hqc-cell--4 {
-  background: rgba(200, 150, 90, 0.85);
-}
-
-
 /* =============================================
    Responsive
    ============================================= */
 
 @media (max-width: 359px) {
-  .hqc-row {
-    gap: var(--spacing-xs);
-  }
-
   .hqc-card {
     padding: var(--spacing-sm);
   }
@@ -176,11 +120,6 @@
     width: 64px;
     height: 90px;
   }
-
-  .hqc-heatmap {
-    gap: 2px;
-  }
-
 }
 
 @media (min-width: 480px) {
@@ -192,15 +131,5 @@
   .hqc-wtp-placeholder {
     width: 90px;
     height: 126px;
-  }
-
-  .hqc-heatmap {
-    gap: 4px;
-  }
-}
-
-@media (min-width: 769px) {
-  .hqc-row {
-    gap: var(--spacing-md);
   }
 }

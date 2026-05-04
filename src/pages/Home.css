@@ -32,11 +32,6 @@
   padding: 0;
 }
 
-/* Duo cards section needs no wrapper padding — component handles it */
-.home-section--duo {
-  padding: 0;
-}
-
 /* Full-bleed section */
 .home-section--bleed {
   padding: 0;
@@ -80,13 +75,12 @@
   max-height: 260px;
 }
 
-.home-sk-duo {
-  display: flex;
-  gap: var(--spacing-sm);
+.home-sk-single {
+  padding: 0 var(--container-padding);
 }
 
-.home-sk-duo-card {
-  flex: 1;
+.home-sk-single-card {
+  width: 100%;
   height: 200px;
   border-radius: var(--radius-xl);
 }

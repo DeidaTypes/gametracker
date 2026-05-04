@@ -24,12 +24,12 @@
   border: none;
   color: var(--color-brand-primary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   cursor: pointer;
   padding: 4px 0;
   margin-bottom: var(--spacing-sm);
-  letter-spacing: 0.2px;
   transition: color var(--transition-fast);
 }
 
@@ -42,20 +42,21 @@
   font-family: var(--font-sans);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
   color: var(--color-brand-primary);
   margin-bottom: 4px;
 }
 
 .sld-title {
   font-family: var(--font-serif);
-  font-size: 28px;
+  font-size: var(--font-size-display-xl);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
 }
 
 /* --- Empty state --- */
@@ -106,6 +107,7 @@
   font-family: var(--font-serif);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
+  line-height: 1;
   color: var(--color-text-muted);
   text-align: center;
 }
@@ -140,8 +142,10 @@
 .sld-game-title {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -150,10 +154,10 @@
 
 .sld-badge {
   font-family: var(--font-sans);
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   color: var(--color-brand-primary);
-  letter-spacing: 0.2px;
 }
 
 /* --- Responsive --- */
@@ -162,19 +166,12 @@
     flex: 0 0 56px;
     width: 56px;
   }
-
-  .sld-title {
-    font-size: 32px;
-  }
+  /* Display XL is canonical at every breakpoint. */
 }
 
 @media (min-width: 769px) {
   .sld-header {
     padding: var(--spacing-xl) var(--container-padding) var(--spacing-lg);
-  }
-
-  .sld-title {
-    font-size: 38px;
   }
 
   .sld-cover {

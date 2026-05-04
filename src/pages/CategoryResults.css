@@ -30,8 +30,9 @@
   border: none;
   color: var(--color-brand-primary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   cursor: pointer;
   padding: var(--spacing-xs);
   border-radius: var(--radius-sm);
@@ -45,11 +46,13 @@
 }
 
 .category-results-title {
-  font-size: var(--font-size-title);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: var(--letter-spacing-tight);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

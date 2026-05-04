@@ -16,15 +16,19 @@
 }
 
 .reviews-header h1 {
-  font-size: var(--font-size-display);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0 0 4px 0;
-  letter-spacing: var(--letter-spacing-tight);
 }
 
 .reviews-subtitle {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
 }
@@ -83,18 +87,19 @@
 }
 
 .review-box-title {
-  font-size: var(--font-size-subtitle);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: -0.2px;
-  line-height: 1.3;
 }
 
 .review-box-text {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -104,7 +109,9 @@
 }
 
 .review-box-date {
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   color: var(--color-text-muted);
 }
 
@@ -126,9 +133,10 @@
 .rating-label {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 /* ---- Empty State ---- */
@@ -151,18 +159,20 @@
 }
 
 .empty-reviews h2 {
-  font-size: var(--font-size-subtitle);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
   color: var(--color-text-primary);
   margin: 0;
 }
 
 .empty-reviews p {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
   max-width: 260px;
-  line-height: var(--line-height-relaxed);
 }
 
 /* ---- Responsive ---- */

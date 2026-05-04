@@ -146,7 +146,6 @@ Similar Games
 These emojis remain in service files (not user-facing):
 - `🔍` in search services (debugging)
 - `🎮` in IGDB service (debugging)
-- `📅` in RAWG service (debugging)
 - `📝` in formatters (debugging)
 
 **Note:** Console emojis are fine since they're only for developers, not end users.

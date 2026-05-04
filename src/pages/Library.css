@@ -23,15 +23,19 @@
 }
 
 .library-header h1 {
-  font-size: var(--font-size-display);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0 0 4px 0;
-  letter-spacing: var(--letter-spacing-tight);
 }
 
 .library-subtitle {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
 }
@@ -82,8 +86,9 @@
 .section-title {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   color: var(--color-text-muted);
-  letter-spacing: var(--letter-spacing-wider);
   text-transform: uppercase;
   margin-bottom: var(--spacing-xs);
   padding: 0 4px;
@@ -101,7 +106,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   transition: all var(--transition-smooth);
-  overflow: hidden;
+  /* overflow: visible so the actions menu-dropdown can escape the card boundary */
+  position: relative;
 }
 
 .library-list-item:hover {
@@ -109,20 +115,30 @@
   box-shadow: var(--shadow-md);
 }
 
-.library-list-item.expanded {
-  border-color: var(--color-brand-primary);
-  box-shadow: var(--shadow-md), 0 0 0 1px rgba(91, 143, 255, 0.15);
+/* Row wrapper — owns height, padding, and gap so the header can be overflow:hidden
+   without trapping the actions column's dropdown */
+.list-item-inner {
+  display: flex;
+  align-items: center;
+  height: 96px;
+  padding: 0 16px;
+  gap: 16px;
 }
 
+/* Clickable area — flex:1 fills the space left by the fixed-width actions column;
+   overflow:hidden + border-radius clips the hover background to rounded corners */
 .list-item-header {
   display: flex;
   align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   cursor: pointer;
-  gap: var(--spacing-md);
-  position: relative;
+  gap: 16px;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 2px);
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast);
+  transition: background-color 80ms ease-out;
 }
 
 .list-item-header:hover {
@@ -130,68 +146,86 @@
 }
 
 .list-item-header:active {
-  background: var(--color-surface-active);
+  background: rgba(200, 150, 90, 0.06);
+  transition: background-color 80ms ease-out;
 }
 
-.list-item-info {
-  flex: 1;
+/* Title column — fixed width; never compresses into the thumbnail strip */
+.list-item-title-col {
+  flex-shrink: 0;
+  flex-basis: 130px;
+  width: 130px;
   min-width: 0;
 }
 
+/* Custom lists get a slightly wider title column to fit name + description */
+.list-item-title-col--custom {
+  flex-basis: 180px;
+  width: 180px;
+}
+
 .list-item-name {
-  font-size: var(--font-size-subtitle);
+  /* 16px/600 — compact enough for "Currently Playing" to fit on one line in 130px */
+  font-size: 16px;
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
-  margin: 0 0 3px 0;
-  letter-spacing: -0.2px;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-item-description {
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-secondary);
-  margin: 0 0 3px 0;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-item-count {
-  font-size: var(--font-size-meta);
-  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-muted);
 }
 
 /* ---- Cover Preview ---- */
 .list-item-preview {
-  flex-shrink: 0;
+  /* Takes all remaining space; clips excess thumbnails cleanly */
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .preview-covers {
   display: flex;
-  gap: 4px;
   align-items: center;
 }
 
 .preview-cover {
-  width: 40px;
-  height: 54px;
+  /* 2:3 portrait ratio — correct for game box art */
+  width: 56px;
+  height: 84px;
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  transition: transform var(--transition-fast);
+  /* Overlap each cover by 12px to form a fan */
+  margin-left: -12px;
 }
 
-.preview-cover:nth-child(2) { transform: rotate(1.5deg); }
-.preview-cover:nth-child(3) { transform: rotate(-1.5deg); }
-.preview-cover:nth-child(4) { transform: rotate(2deg); }
-
-.library-list-item:hover .preview-cover:nth-child(2) { transform: rotate(4deg) translateX(2px); }
-.library-list-item:hover .preview-cover:nth-child(3) { transform: rotate(-3deg) translateX(-2px); }
-.library-list-item:hover .preview-cover:nth-child(4) { transform: rotate(5deg) translateX(4px); }
+/* First thumbnail has no negative margin */
+.preview-cover--first {
+  margin-left: 0;
+}
 
 .preview-cover-image {
   width: 100%;
@@ -213,21 +247,25 @@
 }
 
 .preview-more-indicator {
+  /* Pill follows the last thumbnail in the overlap stack */
   width: 40px;
-  height: 54px;
-  border-radius: 6px;
+  height: 84px;
+  margin-left: -12px;
+  border-radius: 0 6px 6px 0;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(91, 143, 255, 0.08);
   color: var(--color-brand-primary);
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
   border: 1px dashed rgba(91, 143, 255, 0.3);
+  border-left: none;
 }
 
 .preview-empty {
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   font-style: italic;
   padding: 0 4px;
@@ -239,7 +277,6 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  margin-left: 4px;
 }
 
 .add-games-button,
@@ -323,37 +360,6 @@
   background: rgba(244, 114, 182, 0.1);
 }
 
-/* ---- Expanded Games ---- */
-.list-item-content {
-  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
-  animation: slideDown var(--transition-smooth) ease;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; max-height: 0; }
-  to   { opacity: 1; max-height: 4000px; }
-}
-
-.game-stack-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-}
-
-@media (min-width: 480px) {
-  .game-stack-container {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-}
-
-@media (min-width: 769px) {
-  .game-stack-container {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-}
-
 /* ---- Empty States ---- */
 .empty-list-expanded {
   padding: var(--spacing-2xl) var(--spacing-xl);
@@ -365,8 +371,9 @@
 
 .empty-list-expanded p {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
-  line-height: var(--line-height-relaxed);
   margin: 0;
 }
 
@@ -376,21 +383,31 @@
     padding: var(--spacing-lg) var(--container-padding-sm) var(--spacing-md) var(--container-padding-sm);
   }
 
+  /* On very narrow phones, step the screen header down one rung
+     to Display L (28 / 1.1) so it doesn't crowd. */
   .library-header h1 {
-    font-size: 26px;
+    font-size: var(--font-size-display-l);
+    line-height: var(--line-height-display-l);
   }
 
   .library-lists-container {
     padding: var(--spacing-lg) var(--container-padding-sm);
   }
 
-  .list-item-header {
-    padding: var(--spacing-md) var(--spacing-lg);
-    gap: var(--spacing-sm);
+  /* On very narrow phones, tighten horizontal padding and reduce title column */
+  .list-item-inner {
+    padding: 0 12px;
+    gap: 10px;
   }
 
-  .list-item-content {
-    padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+  .list-item-title-col {
+    flex-basis: 110px;
+    width: 110px;
+  }
+
+  .list-item-title-col--custom {
+    flex-basis: 140px;
+    width: 140px;
   }
 }
 
@@ -399,16 +416,6 @@
     flex-direction: row;
     align-items: center;
   }
-
-  .preview-cover {
-    width: 36px;
-    height: 48px;
-  }
-
-  .preview-more-indicator {
-    width: 36px;
-    height: 48px;
-  }
 }
 
 @media (min-width: 769px) {
@@ -416,31 +423,24 @@
     padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-xl) var(--page-padding-desktop);
   }
 
-  .library-header h1 {
-    font-size: 40px;
-  }
-
+  /* Desktop keeps the canonical Display XL — no override. */
   .library-lists-container {
     padding: var(--spacing-2xl) var(--page-padding-desktop);
     max-width: var(--page-max-width);
     margin: 0 auto;
   }
 
-  .list-item-header {
-    padding: var(--spacing-xl) var(--spacing-2xl);
+  .list-item-inner {
+    height: 104px;
+    padding: 0 20px;
+    gap: 20px;
   }
 
-  .list-item-content {
-    padding: 0 var(--spacing-2xl) var(--spacing-xl) var(--spacing-2xl);
-  }
+}
 
-  .preview-cover {
-    width: 48px;
-    height: 64px;
-  }
-
-  .preview-more-indicator {
-    width: 48px;
-    height: 64px;
+@media (prefers-reduced-motion: reduce) {
+  .list-item-header,
+  .list-item-header:active {
+    transition: none;
   }
 }

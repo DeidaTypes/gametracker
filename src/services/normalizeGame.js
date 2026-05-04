@@ -2,7 +2,7 @@
  * @fileoverview Normalization layer — converts pre-formatted game objects from
  * any API service into the canonical Game model defined in types/models.js.
  *
- * Applied at the service boundary (inside igdb.js / rawg.js formatGames /
+ * Applied at the service boundary (inside igdb.js formatGames /
  * formatGameDetails) so UI components never consume raw API shapes directly.
  *
  * Entry points:
@@ -55,8 +55,6 @@ function makeGameId(title, year) {
  * Accepts the output shape of:
  *   • igdb.js  formatGames()       (list shape)
  *   • igdb.js  formatGameDetails() (detail shape)
- *   • rawg.js  formatGames()       (list shape)
- *   • rawg.js  formatGameDetails() (detail shape)
  *
  * Guarantees:
  *   – No undefined field access crashes (arrays default to [], strings to null)
@@ -67,7 +65,7 @@ function makeGameId(title, year) {
  *   – `releaseDate` stays a Date object so downstream sort logic still works
  *
  * @param {Object}     raw    - Pre-formatted game object from a service helper
- * @param {'igdb'|'rawg'|'unknown'} [source='unknown']
+ * @param {'igdb'|'unknown'} [source='unknown']
  * @returns {import('../types/models').Game}
  */
 export function normalizeGame(raw, source = 'unknown') {
@@ -136,7 +134,6 @@ export function normalizeGame(raw, source = 'unknown') {
   // ── Provenance ────────────────────────────────────────────────────────────
   const rawIds = { ...(raw.rawIds ?? {}) }
   if (source === 'igdb' && raw.id != null) rawIds.igdb = raw.id
-  if (source === 'rawg' && raw.id != null) rawIds.rawg = String(raw.id)
   if (raw.slug) rawIds.slug = raw.slug
 
   // ── Release date ──────────────────────────────────────────────────────────
@@ -309,7 +306,7 @@ export function dedupeGames(games) {
  * Skips null / nameless entries defensively, then de-duplicates by gameId.
  *
  * @param {Object[]} raws   - Array of pre-formatted game objects
- * @param {'igdb'|'rawg'|'unknown'} [source='unknown']
+ * @param {'igdb'|'unknown'} [source='unknown']
  * @returns {import('../types/models').Game[]}
  */
 export function normalizeGames(raws, source = 'unknown') {

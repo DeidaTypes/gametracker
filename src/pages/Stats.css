@@ -1,0 +1,770 @@
+/* =====================================================
+   STATS PAGE — "Year in games"
+   Strava numerals × Wrapped narrative × Apple Fitness daily summary.
+   ===================================================== */
+
+.stats-page {
+  min-height: 100vh;
+  padding: 0 0 var(--bottom-nav-safe-area);
+  background: transparent;
+}
+
+/* ── Topbar (back affordance only) ────────────────────────── */
+
+.stats-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-primary) 60%,
+    rgba(12, 19, 34, 0)
+  );
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.stats-back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+  font-size: 18px;
+}
+
+.stats-back-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+/* ── Hero block ───────────────────────────────────────────── */
+
+.stats-hero {
+  padding: var(--spacing-xl) var(--page-padding) var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.stats-hero-title {
+  margin: 0;
+}
+
+.stats-hero-sub {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ── Section scaffolding ──────────────────────────────────── */
+
+.stats-section {
+  padding: 0 var(--page-padding);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.stats-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--spacing-md);
+}
+
+.stats-section-title {
+  margin: 0;
+}
+
+.stats-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-brand-primary);
+}
+
+/* ── Generic card surface ─────────────────────────────────── */
+
+.stats-card {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--surface-1-shadow);
+}
+
+/* Empty-state variant inside any chart card */
+.stats-empty-card {
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.stats-empty-copy {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-body);
+}
+
+/* ── Headline numerals (2×2) ──────────────────────────────── */
+
+.stats-headline-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.stats-headline-card {
+  padding: var(--spacing-lg) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.stats-headline-num {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  text-shadow: 0 1px 0 rgba(200, 150, 90, 0.18);
+}
+
+.stats-headline-label {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+/* ── Donut chart card ─────────────────────────────────────── */
+
+.stats-donut-card {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.stats-donut-chart-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.stats-donut-center-num {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+.stats-donut-center-label {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.stats-genre-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.stats-genre-legend-item {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.stats-genre-legend-item:last-child {
+  border-bottom: none;
+}
+
+.stats-genre-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.stats-genre-name {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-genre-hours {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  letter-spacing: 0;
+}
+
+.stats-genre-pct {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Top 10 by hours ──────────────────────────────────────── */
+
+.stats-top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.stats-top-row {
+  width: 100%;
+}
+
+.stats-top-row-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 32px 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.stats-top-row-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+.stats-top-rank {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-brand-primary);
+  text-align: center;
+}
+
+.stats-top-cover {
+  width: 32px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.stats-top-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.stats-top-cover span {
+  font-family: var(--font-serif);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-title);
+}
+
+.stats-top-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stats-top-title {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-top-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.stats-top-bar-fill {
+  height: 100%;
+  background: var(--color-brand-vertical-gradient);
+  background: linear-gradient(
+    90deg,
+    var(--color-brand-primary-dark) 0%,
+    var(--color-brand-primary) 50%,
+    var(--color-brand-secondary) 100%
+  );
+  border-radius: var(--radius-full);
+  transition: width var(--transition-smooth);
+}
+
+.stats-top-hours {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-display);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-top-bar-fill {
+    transition: none;
+  }
+}
+
+/* ── Streak callout ───────────────────────────────────────── */
+
+.stats-streak-card {
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-tertiary) 0%,
+    var(--color-bg-elevated) 100%
+  );
+  border: 1px solid var(--color-border-hover);
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-streak-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top right,
+    rgba(200, 150, 90, 0.18) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.stats-streak-num {
+  font-family: var(--font-serif);
+  font-size: 56px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 0 rgba(200, 150, 90, 0.2);
+}
+
+.stats-streak-sub {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.stats-streak-longest {
+  color: var(--color-text-tertiary);
+}
+
+/* ── YTD heatmap ──────────────────────────────────────────── */
+
+.stats-heatmap-card {
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.stats-heatmap-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.stats-heatmap-total {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.stats-heatmap-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stats-heatmap-key-label {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.stats-heatmap-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.stats-heatmap-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.stats-heatmap-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: max-content;
+  --cell-size: 12px;
+  --cell-gap: 3px;
+}
+
+.stats-heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(53, var(--cell-size));
+  gap: var(--cell-gap);
+}
+
+.stats-heatmap-month-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  color: var(--color-text-muted);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.stats-heatmap-grid {
+  display: flex;
+  gap: var(--cell-gap);
+  position: relative;
+}
+
+.stats-heatmap-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cell-gap);
+}
+
+.stats-heatmap-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 2px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stats-heatmap-cell--key {
+  cursor: default;
+  width: 11px;
+  height: 11px;
+}
+
+.stats-heatmap-cell--future {
+  background: transparent;
+  cursor: default;
+}
+
+.stats-heatmap-cell[data-level='0'] {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stats-heatmap-cell[data-level='1'] {
+  background: rgba(200, 150, 90, 0.32);
+}
+
+.stats-heatmap-cell[data-level='2'] {
+  background: rgba(200, 150, 90, 0.6);
+}
+
+.stats-heatmap-cell[data-level='3'] {
+  background: var(--color-brand-primary);
+  box-shadow: 0 0 8px rgba(200, 150, 90, 0.35);
+}
+
+button.stats-heatmap-cell:hover,
+button.stats-heatmap-cell:focus-visible {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 1px var(--color-brand-primary),
+    0 0 8px rgba(200, 150, 90, 0.45);
+  outline: none;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-heatmap-cell {
+    transition: none;
+  }
+  button.stats-heatmap-cell:hover,
+  button.stats-heatmap-cell:focus-visible {
+    transform: none;
+  }
+}
+
+.stats-heatmap-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-hover);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+
+.stats-heatmap-tooltip-date {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.stats-heatmap-tooltip-count {
+  font-size: var(--font-size-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Heatmap skeleton */
+.stats-heatmap-skeleton {
+  gap: var(--spacing-sm);
+}
+
+.stats-heatmap-skel-bar {
+  width: 40%;
+  height: 13px;
+  border-radius: var(--radius-xs);
+}
+
+.stats-heatmap-skel-grid {
+  width: 100%;
+  height: 110px;
+  border-radius: var(--radius-md);
+}
+
+/* Streak skeleton — same overall footprint as the real card so the
+   layout doesn't reflow when the calendar fetch resolves. */
+.stats-streak-skeleton {
+  background: var(--color-bg-tertiary);
+  gap: var(--spacing-sm);
+  /* Suppress the radial copper glow from .stats-streak-card so the
+     shimmer reads as "loading" rather than "ready". */
+}
+
+.stats-streak-skeleton::after {
+  content: none;
+}
+
+.stats-streak-skel-eyebrow {
+  width: 120px;
+  height: 11px;
+  border-radius: var(--radius-xs);
+}
+
+.stats-streak-skel-num {
+  width: 96px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+}
+
+.stats-streak-skel-sub {
+  width: 70%;
+  height: 14px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Low-data empty state ─────────────────────────────────────
+   Shown when the user has fewer than 3 Played games. Headline
+   numerals stay above this card; the chart sections are replaced
+   by this single block so the page still feels intentional rather
+   than empty. */
+
+.stats-lowdata-card {
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-tertiary) 0%,
+    var(--color-bg-elevated) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-lowdata-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top right,
+    rgba(200, 150, 90, 0.12) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.stats-lowdata-title {
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-lowdata-copy {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  max-width: 52ch;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-lowdata-cta {
+  margin-top: var(--spacing-sm);
+  padding: 10px 18px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-brand-primary);
+  background: transparent;
+  color: var(--color-brand-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+  position: relative;
+  z-index: 1;
+}
+
+.stats-lowdata-cta:hover {
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-lowdata-cta {
+    transition: none;
+  }
+}
+
+/* ── Compact tweaks for very narrow screens ────────────────── */
+
+@media (max-width: 359px) {
+  .stats-headline-num {
+    font-size: 30px;
+  }
+
+  .stats-streak-num {
+    font-size: 48px;
+  }
+
+  .stats-heatmap-grid-wrap {
+    --cell-size: 10px;
+    --cell-gap: 2px;
+  }
+}
+
+/* ── Wider screens — let the donut and legend sit side-by-side ── */
+
+@media (min-width: 720px) {
+  .stats-donut-card {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .stats-donut-chart-wrap {
+    flex: 0 0 280px;
+  }
+
+  .stats-genre-legend {
+    flex: 1;
+  }
+}

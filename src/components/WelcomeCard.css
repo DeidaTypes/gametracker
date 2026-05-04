@@ -35,18 +35,21 @@
 }
 
 .welcome-card-title {
-  font-size: 28px;
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0 0 var(--spacing-sm) 0;
-  letter-spacing: var(--letter-spacing-normal);
 }
 
 .welcome-card-subtitle {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
   margin: 0 0 var(--spacing-xl) 0;
-  line-height: var(--line-height-relaxed);
   max-width: 500px;
 }
 
@@ -80,11 +83,12 @@
 .welcome-card-button {
   padding: var(--spacing-sm) var(--spacing-xl);
   border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  font-family: 'Inter', sans-serif;
+  line-height: var(--line-height-body);
   cursor: pointer;
   transition: all var(--transition-smooth);
-  font-size: var(--font-size-body);
   border: none;
   white-space: nowrap;
 }
@@ -138,9 +142,7 @@
     align-items: flex-start;
   }
 
-  .welcome-card-title {
-    font-size: 24px;
-  }
+  /* Display L is the canonical title size — no override on mobile. */
 
   .welcome-card-subtitle {
     font-size: var(--font-size-body);

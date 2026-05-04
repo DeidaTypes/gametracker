@@ -24,9 +24,11 @@
 }
 
 .sidebar-logo h1 {
-  font-size: 18px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
-  letter-spacing: -0.4px;
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
   background: var(--color-brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

@@ -46,12 +46,6 @@ export function getProfileStats() {
     totalHours += parseFloat(entry.hoursPlayed) || 0
   }
 
-  let avgRating = 0
-  if (allReviews.length > 0) {
-    const sum = allReviews.reduce((acc, r) => acc + (parseFloat(r.rating) || 0), 0)
-    avgRating = sum / allReviews.length
-  }
-
   const genreCounts = {}
   const platformCounts = {}
 
@@ -74,7 +68,6 @@ export function getProfileStats() {
   return {
     totalGames,
     totalHours: Math.round(totalHours),
-    avgRating: Math.round(avgRating * 10) / 10,
     reviewCount: allReviews.length,
     favoriteGenre,
     favoritePlatform,

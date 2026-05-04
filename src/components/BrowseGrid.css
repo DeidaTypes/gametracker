@@ -22,11 +22,13 @@
 }
 
 .browse-grid-title {
-  font-size: var(--font-size-hero);
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: var(--letter-spacing-tight);
 }
 
 .browse-grid {

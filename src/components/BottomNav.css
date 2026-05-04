@@ -9,15 +9,40 @@
   left: 0;
   right: 0;
   height: var(--bottom-nav-height);
-  background: rgba(12, 19, 34, 0.95);
-  backdrop-filter: blur(28px) saturate(1.4);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
-  border-top: 1px solid var(--color-border);
+  /* iOS-like Liquid Glass: semi-transparent navy + heavy blur + saturation
+     boost so the tab bar reads as floating glass above the content. */
+  background: rgba(12, 19, 34, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* Subtle 6% white top edge separates the bar from page content without
+     looking like a hard divider. */
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   justify-content: space-around;
   align-items: stretch;
   padding: 0;
   padding-bottom: max(0px, env(safe-area-inset-bottom));
   z-index: 1000;
+  border-radius: 0;
+}
+
+/* ---- Compact / floating pill state (iOS 26 shrink-on-scroll) ----
+   Toggled by <BottomNav> when useTabBarCompact reports the user is
+   scrolling DOWN past 60 px. Width shrinks to ~70% (15% inset on each
+   side), the bar lifts 8 px (or above the home indicator) so it floats
+   over content, and corners round into a pill. The flat top divider is
+   replaced by a soft drop shadow + 1 px hairline highlight. Motion's
+   `layout` prop animates the geometry change with a spring; reduced-motion
+   collapses the spring to instant. */
+.bottom-nav.compact {
+  left: 15%;
+  right: 15%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  border-radius: 28px;
+  border-top-color: transparent;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding-bottom: 0;
 }
 
 /* Mobile only */
@@ -52,8 +77,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.bottom-nav-item:active {
-  transform: scale(0.90);
+/* On tap: the icon pops to 1.15 then snaps back — tactile "click" feel.
+   The animation runs to completion even after the user lifts their finger. */
+.bottom-nav-item:active .bottom-nav-icon {
+  animation: navTabPop 200ms ease-out;
 }
 
 .bottom-nav-icon {
@@ -67,29 +94,39 @@
 
 .bottom-nav-label {
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.4px;
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  text-transform: uppercase;
   transition: color var(--transition-normal);
 }
 
 /* ---- Active state ---- */
+/*
+  --nav-accent is injected by BottomNav.jsx when a game-detail page is active,
+  overriding the default amber.  Falls back to the amber brand token so there
+  is no change on any other route.
+  --nav-accent-glow mirrors the same color at 65% opacity for the dot halo.
+*/
 .bottom-nav-item.active {
   color: var(--color-text-secondary);
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
-  color: var(--color-brand-primary);
+  color: var(--nav-accent, var(--color-brand-primary));
   transform: translateY(-1px);
+  /* Smooth tint transition when entering/leaving a game-detail page */
+  transition: color 280ms ease, transform var(--transition-smooth);
 }
 
 .bottom-nav-item.active .bottom-nav-label {
-  color: var(--color-brand-primary);
+  color: var(--nav-accent, var(--color-brand-primary));
+  transition: color 280ms ease;
 }
 
 /* Active indicator dot above icon */
@@ -101,12 +138,26 @@
   transform: translateX(-50%);
   width: 4px;
   height: 4px;
-  background: var(--color-brand-primary);
+  background-color: var(--nav-accent, var(--color-brand-primary));
   border-radius: var(--radius-full);
-  box-shadow: 0 0 8px rgba(200, 150, 90, 0.7);
+  box-shadow: 0 0 8px var(--nav-accent-glow, rgba(200, 150, 90, 0.7));
+  transition: background-color 280ms ease, box-shadow 280ms ease;
 }
 
 /* Inactive hover */
 .bottom-nav-item:not(.active):hover {
   color: var(--color-text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav-item:active .bottom-nav-icon {
+    animation: none;
+  }
+
+  /* Collapse the 280ms chrome-tint transitions to instant swaps */
+  .bottom-nav-item.active .bottom-nav-icon,
+  .bottom-nav-item.active .bottom-nav-label,
+  .bottom-nav-item.active::before {
+    transition: none;
+  }
 }

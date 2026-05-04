@@ -21,32 +21,34 @@
   font-family: var(--font-sans);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
   color: var(--color-brand-primary);
   display: block;
 }
 
 .section-hdr-title {
   font-family: var(--font-serif);
-  font-size: var(--font-size-title);
+  font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
 }
 
 .section-hdr-action {
   font-family: var(--font-sans);
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-tertiary);
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 4px 0;
-  letter-spacing: 0.2px;
   white-space: nowrap;
   transition: color var(--transition-fast);
   display: inline-flex;
@@ -68,8 +70,4 @@
   transform: translateX(3px);
 }
 
-@media (min-width: 769px) {
-  .section-hdr-title {
-    font-size: 22px;
-  }
-}
+/* No desktop override — Display L is the canonical size at every breakpoint. */

@@ -10,10 +10,11 @@
 }
 
 .cover-placeholder__title {
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   color: rgba(237, 232, 223, 0.55);
-  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

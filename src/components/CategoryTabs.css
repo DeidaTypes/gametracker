@@ -60,7 +60,7 @@
 
   .category-tab {
     padding: var(--spacing-xs) var(--spacing-md);
-    font-size: var(--font-size-meta);
+    font-size: var(--font-size-caption);
   }
 }
 

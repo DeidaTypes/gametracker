@@ -44,8 +44,59 @@
   margin-top: 40px;
 }
 
+.explore-section:first-child {
+  margin-top: 16px;
+}
+
 .explore-section:first-child + .explore-section {
   margin-top: 32px;
+}
+
+/* ---- Section empty state (small inline message) ---- */
+.explore-section-empty {
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* ---- Review feed (vertical) ---- */
+.explore-review-feed {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* ---- Review feed skeleton ---- */
+.explore-review-feed-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+.explore-review-skel-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.explore-review-skel-cover {
+  width: 56px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+}
+
+.explore-review-skel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.explore-review-skel-line {
+  height: 12px;
+  border-radius: var(--radius-xs);
 }
 
 /* ---- Section inner padding ---- */
@@ -80,6 +131,16 @@
   gap: 12px;
 }
 
+/* ---- Poster-shaped skeleton placeholders (2:3 game cover ratio) ---- */
+.explore-poster-skeleton {
+  flex: 0 0 144px;
+  width: 144px;
+  min-width: 144px;
+  aspect-ratio: 2 / 3;
+  border-radius: 14px;
+  scroll-snap-align: start;
+}
+
 /* ---- Game cards in scroll rows ---- */
 .explore-scroll-row .game-card {
   flex: 0 0 144px;
@@ -101,18 +162,20 @@
 }
 
 .explore-empty-state__title {
-  font-size: var(--font-size-subtitle);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .explore-empty-state__body {
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
   margin: 0;
   max-width: 260px;
-  line-height: var(--line-height-relaxed);
 }
 
 /* ---- Error banner ---- */
@@ -135,8 +198,9 @@
 
 .explore-error-banner__retry {
   font-family: var(--font-sans);
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   color: var(--color-accent-rust);
   background: transparent;
   border: 1px solid rgba(196, 99, 78, 0.3);
@@ -167,6 +231,12 @@
     scroll-padding-inline-start: 48px;
   }
 
+  .explore-poster-skeleton {
+    flex: 0 0 190px;
+    width: 190px;
+    min-width: 190px;
+  }
+
   .explore-scroll-row .game-card {
     flex: 0 0 190px;
     width: 190px;
@@ -176,5 +246,15 @@
   .explore-genre-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
+  }
+
+  .explore-review-skel-row {
+    padding: 14px 48px;
+    gap: 16px;
+    grid-template-columns: 72px 1fr;
+  }
+
+  .explore-review-skel-cover {
+    width: 72px;
   }
 }

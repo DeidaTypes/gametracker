@@ -1,0 +1,38 @@
+# Project: GameTracker
+A video game library and tracking app, conceptually similar to Letterboxd but for games.
+
+## Stack
+- React + Vite (web app, runs at localhost:5173 in dev)
+- Capacitor wrapped for iOS (capacitor.config.json + ios/ folder exist) — this is also a native iOS app, not just web
+- Game data sourced from IGDB API via a backend proxy in src/services/igdb.js (IGDB does not allow direct browser calls due to CORS; all IGDB requests go through our proxy with cached Twitch OAuth tokens)
+
+## File structure conventions
+- Pages live in src/pages/
+- Reusable components in src/components/
+- Custom hooks in src/hooks/
+- API services and data layer in src/services/
+- Shared styles in src/styles/, plus App.css and index.css at src/ root
+- Types (if used) in src/types/
+- App entry: src/main.jsx → src/App.jsx
+
+## Design system
+- Dark theme: deep navy background, warm copper/amber accent
+- Typography: serif display headers ("Currently Playing", "Your Library"), sans-serif body
+- Five bottom tabs: Home, Explore, Search, Library, Profile
+- Reference DESIGN_SYSTEM.md at the project root for color tokens and any other design-system documentation
+
+## Domain rules
+- Game tracker statuses: Want to Play / Playing / Played / Dropped
+- A game has at most one status at a time (mutually exclusive); do not implement as separate booleans
+- All status changes must be optimistic — update UI immediately, then sync to store
+
+## Conventions
+- Match existing file structure; do not create new top-level folders without reason
+- Use existing utility functions and components before creating new ones
+- Plain JavaScript (.js / .jsx), not TypeScript — match existing code
+- Use existing color tokens / CSS variables; do not hardcode hex colors
+- Capacitor-aware: when adding interactive features (haptics, share, native menus), check if a Capacitor plugin exists before falling back to web-only APIs
+- All animations must respect `prefers-reduced-motion`
+
+## Reference docs in this repo
+The repo has many .md files documenting prior work (DESIGN_SYSTEM.md, FEATURES_OVERVIEW.md, NAVIGATION_UPDATE.md, MOBILE_GRID_FIX.md, etc.). When making changes that overlap a documented area, read the relevant .md first to avoid contradicting prior decisions.

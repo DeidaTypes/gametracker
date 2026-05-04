@@ -1,5 +1,5 @@
 /* ============================================
-   ACTIVITY FEED — Timeline
+   ACTIVITY FEED — Vertical Timeline
    ============================================ */
 
 .activity-feed {
@@ -18,56 +18,96 @@
 }
 
 .activity-feed-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
-  cursor: pointer;
   transition: background var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
 
-.activity-feed-item:hover {
+.activity-feed-item:not(.activity-feed-item--static) {
+  cursor: pointer;
+}
+
+.activity-feed-item:not(.activity-feed-item--static):hover {
   background: var(--color-surface-hover);
 }
 
-.activity-feed-item:active {
+.activity-feed-item:not(.activity-feed-item--static):active {
   background: var(--color-surface-active);
+}
+
+.activity-feed-item:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+/* ---- Avatar (left) ---- */
+.activity-feed-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+}
+
+.activity-feed-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.activity-feed-avatar--generated {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
 }
 
 /* ---- Type-colored icon ---- */
 .activity-feed-icon {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
   font-size: 13px;
   line-height: 1;
-  margin-top: 1px;
 }
 
-.activity-feed-item--review .activity-feed-icon {
-  background: rgba(200, 150, 90, 0.14);
+/* status_changed → amber */
+.activity-feed-item--status_changed .activity-feed-icon {
+  background: rgba(200, 150, 90, 0.16);
   color: var(--color-brand-primary);
 }
 
-.activity-feed-item--hours_logged .activity-feed-icon {
-  background: rgba(123, 166, 140, 0.14);
+/* review_posted → purple/lavender */
+.activity-feed-item--review_posted .activity-feed-icon {
+  background: rgba(139, 123, 175, 0.16);
+  color: var(--color-accent-lavender);
+}
+
+/* list_created + game_added_to_list → green/sage */
+.activity-feed-item--list_created .activity-feed-icon,
+.activity-feed-item--game_added_to_list .activity-feed-icon {
+  background: rgba(123, 166, 140, 0.16);
   color: var(--color-accent-sage);
 }
 
-.activity-feed-item--status_change .activity-feed-icon {
-  background: rgba(74, 127, 165, 0.14);
-  color: var(--color-accent-steel);
-}
-
-/* ---- Body ---- */
+/* ---- Body (sentence) ---- */
 .activity-feed-body {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -75,50 +115,88 @@
 }
 
 .activity-feed-message {
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-primary);
-  line-height: 1.4;
   word-break: break-word;
 }
 
+/* ---- Right-aligned timestamp ---- */
 .activity-feed-time {
-  font-size: var(--font-size-meta);
-  color: var(--color-text-muted);
-  line-height: 1.3;
-}
-
-/* ---- Clear button ---- */
-.activity-feed-clear {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-meta);
-  font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
   font-family: var(--font-sans);
-  cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.activity-feed-clear:hover {
-  color: var(--color-accent-rust);
-  background: rgba(196, 99, 78, 0.08);
-}
-
-/* ---- Empty state ---- */
-.activity-feed-empty {
-  padding: var(--spacing-xl) var(--spacing-md);
-  text-align: center;
-}
-
-.activity-feed-empty p {
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   color: var(--color-text-muted);
-  margin: 0;
-  line-height: var(--line-height-relaxed);
-  max-width: 280px;
-  margin: 0 auto;
+  white-space: nowrap;
+}
+
+/* ---- Pagination button ---- */
+.activity-feed-more {
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background var(--transition-fast);
+  margin-top: var(--spacing-sm);
+}
+
+.activity-feed-more:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-hover);
+}
+
+.activity-feed-more:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ---- Loading skeleton ---- */
+.activity-feed--loading {
+  gap: var(--spacing-xs);
+}
+
+.activity-feed-row-skeleton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.activity-feed-sk-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.activity-feed-sk-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.activity-feed-sk-line {
+  height: 12px;
+  border-radius: var(--radius-xs);
+  width: 80%;
+}
+
+.activity-feed-sk-line--short {
+  width: 40%;
 }

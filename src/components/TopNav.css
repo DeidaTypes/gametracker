@@ -44,10 +44,11 @@
 
 .logo-text {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
-  letter-spacing: -0.5px;
 }
 
 /* ---- Search form ---- */
@@ -66,10 +67,11 @@
   border-radius: var(--radius-full);
   padding: 9px 40px 9px var(--spacing-md);
   color: var(--color-text-primary);
-  font-size: var(--font-size-body);
   font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
-  letter-spacing: -0.01em;
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
   outline: none;
   transition: all var(--transition-smooth);
 }
@@ -131,12 +133,13 @@
   padding: 7px var(--spacing-md);
   text-decoration: none;
   color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  font-family: var(--font-sans);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
-  letter-spacing: -0.01em;
   white-space: nowrap;
   border: 1px solid transparent;
 }
@@ -201,8 +204,10 @@
   justify-content: center;
   padding: var(--spacing-md);
   color: var(--color-text-tertiary);
-  font-size: var(--font-size-meta);
   font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
 }
 
 .suggestion-image {
@@ -225,10 +230,11 @@
 
 .suggestion-title {
   color: var(--color-text-primary);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
   font-family: var(--font-sans);
-  letter-spacing: -0.01em;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -238,9 +244,11 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  font-size: var(--font-size-meta);
-  color: var(--color-text-tertiary);
   font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
 }
 
 .suggestion-meta span:not(:last-child)::after {

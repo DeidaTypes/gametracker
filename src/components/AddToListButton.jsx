@@ -8,7 +8,6 @@ import {
   getListInfo,
   getGameStatus,
   setGameStatus,
-  clearGameStatus,
 } from '../services/libraryService'
 import './AddToListButton.css'
 
@@ -62,7 +61,7 @@ const STATUS_TILES = [
   },
 ]
 
-function AddToListButton({ game, variant }) {
+function AddToListButton({ game, variant, fabStyle }) {
   const [isOpen, setIsOpen] = useState(false)
   const [lists, setLists] = useState({})
   const [gameInLists, setGameInLists] = useState({})
@@ -113,11 +112,8 @@ function AddToListButton({ game, variant }) {
 
   const handleStatusTap = (statusKey) => {
     if (!game) return
-    if (currentStatus === statusKey) {
-      clearGameStatus(game.id)
-    } else {
-      setGameStatus(game.id, statusKey, game)
-    }
+    if (currentStatus === statusKey) return
+    setGameStatus(game.id, statusKey, game)
     refresh()
     window.dispatchEvent(new Event('libraryUpdated'))
   }
@@ -178,6 +174,7 @@ function AddToListButton({ game, variant }) {
       <button
         onClick={() => setIsOpen(true)}
         className={isIcon ? 'gd-action-circle' : 'add-to-list-button'}
+        style={isIcon && fabStyle ? fabStyle : undefined}
         aria-label="Add to list"
       >
         {isIcon ? (

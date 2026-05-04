@@ -17,9 +17,10 @@
   border: none;
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-md);
-  font-weight: var(--font-weight-semibold);
   font-family: var(--font-sans);
   font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
   cursor: pointer;
   transition: all var(--transition-smooth);
   width: 100%;
@@ -138,18 +139,22 @@
 }
 
 .bs-header-title {
-  font-size: 17px;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
 }
 
 .bs-header-status {
-  font-size: 13px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   color: rgba(255, 255, 255, 0.45);
 }
 
@@ -249,10 +254,10 @@
 
 .bs-tile-label {
   font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
   text-align: center;
-  line-height: 1.3;
 }
 
 /* ── My Lists Section ── */
@@ -262,10 +267,11 @@
 
 .bs-lists-heading {
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  letter-spacing: 1.2px;
   color: rgba(255, 255, 255, 0.3);
   margin: 0 0 12px;
 }
@@ -300,8 +306,10 @@
 }
 
 .bs-list-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
   color: rgba(255, 255, 255, 0.8);
 }
 

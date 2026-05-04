@@ -15,155 +15,154 @@ if (CLIENT_ID === 'YOUR_CLIENT_ID' || CLIENT_SECRET === 'YOUR_CLIENT_SECRET') {
   console.log('✅ IGDB API credentials loaded successfully')
 }
 
-let accessToken = null
-let tokenExpiry = null
+let tokenCache = { token: null, expiresAt: 0 }
+let tokenFlight = null
 
-// Get access token from Twitch OAuth
 async function getAccessToken() {
-  // Check if we have a valid token
-  if (accessToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return accessToken
+  if (tokenCache.token && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token
   }
 
-  // Check credentials first
+  if (tokenFlight) return tokenFlight
+
+  tokenFlight = fetchNewToken().finally(() => { tokenFlight = null })
+  return tokenFlight
+}
+
+async function fetchNewToken() {
   if (CLIENT_ID === 'YOUR_CLIENT_ID' || CLIENT_SECRET === 'YOUR_CLIENT_SECRET') {
-    const errorMsg = 'IGDB API credentials not configured. Please create a .env file in the project root with:\nVITE_IGDB_CLIENT_ID=your_client_id\nVITE_IGDB_CLIENT_SECRET=your_client_secret'
-    console.error('❌', errorMsg)
-    throw new Error(errorMsg)
+    throw new Error(
+      'IGDB API credentials not configured. Please create a .env file with:\nVITE_IGDB_CLIENT_ID=your_client_id\nVITE_IGDB_CLIENT_SECRET=your_client_secret'
+    )
   }
 
-  try {
-    console.log('🔑 Requesting access token from Twitch...')
-    // Use proxy to avoid CORS issues
-    const response = await fetch('/api/twitch/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        grant_type: 'client_credentials',
-      }),
-    })
+  const response = await fetch('/api/twitch/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Twitch OAuth error:', response.status, errorText)
-      
-      if (response.status === 400) {
-        throw new Error('Invalid API credentials. Please check your CLIENT_ID and CLIENT_SECRET in the .env file.')
-      } else if (response.status === 401) {
-        throw new Error('Unauthorized. Your API credentials may be incorrect. Please verify them at https://dev.twitch.tv/console/apps')
-      } else {
-        throw new Error(`Failed to get access token: ${response.status} - ${errorText}`)
-      }
+  if (!response.ok) {
+    const errorText = await response.text()
+    if (response.status === 400) {
+      throw new Error('Invalid API credentials. Please check your CLIENT_ID and CLIENT_SECRET in the .env file.')
+    } else if (response.status === 401) {
+      throw new Error('Unauthorized. Your API credentials may be incorrect. Please verify them at https://dev.twitch.tv/console/apps')
     }
-
-    const data = await response.json()
-    
-    if (!data.access_token) {
-      console.error('❌ No access token received:', data)
-      throw new Error('Failed to get access token: Invalid response from Twitch')
-    }
-    
-    accessToken = data.access_token
-    // Set expiry to 90% of token lifetime to be safe (expires_in is in seconds)
-    tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9)
-
-    console.log('✅ Access token obtained successfully')
-    return accessToken
-  } catch (error) {
-    console.error('❌ Error getting access token:', error)
-    // Re-throw with more context if it's not already a formatted error
-    if (error.message && !error.message.includes('IGDB API') && !error.message.includes('Invalid') && !error.message.includes('Unauthorized')) {
-      throw new Error(`Failed to connect to Twitch API: ${error.message}. Check your internet connection and API credentials.`)
-    }
-    throw error
+    throw new Error(`Failed to get access token: ${response.status} - ${errorText}`)
   }
+
+  const data = await response.json()
+  if (!data.access_token) {
+    throw new Error('Failed to get access token: Invalid response from Twitch')
+  }
+
+  tokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 3600) * 1000,
+  }
+  return tokenCache.token
 }
 
-// Make IGDB API request
+// ── Response cache — deduplicates concurrent identical IGDB queries ──────────
+
+const responseCache = new Map()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const inflightRequests = new Map()
+
+function coverUrlFromImageId(imageId) {
+  if (!imageId) return null
+  return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
+}
+
+function extractCoverUrl(game) {
+  if (game.cover?.image_id) return coverUrlFromImageId(game.cover.image_id)
+  if (game.cover?.url) return `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`
+  return null
+}
+
 async function igdbRequest(endpoint, query) {
-  try {
-    const token = await getAccessToken()
-    
-    console.log(`📡 Making IGDB API request to ${endpoint}...`)
+  const cacheKey = `${endpoint}::${query}`
 
-    // Use proxy to avoid CORS issues
-    const response = await fetch(`/api/igdb/v4/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Client-ID': CLIENT_ID,
-        'Authorization': `Bearer ${token}`,
-      },
-      body: query,
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`❌ IGDB API error ${response.status}:`, errorText)
-      
-      if (response.status === 401) {
-        throw new Error('Unauthorized. Your access token may have expired or your API credentials are invalid.')
-      } else if (response.status === 400) {
-        throw new Error(`Invalid API request: ${errorText}`)
-      } else {
-        throw new Error(`IGDB API error: ${response.status} - ${errorText}`)
-      }
-    }
-
-    const data = await response.json()
-    console.log(`✅ Received ${data.length} results from ${endpoint}`)
-    return data
-  } catch (error) {
-    console.error('❌ IGDB API request error:', error)
-    // If it's already a formatted error, re-throw it
-    if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid') || error.message.includes('Failed to connect'))) {
-      throw error
-    }
-    // Otherwise wrap it
-    throw new Error(`IGDB API request failed: ${error.message}`)
+  const cached = responseCache.get(cacheKey)
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data
   }
+
+  if (inflightRequests.has(cacheKey)) {
+    return inflightRequests.get(cacheKey)
+  }
+
+  const request = executeIgdbRequest(endpoint, query, cacheKey)
+  inflightRequests.set(cacheKey, request)
+  request.finally(() => inflightRequests.delete(cacheKey))
+
+  return request
 }
 
-// Get popular games - top rated games with high rating counts
+async function executeIgdbRequest(endpoint, query, cacheKey) {
+  const token = await getAccessToken()
+
+  const response = await fetch(`/api/igdb/v4/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Client-ID': CLIENT_ID,
+      'Authorization': `Bearer ${token}`,
+    },
+    body: query,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    if (response.status === 401) {
+      tokenCache = { token: null, expiresAt: 0 }
+      throw new Error('Unauthorized. Your access token may have expired or your API credentials are invalid.')
+    } else if (response.status === 400) {
+      throw new Error(`Invalid API request: ${errorText}`)
+    }
+    throw new Error(`IGDB API error: ${response.status} - ${errorText}`)
+  }
+
+  const data = await response.json()
+
+  responseCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
+
+  return data
+}
+
 export async function getPopularGames(limit = 50) {
-  // Get games with high ratings and rating counts, released in recent years
-  // Focus on games with both high ratings AND high rating counts (more popular)
   const fiveYearsAgo = Math.floor(Date.now() / 1000) - (5 * 31536000)
-  
-  // Prioritize games with both high rating_count (popularity) and high rating (quality)
-  let query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+
+  const query = `fields name, cover.image_id, genres.name, rating, rating_count, summary, first_release_date;
 where cover != null & rating != null & rating_count != null & first_release_date >= ${fiveYearsAgo} & rating_count > 10;
 sort rating_count desc;
 limit ${limit};`
 
   try {
     const games = await igdbRequest('games', query)
-    
-    // If we don't have enough results, relax the rating_count requirement
+
     if (games.length < limit) {
-      const relaxedQuery = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+      const relaxedQuery = `fields name, cover.image_id, genres.name, rating, rating_count, summary, first_release_date;
 where cover != null & rating != null & first_release_date >= ${fiveYearsAgo};
 sort rating_count desc;
 limit ${limit};`
-      const relaxedGames = await igdbRequest('games', relaxedQuery)
-      return formatGames(relaxedGames)
+      return formatGames(await igdbRequest('games', relaxedQuery))
     }
-    
+
     return formatGames(games)
   } catch (error) {
     console.error('Error in getPopularGames:', error)
-    // Fallback query - try with just rating requirement
     try {
-      const fallbackQuery = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+      const fallbackQuery = `fields name, cover.image_id, genres.name, rating, rating_count, summary, first_release_date;
 where cover != null & rating != null & first_release_date >= ${fiveYearsAgo};
 sort rating desc;
 limit ${limit};`
-      const games = await igdbRequest('games', fallbackQuery)
-      return formatGames(games)
+      return formatGames(await igdbRequest('games', fallbackQuery))
     } catch (fallbackError) {
       console.error('Fallback query also failed:', fallbackError)
       throw error
@@ -171,90 +170,128 @@ limit ${limit};`
   }
 }
 
-// Get recently released games - only from the last 12 months
+/**
+ * Upcoming releases — games whose first_release_date falls within the
+ * next 30 days. Sorted ascending so the soonest releases appear first.
+ */
+export async function getUpcomingReleases(limit = 30) {
+  const now = Math.floor(Date.now() / 1000)
+  const thirtyDaysFromNow = now + (30 * 24 * 60 * 60)
+
+  const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date, summary, involved_companies.company.name;
+where first_release_date > ${now} & first_release_date < ${thirtyDaysFromNow} & cover != null;
+sort first_release_date asc;
+limit ${limit};`
+
+  try {
+    const games = await igdbRequest('games', query)
+    return formatUpcomingGames(games)
+  } catch (error) {
+    console.error('Error in getUpcomingReleases:', error)
+    return []
+  }
+}
+
+// Upcoming-release formatter: keeps IGDB asc release order (don't re-sort by rating).
+function formatUpcomingGames(games) {
+  return normalizeGames(
+    games
+      .filter((game) => game.name)
+      .map((game) => {
+        const coverUrl = extractCoverUrl(game)
+
+        let releaseDate = null
+        let year = null
+        if (game.first_release_date) {
+          releaseDate = new Date(game.first_release_date * 1000)
+          year = releaseDate.getFullYear()
+        }
+
+        const genres = game.genres?.map((g) => g.name).join(', ') || 'Unknown'
+        const developer = game.involved_companies?.[0]?.company?.name || 'Unknown'
+        const rating = game.rating ? (game.rating / 20).toFixed(1) : null
+
+        return {
+          id: game.id,
+          title: game.name,
+          developer,
+          genre: genres,
+          rating,
+          year,
+          image: coverUrl,
+          description: game.summary || '',
+          releaseDate,
+        }
+      }),
+    'igdb'
+  )
+}
+
 export async function getRecentlyReleasedGames(limit = 30) {
-  // Get games released in the last 12 months, sorted by popularity
   const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)
   const now = Math.floor(Date.now() / 1000)
 
-  // More lenient query - filter rating_count after fetching
-  let query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+  const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date;
 where first_release_date >= ${oneYearAgo} & first_release_date <= ${now} & cover != null & rating != null;
 sort first_release_date desc;
 limit ${limit};`
 
   try {
-    let games = await igdbRequest('games', query)
-    // Don't filter too aggressively - accept all games with ratings
-    // Priority is to show results over strict filtering
-    return formatGames(games)
+    return formatGames(await igdbRequest('games', query))
   } catch (error) {
     console.error('Error in getRecentlyReleasedGames:', error)
     throw error
   }
 }
 
-// Get top games of the week - trending games with high rating counts from the last 7 days
 export async function getTopGamesOfTheWeek(limit = 20) {
-  // Get games from the last 2 weeks that have high rating activity
   const twoWeeksAgo = Math.floor(Date.now() / 1000) - (14 * 24 * 60 * 60)
   const now = Math.floor(Date.now() / 1000)
-  
-  // Query for games with recent activity and high ratings
-  const query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+
+  const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date;
 where first_release_date >= ${twoWeeksAgo} & first_release_date <= ${now} & cover != null & rating != null & rating_count != null;
 sort rating_count desc;
 limit ${limit * 2};`
 
   try {
     let games = await igdbRequest('games', query)
-    
-    // If not enough recent games, get popular games from last 3 months
+
     if (games.length < limit) {
       const threeMonthsAgo = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60)
-      const fallbackQuery = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+      const fallbackQuery = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date;
 where first_release_date >= ${threeMonthsAgo} & first_release_date <= ${now} & cover != null & rating != null;
 sort rating_count desc;
 limit ${limit * 2};`
       games = await igdbRequest('games', fallbackQuery)
     }
-    
+
     return formatGames(games)
   } catch (error) {
     console.error('Error in getTopGamesOfTheWeek:', error)
-    // Fallback to popular games
     return getPopularGames(limit)
   }
 }
 
-// Get games by genre - popular games in the genre
 export async function getGamesByGenre(genreName, limit = 30) {
   try {
-    // First get genre ID
     const genreQuery = `fields id;
 where name = "${genreName}";`
     const genres = await igdbRequest('genres', genreQuery)
-    
+
     if (genres.length === 0) {
       console.warn(`Genre "${genreName}" not found`)
       return []
     }
 
     const genreId = genres[0].id
-    // Get popular games in this genre - sorted by rating_count first (most popular), then rating
-    // Increased timeframe to get more games, more lenient filters
     const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
-    
-    // More lenient query - filter rating_count after fetching
-    let query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+
+    const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
 where genres = ${genreId} & cover != null & rating != null & first_release_date >= ${sevenYearsAgo};
 sort rating_count desc;
 limit ${limit};`
 
-    let games = await igdbRequest('games', query)
-    // Don't filter too aggressively - accept all games with ratings
-    // Priority is to show results over strict filtering
-    return formatGames(games)
+    return formatGames(await igdbRequest('games', query))
   } catch (error) {
     console.error(`Error fetching games for genre ${genreName}:`, error)
     return []
@@ -322,26 +359,18 @@ export async function searchGames(searchTerm, limit = 30) {
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
 
-  // Fetch extra results so cover- and DLC-filtering still leave enough candidates
-  // for rankGames() to work with. Cap at 200 to stay within IGDB limits.
   const fetchLimit = Math.min(limit * 4, 200)
-  const query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+  const query = `fields name, cover.image_id, genres.name, rating, rating_count, summary, involved_companies.company.name, first_release_date;
 search "${escapedTerm}";
 limit ${fetchLimit};`
 
   try {
-    console.log('🔍 Searching for:', searchTerm)
     const games = await igdbRequest('games', query)
 
-    // Require cover art — entries without covers are usually stub/incomplete records
-    const gamesWithCovers = games.filter(game => game.cover && game.cover.url)
-    console.log(`✅ Search: ${gamesWithCovers.length} with covers (${games.length} total)`)
+    const gamesWithCovers = games.filter(game => game.cover && (game.cover.image_id || game.cover.url))
 
-    // Remove clear DLC / expansion / edition entries (conservative filter)
     const baseGames = filterOutDLC(gamesWithCovers)
-    console.log(`🎮 Base games: ${baseGames.length} (filtered ${gamesWithCovers.length - baseGames.length} DLC/editions)`)
 
-    // Format without sorting — rankGames() in searchService will handle ordering
     return formatGamesRaw(baseGames.slice(0, limit * 2))
   } catch (error) {
     console.error('❌ Error in searchGames:', error)
@@ -474,10 +503,9 @@ where name = "${keywordName}";`
     // Use OR logic to find games matching any style criteria, then filter by match count
     const whereClause = whereConditions.join(' | ')
     
-    // Fetch more games to filter by style match quality
-    const query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date, themes.id, themes.name, player_perspectives.id, player_perspectives.name, game_modes.id, game_modes.name, keywords.id, keywords.name;
+    const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date, themes.id, themes.name, player_perspectives.id, player_perspectives.name, game_modes.id, game_modes.name, keywords.id, keywords.name;
 where (${whereClause}) & cover != null & id != ${excludeGameId};
-limit ${limit * 5};` // Fetch many more to filter by quality
+limit ${limit * 5};`
 
     const games = await igdbRequest('games', query)
     
@@ -651,11 +679,10 @@ where name = "${genreName}";`
     // More lenient - don't require first_release_date filter
     const tenYearsAgo = Math.floor(Date.now() / 1000) - (10 * 31536000)
     
-    // IGDB uses array syntax for multiple values: genres = [id1, id2]
-    const query = `fields name, cover.url, genres.name, release_dates.date, rating, rating_count, summary, involved_companies.company.name, first_release_date;
+    const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date;
 where genres = [${genreIds.join(',')}] & cover != null & id != ${excludeGameId};
 sort rating desc;
-limit ${limit * 3};` // Fetch more to ensure we have enough after filtering
+limit ${limit * 3};`
 
     const games = await igdbRequest('games', query)
     
@@ -685,9 +712,78 @@ limit ${limit * 3};` // Fetch more to ensure we have enough after filtering
   }
 }
 
-// Get game by ID with full details
+// Get games by developer name — searches IGDB companies, then fetches their games
+export async function getGamesByDeveloper(developerName, limit = 50) {
+  if (!developerName || !developerName.trim()) return { company: null, games: [] }
+
+  const escaped = developerName.trim().replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+
+  try {
+    const companyQuery = `fields id, name, description, logo.url;
+where name ~ "${escaped}"*;
+limit 1;`
+    const companies = await igdbRequest('companies', companyQuery)
+
+    if (companies.length === 0) {
+      const fuzzyQuery = `fields id, name, description, logo.url;
+search "${escaped}";
+limit 1;`
+      const fuzzyResult = await igdbRequest('companies', fuzzyQuery)
+      if (fuzzyResult.length === 0) return { company: null, games: [] }
+      companies.push(fuzzyResult[0])
+    }
+
+    const company = companies[0]
+    let logoUrl = null
+    if (company.logo?.url) {
+      logoUrl = `https:${company.logo.url.replace('t_thumb', 't_logo_med')}`
+    }
+
+    const icQuery = `fields game.name, game.cover.image_id, game.genres.name, game.rating, game.rating_count, game.summary, game.first_release_date, game.involved_companies.company.name;
+where company = ${company.id} & developer = true;
+limit ${limit};`
+    const involvedCompanies = await igdbRequest('involved_companies', icQuery)
+
+    const games = involvedCompanies
+      .filter(ic => ic.game && ic.game.name && ic.game.cover?.image_id)
+      .map(ic => {
+        const g = ic.game
+        const coverUrl = coverUrlFromImageId(g.cover?.image_id)
+        const year = g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null
+        const genres = g.genres?.map(gr => gr.name).join(', ') || 'Unknown'
+        const developer = g.involved_companies?.[0]?.company?.name || company.name
+        const rating = g.rating ? (g.rating / 20).toFixed(1) : null
+
+        return {
+          id: g.id,
+          title: g.name,
+          developer,
+          genre: genres,
+          rating,
+          year,
+          image: coverUrl,
+          description: g.summary || '',
+        }
+      })
+      .sort((a, b) => {
+        const rA = parseFloat(a.rating) || 0
+        const rB = parseFloat(b.rating) || 0
+        if (rB !== rA) return rB - rA
+        return (b.year || 0) - (a.year || 0)
+      })
+
+    return {
+      company: { id: company.id, name: company.name, description: company.description || null, logo: logoUrl },
+      games: normalizeGames(games, 'igdb'),
+    }
+  } catch (error) {
+    console.error('Error in getGamesByDeveloper:', error)
+    throw error
+  }
+}
+
 export async function getGameById(gameId) {
-  const query = `fields name, cover.url, genres.name, release_dates.date, rating, summary, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, platforms.name, screenshots.url, first_release_date, websites.url, videos.video_id, themes.name, player_perspectives.name, game_modes.name, keywords.name;
+  const query = `fields name, cover.image_id, genres.name, rating, summary, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, platforms.name, screenshots.url, first_release_date, websites.url, videos.video_id, themes.name, player_perspectives.name, game_modes.name, keywords.name, similar_games;
 where id = ${gameId};`
 
   try {
@@ -702,12 +798,28 @@ where id = ${gameId};`
   }
 }
 
+/**
+ * Batch-fetch lightweight game records by a list of numeric IGDB IDs.
+ * Used to resolve the `similar_games` IDs returned by getGameById.
+ */
+export async function getGamesByIds(ids) {
+  if (!ids || ids.length === 0) return []
+  const limited = ids.slice(0, 12)
+  const query = `fields name, cover.image_id, genres.name, rating, first_release_date, involved_companies.company.name, involved_companies.developer;
+where id = (${limited.join(',')});
+limit ${limited.length};`
+  try {
+    const games = await igdbRequest('games', query)
+    return formatGames(games)
+  } catch (err) {
+    console.error('Error in getGamesByIds:', err)
+    return []
+  }
+}
+
 // Format detailed game data
 function formatGameDetails(game) {
-  let coverUrl = null
-  if (game.cover?.url) {
-    coverUrl = `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`
-  }
+  const coverUrl = extractCoverUrl(game)
 
   const releaseDate = game.first_release_date
     ? new Date(game.first_release_date * 1000)
@@ -738,7 +850,12 @@ function formatGameDetails(game) {
 
   const rating = game.rating ? (game.rating / 20).toFixed(1) : null
 
-  return normalizeGame({
+  // similar_games is returned as an array of numeric IDs (not expanded objects)
+  const similarGameIds = Array.isArray(game.similar_games)
+    ? game.similar_games.map(g => (typeof g === 'object' ? g.id : g)).filter(Boolean)
+    : []
+
+  const normalized = normalizeGame({
     id: game.id,
     title: game.name,
     description: game.summary || 'No description available.',
@@ -760,6 +877,9 @@ function formatGameDetails(game) {
     gameModes: gameModes,
     keywords: keywords,
   }, 'igdb')
+
+  normalized.similarGameIds = similarGameIds
+  return normalized
 }
 
 // Test API connection
@@ -788,18 +908,12 @@ function formatGamesRaw(games) {
     games
       .filter(game => game.name)
       .map(game => {
-        let coverUrl = null
-        if (game.cover?.url) {
-          coverUrl = `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`
-        }
+        const coverUrl = extractCoverUrl(game)
 
         let releaseDate = null
         let year = null
         if (game.first_release_date) {
           releaseDate = new Date(game.first_release_date * 1000)
-          year = releaseDate.getFullYear()
-        } else if (game.release_dates?.[0]?.date) {
-          releaseDate = new Date(game.release_dates[0].date * 1000)
           year = releaseDate.getFullYear()
         }
 
@@ -823,54 +937,40 @@ function formatGamesRaw(games) {
   )
 }
 
-// Format games data for consistent structure
 function formatGames(games) {
   const sorted = games
-    .filter((game) => game.name) // Filter out games without names
+    .filter((game) => game.name)
     .map((game) => {
-      let coverUrl = null
-      if (game.cover?.url) {
-        // IGDB cover URLs need https: prefix and we want cover_big size
-        coverUrl = `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`
-      }
+      const coverUrl = extractCoverUrl(game)
 
-      // Try to get release date from first_release_date first, then release_dates
       let releaseDate = null
       let year = null
-      
       if (game.first_release_date) {
         releaseDate = new Date(game.first_release_date * 1000)
-        year = releaseDate.getFullYear()
-      } else if (game.release_dates?.[0]?.date) {
-        releaseDate = new Date(game.release_dates[0].date * 1000)
         year = releaseDate.getFullYear()
       }
 
       const genres = game.genres?.map((g) => g.name).join(', ') || 'Unknown'
       const developer = game.involved_companies?.[0]?.company?.name || 'Unknown'
-
-      // IGDB rating is 0-100, convert to 0-5 scale
       const rating = game.rating ? (game.rating / 20).toFixed(1) : null
 
       return {
         id: game.id,
         title: game.name,
-        developer: developer,
+        developer,
         genre: genres,
-        rating: rating,
-        year: year,
+        rating,
+        year,
         image: coverUrl,
         description: game.summary || '',
-        releaseDate: releaseDate, // Store full date for sorting
+        releaseDate,
       }
     })
     .sort((a, b) => {
-      // Sort by rating first (higher rating first)
       if (a.rating && b.rating) {
         const ratingDiff = parseFloat(b.rating) - parseFloat(a.rating)
         if (ratingDiff !== 0) return ratingDiff
       }
-      // Then by release date (newer first)
       if (a.releaseDate && b.releaseDate) {
         return b.releaseDate.getTime() - a.releaseDate.getTime()
       }
@@ -879,7 +979,6 @@ function formatGames(games) {
       return 0
     })
 
-  // Normalize at the API boundary — attach gameId, rawIds, source, null-safe arrays
   return normalizeGames(sorted, 'igdb')
 }
 

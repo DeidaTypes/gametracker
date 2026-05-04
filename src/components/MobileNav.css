@@ -106,8 +106,11 @@
 }
 
 .mobile-nav-header h1 {
-  font-size: 20px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
   background: var(--color-brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

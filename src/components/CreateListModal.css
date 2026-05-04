@@ -1,16 +1,22 @@
+/* ============================================================
+   Modal shell — shared by CreateListModal, AddGamesModal,
+   EditProfileModal via .modal-overlay / .modal-content classes.
+   ============================================================ */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Must sit above the bottom-nav (z-index: 1000) so the backdrop
+     covers the full viewport and tab-bar taps are blocked. */
+  z-index: 1010;
   padding: var(--spacing-lg);
   overflow-y: auto;
   animation: fadeIn var(--transition-fast) ease;
@@ -28,7 +34,7 @@
   padding: var(--spacing-2xl);
   max-width: 500px;
   width: 100%;
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--surface-2-shadow);
   animation: slideUp var(--transition-smooth) ease;
 }
 
@@ -43,152 +49,344 @@
   }
 }
 
-.create-list-modal {
-  max-width: 700px;
+/* Modal title — EditProfileModal still uses a bare <h2> */
+.modal-content h2 {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xl);
+}
+
+@media (max-width: 480px) {
+  .modal-content h2 {
+    font-size: var(--font-size-display-l);
+    line-height: var(--line-height-display-l);
+  }
+}
+
+/* ============================================================
+   Sheet layout — used by CreateListModal and AddGamesModal.
+   Overrides the base padding / overflow so header, body, and
+   footer can sit in a flex column with an independently
+   scrollable middle section.
+   ============================================================ */
+.create-list-modal,
+.add-games-modal {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.create-list-modal::-webkit-scrollbar {
-  width: 8px;
+.create-list-modal::-webkit-scrollbar,
+.add-games-modal::-webkit-scrollbar {
+  display: none;
 }
 
-.create-list-modal::-webkit-scrollbar-track {
+/* ── Modal header ── */
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.modal-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
+  color: rgba(200, 150, 90, 0.8);
+  display: block;
+}
+
+/* Override the base h2 rule for the new header treatment */
+.create-list-modal .modal-title,
+.add-games-modal .modal-title {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.modal-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  margin: 0;
+  margin-top: 2px;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-close-button {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  margin-top: 2px;
 }
 
-.create-list-modal::-webkit-scrollbar-thumb {
+.modal-close-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.modal-close-button:active {
+  transform: scale(0.92);
+}
+
+/* ── Scrollable body ── */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
   background: var(--color-border-hover);
   border-radius: var(--radius-xs);
 }
 
-.modal-content h2 {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-xl);
-  letter-spacing: var(--letter-spacing-normal);
+/* ── Sticky footer ── */
+.modal-footer {
+  flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
-.form-group {
-  margin-bottom: var(--spacing-xl);
+.modal-footer .form-button {
+  width: 100%;
 }
 
-.form-group label {
-  display: block;
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+/* ============================================================
+   List cover preview (Create List)
+   ============================================================ */
+.list-cover-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
   margin-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.list-cover-preview__fan {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 132px;
+  padding: var(--spacing-sm) var(--spacing-lg) 0;
+}
+
+.list-cover-preview__card-wrap {
+  position: relative;
+  width: 80px;
+  height: 120px;
+  flex-shrink: 0;
+  transform-origin: center bottom;
+}
+
+.list-cover-preview__card-wrap:not(:first-child) {
+  margin-left: -36px;
+}
+
+.list-cover-preview__card {
+  width: 80px;
+  height: 120px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-cover);
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-secondary);
+}
+
+.list-cover-preview__card--placeholder {
+  position: relative;
+  background: linear-gradient(
+    165deg,
+    var(--color-bg-secondary) 0%,
+    rgba(255, 255, 255, 0.05) 42%,
+    var(--color-surface) 100%
+  );
+  box-shadow: var(--shadow-md);
+}
+
+.list-cover-preview__card--placeholder::after {
+  content: '';
+  position: absolute;
+  inset: 14px 12px 28px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  opacity: 0.85;
+}
+
+.list-cover-preview__card--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-tertiary);
+  background: linear-gradient(
+    135deg,
+    rgba(200, 150, 90, 0.14) 0%,
+    rgba(200, 150, 90, 0.05) 100%
+  );
+}
+
+.list-cover-preview__hint {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* ============================================================
+   Add games section
+   ============================================================ */
+.create-list-games-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.create-list-games-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.create-list-games-title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+}
+
+.create-list-games-caption {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+}
+
+.create-list-search-status {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
 }
 
 .form-hint {
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   color: var(--color-text-tertiary);
-  margin-top: 4px;
-  margin-bottom: var(--spacing-sm);
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  font-family: 'Inter', sans-serif;
-  font-size: var(--font-size-body);
-  transition: all var(--transition-smooth);
+.no-results-hint {
+  font-style: italic;
 }
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 100px;
-  line-height: var(--line-height-relaxed);
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-  background: var(--color-surface-hover);
-  box-shadow: 0 0 0 3px rgba(91, 143, 255, 0.1);
-}
-
-.form-group input::placeholder,
-.form-group textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-/* Game search form */
-.game-search-form {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.game-search-input {
-  flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-body);
-}
-
-.search-button {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-brand-gradient);
-  color: var(--color-text-primary);
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-semibold);
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  font-size: var(--font-size-body);
-  white-space: nowrap;
-  box-shadow: var(--shadow-glow);
-}
-
-.search-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(91, 143, 255, 0.35);
-}
-
-.search-button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.search-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.field-error {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: rgba(196, 130, 130, 0.95);
 }
 
 .search-error {
-  color: var(--color-accent-pink);
-  font-size: var(--font-size-meta);
-  margin-top: var(--spacing-xs);
+  color: rgba(196, 130, 130, 0.95);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   padding: var(--spacing-sm);
-  background: rgba(244, 114, 182, 0.1);
-  border: 1px solid rgba(244, 114, 182, 0.2);
+  background: rgba(160, 72, 72, 0.1);
+  border: 1px solid rgba(160, 72, 72, 0.25);
   border-radius: var(--radius-sm);
 }
 
-/* Search results */
+/* ============================================================
+   Search results panel
+   ============================================================ */
 .search-results-container {
-  max-height: 350px;
+  max-height: 300px;
   overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-secondary);
-  margin-top: var(--spacing-md);
 }
 
 .search-results-container::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .search-results-container::-webkit-scrollbar-track {
-  background: var(--color-surface);
+  background: transparent;
 }
 
 .search-results-container::-webkit-scrollbar-thumb {
@@ -205,9 +403,9 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -220,19 +418,33 @@
 }
 
 .search-result-item.selected {
-  background: rgba(91, 143, 255, 0.15);
+  background: rgba(200, 150, 90, 0.1);
   cursor: default;
-  border-color: var(--color-brand-primary);
 }
 
 .result-game-image {
-  width: 60px;
-  height: 80px;
+  width: 48px;
+  height: 72px;
   object-fit: cover;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+}
+
+.result-game-image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(200, 150, 90, 0.14) 0%,
+    rgba(200, 150, 90, 0.04) 100%
+  );
+  font-family: var(--font-serif);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-tertiary);
 }
 
 .result-game-info {
@@ -243,86 +455,178 @@
 .result-game-title {
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.result-game-meta {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kept for any legacy references */
 .result-game-year {
-  font-size: var(--font-size-meta);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
   color: var(--color-text-tertiary);
 }
 
-.selected-indicator {
+.result-game-add-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 150, 90, 0.18);
+  border: 1px solid rgba(200, 150, 90, 0.35);
   color: var(--color-brand-primary);
   font-size: 20px;
   font-weight: var(--font-weight-bold);
-  flex-shrink: 0;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
 }
 
-/* Selected games section */
+.search-result-item:hover .result-game-add-btn {
+  background: rgba(200, 150, 90, 0.28);
+  border-color: rgba(200, 150, 90, 0.6);
+}
+
+.result-game-add-btn:active {
+  transform: scale(0.9);
+}
+
+.result-game-added {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 150, 90, 0.12);
+  color: var(--color-brand-primary);
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   Selected games (legacy chips — kept for EditProfileModal etc.)
+   ============================================================ */
 .selected-games-section {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-xl);
+  padding-top: var(--spacing-md);
   border-top: 1px solid var(--color-border);
 }
 
-.selected-games-section label {
+.selected-games-section__label {
   display: block;
-  font-size: var(--font-size-body);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: var(--spacing-sm);
 }
 
-.selected-games-list {
+/* ── Horizontal cover strip ── */
+.selected-games-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  flex-direction: row;
+  gap: var(--spacing-xs);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+  /* Prevent flex items from shrinking below their set width */
+  flex-wrap: nowrap;
 }
 
-.selected-game-item {
+.selected-games-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.selected-games-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.selected-games-strip::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-xs);
+}
+
+.selected-game-thumb {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100px;
+  flex-shrink: 0;
+  width: 90px;
+  cursor: grab;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
-.selected-game-image {
-  width: 100px;
-  height: 133px;
+.selected-game-thumb:active {
+  cursor: grabbing;
+}
+
+.selected-game-thumb.drag-over {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.selected-game-thumb--readonly {
+  cursor: default;
+}
+
+.selected-game-thumb--readonly:active {
+  cursor: default;
+}
+
+.selected-game-thumb__img {
+  width: 90px;
+  height: 135px;
   object-fit: cover;
   border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-xs);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+  display: block;
 }
 
-.selected-game-title {
-  font-size: var(--font-size-meta);
-  color: var(--color-text-primary);
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
-  font-weight: var(--font-weight-medium);
+.selected-game-thumb__img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(200, 150, 90, 0.16) 0%,
+    rgba(200, 150, 90, 0.04) 100%
+  );
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
 }
 
-.remove-game-button {
+.selected-game-thumb__remove {
   position: absolute;
   top: -8px;
   right: -8px;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-full);
-  background: var(--color-accent-pink);
-  color: var(--color-text-primary);
+  background: rgba(160, 72, 72, 0.95);
+  color: #fff;
   border: 2px solid var(--color-bg-elevated);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
   cursor: pointer;
   display: flex;
@@ -330,74 +634,88 @@
   justify-content: center;
   line-height: 1;
   transition: all var(--transition-smooth);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.remove-game-button:hover {
+.selected-game-thumb__remove:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 16px rgba(244, 114, 182, 0.4);
+  background: rgba(196, 72, 72, 0.98);
 }
 
-.remove-game-button:active {
-  transform: scale(0.95);
+.selected-game-thumb__remove:active {
+  transform: scale(0.9);
 }
 
-.modal-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  justify-content: flex-end;
-  margin-top: var(--spacing-2xl);
-  padding-top: var(--spacing-xl);
+/* ============================================================
+   Already-in-list toggle (AddGamesModal)
+   ============================================================ */
+.already-in-list {
   border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-md);
 }
 
-.cancel-button,
-.create-button {
-  padding: var(--spacing-sm) var(--spacing-xl);
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-semibold);
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  font-size: var(--font-size-body);
-}
-
-.cancel-button {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-}
-
-.cancel-button:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-}
-
-.create-button {
-  background: var(--color-brand-gradient);
-  color: var(--color-text-primary);
+.already-in-list__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
   border: none;
-  box-shadow: var(--shadow-glow);
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  gap: var(--spacing-sm);
+  transition: color var(--transition-fast);
 }
 
-.create-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(91, 143, 255, 0.35);
+.already-in-list__toggle:hover {
+  color: rgba(255, 255, 255, 0.65);
 }
 
-.create-button:active:not(:disabled) {
-  transform: translateY(0);
+.already-in-list__chevron {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-block;
+  transform: rotate(90deg);
+  transition: transform var(--transition-fast);
 }
 
-.create-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.already-in-list__chevron.expanded {
+  transform: rotate(270deg);
 }
 
-/* Mobile responsive */
+.already-in-list__strip {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-xs);
+  overflow-x: auto;
+  padding-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  flex-wrap: nowrap;
+}
+
+.already-in-list__strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.already-in-list__strip::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-xs);
+}
+
+/* ============================================================
+   Mobile
+   ============================================================ */
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 0;
+    align-items: flex-end;
   }
 
   .modal-content {
@@ -407,29 +725,56 @@
     max-height: 100vh;
   }
 
-  .create-list-modal {
+  /* Plain .modal-content modals (e.g. EditProfile on mobile) need
+     bottom padding so their submit button clears the tab bar. */
+  .modal-content:not(.create-list-modal):not(.add-games-modal) {
+    padding-bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .create-list-modal,
+  .add-games-modal {
     max-width: 100%;
-    border-radius: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
   }
 
-  .game-search-form {
-    flex-direction: column;
+  /* Sticky footer must clear the tab bar + home indicator */
+  .modal-footer {
+    padding-bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-content {
+    animation: none;
   }
 
-  .search-button {
-    width: 100%;
+  .selected-game-thumb,
+  .modal-close-button,
+  .result-game-add-btn,
+  .selected-game-thumb__remove,
+  .already-in-list__chevron {
+    transition: none;
   }
 
-  .selected-games-list {
-    justify-content: center;
+  .modal-close-button:active,
+  .result-game-add-btn:active,
+  .selected-game-thumb__remove:hover,
+  .selected-game-thumb__remove:active {
+    transform: none;
   }
 
-  .modal-actions {
-    flex-direction: column-reverse;
+  /* Non-motion press feedback so the modal's small icon buttons still
+     register a tap visually after their scale-down has been disabled. */
+  .modal-close-button:active {
+    background: rgba(255, 255, 255, 0.12);
   }
-
-  .cancel-button,
-  .create-button {
-    width: 100%;
+  .result-game-add-btn:active {
+    background: var(--color-brand-primary);
+    color: #fff;
+  }
+  .selected-game-thumb__remove:active {
+    background: rgba(0, 0, 0, 0.85);
   }
 }

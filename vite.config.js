@@ -13,13 +13,15 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/igdb/, ''),
         configure: (proxy, _options) => {
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            // Forward the original headers
             if (req.headers['client-id']) {
               proxyReq.setHeader('Client-ID', req.headers['client-id'])
             }
             if (req.headers['authorization']) {
               proxyReq.setHeader('Authorization', req.headers['authorization'])
             }
+          })
+          proxy.on('proxyRes', (proxyRes, _req, _res) => {
+            proxyRes.headers['cache-control'] = 'public, s-maxage=3600, stale-while-revalidate=86400'
           })
         },
       },

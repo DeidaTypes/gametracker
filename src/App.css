@@ -6,7 +6,9 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--color-bg-primary);
+  /* Transparent so the ambient body gradient (set in theme.css) shows
+     through every page. */
+  background: transparent;
   position: relative;
 }
 
@@ -15,7 +17,8 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--color-bg-primary);
+  /* Transparent — body's fixed gradient supplies the page background. */
+  background: transparent;
   position: relative;
   z-index: 1;
   /* Mobile: no margin needed — sidebar hidden, bottom nav fixed */
@@ -40,8 +43,10 @@
   gap: var(--spacing-lg);
   color: var(--color-text-tertiary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-meta);
-  letter-spacing: var(--letter-spacing-wider);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
 }
 

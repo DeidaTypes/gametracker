@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import AppShell from '../components/AppShell'
-import CurrentlyPlayingCarousel from '../components/CurrentlyPlayingCarousel'
-import HomeQuickCards from '../components/HomeQuickCards'
-import SmartListSection from '../components/SmartListSection'
+import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
+import WantToPlayCard from '../components/WantToPlayCard'
 import { getGamesFromList, getContinuePlayingGames } from '../services/libraryService'
-import { getMostPlayed } from '../services/smartListService'
 import './Home.css'
 
 function HomeSkeleton() {
@@ -14,9 +12,8 @@ function HomeSkeleton() {
         <div className="skeleton home-sk-heading-block" />
       </div>
       <div className="skeleton home-sk-hero" />
-      <div className="home-sk-duo">
-        <div className="skeleton home-sk-duo-card" />
-        <div className="skeleton home-sk-duo-card" />
+      <div className="home-sk-single">
+        <div className="skeleton home-sk-single-card" />
       </div>
     </div>
   )
@@ -26,8 +23,6 @@ function Home() {
   const [loading, setLoading] = useState(true)
   const [continueGames, setContinueGames] = useState([])
   const [wantToPlayGames, setWantToPlayGames] = useState([])
-  const [mostPlayed, setMostPlayed] = useState([])
-
   useEffect(() => {
     function loadHomeData() {
       try {
@@ -37,8 +32,6 @@ function Home() {
 
         const wtp = getGamesFromList('want-to-play')
         setWantToPlayGames(wtp)
-
-        setMostPlayed(getMostPlayed(5))
       } catch (err) {
         console.error('Error loading home data:', err)
       } finally {
@@ -73,32 +66,20 @@ function Home() {
     )
   }
 
-  const wtpCover = wantToPlayGames.length > 0 ? wantToPlayGames[0].image : null
-
   return (
     <AppShell>
       <div className="home">
         <div className="home-body">
 
-          {/* Currently Playing carousel — hero section */}
-          <section className="home-section home-section--carousel">
-            <CurrentlyPlayingCarousel games={continueGames} />
+          {/* Currently Playing — hero + secondary carousel */}
+          <section className="home-section home-section--bleed">
+            <HeroCurrentlyPlaying games={continueGames} />
           </section>
 
-          {/* Quick cards: Want to Play + Stats */}
-          <section className="home-section home-section--duo">
-            <HomeQuickCards
-              wantToPlayCover={wtpCover}
-            />
+          {/* Want to Play card */}
+          <section className="home-section">
+            <WantToPlayCard games={wantToPlayGames} />
           </section>
-
-          {/* Most Played */}
-          <SmartListSection
-            title="Most Played"
-            games={mostPlayed}
-            badgeFn={(g) => `${g.hoursPlayed}h`}
-            listKey="most-played"
-          />
 
         </div>
       </div>

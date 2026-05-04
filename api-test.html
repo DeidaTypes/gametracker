@@ -129,8 +129,6 @@
             // Check if environment variables are accessible
             const clientId = import.meta.env.VITE_IGDB_CLIENT_ID;
             const clientSecret = import.meta.env.VITE_IGDB_CLIENT_SECRET;
-            const rawgKey = import.meta.env.VITE_RAWG_API_KEY;
-            
             let html = '<div class="result">';
             html += '<strong>Environment Variables Status:</strong>\n\n';
             
@@ -144,12 +142,6 @@
                 html += '✅ VITE_IGDB_CLIENT_SECRET: Set\n';
             } else {
                 html += '❌ VITE_IGDB_CLIENT_SECRET: Missing or placeholder\n';
-            }
-            
-            if (rawgKey && rawgKey !== '') {
-                html += '✅ VITE_RAWG_API_KEY: Set\n';
-            } else {
-                html += '⚠️  VITE_RAWG_API_KEY: Not set (optional)\n';
             }
             
             html += '\n<strong>Note:</strong> If environment variables are not set correctly,\n';

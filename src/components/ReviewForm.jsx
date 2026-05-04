@@ -1,14 +1,44 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  TextArea,
+  StarRating,
+  NumericField,
+  SubmitButton,
+} from './forms'
 import './ReviewForm.css'
 
-function ReviewForm({ gameId, gameTitle, gameImage, gameYear, onSubmit, onCancel, isOpen }) {
+const RATING_DESCRIPTIONS = {
+  0.5: 'I have words. None are kind.',
+  1.0: 'Disappointing.',
+  1.5: 'Rough.',
+  2.0: 'Underwhelming.',
+  2.5: 'Mixed feelings.',
+  3.0: 'Solid.',
+  3.5: 'Genuinely enjoyed it.',
+  4.0: 'Loved it.',
+  4.5: 'Near perfect.',
+  5.0: 'All-timer.',
+}
+
+function ReviewForm({
+  gameId,
+  gameTitle,
+  gameImage,
+  gameYear,
+  gameDeveloper,
+  gameStatus,
+  onSubmit,
+  onCancel,
+  isOpen,
+}) {
   const [rating, setRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
   const [text, setText] = useState('')
   const [hoursPlayed, setHoursPlayed] = useState('')
+  const [liked, setLiked] = useState(false)
+  const [containsSpoilers, setContainsSpoilers] = useState(false)
+  const [markCompleted, setMarkCompleted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -31,34 +61,25 @@ function ReviewForm({ gameId, gameTitle, gameImage, gameYear, onSubmit, onCancel
     }
   }, [isOpen, onCancel])
 
-  const autoResizeTextarea = useCallback(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 300) + 'px'
-  }, [])
-
-  const handleTextChange = (e) => {
-    setText(e.target.value)
-    autoResizeTextarea()
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!text.trim()) {
-      alert('Please write a review before submitting.')
-      return
-    }
+    if (!rating) return
     setSubmitting(true)
     onSubmit({
-      rating: rating || 5,
+      rating,
       text: text.trim(),
       hoursPlayed: hoursPlayed ? parseFloat(hoursPlayed) : 0,
+      liked,
+      containsSpoilers,
+      markCompleted,
     })
     setSubmitting(false)
     setText('')
     setRating(0)
     setHoursPlayed('')
+    setLiked(false)
+    setContainsSpoilers(false)
+    setMarkCompleted(false)
   }
 
   const handleBackdropClick = (e) => {
@@ -67,145 +88,205 @@ function ReviewForm({ gameId, gameTitle, gameImage, gameYear, onSubmit, onCancel
 
   if (!isOpen) return null
 
-  const currentRating = hoverRating || rating
-
-  const renderStars = () =>
-    [1, 2, 3, 4, 5].map((star) => {
-      const isFull = star <= currentRating
-      const isHalf = star === Math.ceil(currentRating) && currentRating % 1 !== 0
-      const fillState = isFull ? 'filled' : isHalf ? 'half' : 'empty'
-
-      return (
-        <div key={star} className="star-container">
-          <svg
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={`star-icon ${fillState}`}
-            aria-hidden="true"
-          >
-            <defs>
-              <clipPath id={`clip-rv-${star}`}>
-                <rect x="0" y="0" width="12" height="24" />
-              </clipPath>
-            </defs>
-            <path
-              d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-              className="star-outline"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-              className="star-fill"
-              fill="currentColor"
-              clipPath={isHalf ? `url(#clip-rv-${star})` : undefined}
-            />
-          </svg>
-
-          <button
-            type="button"
-            className="star-half-button left"
-            onClick={() => setRating(star - 0.5)}
-            onMouseEnter={() => setHoverRating(star - 0.5)}
-            onMouseLeave={() => setHoverRating(0)}
-            aria-label={`Rate ${star - 0.5} stars`}
-          />
-          <button
-            type="button"
-            className="star-half-button right"
-            onClick={() => setRating(star)}
-            onMouseEnter={() => setHoverRating(star)}
-            onMouseLeave={() => setHoverRating(0)}
-            aria-label={`Rate ${star} stars`}
-          />
-        </div>
-      )
-    })
-
-  const fallbackImage = 'https://via.placeholder.com/280x380/1a1a1a/ffffff?text=No+Cover'
+  const fallbackImage =
+    'https://via.placeholder.com/280x380/1a1a1a/ffffff?text=No+Cover'
+  const canSubmit = !submitting && rating > 0
+  const ratingDescription = rating > 0 ? RATING_DESCRIPTIONS[rating] : null
+  const showMarkCompleted = gameStatus !== 'played'
+  const coverSrc = gameImage || fallbackImage
 
   return createPortal(
     <div className="review-modal-backdrop" onClick={handleBackdropClick}>
-      <div className="review-modal">
-        <button className="review-modal-close" onClick={onCancel} aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <div
+        className="review-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Write Review"
+      >
+        <button
+          className="review-modal-close"
+          onClick={onCancel}
+          aria-label="Close"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
 
-        <div className="review-modal-content">
-          <div className="review-modal-right">
-            {/* Header */}
-            <div className="review-modal-header">
-              <img
-                src={gameImage || fallbackImage}
-                alt={gameTitle}
-                className="review-modal-thumb"
-                onError={(e) => { e.target.src = fallbackImage }}
+        <div className="review-modal-scroll">
+          {/* ── Header ── */}
+          <div className="review-modal-header">
+            <div className="review-cover-wrap">
+              <div
+                className="review-cover-glow"
+                style={{ backgroundImage: `url(${coverSrc})` }}
+                aria-hidden="true"
               />
-              <div>
-                <h2 className="review-modal-title">{gameTitle}</h2>
-                {gameYear && <span className="review-modal-year">{gameYear}</span>}
-              </div>
+              <img
+                src={coverSrc}
+                alt={gameTitle}
+                className="review-cover-img"
+                onError={(e) => {
+                  e.target.src = fallbackImage
+                }}
+              />
             </div>
-
-            <form id="review-form" onSubmit={handleSubmit} className="review-modal-form">
-              {/* Rating + Hours in one row */}
-              <div className="review-fields-row">
-                <div className="review-field-group">
-                  <label className="review-modal-label">Your Rating</label>
-                  <div className="review-modal-stars">
-                    {renderStars()}
-                  </div>
-                </div>
-                <div className="review-field-group review-field-group--hours">
-                  <label htmlFor="hours-played" className="review-modal-label">Hours Played</label>
-                  <input
-                    id="hours-played"
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={hoursPlayed}
-                    onChange={(e) => setHoursPlayed(e.target.value)}
-                    placeholder="0"
-                    className="hours-input"
-                  />
-                </div>
-              </div>
-
-              {/* Review text */}
-              <div className="review-textarea-section">
-                <label className="review-modal-label">Your Review</label>
-                <textarea
-                  ref={textareaRef}
-                  value={text}
-                  onChange={handleTextChange}
-                  placeholder="Write your review..."
-                  className="review-modal-textarea"
-                  rows={4}
-                />
-              </div>
-            </form>
+            <div className="review-header-meta">
+              <span className="review-eyebrow">Writing review for</span>
+              <h2 className="review-game-title">{gameTitle}</h2>
+              {(gameYear || gameDeveloper) && (
+                <p className="review-game-sub">
+                  {gameYear}
+                  {gameDeveloper && gameYear ? ' · ' : ''}
+                  {gameDeveloper}
+                </p>
+              )}
+            </div>
           </div>
+
+          <div className="review-header-divider" aria-hidden="true" />
+
+          {/* ── Form ── */}
+          <form
+            id="review-form"
+            onSubmit={handleSubmit}
+            className="review-form"
+            noValidate
+          >
+            {/* Rating */}
+            <section className="review-section">
+              <span className="review-section-label">Your Rating</span>
+              <StarRating
+                value={rating}
+                onChange={setRating}
+                size="lg"
+                aria-label="Your rating out of 5"
+              />
+              <p
+                className={[
+                  'review-rating-desc',
+                  ratingDescription ? 'review-rating-desc--visible' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-live="polite"
+              >
+                {ratingDescription || '\u00a0'}
+              </p>
+            </section>
+
+            {/* Hours played */}
+            <section className="review-section">
+              <span className="review-section-label">Hours Played</span>
+              <NumericField
+                value={hoursPlayed}
+                onChange={(e) => setHoursPlayed(e.target.value)}
+                suffix="hours"
+                min={0}
+                step={0.5}
+                placeholder="0"
+              />
+              {showMarkCompleted && (
+                <label className="review-toggle">
+                  <input
+                    type="checkbox"
+                    checked={markCompleted}
+                    onChange={(e) => setMarkCompleted(e.target.checked)}
+                    className="review-toggle__input"
+                  />
+                  <span className="review-toggle__box" aria-hidden="true" />
+                  <span className="review-toggle__text">Mark as completed</span>
+                </label>
+              )}
+            </section>
+
+            {/* Review body */}
+            <section className="review-section">
+              <TextArea
+                label="Your Review"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="What did you think? No spoilers, please."
+                maxLength={5000}
+                className="review-textarea-field"
+              />
+              <p className="review-format-hint">
+                Tip: Use <em>*italics*</em> for emphasis. Spoilers? Add{' '}
+                <code>[spoiler]...[/spoiler]</code> tags.
+              </p>
+            </section>
+
+            {/* Optional toggles */}
+            <section className="review-section review-toggles-row">
+              <label className="review-toggle review-toggle--heart">
+                <input
+                  type="checkbox"
+                  checked={liked}
+                  onChange={(e) => setLiked(e.target.checked)}
+                  className="review-toggle__input"
+                />
+                <svg
+                  className={[
+                    'review-heart-icon',
+                    liked ? 'review-heart-icon--filled' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill={liked ? 'var(--color-brand-primary)' : 'none'}
+                  stroke={
+                    liked ? 'var(--color-brand-primary)' : 'currentColor'
+                  }
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                <span className="review-toggle__text">Liked</span>
+              </label>
+
+              <label className="review-toggle">
+                <input
+                  type="checkbox"
+                  checked={containsSpoilers}
+                  onChange={(e) => setContainsSpoilers(e.target.checked)}
+                  className="review-toggle__input"
+                />
+                <span className="review-toggle__box" aria-hidden="true" />
+                <span className="review-toggle__text">Contains spoilers</span>
+              </label>
+            </section>
+          </form>
         </div>
 
-        {/* Sticky submit button */}
+        {/* ── Sticky footer ── */}
         <div className="review-sticky-footer">
-          <button
+          <SubmitButton
             type="submit"
             form="review-form"
-            disabled={submitting || !text.trim()}
+            disabled={!canSubmit}
+            loading={submitting}
             className="review-modal-submit"
           >
-            {submitting ? 'Posting...' : 'Post Review'}
-          </button>
+            Post Review
+          </SubmitButton>
+          <p className="review-footer-hint">
+            Your review will appear on your profile and on this game's page.
+          </p>
         </div>
       </div>
     </div>,

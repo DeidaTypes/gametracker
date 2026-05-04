@@ -1,0 +1,32 @@
+/* =====================================================
+   REDUCED-MOTION GLOBAL FALLBACK
+   CSS counterpart to useMotionPreference hook.
+   Kills all transitions/animations at the OS level
+   so even components that bypass the hook are covered.
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =====================================================
+   PAGE-LEVEL CROSS-FADE + SLIDE WRAPPER
+   Rendered by <PageTransition> for every top-level
+   route (see src/components/PageTransition.jsx).
+   Keep layout-neutral: pages should scroll and size
+   exactly as they did before the wrapper was added.
+   ===================================================== */
+
+.page-transition {
+  width: 100%;
+  /* Hint the compositor to keep opacity + transform on the GPU.
+     Both properties are animated by the page-level fade/slide. */
+  will-change: opacity, transform;
+}
