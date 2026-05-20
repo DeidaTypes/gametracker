@@ -212,6 +212,21 @@
   --color-status-played: #4A7FA5;
   --color-status-want: #C4634E;
   --color-status-review: #C8965A;
+
+  /* ---- Sprint 5: Review Card & Cover Header ---- */
+  --review-card-radius: 16px;
+  --review-card-padding: 16px;
+  --cover-header-radius: 12px;
+  --cover-header-height: 80px;
+  --cover-header-padding: 12px;
+  --cover-thumb-size: 64px;
+  --cover-thumb-radius: 8px;
+  --section-gap: 12px;
+
+  /* ---- Sprint 5: Tier Colors ---- */
+  --tier-bronze: #CD7F32;
+  --tier-silver: #C0C0C0;
+  --tier-gold: #FFD700;
 }
 
 /* =============================================

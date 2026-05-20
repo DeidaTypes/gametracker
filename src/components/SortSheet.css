@@ -1,0 +1,84 @@
+/* ============================================================
+   SortSheet — pill-selector bottom sheet
+   Reuses .action-sheet-overlay and .action-sheet classes from
+   ActionSheet.css for the overlay + slide-up animation.
+   ============================================================ */
+
+.sort-sheet__pills {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 8px;
+}
+
+.sort-sheet__pill {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sort-sheet__pill:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.sort-sheet__pill--active {
+  background: #ffffff;
+  color: var(--color-bg-primary);
+  border-color: transparent;
+  font-weight: var(--font-weight-semibold);
+}
+
+.sort-sheet__pill--active:hover {
+  background: #f0f0f0;
+}
+
+.sort-sheet__footer {
+  padding: 8px 16px 4px;
+}
+
+.sort-sheet__apply {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-brand-gradient);
+  color: var(--color-bg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-body);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.3);
+  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.sort-sheet__apply:hover {
+  box-shadow: 0 8px 28px rgba(200, 150, 90, 0.45);
+  transform: translateY(-1px);
+}
+
+.sort-sheet__apply:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sort-sheet__pill,
+  .sort-sheet__apply {
+    transition: none;
+  }
+}

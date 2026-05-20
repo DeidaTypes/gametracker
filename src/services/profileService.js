@@ -8,6 +8,21 @@ const DEFAULT_PROFILE = {
   username: null, // Optional username/handle
   avatar: null, // Base64 or URL
   bio: '',
+  // Social handles — stored raw (no leading '@'). The '@' is added at
+  // display time only. URL templates are owned by Profile.jsx so the
+  // service stays presentation-agnostic.
+  instagramHandle: '',
+  xHandle: '',
+  youtubeHandle: '',
+  tiktokHandle: '',
+  // Up-to-4 favorite-game cards rendered in the Home tab. Each entry is
+  // a slim copy of the IGDB game shape used elsewhere on the profile
+  // ({ id, title, image, developer }) so the picker can hand them in
+  // without forcing Profile.jsx to round-trip IGDB on render.
+  favoriteGames: [],
+  // Sprint 7 — banner image stored in Supabase Storage; only the public
+  // URL lives here so the Profile screen renders without a round-trip.
+  bannerUrl: null,
   createdAt: new Date().toISOString(),
 }
 
@@ -19,6 +34,17 @@ export function initializeProfile() {
     saveProfile(profile)
     return profile
   }
+  // Backfill any new fields that didn't exist when this profile was
+  // created so older devices pick up the Sprint 5 socials/favorites
+  // defaults without a destructive rewrite.
+  let needsSave = false
+  for (const key of Object.keys(DEFAULT_PROFILE)) {
+    if (existing[key] === undefined) {
+      existing[key] = DEFAULT_PROFILE[key]
+      needsSave = true
+    }
+  }
+  if (needsSave) saveProfile(existing)
   return existing
 }
 

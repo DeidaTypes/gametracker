@@ -1,0 +1,204 @@
+.badges-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: var(--bottom-nav-safe-area);
+  background: transparent;
+}
+
+.badges-page__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  z-index: 10;
+}
+
+.badges-page__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.badges-page__back:hover {
+  background: var(--color-surface);
+}
+
+.badges-page__title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  text-align: center;
+  margin: 0;
+}
+
+.badges-page__spacer {
+  width: 36px;
+  height: 36px;
+}
+
+.badges-page__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+  padding: var(--spacing-xl) var(--page-padding);
+  max-width: var(--page-max-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.badges-page__empty {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  margin: 0;
+}
+
+.badges-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.badges-page__section-title {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* 3-column grid as specified. Cards use auto-fit at the larger
+   breakpoints so wide viewports don't leave a giant gutter on the
+   right; mobile keeps the strict 3-up. */
+.badges-page__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg) var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .badges-page__grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+/* ============================================================
+   Badge card — icon + name. Used for all three sections.
+   ============================================================ */
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-xs);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--transition-fast);
+}
+
+.badge-card:hover {
+  transform: translateY(-2px);
+}
+
+.badge-card--locked {
+  opacity: 0.4;
+}
+
+.badge-card__icon-stack {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.badge-card__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  border: 3px solid var(--tier-bronze);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.badge-card__icon--bronze {
+  box-shadow: 0 0 0 4px rgba(205, 127, 50, 0.10), var(--shadow-sm);
+}
+.badge-card__icon--silver {
+  box-shadow: 0 0 0 4px rgba(192, 192, 192, 0.12), var(--shadow-sm);
+}
+.badge-card__icon--gold {
+  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.14), var(--shadow-sm);
+}
+.badge-card__icon--platinum {
+  box-shadow: 0 0 0 4px rgba(229, 228, 226, 0.18), var(--shadow-sm);
+}
+
+.badge-card__lock {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.badge-card__name {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-primary);
+  max-width: 110px;
+  /* Two-line clamp keeps cards even-height even when names wrap. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-card,
+  .badges-page__back {
+    transition: none;
+  }
+  .badge-card:hover {
+    transform: none;
+  }
+}

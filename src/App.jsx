@@ -20,8 +20,15 @@ import Library from './pages/Library'
 import Wishlist from './pages/Wishlist'
 import Reviews from './pages/Reviews'
 import GameDetail from './pages/GameDetail'
+import GameReviewsAll from './pages/GameReviewsAll'
 import DeveloperDetail from './pages/DeveloperDetail'
 import Profile from './pages/Profile'
+import UserBadgesPage from './pages/UserBadgesPage'
+import UserFollowers from './pages/UserFollowers'
+import UserFollowing from './pages/UserFollowing'
+import MessagesInbox from './pages/MessagesInbox'
+import MessagesThread from './pages/MessagesThread'
+import ReviewComments from './pages/ReviewComments'
 import Stats from './pages/Stats'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
 import SmartListDetail from './pages/SmartListDetail'
@@ -29,12 +36,19 @@ import ListDetail from './pages/ListDetail'
 import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
 import SignUp from './pages/auth/SignUp'
+// Dev-only visual harnesses. Lazily imported and only registered when
+// import.meta.env.DEV is true so they're stripped from production bundles.
+const ReviewCardDemo = import.meta.env.DEV
+  ? React.lazy(() => import('./pages/_dev/ReviewCardDemo'))
+  : null
 import { getPreferences, initializePreferences } from './services/userPreferences'
 import { initializeProfile } from './services/profileService'
 import ToastHost from './components/Toast'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
+import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
+import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import './styles/theme.css'
 import './styles/grid.css'
 import './styles/_motion.css'
@@ -108,6 +122,12 @@ function AppContent() {
   // The single shared scroll container for every page. BottomNav subscribes
   // to its scroll position to drive the iOS-26 shrink-on-scroll behavior.
   const mainContentRef = useRef(null)
+
+  // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
+  // earning a badge anywhere in the app surfaces a celebratory toast.
+  // The hook is a no-op while `user` is null and self-handles first-mount
+  // semantics so we don't toast for already-earned badges on page load.
+  useBadgeUnlockWatcher()
 
   const isPublicRoute = PUBLIC_PATHS.has(location.pathname)
 
@@ -271,6 +291,14 @@ function AppContent() {
               }
             />
             <Route
+              path="/game/:gameId/reviews"
+              element={
+                <RequireAuth>
+                  <PageTransition><GameReviewsAll /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/developer/:developerName"
               element={
                 <RequireAuth>
@@ -310,6 +338,37 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Sprint 5 P9 — Full badge grid for any user. The page resolves
+                :username → user_id internally so deep links from a chevron
+                tap on the BadgesRow work for both own + future other-user
+                profiles. */}
+            <Route
+              path="/user/:username/badges"
+              element={
+                <RequireAuth>
+                  <PageTransition><UserBadgesPage /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            {/* Sprint 6 — Followers / Following list pages. Each is a
+                thin route wrapper around the shared FollowsListPage
+                component which owns header + tabs + pagination. */}
+            <Route
+              path="/user/:username/followers"
+              element={
+                <RequireAuth>
+                  <PageTransition><UserFollowers /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/:username/following"
+              element={
+                <RequireAuth>
+                  <PageTransition><UserFollowing /></PageTransition>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/stats"
               element={
@@ -318,6 +377,52 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Sprint 6 P1 — Threaded comments on a single review. */}
+            <Route
+              path="/reviews/:reviewId/comments"
+              element={
+                <RequireAuth>
+                  <PageTransition><ReviewComments /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            {/* Sprint 6 P2 — Direct messages. /messages is the inbox,
+                /messages/:username opens (or starts) a thread with that
+                user. The Sprint 5 P8 stub at /messages/coming-soon now
+                redirects to the real inbox so any deep links saved
+                during the stub period still resolve to a useful place. */}
+            <Route
+              path="/messages"
+              element={
+                <RequireAuth>
+                  <PageTransition><MessagesInbox /></PageTransition>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/messages/coming-soon"
+              element={<Navigate to="/messages" replace />}
+            />
+            <Route
+              path="/messages/:username"
+              element={
+                <RequireAuth>
+                  <PageTransition><MessagesThread /></PageTransition>
+                </RequireAuth>
+              }
+            />
+
+            {/* Dev-only routes — registered only when running `vite dev`. */}
+            {import.meta.env.DEV && ReviewCardDemo && (
+              <Route
+                path="/_dev/review-card"
+                element={
+                  <React.Suspense fallback={null}>
+                    <ReviewCardDemo />
+                  </React.Suspense>
+                }
+              />
+            )}
 
             {/* Catch-all: send everything else through the auth guard so
                 unknown logged-out URLs land on /login (with redirectTo)
@@ -342,19 +447,25 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        {/* GameColorProvider wraps everything so BottomNav, GameDetail, and
-            any future chrome consumers can all read/write the current game's
-            extracted swatch palette. */}
-        <GameColorProvider>
-          <AppContent />
-          <ToastHost />
-          {/* Mounted once at the root so first-time-Played transitions from
-              anywhere in the app (Game Detail, AddToListButton, future
-              quick-status changes) all surface the same celebration. The
-              component subscribes to celebrationService's queue and only
-              renders when the head is non-null. */}
-          <CompletionCelebration />
-        </GameColorProvider>
+        {/* UnreadMessagesProvider needs the auth user, so it sits inside
+            AuthProvider but outside GameColorProvider/AppContent so the
+            BottomNav (and any future chrome) can subscribe to the
+            unread DM count from a single source. */}
+        <UnreadMessagesProvider>
+          {/* GameColorProvider wraps everything so BottomNav, GameDetail, and
+              any future chrome consumers can all read/write the current game's
+              extracted swatch palette. */}
+          <GameColorProvider>
+            <AppContent />
+            <ToastHost />
+            {/* Mounted once at the root so first-time-Played transitions from
+                anywhere in the app (Game Detail, AddToListButton, future
+                quick-status changes) all surface the same celebration. The
+                component subscribes to celebrationService's queue and only
+                renders when the head is non-null. */}
+            <CompletionCelebration />
+          </GameColorProvider>
+        </UnreadMessagesProvider>
       </AuthProvider>
     </Router>
   )

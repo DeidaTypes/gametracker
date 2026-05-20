@@ -43,12 +43,35 @@
 .sp-form {
   display: flex;
   width: 100%;
+  align-items: center;
+  gap: 8px;
 }
 
 .sp-input-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
+}
+
+/* ---- Cancel button (sits to the right of the input when focused
+   or when the user has typed something). Plain text button to mimic
+   the iOS-style search header. ---- */
+.sp-cancel-btn {
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  min-height: 44px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-brand-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.sp-cancel-btn:active {
+  opacity: 0.6;
 }
 
 .sp-input-icon {
@@ -637,6 +660,478 @@
 .sp-empty-genres {
   width: 100%;
   margin-top: var(--spacing-lg);
+}
+
+/* =============================================
+   TABS — Sprint 5 P3
+   Mirror the Profile tab pattern (copper text + 2px copper underline
+   on active). Lives inside the sticky header so the tab bar stays
+   anchored above whatever content is scrolling underneath.
+   ============================================= */
+.sp-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: 8px 0 0;
+  margin-top: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sp-tab {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 12px 6px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  cursor: pointer;
+  position: relative;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+}
+
+.sp-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.sp-tab--active {
+  color: var(--color-brand-primary);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-brand-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-tab {
+    transition: none;
+  }
+}
+
+/* ---- Tab content wrapper ---- */
+.sp-tab-content {
+  padding-top: 8px;
+}
+
+/* ---- Recents header (every tab) ---- */
+.sp-recents-clear-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+
+.sp-recents-clear-x:hover {
+  color: var(--color-text-primary);
+}
+
+.sp-recents-clear-x svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- Per-row remove button (chips, users, lists) ---- */
+.sp-recent-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+
+.sp-recent-remove:hover {
+  color: var(--color-text-primary);
+}
+
+.sp-recent-remove svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- Vertical list container shared by Reviews / Users / Lists ---- */
+.sp-recent-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* =============================================
+   GAMES tab — recent cover row
+   ============================================= */
+.sp-recent-cover-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 16px 4px 0;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sp-recent-cover-row::-webkit-scrollbar {
+  display: none;
+}
+
+.sp-recent-cover {
+  flex: 0 0 auto;
+  width: 90px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  scroll-snap-align: start;
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms ease;
+  position: relative;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sp-recent-cover:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.sp-recent-cover:active {
+  transform: scale(0.95);
+}
+
+.sp-recent-cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* =============================================
+   REVIEWS tab — query chips
+   ============================================= */
+.sp-recent-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-recent-chip {
+  flex: 1;
+  text-align: left;
+  background: var(--color-bg-elevated);
+  border: none;
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.25),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  transition: background-color 120ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-recent-chip:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.sp-recent-chip:active {
+  background: var(--color-bg-secondary);
+}
+
+/* Stack ReviewCard results with the same gap as recents lists. */
+.sp-reviews-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* =============================================
+   USERS tab — rows
+   ============================================= */
+.sp-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--surface-1-shadow);
+}
+
+.sp-user-row__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+
+.sp-user-row__main:active {
+  opacity: 0.7;
+}
+
+.sp-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-bg-elevated);
+  flex-shrink: 0;
+}
+
+.sp-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sp-user-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sp-user-row__username {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-user-row__display {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-user-row__follow {
+  flex-shrink: 0;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  border: 1px solid var(--color-brand-primary);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 32px;
+  transition: background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.sp-user-row__follow:active {
+  opacity: 0.8;
+}
+
+.sp-user-row__follow:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.sp-user-row__follow--following {
+  background: transparent;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.sp-user-row__follow--following:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+/* =============================================
+   LISTS tab — mosaic rows
+   ============================================= */
+.sp-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 0;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--surface-1-shadow);
+}
+
+.sp-list-row__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+
+.sp-list-row__main:active {
+  opacity: 0.85;
+}
+
+.sp-list-mosaic {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  width: 100%;
+  height: 80px;
+}
+
+.sp-list-mosaic__cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg-elevated);
+  overflow: hidden;
+}
+
+.sp-list-mosaic__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sp-list-mosaic__cell--empty {
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-elevated) 0%,
+    var(--color-bg-tertiary) 100%
+  );
+}
+
+.sp-list-row__body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sp-list-row__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-list-row__desc {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-list-row__author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.sp-list-row__author .sp-user-avatar {
+  width: 22px;
+  height: 22px;
+}
+
+.sp-list-row__author-name {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sp-list-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+}
+
+.sp-list-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+}
+
+.sp-list-row__share {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+
+.sp-list-row .sp-recent-remove {
+  align-self: flex-start;
+  margin-top: 6px;
+  margin-right: 6px;
+}
+
+/* ---- Inline "no results" copy used by Reviews / Users / Lists tabs ---- */
+.sp-noresults-text {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-body);
+  padding: var(--spacing-lg) 0;
 }
 
 /* ---- Desktop ---- */

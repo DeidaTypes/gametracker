@@ -47,10 +47,24 @@
   border: 1px solid rgba(100, 255, 130, 0.25);
 }
 
+/* Badge unlock celebrations — warm amber tint to match the brand
+   accent. The unlock watcher injects this type whenever a new badge
+   crosses isEarned. */
+.toast--badge {
+  background: linear-gradient(135deg, rgba(200, 150, 90, 0.96), rgba(161, 114, 54, 0.96));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #1a0f00;
+  border: 1px solid rgba(255, 215, 130, 0.4);
+}
+
 .toast-icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toast-message {

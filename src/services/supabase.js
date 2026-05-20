@@ -21,6 +21,13 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
  * reloads (session is stored in localStorage by default). detectSessionInUrl
  * lets future flows (magic link, OAuth) automatically pick up the session
  * fragment after a redirect back to the app.
+ *
+ * The `lock` override disables Supabase's Web Locks-based auth coordination.
+ * That coordination is meant to prevent two tabs from refreshing the same
+ * token simultaneously, but in practice (especially with React Strict Mode
+ * in dev) it throws AbortError: "Lock broken by another request" whenever
+ * two requests race the auth subsystem. For a single-user mobile-first app
+ * the cross-tab coordination is unnecessary, so we pass through directly.
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -28,6 +35,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    lock: async (name, acquireTimeout, fn) => fn(),
   },
 })
 

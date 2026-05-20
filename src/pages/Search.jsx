@@ -1,25 +1,46 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { HiX } from 'react-icons/hi'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useSearch } from '../hooks/useSearch'
-import { useRecentSearches } from '../hooks/useRecentSearches'
+import { useDebounce } from '../hooks/useDebounce'
+import {
+  addRecent,
+  removeRecent,
+  clearRecents,
+  useRecents,
+} from '../utils/recentSearches'
 import { fetchBrowseCategories } from '../services/browseService'
-import { getContinuePlayingGames } from '../services/libraryService'
+import { searchReviewsByText } from '../services/reviewService'
+import { searchUsers } from '../services/userService'
+import { searchPublicLists } from '../services/listService'
+import {
+  followUser,
+  unfollowUser,
+  isFollowing as fetchIsFollowing,
+  FOLLOW_CHANGED_EVENT,
+} from '../services/followService'
+import { useAuth } from '../contexts/AuthContext'
+import { showToast } from '../components/Toast'
 import GenreTile from '../components/explore/GenreTile'
 import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import EmptyState from '../components/EmptyState'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
+import ReviewCard from '../components/ReviewCard'
 import './Search.css'
 
-const TRENDING_SEARCHES = [
-  'Elden Ring',
-  "Baldur's Gate 3",
-  'Hades II',
-  'Final Fantasy VII Rebirth',
-  'Hollow Knight',
+const TABS = [
+  { id: 'games', label: 'Games' },
+  { id: 'reviews', label: 'Reviews' },
+  { id: 'users', label: 'Users' },
+  { id: 'lists', label: 'Lists' },
 ]
+
+// Submit-on-pause window for the Reviews tab — adds to recents 1.5s after
+// the user stops typing (per spec). Distinct from the 300ms search debounce.
+const REVIEWS_SUBMIT_AFTER_MS = 1500
 
 const GENRE_CARDS = [
   {
@@ -77,34 +98,748 @@ function HighlightMatch({ text, query }) {
   )
 }
 
+/* =============================================
+   Helpers
+   ============================================= */
+
+/** Normalize a Supabase review row into the shape ReviewCard expects. */
+function reviewRowToCard(row) {
+  return {
+    id: row.id,
+    title: '',
+    body: row.body || '',
+    rating: parseFloat(row.rating) || 0,
+    likeCount: 0,
+    commentCount: 0,
+    createdAt: row.created_at,
+    author: {
+      username: row.users?.username || row.users?.display_name || 'someone',
+      displayName: row.users?.display_name || 'Someone',
+      avatarUrl:
+        row.users?.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          row.users?.display_name || 'U'
+        )}&background=152035&color=C8965A`,
+    },
+    game: {
+      id: row.igdb_game_id,
+      name: row.game_title || 'Untitled Game',
+      developer: '',
+      coverUrl: row.game_image || null,
+    },
+  }
+}
+
+function avatarFallback(name) {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || 'U'
+  )}&background=152035&color=C8965A`
+}
+
+/* =============================================
+   Empty / recents row primitives
+   ============================================= */
+
+function RecentsHeader({ onClear }) {
+  return (
+    <div className="sp-recent-header">
+      <h2
+        className="sp-section-header sp-section-header--sm"
+        style={{ margin: 0 }}
+      >
+        Recent Searches
+      </h2>
+      <button
+        type="button"
+        className="sp-recents-clear-x"
+        onClick={onClear}
+        aria-label="Clear all recent searches"
+      >
+        <HiX />
+      </button>
+    </div>
+  )
+}
+
+function RemoveButton({ onClick, label }) {
+  return (
+    <button
+      type="button"
+      className="sp-recent-remove"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      aria-label={label}
+    >
+      <HiX />
+    </button>
+  )
+}
+
+/* =============================================
+   GAMES TAB
+   ============================================= */
+
+function GamesTabEmpty({ recents, onClearAll, onTapGame }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section sp-section--carousel">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-cover-row">
+        {recents.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="sp-recent-cover"
+            onClick={() => onTapGame(item)}
+            aria-label={item.name || 'Recent game'}
+          >
+            {item.coverUrl ? (
+              <SharedCover gameId={item.id} imageSrc={item.coverUrl}>
+                <img
+                  src={item.coverUrl}
+                  alt=""
+                  className="sp-recent-cover__img"
+                  loading="lazy"
+                />
+              </SharedCover>
+            ) : (
+              <CoverPlaceholder
+                title={item.name}
+                className="sp-recent-cover__img"
+              />
+            )}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function GamesTabResults({
+  query,
+  results,
+  isLoading,
+  error,
+  focusedIndex,
+  onTapGame,
+  onTapDev,
+  onTapGenre,
+  onRetry,
+  noResults,
+  onClearQuery,
+  genres,
+  gamesResultsRef,
+}) {
+  if (isLoading) return <SearchResultSkeletonList count={8} />
+  if (error) {
+    return (
+      <div className="sp-section" style={{ marginTop: 16 }}>
+        <InlineErrorBanner
+          message="Search failed. Please try again."
+          onRetry={onRetry}
+        />
+      </div>
+    )
+  }
+  if (noResults) {
+    return (
+      <div className="sp-empty">
+        <EmptyState
+          variant="search"
+          copy={`No results for "${query.trim()}" — try a different spelling or browse by genre`}
+          cta="Browse genres"
+          onCta={onClearQuery}
+        />
+        {genres && genres.length > 0 && (
+          <div className="sp-section sp-empty-genres">
+            <div className="sp-genre-grid">
+              {genres.map((genre) => (
+                <GenreTile key={genre.key} genre={genre} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="sp-results" role="listbox" aria-label="Search results">
+      {results.genres.length > 0 && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Genres</h3>
+          <div className="sp-genre-pills">
+            {results.genres.map((genre) => (
+              <button
+                key={genre.key}
+                className="sp-genre-pill"
+                onClick={() => onTapGenre(genre.key)}
+                type="button"
+                role="option"
+                aria-selected={false}
+              >
+                <HighlightMatch text={genre.label} query={query.trim()} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.games.length > 0 && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Games</h3>
+          <div ref={gamesResultsRef}>
+            {results.games.map((game, i) => (
+              <button
+                key={game.id}
+                className={`sp-result-row sp-result-row--game${
+                  focusedIndex === i ? ' sp-result-row--focused' : ''
+                }`}
+                onClick={() => onTapGame(game)}
+                type="button"
+                role="option"
+                aria-selected={focusedIndex === i}
+              >
+                <div className="sp-result-cover">
+                  {game.image ? (
+                    <SharedCover gameId={game.id} imageSrc={game.image}>
+                      <img
+                        src={game.image}
+                        alt=""
+                        className="sp-result-cover__img"
+                      />
+                    </SharedCover>
+                  ) : (
+                    <CoverPlaceholder
+                      title={game.title}
+                      className="sp-result-cover__img"
+                    />
+                  )}
+                </div>
+                <div className="sp-result-info">
+                  <span className="sp-result-title">
+                    <HighlightMatch text={game.title} query={query.trim()} />
+                  </span>
+                  <span className="sp-result-meta">
+                    {[game.year, game.developer].filter(Boolean).join(' \u00B7 ')}
+                  </span>
+                </div>
+                <svg
+                  className="sp-result-chevron"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.developers.length > 0 && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Developers</h3>
+          {results.developers.map((dev) => (
+            <button
+              key={dev.name}
+              className="sp-result-row sp-result-row--dev"
+              onClick={() => onTapDev(dev.name)}
+              type="button"
+              role="option"
+              aria-selected={false}
+            >
+              <div className="sp-result-info">
+                <span className="sp-result-title">
+                  <HighlightMatch text={dev.name} query={query.trim()} />
+                </span>
+                <span className="sp-result-meta">
+                  {dev.count} {dev.count === 1 ? 'result' : 'results'}
+                </span>
+              </div>
+              <svg
+                className="sp-result-chevron"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* =============================================
+   REVIEWS TAB
+   ============================================= */
+
+function ReviewsTabEmpty({ recents, onClearAll, onTapChip, onRemoveChip }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-stack">
+        {recents.map((item) => (
+          <div key={item.id} className="sp-recent-chip-row">
+            <button
+              type="button"
+              className="sp-recent-chip"
+              onClick={() => onTapChip(item.query)}
+            >
+              {item.query}
+            </button>
+            <RemoveButton
+              onClick={() => onRemoveChip(item.id)}
+              label={`Remove "${item.query}" from recent searches`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ReviewsTabResults({ rows, isLoading }) {
+  if (isLoading) {
+    return (
+      <div className="sp-section">
+        <SearchResultSkeletonList count={4} />
+      </div>
+    )
+  }
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="sp-section">
+        <p className="sp-noresults-text">No reviews match this search yet.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="sp-section sp-reviews-results">
+      {rows.map((row) => (
+        <ReviewCard key={row.id} review={reviewRowToCard(row)} variant="compact" />
+      ))}
+    </div>
+  )
+}
+
+/* =============================================
+   USERS TAB
+   ============================================= */
+
+function UserAvatar({ url, name }) {
+  return (
+    <div className="sp-user-avatar">
+      <img
+        src={url || avatarFallback(name)}
+        alt=""
+        loading="lazy"
+        onError={(e) => {
+          if (!e.currentTarget.dataset.fallback) {
+            e.currentTarget.dataset.fallback = '1'
+            e.currentTarget.src = avatarFallback(name)
+          }
+        }}
+      />
+    </div>
+  )
+}
+
+/**
+ * Inline Follow / Following toggle used by the Users tab rows. Owns
+ * its own `isFollowing` lookup on mount + listens to the global
+ * FOLLOW_CHANGED_EVENT so a follow triggered from another surface
+ * (eg. Profile screen) keeps these rows in sync.
+ *
+ * Optimistic update + toast rollback on failure mirrors the Profile
+ * Follow button — same UX contract.
+ */
+function FollowButton({ targetUserId, targetLabel, currentUserId }) {
+  const [following, setFollowing] = useState(false)
+  const [pending, setPending] = useState(false)
+  const [resolved, setResolved] = useState(false)
+
+  const isSelf = currentUserId && targetUserId && currentUserId === targetUserId
+
+  useEffect(() => {
+    if (!targetUserId || !currentUserId || isSelf) {
+      setFollowing(false)
+      setResolved(true)
+      return
+    }
+    let cancelled = false
+    setResolved(false)
+    fetchIsFollowing(targetUserId)
+      .then((value) => {
+        if (!cancelled) setFollowing(value)
+      })
+      .finally(() => {
+        if (!cancelled) setResolved(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [targetUserId, currentUserId, isSelf])
+
+  // Sync with cross-surface follow events so Profile <-> Search rows
+  // stay consistent without prop drilling.
+  useEffect(() => {
+    function handleChange(e) {
+      if (!e?.detail) return
+      const { followeeId, following: newState } = e.detail
+      if (followeeId === targetUserId) {
+        setFollowing(!!newState)
+      }
+    }
+    window.addEventListener(FOLLOW_CHANGED_EVENT, handleChange)
+    return () => {
+      window.removeEventListener(FOLLOW_CHANGED_EVENT, handleChange)
+    }
+  }, [targetUserId])
+
+  const handleClick = useCallback(
+    async (e) => {
+      e.stopPropagation()
+      if (!targetUserId || !currentUserId || isSelf || pending) return
+      const wasFollowing = following
+      setFollowing(!wasFollowing)
+      setPending(true)
+      try {
+        if (wasFollowing) {
+          await unfollowUser(targetUserId)
+        } else {
+          await followUser(targetUserId)
+        }
+      } catch (err) {
+        setFollowing(wasFollowing)
+        console.error('[search] follow toggle failed:', err)
+        showToast(
+          "Couldn't update follow status. Tap to retry.",
+          'error',
+          4000,
+          { label: 'Retry', onClick: () => handleClick(e) }
+        )
+      } finally {
+        setPending(false)
+      }
+    },
+    [targetUserId, currentUserId, isSelf, pending, following]
+  )
+
+  if (isSelf) return null
+
+  return (
+    <button
+      type="button"
+      className={`sp-user-row__follow${
+        following ? ' sp-user-row__follow--following' : ''
+      }`}
+      onClick={handleClick}
+      disabled={!resolved || pending || !currentUserId}
+      aria-pressed={following}
+      aria-label={following ? `Unfollow ${targetLabel}` : `Follow ${targetLabel}`}
+    >
+      {following ? 'Following' : 'Follow'}
+    </button>
+  )
+}
+
+function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-stack">
+        {recents.map((item) => (
+          <div key={item.id} className="sp-user-row">
+            <button
+              type="button"
+              className="sp-user-row__main"
+              onClick={() => onTapUser(item)}
+            >
+              <UserAvatar url={item.avatarUrl} name={item.displayName || item.username} />
+              <div className="sp-user-row__text">
+                <span className="sp-user-row__username">@{item.username}</span>
+                {item.displayName && (
+                  <span className="sp-user-row__display">{item.displayName}</span>
+                )}
+              </div>
+            </button>
+            <RemoveButton
+              onClick={() => onRemoveUser(item.id)}
+              label={`Remove ${item.username} from recent searches`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
+  if (isLoading) {
+    return (
+      <div className="sp-section">
+        <SearchResultSkeletonList count={5} />
+      </div>
+    )
+  }
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="sp-section">
+        <p className="sp-noresults-text">No users found.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="sp-section sp-recent-stack">
+      {rows.map((u) => {
+        const username = u.username || ''
+        const displayName = u.display_name || ''
+        return (
+          <div key={u.id} className="sp-user-row">
+            <button
+              type="button"
+              className="sp-user-row__main"
+              onClick={() =>
+                onTapUser({
+                  id: username || u.id,
+                  username,
+                  displayName,
+                  avatarUrl: u.avatar_url || null,
+                })
+              }
+            >
+              <UserAvatar url={u.avatar_url} name={displayName || username} />
+              <div className="sp-user-row__text">
+                <span className="sp-user-row__username">
+                  {username ? `@${username}` : displayName || 'Unknown'}
+                </span>
+                {displayName && username && (
+                  <span className="sp-user-row__display">{displayName}</span>
+                )}
+              </div>
+            </button>
+            <FollowButton
+              targetUserId={u.id}
+              targetLabel={username || displayName || 'user'}
+              currentUserId={currentUserId}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* =============================================
+   LISTS TAB
+   ============================================= */
+
+function ListMosaic({ games }) {
+  const slots = Array.from({ length: 6 })
+  return (
+    <div className="sp-list-mosaic">
+      {slots.map((_, idx) => {
+        const game = games?.[idx]
+        if (game?.image) {
+          return (
+            <div key={idx} className="sp-list-mosaic__cell">
+              <img src={game.image} alt="" loading="lazy" />
+            </div>
+          )
+        }
+        return (
+          <div
+            key={idx}
+            className="sp-list-mosaic__cell sp-list-mosaic__cell--empty"
+            aria-hidden="true"
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function ListRow({ list, onTap, onRemove, removeLabel }) {
+  return (
+    <article className="sp-list-row">
+      <button
+        type="button"
+        className="sp-list-row__main"
+        onClick={() => onTap(list)}
+      >
+        <ListMosaic games={list.previewGames || list.games} />
+        <div className="sp-list-row__body">
+          <h3 className="sp-list-row__title">{list.name}</h3>
+          {list.description && (
+            <p className="sp-list-row__desc">{list.description}</p>
+          )}
+          <div className="sp-list-row__author">
+            <UserAvatar
+              url={list.author?.avatarUrl}
+              name={list.author?.displayName || list.author?.username}
+            />
+            <span className="sp-list-row__author-name">
+              {list.author?.username
+                ? `@${list.author.username}`
+                : list.author?.displayName || 'Unknown'}
+            </span>
+          </div>
+          <div className="sp-list-row__meta">
+            <span className="sp-list-row__meta-item">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              {list.likeCount ?? 0}
+            </span>
+            <span className="sp-list-row__meta-item">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              {list.commentCount ?? 0}
+            </span>
+            <span className="sp-list-row__meta-item sp-list-row__share">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </span>
+          </div>
+        </div>
+      </button>
+      {onRemove && (
+        <RemoveButton onClick={onRemove} label={removeLabel} />
+      )}
+    </article>
+  )
+}
+
+function ListsTabEmpty({ recents, onClearAll, onTapList, onRemoveList }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-stack">
+        {recents.map((item) => (
+          <ListRow
+            key={item.id}
+            list={item}
+            onTap={onTapList}
+            onRemove={() => onRemoveList(item.id)}
+            removeLabel={`Remove ${item.name} from recent searches`}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ListsTabResults({ rows, isLoading, onTapList }) {
+  if (isLoading) {
+    return (
+      <div className="sp-section">
+        <SearchResultSkeletonList count={4} />
+      </div>
+    )
+  }
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="sp-section">
+        <p className="sp-noresults-text">No lists found.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="sp-section sp-recent-stack">
+      {rows.map((list) => (
+        <ListRow
+          key={list.id}
+          list={{ ...list, previewGames: list.games }}
+          onTap={onTapList}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* =============================================
+   MAIN COMPONENT
+   ============================================= */
+
 function Search() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const currentUserId = user?.id || null
   const inputRef = useRef(null)
   const scrollRef = useRef(null)
   const blurTimerRef = useRef(null)
+  const reviewsSubmitTimerRef = useRef(null)
+  const [activeTab, setActiveTab] = useState('games')
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [hasScrolled, setHasScrolled] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(() =>
-    getContinuePlayingGames(5)
-  )
 
-  const [recentChipsRef] = useAutoAnimateMotion()
   const [gamesResultsRef] = useAutoAnimateMotion()
 
-  const hasQuery = query.trim().length > 0
-  const { results, isLoading, error: searchError } = useSearch(query)
-  const {
-    searches: recentSearches,
-    add: addRecent,
-    remove: removeRecent,
-    clear: clearRecent,
-  } = useRecentSearches()
+  const trimmedQuery = query.trim()
+  const hasQuery = trimmedQuery.length > 0
+  const debouncedQuery = useDebounce(trimmedQuery, 300)
+
+  // Per-tab recents (live across this and any other Search-mounted view).
+  const gamesRecents = useRecents('games')
+  const reviewsRecents = useRecents('reviews')
+  const usersRecents = useRecents('users')
+  const listsRecents = useRecents('lists')
+
+  // Games tab still uses the existing useSearch hook (preserves the
+  // Sprint 1 P4 developer routing — devs only flow through here).
+  const { results: gameResults, isLoading: gamesLoading, error: gamesError } =
+    useSearch(activeTab === 'games' ? query : '')
+
+  const totalGameResultCount =
+    gameResults.games.length +
+    gameResults.genres.length +
+    gameResults.developers.length
+
+  const noGameResults =
+    activeTab === 'games' &&
+    hasQuery &&
+    !gamesLoading &&
+    !gamesError &&
+    totalGameResultCount === 0
+
+  // Reviews / Users / Lists searches — async, simple debounce on the query.
+  const [reviewsRows, setReviewsRows] = useState([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [usersRows, setUsersRows] = useState([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [listsRows, setListsRows] = useState([])
+  const [listsLoading, setListsLoading] = useState(false)
+
+  // Browse-by-genre fallback (kept identical to the previous Search page).
   const [genres, setGenres] = useState(null)
-  const [genresLoading, setGenresLoading] = useState(true)
-  const [genresError, setGenresError] = useState(null)
-  const [genresRetry, setGenresRetry] = useState(0)
+  const [, setGenresLoading] = useState(true)
+  const [, setGenresError] = useState(null)
+  const [genresRetry] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -140,20 +875,92 @@ function Search() {
     }
   }, [genresRetry])
 
+  // Reviews tab — debounced search.
   useEffect(() => {
-    const onLibraryUpdate = () => setCurrentlyPlaying(getContinuePlayingGames(5))
-    window.addEventListener('libraryUpdated', onLibraryUpdate)
-    return () => window.removeEventListener('libraryUpdated', onLibraryUpdate)
-  }, [])
+    if (activeTab !== 'reviews') return
+    if (!debouncedQuery) {
+      setReviewsRows([])
+      setReviewsLoading(false)
+      return
+    }
+    let cancelled = false
+    setReviewsLoading(true)
+    searchReviewsByText(debouncedQuery, 20)
+      .then((rows) => {
+        if (!cancelled) setReviewsRows(rows)
+      })
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, debouncedQuery])
 
-  const totalResultCount =
-    results.games.length + results.genres.length + results.developers.length
+  // Users tab — debounced search.
+  useEffect(() => {
+    if (activeTab !== 'users') return
+    if (!debouncedQuery) {
+      setUsersRows([])
+      setUsersLoading(false)
+      return
+    }
+    let cancelled = false
+    setUsersLoading(true)
+    searchUsers(debouncedQuery, 20)
+      .then((rows) => {
+        if (!cancelled) setUsersRows(rows)
+      })
+      .finally(() => {
+        if (!cancelled) setUsersLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, debouncedQuery])
 
-  const flatResults = [
-    ...results.games.map((g) => ({ type: 'game', data: g })),
-    ...results.genres.map((g) => ({ type: 'genre', data: g })),
-    ...results.developers.map((d) => ({ type: 'developer', data: d })),
-  ]
+  // Lists tab — debounced search.
+  useEffect(() => {
+    if (activeTab !== 'lists') return
+    if (!debouncedQuery) {
+      setListsRows([])
+      setListsLoading(false)
+      return
+    }
+    let cancelled = false
+    setListsLoading(true)
+    searchPublicLists(debouncedQuery, 20)
+      .then((rows) => {
+        if (!cancelled) setListsRows(rows)
+      })
+      .finally(() => {
+        if (!cancelled) setListsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, debouncedQuery])
+
+  // Reviews tab "submit on pause" — 1.5s after the user stops typing,
+  // record the query as a recent. Independent of the 300ms search debounce.
+  useEffect(() => {
+    if (reviewsSubmitTimerRef.current) {
+      clearTimeout(reviewsSubmitTimerRef.current)
+      reviewsSubmitTimerRef.current = null
+    }
+    if (activeTab !== 'reviews') return
+    const t = trimmedQuery
+    if (!t) return
+    reviewsSubmitTimerRef.current = setTimeout(() => {
+      addRecent('reviews', { id: t.toLowerCase(), query: t })
+    }, REVIEWS_SUBMIT_AFTER_MS)
+    return () => {
+      if (reviewsSubmitTimerRef.current) {
+        clearTimeout(reviewsSubmitTimerRef.current)
+        reviewsSubmitTimerRef.current = null
+      }
+    }
+  }, [activeTab, trimmedQuery])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -165,59 +972,49 @@ function Search() {
 
   useEffect(() => {
     setFocusedIndex(-1)
-  }, [query])
+  }, [query, activeTab])
+
+  /* ── Action callbacks ───────────────────────────────────────── */
 
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault()
-      const trimmed = query.trim()
-      if (!trimmed) return
-      addRecent(trimmed)
+      const t = query.trim()
+      if (!t) return
+      // Reviews tab: Enter immediately commits the query as a recent.
+      if (activeTab === 'reviews') {
+        addRecent('reviews', { id: t.toLowerCase(), query: t })
+      }
       inputRef.current?.blur()
     },
-    [query, addRecent]
+    [query, activeTab]
   )
 
-  const handleResultTap = useCallback(
+  const handleGameTap = useCallback(
     (game) => {
-      if (query.trim()) addRecent(query.trim())
+      addRecent('games', {
+        id: game.id,
+        name: game.title,
+        coverUrl: game.image || null,
+      })
       navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
     },
-    [query, addRecent, navigate]
+    [navigate]
   )
 
   const handleGenreTap = useCallback(
     (genreKey) => {
-      if (query.trim()) addRecent(query.trim())
       navigate(`/browse/${genreKey}`)
     },
-    [query, addRecent, navigate]
+    [navigate]
   )
 
+  // Sprint 1 P4: developer rows MUST route to /developer/:name. Do not change.
   const handleDevTap = useCallback(
     (devName) => {
-      if (query.trim()) addRecent(query.trim())
       navigate(`/developer/${encodeURIComponent(devName)}`)
     },
-    [query, addRecent, navigate]
-  )
-
-  const handleRecentTap = useCallback(
-    (term) => {
-      setQuery(term)
-      addRecent(term)
-      inputRef.current?.focus()
-    },
-    [addRecent]
-  )
-
-  const handleTrendingTap = useCallback(
-    (term) => {
-      setQuery(term)
-      addRecent(term)
-      inputRef.current?.focus()
-    },
-    [addRecent]
+    [navigate]
   )
 
   const handleClear = useCallback(() => {
@@ -228,6 +1025,11 @@ function Search() {
       inputRef.current?.blur()
     }
   }, [query])
+
+  const handleCancel = useCallback(() => {
+    setQuery('')
+    inputRef.current?.blur()
+  }, [])
 
   const handleFocus = useCallback(() => {
     if (blurTimerRef.current) {
@@ -244,6 +1046,15 @@ function Search() {
     }, 150)
   }, [])
 
+  const flatGameResults = useMemo(
+    () => [
+      ...gameResults.games.map((g) => ({ type: 'game', data: g })),
+      ...gameResults.genres.map((g) => ({ type: 'genre', data: g })),
+      ...gameResults.developers.map((d) => ({ type: 'developer', data: d })),
+    ],
+    [gameResults]
+  )
+
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Escape') {
@@ -251,10 +1062,11 @@ function Search() {
         inputRef.current?.blur()
         return
       }
+      if (activeTab !== 'games') return
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setFocusedIndex((prev) =>
-          prev < flatResults.length - 1 ? prev + 1 : prev
+          prev < flatGameResults.length - 1 ? prev + 1 : prev
         )
       }
       if (e.key === 'ArrowUp') {
@@ -264,30 +1076,74 @@ function Search() {
       if (
         e.key === 'Enter' &&
         focusedIndex >= 0 &&
-        focusedIndex < flatResults.length
+        focusedIndex < flatGameResults.length
       ) {
         e.preventDefault()
-        const item = flatResults[focusedIndex]
-        if (item.type === 'game') handleResultTap(item.data)
+        const item = flatGameResults[focusedIndex]
+        if (item.type === 'game') handleGameTap(item.data)
         else if (item.type === 'genre') handleGenreTap(item.data.key)
         else if (item.type === 'developer') handleDevTap(item.data.name)
       }
     },
-    [flatResults, focusedIndex, handleResultTap, handleGenreTap, handleDevTap]
+    [activeTab, flatGameResults, focusedIndex, handleGameTap, handleGenreTap, handleDevTap]
   )
 
-  const showClearBtn = isFocused || query.length > 0
-  const noResults =
-    hasQuery && !isLoading && !searchError && totalResultCount === 0
+  const showCancelBtn = isFocused || query.length > 0
 
-  // The same game can appear in both the discovery "Pick up where you left
-  // off" carousel and in the active search results. When it does, drop the
-  // shared layoutId on duplicates so Motion never has an ambiguous match.
-  const duplicateIds = findDuplicateGameIds(currentlyPlaying, results.games)
+  // Reviews recents tap → re-run the search.
+  const handleReviewChipTap = useCallback(
+    (queryText) => {
+      setQuery(queryText)
+      inputRef.current?.focus()
+      // Don't double-add — addRecent dedupes by query so re-tapping just
+      // bumps it to the top, which is fine.
+      addRecent('reviews', {
+        id: queryText.toLowerCase(),
+        query: queryText,
+      })
+    },
+    []
+  )
+
+  const handleUserTap = useCallback(
+    (item) => {
+      addRecent('users', {
+        id: item.username || item.id,
+        username: item.username,
+        displayName: item.displayName,
+        avatarUrl: item.avatarUrl || null,
+      })
+      if (item.username) navigate(`/user/${item.username}`)
+    },
+    [navigate]
+  )
+
+  const handleListTap = useCallback(
+    (list) => {
+      addRecent('lists', {
+        id: list.id,
+        name: list.name,
+        description: list.description || '',
+        author: list.author || null,
+        previewGames: (list.games || list.previewGames || []).slice(0, 6),
+      })
+      navigate(`/list/${list.id}`)
+    },
+    [navigate]
+  )
+
+  // Duplicate ids for SharedCover (avoid layoutId collisions when a
+  // recent cover and a search result render the same game side by side).
+  const duplicateIds = useMemo(
+    () => findDuplicateGameIds(gamesRecents, gameResults.games),
+    [gamesRecents, gameResults.games]
+  )
+
+  /* ── Render ─────────────────────────────────────────────────── */
 
   return (
     <div className="search-page" ref={scrollRef}>
-      {/* Sticky search bar */}
+      {/* Sticky header — search input + cancel button (UNCHANGED structure). */}
       <div className={`sp-header${hasScrolled ? ' sp-header--bordered' : ''}`}>
         <form onSubmit={handleSubmit} className="sp-form" role="search">
           <div className="sp-input-wrap">
@@ -310,10 +1166,18 @@ function Search() {
               ref={inputRef}
               type="search"
               role="searchbox"
-              aria-label="Search games"
+              aria-label="Search"
               inputMode="search"
               enterKeyHint="search"
-              placeholder="Search games, genres, developers..."
+              placeholder={
+                activeTab === 'games'
+                  ? 'Search games, genres, developers...'
+                  : activeTab === 'reviews'
+                  ? 'Search reviews...'
+                  : activeTab === 'users'
+                  ? 'Search users...'
+                  : 'Search lists...'
+              }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={handleFocus}
@@ -324,345 +1188,161 @@ function Search() {
               autoCorrect="off"
               spellCheck="false"
             />
-            {showClearBtn && (
+            {query.length > 0 && (
               <button
                 type="button"
                 className="sp-clear-btn"
                 onClick={handleClear}
                 aria-label="Clear search"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <HiX />
               </button>
             )}
           </div>
+          {showCancelBtn && (
+            <button
+              type="button"
+              className="sp-cancel-btn"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+          )}
         </form>
+
+        {/* Tab bar sits below the input, above the content. */}
+        <div className="sp-tabs" role="tablist" aria-label="Search categories">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={`sp-tab${activeTab === tab.id ? ' sp-tab--active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Live region for screen readers */}
-      <div aria-live="polite" className="sr-only">
-        {hasQuery &&
-          !isLoading &&
-          totalResultCount > 0 &&
-          `${totalResultCount} result${totalResultCount !== 1 ? 's' : ''} for ${query}`}
-        {noResults && `No results for ${query}`}
-      </div>
-
-      {/* Mode container — cross-fade between discovery and search.
-          Wrapped in a SharedCoverScope so duplicate gameIds (same game in
-          the "Pick up where you left off" carousel AND in active results)
-          fall back to a plain wrapper instead of fighting over layoutId. */}
       <SharedCoverScope duplicateIds={duplicateIds}>
-      <div className="sp-modes">
-        {/* Mode A: Discovery / Empty state */}
-        <div
-          className={`sp-mode sp-mode-a${hasQuery ? ' sp-mode--hidden' : ''}`}
-          aria-hidden={hasQuery}
-        >
-          {/* 1. Recent searches — hidden when empty */}
-          {recentSearches.length > 0 && (
-            <section className="sp-section">
-              <div className="sp-recent-header">
-                <h2 className="sp-section-header sp-section-header--sm" style={{ margin: 0 }}>
-                  Recent
-                </h2>
-                <button
-                  className="sp-recent-clear"
-                  onClick={clearRecent}
-                  type="button"
-                >
-                  Clear all
-                </button>
-              </div>
-              <div className="sp-chips" ref={recentChipsRef}>
-                {recentSearches.map((term) => (
-                  <span key={term} className="sp-chip">
-                    <button
-                      className="sp-chip__label"
-                      onClick={() => handleRecentTap(term)}
-                      type="button"
-                    >
-                      {term}
-                    </button>
-                    <button
-                      className="sp-chip__remove"
-                      onClick={() => removeRecent(term)}
-                      type="button"
-                      aria-label={`Remove ${term} from recent searches`}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="12"
-                        height="12"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 2. Trending searches */}
-          <section className="sp-section">
-            <h2 className="sp-section-header sp-section-header--sm">Trending</h2>
-            <div className="sp-chips">
-              {TRENDING_SEARCHES.map((term) => (
-                <button
-                  key={term}
-                  className="sp-chip sp-chip--pill"
-                  onClick={() => handleTrendingTap(term)}
-                  type="button"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* 3. Browse by genre — gradient cards */}
-          <section className="sp-section">
-            <h2 className="sp-section-header">Browse by genre</h2>
-            <div className="sp-genre-grid">
-              {GENRE_CARDS.map((genre) => (
-                <button
-                  key={genre.slug}
-                  className="sp-genre-card"
-                  style={{ background: genre.gradient }}
-                  onClick={() => navigate(`/browse/${genre.slug}`)}
-                  type="button"
-                >
-                  <span className="sp-genre-card__name">{genre.name}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* 4. Currently playing carousel — only when user has games */}
-          {currentlyPlaying.length > 0 && (
-            <section className="sp-section sp-section--carousel">
-              <h2 className="sp-section-header">Pick up where you left off</h2>
-              <div className="sp-library-carousel">
-                {currentlyPlaying.map((game) => (
-                  <button
-                    key={game.id}
-                    className="sp-library-cover"
-                    onClick={() =>
-                      navigate(`/game/${game.id}`, {
-                        state: { coverImage: game.image },
+        <div className="sp-tab-content">
+          {/* GAMES TAB */}
+          {activeTab === 'games' && (
+            <>
+              {!hasQuery && (
+                <>
+                  <GamesTabEmpty
+                    recents={gamesRecents}
+                    onClearAll={() => clearRecents('games')}
+                    onTapGame={(item) => {
+                      addRecent('games', item)
+                      navigate(`/game/${item.id}`, {
+                        state: { coverImage: item.coverUrl },
                       })
-                    }
-                    type="button"
-                    aria-label={game.title}
-                  >
-                    {game.image ? (
-                      <SharedCover gameId={game.id} imageSrc={game.image}>
-                        <img
-                          src={game.image}
-                          alt=""
-                          className="sp-library-cover__img"
-                        />
-                      </SharedCover>
-                    ) : (
-                      <CoverPlaceholder
-                        title={game.title}
-                        className="sp-library-cover__img"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
+                    }}
+                  />
+                  {/* Browse by Genre — kept unchanged from prior build. */}
+                  <section className="sp-section">
+                    <h2 className="sp-section-header">Browse by genre</h2>
+                    <div className="sp-genre-grid">
+                      {GENRE_CARDS.map((genre) => (
+                        <button
+                          key={genre.slug}
+                          className="sp-genre-card"
+                          style={{ background: genre.gradient }}
+                          onClick={() => navigate(`/browse/${genre.slug}`)}
+                          type="button"
+                        >
+                          <span className="sp-genre-card__name">{genre.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+              {hasQuery && (
+                <GamesTabResults
+                  query={query}
+                  results={gameResults}
+                  isLoading={gamesLoading}
+                  error={gamesError}
+                  focusedIndex={focusedIndex}
+                  onTapGame={handleGameTap}
+                  onTapDev={handleDevTap}
+                  onTapGenre={handleGenreTap}
+                  onRetry={() => setQuery((q) => q + ' ')}
+                  noResults={noGameResults}
+                  onClearQuery={handleCancel}
+                  genres={genres}
+                  gamesResultsRef={gamesResultsRef}
+                />
+              )}
+            </>
+          )}
+
+          {/* REVIEWS TAB */}
+          {activeTab === 'reviews' && (
+            <>
+              {!hasQuery && (
+                <ReviewsTabEmpty
+                  recents={reviewsRecents}
+                  onClearAll={() => clearRecents('reviews')}
+                  onTapChip={handleReviewChipTap}
+                  onRemoveChip={(id) => removeRecent('reviews', id)}
+                />
+              )}
+              {hasQuery && (
+                <ReviewsTabResults rows={reviewsRows} isLoading={reviewsLoading} />
+              )}
+            </>
+          )}
+
+          {/* USERS TAB */}
+          {activeTab === 'users' && (
+            <>
+              {!hasQuery && (
+                <UsersTabEmpty
+                  recents={usersRecents}
+                  onClearAll={() => clearRecents('users')}
+                  onTapUser={handleUserTap}
+                  onRemoveUser={(id) => removeRecent('users', id)}
+                />
+              )}
+              {hasQuery && (
+                <UsersTabResults
+                  rows={usersRows}
+                  isLoading={usersLoading}
+                  onTapUser={handleUserTap}
+                  currentUserId={currentUserId}
+                />
+              )}
+            </>
+          )}
+
+          {/* LISTS TAB */}
+          {activeTab === 'lists' && (
+            <>
+              {!hasQuery && (
+                <ListsTabEmpty
+                  recents={listsRecents}
+                  onClearAll={() => clearRecents('lists')}
+                  onTapList={handleListTap}
+                  onRemoveList={(id) => removeRecent('lists', id)}
+                />
+              )}
+              {hasQuery && (
+                <ListsTabResults
+                  rows={listsRows}
+                  isLoading={listsLoading}
+                  onTapList={handleListTap}
+                />
+              )}
+            </>
           )}
         </div>
-
-        {/* Mode B: Active search results */}
-        <div
-          className={`sp-mode sp-mode-b${!hasQuery ? ' sp-mode--hidden' : ''}`}
-          aria-hidden={!hasQuery}
-        >
-          {/* Search skeleton */}
-          {hasQuery && isLoading && (
-            <SearchResultSkeletonList count={8} />
-          )}
-
-          {/* Search error */}
-          {hasQuery && searchError && (
-            <div className="sp-section" style={{ marginTop: 16 }}>
-              <InlineErrorBanner
-                message="Search failed. Please try again."
-                onRetry={() => setQuery((q) => q + ' ')}
-              />
-            </div>
-          )}
-
-          {/* Results */}
-          {hasQuery && !isLoading && !searchError && totalResultCount > 0 && (
-            <div className="sp-results" role="listbox" aria-label="Search results">
-              {/* Genres */}
-              {results.genres.length > 0 && (
-                <div className="sp-result-category">
-                  <h3 className="sp-result-category__header">Genres</h3>
-                  <div className="sp-genre-pills">
-                    {results.genres.map((genre) => (
-                      <button
-                        key={genre.key}
-                        className="sp-genre-pill"
-                        onClick={() => handleGenreTap(genre.key)}
-                        type="button"
-                        role="option"
-                        aria-selected={false}
-                      >
-                        <HighlightMatch text={genre.label} query={query.trim()} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Games */}
-              {results.games.length > 0 && (
-                <div className="sp-result-category">
-                  <h3 className="sp-result-category__header">Games</h3>
-                  <div ref={gamesResultsRef}>
-                  {results.games.map((game, i) => (
-                    <button
-                      key={game.id}
-                      className={`sp-result-row sp-result-row--game${
-                        focusedIndex === i ? ' sp-result-row--focused' : ''
-                      }`}
-                      onClick={() => handleResultTap(game)}
-                      type="button"
-                      role="option"
-                      aria-selected={focusedIndex === i}
-                    >
-                      <div className="sp-result-cover">
-                        {game.image ? (
-                          <SharedCover gameId={game.id} imageSrc={game.image}>
-                            <img
-                              src={game.image}
-                              alt=""
-                              className="sp-result-cover__img"
-                            />
-                          </SharedCover>
-                        ) : (
-                          <CoverPlaceholder
-                            title={game.title}
-                            className="sp-result-cover__img"
-                          />
-                        )}
-                      </div>
-                      <div className="sp-result-info">
-                        <span className="sp-result-title">
-                          <HighlightMatch text={game.title} query={query.trim()} />
-                        </span>
-                        <span className="sp-result-meta">
-                          {[game.year, game.developer].filter(Boolean).join(' \u00B7 ')}
-                        </span>
-                      </div>
-                      <svg
-                        className="sp-result-chevron"
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Developers */}
-              {results.developers.length > 0 && (
-                <div className="sp-result-category">
-                  <h3 className="sp-result-category__header">Developers</h3>
-                  {results.developers.map((dev) => (
-                    <button
-                      key={dev.name}
-                      className="sp-result-row sp-result-row--dev"
-                      onClick={() => handleDevTap(dev.name)}
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                    >
-                      <div className="sp-result-info">
-                        <span className="sp-result-title">
-                          <HighlightMatch text={dev.name} query={query.trim()} />
-                        </span>
-                        <span className="sp-result-meta">
-                          {dev.count} {dev.count === 1 ? 'result' : 'results'}
-                        </span>
-                      </div>
-                      <svg
-                        className="sp-result-chevron"
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Empty results */}
-          {noResults && (
-            <div className="sp-empty">
-              <EmptyState
-                variant="search"
-                copy={`No results for "${query.trim()}" — try a different spelling or browse by genre`}
-                cta="Browse genres"
-                onCta={() => {
-                  setQuery('')
-                  inputRef.current?.blur()
-                }}
-              />
-              {genres && genres.length > 0 && (
-                <div className="sp-section sp-empty-genres">
-                  <div className="sp-genre-grid">
-                    {genres.map((genre) => (
-                      <GenreTile key={genre.key} genre={genre} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
       </SharedCoverScope>
     </div>
   )

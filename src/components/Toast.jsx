@@ -8,12 +8,15 @@ let _addToast = () => {}
  * Show a toast notification.
  *
  * @param {string} message
- * @param {'success'|'error'} type
+ * @param {'success'|'error'|'badge'} type
  * @param {number} [duration=3500]
  * @param {{ label: string, onClick: () => void } | null} [action] - optional action link (e.g. Undo)
+ * @param {React.ComponentType<{ size?: number }> | null} [icon] - optional lucide-react icon
+ *   component. When provided it replaces the default svg glyph — used by
+ *   the badge unlock watcher so each celebration shows its own badge icon.
  */
-export function showToast(message, type = 'error', duration = 3500, action = null) {
-  _addToast({ message, type, duration, action, id: Date.now() + Math.random() })
+export function showToast(message, type = 'error', duration = 3500, action = null, icon = null) {
+  _addToast({ message, type, duration, action, icon, id: Date.now() + Math.random() })
 }
 
 function ToastItem({ toast, onDone }) {
@@ -36,22 +39,30 @@ function ToastItem({ toast, onDone }) {
     toast.action?.onClick()
   }
 
+  const CustomIcon = toast.icon
+
   return (
     <div className={`toast toast--${toast.type}${exiting ? ' toast--exiting' : ''}`} role="alert">
-      <svg className="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {toast.type === 'error' ? (
-          <>
-            <circle cx="12" cy="12" r="10" />
-            <line x1="15" y1="9" x2="9" y2="15" />
-            <line x1="9" y1="9" x2="15" y2="15" />
-          </>
-        ) : (
-          <>
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </>
-        )}
-      </svg>
+      {CustomIcon ? (
+        <span className="toast-icon" aria-hidden="true">
+          <CustomIcon size={18} />
+        </span>
+      ) : (
+        <svg className="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {toast.type === 'error' ? (
+            <>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </>
+          ) : (
+            <>
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </>
+          )}
+        </svg>
+      )}
       <span className="toast-message">{toast.message}</span>
       {toast.action && (
         <button className="toast-action" onClick={handleAction}>

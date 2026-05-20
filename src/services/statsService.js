@@ -33,7 +33,7 @@ function getListGames(library, listId) {
  * Shape:
  *   {
  *     playedCount, playingCount, hoursPlayed (Played only),
- *     avgRating, reviewCount,
+ *     reviewCount,
  *     hoursByGenre: { [genre]: hours },
  *     topByHours:   Array<{ id, title, image, hours }>
  *   }
@@ -106,21 +106,10 @@ export function getStatsLocalSync() {
     .sort((a, b) => b.hours - a.hours)
     .slice(0, 20)
 
-  // Avg rating — across the local review cache.
-  let avgRating = 0
-  if (reviews.length > 0) {
-    const sum = reviews.reduce(
-      (acc, r) => acc + (parseFloat(r.rating) || 0),
-      0
-    )
-    avgRating = sum / reviews.length
-  }
-
   return {
     playedCount: playedGames.length,
     playingCount: playingGames.length,
     hoursPlayed: Math.round(hoursPlayed),
-    avgRating: Math.round(avgRating * 10) / 10,
     reviewCount: reviews.length,
     hoursByGenre,
     topByHours,

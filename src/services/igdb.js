@@ -272,6 +272,103 @@ limit ${limit * 2};`
   }
 }
 
+/**
+ * Sprint 5 P5: lightweight feed of popular games trending this week.
+ * Used by the Home → Popular/New section ("Popular" tab). Returns the
+ * compact { id, name, coverUrl, rating } shape — no DLC filtering, no
+ * normalizeGame pass — because the caller renders covers in a 120px row,
+ * not in the full library grid.
+ *
+ * Filter rationale:
+ *   - rating_count > 5            → enough player ratings to be meaningful
+ *   - cover != null               → no broken art in the row
+ *   - first_release_date != null  → known release date (not a placeholder)
+ *   - updated_at >= sevenDaysAgo  → recently active in IGDB (people are
+ *                                   still talking about / patching it)
+ */
+export async function fetchPopularThisWeek() {
+  const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60
+
+  const query = `fields name, cover.image_id, rating;
+where rating_count > 5 & cover != null & first_release_date != null & updated_at >= ${sevenDaysAgo};
+sort rating_count desc;
+limit 8;`
+
+  try {
+    const games = await igdbRequest('games', query)
+    return shapeForCoverRow(games)
+  } catch (err) {
+    console.error('[igdb] fetchPopularThisWeek failed:', err)
+    return []
+  }
+}
+
+/**
+ * Sprint 5 P5: brand-new releases from the last 7 days, ordered by hype.
+ * Used by the Home → Popular/New section ("New" tab).
+ */
+export async function fetchNewThisWeek() {
+  const now = Math.floor(Date.now() / 1000)
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60
+
+  const query = `fields name, cover.image_id, rating, hypes;
+where first_release_date >= ${sevenDaysAgo} & first_release_date <= ${now} & cover != null;
+sort hypes desc;
+limit 8;`
+
+  try {
+    const games = await igdbRequest('games', query)
+    return shapeForCoverRow(games)
+  } catch (err) {
+    console.error('[igdb] fetchNewThisWeek failed:', err)
+    return []
+  }
+}
+
+// Map raw IGDB rows into the compact shape the Home cover row expects.
+// Rating is converted from IGDB's 0–100 scale to a 0–5 number (or null
+// if absent) so the row can show "4.3" without each call site doing math.
+function shapeForCoverRow(games) {
+  return (games || [])
+    .filter((g) => g && g.name && g.cover?.image_id)
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      coverUrl: coverUrlFromImageId(g.cover.image_id),
+      rating: typeof g.rating === 'number' ? g.rating / 20 : null,
+    }))
+}
+
+/**
+ * Fetch top games tagged with an IGDB *theme* (e.g. "Horror", "Sci-fi").
+ * Themes are distinct from genres in IGDB — Horror is a theme, not a genre.
+ */
+export async function getGamesByTheme(themeName, limit = 30) {
+  try {
+    const themeQuery = `fields id;
+where name = "${themeName}";`
+    const themes = await igdbRequest('themes', themeQuery)
+
+    if (themes.length === 0) {
+      console.warn(`Theme "${themeName}" not found`)
+      return []
+    }
+
+    const themeId = themes[0].id
+    const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
+
+    const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
+where themes = ${themeId} & cover != null & rating != null & first_release_date >= ${sevenYearsAgo};
+sort rating_count desc;
+limit ${limit};`
+
+    return formatGames(await igdbRequest('games', query))
+  } catch (error) {
+    console.error(`Error fetching games for theme ${themeName}:`, error)
+    return []
+  }
+}
+
 export async function getGamesByGenre(genreName, limit = 30) {
   try {
     const genreQuery = `fields id;
@@ -855,6 +952,9 @@ function formatGameDetails(game) {
     ? game.similar_games.map(g => (typeof g === 'object' ? g.id : g)).filter(Boolean)
     : []
 
+  const genreIds = game.genres?.map((g) => g.id).filter(Boolean) || []
+  const themeIds = game.themes?.map((t) => t.id).filter(Boolean) || []
+
   const normalized = normalizeGame({
     id: game.id,
     title: game.name,
@@ -879,7 +979,70 @@ function formatGameDetails(game) {
   }, 'igdb')
 
   normalized.similarGameIds = similarGameIds
+  normalized.genreIds = genreIds
+  normalized.themeIds = themeIds
   return normalized
+}
+
+/**
+ * Fetch up to 8 similar games for the SimilarGamesRow component.
+ * Filters by shared genres (and themes if available), rating > 70 (IGDB scale),
+ * and cover presence. Falls back gracefully to an empty array on any error.
+ */
+export async function fetchSimilarGamesForRow(gameId, genreIds = [], themeIds = []) {
+  if (!gameId) return []
+
+  const numericGameId = Number(gameId)
+  const hasGenres = genreIds.length > 0
+  const hasThemes = themeIds.length > 0
+
+  let whereClause = `id != ${numericGameId} & cover != null & rating > 70`
+  if (hasGenres) {
+    whereClause += ` & genres = (${genreIds.slice(0, 3).join(',')})`
+  }
+  if (hasThemes) {
+    whereClause += ` & themes = (${themeIds.slice(0, 3).join(',')})`
+  }
+
+  const query = `fields name, cover.image_id, rating;
+where ${whereClause};
+sort rating desc;
+limit 8;`
+
+  try {
+    const games = await igdbRequest('games', query)
+
+    if (!games || games.length === 0) {
+      // Retry without themes constraint if we had one
+      if (hasThemes && hasGenres) {
+        const fallbackWhere = `id != ${numericGameId} & cover != null & rating > 70 & genres = (${genreIds.slice(0, 3).join(',')})`
+        const fallbackQuery = `fields name, cover.image_id, rating;
+where ${fallbackWhere};
+sort rating desc;
+limit 8;`
+        const fallbackGames = await igdbRequest('games', fallbackQuery)
+        return (fallbackGames || []).map(g => ({
+          id: g.id,
+          title: g.name,
+          image: g.cover?.image_id
+            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+            : null,
+        })).filter(g => g.image)
+      }
+      return []
+    }
+
+    return games.map(g => ({
+      id: g.id,
+      title: g.name,
+      image: g.cover?.image_id
+        ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
+        : null,
+    })).filter(g => g.image)
+  } catch (err) {
+    console.error('[fetchSimilarGamesForRow] error:', err)
+    return []
+  }
 }
 
 // Test API connection

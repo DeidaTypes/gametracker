@@ -36,3 +36,43 @@ A video game library and tracking app, conceptually similar to Letterboxd but fo
 
 ## Reference docs in this repo
 The repo has many .md files documenting prior work (DESIGN_SYSTEM.md, FEATURES_OVERVIEW.md, NAVIGATION_UPDATE.md, MOBILE_GRID_FIX.md, etc.). When making changes that overlap a documented area, read the relevant .md first to avoid contradicting prior decisions.
+
+## Sprint 5 design language (Musicboard-inspired)
+Pattern source: a music-tracking app called Musicboard. We are stealing
+PATTERNS, not COLORS. GameTracker keeps deep navy + warm copper/amber,
+serif display headers, sans-serif body.
+Core patterns this sprint introduces:
+- ReviewCard with a "cover header" -- game cover left, title +
+developer right, tinted with the dominant color extracted from
+the cover. Horizontal gradient: dominant color (40% opacity) left
+fading to card surface right.
+- FAB (Floating Action Button): bottom-right on Home only, copper
+accent, opens a bottom sheet for quick actions.
+- Profile hero pattern: avatar + 3 stat numerals + name + bio +
+social links + Follow / Send Message + inline tabs (Home /
+Reviews / Lists).
+- Search has 4 tabs: Games (default), Reviews, Users, Lists.
+Per-tab Recent Searches with horizontal game covers on Games tab.
+- Like / Comment / Share row on every review card. Like persists
+locally via localStorage (Sprint 6 wires real backend).
+- Profile sort sheet: 5 pill options -- Last Updated (default) /
+Latest First / Oldest First / Most Liked / Alphabetically.
+Backend status (CRITICAL):
+- Sprint 5 is UI-only. Do NOT create new Supabase tables for
+likes, comments, or follows -- Sprint 6 owns that.
+- Likes persist via localStorage keyed 'gt:likes:v1'.
+- Comments tap-through navigates to /reviews/:id/comments stub
+page that says "Comments coming soon."
+- Share uses Capacitor Share plugin if available, else Web Share API, else clipboard with toast.
+- Follow button is visually present but no-op for now.
+- Send Message routes to /messages/coming-soon stub.
+Component reuse:
+- src/components/ReviewCard.jsx is the canonical review card.
+Three screens use it: Home timeline, Game detail page reviews,
+Profile Reviews tab. Do NOT fork it -- extend with props if needed.
+- Reuse the existing color extraction utility from Sprint 4 P8
+(search the repo for useDominantColor or extractColorFromImage
+before writing new code).
+- Reuse the existing bottom-sheet component for FAB sheet, sort
+filter, and any other modals (search src/components/ for
+BottomSheet, Sheet, or Modal before writing new ones).

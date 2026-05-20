@@ -1,0 +1,207 @@
+/* =============================================
+   POPULAR / NEW THIS WEEK — Sprint 5 P5
+   Tab toggle (serif buttons + copper underline) over a horizontal,
+   scroll-snapping row of 8 game covers. Mirrors the .sp-tab pattern
+   from Search but with serif typography for the tab labels per the
+   Sprint 5 design spec.
+   ============================================= */
+
+.pn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 var(--container-padding);
+}
+
+/* ---- Tab + chevron row ---- */
+
+.pn-tab-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pn-tabs {
+  display: flex;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.pn-tab {
+  background: none;
+  border: none;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-muted);
+  padding: 8px 4px 10px;
+  cursor: pointer;
+  position: relative;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+}
+
+.pn-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.pn-tab--active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-brand-primary);
+}
+
+.pn-chevron-btn {
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.pn-chevron-btn:hover {
+  color: var(--color-brand-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-tab,
+  .pn-chevron-btn {
+    transition: none;
+  }
+}
+
+/* ---- Horizontal cover row ---- */
+
+.pn-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Bleed past the section padding so covers can scroll edge-to-edge */
+  margin: 0 calc(var(--container-padding) * -1);
+  padding: 4px var(--container-padding) 8px;
+}
+
+.pn-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Cover card ---- */
+
+.pn-card {
+  flex: 0 0 auto;
+  width: 120px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pn-card__cover-wrap {
+  width: 120px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-sm);
+}
+
+.pn-card__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pn-card__name {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  /* Single line, ellipsized */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.pn-card__rating {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-brand-primary);
+  line-height: 1.2;
+}
+
+/* ---- Skeleton placeholder ---- */
+
+.pn-card--skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.pn-card--skeleton .pn-card__cover {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+}
+
+.pn-card__line {
+  height: 12px;
+  border-radius: var(--radius-xs);
+  width: 100%;
+}
+
+.pn-card__line--short {
+  width: 40%;
+}
+
+/* ---- Empty state ---- */
+
+.pn-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  min-height: 180px;
+}
+
+/* ---- Screen-reader only ---- */
+.pn-section .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

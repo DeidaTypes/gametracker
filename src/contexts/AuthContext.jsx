@@ -20,6 +20,7 @@ import {
   migrateLocalReviewsIfNeeded,
 } from '../services/reviewService'
 import { migrateLocalListsIfNeeded } from '../services/listService'
+import { migrateLocalLikesIfNeeded } from '../services/likeService'
 
 const AuthContext = createContext(null)
 
@@ -101,6 +102,10 @@ export function AuthProvider({ children }) {
       try {
         await migrateLocalReviewsIfNeeded(user.id)
         await migrateLocalListsIfNeeded(user.id)
+        // Sprint 6 P0 — fold the legacy `gt:likes:v1` localStorage
+        // blob into the new `likes` table. Idempotent per-user and
+        // soft-fails so it never blocks login.
+        await migrateLocalLikesIfNeeded(user.id)
         await loadCurrentUserReviewsCache(user.id)
         if (!cancelled) {
           // Tell any mounted screens (Profile reviews tab, etc.) to refresh.

@@ -1,0 +1,306 @@
+/* =====================================================
+   REVIEW CARD — Sprint 5 canonical component
+   Used on Home timeline, Game detail, and Profile reviews tab.
+   The cover header pulls a dominant color from the cover image
+   (set via --dominant-rgb on the cover header element).
+   ===================================================== */
+
+.review-card {
+  background: var(--color-bg-tertiary);
+  border-radius: var(--review-card-radius);
+  padding: var(--review-card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  box-shadow: var(--surface-1-shadow);
+  /* Avoid triggering global :hover brightness lift on the card itself —
+     interactive children handle their own feedback. */
+}
+
+/* "Your review" eyebrow — copper pill above the cover header */
+.review-card__own-pill {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------------- Cover Header ---------------- */
+
+/* Default fallback gradient channels (used when extraction hasn't
+   resolved or returned null). 40 50 80 ≈ a muted navy that fades
+   gracefully into the card surface. */
+.review-card__cover-header {
+  --dominant-rgb: 40 50 80;
+  display: grid;
+  grid-template-columns: var(--cover-thumb-size) 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: var(--cover-header-height);
+  padding: var(--cover-header-padding);
+  border-radius: var(--cover-header-radius);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--dominant-rgb) / 0.4) 0%,
+    rgba(var(--dominant-rgb) / 0.4) 30%,
+    var(--color-bg-tertiary) 100%
+  );
+  transition: background var(--transition-normal);
+  /* Color stops above already account for the card surface so that
+     the right edge of the header reads as a clean fade-out. */
+}
+
+.review-card__cover-thumb {
+  width: var(--cover-thumb-size);
+  height: var(--cover-thumb-size);
+  border-radius: var(--cover-thumb-radius);
+  object-fit: cover;
+  display: block;
+}
+
+.review-card__cover-meta {
+  min-width: 0; /* allow the inner text to ellipsize */
+}
+
+.review-card__game-name {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-size: 16px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-card__game-sub {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-card__play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--color-bg-primary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+/* ---------------- Title ---------------- */
+
+.review-card__title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------- Body ---------------- */
+
+.review-card__body {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.review-card__body p {
+  margin: 0;
+}
+
+.review-card__body .clamp-5 {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.review-card__body .clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.review-card__read-more {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+/* ---------------- Author Row ---------------- */
+
+.review-card__author {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.review-card__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.review-card__username {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ---------------- Actions Row ---------------- */
+
+.review-card__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-card__actions-left {
+  display: flex;
+  gap: 16px;
+}
+
+.review-card__actions button {
+  background: none;
+  border: none;
+  padding: 6px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.review-card__actions button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.review-card__actions button[aria-pressed='true'] {
+  color: var(--color-brand-primary);
+}
+
+/* ---------------- Actions right cluster ---------------- */
+
+.review-card__actions-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------------- Kebab menu ---------------- */
+
+.review-card__kebab-wrap {
+  position: relative;
+}
+
+.review-card__kebab-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.review-card__kebab-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.review-card__kebab-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  background: var(--color-bg-secondary, #1a2235);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md, 10px);
+  padding: 4px;
+  min-width: 150px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.review-card__kebab-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: calc(var(--radius-md, 10px) - 4px);
+  text-align: left;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.review-card__kebab-menu button:hover,
+.review-card__kebab-menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.review-card__kebab-menu button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ---------------- Heart pulse animation ---------------- */
+
+@keyframes reviewCardHeartPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.2);
+  }
+}
+
+.review-card__heart-icon.pulse {
+  animation: reviewCardHeartPulse 250ms ease-out;
+  transform-origin: center;
+}
+
+/* Reduced motion: kill the pulse entirely (the global _motion.css rule
+   already collapses transition-duration; this guarantees the keyframe
+   stops as well, even if the user prefers reduced motion mid-animation). */
+@media (prefers-reduced-motion: reduce) {
+  .review-card__heart-icon.pulse {
+    animation: none;
+  }
+}

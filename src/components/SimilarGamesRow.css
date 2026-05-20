@@ -1,0 +1,47 @@
+.sgr-scroll {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  /* hide scrollbar on webkit */
+  scrollbar-width: none;
+}
+
+.sgr-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sgr-cover-btn {
+  flex-shrink: 0;
+  width: 120px;
+  height: 180px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  scroll-snap-align: start;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sgr-cover-img {
+  width: 120px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  transition: opacity 0.15s ease;
+}
+
+.sgr-cover-btn:active .sgr-cover-img {
+  opacity: 0.75;
+}
+
+.sgr-cover-skeleton {
+  flex-shrink: 0;
+  border-radius: 8px;
+  scroll-snap-align: start;
+}

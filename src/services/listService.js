@@ -113,6 +113,50 @@ export async function getListsForUser(userId) {
 }
 
 /**
+ * Sprint 5 P3: Search public lists by name OR description, case-insensitive.
+ * Joined with users (for the author row) and a slim list_games projection
+ * so the Search Lists tab can render the 6-cover mosaic without a second
+ * round-trip per list.
+ */
+export async function searchPublicLists(query, limit = 20) {
+  const trimmed = (query || '').trim()
+  if (!trimmed) return []
+  const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
+  const { data, error } = await supabase
+    .from('lists')
+    .select(
+      'id, name, description, user_id, is_public, created_at, updated_at,' +
+        ' users(username, display_name, avatar_url),' +
+        ' list_games(igdb_game_id, game_title, game_image, position)'
+    )
+    .eq('is_public', true)
+    .or(`name.ilike.%${escaped}%,description.ilike.%${escaped}%`)
+    .order('updated_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('[lists] searchPublicLists failed:', error.message)
+    return []
+  }
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    author: row.users
+      ? {
+          username: row.users.username || '',
+          displayName: row.users.display_name || '',
+          avatarUrl: row.users.avatar_url || null,
+        }
+      : null,
+    games: (row.list_games || [])
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .map(rowToGame),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+}
+
+/**
  * SELECT one list + all its games by listId (public lists visible to all,
  * private lists restricted to owner via RLS).
  */

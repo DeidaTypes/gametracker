@@ -92,6 +92,36 @@
   transition: color var(--transition-normal), transform var(--transition-smooth);
 }
 
+/* Wrapper around the icon so the unread dot can position relative to
+   it (so the dot tracks the icon when it lifts on the active state)
+   without disturbing the existing icon-and-label flex layout. */
+.bottom-nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+/* Sprint 6 P2 — Unread DM dot. Sits at the top-right of the Profile
+   tab icon when the signed-in user has any unread direct messages.
+   Uses the brand copper plus a soft halo so the dot reads against
+   both the flush-bar and the floating-pill states without needing a
+   per-state override. */
+.bottom-nav-unread {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary);
+  box-shadow:
+    0 0 0 2px rgba(12, 19, 34, 0.85),
+    0 0 6px rgba(200, 150, 90, 0.6);
+  pointer-events: none;
+}
+
 .bottom-nav-label {
   font-family: var(--font-sans);
   font-size: var(--font-size-label);

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import AppShell from '../components/AppShell'
 import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
 import WantToPlayCard from '../components/WantToPlayCard'
+import HomeFAB from '../components/HomeFAB'
+import PopularNewSection from '../components/PopularNewSection'
+import TimelineFeed from '../components/TimelineFeed'
 import { getGamesFromList, getContinuePlayingGames } from '../services/libraryService'
 import './Home.css'
 
@@ -81,8 +84,15 @@ function Home() {
             <WantToPlayCard games={wantToPlayGames} />
           </section>
 
+          {/* Popular / New This Week — Sprint 5 P5 */}
+          <PopularNewSection />
+
+          {/* Timeline feed — Sprint 5 P5 */}
+          <TimelineFeed />
+
         </div>
       </div>
+      <HomeFAB />
     </AppShell>
   )
 }

@@ -1,0 +1,290 @@
+/* ============================================================
+   USER FOLLOWS — followers / following list pages.
+
+   Both /user/:username/followers and /user/:username/following
+   render via this shared stylesheet. Layout:
+
+     header (back + title + spacer)
+       └── tab toggle (Followers | Following) — the tab acts as a
+           subnav, switching the active *route* rather than just
+           local state, so deep links to either page land where the
+           user expects.
+     body
+       └── vertical list of user rows
+            (avatar + username + display name + Follow button)
+   ============================================================ */
+
+.follows-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: var(--bottom-nav-safe-area);
+  background: transparent;
+}
+
+/* ── Sticky page header ────────────────────────────────────── */
+
+.follows-page__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  z-index: 10;
+}
+
+.follows-page__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.follows-page__back:hover {
+  background: var(--color-surface);
+}
+
+.follows-page__title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  text-align: center;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follows-page__spacer {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── Tabs (Followers / Following) ──────────────────────────── */
+
+.follows-page__tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  padding: 0 var(--page-padding);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.follows-page__tab {
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  padding: 12px 4px 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+}
+
+.follows-page__tab:hover {
+  color: var(--color-text-primary);
+}
+
+.follows-page__tab--active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-brand-primary);
+}
+
+/* ── Body / list ───────────────────────────────────────────── */
+
+.follows-page__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md) var(--page-padding) var(--spacing-2xl);
+  max-width: var(--page-max-width);
+  width: 100%;
+  margin: 0 auto;
+  gap: 8px;
+}
+
+.follows-page__empty {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  margin: 0;
+}
+
+.follows-page__error {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  color: var(--color-error, var(--color-text-tertiary));
+  text-align: center;
+  padding: var(--spacing-2xl) 0;
+  margin: 0;
+}
+
+.follows-page__sentinel {
+  height: 1px;
+  margin-top: var(--spacing-md);
+}
+
+.follows-page__loading-row {
+  height: 64px;
+  border-radius: var(--radius-md);
+}
+
+/* ── User row ──────────────────────────────────────────────── */
+
+.follow-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.follow-row:hover {
+  background: var(--color-surface);
+}
+
+.follow-row__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  min-width: 0;
+}
+
+.follow-row__avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+.follow-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.follow-row__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.follow-row__username {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follow-row__display {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follow-row__follow {
+  flex-shrink: 0;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  border: 1px solid var(--color-brand-primary);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 32px;
+  transition: background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.follow-row__follow:active {
+  opacity: 0.8;
+}
+
+.follow-row__follow:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.follow-row__follow--following {
+  background: transparent;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.follow-row__follow--following:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .follows-page__back,
+  .follows-page__tab,
+  .follow-row,
+  .follow-row__follow {
+    transition: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .follows-page__header,
+  .follows-page__tabs,
+  .follows-page__body {
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
+  }
+}

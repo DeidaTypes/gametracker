@@ -1,0 +1,348 @@
+/* =====================================================================
+   Sprint 6 P2 — Direct messages thread
+   /messages/:username
+   ===================================================================== */
+
+.dm-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Reserve room for the fixed composer + bottom nav so the last
+     bubble isn't hidden under it. */
+  padding-bottom: calc(120px + var(--bottom-nav-safe-area));
+  background: transparent;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.dm-thread__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--page-padding);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dm-thread__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.dm-thread__back:hover {
+  background: var(--color-surface);
+}
+
+.dm-thread__partner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+  justify-self: center;
+  max-width: 100%;
+  transition: background var(--transition-fast);
+}
+
+.dm-thread__partner:hover {
+  background: var(--color-surface);
+}
+
+.dm-thread__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.dm-thread__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dm-thread__avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: white;
+  font-weight: var(--font-weight-bold);
+  font-size: 13px;
+}
+
+.dm-thread__partner-name {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.dm-thread__header-spacer {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── Scroll body ────────────────────────────────────────────────────── */
+
+.dm-thread__scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: var(--spacing-md) var(--page-padding) var(--spacing-xl);
+  max-width: var(--page-max-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.dm-thread__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dm-thread__loading-bubble {
+  height: 38px;
+  width: 60%;
+  border-radius: var(--radius-lg);
+  display: block;
+}
+
+.dm-thread__loading-bubble--in {
+  align-self: flex-start;
+}
+
+.dm-thread__loading-bubble--out {
+  align-self: flex-end;
+  width: 50%;
+}
+
+.dm-thread__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex: 1;
+  padding: var(--spacing-3xl) var(--spacing-md);
+  gap: var(--spacing-xs);
+}
+
+.dm-thread__empty-h2 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.dm-thread__empty-sub {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  max-width: 280px;
+}
+
+.dm-thread__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Bubble row ─────────────────────────────────────────────────────── */
+
+.dm-bubble-row {
+  display: flex;
+  width: 100%;
+}
+
+.dm-bubble-row--in {
+  justify-content: flex-start;
+}
+
+.dm-bubble-row--out {
+  justify-content: flex-end;
+}
+
+.dm-bubble {
+  max-width: 80%;
+  padding: 8px 12px 6px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outgoing: copper. */
+.dm-bubble--out {
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  border-bottom-right-radius: 4px;
+}
+
+/* Incoming: surface-elevated navy. */
+.dm-bubble--in {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+.dm-bubble--pending {
+  opacity: 0.7;
+}
+
+.dm-bubble__body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dm-bubble__time {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
+  align-self: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-bubble--out .dm-bubble__time {
+  color: rgba(12, 19, 34, 0.6);
+}
+
+.dm-bubble--in .dm-bubble__time {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Composer ───────────────────────────────────────────────────────── */
+
+.dm-thread__composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Sit above the bottom nav. var(--bottom-nav-safe-area) accounts for
+     the iOS home indicator on devices with no chin. */
+  bottom: var(--bottom-nav-safe-area);
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-top: 1px solid var(--color-border);
+}
+
+.dm-thread__input {
+  flex: 1;
+  min-height: 40px;
+  max-height: 152px;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: 22px;
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.dm-thread__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.dm-thread__input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.dm-thread__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dm-thread__send {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary);
+  color: #0C1322;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.dm-thread__send:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.dm-thread__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-thread__back,
+  .dm-thread__partner,
+  .dm-thread__input,
+  .dm-thread__send {
+    transition: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .dm-thread__composer {
+    /* Match the page max-width by inset-padding the composer so it
+       doesn't span edge-to-edge on desktop. */
+    padding-left: max(var(--page-padding-desktop), calc((100vw - var(--page-max-width)) / 2 + var(--page-padding)));
+    padding-right: max(var(--page-padding-desktop), calc((100vw - var(--page-max-width)) / 2 + var(--page-padding)));
+  }
+}

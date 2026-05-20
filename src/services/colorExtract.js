@@ -55,36 +55,135 @@ function writeToLS(gameId, value) {
   saveLSCache(cache)
 }
 
+// ── RGB → HSL helper ────────────────────────────────────────────────────────
+function rgbToHsl(r, g, b) {
+  const rf = r / 255
+  const gf = g / 255
+  const bf = b / 255
+  const max = Math.max(rf, gf, bf)
+  const min = Math.min(rf, gf, bf)
+  const l = (max + min) / 2
+  const d = max - min
+
+  if (d === 0) return { h: 0, s: 0, l }
+
+  const s = d / (1 - Math.abs(2 * l - 1))
+
+  let h = 0
+  if (max === rf) h = ((gf - bf) / d) % 6
+  else if (max === gf) h = (bf - rf) / d + 2
+  else h = (rf - gf) / d + 4
+
+  h = ((h * 60) + 360) % 360
+  return { h, s, l }
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Extract the dominant swatch { r, g, b } from a game cover.
- * Used by the existing poster-glow / backdrop feature.
- * Failures are cached so we never retry in the same session.
+ * Extract the visually dominant { r, g, b } swatch from a game cover using a
+ * canvas histogram.
+ *
+ * Algorithm:
+ *   1. Draw the cover to a 32×32 offscreen canvas (fast, enough pixels).
+ *   2. Convert each pixel to HSL.
+ *   3. Discard near-black (L < 10%), near-white (L > 90%), and near-gray
+ *      (S < 20%) — these are backgrounds/borders, never the dominant art hue.
+ *   4. Quantise the remaining hues into 18 buckets (one per 20°).
+ *   5. The bucket with the most votes wins; average its original RGB values
+ *      for a representative color.
+ *   6. If no qualifying pixels exist, fall back to deep navy { 40, 50, 80 }.
+ *
+ * Results are cached in the module-level `memCache` Map so repeated mounts
+ * of the same cover do not re-extract.
  */
 export async function getDominantColor(imageUrl) {
   if (!imageUrl) return null
   const key = `dom:${imageUrl}`
   if (memCache.has(key)) return memCache.get(key)
 
+  const FALLBACK = { r: 40, g: 50, b: 80 }
+
   try {
-    const palette = await Vibrant.from(imageUrl).getPalette()
-    const swatch =
-      palette.Vibrant ||
-      palette.Muted ||
-      palette.DarkVibrant ||
-      palette.DarkMuted
+    const result = await new Promise((resolve, reject) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
 
-    if (!swatch) {
-      memCache.set(key, null)
-      return null
-    }
+      img.onerror = () => reject(new Error('Image load failed'))
 
-    const [r, g, b] = swatch.rgb
-    const result = { r: Math.round(r), g: Math.round(g), b: Math.round(b) }
+      img.onload = () => {
+        try {
+          const SIZE = 32
+          const canvas = document.createElement('canvas')
+          canvas.width = SIZE
+          canvas.height = SIZE
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, SIZE, SIZE)
+
+          const { data } = ctx.getImageData(0, 0, SIZE, SIZE)
+
+          // 18 hue buckets × 20° — accumulate r/g/b sums and pixel counts
+          const buckets = Array.from({ length: 18 }, () => ({
+            count: 0,
+            r: 0,
+            g: 0,
+            b: 0,
+          }))
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+
+            if (a < 128) continue // skip transparent/semi-transparent
+
+            const { h, s, l } = rgbToHsl(r, g, b)
+
+            // Discard near-black, near-white, and desaturated (gray) pixels
+            if (l < 0.10 || l > 0.90 || s < 0.20) continue
+
+            const bucket = Math.floor(h / 20) % 18
+            buckets[bucket].count += 1
+            buckets[bucket].r += r
+            buckets[bucket].g += g
+            buckets[bucket].b += b
+          }
+
+          // Find the hue bucket with the most qualifying pixels
+          let bestIdx = -1
+          let bestCount = 0
+          for (let i = 0; i < 18; i++) {
+            if (buckets[i].count > bestCount) {
+              bestCount = buckets[i].count
+              bestIdx = i
+            }
+          }
+
+          if (bestIdx === -1) {
+            // No saturated pixels found — extremely dark/monochrome cover
+            resolve(FALLBACK)
+            return
+          }
+
+          const { count, r: rSum, g: gSum, b: bSum } = buckets[bestIdx]
+          resolve({
+            r: Math.round(rSum / count),
+            g: Math.round(gSum / count),
+            b: Math.round(bSum / count),
+          })
+        } catch (err) {
+          reject(err)
+        }
+      }
+
+      img.src = imageUrl
+    })
+
     memCache.set(key, result)
     return result
   } catch {
+    // Image failed to load (CORS, 404, etc.) — cache null so we don't retry
     memCache.set(key, null)
     return null
   }

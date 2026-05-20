@@ -15,6 +15,7 @@ import {
 } from 'react-icons/hi'
 import { useTabBarCompact } from '../hooks/useTabBarCompact'
 import { useGameColor } from '../contexts/GameColorContext'
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import './BottomNav.css'
 
 const NAV_ITEMS = [
@@ -48,6 +49,7 @@ function BottomNav({ scrollContainerRef }) {
   const compact = useTabBarCompact(scrollContainerRef)
   const reduced = useReducedMotion()
   const { swatches } = useGameColor()
+  const { unreadCount } = useUnreadMessages()
 
   if (location.pathname === '/onboarding') {
     return null
@@ -80,33 +82,49 @@ function BottomNav({ scrollContainerRef }) {
       layout
       transition={layoutTransition}
     >
-      {NAV_ITEMS.map(({ to, label, Outline, Solid }) => (
-        <NavLink
-          key={to}
-          to={to}
-          className={({ isActive }) =>
-            `bottom-nav-item ${isActive ? 'active' : ''}`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              {isActive ? (
-                <Solid className="bottom-nav-icon" />
-              ) : (
-                <Outline className="bottom-nav-icon" />
-              )}
-              <motion.span
-                className="bottom-nav-label"
-                animate={{ opacity: compact ? 0 : 1 }}
-                transition={labelTransition}
-                aria-hidden={compact || undefined}
-              >
-                {label}
-              </motion.span>
-            </>
-          )}
-        </NavLink>
-      ))}
+      {NAV_ITEMS.map(({ to, label, Outline, Solid }) => {
+        // The Profile tab is the visual home for direct messages until
+        // DMs get their own slot — render a small copper dot when the
+        // signed-in user has unread DMs so the badge is visible from
+        // anywhere in the app. Sourced from <UnreadMessagesProvider>
+        // which subscribes to realtime + in-app change events.
+        const showUnreadDot = to === '/profile' && unreadCount > 0
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `bottom-nav-item ${isActive ? 'active' : ''}`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <span className="bottom-nav-icon-wrap">
+                  {isActive ? (
+                    <Solid className="bottom-nav-icon" />
+                  ) : (
+                    <Outline className="bottom-nav-icon" />
+                  )}
+                  {showUnreadDot && (
+                    <span
+                      className="bottom-nav-unread"
+                      aria-label={`${unreadCount} unread messages`}
+                    />
+                  )}
+                </span>
+                <motion.span
+                  className="bottom-nav-label"
+                  animate={{ opacity: compact ? 0 : 1 }}
+                  transition={labelTransition}
+                  aria-hidden={compact || undefined}
+                >
+                  {label}
+                </motion.span>
+              </>
+            )}
+          </NavLink>
+        )
+      })}
     </motion.nav>
   )
 }

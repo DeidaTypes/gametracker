@@ -1,0 +1,177 @@
+/* =====================================================
+   GAME REVIEWS — ALL REVIEWS PAGE
+   Route: /game/:id/reviews
+   ===================================================== */
+
+.gra-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: var(--bottom-nav-safe-area, 80px);
+}
+
+/* ── Page header ── */
+
+.gra-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-sm) var(--page-padding, 20px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gra-header-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.gra-header-btn:hover,
+.gra-header-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gra-header-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-display);
+  margin: 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* kebab wrapper — relative so the dropdown can be positioned */
+.gra-header-kebab {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gra-kebab-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--color-bg-secondary, #1a2235);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md, 10px);
+  padding: 4px;
+  min-width: 160px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.gra-kebab-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: calc(var(--radius-md, 10px) - 4px);
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.gra-kebab-menu button:hover,
+.gra-kebab-menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Review list ── */
+
+.gra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: var(--spacing-md) var(--page-padding, 20px);
+}
+
+/* ── Sentinel (IntersectionObserver target) ── */
+
+.gra-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+/* ── Empty state ── */
+
+.gra-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 0;
+}
+
+.gra-empty-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  margin: 0;
+  text-align: center;
+}
+
+.gra-empty-cta {
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 10px 24px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.gra-empty-cta:hover,
+.gra-empty-cta:focus-visible {
+  opacity: 0.88;
+}
+
+/* ── Skeleton card ── */
+
+.gra-skeleton-card {
+  display: flex;
+  gap: 12px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--review-card-radius, 12px);
+  padding: var(--review-card-padding, 16px);
+}
+
+.gra-sk-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm, 6px);
+  flex-shrink: 0;
+}
+
+.gra-sk-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+
+.gra-sk-line {
+  height: 14px;
+  border-radius: var(--radius-sm, 6px);
+}

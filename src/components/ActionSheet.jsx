@@ -8,14 +8,17 @@ import './ActionSheet.css'
  * Props:
  *   isOpen       – boolean
  *   onClose      – () => void
+ *   title        – optional string rendered as a heading above items
  *   items        – Array<{ label, onClick, destructive?, disabled? }>
+ *                  label may be a string or JSX element.
  *                  Items are rendered before the Cancel row.
  *
  * The sheet always renders a "Cancel" row at the bottom separated
  * by a 1px divider.
  */
-function ActionSheet({ isOpen, onClose, items = [] }) {
+function ActionSheet({ isOpen, onClose, title, items = [] }) {
   const sheetRef = useRef(null)
+  const titleId = title ? 'action-sheet-title' : undefined
 
   // Trap focus inside the sheet while open
   useEffect(() => {
@@ -45,7 +48,8 @@ function ActionSheet({ isOpen, onClose, items = [] }) {
       onClick={onClose}
       aria-modal="true"
       role="dialog"
-      aria-label="Actions"
+      aria-label={titleId ? undefined : 'Actions'}
+      aria-labelledby={titleId}
     >
       <div
         ref={sheetRef}
@@ -54,6 +58,9 @@ function ActionSheet({ isOpen, onClose, items = [] }) {
         tabIndex={-1}
       >
         <div className="action-sheet__handle" aria-hidden="true" />
+        {title && (
+          <p id={titleId} className="action-sheet__title">{title}</p>
+        )}
 
         <div className="action-sheet__items" role="menu">
           {items.map((item, idx) => (

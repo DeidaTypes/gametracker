@@ -49,6 +49,10 @@
 .new-release-card__cover,
 .review-feed-row__cover,
 .wtp-fan-card,
-.review-item-image-wrapper {
+.review-item-image-wrapper,
+.hcp-cover-wrap,
+.hcp-mini-cover-wrap,
+.stats-top-cover,
+.profile-favorite-card__cover {
   position: relative;
 }

@@ -2,17 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { getGameById, getGamesByIds, getSimilarGames } from '../services/igdb'
+import { getGameById } from '../services/igdb'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
 import ReviewForm from '../components/ReviewForm'
+import ReviewCard from '../components/ReviewCard'
 import AddToListButton from '../components/AddToListButton'
-import GameCard from '../components/GameCard'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
-import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
-import StarRating from '../components/StarRating'
-import SpoilerOverlay from '../components/SpoilerOverlay'
+import RatingsHistogram from '../components/RatingsHistogram'
+import SimilarGamesRow from '../components/SimilarGamesRow'
 import { postReview, getReviewsForGame } from '../services/reviewService'
+import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
+import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus, getGameProgress, updateGameProgress } from '../services/libraryService'
@@ -113,6 +114,37 @@ function PartialStarRow({ rating, size = 16 }) {
   )
 }
 
+// ── Review shape adapter ───────────────────────────────────────────────────
+// Maps a raw Supabase review row (joined with users) into the canonical
+// ReviewCard prop shape expected by src/components/ReviewCard.jsx.
+function toReviewCardShape(row, game, likeCounts, commentCounts) {
+  return {
+    id: row.id,
+    // Keep user_id on the shape so callers can derive isOwn without
+    // additional lookups.
+    userId: row.user_id,
+    game: {
+      id: String(row.igdb_game_id || game?.id || ''),
+      name: row.game_title || game?.title || 'Unknown Game',
+      coverUrl: row.game_image || game?.image || '',
+      developer: game?.developers?.[0] || '',
+    },
+    author: {
+      username:
+        row.users?.username ||
+        row.users?.display_name ||
+        'Anonymous',
+      avatarUrl: row.users?.avatar_url || '',
+    },
+    title: null,
+    body: row.body || '',
+    rating: Number(row.rating) || 0,
+    likeCount: likeCounts?.get(row.id) || 0,
+    commentCount: commentCounts?.get(row.id) || 0,
+    createdAt: row.created_at,
+  }
+}
+
 const STATUS_OPTIONS = [
   { key: 'want', label: 'Want to Play' },
   { key: 'currently', label: 'Playing' },
@@ -138,9 +170,13 @@ function GameDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [reviews, setReviews] = useState([])
+  // Sprint 6 P0 — Map<reviewId, count> for the visible reviews. Drives
+  // the Top Reviews sort and the count rendered on each card.
+  const [reviewLikeCounts, setReviewLikeCounts] = useState(() => new Map())
+  // Sprint 6 P1 — real comment counts per review id, fetched once per
+  // refresh. The ReviewCard badge consumes these via toReviewCardShape.
+  const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
   const [showReviewForm, setShowReviewForm] = useState(false)
-  const [similarGames, setSimilarGames] = useState([])
-  const [loadingSimilar, setLoadingSimilar] = useState(false)
   const [status, setStatus] = useState(null)
   const [progress, setProgress] = useState({ progressPercent: null, lastPlayedAt: null, hoursPlayed: null })
   const [dominantColor, setDominantColor] = useState(null)
@@ -164,9 +200,27 @@ function GameDetail() {
     try {
       const rows = await getReviewsForGame(gameId)
       setReviews(rows)
+      // Seed the in-process useLikeState cache and grab the count
+      // Map for the Top Reviews sort below. Batched alongside the
+      // comment-count fetch so we only round-trip once for both.
+      try {
+        const ids = rows.map((r) => r.id)
+        const [counts, cCounts] = await Promise.all([
+          prefetchLikeStatesForReviews(ids),
+          getCommentCountsForReviews(ids),
+        ])
+        setReviewLikeCounts(counts)
+        setReviewCommentCounts(cCounts)
+      } catch (err) {
+        console.error('[gameDetail] like/comment count prefetch failed:', err)
+        setReviewLikeCounts(new Map())
+        setReviewCommentCounts(new Map())
+      }
     } catch (err) {
       console.error('[gameDetail] failed to load reviews:', err)
       setReviews([])
+      setReviewLikeCounts(new Map())
+      setReviewCommentCounts(new Map())
     }
   }, [gameId])
 
@@ -179,39 +233,19 @@ function GameDetail() {
         setGame(gameData)
 
         addViewedGame(gameId, gameData.title)
-
-        await refreshReviews()
-
         refreshFromStore()
 
-        // Extract dominant color for poster glow (non-blocking)
-        getDominantColor(gameData.image).then(color => setDominantColor(color)).catch(() => {})
-
-        // Extract full swatch palette for chrome tinting (non-blocking).
-        // We only apply the tint AFTER resolution to avoid a flash of
-        // amber → tinted color while still on this page.
-        getGameSwatches(gameData.image, gameId).then(sw => {
-          setChromeTint(sw)
-          setGlobalSwatches(sw)
-        }).catch(() => {})
-
-        // Fetch similar games: prefer IGDB `similar_games` field, fall back to genre-based
-        setLoadingSimilar(true)
-        try {
-          let similar = []
-          if (gameData.similarGameIds && gameData.similarGameIds.length > 0) {
-            similar = await getGamesByIds(gameData.similarGameIds.slice(0, 12))
-          }
-          if (similar.length === 0 && gameData.genres && gameData.genres.length > 0) {
-            similar = await getSimilarGames(gameData.genres, gameId, 12)
-          }
-          setSimilarGames(similar)
-        } catch (err) {
-          console.error('Error fetching similar games:', err)
-          setSimilarGames([])
-        } finally {
-          setLoadingSimilar(false)
-        }
+        // Kick off all post-load work in parallel — none of these block
+        // the main content from rendering.
+        Promise.all([
+          refreshReviews(),
+          getDominantColor(gameData.image)
+            .then(color => setDominantColor(color))
+            .catch(() => {}),
+          getGameSwatches(gameData.image, gameId)
+            .then(sw => { setChromeTint(sw); setGlobalSwatches(sw) })
+            .catch(() => {}),
+        ])
       } catch (err) {
         console.error('Error fetching game:', err)
         setError('Failed to load game details.')
@@ -685,8 +719,89 @@ function GameDetail() {
 
         <div className="gd-divider" />
 
-        {/* About — collapsible at 4 lines */}
+        {/* Top Reviews — above Information per Sprint 5 layout */}
         <div className="gd-section">
+          <div className="gd-section-header-row">
+            <h2 className="gd-section-display-title">Top Reviews</h2>
+            <button
+              className="gd-see-all-btn"
+              onClick={() => navigate(`/game/${gameId}/reviews`)}
+              aria-label="See all reviews"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+
+          {(() => {
+            const ownReview = reviews.find(r => r.user_id === user?.id)
+            const othersTop = reviews
+              .filter(r => r.user_id !== user?.id)
+              .sort(
+                (a, b) =>
+                  (reviewLikeCounts.get(b.id) || 0) -
+                  (reviewLikeCounts.get(a.id) || 0)
+              )
+              .slice(0, ownReview ? 4 : 5)
+
+            if (!ownReview && othersTop.length === 0) {
+              return (
+                <div className="gd-reviews-empty">
+                  <p className="gd-reviews-empty-text">Be the first to review this game</p>
+                  <button
+                    className="gd-reviews-empty-cta"
+                    onClick={() => setShowReviewForm(true)}
+                  >
+                    Write a review
+                  </button>
+                </div>
+              )
+            }
+
+            const visibleRows = [
+              ...(ownReview ? [ownReview] : []),
+              ...othersTop,
+            ]
+
+            return (
+              <div className="gd-top-reviews-list">
+                {visibleRows.map((row) => {
+                  const shaped = toReviewCardShape(
+                    row,
+                    game,
+                    reviewLikeCounts,
+                    reviewCommentCounts
+                  )
+                  const own = row.user_id === user?.id
+                  return (
+                    <div key={row.id} id={`review-${row.id}`}>
+                      <ReviewCard
+                        review={shaped}
+                        variant="default"
+                        showOwnPill={own}
+                        isOwn={own}
+                        onEdit={() => setShowReviewForm(true)}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+        </div>
+
+        <div className="gd-divider" />
+
+        {/* Information — About + Details + Screenshots, with histogram on top */}
+        <div className="gd-section">
+          {/* Ratings histogram — renders only when review ratings exist */}
+          <RatingsHistogram
+            ratings={reviews
+              .map(r => parseFloat(r.rating))
+              .filter(r => !isNaN(r) && r >= 0 && r <= 5)}
+          />
+
           <p className="gd-section-label">About</p>
           <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
             <p className="gd-description">{game.description}</p>
@@ -702,7 +817,6 @@ function GameDetail() {
 
         <div className="gd-divider" />
 
-        {/* Details */}
         <div className="gd-section">
           <p className="gd-section-label">Details</p>
           <div className="gd-details-grid">
@@ -759,84 +873,12 @@ function GameDetail() {
           </>
         )}
 
-        <div className="gd-divider" />
-
-        {/* Reviews */}
-        <div className="gd-section">
-          <div className="gd-section-header-row">
-            <p className="gd-section-label">Reviews ({reviews.length})</p>
-            <button
-              className="gd-write-review-btn"
-              onClick={() => setShowReviewForm(true)}
-            >
-              Write Review
-            </button>
-          </div>
-
-          <div className="gd-reviews-list">
-            {reviews.length === 0 ? (
-              <p className="gd-empty-text">No reviews yet. Be the first to review!</p>
-            ) : (
-              reviews.map((review) => {
-                const reviewerName =
-                  review.users?.display_name || 'Anonymous'
-                const hours = Number(review.hours_played) || 0
-                const dateLabel = review.created_at
-                  ? new Date(review.created_at).toLocaleDateString()
-                  : ''
-                // Don't blur the user's own review on a game detail page.
-                const shouldBlur =
-                  !!review.has_spoilers && review.user_id !== user?.id
-                return (
-                  <div
-                    key={review.id}
-                    id={`review-${review.id}`}
-                    className="gd-review-card"
-                  >
-                    <div className="gd-review-top">
-                      <div className="gd-review-user">
-                        <span className="gd-review-name">{reviewerName}</span>
-                        <span className="gd-review-date">
-                          {dateLabel}
-                          {hours > 0 && ` · ${hours}h played`}
-                        </span>
-                      </div>
-                      <div className="gd-review-stars">
-                        <StarRating rating={parseFloat(review.rating)} size={18} />
-                      </div>
-                    </div>
-                    {shouldBlur ? (
-                      <SpoilerOverlay>
-                        <p className="gd-review-body">{review.body}</p>
-                      </SpoilerOverlay>
-                    ) : (
-                      <p className="gd-review-body">{review.body}</p>
-                    )}
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Similar Games */}
-        {(loadingSimilar || similarGames.length > 0) && (
-          <>
-            <div className="gd-divider" />
-            <div className="gd-section">
-              <p className="gd-section-label">Similar Games</p>
-              {loadingSimilar ? (
-                <GameCardSkeletonRow count={5} />
-              ) : (
-                <div className="gd-similar-scroll">
-                  {similarGames.map((similarGame) => (
-                    <GameCard key={similarGame.id} game={similarGame} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* Similar Games — SimilarGamesRow self-fetches in parallel; renders null (incl. header) if no results */}
+        <SimilarGamesRow
+          gameId={gameId}
+          genreIds={game.genreIds || []}
+          themeIds={game.themeIds || []}
+        />
 
       </div>
 

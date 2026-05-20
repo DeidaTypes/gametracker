@@ -1,0 +1,16 @@
+.ratings-histogram {
+  margin-bottom: 20px;
+}
+
+.ratings-histogram__labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.ratings-histogram__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-copper);
+  line-height: 1;
+}

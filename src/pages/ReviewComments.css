@@ -1,0 +1,573 @@
+/* =====================================================================
+   Sprint 6 P1 — Threaded comments page
+   /reviews/:reviewId/comments
+   ===================================================================== */
+
+.rc-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: transparent;
+  /* Reserve room for the fixed composer so the last thread item
+     isn't hidden under it. */
+  padding-bottom: calc(120px + var(--bottom-nav-safe-area));
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.rc-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rc-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.rc-back:hover {
+  background: var(--color-surface);
+}
+
+.rc-header__titles {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rc-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.rc-count {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-header__spacer {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── Scroll body ────────────────────────────────────────────────────── */
+
+.rc-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--page-padding) var(--spacing-xl);
+  max-width: var(--page-max-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.rc-review-wrap {
+  display: block;
+}
+
+.rc-review-skel {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--review-card-radius);
+  border: 1px solid var(--color-border);
+}
+
+.rc-review-skel__cover {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--cover-thumb-radius);
+  flex-shrink: 0;
+}
+
+.rc-review-skel__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.rc-review-skel__line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.rc-review-missing {
+  padding: var(--spacing-lg);
+  border-radius: var(--review-card-radius);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  text-align: center;
+}
+
+/* ── Thread ─────────────────────────────────────────────────────────── */
+
+.rc-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.rc-thread__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--spacing-md) 16px;
+}
+
+.rc-thread__line {
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.rc-thread__empty {
+  padding: var(--spacing-2xl) var(--spacing-md);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-body);
+}
+
+.rc-thread__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* ── Comment row ────────────────────────────────────────────────────── */
+
+.rc-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-left: 16px;
+  /* Right margin balances the left indent so long bodies still wrap
+     visually within the page container. */
+  padding-right: var(--spacing-xs);
+}
+
+.rc-comment--reply {
+  /* 56px indent under the parent comment, per spec. */
+  margin-left: 56px;
+}
+
+.rc-comment__avatar-wrap {
+  flex-shrink: 0;
+}
+
+.rc-comment__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-elevated);
+}
+
+.rc-comment__avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+}
+
+.rc-comment__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rc-comment__header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rc-comment__name {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.rc-comment__time,
+.rc-comment__edited {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+}
+
+.rc-comment__text {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rc-comment__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: 2px;
+}
+
+.rc-comment__action {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  margin: 0;
+  margin-left: -6px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rc-comment__action:hover {
+  color: var(--color-brand-primary);
+  background: var(--color-surface);
+}
+
+/* ── Kebab ──────────────────────────────────────────────────────────── */
+
+.rc-comment__kebab {
+  position: relative;
+  display: inline-flex;
+}
+
+.rc-comment__kebab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rc-comment__kebab-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.rc-comment__kebab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  min-width: 140px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.rc-comment__kebab-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.rc-comment__kebab-menu button:hover {
+  background: var(--color-surface);
+}
+
+.rc-comment__kebab-menu-danger {
+  color: var(--color-accent-rust) !important;
+}
+
+/* ── Edit-in-place ──────────────────────────────────────────────────── */
+
+.rc-comment__edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.rc-comment__edit-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  padding: 8px 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.rc-comment__edit-input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.rc-comment__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.rc-comment__edit-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.rc-comment__edit-btn--ghost {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.rc-comment__edit-btn--ghost:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.rc-comment__edit-btn--primary {
+  background: var(--color-brand-primary);
+  color: #0C1322;
+}
+
+.rc-comment__edit-btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+.rc-comment__edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Composer ───────────────────────────────────────────────────────── */
+
+.rc-composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Sit above the bottom nav, with iOS home indicator handled by the
+     parent app shell's safe area variable. */
+  bottom: var(--bottom-nav-safe-area);
+  z-index: 6;
+  padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-top: 1px solid var(--color-border);
+}
+
+.rc-composer__reply-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 150, 90, 0.12);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-composer__reply-chip strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rc-composer__reply-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rc-composer__reply-cancel:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.rc-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.rc-composer__input {
+  flex: 1;
+  min-height: 40px;
+  max-height: 140px;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.rc-composer__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.rc-composer__input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.rc-composer__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rc-composer__send {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary);
+  color: #0C1322;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.rc-composer__send:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.rc-composer__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-back,
+  .rc-comment__action,
+  .rc-comment__kebab-btn,
+  .rc-comment__edit-input,
+  .rc-comment__edit-btn,
+  .rc-composer__input,
+  .rc-composer__send,
+  .rc-composer__reply-cancel {
+    transition: none;
+  }
+}
+
+/* ── Compact viewport tweaks ────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .rc-comment {
+    margin-left: 12px;
+  }
+  .rc-comment--reply {
+    margin-left: 44px;
+  }
+}

@@ -2,6 +2,7 @@ import {
   getPopularGames,
   getRecentlyReleasedGames,
   getGamesByGenre,
+  getGamesByTheme,
 } from './igdb'
 
 const CATEGORY_META = [
@@ -15,6 +16,13 @@ const CATEGORY_META = [
   { key: 'most-reviewed', label: 'Most Reviewed',   color: '#8B6B1A' },
   { key: 'open-world',    label: 'Open World',      color: '#2D6B1A' },
   { key: 'indie',         label: 'Indie',           color: '#8B1A4B' },
+  // Slugs used by the Search page genre cards
+  { key: 'strategy',      label: 'Strategy',        color: '#0B1E3D' },
+  { key: 'adventure',     label: 'Adventure',       color: '#0D2E1A' },
+  { key: 'horror',        label: 'Horror',          color: '#6B0A14' },
+  { key: 'sports',        label: 'Sports',          color: '#0A2860' },
+  { key: 'puzzle',        label: 'Puzzle',          color: '#2A1A6B' },
+  { key: 'shooter',       label: 'Shooter',         color: '#1C2A1C' },
 ]
 
 function pickRandom(arr) {
@@ -124,6 +132,18 @@ export async function fetchCategoryGames(categoryKey) {
       return getGamesByGenre('Adventure', 10)
     case 'indie':
       return getGamesByGenre('Indie', 10)
+    case 'strategy':
+      return getGamesByGenre('Strategy', 30)
+    case 'adventure':
+      return getGamesByGenre('Adventure', 30)
+    case 'horror':
+      return getGamesByTheme('Horror', 30)
+    case 'sports':
+      return getGamesByGenre('Sport', 30)
+    case 'puzzle':
+      return getGamesByGenre('Puzzle', 30)
+    case 'shooter':
+      return getGamesByGenre('Shooter', 30)
     default:
       return []
   }

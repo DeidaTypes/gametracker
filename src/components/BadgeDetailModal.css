@@ -1,0 +1,146 @@
+/* ============================================================
+   BadgeDetailModal — extends the shared .modal-overlay /
+   .modal-content shell from CreateListModal.css. Styles here only
+   layer in the badge-specific layout (centered icon + tier border,
+   name/desc/status stack, progress bar). Don't restate overlay
+   chrome — the shared rules already handle the backdrop, slide-up
+   animation, and mobile bottom-sheet behavior.
+   ============================================================ */
+
+.badge-detail-overlay.modal-overlay {
+  align-items: center;
+}
+
+.badge-detail-modal.modal-content {
+  position: relative;
+  max-width: 420px;
+  text-align: center;
+  padding: var(--spacing-2xl) var(--spacing-xl) var(--spacing-xl);
+}
+
+.badge-detail-modal__close {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+}
+
+.badge-detail-modal__icon-wrap {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--spacing-lg);
+  border-radius: var(--radius-full);
+  border: 3px solid var(--tier-bronze);
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Per-tier glow halos so the badge "feels" earned even before you
+   read the status line. Tinted to the tier color at low alpha. */
+.badge-detail-modal__icon-wrap--bronze {
+  box-shadow: 0 0 0 6px rgba(205, 127, 50, 0.10),
+              var(--shadow-md);
+}
+.badge-detail-modal__icon-wrap--silver {
+  box-shadow: 0 0 0 6px rgba(192, 192, 192, 0.12),
+              var(--shadow-md);
+}
+.badge-detail-modal__icon-wrap--gold {
+  box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.14),
+              var(--shadow-md);
+}
+.badge-detail-modal__icon-wrap--platinum {
+  box-shadow: 0 0 0 6px rgba(229, 228, 226, 0.18),
+              var(--shadow-md);
+}
+
+.badge-detail-modal__name {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.badge-detail-modal__tier {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  margin: 0 0 var(--spacing-md);
+}
+.badge-detail-modal__tier--bronze   { color: var(--tier-bronze); }
+.badge-detail-modal__tier--silver   { color: var(--tier-silver); }
+.badge-detail-modal__tier--gold     { color: var(--tier-gold); }
+.badge-detail-modal__tier--platinum {
+  background: linear-gradient(135deg, #E5E4E2, #B7C4CF, #E5E4E2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.badge-detail-modal__desc {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xl);
+}
+
+.badge-detail-modal__progress {
+  margin: 0 0 var(--spacing-lg);
+}
+
+.badge-detail-modal__progress-track {
+  height: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--spacing-xs);
+}
+
+.badge-detail-modal__progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--tier-bronze);
+  transition: width var(--transition-smooth);
+}
+.badge-detail-modal__progress-fill--bronze   { background: var(--tier-bronze); }
+.badge-detail-modal__progress-fill--silver   { background: var(--tier-silver); }
+.badge-detail-modal__progress-fill--gold     { background: var(--tier-gold); }
+.badge-detail-modal__progress-fill--platinum {
+  background: linear-gradient(135deg, #E5E4E2, #B7C4CF, #E5E4E2);
+}
+
+.badge-detail-modal__progress-text {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+.badge-detail-modal__status {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  margin: 0;
+}
+.badge-detail-modal__status--earned      { color: var(--color-brand-primary); }
+.badge-detail-modal__status--in-progress { color: var(--color-text-secondary); }
+.badge-detail-modal__status--locked      { color: var(--color-text-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-detail-modal__progress-fill {
+    transition: none;
+  }
+}

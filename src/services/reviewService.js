@@ -124,7 +124,7 @@ export async function getReviewsForUser(userId) {
 }
 
 /**
- * SELECT *, users.display_name, users.avatar_url
+ * SELECT *, users.username, users.display_name, users.avatar_url
  * FROM reviews JOIN users ON reviews.user_id = users.id
  * WHERE igdb_game_id = $1
  * ORDER BY created_at DESC LIMIT 20
@@ -133,7 +133,7 @@ export async function getReviewsForGame(igdbGameId) {
   if (igdbGameId == null) return []
   const { data, error } = await supabase
     .from('reviews')
-    .select('*, users(display_name, avatar_url)')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
     .eq('igdb_game_id', Number(igdbGameId))
     .order('created_at', { ascending: false })
     .limit(20)
@@ -145,17 +145,182 @@ export async function getReviewsForGame(igdbGameId) {
 }
 
 /**
+ * Fetch a single review by id, joined with the reviewer's user fields
+ * and any denormalised game metadata stored on the row. Used by the
+ * /reviews/:id/comments page so it can render the parent ReviewCard
+ * at the top of the thread without re-deriving the shape from a
+ * timeline fetch.
+ *
+ * Returns null on miss so callers can render a clean "not found" state
+ * rather than crashing on undefined access.
+ */
+export async function getReviewById(reviewId) {
+  if (!reviewId) return null
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+    .eq('id', reviewId)
+    .maybeSingle()
+  if (error) {
+    console.error('[reviews] getReviewById failed:', error.message)
+    return null
+  }
+  return data || null
+}
+
+/**
+ * Paginated version of getReviewsForGame for the all-reviews page.
+ * Returns { items, hasMore } for infinite-scroll consumers.
+ *
+ * Client-side slice is used for Sprint 5 since the backend already
+ * returns up to 20 rows per getReviewsForGame call. A real server-side
+ * cursor will replace this in Sprint 6.
+ *
+ * @param {{ gameId: number|string, page?: number, limit?: number }} opts
+ * @returns {Promise<{ items: Array, hasMore: boolean }>}
+ */
+export async function getReviewsForGamePaginated({ gameId, page = 1, limit = 20 }) {
+  if (gameId == null) return { items: [], hasMore: false }
+
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+    .eq('igdb_game_id', Number(gameId))
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (error) {
+    console.error('[reviews] getReviewsForGamePaginated failed:', error.message)
+    return { items: [], hasMore: false }
+  }
+
+  const items = data || []
+  return { items, hasMore: items.length === limit }
+}
+
+/**
  * Recent reviews across the whole app, joined with the reviewer's
  * display_name + avatar_url. Used by the Explore community feed.
  */
 export async function getRecentCommunityReviews(limit = 20) {
   const { data, error } = await supabase
     .from('reviews')
-    .select('*, users(display_name, avatar_url)')
+    .select('*, users!reviews_user_id_fkey(display_name, avatar_url)')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) {
     console.error('[reviews] getRecentCommunityReviews failed:', error.message)
+    return []
+  }
+  return data || []
+}
+
+/**
+ * Sprint 5 P5: window of recent community reviews used by the Home
+ * timeline's "Popular" tab. Returns rows joined with the reviewer's
+ * username/display_name/avatar_url so the timeline can render full
+ * ReviewCards without a follow-up round-trip.
+ *
+ * Sorting is left to the caller. Sprint 6 P0: the Home timeline now
+ * batch-fetches real like counts from the `likes` table via
+ * `getLikeCountsForReviews(reviewIds)` and re-sorts in-memory by
+ * COUNT DESC. A native `order by likes desc` would require either a
+ * Postgres view or an RPC; the client-side sort is fine for the
+ * 200-row window we fetch and avoids the schema-migration ceremony.
+ */
+export async function getReviewsForTimeline({ sinceDays = 14, limit = 200 } = {}) {
+  const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString()
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('[reviews] getReviewsForTimeline failed:', error.message)
+    return []
+  }
+  return data || []
+}
+
+/**
+ * Sprint 5 P7: Reviews from users the current user follows, paginated
+ * newest-first. Used by the Home → TimelineFeed Friends tab.
+ *
+ * Two-step approach (avoids raw SQL / RPC):
+ *   1. Fetch the followee IDs for auth.uid() from the follows table.
+ *   2. Fetch reviews WHERE user_id IN (followeeIds), paginated.
+ *
+ * Returns { items, hasMore } matching the shape of getReviewsForGamePaginated.
+ *
+ * @param {{ page?: number, limit?: number }} opts
+ * @returns {Promise<{ items: Array, hasMore: boolean }>}
+ */
+export async function getReviewsFromFollowing({ page = 1, limit = 10 } = {}) {
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser()
+  if (authErr || !user) return { items: [], hasMore: false }
+
+  const { data: followRows, error: followErr } = await supabase
+    .from('follows')
+    .select('followee_id')
+    .eq('follower_id', user.id)
+
+  if (followErr) {
+    console.error('[reviews] getReviewsFromFollowing follows fetch failed:', followErr.message)
+    return { items: [], hasMore: false }
+  }
+
+  const followeeIds = (followRows || []).map((r) => r.followee_id)
+  if (followeeIds.length === 0) return { items: [], hasMore: false }
+
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+    .in('user_id', followeeIds)
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (error) {
+    console.error('[reviews] getReviewsFromFollowing failed:', error.message)
+    return { items: [], hasMore: false }
+  }
+
+  const items = data || []
+  return { items, hasMore: items.length === limit }
+}
+
+/**
+ * Sprint 5 P3: Search community reviews by review body (case-insensitive
+ * substring match). Joined with users so the Search Reviews tab can render
+ * a full ReviewCard without a second round-trip.
+ *
+ * The reviews table doesn't carry a separate "title" column (the spec
+ * mentions title for forward-compat with future schema changes), so for
+ * now we match the body only — which is the substantive content anyway.
+ */
+export async function searchReviewsByText(query, limit = 20) {
+  const trimmed = (query || '').trim()
+  if (!trimmed) return []
+  // Escape Postgres LIKE wildcards in the user input so a user typing
+  // "%" or "_" doesn't accidentally match everything.
+  const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+    .ilike('body', `%${escaped}%`)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('[reviews] searchReviewsByText failed:', error.message)
     return []
   }
   return data || []

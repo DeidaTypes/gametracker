@@ -1,6 +1,10 @@
-/* ============================================
-   PROFILE PAGE — Identity-Driven Design
-   ============================================ */
+/* ============================================================
+   PROFILE PAGE — Sprint 5 rebuild (Musicboard-inspired)
+
+   Six-row header → tab bar → tab content. The page palette stays
+   on the GameTracker design system (deep navy + warm copper). Only
+   the layout patterns are borrowed from Musicboard.
+   ============================================================ */
 
 .profile-page {
   padding: 0;
@@ -9,99 +13,181 @@
   padding-bottom: var(--bottom-nav-safe-area);
 }
 
-/* ── Profile Skeleton Loading ── */
+/* ============================================================
+   HEADER — six rows in fixed order
+   ============================================================ */
 
-.profile-sk-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.profile-sk-info {
-  flex: 1;
+.profile-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
-  min-width: 0;
-}
-
-.profile-sk-name {
-  width: 55%;
-  height: 20px;
-  border-radius: var(--radius-xs);
-}
-
-.profile-sk-bio-1 {
-  width: 90%;
-  height: 13px;
-  border-radius: var(--radius-xs);
-}
-
-.profile-sk-bio-2 {
-  width: 70%;
-  height: 13px;
-  border-radius: var(--radius-xs);
-}
-
-.profile-sk-section {
-  padding-top: var(--spacing-lg);
-}
-
-.profile-sk-section-label {
-  width: 120px;
-  height: 14px;
-  border-radius: var(--radius-xs);
-  margin: 0 var(--container-padding) var(--spacing-sm);
-}
-
-/* ── Profile Header ── */
-
-.profile-header-section {
-  padding: var(--spacing-xl) var(--page-padding);
-  display: flex;
   gap: var(--spacing-md);
-  align-items: flex-start;
+  padding: var(--spacing-md) var(--page-padding) var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
 }
 
-.profile-header-actions {
-  flex-shrink: 0;
-  margin-left: auto;
+/* ── Row 1: top nav (back / username / actions) ─────────────── */
+
+.profile-header__row1 {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 44px;
 }
 
-.profile-avatar-container {
-  flex-shrink: 0;
-}
-
-.profile-avatar {
-  width: 80px;
-  height: 80px;
+.profile-header__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
-  overflow: hidden;
-  position: relative;
-  border: 2px solid var(--color-border);
-  transition: all var(--transition-smooth);
-  background: var(--color-bg-tertiary);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
 }
 
-.profile-avatar.editable {
+.profile-header__icon-btn:hover {
+  background: var(--color-surface);
+}
+
+.profile-header__icon-btn:active {
+  background: var(--color-surface-active);
+}
+
+.profile-header__username {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  text-align: center;
+  margin: 0;
+  /* Truncate gracefully if the username is unusually long. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-header__nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.profile-header__kebab-wrap {
+  position: relative;
+}
+
+.profile-header__kebab-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-header__kebab-menu button {
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   cursor: pointer;
 }
 
-.profile-avatar.editable:hover {
-  border-color: var(--color-brand-primary);
-  box-shadow: 0 0 0 3px rgba(200, 150, 90, 0.15);
+.profile-header__kebab-menu button:hover {
+  background: var(--color-surface);
 }
 
-.profile-avatar-image {
+/* ── Banner — full-bleed 180px strip between Row 1 and Row 2 ──── */
+
+.profile-header__banner {
+  /* Bleed to the horizontal edges of the padded header */
+  margin-top: calc(-1 * var(--spacing-md));
+  margin-left: calc(-1 * var(--page-padding));
+  margin-right: calc(-1 * var(--page-padding));
+  height: 180px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.profile-header__banner-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.profile-avatar-generated {
+/* When the banner is present, pull the avatar row up so the avatar
+   overlaps the bottom ~50% of itself over the banner edge. The flex
+   gap (--spacing-md) between banner and row2 is also absorbed here. */
+.profile-header__row2--has-banner {
+  margin-top: calc(-48px - var(--spacing-md));
+  position: relative;
+  z-index: 1;
+}
+
+/* Give the avatar a stronger border when sitting on the banner */
+.profile-header__row2--has-banner .profile-header__avatar {
+  border-color: var(--color-bg-base, #0d0f1a);
+  border-width: 3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Row 2: avatar + 3 stat numerals ───────────────────────── */
+
+.profile-header__row2 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.profile-header__avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  padding: 0;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--transition-smooth);
+}
+
+.profile-header__avatar--editable {
+  cursor: pointer;
+}
+
+.profile-header__avatar--editable:hover {
+  border-color: var(--color-brand-primary);
+}
+
+.profile-header__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-header__avatar-fallback {
   width: 100%;
   height: 100%;
   display: flex;
@@ -115,721 +201,549 @@
   letter-spacing: var(--letter-spacing-display);
 }
 
-.avatar-edit-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+.profile-header__stats {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--transition-smooth);
-}
-
-.profile-avatar.editable:hover .avatar-edit-overlay {
-  opacity: 1;
-}
-
-.avatar-edit-icon {
-  color: white;
-  font-size: 20px;
-}
-
-/* ── Profile Info ── */
-
-.profile-info {
-  flex: 1;
+  justify-content: space-around;
+  gap: var(--spacing-sm);
   min-width: 0;
+}
+
+.profile-header__stat {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
 }
 
-.profile-name-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
+.profile-header__stat:hover {
+  background: var(--color-surface);
 }
 
-.profile-display-name {
+.profile-header__stat-value {
   font-family: var(--font-sans);
   font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-display-l);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+.profile-header__stat-label {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+/* ── Row 3: display name (serif h1) ────────────────────────── */
+
+.profile-header__row3 {
+  display: flex;
+}
+
+.profile-header__display-name {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
 }
 
-.profile-username {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-muted);
-}
+/* ── Row 4: bio (or empty CTA on own profile) ──────────────── */
 
-/* ── Bio ── */
-
-.profile-bio {
+.profile-header__row4 {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
-.profile-bio p {
+.profile-header__bio {
+  margin: 0;
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary);
-  margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
-.bio-expand-button {
+.profile-header__bio-cta {
   background: none;
   border: none;
-  color: var(--color-brand-primary);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
-  cursor: pointer;
   padding: 0;
-  font-family: var(--font-sans);
   text-align: left;
-  transition: color var(--transition-fast);
-}
-
-.bio-expand-button:hover {
-  color: var(--color-brand-secondary);
-}
-
-.bio-placeholder-link {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
+  font-family: var(--font-sans);
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
-  font-family: var(--font-sans);
-  padding: 0;
+  color: var(--color-text-muted);
   cursor: pointer;
   transition: color var(--transition-fast);
-  text-align: left;
 }
 
-.bio-placeholder-link:hover {
+.profile-header__bio-cta:hover {
   color: var(--color-brand-primary);
 }
 
-/* ── Identity Tags (favorite genre / platform) ── */
+/* ── Row 5: socials + share ────────────────────────────────── */
 
-.profile-identity-tags {
+.profile-header__row5 {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-
-.identity-tag {
-  display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.92);
-  /* background-color set inline per category */
+  gap: var(--spacing-sm);
 }
 
-/* ── Profile Actions ── */
-
-/* Compact override for SecondaryButton in the profile header */
-.profile-edit-btn {
-  padding: 8px 14px !important;
-  min-height: unset !important;
-  border-radius: 999px !important;
-  font-size: var(--font-size-caption) !important;
-  gap: 5px !important;
-  white-space: nowrap;
+.profile-header__socials {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
-.follow-button {
+.profile-header__social {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: var(--color-surface);
-  color: var(--color-text-primary);
   border: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-md);
+  color: var(--color-text-secondary);
+  padding: 6px 10px;
   border-radius: var(--radius-full);
   font-family: var(--font-sans);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--transition-smooth);
-  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+  max-width: 100%;
 }
 
-.follow-button:hover {
+.profile-header__social:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.profile-header__social-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.profile-header__share {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-header__share:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-border-hover);
 }
 
-/* ═════════════════════════════════════════════
-   STATS BAR — tile layout
-   ═════════════════════════════════════════════ */
+/* ── Row 6: actions ────────────────────────────────────────── */
 
-.profile-stats-bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.profile-header__row6 {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: var(--spacing-md) var(--page-padding);
-  border-bottom: 1px solid var(--color-border);
-}
-
-
-.profile-stats-cta-row {
-  padding: 0 var(--page-padding) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.profile-stats-cta {
-  background: none;
-  border: none;
-  padding: 6px 4px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.02em;
-  color: var(--color-brand-primary);
-  transition: color var(--transition-fast);
-}
-
-.profile-stats-cta:hover {
-  color: var(--color-brand-secondary);
-}
-
-.profile-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 16px 8px;
-  background: var(--color-bg-tertiary);
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  -webkit-tap-highlight-color: transparent;
-  position: relative;
-  overflow: hidden;
-  transition: background var(--transition-fast);
-}
-
-.profile-stat::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(200, 150, 90, 0.06);
-  border-radius: 12px;
-  opacity: 0;
-  transition: opacity 60ms ease;
-}
-
-.profile-stat:active::after {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-stat::after {
-    transition: none;
-  }
-}
-
-.profile-stat-value {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-  text-shadow: 0 1px 0 rgba(200, 150, 90, 0.2);
-}
-
-.profile-stat-label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* ═════════════════════════════════════════════
-   ACTIVITY TAB SUB-SECTIONS (Top Rated, Recently Played, Feed)
-   ═════════════════════════════════════════════ */
-
-.activity-tab-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2xl);
-  padding-bottom: var(--spacing-xl);
-}
-
-.activity-subsection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.activity-subsection-title {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  margin: 0;
-  padding: 0 4px;
-}
-
-/* ── Top Rated Games ── */
-
-.top-games-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.top-game-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.top-game-card:hover {
-  background: var(--color-surface);
-}
-
-.top-game-rank {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-caption);
-  color: var(--color-brand-primary);
-  min-width: 22px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.top-game-cover {
-  width: 40px;
-  height: 54px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-}
-
-.top-game-cover img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
-.top-game-info {
+.profile-header__edit-btn {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.top-game-title {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  letter-spacing: var(--letter-spacing-body);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Recently Played ── */
-
-.recently-played-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  overflow-x: auto;
-  padding-bottom: var(--spacing-xs);
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.recently-played-row::-webkit-scrollbar {
-  display: none;
-}
-
-.recent-game-card {
-  flex: 0 0 auto;
-  width: 100px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  min-height: 44px;
 }
 
-.recent-game-cover {
-  position: relative;
-  width: 100px;
-  aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  transition: transform var(--transition-smooth), border-color var(--transition-smooth);
-}
-
-.recent-game-card:hover .recent-game-cover {
-  transform: translateY(-3px);
+.profile-header__edit-btn:hover {
+  background: var(--color-surface-hover);
   border-color: var(--color-border-hover);
 }
 
-.recent-game-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.profile-header__follow-btn {
+  flex: 7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 12px rgba(200, 150, 90, 0.3);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  min-height: 44px;
 }
 
-.recent-game-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(0, 0, 0, 0.5);
+.profile-header__follow-btn:hover {
+  box-shadow: 0 6px 16px rgba(200, 150, 90, 0.45);
+  transform: translateY(-1px);
 }
 
-.recent-game-progress-fill {
-  height: 100%;
-  background: var(--color-accent-sage);
-  border-radius: 0 2px 0 0;
-  transition: width var(--transition-smooth);
+.profile-header__follow-btn:active {
+  transform: translateY(0) scale(0.98);
 }
 
-.recent-game-title {
-  margin: 6px 0 2px 0;
+.profile-header__follow-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* "Following" — flipped to a quieter outlined state so the unfollow
+   action reads as the destructive choice (the user is already engaged,
+   so the affordance only needs to surface the toggle, not push it). */
+.profile-header__follow-btn--following {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.profile-header__follow-btn--following:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+  box-shadow: none;
+  transform: none;
+}
+
+.profile-header__msg-btn {
+  flex: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  min-height: 44px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.recent-game-hours {
-  margin: 0;
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+.profile-header__msg-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
-/* ═════════════════════════════════════════════
-   TABS
-   ═════════════════════════════════════════════ */
+.profile-header__follow-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-header__follow-icon-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+.profile-header__follow-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.profile-header__follow-icon-btn--following {
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+}
+
+.profile-header__follow-icon-btn--following:hover {
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+}
+
+/* ── Header skeletons ──────────────────────────────────────── */
+
+.profile-header__title-sk {
+  height: 18px;
+  border-radius: var(--radius-xs);
+  width: 60%;
+  justify-self: center;
+}
+
+.profile-header__actions-sk {
+  width: 80px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  justify-self: end;
+}
+
+.profile-header__avatar-sk {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+}
+
+.profile-header__stats-sk {
+  flex: 1;
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.profile-header__stat-sk {
+  flex: 1;
+  height: 48px;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================================
+   TAB BAR — matches the Popular/New (Sprint 5 P5) styling
+   ============================================================ */
 
 .profile-tabs {
   display: flex;
-  border-bottom: 1px solid var(--color-border);
+  align-items: flex-end;
+  gap: var(--spacing-md);
   padding: 0 var(--page-padding);
-  gap: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .profile-tab {
   background: none;
   border: none;
-  color: var(--color-text-muted);
-  padding: var(--spacing-md) var(--spacing-sm);
   font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-body);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  padding: 12px 4px 14px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  position: relative;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  white-space: nowrap;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
 }
 
 .profile-tab:hover {
   color: var(--color-text-primary);
 }
 
-.profile-tab.active {
+.profile-tab--active {
   color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
   border-bottom-color: var(--color-brand-primary);
 }
 
-/* ── Tab Content ── */
+@media (prefers-reduced-motion: reduce) {
+  .profile-header__avatar,
+  .profile-header__icon-btn,
+  .profile-header__share,
+  .profile-header__edit-btn,
+  .profile-header__follow-btn,
+  .profile-header__msg-btn,
+  .profile-header__follow-icon-btn,
+  .profile-header__social,
+  .profile-tab {
+    transition: none;
+  }
+  .profile-header__follow-btn:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================
+   TAB CONTENT
+   ============================================================ */
 
 .profile-tab-content {
-  padding-top: var(--spacing-xl);
+  padding: var(--spacing-lg) 0;
 }
 
-.tab-pane {
-  padding: 0 var(--page-padding);
-}
+/* ── Empty state shared by Reviews + Lists ─────────────────── */
 
-/* ── Reviews List ── */
-
-.reviews-list {
+.profile-empty {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.review-item {
-  display: flex;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  -webkit-tap-highlight-color: transparent;
-  align-items: flex-start;
-}
-
-.review-item:hover {
-  border-color: var(--color-border-hover);
-  background: var(--color-surface);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Wrapper introduced to host a SharedCover (motion.div with layoutId) for
-   the cover-to-hero shared-element flight. The visual sizing/border lives
-   on the wrapper now; the inner <img> is sized to fill via SharedCover's
-   .shared-cover-frame. */
-.review-item-image-wrapper {
-  width: 48px;
-  height: 64px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-tertiary);
-  overflow: hidden;
-}
-
-.review-item-image {
-  width: 48px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-tertiary);
-}
-
-.review-item-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.review-item-content h3 {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  letter-spacing: var(--letter-spacing-body);
-  color: var(--color-text-primary);
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.review-item-rating {
-  display: flex;
   align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-2xl) var(--page-padding);
+  text-align: center;
 }
 
-.review-item-text {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-secondary);
+.profile-empty__copy {
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.review-item-date {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
   color: var(--color-text-muted);
 }
 
-/* ── Lists Tab ── */
+.profile-empty__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(200, 150, 90, 0.3);
+}
 
-.lists-container {
+/* ============================================================
+   HOME TAB
+   ============================================================ */
+
+.profile-home {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xl);
-  padding-bottom: var(--spacing-xl);
+  padding: 0 var(--page-padding);
 }
 
-.list-section {
+.profile-home__section {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
 }
 
-.list-section-title {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  margin: 0;
-  padding: 0 4px;
-}
-
-.empty-list {
-  padding: var(--spacing-lg);
-  text-align: center;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border);
-}
-
-.empty-list p {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
-/* ── Profile · Custom Lists ── */
-
-.profile-custom-lists {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.profile-custom-list-card {
+.profile-home__section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  text-align: left;
-  font-family: 'Inter', sans-serif;
-  transition: all var(--transition-smooth);
-  -webkit-tap-highlight-color: transparent;
+  gap: var(--spacing-sm);
 }
 
-.profile-custom-list-card:hover {
-  border-color: var(--color-brand-primary);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.profile-custom-list-card:active {
-  transform: translateY(0) scale(0.99);
-}
-
-.profile-custom-list-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.profile-custom-list-name {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  letter-spacing: var(--letter-spacing-body);
+.profile-home__section-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
-  margin: 0 0 4px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-custom-list-description {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-secondary);
-  margin: 0 0 4px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.profile-custom-list-count {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-muted);
   margin: 0;
 }
 
-.profile-custom-list-preview {
-  display: flex;
-  gap: 4px;
+.profile-home__chevron-btn {
+  display: inline-flex;
   align-items: center;
-  flex-shrink: 0;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.profile-custom-list-cover {
-  width: 40px;
-  height: 54px;
-  border-radius: 6px;
+.profile-home__chevron-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-brand-primary);
+}
+
+.profile-home__empty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Favorite Games row ────────────────────────────────────── */
+
+.profile-favorites-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* Bleed past the section padding so cards can scroll edge-to-edge */
+  margin: 0 calc(var(--page-padding) * -1);
+  padding: 4px var(--page-padding) 8px;
+}
+
+.profile-favorites-row::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-favorite-card {
+  flex: 0 0 auto;
+  width: 160px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-favorite-card__cover {
+  position: relative;
+  width: 160px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
@@ -837,216 +751,417 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
-  font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
+  font-size: 28px;
 }
 
-.profile-custom-list-cover img {
+.profile-favorite-card__cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.profile-custom-list-empty {
+.profile-favorite-card__fallback {
+  display: inline-block;
+}
+
+.profile-favorite-card__name {
+  font-family: var(--font-sans);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-muted);
-  font-style: italic;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-@media (max-width: 480px) {
-  .profile-custom-list-card {
-    padding: var(--spacing-md);
-  }
-
-  .profile-custom-list-cover {
-    width: 36px;
-    height: 48px;
-  }
+.profile-favorite-card__dev {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* ── Empty State ── */
+/* ── Recent Activity row ───────────────────────────────────── */
 
-.profile-page .empty-state {
+.profile-activity-row {
   display: flex;
-  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 0 calc(var(--page-padding) * -1);
+  padding: 4px var(--page-padding) 8px;
+}
+
+.profile-activity-row::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-activity-thumb {
+  flex: 0 0 auto;
+  width: 80px;
+  aspect-ratio: var(--cover-ratio);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-activity-thumb__cover {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+.profile-activity-thumb__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-activity-thumb__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: var(--spacing-3xl) var(--page-padding);
-  gap: var(--spacing-md);
-  min-height: 280px;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
 }
 
-.profile-page .empty-state h3 {
-  font-size: var(--font-size-title);
+.profile-activity-thumb__icon {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   REVIEWS TAB
+   ============================================================ */
+
+.profile-reviews {
+  padding: 0 var(--page-padding);
+}
+
+.profile-reviews__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.profile-reviews__sentinel {
+  height: 1px;
+  margin-top: var(--spacing-md);
+}
+
+/* ── Pinned section (Sprint 6 P3) ────────────────────────────
+   Sits above the sorted reviews list. The divider is rendered
+   as a sibling element so it spans the full padding width
+   regardless of how many pinned cards are present. */
+
+.profile-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.profile-pinned__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.profile-pinned__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.profile-pinned__title svg {
+  color: var(--color-brand-primary);
+}
+
+.profile-pinned__reorder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.profile-pinned__reorder:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.profile-pinned__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-pinned__reorder {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   LISTS TAB
+   ============================================================ */
+
+.profile-lists {
+  padding: 0 var(--page-padding);
+}
+
+.profile-lists__stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.profile-list-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.profile-list-row:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
+}
+
+.profile-list-row__mosaic {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  width: 100%;
+  height: 100px;
+  background: var(--color-bg-tertiary);
+}
+
+.profile-list-row__cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+}
+
+.profile-list-row__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-list-row__cell--empty {
+  background: var(--color-bg-tertiary);
+}
+
+.profile-list-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--spacing-md);
+}
+
+.profile-list-row__name {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
   line-height: var(--line-height-title);
   color: var(--color-text-primary);
-  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.profile-page .empty-state p {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
+.profile-list-row__desc {
   margin: 0;
-  max-width: 240px;
-}
-
-.browse-button {
-  background: var(--color-brand-gradient);
-  color: white;
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-xl);
-  border-radius: var(--radius-full);
   font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body);
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.browse-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(200, 150, 90, 0.35);
-}
-
-/* ── Loading State ── */
-
-.profile-page .loading-container {
+.profile-list-row__author {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-list-row__author-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  text-align: center;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  object-fit: cover;
 }
 
-.profile-page .loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 2.5px solid var(--color-surface);
-  border-top-color: var(--color-brand-primary);
-  border-radius: var(--radius-full);
-  animation: profile-spin 0.8s linear infinite;
+.profile-list-row__author-avatar--fallback {
+  text-transform: uppercase;
 }
 
-@keyframes profile-spin {
-  to {
-    transform: rotate(360deg);
-  }
+img.profile-list-row__author-avatar {
+  object-fit: cover;
 }
 
-/* ═════════════════════════════════════════════
+.profile-list-row__author-name {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.profile-list-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: 4px;
+  color: var(--color-text-tertiary);
+}
+
+.profile-list-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+.profile-list-row__meta-item--share {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
    RESPONSIVE
-   ═════════════════════════════════════════════ */
+   ============================================================ */
 
-@media (max-width: 480px) {
-  .profile-header-section {
+@media (max-width: 380px) {
+  .profile-header {
+    padding: var(--spacing-md) 16px var(--spacing-lg);
     gap: var(--spacing-sm);
-    padding: var(--spacing-lg) var(--page-padding);
   }
 
-  .profile-avatar {
-    width: 64px;
-    height: 64px;
+  .profile-header__avatar {
+    width: 80px;
+    height: 80px;
   }
 
-  .profile-avatar-generated {
-    font-size: var(--font-size-title);
-  }
-
-  /* Step the stat number down one rung on narrow phones */
-  .profile-stat-value {
+  .profile-header__stat-value {
     font-size: 22px;
   }
 
-  .profile-stats-bar {
-    padding: var(--spacing-sm) var(--page-padding);
-    gap: 6px;
+  .profile-header__display-name {
+    font-size: 20px;
   }
 
-  .profile-stat {
-    padding: 12px 6px;
+  .profile-header__msg-btn {
+    font-size: 12px;
+    padding: 12px 8px;
   }
 
-  .recent-game-card {
-    width: 88px;
-  }
-
-  .recent-game-cover {
-    width: 88px;
-  }
-
-  .review-item {
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
-
-  /* On narrow screens, tighten the edit button further */
-  .profile-edit-btn {
-    padding: 7px 10px !important;
-    font-size: var(--font-size-label) !important;
-    gap: 4px !important;
+  .profile-tabs,
+  .profile-home,
+  .profile-reviews,
+  .profile-lists {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 
 @media (min-width: 769px) {
-  .profile-header-section {
-    padding: var(--spacing-2xl) var(--page-padding-desktop);
-    max-width: var(--page-max-width);
-    margin: 0 auto;
-  }
-
-  .profile-avatar {
-    width: 100px;
-    height: 100px;
-  }
-
-  .profile-avatar-generated {
-    font-size: var(--font-size-display-xl);
-  }
-
-  /* Desktop bumps the user identifier to Display XL — feels like a screen
-     header at this width. */
-  .profile-display-name {
-    font-size: var(--font-size-display-xl);
-    line-height: var(--line-height-display-xl);
-  }
-
-  .profile-stats-bar {
-    max-width: var(--page-max-width);
-    margin: 0 auto;
-    padding: var(--spacing-lg) var(--page-padding-desktop);
-  }
-  /* Stat value stays at Display L on desktop (canonical size). */
-
-  .profile-stat {
-    padding: 20px var(--spacing-md);
-  }
-
-  .recent-game-card {
-    width: 120px;
-  }
-
-  .recent-game-cover {
-    width: 120px;
-  }
-
+  .profile-header,
   .profile-tabs {
-    padding: 0 var(--page-padding-desktop);
     max-width: var(--page-max-width);
     margin: 0 auto;
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
   }
 
-  .tab-pane {
-    padding: 0 var(--page-padding-desktop);
+  .profile-home,
+  .profile-reviews,
+  .profile-lists {
     max-width: var(--page-max-width);
     margin: 0 auto;
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
+  }
+
+  .profile-header__avatar {
+    width: 120px;
+    height: 120px;
   }
 }
