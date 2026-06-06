@@ -1,11 +1,13 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import {
   LuChevronLeft,
   LuChevronRight,
@@ -14,12 +16,12 @@ import {
   LuStar,
   LuPlus,
   LuShare2,
-  LuUserPlus,
   LuPin,
   LuArrowUpDown,
+  LuSettings,
 } from 'react-icons/lu'
 import { HiDotsVertical } from 'react-icons/hi'
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, PenLine, List } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -29,13 +31,15 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { getReviewsForUser } from '../services/reviewService'
 import { getListsForUser } from '../services/listService'
-import { getProfile, initializeProfile, generateDefaultAvatar } from '../services/profileService'
+import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
+import { getUserByUsername } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
   followUser,
   unfollowUser,
   isFollowing as fetchIsFollowing,
   getFollowerCount,
+  getFollowingCount,
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
@@ -50,12 +54,19 @@ import {
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
 import { fetchUserBannerUrl } from '../services/storageService'
+import { blockUser } from '../services/blockService'
+import ActionSheet from '../components/ActionSheet'
+import ReportSheet from '../components/ReportSheet'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateListModal from '../components/CreateListModal'
+import FavoritesPickerSheet from '../components/FavoritesPickerSheet'
+import GamePickerSheet from '../components/GamePickerSheet'
 import BadgesRow from '../components/BadgesRow'
 import ReviewCard from '../components/ReviewCard'
+import EmptyState from '../components/EmptyState'
 import ReorderPinsModal from '../components/ReorderPinsModal'
 import SortSheet from '../components/SortSheet'
+import BioEditModal from '../components/BioEditModal'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
@@ -276,13 +287,63 @@ function buildGameImageMap(reviews, lists, favorites) {
 
 function Profile() {
   const navigate = useNavigate()
-  const { userId } = useParams()
+  const location = useLocation()
+  const { username: paramUsername } = useParams()
   const { user } = useAuth()
+  const reducedMotion = useReducedMotion()
 
-  // /profile (no param) is always the signed-in user. /user/:username
-  // routes will pass `userId` once Sprint 6 wires that surface.
-  const isOwnProfile = !userId
-  const targetUserId = userId || user?.id
+  // ── Username → userId resolution ───────────────────────────────────────
+  // When arriving via /user/:username we must look up the UUID before we
+  // can fetch Supabase data. `resolvedUser` carries the raw Supabase row
+  // ({ id, username, display_name, avatar_url, bio }) for other-user
+  // profiles, or null when it's the signed-in user's own profile.
+  // `userNotFound` is set true when the lookup returns no row.
+  const [resolvedUser, setResolvedUser] = useState(null)
+  const [resolving, setResolving] = useState(!!paramUsername)
+  const [userNotFound, setUserNotFound] = useState(false)
+
+  useEffect(() => {
+    if (!paramUsername) {
+      setResolvedUser(null)
+      setResolving(false)
+      setUserNotFound(false)
+      return
+    }
+    let cancelled = false
+    setResolving(true)
+    setUserNotFound(false)
+    const decoded = decodeURIComponent(paramUsername)
+    // Fast-path: check against the signed-in user's own username so we
+    // don't make a Supabase round-trip just to land on own profile.
+    const localProfile = getProfile()
+    const ownUsername = (localProfile?.username || '').trim()
+    if (ownUsername && ownUsername.toLowerCase() === decoded.toLowerCase()) {
+      if (!cancelled) { setResolvedUser(null); setResolving(false) }
+      return
+    }
+    getUserByUsername(decoded)
+      .then((row) => {
+        if (cancelled) return
+        if (!row) {
+          setUserNotFound(true)
+          setResolvedUser(null)
+        } else {
+          setResolvedUser(row)
+          setUserNotFound(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) { setUserNotFound(true); setResolvedUser(null) }
+      })
+      .finally(() => { if (!cancelled) setResolving(false) })
+    return () => { cancelled = true }
+  }, [paramUsername, user?.id])
+
+  // /profile (no param) is always the signed-in user.
+  // /user/:username is own profile when the username matches, otherwise
+  // it is another user's profile.
+  const isOwnProfile = !paramUsername || (!resolving && resolvedUser === null && !userNotFound)
+  const targetUserId = resolvedUser?.id || user?.id
 
   // Local profile blob (display name / avatar / bio / socials / favorites).
   // Lives in localStorage for the signed-in user; for "another user"
@@ -295,12 +356,29 @@ function Profile() {
 
   // Modals / sheets
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showBioSheet, setShowBioSheet] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showCreateListModal, setShowCreateListModal] = useState(false)
+  const [showFavPickerSheet, setShowFavPickerSheet] = useState(false)
+  const [showGamePickerSheet, setShowGamePickerSheet] = useState(false)
 
   // Header kebab dropdown
   const [kebabOpen, setKebabOpen] = useState(false)
   const kebabRef = useRef(null)
+
+  // Sprint 7 — Block confirm sheet (other-user profiles only)
+  const [blockSheetOpen, setBlockSheetOpen] = useState(false)
+  const [blockPending, setBlockPending] = useState(false)
+
+  // Sprint 8 — Report profile sheet (other-user profiles only)
+  const [reportProfileOpen, setReportProfileOpen] = useState(false)
+
+  // Bio "more"/"less" expansion. We measure the collapsed paragraph's
+  // overflow on layout to decide whether to render the toggle at all
+  // — if the bio fits inside the 3-line clamp there's no "more" link.
+  const [bioExpanded, setBioExpanded] = useState(false)
+  const [bioCanExpand, setBioCanExpand] = useState(false)
+  const bioRef = useRef(null)
 
   // Sort selection — same shape as before so callers downstream still
   // read a `{ reviews, lists }` object.
@@ -335,6 +413,7 @@ function Profile() {
   // another user's profile (always false on own). `followPending`
   // debounces rapid taps so the optimistic UI doesn't race itself.
   const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
   const [following, setFollowing] = useState(false)
   const [followPending, setFollowPending] = useState(false)
 
@@ -356,8 +435,24 @@ function Profile() {
   /* ── Data loading ──────────────────────────────────────────────── */
 
   const loadProfileData = useCallback(async () => {
-    const userProfile = getProfile() || initializeProfile()
-    setProfile(userProfile)
+    // Own profile: read display name / avatar / bio from localStorage.
+    // Other-user profile: shape an equivalent blob from the Supabase row
+    // that was resolved from the URL :username param.
+    if (isOwnProfile) {
+      const userProfile = getProfile() || initializeProfile()
+      setProfile(userProfile)
+    } else if (resolvedUser) {
+      setProfile({
+        displayName: resolvedUser.display_name || resolvedUser.username || '',
+        username: resolvedUser.username || '',
+        avatarUrl: resolvedUser.avatar_url || null,
+        bio: resolvedUser.bio || '',
+        bannerUrl: null, // fetched separately below via fetchUserBannerUrl
+        socialLinks: {},
+        favoriteGames: [],
+        currentlyPlayingGame: null,
+      })
+    }
 
     if (targetUserId) {
       try {
@@ -439,7 +534,7 @@ function Profile() {
       setReviewLikeCounts(new Map())
       setPinnedRows([])
     }
-  }, [targetUserId])
+  }, [targetUserId, isOwnProfile, resolvedUser])
 
   useEffect(() => {
     loadProfileData()
@@ -477,11 +572,13 @@ function Profile() {
       return
     }
     try {
-      const [followers, amFollowing] = await Promise.all([
+      const [followers, followingCnt, amFollowing] = await Promise.all([
         getFollowerCount(targetUserId),
+        getFollowingCount(targetUserId),
         isOwnProfile ? Promise.resolve(false) : fetchIsFollowing(targetUserId),
       ])
       setFollowersCount(followers)
+      setFollowingCount(followingCnt)
       setFollowing(amFollowing)
     } catch (err) {
       console.error('[profile] follow state load failed:', err)
@@ -491,6 +588,18 @@ function Profile() {
   useEffect(() => {
     loadFollowState()
   }, [loadFollowState])
+
+  // Sprint 7 — open the Edit Profile modal when this page is reached
+  // via the /edit-profile redirect (Settings page deep link). Replace
+  // the history entry so a back-tap doesn't loop us back through the
+  // redirect → modal cycle.
+  useEffect(() => {
+    if (!isOwnProfile) return
+    if (location.state?.openEditModal) {
+      setShowEditModal(true)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [isOwnProfile, location.state, location.pathname, navigate])
 
   // When the signed-in user follows / unfollows ANYONE (eg. via the
   // Search Users tab), refresh the count on the currently-viewed
@@ -592,6 +701,12 @@ function Profile() {
     setReviewsPage(1)
   }, [activeSort.reviews, allReviews.length])
 
+  // Collapse the bio when the underlying profile changes (e.g. navigating
+  // between users) so the new bio starts in its collapsed state.
+  useEffect(() => {
+    setBioExpanded(false)
+  }, [targetUserId])
+
   /* ── Kebab outside-click close ────────────────────────────────── */
 
   useEffect(() => {
@@ -609,10 +724,36 @@ function Profile() {
     }
   }, [kebabOpen])
 
+  /* ── Bio overflow measurement ─────────────────────────────────── */
+
+  // Measure scrollHeight vs clientHeight on the collapsed paragraph to
+  // determine whether the bio actually exceeds the 3-line clamp. We
+  // only measure while collapsed; expanding the bio removes the clamp
+  // so the measurement would always read "no overflow" and the toggle
+  // would lose its "less" affordance. Re-running on bio text changes
+  // keeps the toggle accurate after Edit Profile saves.
+  useLayoutEffect(() => {
+    if (!bioRef.current) return
+    if (bioExpanded) return
+    const el = bioRef.current
+    setBioCanExpand(el.scrollHeight - el.clientHeight > 1)
+  }, [profile?.bio, bioExpanded])
+
   /* ── Action handlers ──────────────────────────────────────────── */
 
   const handleProfileUpdate = (updatedProfile) => {
     setProfile(updatedProfile)
+    window.dispatchEvent(new Event('profileUpdated'))
+  }
+
+  const handleSaveBio = (updatedProfile) => {
+    setProfile(updatedProfile)
+    window.dispatchEvent(new Event('profileUpdated'))
+  }
+
+  const handleSaveFavorites = (newFavorites) => {
+    const updated = updateProfile({ favoriteGames: newFavorites })
+    setProfile(updated)
     window.dispatchEvent(new Event('profileUpdated'))
   }
 
@@ -783,23 +924,49 @@ function Profile() {
 
   /* ── Loading state ────────────────────────────────────────────── */
 
-  if (!profile) {
+  // While the username → UUID resolution round-trip is in-flight, show
+  // the same skeleton to avoid a blank flash before the profile paints.
+  if (resolving || !profile) {
     return (
       <div className="profile-page" aria-hidden="true">
-        <div className="profile-header">
-          <div className="profile-header__row1">
-            <span className="profile-header__back" />
-            <span className="profile-header__title-sk skeleton" />
-            <span className="profile-header__actions-sk skeleton" />
-          </div>
-          <div className="profile-header__row2">
-            <div className="skeleton profile-header__avatar-sk" />
-            <div className="profile-header__stats-sk">
-              <div className="skeleton profile-header__stat-sk" />
-              <div className="skeleton profile-header__stat-sk" />
-              <div className="skeleton profile-header__stat-sk" />
+        <div className="profile-header-strip">
+          <span className="profile-header-strip__slot" />
+          <span className="profile-header-strip__title-sk skeleton" />
+          <span className="profile-header-strip__slot" />
+        </div>
+        <div className="profile-ig-hero profile-ig-hero--skeleton">
+          <div className="profile-ig-hero__top-row">
+            <div className="skeleton profile-ig-hero__avatar-sk" />
+            <div className="profile-ig-hero__stats">
+              <div className="skeleton profile-ig-stat-sk" />
+              <div className="skeleton profile-ig-stat-sk" />
+              <div className="skeleton profile-ig-stat-sk" />
             </div>
           </div>
+          <span className="skeleton profile-ig-hero__name-sk" />
+          <span className="skeleton profile-ig-hero__handle-sk" />
+        </div>
+      </div>
+    )
+  }
+
+  if (userNotFound) {
+    return (
+      <div className="profile-page">
+        <div className="profile-header-strip">
+          <button
+            type="button"
+            className="profile-header-strip__icon-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            <LuChevronLeft size={24} />
+          </button>
+        </div>
+        <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem' }}>
+            This user doesn&apos;t exist or has been removed.
+          </p>
         </div>
       </div>
     )
@@ -816,11 +983,13 @@ function Profile() {
     ? (profile.bannerUrl || null)
     : otherUserBannerUrl
 
-  // Sprint 1 P5 preserved: username is the centered serif label. Falls
-  // back to displayName if the user hasn't set a username yet (so the
-  // header never reads "@undefined" or empty).
-  const headerUsername =
-    profile.username?.trim() || profile.displayName?.trim() || 'You'
+  // Cobalt-Modern header strip — centered title is the user's
+  // display name per spec. Falls back to username then a generic
+  // placeholder so the header never renders empty.
+  const headerTitle =
+    profile.displayName?.trim() ||
+    profile.username?.trim() ||
+    'Profile'
 
   const reviewCount = allReviews.length
   const playedCount = (() => {
@@ -848,102 +1017,148 @@ function Profile() {
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
         {/* ═════════════════════════════════════════════════════════
-            HEADER — six rows in fixed order
+            HEADER STRIP — back / centered title / more
             ═════════════════════════════════════════════════════════ */}
-        <header className="profile-header">
-          {/* Row 1 — top nav */}
-          <div className="profile-header__row1">
-            <button
-              type="button"
-              className="profile-header__icon-btn"
-              onClick={() => navigate(-1)}
-              aria-label="Go back"
-            >
-              <LuChevronLeft size={22} aria-hidden="true" />
-            </button>
-            <h1 className="profile-header__username">{headerUsername}</h1>
-            <div className="profile-header__nav-actions">
-              {showFilterIcon && (
-                <button
-                  type="button"
-                  className="profile-header__icon-btn"
-                  aria-label="Sort options"
-                  onClick={() => setShowSortSheet(true)}
-                >
-                  <SlidersHorizontal size={20} aria-hidden="true" />
-                </button>
-              )}
-              <div className="profile-header__kebab-wrap" ref={kebabRef}>
-                <button
-                  type="button"
-                  className="profile-header__icon-btn"
-                  aria-label="More options"
-                  aria-expanded={kebabOpen}
-                  onClick={() => setKebabOpen((v) => !v)}
-                >
-                  <HiDotsVertical size={20} aria-hidden="true" />
-                </button>
-                {kebabOpen && (
-                  <div className="profile-header__kebab-menu" role="menu">
-                    {isOwnProfile && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          setShowEditModal(true)
-                        }}
-                      >
-                        Edit profile
-                      </button>
-                    )}
+        <header className="profile-header-strip">
+          <div className="profile-header-strip__slot profile-header-strip__slot--left">
+            {!isOwnProfile && (
+              <button
+                type="button"
+                className="profile-header-strip__icon-btn"
+                onClick={() => navigate(-1)}
+                aria-label="Go back"
+              >
+                <LuChevronLeft size={22} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <h1 className="profile-header-strip__title">{headerTitle}</h1>
+          <div className="profile-header-strip__slot profile-header-strip__slot--right">
+            {showFilterIcon && (
+              <button
+                type="button"
+                className="profile-header-strip__icon-btn"
+                aria-label="Sort options"
+                onClick={() => setShowSortSheet(true)}
+              >
+                <SlidersHorizontal size={20} aria-hidden="true" />
+              </button>
+            )}
+            {/* Sprint 7 — gear sits to the LEFT of the ellipsis on the
+                signed-in user's own profile and opens the Settings page.
+                Hidden on other-user profiles since they have no settings
+                to manage from there. */}
+            {isOwnProfile && (
+              <button
+                type="button"
+                className="profile-header-strip__icon-btn"
+                aria-label="Settings"
+                onClick={() => navigate('/settings')}
+              >
+                <LuSettings size={22} aria-hidden="true" />
+              </button>
+            )}
+            <div className="profile-header-strip__kebab-wrap" ref={kebabRef}>
+              <button
+                type="button"
+                className="profile-header-strip__icon-btn"
+                aria-label="More options"
+                aria-expanded={kebabOpen}
+                onClick={() => setKebabOpen((v) => !v)}
+              >
+                <HiDotsVertical size={20} aria-hidden="true" />
+              </button>
+              {kebabOpen && (
+                <div className="profile-header-strip__kebab-menu" role="menu">
+                  {isOwnProfile && (
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => {
                         setKebabOpen(false)
-                        handleShareProfile()
+                        setShowEditModal(true)
                       }}
                     >
-                      Share profile
+                      Edit profile
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setKebabOpen(false)
+                      handleShareProfile()
+                    }}
+                  >
+                    Share profile
+                  </button>
+                  {!isOwnProfile && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setKebabOpen(false)
+                          setReportProfileOpen(true)
+                        }}
+                      >
+                        Report profile
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="profile-header-strip__kebab-menu-item--destructive"
+                        onClick={() => {
+                          setKebabOpen(false)
+                          setBlockSheetOpen(true)
+                        }}
+                      >
+                        Block @{profile.username || profile.displayName || 'user'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+        </header>
 
-          {/* Banner — full-bleed strip above the avatar row.
-              Only rendered when a banner_url is set; absent means flat
-              surface background with no negative margin on the avatar. */}
-          {displayBannerUrl && (
-            <div className="profile-header__banner" aria-hidden="true">
-              <img
-                src={displayBannerUrl}
-                alt=""
-                className="profile-header__banner-img"
-                loading="lazy"
-              />
-            </div>
-          )}
+        {/* Banner — full-bleed strip between the header strip and the
+            hero block. Sprint 7 preserved; the avatar overlaps it. */}
+        {displayBannerUrl && (
+          <div className="profile-banner" aria-hidden="true">
+            <img
+              src={displayBannerUrl}
+              alt=""
+              className="profile-banner__img"
+              loading="lazy"
+            />
+          </div>
+        )}
 
-          {/* Row 2 — avatar + 3 stat numerals */}
-          <div className={`profile-header__row2${displayBannerUrl ? ' profile-header__row2--has-banner' : ''}`}>
+        {/* ═════════════════════════════════════════════════════════
+            IG-STYLE PROFILE HEADER — avatar+stats / name / handle /
+            bio / action buttons (Instagram compact left-aligned layout)
+            ═════════════════════════════════════════════════════════ */}
+        <section className={`profile-ig-hero${displayBannerUrl ? ' profile-ig-hero--has-banner' : ''}`}>
+
+          {/* ── Row 1: Avatar (left) + Stats (right) ── */}
+          <div className="profile-ig-hero__top-row">
             <button
               type="button"
-              className={`profile-header__avatar${isOwnProfile ? ' profile-header__avatar--editable' : ''}`}
+              className={`profile-ig-hero__avatar${isOwnProfile ? ' profile-ig-hero__avatar--editable' : ''}`}
               onClick={() => isOwnProfile && setShowEditModal(true)}
-              aria-label={isOwnProfile ? 'Edit profile' : 'Profile avatar'}
+              aria-label={isOwnProfile ? 'Edit profile photo' : `${profile.displayName || 'User'} profile photo`}
             >
               {avatarDisplay ? (
                 <img
                   src={avatarDisplay}
-                  alt={profile.displayName}
-                  className="profile-header__avatar-img"
+                  alt={`${profile.displayName || 'User'} profile photo`}
+                  className="profile-ig-hero__avatar-img"
                 />
               ) : (
                 <div
-                  className="profile-header__avatar-fallback"
+                  className="profile-ig-hero__avatar-fallback"
                   style={{ backgroundColor: defaultAvatar.color }}
                 >
                   {defaultAvatar.initials}
@@ -951,76 +1166,100 @@ function Profile() {
               )}
             </button>
 
-            <div className="profile-header__stats" role="group" aria-label="Profile stats">
-              <button
-                type="button"
-                className="profile-header__stat"
-                onClick={() => setActiveTab('reviews')}
-                aria-label={`${reviewCount} reviews — view reviews tab`}
+            <div className="profile-ig-hero__stats" role="group" aria-label="Profile stats">
+              <div
+                className="profile-ig-stat"
+                aria-label={`Reviews, ${reviewCount}, not interactive`}
               >
-                <span className="profile-header__stat-value">{reviewCount}</span>
-                <span className="profile-header__stat-label">Reviews</span>
-              </button>
+                <span className="profile-ig-stat__value">{reviewCount}</span>
+                <span className="profile-ig-stat__label">Reviews</span>
+              </div>
               <button
                 type="button"
-                className="profile-header__stat"
-                onClick={() => navigate('/library?status=played')}
-                aria-label={`${playedCount} played games`}
-              >
-                <span className="profile-header__stat-value">{playedCount}</span>
-                <span className="profile-header__stat-label">Played</span>
-              </button>
-              <button
-                type="button"
-                className="profile-header__stat"
+                className="profile-ig-stat profile-ig-stat--clickable"
                 onClick={() => {
-                  const handle =
-                    profile.username || profile.displayName || 'user'
+                  const handle = profile.username || profile.displayName || 'user'
                   navigate(`/user/${encodeURIComponent(handle)}/followers`)
                 }}
-                aria-label={`${followersCount} followers — view list`}
+                aria-label={`Followers, ${followersCount}, view list`}
               >
-                <span className="profile-header__stat-value">{followersCount}</span>
-                <span className="profile-header__stat-label">Followers</span>
+                <span className="profile-ig-stat__value">{followersCount}</span>
+                <span className="profile-ig-stat__label">Followers</span>
+              </button>
+              <button
+                type="button"
+                className="profile-ig-stat profile-ig-stat--clickable"
+                onClick={() => {
+                  const handle = profile.username || profile.displayName || 'user'
+                  navigate(`/user/${encodeURIComponent(handle)}/following`)
+                }}
+                aria-label={`Following, ${followingCount}, view list`}
+              >
+                <span className="profile-ig-stat__value">{followingCount}</span>
+                <span className="profile-ig-stat__label">Following</span>
               </button>
             </div>
           </div>
 
-          {/* Row 3 — display name */}
-          <div className="profile-header__row3">
-            <h2 className="profile-header__display-name">
-              {profile.displayName}
-            </h2>
-          </div>
+          {/* ── Row 2: Display name ── */}
+          <h2 className="profile-ig-hero__name">
+            {profile.displayName || 'You'}
+          </h2>
 
-          {/* Row 4 — bio (Sprint 1 P5: empty-state CTA preserved on own profile) */}
-          {(() => {
-            if (profile.bio) {
-              return (
-                <div className="profile-header__row4">
-                  <p className="profile-header__bio">{profile.bio}</p>
-                </div>
-              )
-            }
-            if (isOwnProfile) {
-              return (
-                <div className="profile-header__row4">
-                  <button
-                    type="button"
-                    className="profile-header__bio-cta"
-                    onClick={() => setShowEditModal(true)}
-                  >
-                    Tell people what you play →
-                  </button>
-                </div>
-              )
-            }
-            return null
-          })()}
+          {/* ── Row 3: @username (hidden when empty) ── */}
+          {(profile.username || '').trim().length > 0 && (
+            <p className="profile-ig-hero__handle">@{profile.username.trim()}</p>
+          )}
 
-          {/* Row 5 — social links + share */}
-          <div className="profile-header__row5">
-            <div className="profile-header__socials">
+          {/* ── Row 4: Bio — 3-line clamp + more/less toggle ── */}
+          {profile.bio ? (
+            <div className="profile-ig-hero__bio-wrap">
+              <p
+                ref={bioRef}
+                className={`profile-ig-hero__bio${
+                  bioExpanded ? ' profile-ig-hero__bio--expanded' : ''
+                }${isOwnProfile ? ' profile-ig-hero__bio--tappable' : ''}`}
+                onClick={isOwnProfile ? () => setShowBioSheet(true) : undefined}
+                role={isOwnProfile ? 'button' : undefined}
+                tabIndex={isOwnProfile ? 0 : undefined}
+                onKeyDown={
+                  isOwnProfile
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ')
+                          setShowBioSheet(true)
+                      }
+                    : undefined
+                }
+                aria-label={isOwnProfile ? 'Edit bio' : undefined}
+              >
+                {profile.bio}
+              </p>
+              {bioCanExpand && (
+                <button
+                  type="button"
+                  className="profile-ig-hero__bio-toggle"
+                  onClick={() => setBioExpanded((v) => !v)}
+                  aria-expanded={bioExpanded}
+                >
+                  {bioExpanded ? 'less' : 'more'}
+                </button>
+              )}
+            </div>
+          ) : (
+            isOwnProfile && (
+              <button
+                type="button"
+                className="profile-ig-hero__bio-cta"
+                onClick={() => setShowBioSheet(true)}
+              >
+                Tell people what you play →
+              </button>
+            )
+          )}
+
+          {/* Social links — shown only when at least one handle is set */}
+          {setSocials.length > 0 && (
+            <div className="profile-ig-hero__socials">
               {setSocials.map((p) => {
                 const handle = (profile[p.profileField] || '').trim()
                 const Icon = p.Icon
@@ -1028,45 +1267,46 @@ function Profile() {
                   <button
                     type="button"
                     key={p.key}
-                    className="profile-header__social"
+                    className="profile-ig-hero__social"
                     onClick={() => openExternalLink(p.url(handle))}
                     aria-label={`Open ${p.key} profile @${handle}`}
                   >
-                    <Icon size={16} aria-hidden="true" />
-                    <span className="profile-header__social-handle">
+                    <Icon size={14} aria-hidden="true" />
+                    <span className="profile-ig-hero__social-handle">
                       @{handle}
                     </span>
                   </button>
                 )
               })}
             </div>
-            <button
-              type="button"
-              className="profile-header__share"
-              onClick={handleShareProfile}
-              aria-label="Share profile"
-            >
-              <LuShare2 size={18} aria-hidden="true" />
-            </button>
-          </div>
+          )}
 
-          {/* Row 6 — actions */}
-          <div className="profile-header__row6">
+          {/* ── Row 5: Action buttons (two equal-width) ── */}
+          <div className="profile-ig-hero__actions">
             {isOwnProfile ? (
-              <button
-                type="button"
-                className="profile-header__edit-btn"
-                onClick={() => setShowEditModal(true)}
-              >
-                Edit Profile
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="profile-ig-btn profile-ig-btn--secondary"
+                  onClick={() => setShowEditModal(true)}
+                  aria-label="Edit profile"
+                >
+                  Edit Profile
+                </button>
+                <button
+                  type="button"
+                  className="profile-ig-btn profile-ig-btn--secondary"
+                  onClick={handleShareProfile}
+                  aria-label="Share profile"
+                >
+                  Share Profile
+                </button>
+              </>
             ) : (
               <>
                 <button
                   type="button"
-                  className={`profile-header__follow-btn${
-                    following ? ' profile-header__follow-btn--following' : ''
-                  }`}
+                  className={`profile-ig-btn${following ? ' profile-ig-btn--secondary profile-ig-btn--following' : ' profile-ig-btn--primary'}`}
                   onClick={handleFollowToggle}
                   disabled={followPending}
                   aria-pressed={following}
@@ -1076,13 +1316,8 @@ function Profile() {
                 </button>
                 <button
                   type="button"
-                  className="profile-header__msg-btn"
+                  className="profile-ig-btn profile-ig-btn--secondary"
                   onClick={() => {
-                    // Sprint 6 P2 — DMs are real now. Route to the
-                    // thread page using the partner's username (or a
-                    // sensible fallback). If no thread exists yet, the
-                    // thread page renders empty and the user can send
-                    // the first message from there.
                     const handle =
                       profile?.username ||
                       profile?.displayName ||
@@ -1090,98 +1325,126 @@ function Profile() {
                     if (!handle) return
                     navigate(`/messages/${encodeURIComponent(handle)}`)
                   }}
+                  aria-label="Send message"
                 >
-                  Send Message
-                </button>
-                <button
-                  type="button"
-                  className={`profile-header__follow-icon-btn${
-                    following ? ' profile-header__follow-icon-btn--following' : ''
-                  }`}
-                  onClick={handleFollowToggle}
-                  disabled={followPending}
-                  aria-pressed={following}
-                  aria-label={following ? 'Unfollow' : 'Follow'}
-                >
-                  <LuUserPlus size={18} aria-hidden="true" />
+                  Message
                 </button>
               </>
             )}
           </div>
-        </header>
+        </section>
 
         {/* ═════════════════════════════════════════════════════════
-            TAB BAR — Home / Reviews / Lists (Popular/New styling)
+            TAB STRIP — Home / Reviews / Lists with sliding cobalt
+            underline. Mirrors the layoutId pattern from BottomNav.
             ═════════════════════════════════════════════════════════ */}
         <div className="profile-tabs" role="tablist" aria-label="Profile sections">
           {[
             { id: 'home', label: 'Home' },
             { id: 'reviews', label: 'Reviews' },
             { id: 'lists', label: 'Lists' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              className={`profile-tab${activeTab === tab.id ? ' profile-tab--active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          ].map((tab) => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`profile-tab${isActive ? ' profile-tab--active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span className="profile-tab__label">{tab.label}</span>
+                {isActive && (
+                  <motion.span
+                    layoutId="profile-tab-underline"
+                    className="profile-tab__underline"
+                    transition={
+                      reducedMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', stiffness: 380, damping: 30 }
+                    }
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* ═════════════════════════════════════════════════════════
-            TAB CONTENT
+            TAB CONTENT — horizontal slide between Home / Reviews / Lists.
+            AnimatePresence with mode="wait" keyed on `activeTab` so each
+            tab switch slides the outgoing pane left (x: -12) and the
+            incoming pane in from the right (x: 12 → 0). 180 ms duration
+            per the motion-system spec. Reduced motion collapses to a
+            plain swap.
             ═════════════════════════════════════════════════════════ */}
         <div className="profile-tab-content">
-          {activeTab === 'home' && (
-            <HomeTab
-              favoriteGames={favoriteGames}
-              activities={homeRecentActivity}
-              gameImageMap={gameImageMap}
-              userIdentifier={profile.username || profile.displayName || 'user'}
-              onGameClick={(id, image) =>
-                navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={reducedMotion ? false : { opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -12 }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }
               }
-              onActivityChevron={() =>
-                navigate(
-                  `/user/${encodeURIComponent(profile.username || profile.displayName || 'user')}/activity`
-                )
-              }
-              user={user}
-            />
-          )}
+            >
+              {activeTab === 'home' && (
+                <HomeTab
+                  favoriteGames={favoriteGames}
+                  activities={homeRecentActivity}
+                  gameImageMap={gameImageMap}
+                  userIdentifier={profile.username || profile.displayName || 'user'}
+                  onGameClick={(id, image) =>
+                    navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
+                  }
+                  onActivityChevron={() =>
+                    navigate(
+                      `/user/${encodeURIComponent(profile.username || profile.displayName || 'user')}/activity`
+                    )
+                  }
+                  user={user}
+                  isOwnProfile={isOwnProfile}
+                  onEditFavorites={() => setShowFavPickerSheet(true)}
+                />
+              )}
 
-          {activeTab === 'reviews' && (
-            <ReviewsTab
-              reviews={visibleReviews}
-              pinnedRows={pinnedRows}
-              likeCounts={reviewLikeCounts}
-              commentCounts={reviewCommentCounts}
-              hasMore={hasMoreReviews}
-              sentinelRef={reviewsSentinelRef}
-              isOwnProfile={isOwnProfile}
-              onWriteReview={() => navigate('/review/new')}
-              currentUserId={user?.id}
-              onPinReview={handlePinReview}
-              onUnpinReview={handleUnpinReview}
-              onOpenReorder={() => setShowReorderModal(true)}
-            />
-          )}
+              {activeTab === 'reviews' && (
+                <ReviewsTab
+                  reviews={visibleReviews}
+                  pinnedRows={pinnedRows}
+                  likeCounts={reviewLikeCounts}
+                  commentCounts={reviewCommentCounts}
+                  hasMore={hasMoreReviews}
+                  sentinelRef={reviewsSentinelRef}
+                  isOwnProfile={isOwnProfile}
+                  displayName={profile.displayName || profile.username || ''}
+                  onWriteReview={() => setShowGamePickerSheet(true)}
+                  currentUserId={user?.id}
+                  onPinReview={handlePinReview}
+                  onUnpinReview={handleUnpinReview}
+                  onOpenReorder={() => setShowReorderModal(true)}
+                />
+              )}
 
-          {activeTab === 'lists' && (
-            <ListsTab
-              lists={sortedLists}
-              isOwnProfile={isOwnProfile}
-              onTapList={(id) => navigate(`/list/${id}`)}
-              onCreateList={() => setShowCreateListModal(true)}
-              authorUsername={profile.username || profile.displayName || ''}
-              authorAvatarUrl={avatarDisplay}
-              authorAvatarFallback={defaultAvatar}
-            />
-          )}
+              {activeTab === 'lists' && (
+                <ListsTab
+                  lists={sortedLists}
+                  isOwnProfile={isOwnProfile}
+                  displayName={profile.displayName || profile.username || ''}
+                  onTapList={(id) => navigate(`/list/${id}`)}
+                  onCreateList={() => setShowCreateListModal(true)}
+                  authorUsername={profile.username || profile.displayName || ''}
+                  authorAvatarUrl={avatarDisplay}
+                  authorAvatarFallback={defaultAvatar}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* ═════════════════════════════════════════════════════════
@@ -1192,6 +1455,13 @@ function Profile() {
           onClose={() => setShowEditModal(false)}
           profile={profile}
           onUpdate={handleProfileUpdate}
+        />
+
+        <BioEditModal
+          isOpen={showBioSheet}
+          onClose={() => setShowBioSheet(false)}
+          currentBio={profile?.bio || ''}
+          onSave={handleSaveBio}
         />
 
         <SortSheet
@@ -1218,6 +1488,63 @@ function Profile() {
           }))}
           onSave={handleReorderPins}
         />
+
+        <FavoritesPickerSheet
+          isOpen={showFavPickerSheet}
+          initialFavorites={profile?.favoriteGames || []}
+          onSave={handleSaveFavorites}
+          onClose={() => setShowFavPickerSheet(false)}
+        />
+
+        <GamePickerSheet
+          isOpen={showGamePickerSheet}
+          onSelect={(game) => {
+            setShowGamePickerSheet(false)
+            navigate(`/review/new?gameId=${game.id}`, { state: { game } })
+          }}
+          onCancel={() => setShowGamePickerSheet(false)}
+        />
+
+        {/* Sprint 7 — Block confirmation sheet (other-user profile only).
+            On confirm we INSERT into blocked_users via blockService and
+            navigate the viewer back so they don't keep looking at the
+            blocked person's profile. */}
+        <ActionSheet
+          isOpen={blockSheetOpen}
+          onClose={() => setBlockSheetOpen(false)}
+          title={`Block @${profile.username || profile.displayName || 'user'}? They won't be able to see your profile, message you, or interact with your content.`}
+          items={[
+            {
+              label: blockPending
+                ? 'Blocking…'
+                : `Block @${profile.username || profile.displayName || 'user'}`,
+              destructive: true,
+              disabled: blockPending,
+              onClick: async () => {
+                if (!targetUserId || isOwnProfile) return
+                setBlockPending(true)
+                try {
+                  await blockUser(targetUserId)
+                  showToast('User blocked.', 'success')
+                  navigate(-1)
+                } catch (err) {
+                  console.error('[profile] block failed:', err)
+                  showToast(err?.message || 'Could not block user.', 'error')
+                } finally {
+                  setBlockPending(false)
+                }
+              },
+            },
+          ]}
+        />
+
+        {/* Sprint 8 — Report profile sheet (other-user profile only). */}
+        <ReportSheet
+          isOpen={reportProfileOpen}
+          onClose={() => setReportProfileOpen(false)}
+          contentType="profile"
+          contentId={targetUserId}
+        />
       </div>
     </SharedCoverScope>
   )
@@ -1235,42 +1562,68 @@ function HomeTab({
   onGameClick,
   onActivityChevron,
   user,
+  isOwnProfile,
+  onEditFavorites,
 }) {
   return (
     <div className="profile-home">
-      {/* Section 1 — Favorite Games (hidden when empty) */}
-      {favoriteGames.length > 0 && (
+      {/* Section 1 — Favorite Games (hidden when empty on others' profiles;
+          own profile shows empty state with an edit affordance) */}
+      {(favoriteGames.length > 0 || isOwnProfile) && (
         <section className="profile-home__section">
-          <h3 className="profile-home__section-title">Favorite Games</h3>
-          <div className="profile-favorites-row" role="list">
-            {favoriteGames.slice(0, 4).map((g) => (
+          <div className="profile-home__section-header">
+            <h3 className="profile-home__section-title">Favorite Games</h3>
+            {isOwnProfile && (
               <button
-                key={g.id}
                 type="button"
-                role="listitem"
-                className="profile-favorite-card"
-                onClick={() => onGameClick(g.id, g.image)}
+                className="profile-home__edit-btn"
+                onClick={onEditFavorites}
+                aria-label="Edit favorite games"
               >
-                <div className="profile-favorite-card__cover">
-                  {g.image ? (
-                    <SharedCover gameId={g.id} imageSrc={g.image}>
-                      <img src={g.image} alt={g.title} loading="lazy" />
-                    </SharedCover>
-                  ) : (
-                    <span className="profile-favorite-card__fallback">
-                      {g.title?.charAt(0) || '?'}
+                Edit
+              </button>
+            )}
+          </div>
+          {favoriteGames.length === 0 ? (
+            <button
+              type="button"
+              className="profile-home__fav-empty-cta"
+              onClick={onEditFavorites}
+              aria-label="Add favorite games"
+            >
+              + Add favorite games
+            </button>
+          ) : (
+            <div className="profile-favorites-row" role="list">
+              {favoriteGames.slice(0, 4).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="listitem"
+                  className="profile-favorite-card"
+                  onClick={() => onGameClick(g.id, g.image)}
+                >
+                  <div className="profile-favorite-card__cover">
+                    {g.image ? (
+                      <SharedCover gameId={g.id} imageSrc={g.image}>
+                        <img src={g.image} alt={g.title} loading="lazy" />
+                      </SharedCover>
+                    ) : (
+                      <span className="profile-favorite-card__fallback">
+                        {g.title?.charAt(0) || '?'}
+                      </span>
+                    )}
+                  </div>
+                  <span className="profile-favorite-card__name">{g.title}</span>
+                  {g.developer && (
+                    <span className="profile-favorite-card__dev">
+                      {g.developer}
                     </span>
                   )}
-                </div>
-                <span className="profile-favorite-card__name">{g.title}</span>
-                {g.developer && (
-                  <span className="profile-favorite-card__dev">
-                    {g.developer}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -1281,23 +1634,21 @@ function HomeTab({
           would leave an empty container in the DOM. */}
       <BadgesRow user={user} username={userIdentifier} />
 
-      {/* Section 3 — Recent Activity */}
-      <section className="profile-home__section">
-        <div className="profile-home__section-header">
-          <h3 className="profile-home__section-title">Recent Activity</h3>
-          <button
-            type="button"
-            className="profile-home__chevron-btn"
-            onClick={onActivityChevron}
-            aria-label="See full activity log"
-          >
-            <LuChevronRight size={20} aria-hidden="true" />
-          </button>
-        </div>
-
-        {activities.length === 0 ? (
-          <p className="profile-home__empty">No activity yet.</p>
-        ) : (
+      {/* Section 3 — Recent Activity. Hidden entirely when empty per
+          the no-fabricated-data rule; no placeholder copy is shown. */}
+      {activities.length > 0 && (
+        <section className="profile-home__section">
+          <div className="profile-home__section-header">
+            <h3 className="profile-home__section-title">Recent Activity</h3>
+            <button
+              type="button"
+              className="profile-home__chevron-btn"
+              onClick={onActivityChevron}
+              aria-label="See full activity log"
+            >
+              <LuChevronRight size={20} aria-hidden="true" />
+            </button>
+          </div>
           <div className="profile-activity-row" role="list">
             {activities.map((a) => {
               const ActivityIcon = getActivityIcon(a)
@@ -1340,8 +1691,8 @@ function HomeTab({
               )
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   )
 }
@@ -1358,6 +1709,7 @@ function ReviewsTab({
   hasMore,
   sentinelRef,
   isOwnProfile,
+  displayName,
   onWriteReview,
   currentUserId,
   onPinReview,
@@ -1370,15 +1722,19 @@ function ReviewsTab({
     return (
       <div className="profile-reviews">
         <div className="profile-empty">
-          <p className="profile-empty__copy">No reviews yet</p>
-          {isOwnProfile && (
-            <button
-              type="button"
-              className="profile-empty__cta"
-              onClick={onWriteReview}
-            >
-              Write a review
-            </button>
+          {isOwnProfile ? (
+            <EmptyState
+              icon={PenLine}
+              title="No reviews yet."
+              body="Share what you think about the games you've played."
+              cta="Write a review"
+              onCta={onWriteReview}
+            />
+          ) : (
+            <EmptyState
+              icon={PenLine}
+              title={`${displayName || 'They'} hasn't reviewed anything yet.`}
+            />
           )}
         </div>
       </div>
@@ -1461,6 +1817,7 @@ function ReviewsTab({
 function ListsTab({
   lists,
   isOwnProfile,
+  displayName,
   onTapList,
   onCreateList,
   authorUsername,
@@ -1471,15 +1828,19 @@ function ListsTab({
     return (
       <div className="profile-lists">
         <div className="profile-empty">
-          <p className="profile-empty__copy">No lists yet</p>
-          {isOwnProfile && (
-            <button
-              type="button"
-              className="profile-empty__cta"
-              onClick={onCreateList}
-            >
-              Create a list
-            </button>
+          {isOwnProfile ? (
+            <EmptyState
+              icon={List}
+              title="No lists yet."
+              body="Create themed collections — cozy games, RPGs, anything."
+              cta="Create your first list"
+              onCta={onCreateList}
+            />
+          ) : (
+            <EmptyState
+              icon={List}
+              title={`${displayName || 'They'} hasn't made any lists.`}
+            />
           )}
         </div>
       </div>
@@ -1516,20 +1877,35 @@ function ListRow({
   authorAvatarFallback,
 }) {
   const slots = Array.from({ length: 6 }, (_, i) => list.previewGames?.[i] || null)
+  const mosaicAlt = slots.filter(Boolean).length > 0
+    ? `${list.name} — covers of ${slots.filter(Boolean).map((g) => g.title).filter(Boolean).join(', ')}`
+    : `${list.name} cover`
+
   return (
     <article className="profile-list-row" onClick={onTap}>
-      <div className="profile-list-row__mosaic">
-        {slots.map((g, idx) => (
-          <div
-            key={g?.id || `empty-${idx}`}
-            className={`profile-list-row__cell${g ? '' : ' profile-list-row__cell--empty'}`}
-          >
-            {g?.image ? (
-              <img src={g.image} alt="" loading="lazy" />
-            ) : null}
-          </div>
-        ))}
-      </div>
+      {list.coverImageUrl ? (
+        <div className="profile-list-row__mosaic profile-list-row__mosaic--custom-cover">
+          <img
+            src={list.coverImageUrl}
+            alt={`${list.name} cover`}
+            className="profile-list-row__cover-img"
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <div className="profile-list-row__mosaic" role="img" aria-label={mosaicAlt}>
+          {slots.map((g, idx) => (
+            <div
+              key={g?.id || `empty-${idx}`}
+              className={`profile-list-row__cell${g ? '' : ' profile-list-row__cell--empty'}`}
+            >
+              {g?.image ? (
+                <img src={g.image} alt="" loading="lazy" />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="profile-list-row__body">
         <h3 className="profile-list-row__name">{list.name}</h3>

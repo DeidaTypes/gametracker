@@ -1,27 +1,134 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { searchGames } from '../services/searchService'
-import { isGameInList, getGamesFromList } from '../services/libraryService'
+import {
+  getGamesFromList,
+  addGameToList as localAddGameToList,
+  removeGameFromList as localRemoveGameFromList,
+} from '../services/libraryService'
 import {
   addGameToList as sbAddGameToList,
+  removeGameFromList as sbRemoveGameFromList,
   getListById,
   isTrackerList,
 } from '../services/listService'
-import { TextField, SecondaryButton } from './forms'
 import { showToast } from './Toast'
 import './CreateListModal.css'
 import './AddGamesModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
+const COLLAPSE_THRESHOLD = 5
+
+// ── Shared row component used for both search results and "In this list" ──
+function GameRow({ game, mode, isInList, onAdd, onRemove }) {
+  const handleRowClick = () => {
+    if (mode === 'existing') return
+    if (isInList) {
+      onRemove(game)
+    } else {
+      onAdd(game)
+    }
+  }
+
+  return (
+    <div
+      className={`agm-game-row${mode === 'existing' ? ' agm-game-row--existing' : ''}`}
+      onClick={handleRowClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleRowClick()
+        }
+      }}
+      aria-label={
+        mode === 'existing'
+          ? game.title
+          : isInList
+          ? `Remove ${game.title} from list`
+          : `Add ${game.title} to list`
+      }
+    >
+      {game.image ? (
+        <img
+          src={game.image}
+          alt={game.title}
+          className="agm-game-cover"
+        />
+      ) : (
+        <div className="agm-game-cover agm-game-cover--placeholder">
+          {game.title?.charAt(0) || '?'}
+        </div>
+      )}
+
+      <div className="agm-game-info">
+        <div className="agm-game-title">{game.title}</div>
+        <div className="agm-game-meta">
+          {[game.year, game.developer].filter(Boolean).join(' · ')}
+        </div>
+      </div>
+
+      {mode === 'existing' ? (
+        <button
+          type="button"
+          className="agm-remove-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(game)
+          }}
+          aria-label={`Remove ${game.title} from list`}
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M2 4h12M5.333 4V2.667A1.333 1.333 0 016.667 1.333h2.666A1.333 1.333 0 0110.667 2.667V4m2 0v9.333A1.333 1.333 0 0111.333 14.667H4.667A1.333 1.333 0 013.333 13.333V4h9.334z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      ) : isInList ? (
+        <div className="agm-check-badge" aria-label="Already in list">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M2 7l3.5 3.5L12 3"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="agm-add-btn"
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M7 1v12M1 7h12"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
 
 /**
  * AddGamesModal
  *
  * For CUSTOM lists (Supabase UUIDs): each game tap immediately writes to
- * list_games via addGameToList. There is no batch-save on "Done".
+ * list_games via addGameToList. Removals also write immediately.
  *
- * For TRACKER lists (currently-playing, etc.): games are collected in
- * addedGames state and flushed via the onAddGames callback when the user
- * taps "Done" (unchanged behaviour from before this migration).
+ * For TRACKER lists: games are collected in addedGames state and flushed
+ * via the onAddGames callback when the user taps "Done".
  */
 function AddGamesModal({
   isOpen,
@@ -42,20 +149,85 @@ function AddGamesModal({
 
   const debounceRef = useRef(null)
   const searchCallIdRef = useRef(0)
+  const sheetRef = useRef(null)
 
   const isCustom = listId ? !isTrackerList(listId) : false
 
-  // Load existing games when opening.
-  // Custom lists: fetch from Supabase; tracker lists: from localStorage.
+  // ── Keyboard-aware sizing ──────────────────────────────────────────────
+  // Measure the visible viewport (the area ABOVE the keyboard) and feed it to
+  // the sheet as CSS variables. `--agm-avail` caps the sheet height so the
+  // pinned input + scrollable results always fit above the keyboard, and
+  // `--agm-bottom` lifts the bottom-anchored sheet off the keyboard in the
+  // (rare) case the WebView isn't natively resized. Works whether the
+  // Capacitor Keyboard `resize` mode is `native` or not.
+  const syncSheetMetrics = useCallback(() => {
+    const sheet = sheetRef.current
+    if (!sheet) return
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    const winH = typeof window !== 'undefined' ? window.innerHeight : 0
+    const availH = vv ? vv.height : winH
+    const bottomInset = vv
+      ? Math.max(0, winH - vv.height - (vv.offsetTop || 0))
+      : 0
+    sheet.style.setProperty('--agm-avail', `${Math.round(availH)}px`)
+    sheet.style.setProperty('--agm-bottom', `${Math.round(bottomInset)}px`)
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    syncSheetMetrics()
+
+    let kbShow
+    let kbHide
+    ;(async () => {
+      try {
+        const { Keyboard } = await import('@capacitor/keyboard')
+        const settle = () => {
+          // The visual viewport settles a beat after the event fires, so
+          // sample a few times across the keyboard animation window.
+          syncSheetMetrics()
+          requestAnimationFrame(syncSheetMetrics)
+          setTimeout(syncSheetMetrics, 80)
+          setTimeout(syncSheetMetrics, 280)
+        }
+        kbShow = await Keyboard.addListener('keyboardWillShow', settle)
+        kbHide = await Keyboard.addListener('keyboardWillHide', settle)
+      } catch {
+        /* no-op on web or when the plugin is unavailable */
+      }
+    })()
+
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    vv?.addEventListener('resize', syncSheetMetrics)
+    vv?.addEventListener('scroll', syncSheetMetrics)
+    window.addEventListener('resize', syncSheetMetrics)
+
+    return () => {
+      kbShow?.remove?.()
+      kbHide?.remove?.()
+      vv?.removeEventListener('resize', syncSheetMetrics)
+      vv?.removeEventListener('scroll', syncSheetMetrics)
+      window.removeEventListener('resize', syncSheetMetrics)
+    }
+  }, [isOpen, syncSheetMetrics])
+
+  // Load existing games on open; reset on close.
   useEffect(() => {
     if (isOpen) {
-      if (isCustom && listId) {
-        getListById(listId).then((list) => {
-          setExistingGames(list?.games || [])
-        })
-      } else {
-        setExistingGames(getGamesFromList(listId) || [])
+      const loadGames = async () => {
+        let games = []
+        if (isCustom && listId) {
+          const list = await getListById(listId)
+          games = list?.games || []
+        } else {
+          games = getGamesFromList(listId) || []
+        }
+        setExistingGames(games)
+        // Auto-expand when the list is small enough to show in full
+        setExistingExpanded(games.length <= COLLAPSE_THRESHOLD && games.length > 0)
       }
+      loadGames()
     } else {
       setSearchTerm('')
       setSearchResults([])
@@ -68,7 +240,7 @@ function AddGamesModal({
     }
   }, [isOpen, listId, isCustom])
 
-  // Search debounce
+  // Search debounce — results include in-list games (shown with checkmark)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
@@ -89,13 +261,7 @@ function AddGamesModal({
       try {
         const results = await searchGames(trimmed, 20)
         if (callId !== searchCallIdRef.current) return
-        // Filter out games already in the list (existing + just-added this session)
-        const alreadyIn = new Set([
-          ...existingGames.map((g) => String(g.id ?? g.igdb_game_id)),
-          ...addedGames.map((g) => String(g.id)),
-        ])
-        const filtered = results.filter((g) => !alreadyIn.has(String(g.id)))
-        setSearchResults(filtered)
+        setSearchResults(results)
         setLastCompletedQuery(trimmed)
       } catch (err) {
         if (callId !== searchCallIdRef.current) return
@@ -111,34 +277,83 @@ function AddGamesModal({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [searchTerm, listId, existingGames, addedGames])
+  }, [searchTerm])
 
+  const isGameInList = (game) => {
+    const id = String(game.id ?? game.igdb_game_id)
+    return (
+      existingGames.some((g) => String(g.id ?? g.igdb_game_id) === id) ||
+      addedGames.some((g) => String(g.id) === id)
+    )
+  }
+
+  // Optimistic ADD: the game appears in the list immediately, then we confirm
+  // with the store. On failure we roll the optimistic state back and toast.
   const handleAddGame = async (game) => {
-    if (addedGames.find((g) => g.id === game.id)) return
+    if (isGameInList(game)) return
 
-    if (isCustom) {
-      // Inline write: persist immediately to Supabase
-      const position = existingGames.length + addedGames.length
-      try {
+    const gameId = String(game.id ?? game.igdb_game_id)
+    const position = existingGames.length + addedGames.length
+
+    // 1) Optimistic UI — show it added right away.
+    setAddedGames((prev) => [...prev, game])
+
+    // 2) Persist, rolling back on any failure.
+    try {
+      if (isCustom) {
         await sbAddGameToList(listId, game.id, position, {
           title: game.title,
           image: game.image,
         })
-      } catch (err) {
-        console.error('[AddGamesModal] addGameToList failed:', err)
-        showToast('Failed to add game. Please try again.', 'error')
-        return
+      } else {
+        const ok = localAddGameToList(listId, game)
+        if (!ok) throw new Error('Local list write failed')
+        window.dispatchEvent(new Event('libraryUpdated'))
       }
+    } catch (err) {
+      console.error('[AddGamesModal] add failed:', err)
+      setAddedGames((prev) => prev.filter((g) => String(g.id) !== gameId))
+      showToast('Couldn’t add game. Please try again.', 'error')
+      return
     }
 
-    setAddedGames((prev) => [...prev, game])
-    setSearchResults((prev) => prev.filter((g) => g.id !== game.id))
     showToast('Added to list', 'success', 1800)
   }
 
+  // Optimistic REMOVE / toggle-off: reflect the removal instantly, then sync.
+  // On failure, restore the previous state and toast.
+  const handleRemoveGame = async (game) => {
+    const gameId = String(game.id ?? game.igdb_game_id)
+    const prevAdded = addedGames
+    const prevExisting = existingGames
+
+    // 1) Optimistic removal from whichever bucket holds it.
+    setAddedGames((prev) => prev.filter((g) => String(g.id) !== gameId))
+    setExistingGames((prev) =>
+      prev.filter((g) => String(g.id ?? g.igdb_game_id) !== gameId)
+    )
+
+    // 2) Persist, rolling back on failure.
+    try {
+      if (isCustom) {
+        await sbRemoveGameFromList(listId, game.id ?? game.igdb_game_id)
+      } else {
+        localRemoveGameFromList(listId, game.id ?? game.igdb_game_id)
+        window.dispatchEvent(new Event('libraryUpdated'))
+      }
+    } catch (err) {
+      console.error('[AddGamesModal] remove failed:', err)
+      setAddedGames(prevAdded)
+      setExistingGames(prevExisting)
+      showToast('Couldn’t remove game. Please try again.', 'error')
+    }
+  }
+
+  // Writes now persist on each tap (custom → Supabase, tracker → local store),
+  // so "Done" just closes. `onAddGames` is still notified for any caller that
+  // wants the session's added games, but persistence no longer depends on it.
   const handleDone = () => {
-    if (!isCustom && addedGames.length > 0 && onAddGames) {
-      // Tracker lists: batch-flush to parent (libraryService)
+    if (addedGames.length > 0 && onAddGames) {
       onAddGames(addedGames)
     }
     onClose()
@@ -147,163 +362,134 @@ function AddGamesModal({
   if (!isOpen) return null
 
   const allExistingGames = [...existingGames, ...addedGames]
+  const hasMoreThanThreshold = allExistingGames.length > COLLAPSE_THRESHOLD
+  const visibleExistingGames = existingExpanded
+    ? allExistingGames
+    : allExistingGames.slice(0, COLLAPSE_THRESHOLD)
 
   return (
     <div className="modal-overlay" onClick={handleDone}>
       <div
-        className="modal-content add-games-modal"
+        ref={sheetRef}
+        className="modal-content add-games-modal agm-sheet"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header ── */}
-        <div className="modal-header">
-          <div className="modal-header__text">
-            <span className="modal-eyebrow">Adding to</span>
-            <h2 className="modal-title">{listName || 'List'}</h2>
-            {listDescription && (
-              <p className="modal-subtitle">{listDescription}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            className="modal-close-button"
-            onClick={handleDone}
-            aria-label="Close"
-          >
-            ×
+        {/* ── Grab handle ── */}
+        <div className="agm-grab-handle" aria-hidden="true" />
+
+        {/* ── Header row ── */}
+        <div className="agm-header">
+          <h2 className="agm-header-title">Add to {listName || 'List'}</h2>
+          <button type="button" className="agm-done-link" onClick={handleDone}>
+            Done
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
-        <div className="modal-body add-games-body">
-          <TextField
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search games to add..."
-            autoFocus
-            autoComplete="off"
-          />
+        {/* ── Pinned search input — stays fixed below the header, always
+             visible above the keyboard, never scrolls away ── */}
+        <div className="agm-search-pinned">
+          <div className="agm-search-row">
+            <svg
+              className="agm-search-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5" />
+              <path
+                d="M10.5 10.5L14 14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              type="text"
+              className="agm-search-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search games…"
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+        </div>
 
+        {/* ── Scrollable results body — shrinks to the space above the
+             keyboard; results scroll here without covering the input ── */}
+        <div className="agm-body">
+          {/* Status */}
           {isSearching && (
-            <p className="create-list-search-status" aria-live="polite">
+            <p className="agm-status" aria-live="polite">
               Searching…
             </p>
           )}
+          {searchError && (
+            <p className="agm-status agm-status--error" role="alert">
+              {searchError}
+            </p>
+          )}
 
-          {searchError && <div className="search-error">{searchError}</div>}
-
+          {/* Search results */}
           {searchResults.length > 0 && (
-            <div className="search-results-container">
-              <div className="search-results-list">
-                {searchResults.map((game) => {
-                  const isAdded = !!addedGames.find((g) => g.id === game.id)
-                  return (
-                    <div
-                      key={game.id}
-                      className={`search-result-item${isAdded ? ' selected' : ''}`}
-                      onClick={() => !isAdded && handleAddGame(game)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (!isAdded && (e.key === 'Enter' || e.key === ' ')) {
-                          e.preventDefault()
-                          handleAddGame(game)
-                        }
-                      }}
-                    >
-                      {game.image ? (
-                        <img
-                          src={game.image}
-                          alt={game.title}
-                          className="result-game-image"
-                        />
-                      ) : (
-                        <div className="result-game-image result-game-image--placeholder">
-                          {game.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                      <div className="result-game-info">
-                        <div className="result-game-title">{game.title}</div>
-                        <div className="result-game-meta">
-                          {[game.year, game.developer].filter(Boolean).join(' · ')}
-                        </div>
-                      </div>
-                      {isAdded ? (
-                        <div className="result-game-added">✓</div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="result-game-add-btn"
-                          tabIndex={-1}
-                          aria-hidden="true"
-                        >
-                          +
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+            <div className="agm-results-list" role="list">
+              {searchResults.map((game) => (
+                <GameRow
+                  key={game.id}
+                  game={game}
+                  mode="search"
+                  isInList={isGameInList(game)}
+                  onAdd={handleAddGame}
+                  onRemove={handleRemoveGame}
+                />
+              ))}
             </div>
           )}
 
+          {/* No results */}
           {!isSearching &&
             searchTerm.trim() !== '' &&
             searchTerm.trim() === lastCompletedQuery &&
             searchResults.length === 0 &&
             !searchError && (
-              <p className="form-hint no-results-hint">
+              <p className="agm-status agm-status--hint">
                 No games found for &ldquo;{searchTerm}&rdquo;.
               </p>
             )}
 
-          {/* Already in this list */}
+          {/* ── In this list section ── */}
           {allExistingGames.length > 0 && (
-            <div className="already-in-list">
-              <button
-                type="button"
-                className="already-in-list__toggle"
-                onClick={() => setExistingExpanded((s) => !s)}
-                aria-expanded={existingExpanded}
-              >
-                <span>Already in this list ({allExistingGames.length})</span>
-                <span
-                  className={`already-in-list__chevron${existingExpanded ? ' expanded' : ''}`}
-                  aria-hidden="true"
-                >
-                  ›
+            <div className="agm-in-list">
+              <div className="agm-in-list-header">
+                <span className="agm-in-list-label">
+                  In this list ({allExistingGames.length})
                 </span>
-              </button>
-
-              {existingExpanded && (
-                <div className="already-in-list__strip">
-                  {allExistingGames.map((game) => (
-                    <div
-                      key={game.id ?? game.igdb_game_id}
-                      className="selected-game-thumb selected-game-thumb--readonly"
-                    >
-                      {game.image ? (
-                        <img
-                          src={game.image}
-                          alt={game.title}
-                          className="selected-game-thumb__img"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="selected-game-thumb__img selected-game-thumb__img--placeholder">
-                          {game.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                {hasMoreThanThreshold && (
+                  <button
+                    type="button"
+                    className="agm-show-all-btn"
+                    onClick={() => setExistingExpanded((s) => !s)}
+                  >
+                    {existingExpanded ? 'Show less' : 'Show all'}
+                  </button>
+                )}
+              </div>
+              <div className="agm-results-list" role="list">
+                {visibleExistingGames.map((game) => (
+                  <GameRow
+                    key={game.id ?? game.igdb_game_id}
+                    game={game}
+                    mode="existing"
+                    isInList={true}
+                    onAdd={handleAddGame}
+                    onRemove={handleRemoveGame}
+                  />
+                ))}
+              </div>
             </div>
           )}
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="modal-footer">
-          <SecondaryButton onClick={handleDone}>Done</SecondaryButton>
         </div>
       </div>
     </div>

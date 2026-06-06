@@ -15,12 +15,7 @@
   justify-content: center;
   z-index: 9999;
   padding: var(--spacing-lg);
-  animation: reviewFadeIn var(--transition-fast) ease;
-}
-
-@keyframes reviewFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  /* Enter/exit now driven by Framer Motion (see ReviewForm.jsx). */
 }
 
 /* ============================================================
@@ -37,19 +32,33 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  animation: reviewSlideUp var(--transition-smooth) ease;
+  /* Slide-up + swipe-to-dismiss now driven by Framer Motion. */
   box-shadow: var(--surface-2-shadow);
 }
 
-@keyframes reviewSlideUp {
-  from {
-    transform: translateY(32px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+/* ============================================================
+   Grabber handle — drag target for swipe-down-to-dismiss.
+   Hidden on desktop (centered modal); shown on the mobile sheet.
+   ============================================================ */
+.review-sheet-handle {
+  display: none;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 5px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.22);
+  cursor: grab;
+  touch-action: none;
+  z-index: 11;
+}
+
+.review-sheet-handle:active {
+  cursor: grabbing;
 }
 
 /* ============================================================
@@ -150,7 +159,7 @@
 
 .review-eyebrow {
   display: block;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -161,9 +170,9 @@
 }
 
 .review-game-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -176,7 +185,7 @@
 }
 
 .review-game-sub {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -215,7 +224,7 @@
 
 /* Eyebrow section label */
 .review-section-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -228,7 +237,7 @@
    Rating description
    ============================================================ */
 .review-rating-desc {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -257,7 +266,7 @@
    Formatting tip hint
    ============================================================ */
 .review-format-hint {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-caption);
@@ -327,7 +336,7 @@
 
 .review-toggle__input:checked + .review-toggle__box {
   border-color: var(--color-brand-primary);
-  background: rgba(200, 150, 90, 0.18);
+  background: rgba(59, 130, 246, 0.18);
 }
 
 .review-toggle__input:checked + .review-toggle__box::after {
@@ -350,7 +359,7 @@
 }
 
 .review-toggle__text {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -392,7 +401,7 @@
 }
 
 .review-footer-hint {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-caption);
@@ -418,19 +427,24 @@
     border-bottom: none;
   }
 
+  .review-sheet-handle {
+    display: block;
+  }
+
   .review-modal-scroll {
     /* pull content below the close button on small screens */
     padding-top: 0;
   }
 
   .review-modal-header {
-    padding-top: var(--spacing-lg);
+    /* clear the grabber handle */
+    padding-top: calc(var(--spacing-lg) + 8px);
   }
 
   .review-game-title {
     font-size: var(--font-size-title);
     line-height: var(--line-height-title);
-    font-family: var(--font-serif);
+    font-family: var(--font-display);
   }
 
   .review-sticky-footer {
@@ -453,11 +467,6 @@
    Reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  .review-modal-backdrop,
-  .review-modal {
-    animation: none;
-  }
-
   .review-modal-close {
     transition: none;
   }

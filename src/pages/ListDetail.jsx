@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
-import { HiDotsVertical, HiPlus, HiArrowLeft } from 'react-icons/hi'
+import { HiDotsVertical, HiPlus, HiArrowLeft, HiPencil } from 'react-icons/hi'
+import { PlayCircle, CheckCircle2, Bookmark, List } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
 import ActionSheet from '../components/ActionSheet'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import ReportSheet from '../components/ReportSheet'
+import EmptyState from '../components/EmptyState'
 import { showToast } from '../components/Toast'
+import InlineErrorBanner from '../components/InlineErrorBanner'
 import {
   getListInfo,
   getGamesFromList,
@@ -20,7 +24,62 @@ import {
   reorderListGames,
   isTrackerList,
 } from '../services/listService'
+import { uploadListCover, removeListCover } from '../services/listCoverService'
+import { supabase } from '../services/supabase'
 import './ListDetail.css'
+
+/* ── Context-aware empty state for tracker and custom list pages ── */
+const TRACKER_EMPTY = {
+  'currently-playing': {
+    icon: PlayCircle,
+    title: 'Your Playing list is empty.',
+    body: 'Mark a game as Playing to start tracking your session here.',
+    cta: 'Add a game',
+    useAddGames: true,
+  },
+  'played': {
+    icon: CheckCircle2,
+    title: 'No games logged yet.',
+    body: "Add games you've finished to track them here.",
+    cta: 'Add a game',
+    useAddGames: true,
+  },
+  'want-to-play': {
+    icon: Bookmark,
+    title: 'Your backlog is empty.',
+    body: 'Save games you want to play later.',
+    cta: 'Find games',
+    useAddGames: false,
+  },
+}
+
+function ListDetailEmpty({ listId, isTracker, onAddGames, onFindGames }) {
+  if (isTracker && TRACKER_EMPTY[listId]) {
+    const cfg = TRACKER_EMPTY[listId]
+    return (
+      <div className="list-detail-empty">
+        <EmptyState
+          icon={cfg.icon}
+          title={cfg.title}
+          body={cfg.body}
+          cta={cfg.cta}
+          onCta={cfg.useAddGames ? onAddGames : onFindGames}
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="list-detail-empty">
+      <EmptyState
+        icon={List}
+        title="No games in this list."
+        body="Start adding games to build your collection."
+        cta="Add a game"
+        onCta={onAddGames}
+      />
+    </div>
+  )
+}
 
 function ListDetail() {
   const { listId } = useParams()
@@ -29,9 +88,21 @@ function ListDetail() {
   const [listInfo, setListInfo] = useState(null)
   const [games, setGames] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showAddGames, setShowAddGames] = useState(false)
+  const [showCoverActionSheet, setShowCoverActionSheet] = useState(false)
+  const [isUploadingCover, setIsUploadingCover] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState(null)
+  const [reportSheetOpen, setReportSheetOpen] = useState(false)
+
+  // Cover image displayed in the hero — may differ from listInfo.coverImageUrl
+  // immediately after an upload (cache-busted URL) before a refresh occurs.
+  const [coverDisplay, setCoverDisplay] = useState(null)
+
+  const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
 
   // Drag-to-reorder state (custom lists only)
   const dragGameIdRef = useRef(null)
@@ -39,19 +110,35 @@ function ListDetail() {
 
   const isTracker = isTrackerList(listId)
 
+  // ── Session ───────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null)
+    })
+  }, [])
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+
   const refresh = useCallback(async () => {
+    setLoadError(false)
     if (isTracker) {
-      // Tracker lists (Currently Playing, Played, etc.) remain localStorage
       const info = getListInfo(listId)
       setListInfo(info)
       setGames(info ? getGamesFromList(listId) : [])
       setIsLoading(false)
     } else {
-      // Custom lists → Supabase
-      const data = await getListById(listId)
-      setListInfo(data)
-      setGames(data?.games || [])
-      setIsLoading(false)
+      try {
+        const data = await getListById(listId)
+        setListInfo(data)
+        setGames(data?.games || [])
+        setCoverDisplay(data?.coverImageUrl || null)
+      } catch (err) {
+        console.error('[list-detail] failed to load:', err)
+        setLoadError(true)
+      } finally {
+        setIsLoading(false)
+      }
     }
   }, [listId, isTracker])
 
@@ -62,6 +149,12 @@ function ListDetail() {
     window.addEventListener('libraryUpdated', handler)
     return () => window.removeEventListener('libraryUpdated', handler)
   }, [refresh])
+
+  // Derived: can the current user edit this list's cover?
+  const isOwner =
+    listInfo?.isCustom &&
+    currentUserId != null &&
+    currentUserId === listInfo?.userId
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
@@ -104,14 +197,12 @@ function ListDetail() {
   // ── Remove game ───────────────────────────────────────────────────────────
 
   const handleRemoveGame = async (gameId, gameTitle) => {
-    // Optimistic UI update
     setGames((prev) => prev.filter((g) => g.id !== gameId))
     try {
       await removeGameFromList(listId, gameId)
       window.dispatchEvent(new Event('libraryUpdated'))
       showToast(`Removed \u201c${gameTitle}\u201d`, 'success')
     } catch {
-      // Roll back
       refresh()
       showToast('Failed to remove game. Please try again.', 'error')
     }
@@ -146,7 +237,6 @@ function ListDetail() {
     const [moved] = arr.splice(fromIdx, 1)
     arr.splice(toIdx, 0, moved)
 
-    // Optimistic update
     setGames(arr)
 
     try {
@@ -155,7 +245,6 @@ function ListDetail() {
         arr.map((g) => g.id)
       )
     } catch {
-      // Roll back
       refresh()
       showToast('Failed to save new order. Please try again.', 'error')
     }
@@ -166,27 +255,193 @@ function ListDetail() {
     dragGameIdRef.current = null
   }
 
-  // ── Action sheet items ────────────────────────────────────────────────────
+  // ── Cover upload ──────────────────────────────────────────────────────────
 
-  const actionSheetItems = [
+  const handleFileSelected = async (file) => {
+    if (!file) return
+    setIsUploadingCover(true)
+    try {
+      const url = await uploadListCover(listId, file)
+      setCoverDisplay(url)
+      window.dispatchEvent(new Event('libraryUpdated'))
+      showToast('Cover updated', 'success')
+    } catch (err) {
+      showToast(err.message || 'Failed to upload cover.', 'error')
+    } finally {
+      setIsUploadingCover(false)
+      // Reset inputs so re-selecting the same file triggers onChange again.
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (cameraInputRef.current) cameraInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveCover = async () => {
+    setIsUploadingCover(true)
+    try {
+      await removeListCover(listId, currentUserId)
+      setCoverDisplay(null)
+      window.dispatchEvent(new Event('libraryUpdated'))
+      showToast('Cover removed', 'success')
+    } catch (err) {
+      showToast(err.message || 'Failed to remove cover.', 'error')
+    } finally {
+      setIsUploadingCover(false)
+    }
+  }
+
+  // ── Cover action sheet ────────────────────────────────────────────────────
+
+  const coverActionItems = [
     {
-      label: 'Duplicate list',
-      onClick: handleDuplicate,
+      label: 'Photo Library',
+      onClick: () => fileInputRef.current?.click(),
     },
     {
-      label: 'Delete list',
-      destructive: true,
-      onClick: () => setShowDeleteConfirm(true),
+      label: 'Take Photo',
+      onClick: () => cameraInputRef.current?.click(),
     },
+    ...(coverDisplay
+      ? [
+          {
+            label: 'Remove custom cover',
+            destructive: true,
+            onClick: handleRemoveCover,
+          },
+        ]
+      : []),
   ]
+
+  // ── Main action sheet items ───────────────────────────────────────────────
+  // Owner sees Duplicate + Delete. Non-owner sees Report list.
+
+  const actionSheetItems = isOwner
+    ? [
+        {
+          label: 'Duplicate list',
+          onClick: handleDuplicate,
+        },
+        {
+          label: 'Delete list',
+          destructive: true,
+          onClick: () => setShowDeleteConfirm(true),
+        },
+      ]
+    : [
+        {
+          label: 'Report list',
+          onClick: () => setReportSheetOpen(true),
+        },
+      ]
+
+  // ── Cover area (for custom lists) ─────────────────────────────────────────
+
+  const previewGames = listInfo?.previewGames || games.slice(0, 4)
+  const mosaicAlt = previewGames.length > 0
+    ? `${listInfo?.name ?? 'List'} — covers of ${previewGames
+        .map((g) => g.title)
+        .filter(Boolean)
+        .join(', ')}`
+    : `${listInfo?.name ?? 'List'} cover`
+
+  function CoverArea() {
+    if (!listInfo?.isCustom) return null
+
+    return (
+      <div className="list-detail-cover">
+        {coverDisplay ? (
+          <img
+            src={coverDisplay}
+            alt={`${listInfo.name} cover`}
+            className="list-detail-cover__img"
+            draggable={false}
+          />
+        ) : (
+          <div className="list-detail-cover__mosaic" aria-label={mosaicAlt} role="img">
+            {Array.from({ length: 4 }).map((_, idx) => {
+              const g = previewGames[idx]
+              return (
+                <div
+                  key={g?.id || `ph-${idx}`}
+                  className={`list-detail-cover__mosaic-cell${
+                    g ? '' : ' list-detail-cover__mosaic-cell--empty'
+                  }`}
+                >
+                  {g?.image ? (
+                    <img
+                      src={g.image}
+                      alt=""
+                      className="list-detail-cover__mosaic-img"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  ) : g ? (
+                    <div className="list-detail-cover__mosaic-fallback">
+                      {g.title?.charAt(0) || '?'}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {isOwner && (
+          <button
+            type="button"
+            className="list-detail-cover__edit-btn"
+            onClick={() => setShowCoverActionSheet(true)}
+            aria-label="Edit cover image"
+            disabled={isUploadingCover}
+          >
+            {isUploadingCover ? (
+              <span className="list-detail-cover__spinner" aria-hidden="true" />
+            ) : (
+              <HiPencil aria-hidden="true" />
+            )}
+          </button>
+        )}
+
+        {isUploadingCover && (
+          <div className="list-detail-cover__uploading-overlay" aria-hidden="true">
+            <span className="list-detail-cover__spinner list-detail-cover__spinner--lg" />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
+      <div className="list-detail-page list-detail-page--loading" aria-busy="true" aria-label="Loading list">
+        <div className="ld-sk-cover skeleton" aria-hidden="true" />
+        <div className="ld-sk-body" aria-hidden="true">
+          <div className="ld-sk-title skeleton" />
+          <div className="ld-sk-desc skeleton" />
+          <div className="ld-sk-divider" aria-hidden="true" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="ld-sk-game-row" aria-hidden="true">
+              <div className="ld-sk-game-thumb skeleton" />
+              <div className="ld-sk-game-meta">
+                <div className="ld-sk-game-name skeleton" />
+                <div className="ld-sk-game-sub skeleton" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
       <div className="list-detail-page">
         <div className="list-detail-empty">
-          <p>Loading…</p>
+          <InlineErrorBanner
+            message="Couldn't load. Tap to retry."
+            onRetry={() => { setIsLoading(true); refresh() }}
+          />
         </div>
       </div>
     )
@@ -209,7 +464,9 @@ function ListDetail() {
   }
 
   return (
-    <div className="list-detail-page">
+    <div className="list-detail-page content-fade-in">
+      <CoverArea />
+
       <header className="list-detail-header">
         <button
           className="list-detail-back"
@@ -307,17 +564,35 @@ function ListDetail() {
             ))}
           </div>
         ) : (
-          <div className="list-detail-empty">
-            <p>This list doesn&rsquo;t have any games yet.</p>
-            <button
-              className="list-detail-back-button"
-              onClick={() => setShowAddGames(true)}
-            >
-              Add Games
-            </button>
-          </div>
+          <ListDetailEmpty
+            listId={listId}
+            isTracker={isTracker}
+            onAddGames={() => setShowAddGames(true)}
+            onFindGames={() => navigate('/search')}
+          />
         )}
       </div>
+
+      {/* Hidden file inputs for cover upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => handleFileSelected(e.target.files?.[0])}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => handleFileSelected(e.target.files?.[0])}
+      />
 
       <AddGamesModal
         isOpen={showAddGames}
@@ -332,6 +607,13 @@ function ListDetail() {
       />
 
       <ActionSheet
+        isOpen={showCoverActionSheet}
+        onClose={() => setShowCoverActionSheet(false)}
+        title="Edit cover"
+        items={coverActionItems}
+      />
+
+      <ActionSheet
         isOpen={showActionSheet}
         onClose={() => setShowActionSheet(false)}
         items={actionSheetItems}
@@ -343,6 +625,13 @@ function ListDetail() {
         gameCount={games.length}
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ReportSheet
+        isOpen={reportSheetOpen}
+        onClose={() => setReportSheetOpen(false)}
+        contentType="list"
+        contentId={listId}
       />
     </div>
   )

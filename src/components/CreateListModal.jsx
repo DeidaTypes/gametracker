@@ -1,137 +1,66 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
+import { motion, AnimatePresence } from 'motion/react'
 import { searchGames } from '../services/searchService'
-import {
-  TextField,
-  TextArea,
-  SubmitButton,
-  SecondaryButton,
-} from './forms'
-import { showToast } from './Toast'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import './CreateListModal.css'
 
 const NAME_MAX = 60
-const DESCRIPTION_MAX = 500
 const SEARCH_DEBOUNCE_MS = 300
 
-/** Fanned cover preview using the last 3 selected games */
-function ListCoverPreview({ selectedGames }) {
-  const n = selectedGames.length
-
-  let slots = []
-  if (n === 0) {
-    slots = [
-      { key: 'p0', kind: 'placeholder', rotate: -8, z: 1 },
-      { key: 'p1', kind: 'placeholder', rotate: 0, z: 3 },
-      { key: 'p2', kind: 'placeholder', rotate: 8, z: 2 },
-    ]
-  } else if (n === 1) {
-    slots = [
-      { key: selectedGames[0].id, kind: 'game', game: selectedGames[0], rotate: -8, z: 1 },
-    ]
-  } else if (n === 2) {
-    slots = [
-      { key: selectedGames[0].id, kind: 'game', game: selectedGames[0], rotate: -6, z: 1 },
-      { key: selectedGames[1].id, kind: 'game', game: selectedGames[1], rotate: 6, z: 2 },
-    ]
-  } else {
-    const last3 = selectedGames.slice(-3)
-    slots = [
-      { key: last3[0].id, kind: 'game', game: last3[0], rotate: -8, z: 1 },
-      { key: last3[1].id, kind: 'game', game: last3[1], rotate: 0, z: 3 },
-      { key: last3[2].id, kind: 'game', game: last3[2], rotate: 8, z: 2 },
-    ]
-  }
-
-  return (
-    <section className="list-cover-preview" aria-label="List cover preview">
-      <div className="list-cover-preview__fan">
-        {slots.map((slot) => (
-          <div
-            key={slot.key}
-            className="list-cover-preview__card-wrap"
-            style={{ zIndex: slot.z, transform: `rotate(${slot.rotate}deg)` }}
-          >
-            {slot.kind === 'placeholder' ? (
-              <div
-                className="list-cover-preview__card list-cover-preview__card--placeholder"
-                aria-hidden
-              />
-            ) : slot.game.image ? (
-              <img
-                src={slot.game.image}
-                alt=""
-                className="list-cover-preview__card list-cover-preview__card--image"
-                draggable={false}
-              />
-            ) : (
-              <div
-                className="list-cover-preview__card list-cover-preview__card--fallback"
-                aria-hidden
-              >
-                {slot.game.title?.charAt(0) || '?'}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      {n === 0 && (
-        <p className="list-cover-preview__hint">Add games to see your list cover</p>
-      )}
-    </section>
-  )
-}
-
 function CreateListModal({ isOpen, onClose, onCreate }) {
-  const [listName, setListName] = useState('')
-  const [description, setDescription] = useState('')
+  const { reduced } = useMotionPreference()
+  const [listName, setListName]           = useState('')
   const [selectedGames, setSelectedGames] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm]       = useState('')
   const [searchResults, setSearchResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchError, setSearchError] = useState(null)
-  const [lastCompletedQuery, setLastCompletedQuery] = useState('')
-  const [gamesError, setGamesError] = useState('')
-  const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState(null)
-  const [dragOverId, setDragOverId] = useState(null)
+  const [isSearching, setIsSearching]     = useState(false)
+  const [searchError, setSearchError]     = useState(null)
+  const [lastQuery, setLastQuery]         = useState('')
+  const [isSubmitting, setIsSubmitting]   = useState(false)
+  const [submitError, setSubmitError]     = useState(null)
 
-  const debounceRef = useRef(null)
+  const nameInputRef    = useRef(null)
+  const debounceRef     = useRef(null)
   const searchCallIdRef = useRef(0)
-  const dragGameIdRef = useRef(null)
-  const [selectedStripRef] = useAutoAnimateMotion()
 
+  /* ─── Derived state ──────────────────────────────────────────────────────── */
+  const showGamesPanel = listName.trim().length > 0
+  const isValid        = listName.trim().length > 0 && selectedGames.length > 0
+  const hasAnyInput    = listName.trim() !== '' || selectedGames.length > 0 || searchTerm.trim() !== ''
+
+  /* ─── Reset when sheet closes ────────────────────────────────────────────── */
   const resetForm = () => {
     setListName('')
-    setDescription('')
     setSelectedGames([])
     setSearchTerm('')
     setSearchResults([])
     setSearchError(null)
-    setLastCompletedQuery('')
-    setGamesError('')
-    setSubmitAttempted(false)
+    setLastQuery('')
     setIsSubmitting(false)
     setSubmitError(null)
     setIsSearching(false)
-    setDragOverId(null)
     if (debounceRef.current) clearTimeout(debounceRef.current)
   }
 
   useEffect(() => {
-    if (!isOpen) resetForm()
+    if (!isOpen) {
+      resetForm()
+    } else {
+      // Autofocus on open — short delay lets the sheet animate in first.
+      const t = setTimeout(() => nameInputRef.current?.focus(), 80)
+      return () => clearTimeout(t)
+    }
   }, [isOpen])
 
+  /* ─── Debounced game search ───────────────────────────────────────────────── */
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-
     const trimmed = searchTerm.trim()
     if (!trimmed) {
       setSearchResults([])
       setIsSearching(false)
       setSearchError(null)
-      setLastCompletedQuery('')
+      setLastQuery('')
       return
     }
 
@@ -144,315 +73,240 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
         const results = await searchGames(trimmed, 20)
         if (callId !== searchCallIdRef.current) return
         setSearchResults(results)
-        setLastCompletedQuery(trimmed)
-      } catch (err) {
+        setLastQuery(trimmed)
+      } catch {
         if (callId !== searchCallIdRef.current) return
-        console.error('Search error:', err)
-        setSearchError('Failed to search games. Please try again.')
+        setSearchError('Search failed. Please try again.')
         setSearchResults([])
-        setLastCompletedQuery(trimmed)
+        setLastQuery(trimmed)
       } finally {
         if (callId === searchCallIdRef.current) setIsSearching(false)
       }
     }, SEARCH_DEBOUNCE_MS)
 
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchTerm])
 
-  const hasAnyInput =
-    listName.trim() !== '' ||
-    description.trim() !== '' ||
-    selectedGames.length > 0 ||
-    searchTerm.trim() !== ''
-
-  const isValid = listName.trim().length > 0 && selectedGames.length > 0
-
-  const handleAddGame = (game) => {
-    if (selectedGames.find((g) => g.id === game.id)) return
-    setSelectedGames((prev) => [...prev, game])
-    setSearchTerm('')
-    setSearchResults([])
-    if (submitAttempted) setGamesError('')
-    showToast('Added to list', 'success', 1800)
-  }
-
-  const handleRemoveGame = (gameId) => {
-    setSelectedGames((prev) => prev.filter((g) => g.id !== gameId))
-  }
-
-  const handleDragStart = (e, gameId) => {
-    dragGameIdRef.current = gameId
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleDragOver = (e, gameId) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverId(gameId)
-  }
-
-  const handleDrop = (e, targetId) => {
-    e.preventDefault()
-    const sourceId = dragGameIdRef.current
-    if (!sourceId || sourceId === targetId) {
-      setDragOverId(null)
-      return
+  /* ─── Toggle selection ───────────────────────────────────────────────────── */
+  const toggleGame = (game) => {
+    const alreadySelected = !!selectedGames.find((g) => g.id === game.id)
+    if (alreadySelected) {
+      setSelectedGames((prev) => prev.filter((g) => g.id !== game.id))
+    } else {
+      setSelectedGames((prev) => [...prev, game])
     }
-    setSelectedGames((prev) => {
-      const arr = [...prev]
-      const fromIdx = arr.findIndex((g) => g.id === sourceId)
-      const toIdx = arr.findIndex((g) => g.id === targetId)
-      if (fromIdx === -1 || toIdx === -1) return prev
-      const [moved] = arr.splice(fromIdx, 1)
-      arr.splice(toIdx, 0, moved)
-      return arr
-    })
-    setDragOverId(null)
-    dragGameIdRef.current = null
   }
 
-  const handleDragEnd = () => {
-    setDragOverId(null)
-    dragGameIdRef.current = null
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitAttempted(true)
-
-    const nameOk = listName.trim().length > 0
-    const gamesOk = selectedGames.length > 0
-    setGamesError(gamesOk ? '' : 'Add at least one game to the list.')
-
-    if (!nameOk || !gamesOk) return
-
+  /* ─── Submit ─────────────────────────────────────────────────────────────── */
+  const handleSubmit = async () => {
+    if (!isValid || isSubmitting) return
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await onCreate(listName.trim(), description.trim(), selectedGames)
+      // Pass empty description — users can add one via the edit screen later.
+      await onCreate(listName.trim(), '', selectedGames)
       onClose()
     } catch (err) {
       console.error('[CreateListModal] onCreate failed:', err)
       setSubmitError('Failed to create list. Please try again.')
-    } finally {
       setIsSubmitting(false)
     }
   }
 
+  /* ─── Cancel / discard ───────────────────────────────────────────────────── */
   const handleCancel = () => {
     if (hasAnyInput) {
-      const ok = window.confirm('Discard this list? Your changes will not be saved.')
-      if (!ok) return
+      if (!window.confirm('Discard list?')) return
     }
     onClose()
   }
 
-  if (!isOpen) return null
+  /* ─── Keyboard: Enter on name field should NOT submit ────────────────────── */
+  const handleNameKeyDown = (e) => {
+    if (e.key === 'Enter') e.preventDefault()
+  }
+
+  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
+  const sheetTransition = reduced
+    ? { duration: 0 }
+    : { type: 'spring', stiffness: 380, damping: 32 }
 
   return (
-    <div className="modal-overlay" onClick={handleCancel}>
-      <div
-        className="modal-content create-list-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ── Header ── */}
-        <div className="modal-header">
-          <div className="modal-header__text">
-            <span className="modal-eyebrow">List</span>
-            <h2 className="modal-title">Create new list</h2>
-          </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="modal-overlay clm-overlay"
+          onClick={handleCancel}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create a list"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={backdropTransition}
+        >
+          <motion.div
+            className="modal-content create-list-modal clm-sheet"
+            onClick={(e) => e.stopPropagation()}
+            initial={reduced ? false : { y: '100%' }}
+            animate={{ y: 0 }}
+            exit={reduced ? { y: 0 } : { y: '100%' }}
+            transition={sheetTransition}
+          >
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="clm-header">
           <button
             type="button"
-            className="modal-close-button"
+            className="clm-cancel-btn"
             onClick={handleCancel}
-            aria-label="Close"
+            aria-label="Cancel"
           >
-            ×
+            ✕
+          </button>
+          <span className="clm-header-title">New List</span>
+          <button
+            type="button"
+            className="clm-create-btn"
+            onClick={handleSubmit}
+            disabled={!isValid || isSubmitting}
+          >
+            {isSubmitting ? 'Creating…' : 'Create'}
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
-        <form
-          id="create-list-form"
-          onSubmit={handleSubmit}
-          noValidate
-          className="modal-body create-list-body"
-        >
-          <ListCoverPreview selectedGames={selectedGames} />
-
-          <TextField
-            label="List name"
+        {/* ── Scrollable body ─────────────────────────────────────────────── */}
+        <div className="clm-body">
+          {/* List name — always visible, autofocused */}
+          <input
+            ref={nameInputRef}
+            className="clm-name-input"
+            type="text"
+            placeholder="Name your list…"
             value={listName}
-            onChange={(e) => setListName(e.target.value)}
-            placeholder="e.g., Best JRPGs of the 2010s"
+            onChange={(e) => setListName(e.target.value.slice(0, NAME_MAX))}
+            onKeyDown={handleNameKeyDown}
+            autoComplete="off"
             maxLength={NAME_MAX}
-            required
-            autoFocus
           />
 
-          <TextArea
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What ties these games together?"
-            maxLength={DESCRIPTION_MAX}
-            hint="Optional"
-          />
+          {/* Games panel — appears as soon as name has ≥1 character */}
+          {showGamesPanel && (
+            <div className="clm-games-panel">
 
-          {/* ── Add games section ── */}
-          <div className={`create-list-games-block${gamesError ? ' has-error' : ''}`}>
-            <div className="create-list-games-header">
-              <p className="create-list-games-title">Add games</p>
-              <p className="create-list-games-caption">Search and tap to add. Drag to reorder.</p>
-            </div>
-
-            <TextField
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search games..."
-              autoComplete="off"
-            />
-
-            {isSearching && (
-              <p className="create-list-search-status" aria-live="polite">Searching…</p>
-            )}
-
-            {searchError && <div className="search-error">{searchError}</div>}
-
-            {searchResults.length > 0 && (
-              <div className="search-results-container">
-                <div className="search-results-list">
-                  {searchResults.map((game) => {
-                    const isSelected = !!selectedGames.find((g) => g.id === game.id)
-                    return (
-                      <div
-                        key={game.id}
-                        className={`search-result-item${isSelected ? ' selected' : ''}`}
-                        onClick={() => !isSelected && handleAddGame(game)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (!isSelected && (e.key === 'Enter' || e.key === ' ')) {
-                            e.preventDefault()
-                            handleAddGame(game)
-                          }
-                        }}
-                      >
+              {/* Selected strip — hidden until ≥1 game selected */}
+              {selectedGames.length > 0 && (
+                <div className="clm-selected-section">
+                  <p className="clm-selected-label">
+                    Selected&thinsp;({selectedGames.length})
+                  </p>
+                  <div className="clm-selected-strip">
+                    {selectedGames.map((game) => (
+                      <div key={game.id} className="clm-selected-thumb">
                         {game.image ? (
                           <img
                             src={game.image}
                             alt={game.title}
-                            className="result-game-image"
+                            className="clm-selected-img"
+                            draggable={false}
                           />
                         ) : (
-                          <div className="result-game-image result-game-image--placeholder">
+                          <div className="clm-selected-img clm-selected-img--placeholder">
                             {game.title?.charAt(0) || '?'}
                           </div>
                         )}
-                        <div className="result-game-info">
-                          <div className="result-game-title">{game.title}</div>
-                          <div className="result-game-meta">
-                            {[game.year, game.developer].filter(Boolean).join(' · ')}
-                          </div>
-                        </div>
-                        {isSelected ? (
-                          <div className="result-game-added">✓</div>
-                        ) : (
-                          <button
-                            type="button"
-                            className="result-game-add-btn"
-                            tabIndex={-1}
-                            aria-hidden="true"
-                          >
-                            +
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="clm-selected-remove"
+                          onClick={() => toggleGame(game)}
+                          aria-label={`Remove ${game.title}`}
+                        >
+                          ×
+                        </button>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Search input */}
+              <div className="clm-search-row">
+                <input
+                  className="clm-search-input"
+                  type="search"
+                  placeholder="Search games to add"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Status lines */}
+              {isSearching && (
+                <p className="clm-status" aria-live="polite">Searching…</p>
+              )}
+              {searchError && (
+                <p className="clm-status clm-status--error">{searchError}</p>
+              )}
+              {!isSearching &&
+                searchTerm.trim() !== '' &&
+                searchTerm.trim() === lastQuery &&
+                searchResults.length === 0 &&
+                !searchError && (
+                  <p className="clm-status">No games found for &ldquo;{searchTerm}&rdquo;.</p>
+                )}
+
+              {/* 2-column cover grid */}
+              {searchResults.length > 0 && (
+                <div className="clm-results-grid" role="list">
+                  {searchResults.map((game) => {
+                    const isSelected = !!selectedGames.find((g) => g.id === game.id)
+                    return (
+                      <button
+                        key={game.id}
+                        type="button"
+                        role="listitem"
+                        className={`clm-result-item${isSelected ? ' clm-result-item--selected' : ''}`}
+                        onClick={() => toggleGame(game)}
+                        aria-label={`${isSelected ? 'Remove' : 'Add'} ${game.title}`}
+                        aria-pressed={isSelected}
+                      >
+                        <div className="clm-result-cover">
+                          {game.image ? (
+                            <img
+                              src={game.image}
+                              alt=""
+                              className="clm-result-img"
+                              draggable={false}
+                            />
+                          ) : (
+                            <div className="clm-result-img clm-result-img--placeholder">
+                              {game.title?.charAt(0) || '?'}
+                            </div>
+                          )}
+                          {isSelected && (
+                            <div className="clm-checkmark" aria-hidden="true">✓</div>
+                          )}
+                        </div>
+                        <p className="clm-result-title">{game.title}</p>
+                      </button>
                     )
                   })}
                 </div>
-              </div>
-            )}
-
-            {!isSearching &&
-              searchTerm.trim() !== '' &&
-              searchTerm.trim() === lastCompletedQuery &&
-              searchResults.length === 0 &&
-              !searchError && (
-                <p className="form-hint no-results-hint">
-                  No games found for &ldquo;{searchTerm}&rdquo;.
-                </p>
               )}
 
-            {gamesError && (
-              <p className="field-error" role="alert">{gamesError}</p>
-            )}
-
-            {/* Selected games horizontal strip */}
-            {selectedGames.length > 0 && (
-              <div className="selected-games-section">
-                <span className="selected-games-section__label">
-                  Selected ({selectedGames.length})
-                </span>
-                <div className="selected-games-strip" ref={selectedStripRef}>
-                  {selectedGames.map((game) => (
-                    <div
-                      key={game.id}
-                      className={`selected-game-thumb${dragOverId === game.id ? ' drag-over' : ''}`}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, game.id)}
-                      onDragOver={(e) => handleDragOver(e, game.id)}
-                      onDrop={(e) => handleDrop(e, game.id)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      {game.image ? (
-                        <img
-                          src={game.image}
-                          alt={game.title}
-                          className="selected-game-thumb__img"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="selected-game-thumb__img selected-game-thumb__img--placeholder">
-                          {game.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        className="selected-game-thumb__remove"
-                        onClick={() => handleRemoveGame(game.id)}
-                        aria-label={`Remove ${game.title}`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </form>
-
-        {/* ── Sticky footer ── */}
-        <div className="modal-footer">
-          {submitError && (
-            <p className="field-error" role="alert" style={{ marginBottom: '0.5rem' }}>
-              {submitError}
-            </p>
+              {submitError && (
+                <p className="clm-status clm-status--error" role="alert">{submitError}</p>
+              )}
+            </div>
           )}
-          <SubmitButton
-            form="create-list-form"
-            type="submit"
-            disabled={!isValid || isSubmitting}
-          >
-            {isSubmitting ? 'Creating…' : 'Create list'}
-          </SubmitButton>
-          <SecondaryButton onClick={handleCancel} disabled={isSubmitting}>Cancel</SecondaryButton>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

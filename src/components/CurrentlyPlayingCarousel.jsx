@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNowStrict } from 'date-fns'
 import SharedCover from './SharedCover'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './CurrentlyPlayingCarousel.css'
 
 function shortTimeAgo(dateStr) {
@@ -93,9 +94,7 @@ function CurrentlyPlayingCarousel({ games }) {
                         className="cpc-cover"
                         loading="lazy"
                         onError={(e) => {
-                          e.target.src =
-                            'https://via.placeholder.com/240x340/1a1a2e/ffffff?text=' +
-                            encodeURIComponent(game.title)
+                          e.target.src = COVER_FALLBACK
                         }}
                       />
                     </SharedCover>

@@ -22,9 +22,9 @@
 }
 
 .cpc-heading {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
   letter-spacing: var(--letter-spacing-display);
@@ -99,7 +99,7 @@
     border-color: var(--color-border-hover);
     transform: scale(1.02);
     filter: brightness(1.04);
-    box-shadow: var(--surface-2-shadow), 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: var(--surface-2-shadow), 0 4px 16px rgba(59, 130, 246, 0.15);
   }
 }
 
@@ -147,7 +147,7 @@
 }
 
 .cpc-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -161,7 +161,7 @@
 }
 
 .cpc-genre {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -184,7 +184,7 @@
 }
 
 .cpc-pct {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   color: var(--color-text-primary);
   line-height: 1.1;
 }
@@ -220,7 +220,7 @@
 /* ── Timestamp ── */
 
 .cpc-timestamp {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -249,7 +249,7 @@
 /* ── Just-started fallback ── */
 
 .cpc-just-started {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -285,7 +285,7 @@
 }
 
 .cpc-empty-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -309,20 +309,20 @@
   gap: 6px;
   padding: 8px 20px;
   background: var(--color-brand-gradient);
-  color: #0C1322;
+  color: #ffffff;
   border: none;
   border-radius: var(--radius-full);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   cursor: pointer;
   transition: all var(--transition-smooth);
-  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.25);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
 }
 
 .cpc-empty-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(200, 150, 90, 0.35);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
 }
 
 .cpc-empty-cta:active {

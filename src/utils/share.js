@@ -1,10 +1,10 @@
-export async function shareContent({ title, text, url }) {
+export async function shareContent({ title, text, url, dialogTitle = 'Share' }) {
   // 1. Try Capacitor Share plugin (native iOS share sheet)
   try {
     const { Share } = await import('@capacitor/share');
     const canShare = await Share.canShare();
     if (canShare?.value) {
-      await Share.share({ title, text, url, dialogTitle: 'Share' });
+      await Share.share({ title, text, url, dialogTitle });
       return { method: 'capacitor' };
     }
   } catch (e) { /* plugin missing or unavailable, fall through */ }

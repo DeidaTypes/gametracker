@@ -1,5 +1,6 @@
 import React from 'react'
 import { getBestImageUrl } from '../services/imageUtils'
+import Pressable from './Pressable'
 import './PrimaryCard.css'
 
 /**
@@ -12,7 +13,8 @@ function PrimaryCard({ game, onClick }) {
   const imageUrl = getBestImageUrl(game, 800) || game.image
 
   return (
-    <div
+    <Pressable
+      as="div"
       className="primary-card"
       onClick={onClick}
       role="button"
@@ -67,7 +69,7 @@ function PrimaryCard({ game, onClick }) {
           Discover <span className="primary-card-arrow">→</span>
         </div>
       </div>
-    </div>
+    </Pressable>
   )
 }
 

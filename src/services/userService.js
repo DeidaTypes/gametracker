@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { applyBlockFilter } from './blockService'
 
 /**
  * Lightweight user lookups used by the Search screen's Users tab and
@@ -11,16 +12,22 @@ import { supabase } from './supabase'
 /**
  * Sprint 5 P3: Search users by username OR display_name, case-insensitive.
  * Returns up to `limit` rows. Empty query short-circuits to [].
+ *
+ * Sprint 7: filters out users the current user has blocked or who
+ * have blocked the current user.
  */
 export async function searchUsers(query, limit = 20) {
   const trimmed = (query || '').trim()
   if (!trimmed) return []
   const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
-  const { data, error } = await supabase
+  let q = supabase
     .from('users')
     .select('id, username, display_name, avatar_url')
+    .is('deleted_at', null)
     .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%`)
     .limit(limit)
+  q = await applyBlockFilter(q, 'id')
+  const { data, error } = await q
   if (error) {
     console.error('[users] searchUsers failed:', error.message)
     return []
@@ -39,6 +46,7 @@ export async function getUserByUsername(username) {
   const { data, error } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url, bio')
+    .is('deleted_at', null)
     .ilike('username', trimmed)
     .maybeSingle()
   if (error) {

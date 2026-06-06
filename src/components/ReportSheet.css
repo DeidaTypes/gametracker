@@ -1,0 +1,241 @@
+/* =====================================================================
+   ReportSheet — bottom sheet for reporting user-generated content
+   Sprint 8: Content reporting system
+   ===================================================================== */
+
+.report-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+}
+
+.report-sheet {
+  width: 100%;
+  max-width: var(--page-max-width, 600px);
+  margin: 0 auto;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;
+  overflow-y: auto;
+  outline: none;
+  /* Safe area for iOS home indicator */
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* ── Drag handle ─────────────────────────────────────────────────── */
+
+.report-sheet__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  margin: 12px auto 4px;
+  flex-shrink: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+
+.report-sheet__header {
+  padding: var(--spacing-md) var(--page-padding, 20px) var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.report-sheet__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title, 18px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.report-sheet__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Reason radio list ───────────────────────────────────────────── */
+
+.report-sheet__reasons {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) var(--page-padding, 20px);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.report-sheet__reason-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.report-sheet__reason-row:hover {
+  background: var(--color-surface);
+}
+
+.report-sheet__radio {
+  /* Hide the native radio and replace with a custom circle */
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.report-sheet__radio:checked {
+  border-color: var(--color-brand-primary);
+  background: var(--color-brand-primary);
+}
+
+.report-sheet__radio:checked::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+}
+
+.report-sheet__reason-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  flex: 1;
+}
+
+/* ── Details textarea ────────────────────────────────────────────── */
+
+.report-sheet__details-wrap {
+  padding: var(--spacing-xs) var(--page-padding, 20px) var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.report-sheet__details-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.report-sheet__details-optional {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+}
+
+.report-sheet__details-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  padding: 10px 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.report-sheet__details-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.report-sheet__details-input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.report-sheet__char-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Action buttons ──────────────────────────────────────────────── */
+
+.report-sheet__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--page-padding, 20px) var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.report-sheet__btn {
+  flex: 1;
+  padding: 13px 16px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), opacity var(--transition-fast),
+    border-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.report-sheet__btn--cancel {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.report-sheet__btn--cancel:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Cobalt fill for Submit, per spec */
+.report-sheet__btn--submit {
+  background: #1a73e8;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.report-sheet__btn--submit:hover:not(:disabled) {
+  background: #1557b0;
+}
+
+.report-sheet__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .report-sheet__reason-row,
+  .report-sheet__radio,
+  .report-sheet__details-input,
+  .report-sheet__btn {
+    transition: none;
+  }
+}

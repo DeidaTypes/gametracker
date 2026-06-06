@@ -4,15 +4,38 @@
 // Then get an access token from: https://id.twitch.tv/oauth2/token
 
 import { normalizeGame, normalizeGames } from './normalizeGame'
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
 const CLIENT_ID = import.meta.env.VITE_IGDB_CLIENT_ID || 'YOUR_CLIENT_ID'
 const CLIENT_SECRET = import.meta.env.VITE_IGDB_CLIENT_SECRET || 'YOUR_CLIENT_SECRET'
 
-// Debug: Log if credentials are loaded (without exposing secrets)
-if (CLIENT_ID === 'YOUR_CLIENT_ID' || CLIENT_SECRET === 'YOUR_CLIENT_SECRET') {
-  console.warn('⚠️ IGDB API credentials not found! Make sure you have a .env file with VITE_IGDB_CLIENT_ID and VITE_IGDB_CLIENT_SECRET')
+// Deployed Supabase Edge Function that owns the Twitch OAuth flow and forwards
+// queries to IGDB. Preferred path: works from anywhere (including a physical
+// iPhone running the Capacitor build, which cannot reach the dev localhost) and
+// keeps the IGDB client ID / secret server-side.
+const PROXY_URL = (import.meta.env.VITE_IGDB_PROXY_URL || '').replace(/\/$/, '')
+
+// Supabase anon key — required by the Edge Function gateway as an Authorization
+// bearer token. Without it the platform rejects the request with 401 before it
+// ever reaches the igdb-proxy function.
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+// Legacy base URL for the pass-through proxy. Empty in dev → relative paths hit
+// the Vite dev-server proxy (vite.config.js). Only used when VITE_IGDB_PROXY_URL
+// is not set (e.g. local web dev without the Edge Function).
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+
+// Debug: Log if credentials are loaded (without exposing secrets). When the
+// Edge Function proxy is configured the client doesn't need IGDB credentials,
+// so the warning is only relevant for the legacy pass-through path.
+if (!PROXY_URL) {
+  if (CLIENT_ID === 'YOUR_CLIENT_ID' || CLIENT_SECRET === 'YOUR_CLIENT_SECRET') {
+    console.warn('⚠️ IGDB API credentials not found! Make sure you have a .env file with VITE_IGDB_CLIENT_ID and VITE_IGDB_CLIENT_SECRET')
+  } else {
+    console.log('✅ IGDB API credentials loaded successfully')
+  }
 } else {
-  console.log('✅ IGDB API credentials loaded successfully')
+  console.log('✅ IGDB requests routed through Supabase Edge Function proxy')
 }
 
 let tokenCache = { token: null, expiresAt: 0 }
@@ -36,7 +59,7 @@ async function fetchNewToken() {
     )
   }
 
-  const response = await fetch('/api/twitch/oauth2/token', {
+  const response = await fetchWithTimeout(`${API_BASE}/api/twitch/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -105,9 +128,15 @@ async function igdbRequest(endpoint, query) {
 }
 
 async function executeIgdbRequest(endpoint, query, cacheKey) {
+  // Preferred path: the Supabase Edge Function authenticates with Twitch
+  // server-side, so the client just sends { endpoint, query }.
+  if (PROXY_URL) {
+    return executeViaEdgeProxy(endpoint, query, cacheKey)
+  }
+
   const token = await getAccessToken()
 
-  const response = await fetch(`/api/igdb/v4/${endpoint}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/api/igdb/v4/${endpoint}`, {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -122,6 +151,40 @@ async function executeIgdbRequest(endpoint, query, cacheKey) {
     if (response.status === 401) {
       tokenCache = { token: null, expiresAt: 0 }
       throw new Error('Unauthorized. Your access token may have expired or your API credentials are invalid.')
+    } else if (response.status === 400) {
+      throw new Error(`Invalid API request: ${errorText}`)
+    }
+    throw new Error(`IGDB API error: ${response.status} - ${errorText}`)
+  }
+
+  const data = await response.json()
+
+  responseCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
+
+  return data
+}
+
+// Edge Function path — POST { endpoint, query } to the deployed igdb-proxy and
+// return the IGDB JSON. Twitch auth happens server-side inside the function.
+async function executeViaEdgeProxy(endpoint, query, cacheKey) {
+  const response = await fetchWithTimeout(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(SUPABASE_ANON_KEY
+        ? {
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
+          }
+        : {}),
+    },
+    body: JSON.stringify({ endpoint, query }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    if (response.status === 401) {
+      throw new Error('Unauthorized. The IGDB proxy could not authenticate with Twitch — check the TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET Edge Function secrets.')
     } else if (response.status === 400) {
       throw new Error(`Invalid API request: ${errorText}`)
     }

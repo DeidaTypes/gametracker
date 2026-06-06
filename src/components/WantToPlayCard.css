@@ -33,7 +33,7 @@
     border-color: var(--color-border-hover);
     transform: scale(1.02);
     filter: brightness(1.04);
-    box-shadow: 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
   }
 }
 
@@ -51,7 +51,7 @@
 }
 
 .wtp-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -143,7 +143,7 @@
 
 .wtp-fan-card--ghost {
   background: transparent;
-  border: 1.5px dashed rgba(200, 150, 90, 0.18);
+  border: 1.5px dashed rgba(59, 130, 246, 0.18);
   box-shadow: none;
   opacity: 0.5;
 }

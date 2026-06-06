@@ -1,0 +1,123 @@
+/* ============================================================
+   AccountRecoverySheet — shown after sign-in when deleted_at is set.
+   No backdrop tap-to-close: the user MUST make a choice.
+   ============================================================ */
+
+.acct-recovery-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: flex-end;
+}
+
+.acct-recovery-sheet {
+  width: 100%;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  outline: none;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+.acct-recovery-sheet__handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.acct-recovery-sheet__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 24px 24px;
+  gap: 16px;
+  text-align: center;
+}
+
+.acct-recovery-sheet__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb, 180, 120, 60), 0.12);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.acct-recovery-sheet__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.acct-recovery-sheet__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 300px;
+}
+
+.acct-recovery-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.acct-recovery-btn {
+  width: 100%;
+  padding: 13px 20px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 0;
+  cursor: pointer;
+  transition: opacity 120ms ease, background-color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.acct-recovery-btn--primary {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+
+.acct-recovery-btn--primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.acct-recovery-btn--ghost {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.acct-recovery-btn--ghost:hover:not(:disabled) {
+  color: var(--text-secondary);
+}
+
+.acct-recovery-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acct-recovery-btn {
+    transition: none !important;
+  }
+}
+
+body[data-reduce-motion='true'] .acct-recovery-btn {
+  transition: none !important;
+}

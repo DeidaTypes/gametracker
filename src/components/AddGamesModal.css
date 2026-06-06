@@ -1,27 +1,425 @@
 /* ============================================================
-   Add Games modal — layout overrides beyond the shared sheet
-   classes defined in CreateListModal.css.
+   AddGamesModal — iOS 26 modernised sheet
+   All new styles use the agm-* namespace.
+   The base .add-games-modal sheet frame (padding:0, flex column,
+   max-height, overflow:hidden) is still provided by CreateListModal.css.
    ============================================================ */
+
+/* ── Max-width cap on desktop ── */
 .add-games-modal {
   max-width: 560px;
-}
-
-.add-games-body {
-  /* Slightly reduced gap since search-first layout is tight */
-  gap: var(--spacing-md);
-}
-
-.add-games-modal .no-results {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
 }
 
 @media (max-width: 768px) {
   .add-games-modal {
     max-width: 100%;
+  }
+}
+
+/* ── Grab handle — iOS native sheet pattern ── */
+.agm-grab-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--text-tertiary);
+  border-radius: var(--radius-full);
+  margin: 8px auto 0;
+  flex-shrink: 0;
+}
+
+/* ── Header row: "Add to {list}" left, "Done" right ── */
+.agm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 16px 20px 0;
+  flex-shrink: 0;
+}
+
+/* Override the global h2 rule from CreateListModal.css */
+.agm-sheet .agm-header-title {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.agm-done-link {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  line-height: 1.3;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.agm-done-link:hover {
+  opacity: 0.8;
+}
+
+.agm-done-link:active {
+  opacity: 0.55;
+  transform: none; /* suppress global scale-down on text links */
+}
+
+/* ── Pinned search band — sits between the header and the scrollable
+   results, stays fixed and visible whenever the keyboard is up ── */
+.agm-search-pinned {
+  flex-shrink: 0;
+  padding: 12px 20px;
+}
+
+/* ── Scrollable results body ── */
+.agm-body {
+  flex: 1;
+  /* Let the flex item shrink below its content height so the results area
+     collapses to the space above the keyboard instead of overflowing it. */
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agm-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.agm-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agm-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+/* ── Search input row ── */
+.agm-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.agm-search-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  flex-shrink: 0;
+  /* Optically center the icon inside the 44px pill */
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.agm-search-input {
+  width: 100%;
+  height: 44px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  /* 16px left gap + 16px icon + 8px gap = 40px */
+  padding: 0 16px 0 40px;
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.agm-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.agm-search-input:focus {
+  border-color: var(--accent);
+}
+
+/* ── Status / hint lines ── */
+.agm-status {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--text-tertiary);
+}
+
+.agm-status--error {
+  color: var(--status-danger);
+}
+
+.agm-status--hint {
+  font-style: italic;
+}
+
+/* ── Results list container ── */
+.agm-results-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Game row — shared by search results and "In this list" ── */
+.agm-game-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 0.5px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+
+.agm-game-row:last-child {
+  border-bottom: none;
+}
+
+.agm-game-row:active {
+  background: var(--bg-surface);
+}
+
+/* Existing-list rows aren't directly tappable — only the trash button is */
+.agm-game-row--existing {
+  cursor: default;
+}
+
+.agm-game-row--existing:active {
+  background: transparent;
+}
+
+/* ── Cover thumbnail: 40 × 56 px ── */
+.agm-game-cover {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  display: block;
+}
+
+.agm-game-cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 14%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 4%, transparent) 100%
+  );
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+}
+
+/* ── Title + meta stack ── */
+.agm-game-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agm-game-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agm-game-meta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Add (+) button ── */
+.agm-add-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.agm-game-row:hover .agm-add-btn {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.agm-add-btn:active {
+  transform: scale(0.9);
+}
+
+/* ── Cobalt checkmark badge (game already in list) ── */
+.agm-check-badge {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Red trash (remove) button ── */
+.agm-remove-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: none;
+  border: none;
+  color: var(--status-danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.65;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.agm-remove-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--status-danger) 12%, transparent);
+}
+
+.agm-remove-btn:active {
+  transform: scale(0.9);
+}
+
+/* ── "In this list" section ── */
+.agm-in-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Inline header: label left, "Show all" right */
+.agm-in-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agm-in-list-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+.agm-show-all-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.agm-show-all-btn:hover {
+  opacity: 0.8;
+}
+
+.agm-show-all-btn:active {
+  opacity: 0.55;
+  transform: none;
+}
+
+/* ── Mobile: slide up from bottom, keyboard-aware ── */
+@media (max-width: 768px) {
+  .add-games-modal {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    /* --agm-avail is the visible viewport height (area above the keyboard),
+       set in JS from the Capacitor Keyboard events / visualViewport. Cap it
+       at 92% so the sheet never fills the whole visible area, and fall back
+       to 92vh before the first measurement. --agm-bottom lifts the sheet off
+       the keyboard if the WebView isn't natively resized. */
+    max-height: min(92vh, calc(var(--agm-avail, 100vh) * 0.92));
+    margin-bottom: var(--agm-bottom, 0px);
+    transition: max-height 0.2s ease, margin-bottom 0.2s ease;
+  }
+
+  .agm-body {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-games-modal {
+    transition: none;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .agm-done-link,
+  .agm-search-input,
+  .agm-add-btn,
+  .agm-remove-btn,
+  .agm-show-all-btn,
+  .agm-game-row {
+    transition: none;
+  }
+
+  .agm-add-btn:active,
+  .agm-remove-btn:active {
+    transform: none;
+  }
+
+  /* Non-motion press feedback */
+  .agm-add-btn:active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .agm-remove-btn:active {
+    opacity: 1;
+    background: color-mix(in srgb, var(--status-danger) 20%, transparent);
   }
 }

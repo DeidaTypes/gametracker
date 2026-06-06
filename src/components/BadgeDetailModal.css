@@ -58,9 +58,9 @@
 }
 
 .badge-detail-modal__name {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -68,7 +68,7 @@
 }
 
 .badge-detail-modal__tier {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -87,7 +87,7 @@
 }
 
 .badge-detail-modal__desc {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary);
@@ -120,7 +120,7 @@
 }
 
 .badge-detail-modal__progress-text {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
@@ -128,7 +128,7 @@
 }
 
 .badge-detail-modal__status {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   letter-spacing: var(--letter-spacing-label);

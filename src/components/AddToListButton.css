@@ -17,7 +17,7 @@
   border: none;
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-md);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
@@ -30,36 +30,26 @@
 
 .add-to-list-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(200, 150, 90, 0.35);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
 }
 
 .add-to-list-button:active {
   transform: translateY(0);
 }
 
-/* ── Portal (full-screen layer, rendered into body) ── */
-.bs-portal {
+/* ── Backdrop/Scrim (full-screen flex layer, rendered into body) ──
+   Doubles as the dismiss target — a tap anywhere outside the sheet
+   closes it. Enter/exit opacity is driven by Framer Motion. */
+.bs-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1100;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-}
-
-/* ── Backdrop/Scrim ── */
-.bs-backdrop {
-  position: absolute;
-  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  animation: bs-fadeIn 0.2s ease-out;
-}
-
-@keyframes bs-fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
 }
 
 /* ── Sheet ── */
@@ -72,30 +62,24 @@
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  animation: bs-slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
-  transition: transform 0.1s ease-out;
+  touch-action: none;
   box-shadow:
     0 -8px 40px rgba(0, 0, 0, 0.5),
     0 -2px 12px rgba(0, 0, 0, 0.3);
-}
-
-.bs-sheet--dragging {
-  transition: none;
-}
-
-@keyframes bs-slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
 }
 
 /* ── Drag Handle ── */
 .bs-drag-zone {
   display: flex;
   justify-content: center;
-  padding: 12px 0 4px;
+  padding: 12px 0 6px;
   cursor: grab;
   touch-action: none;
+}
+
+.bs-drag-zone:active {
+  cursor: grabbing;
 }
 
 .bs-handle {
@@ -139,7 +123,7 @@
 }
 
 .bs-header-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -151,7 +135,7 @@
 }
 
 .bs-header-status {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -200,64 +184,74 @@
   display: none;
 }
 
-/* ── Status Tile Grid (2×2) ── */
-.bs-status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.bs-tile {
+/* ── Status List (native-style rows with hairline dividers) ── */
+.bs-status-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 88px;
-  padding: 20px 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
+  overflow: hidden;
+}
+
+.bs-status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: rgba(255, 255, 255, 0.55);
+  text-align: left;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.bs-tile:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.8);
+/* Subtle divider between rows (skip the last). */
+.bs-status-row:not(:last-child) {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.07);
 }
 
-.bs-tile:active {
-  transform: scale(0.95);
+.bs-status-row:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.bs-tile--active {
-  background: rgba(200, 150, 90, 0.15);
-  border-color: rgba(200, 150, 90, 0.45);
+.bs-status-row:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bs-status-row--active {
   color: var(--color-brand-primary);
 }
 
-.bs-tile--active:hover {
-  background: rgba(200, 150, 90, 0.22);
-  border-color: rgba(200, 150, 90, 0.55);
-  color: var(--color-brand-secondary);
-}
-
-.bs-tile-icon {
+.bs-status-row-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
 }
 
-.bs-tile-label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
-  text-align: center;
+.bs-status-row-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.bs-status-row-label {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}
+
+.bs-status-row-check {
+  color: var(--color-brand-primary);
+  flex-shrink: 0;
 }
 
 /* ── My Lists Section ── */
@@ -266,7 +260,7 @@
 }
 
 .bs-lists-heading {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -276,44 +270,11 @@
   margin: 0 0 12px;
 }
 
-.bs-list-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  cursor: pointer;
-  margin-bottom: 8px;
-  transition: all 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.bs-list-row:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-.bs-list-row:active {
-  transform: scale(0.98);
-}
-
-.bs-list-row--active {
-  border-color: rgba(200, 150, 90, 0.3);
-  background: rgba(200, 150, 90, 0.08);
-}
-
-.bs-list-name {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-body);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.bs-list-check {
-  color: var(--color-brand-primary);
-  flex-shrink: 0;
+/* Reduced-motion: the sheet still appears/disappears, just instantly
+   (Framer Motion already collapses the spring; this covers any CSS
+   transitions on the rows). */
+@media (prefers-reduced-motion: reduce) {
+  .bs-status-row {
+    transition: none;
+  }
 }

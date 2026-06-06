@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
@@ -89,7 +89,7 @@
 
 /* status_changed → amber */
 .activity-feed-item--status_changed .activity-feed-icon {
-  background: rgba(200, 150, 90, 0.16);
+  background: rgba(59, 130, 246, 0.16);
   color: var(--color-brand-primary);
 }
 
@@ -115,7 +115,7 @@
 }
 
 .activity-feed-message {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
@@ -127,7 +127,7 @@
 /* ---- Right-aligned timestamp ---- */
 .activity-feed-time {
   flex-shrink: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -141,7 +141,7 @@
   background: transparent;
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);

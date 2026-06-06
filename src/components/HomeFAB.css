@@ -20,7 +20,7 @@
   /* Above page content and tab bar (z-index: 1000), below modals (1010+) */
   z-index: 1005;
   box-shadow:
-    0 4px 16px rgba(200, 150, 90, 0.45),
+    0 4px 16px rgba(59, 130, 246, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
   transition: transform 150ms ease, box-shadow 150ms ease;
@@ -29,14 +29,14 @@
 
 .home-fab:hover {
   box-shadow:
-    0 6px 24px rgba(200, 150, 90, 0.55),
+    0 6px 24px rgba(59, 130, 246, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .home-fab:active {
   transform: scale(0.95);
   box-shadow:
-    0 2px 8px rgba(200, 150, 90, 0.3),
+    0 2px 8px rgba(59, 130, 246, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
 

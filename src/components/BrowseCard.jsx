@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Pressable from './Pressable'
 import './BrowseCard.css'
 
 function BrowseCard({ category, index = 0 }) {
   const navigate = useNavigate()
-  const [pressed, setPressed] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
 
   const handleClick = () => {
@@ -12,18 +12,13 @@ function BrowseCard({ category, index = 0 }) {
   }
 
   return (
-    <button
-      className={`browse-card ${pressed ? 'browse-card--pressed' : ''}`}
+    <Pressable
+      className="browse-card"
       style={{
         backgroundColor: category.color,
         animationDelay: `${index * 60}ms`,
       }}
       onClick={handleClick}
-      onPointerDown={() => setPressed(true)}
-      onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}
-      onPointerCancel={() => setPressed(false)}
-      type="button"
     >
       <span className="browse-card__label">{category.label}</span>
 
@@ -37,7 +32,7 @@ function BrowseCard({ category, index = 0 }) {
           onError={(e) => { e.target.style.display = 'none' }}
         />
       )}
-    </button>
+    </Pressable>
   )
 }
 

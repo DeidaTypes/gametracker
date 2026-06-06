@@ -1,12 +1,41 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence, useDragControls } from 'motion/react'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import {
   TextArea,
   StarRating,
   NumericField,
   SubmitButton,
 } from './forms'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './ReviewForm.css'
+
+/**
+ * Dismiss the soft keyboard and wait for it to finish collapsing.
+ *
+ * On iOS the keyboard collapsing resizes the WKWebView visual viewport.
+ * If that happens *while* the sheet is animating away, the fixed-anchored
+ * sheet shifts mid-transition and the screen visibly jumps. Blurring the
+ * focused field + calling the Capacitor Keyboard plugin up front (and
+ * waiting a beat for the collapse to settle) lets the keyboard fully
+ * retract before the sheet starts its exit, so the close is smooth.
+ */
+async function dismissKeyboardAndSettle() {
+  if (typeof document !== 'undefined') {
+    const active = document.activeElement
+    if (active && typeof active.blur === 'function') active.blur()
+  }
+  try {
+    const { Keyboard } = await import('@capacitor/keyboard')
+    await Keyboard.hide()
+  } catch {
+    /* no-op on web or when the plugin is unavailable */
+  }
+  // Give the keyboard time to finish its collapse animation before the
+  // sheet begins exiting. Matches the keyboardWillHide window on iOS.
+  await new Promise((resolve) => setTimeout(resolve, 160))
+}
 
 const RATING_DESCRIPTIONS = {
   0.5: 'I have words. None are kind.',
@@ -32,6 +61,8 @@ function ReviewForm({
   onCancel,
   isOpen,
 }) {
+  const { reduced } = useMotionPreference()
+  const dragControls = useDragControls()
   const [rating, setRating] = useState(0)
   const [text, setText] = useState('')
   const [hoursPlayed, setHoursPlayed] = useState('')
@@ -43,6 +74,17 @@ function ReviewForm({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
+      // Reset the composer to a clean slate on open. We deliberately do
+      // NOT reset on submit: clearing fields while the sheet is still
+      // visible (mid-exit) reflows its content and causes a visible jump.
+      // Resetting here means the next open starts fresh with no flash.
+      setRating(0)
+      setText('')
+      setHoursPlayed('')
+      setLiked(false)
+      setContainsSpoilers(false)
+      setMarkCompleted(false)
+      setSubmitting(false)
     } else {
       document.body.style.overflow = 'unset'
     }
@@ -61,10 +103,15 @@ function ReviewForm({
     }
   }, [isOpen, onCancel])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!rating) return
+    if (!rating || submitting) return
     setSubmitting(true)
+
+    // Dismiss the keyboard BEFORE handing off to the parent (which closes
+    // the sheet). A keyboard collapsing mid-exit is what causes the jump.
+    await dismissKeyboardAndSettle()
+
     onSubmit({
       rating,
       text: text.trim(),
@@ -73,36 +120,68 @@ function ReviewForm({
       containsSpoilers,
       markCompleted,
     })
-    setSubmitting(false)
-    setText('')
-    setRating(0)
-    setHoursPlayed('')
-    setLiked(false)
-    setContainsSpoilers(false)
-    setMarkCompleted(false)
+    // Intentionally no field reset here — the parent closes the sheet and
+    // the open effect resets everything on the next open. Resetting now
+    // would reflow the still-visible sheet during its exit animation.
   }
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onCancel()
   }
 
-  if (!isOpen) return null
-
-  const fallbackImage =
-    'https://via.placeholder.com/280x380/1a1a1a/ffffff?text=No+Cover'
+  const fallbackImage = COVER_FALLBACK
   const canSubmit = !submitting && rating > 0
   const ratingDescription = rating > 0 ? RATING_DESCRIPTIONS[rating] : null
   const showMarkCompleted = gameStatus !== 'played'
   const coverSrc = gameImage || fallbackImage
 
+  // Consistent 300 ms-feel spring shared with the app's other bottom
+  // sheets (ReportSheet). Reduced motion collapses both to an instant swap.
+  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.2 }
+  const sheetTransition = reduced
+    ? { duration: 0 }
+    : { type: 'spring', stiffness: 380, damping: 32 }
+
+  // Swipe-down-to-dismiss: drag is initiated only from the grabber handle
+  // (dragListener={false}) so the inner scroll area still scrolls normally.
+  const handleDragEnd = (_e, info) => {
+    if (info.offset.y > 120 || info.velocity.y > 600) onCancel()
+  }
+
   return createPortal(
-    <div className="review-modal-backdrop" onClick={handleBackdropClick}>
-      <div
-        className="review-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Write Review"
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="review-modal-backdrop"
+          onClick={handleBackdropClick}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={backdropTransition}
+        >
+          <motion.div
+            className="review-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Write Review"
+            onClick={(e) => e.stopPropagation()}
+            initial={reduced ? false : { y: '100%' }}
+            animate={{ y: 0 }}
+            exit={reduced ? { y: 0 } : { y: '100%' }}
+            transition={sheetTransition}
+            drag={reduced ? false : 'y'}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={handleDragEnd}
+          >
+        <button
+          type="button"
+          className="review-sheet-handle"
+          aria-label="Drag to dismiss"
+          onPointerDown={(e) => dragControls.start(e)}
+        />
         <button
           className="review-modal-close"
           onClick={onCancel}
@@ -288,8 +367,10 @@ function ReviewForm({
             Your review will appear on your profile and on this game's page.
           </p>
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   )
 }

@@ -1,0 +1,182 @@
+/* ============================================================
+   SettingsBlocked — list of blocked users with Unblock buttons.
+   ============================================================ */
+
+.blocked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--surface-1-shadow);
+}
+
+.blocked-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.blocked-row:last-child {
+  border-bottom: 0;
+}
+
+.blocked-row__avatar {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-surface-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blocked-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.blocked-row__avatar-fallback {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.blocked-row__meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.blocked-row__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-row__handle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.2;
+}
+
+.blocked-row__btn {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--status-danger);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.blocked-row__btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.22);
+}
+
+.blocked-row__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Skeleton rows
+   ============================================================ */
+
+.blocked-row--skeleton {
+  pointer-events: none;
+}
+
+.blocked-sk-avatar {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.blocked-sk-name {
+  display: block;
+  width: 120px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.blocked-sk-handle {
+  display: block;
+  width: 80px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.blocked-sk-btn {
+  display: block;
+  width: 70px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Empty state
+   ============================================================ */
+
+.blocked-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--surface-1-shadow);
+  text-align: center;
+}
+
+.blocked-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(148, 168, 212, 0.08);
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.blocked-empty__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.blocked-empty__body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  max-width: 320px;
+  line-height: 1.4;
+}

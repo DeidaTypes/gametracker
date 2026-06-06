@@ -32,9 +32,9 @@
 .tf-tab {
   background: none;
   border: none;
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.1;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-muted);
@@ -180,7 +180,7 @@
 
 .tf-friends-empty__text {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 15px;
   color: var(--color-text-secondary);
   line-height: 1.4;
@@ -193,13 +193,13 @@
   border: none;
   border-radius: var(--radius-full);
   padding: 10px 22px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: filter var(--transition-fast);
-  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
 }
 
 .tf-friends-empty__cta:hover {

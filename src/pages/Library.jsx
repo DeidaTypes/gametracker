@@ -2,70 +2,95 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
+import { List } from 'lucide-react'
 import CreateListModal from '../components/CreateListModal'
-import AddGamesModal from '../components/AddGamesModal'
 import EmptyState from '../components/EmptyState'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
-import { HiDotsVertical, HiPlus } from 'react-icons/hi'
+import InlineErrorBanner from '../components/InlineErrorBanner'
 import {
   initializeLibrary,
   getGamesFromList,
-  addGameToList as lsAddGameToList,
+  getGameProgress,
 } from '../services/libraryService'
 import {
   getListsForUser,
   createList,
   addGameToList,
-  deleteList,
 } from '../services/listService'
 import './Library.css'
 
-// Mandatory tracker lists that live in localStorage (not Supabase)
-const MANDATORY_LISTS = [
+// Mandatory tracker lists that live in localStorage (not Supabase). The
+// order here is the canonical render order on the Library page.
+const TRACKERS = [
   { id: 'currently-playing', name: 'Currently Playing' },
   { id: 'played', name: 'Played' },
   { id: 'want-to-play', name: 'Want to Play' },
 ]
 
+// Fan offsets for the 3-cover stack on each tracker card. Matches the
+// Sprint 1 Want to Play pattern (back-left → center → back-right).
+const TRACKER_FAN = [
+  { x: -22, r: -8, z: 1 },
+  { x: 0, r: 0, z: 3 },
+  { x: 22, r: 8, z: 2 },
+]
+
+// Returns the most-recent "touched" timestamp for a game across all known
+// signals (addedAt, lastPlayedAt, playedFirstAt). Falls back to 0 so the
+// sort is stable when nothing is recorded.
+function getTouchedAt(game) {
+  const progress = getGameProgress(game.id) || {}
+  const candidates = [
+    game.addedAt,
+    progress.lastPlayedAt,
+    progress.playedFirstAt,
+  ]
+    .filter(Boolean)
+    .map((s) => new Date(s).getTime())
+    .filter((n) => Number.isFinite(n))
+  return candidates.length ? Math.max(...candidates) : 0
+}
+
 function Library() {
   const navigate = useNavigate()
   const { user } = useAuth()
+
   const [trackerLists, setTrackerLists] = useState({})
   const [customLists, setCustomLists] = useState([])
   const [isLoadingCustom, setIsLoadingCustom] = useState(true)
-  const [trackersRef] = useAutoAnimateMotion()
-  const [customListsRef] = useAutoAnimateMotion()
+  const [errorCustom, setErrorCustom] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showAddGamesModal, setShowAddGamesModal] = useState(false)
-  const [addGamesListId, setAddGamesListId] = useState(null)
-  const [addGamesListName, setAddGamesListName] = useState('')
-  const [showDeleteMenu, setShowDeleteMenu] = useState(null)
 
-  // Load tracker lists from localStorage
+  const [trackersRef] = useAutoAnimateMotion()
+  const [customGridRef] = useAutoAnimateMotion()
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+
   const loadTrackerLists = useCallback(() => {
     initializeLibrary()
     const snap = {}
-    for (const { id } of MANDATORY_LISTS) {
+    for (const { id } of TRACKERS) {
       snap[id] = { games: getGamesFromList(id) }
     }
     setTrackerLists(snap)
   }, [])
 
-  // Load custom lists from Supabase
   const loadCustomLists = useCallback(async () => {
     if (!user?.id) {
       setCustomLists([])
       setIsLoadingCustom(false)
+      setErrorCustom(false)
       return
     }
     setIsLoadingCustom(true)
+    setErrorCustom(false)
     try {
       const lists = await getListsForUser(user.id)
       setCustomLists(lists)
     } catch (err) {
       console.error('[library] failed to load custom lists:', err)
-      setCustomLists([])
+      setErrorCustom(true)
     } finally {
       setIsLoadingCustom(false)
     }
@@ -74,7 +99,6 @@ function Library() {
   useEffect(() => {
     loadTrackerLists()
     loadCustomLists()
-
     const handleUpdate = () => {
       loadTrackerLists()
       loadCustomLists()
@@ -83,7 +107,76 @@ function Library() {
     return () => window.removeEventListener('libraryUpdated', handleUpdate)
   }, [loadTrackerLists, loadCustomLists])
 
-  // Create list → Supabase, then add initial games, then navigate
+  // ── Derived data ──────────────────────────────────────────────────────────
+
+  // Total games across all trackers. Status is mutually exclusive so games
+  // are never double-counted across the three lists.
+  const totalTracked = useMemo(() => {
+    return TRACKERS.reduce(
+      (sum, { id }) => sum + (trackerLists[id]?.games?.length || 0),
+      0,
+    )
+  }, [trackerLists])
+
+  // 5 most-recently-touched games for the hero strip. Dedupe by gameId
+  // (defensive — status is mutually exclusive but a stale tracker entry
+  // could otherwise duplicate).
+  const recentlyTouched = useMemo(() => {
+    const byId = new Map()
+    for (const { id } of TRACKERS) {
+      const games = trackerLists[id]?.games || []
+      for (const g of games) {
+        if (!g?.id) continue
+        const touchedAt = getTouchedAt(g)
+        const prev = byId.get(g.id)
+        if (!prev || touchedAt > prev.touchedAt) {
+          byId.set(g.id, { ...g, touchedAt })
+        }
+      }
+    }
+    return Array.from(byId.values())
+      .sort((a, b) => b.touchedAt - a.touchedAt)
+      .slice(0, 5)
+  }, [trackerLists])
+
+  // For each tracker card: the 3 most-recently-added covers. Tracker
+  // localStorage doesn't track per-game lastPlayedAt the way the hero
+  // strip does, so we sort by addedAt here — that's what "most recent in
+  // this tracker" means.
+  const trackerPreviews = useMemo(() => {
+    const result = {}
+    for (const { id } of TRACKERS) {
+      const games = (trackerLists[id]?.games || [])
+        .slice()
+        .sort((a, b) => {
+          const da = new Date(a.addedAt || 0).getTime()
+          const db = new Date(b.addedAt || 0).getTime()
+          return db - da
+        })
+      result[id] = {
+        count: games.length,
+        previews: games.slice(0, 3),
+      }
+    }
+    return result
+  }, [trackerLists])
+
+  // Dedupe set for SharedCover so the same game appearing in multiple
+  // visible mosaics / fans doesn't trigger a conflicting layoutId match.
+  const duplicateIds = useMemo(() => {
+    const all = []
+    for (const { id } of TRACKERS) {
+      all.push(trackerPreviews[id]?.previews || [])
+    }
+    for (const list of customLists) {
+      all.push((list.games || []).slice(0, 4))
+    }
+    all.push(recentlyTouched)
+    return findDuplicateGameIds(...all)
+  }, [trackerPreviews, customLists, recentlyTouched])
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
   const handleCreateList = async (listName, description, initialGames) => {
     const listId = await createList({ name: listName, description, isPublic: true })
     for (let i = 0; i < initialGames.length; i++) {
@@ -94,278 +187,255 @@ function Library() {
     navigate(`/list/${listId}`)
   }
 
-  const handleListClick = (listId, e) => {
-    if (e.target.closest('.list-item-actions')) return
+  const handleTrackerClick = (trackerId) => {
+    navigate(`/list/${trackerId}`)
+  }
+
+  const handleCustomListClick = (listId) => {
     navigate(`/list/${listId}`)
   }
 
-  const handleAddGamesClick = (listId, listName, e) => {
-    e.stopPropagation()
-    setAddGamesListId(listId)
-    setAddGamesListName(listName || '')
-    setShowAddGamesModal(true)
-    setShowDeleteMenu(null)
+  const handleRecentCoverClick = (gameId) => {
+    navigate(`/game/${gameId}`)
   }
-
-  const handleDeleteClick = async (listId, e) => {
-    e.stopPropagation()
-    setShowDeleteMenu(null)
-    if (!window.confirm('Delete this list? This cannot be undone.')) return
-    try {
-      await deleteList(listId)
-      setCustomLists((prev) => prev.filter((l) => l.id !== listId))
-      window.dispatchEvent(new Event('libraryUpdated'))
-    } catch {
-      showToast('Failed to delete list', 'error')
-    }
-  }
-
-  const handleMenuClick = (listId, e) => {
-    e.stopPropagation()
-    setShowDeleteMenu(showDeleteMenu === listId ? null : listId)
-  }
-
-  useEffect(() => {
-    if (!showDeleteMenu) return
-    const close = () => setShowDeleteMenu(null)
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
-  }, [showDeleteMenu])
-
-  // Compute duplicate game ids for SharedCover so the same game cover in
-  // two different visible list previews doesn't trigger a conflicting
-  // shared-element animation.
-  const duplicateIds = useMemo(() => {
-    const visiblePreviews = []
-    for (const { id } of MANDATORY_LISTS) {
-      const games = trackerLists[id]?.games || []
-      visiblePreviews.push(games.length > 5 ? games.slice(0, 4) : games.slice(0, 5))
-    }
-    for (const list of customLists) {
-      const games = list.games || []
-      visiblePreviews.push(games.length > 5 ? games.slice(0, 4) : games.slice(0, 5))
-    }
-    return findDuplicateGameIds(...visiblePreviews)
-  }, [trackerLists, customLists])
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  const renderTrackerPreview = ({ id, name }) => {
-    const games = getGamesFromList(id)
-    const hasPill = games.length > 5
-    const visibleGames = hasPill ? games.slice(0, 4) : games.slice(0, 5)
-    const pillCount = games.length - 4
+  const renderTrackerCard = ({ id, name }) => {
+    const { count, previews } = trackerPreviews[id] || { count: 0, previews: [] }
+    const isEmpty = previews.length === 0
 
     return (
-      <div key={id} className="library-list-item">
-        <div className="list-item-inner">
-          <div
-            className="list-item-header"
-            onClick={(e) => handleListClick(id, e)}
-          >
-            <div className="list-item-title-col">
-              <h3 className="list-item-name">{name}</h3>
-              <p className="list-item-count">
-                {games.length} {games.length === 1 ? 'game' : 'games'}
-              </p>
-            </div>
-            <div className="list-item-preview">
-              {visibleGames.length > 0 ? (
-                <div className="preview-covers">
-                  {visibleGames.map((game, idx) => (
-                    <div
-                      key={game.id}
-                      className={`preview-cover${idx === 0 ? ' preview-cover--first' : ''}`}
-                    >
-                      {game.image ? (
-                        <SharedCover gameId={game.id} imageSrc={game.image}>
-                          <img src={game.image} alt={game.title} className="preview-cover-image" />
-                        </SharedCover>
-                      ) : (
-                        <div className="preview-cover-placeholder">
-                          {game.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {hasPill && (
-                    <div className="preview-more-indicator">+{pillCount}</div>
-                  )}
-                </div>
-              ) : (
-                <div className="preview-empty">No games yet</div>
-              )}
-            </div>
-          </div>
-          <div className="list-item-actions" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="add-games-button"
-              onClick={(e) => handleAddGamesClick(id, name, e)}
-              title="Add games"
-            >
-              <HiPlus />
-            </button>
-          </div>
+      <button
+        key={id}
+        type="button"
+        className={`lib-tracker-card${isEmpty ? ' lib-tracker-card--empty' : ''}`}
+        onClick={() => handleTrackerClick(id)}
+        aria-label={`Open ${name} (${count} ${count === 1 ? 'game' : 'games'})`}
+      >
+        <div className="lib-tracker-text">
+          <h3 className="lib-tracker-title">{name}</h3>
+          <p className="lib-tracker-count">
+            {count} {count === 1 ? 'game' : 'games'}
+          </p>
         </div>
-      </div>
-    )
-  }
 
-  const renderCustomListPreview = (list) => {
-    const { id, name, description, games = [], gameCount } = list
-    const hasPill = gameCount > 5
-    const visibleGames = hasPill ? games.slice(0, 4) : games.slice(0, 5)
-    const pillCount = gameCount - 4
-    const isMenuOpen = showDeleteMenu === id
-
-    return (
-      <div key={id} className="library-list-item">
-        <div className="list-item-inner">
-          <div
-            className="list-item-header"
-            onClick={(e) => handleListClick(id, e)}
-          >
-            <div className="list-item-title-col list-item-title-col--custom">
-              <h3 className="list-item-name">{name}</h3>
-              {description && (
-                <p className="list-item-description">{description}</p>
-              )}
-              <p className="list-item-count">
-                {gameCount} {gameCount === 1 ? 'game' : 'games'}
-              </p>
+        <div className="lib-tracker-fan-wrap">
+          {isEmpty ? (
+            <div className="lib-tracker-empty">
+              <div className="lib-tracker-empty-silhouette" aria-hidden="true" />
+              <span className="lib-tracker-empty-copy">Nothing here yet</span>
             </div>
-            <div className="list-item-preview">
-              {visibleGames.length > 0 ? (
-                <div className="preview-covers">
-                  {visibleGames.map((game, idx) => (
-                    <div
-                      key={game.id}
-                      className={`preview-cover${idx === 0 ? ' preview-cover--first' : ''}`}
-                    >
-                      {game.image ? (
-                        <SharedCover gameId={game.id} imageSrc={game.image}>
-                          <img src={game.image} alt={game.title} className="preview-cover-image" />
-                        </SharedCover>
-                      ) : (
-                        <div className="preview-cover-placeholder">
-                          {game.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {hasPill && (
-                    <div className="preview-more-indicator">+{pillCount}</div>
-                  )}
-                </div>
-              ) : (
-                <div className="preview-empty">No games yet</div>
-              )}
-            </div>
-          </div>
-
-          <div className="list-item-actions" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="add-games-button"
-              onClick={(e) => handleAddGamesClick(id, name, e)}
-              title="Add games"
-            >
-              <HiPlus />
-            </button>
-            <div className="menu-container">
-              <button
-                className="menu-button"
-                onClick={(e) => handleMenuClick(id, e)}
-                title="More options"
-              >
-                <HiDotsVertical />
-              </button>
-              {isMenuOpen && (
-                <div className="menu-dropdown">
-                  <button
-                    className="menu-item delete-item"
-                    onClick={(e) => handleDeleteClick(id, e)}
+          ) : (
+            <div className="lib-tracker-fan" aria-hidden="true">
+              {previews.map((g, idx) => {
+                const cfg = TRACKER_FAN[idx] || TRACKER_FAN[0]
+                return (
+                  <div
+                    key={g.id}
+                    className="lib-tracker-fan-card"
+                    style={{
+                      '--fan-x': `${cfg.x}px`,
+                      '--fan-r': `${cfg.r}deg`,
+                      zIndex: cfg.z,
+                    }}
                   >
-                    Delete List
-                  </button>
-                </div>
-              )}
+                    {g.image ? (
+                      <SharedCover gameId={g.id} imageSrc={g.image}>
+                        <img
+                          src={g.image}
+                          alt=""
+                          className="lib-tracker-fan-img"
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      </SharedCover>
+                    ) : (
+                      <div className="lib-tracker-fan-fallback">
+                        {g.title?.charAt(0) || '?'}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      </button>
     )
   }
+
+  const renderCustomListCard = (list) => {
+    const { id, name, games = [], gameCount = 0, coverImageUrl } = list
+    const mosaic = games.slice(0, 4)
+    const placeholders = Math.max(0, 4 - mosaic.length)
+
+    const mosaicAlt = mosaic.length > 0
+      ? `${name} — covers of ${mosaic.map((g) => g.title).filter(Boolean).join(', ')}`
+      : `${name} cover`
+
+    return (
+      <button
+        key={id}
+        type="button"
+        className="lib-list-card"
+        onClick={() => handleCustomListClick(id)}
+        aria-label={`Open list ${name} (${gameCount} ${gameCount === 1 ? 'game' : 'games'})`}
+      >
+        {coverImageUrl ? (
+          <div className="lib-list-mosaic lib-list-mosaic--custom-cover">
+            <img
+              src={coverImageUrl}
+              alt={`${name} cover`}
+              className="lib-list-cover-img"
+              loading="lazy"
+              draggable={false}
+            />
+          </div>
+        ) : (
+          <div className="lib-list-mosaic" role="img" aria-label={mosaicAlt}>
+            {mosaic.map((g) => (
+              <div key={g.id} className="lib-list-mosaic-cell">
+                {g.image ? (
+                  <SharedCover gameId={g.id} imageSrc={g.image}>
+                    <img
+                      src={g.image}
+                      alt=""
+                      className="lib-list-mosaic-img"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  </SharedCover>
+                ) : (
+                  <div className="lib-list-mosaic-fallback">
+                    {g.title?.charAt(0) || '?'}
+                  </div>
+                )}
+              </div>
+            ))}
+            {Array.from({ length: placeholders }).map((_, i) => (
+              <div
+                key={`ph-${i}`}
+                className="lib-list-mosaic-cell lib-list-mosaic-cell--empty"
+              />
+            ))}
+          </div>
+        )}
+        <div className="lib-list-meta">
+          <p className="lib-list-name">{name}</p>
+          <p className="lib-list-count">
+            {gameCount} {gameCount === 1 ? 'game' : 'games'}
+          </p>
+        </div>
+      </button>
+    )
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="library-page">
-        <div className="library-header">
-          <div className="library-header-top">
-            <div>
-              <h1>Your Library</h1>
-              <p className="library-subtitle">Manage your game lists and trackers</p>
+        {/* ── Hero ───────────────────────────────────────────────────── */}
+        <header className="lib-hero">
+          <div className="lib-hero-row">
+            <div className="lib-hero-text">
+              <h1 className="lib-hero-title">Library</h1>
+              <p className="lib-hero-sub">
+                {totalTracked} {totalTracked === 1 ? 'game' : 'games'} tracked
+              </p>
             </div>
             <button
+              type="button"
+              className="lib-hero-newbtn"
               onClick={() => setShowCreateModal(true)}
-              className="create-list-button"
-              title="Create new list"
             >
-              + Create List
+              + New list
             </button>
           </div>
-        </div>
 
-        <div className="library-lists-container">
-          {/* Tracker lists (localStorage) */}
-          <div className="library-section">
-            <h2 className="section-title">Trackers</h2>
-            <div className="library-lists" ref={trackersRef}>
-              {MANDATORY_LISTS.map(renderTrackerPreview)}
+          {recentlyTouched.length > 0 && (
+            <div className="lib-hero-recents" aria-label="Recently touched games">
+              {recentlyTouched.map((g, i) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  className="lib-hero-recent"
+                  style={{ zIndex: recentlyTouched.length - i }}
+                  onClick={() => handleRecentCoverClick(g.id)}
+                  aria-label={g.title ? `Open ${g.title}` : 'Open game'}
+                >
+                  {g.image ? (
+                    <SharedCover gameId={g.id} imageSrc={g.image}>
+                      <img
+                        src={g.image}
+                        alt=""
+                        className="lib-hero-recent-img"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    </SharedCover>
+                  ) : (
+                    <div className="lib-hero-recent-fallback">
+                      {g.title?.charAt(0) || '?'}
+                    </div>
+                  )}
+                </button>
+              ))}
             </div>
-          </div>
+          )}
+        </header>
 
-          {/* Custom lists (Supabase) */}
-          <div className="library-section">
-            <h2 className="section-title">Custom Lists</h2>
-            {isLoadingCustom ? (
-              <div className="library-loading">Loading…</div>
-            ) : customLists.length > 0 ? (
-              <div className="library-lists" ref={customListsRef}>
-                {customLists.map(renderCustomListPreview)}
-              </div>
-            ) : (
-              <EmptyState
-                variant="lists"
-                copy={user ? 'No custom lists yet — create one to organise your games' : 'Sign in to create and save lists'}
-                cta={user ? 'Create a list' : undefined}
-                onCta={user ? () => setShowCreateModal(true) : undefined}
-              />
-            )}
+        {/* ── Trackers ───────────────────────────────────────────────── */}
+        <section className="lib-section lib-section--trackers" aria-labelledby="lib-trackers-label">
+          <p id="lib-trackers-label" className="lib-section-label">Trackers</p>
+          <div className="lib-trackers" ref={trackersRef}>
+            {TRACKERS.map(renderTrackerCard)}
           </div>
-        </div>
+        </section>
+
+        {/* ── Custom lists ───────────────────────────────────────────── */}
+        <section className="lib-section lib-section--lists" aria-labelledby="lib-lists-label">
+          <p id="lib-lists-label" className="lib-section-label">Your Lists</p>
+
+          {isLoadingCustom ? (
+            <div className="lib-lists-grid lib-lists-grid--skeleton" aria-hidden="true">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="lib-list-card lib-list-card--skeleton">
+                  <div className="skeleton lib-list-mosaic-skeleton" />
+                  <div className="lib-list-meta">
+                    <div className="skeleton lib-sk-name" />
+                    <div className="skeleton lib-sk-count" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : errorCustom ? (
+            <InlineErrorBanner
+              message="Couldn't load. Tap to retry."
+              onRetry={loadCustomLists}
+            />
+          ) : customLists.length > 0 ? (
+            <div className="lib-lists-grid content-fade-in" ref={customGridRef}>
+              {customLists.map(renderCustomListCard)}
+            </div>
+          ) : (
+            <div className="lib-lists-empty content-fade-in">
+              <EmptyState
+                icon={List}
+                title="No lists yet."
+                body="Create themed collections — cozy games, RPGs, anything."
+                cta="Create a list"
+                onCta={() => setShowCreateModal(true)}
+              />
+            </div>
+          )}
+        </section>
 
         <CreateListModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateList}
-        />
-
-        <AddGamesModal
-          isOpen={showAddGamesModal}
-          onClose={() => {
-            setShowAddGamesModal(false)
-            setAddGamesListId(null)
-            setAddGamesListName('')
-          }}
-          listId={addGamesListId}
-          listName={addGamesListName}
-          onAddGames={(games) => {
-            // Tracker list batch-save (libraryService still handles these)
-            if (addGamesListId && games?.length) {
-              games.forEach((g) => lsAddGameToList(addGamesListId, g))
-              window.dispatchEvent(new Event('libraryUpdated'))
-            }
-          }}
         />
       </div>
     </SharedCoverScope>

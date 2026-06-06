@@ -90,7 +90,7 @@
   color: #fff;
   padding: 6px 14px;
   border-radius: var(--radius-full);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);
@@ -126,7 +126,7 @@
 }
 
 .cp-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -140,7 +140,7 @@
 }
 
 .cp-meta {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);

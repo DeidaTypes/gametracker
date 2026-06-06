@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 * {
   margin: 0;
@@ -6,14 +5,27 @@
   box-sizing: border-box;
 }
 
-/* Modern 2025 font stack - Letterboxd-inspired, easy on the eyes */
+/* Global viewport containment — clamp the page width so no descendant
+   (full-bleed carousels with negative margins, over-wide images, etc.)
+   can introduce an unwanted horizontal/left-right page scroll on iOS.
+   html + #root were previously unclamped; only body/.main-content were,
+   which is insufficient inside the WKWebView. The background carries the
+   base color too so route swaps never flash white. */
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--bg-base, #0a0f1f);
+}
+
+/* Modern font stack */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
-    'SF Pro Display', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0d0d0d;
-  color: #e5e5e5;
+  background-color: var(--bg-base, #0a0f1f);
+  color: var(--text-primary, #f0f3fa);
   overflow-x: hidden;
   /* Prevent text selection on mobile for better UX */
   -webkit-tap-highlight-color: transparent;
@@ -42,5 +54,32 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Fix 2 — Prevent iOS WebView auto-zoom on inputs whose font-size is
+   below 16px. This is a floor: specific inputs may override upward. */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Fix 1 — Hide the floating pill nav and FAB when the iOS keyboard is
+   open so they don't appear to jump up with the WebView viewport. */
+body.keyboard-open .bottom-nav {
+  display: none !important;
+}
+body.keyboard-open .home-fab {
+  display: none !important;
+}
+
+/* Fix 3 — During keyboard animation, disable pointer events on every
+   fixed overlay/sheet to prevent the flicker that occurs while the
+   WebView is resizing. Pointer events are re-enabled on keyboardDidShow
+   (via removal of .keyboard-animating from body in main.jsx). */
+body.keyboard-animating .so-backdrop,
+body.keyboard-animating .so-overlay,
+body.keyboard-animating .gps-overlay,
+body.keyboard-animating .modal-overlay,
+body.keyboard-animating .action-sheet-overlay {
+  pointer-events: none;
 }
 

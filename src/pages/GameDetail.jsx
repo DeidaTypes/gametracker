@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { useMotionPreference } from '../hooks/useMotionPreference'
 import { getGameById } from '../services/igdb'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
@@ -16,8 +15,9 @@ import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
-import { getGameStatus, setGameStatus, getGameProgress, updateGameProgress } from '../services/libraryService'
+import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { showToast } from '../components/Toast'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function PartialStarRow({ rating, size = 16 }) {
             {pct > 0 && (
               <path
                 d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                fill="#C8965A"
+                fill="var(--color-brand-primary)"
                 clipPath={`url(#${clipId})`}
               />
             )}
@@ -145,13 +145,6 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
   }
 }
 
-const STATUS_OPTIONS = [
-  { key: 'want', label: 'Want to Play' },
-  { key: 'currently', label: 'Playing' },
-  { key: 'played', label: 'Played' },
-  { key: 'dropped', label: 'Dropped' },
-]
-
 function GameDetail() {
   const { gameId } = useParams()
   const navigate = useNavigate()
@@ -178,7 +171,6 @@ function GameDetail() {
   const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [status, setStatus] = useState(null)
-  const [progress, setProgress] = useState({ progressPercent: null, lastPlayedAt: null, hoursPlayed: null })
   const [dominantColor, setDominantColor] = useState(null)
   // Chrome-tint swatches: set after async extraction, cleared on unmount.
   // Drives the status puck gradient, action-button tint, and (via context)
@@ -189,11 +181,9 @@ function GameDetail() {
   const [descExpanded, setDescExpanded] = useState(false)
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
-  const motionPrefs = useMotionPreference()
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
-    setProgress(getGameProgress(gameId))
   }, [gameId])
 
   const refreshReviews = useCallback(async () => {
@@ -334,50 +324,17 @@ function GameDetail() {
       // want the same `reviewAdded` notification under the existing name —
       // reviewService dispatches it itself, this is a redundant safety net.
       window.dispatchEvent(new Event('reviewAdded'))
+
+      // Refresh the in-page list so the new review's real id, like and
+      // comment counts replace the optimistic placeholder. The user stays
+      // on this game detail page — no navigation — and just sees the list
+      // reconcile in place.
+      refreshReviews()
     } catch (err) {
       console.error('[gameDetail] postReview failed:', err)
       showToast('Could not save your review. Please try again.', 'error')
       setShowReviewForm(false)
     }
-  }
-
-  const handleStatusChange = (newStatus) => {
-    if (!game) return
-    if (newStatus === status) return
-
-    const previousStatus = status
-    setStatus(newStatus)
-
-    statusChangeInFlight.current = true
-    const success = setGameStatus(gameId, newStatus, game)
-    statusChangeInFlight.current = false
-
-    if (!success) {
-      setStatus(previousStatus)
-      showToast('Failed to update status. Please try again.', 'error')
-      return
-    }
-
-    // Activity logging happens automatically inside libraryService.setGameStatus.
-    refreshFromStore()
-  }
-
-  const handleProgressChange = (percent) => {
-    const clamped = Math.min(100, Math.max(0, Number(percent) || 0))
-    updateGameProgress(gameId, {
-      progressPercent: clamped,
-      lastPlayedAt: new Date().toISOString(),
-    })
-    refreshFromStore()
-  }
-
-  const handleHoursChange = (hours) => {
-    const parsed = hours ? parseFloat(hours) : null
-    updateGameProgress(gameId, {
-      hoursPlayed: parsed,
-      lastPlayedAt: new Date().toISOString(),
-    })
-    refreshFromStore()
   }
 
   const handleShare = async () => {
@@ -475,26 +432,10 @@ function GameDetail() {
     )
   }
 
-  const fallbackCover = 'https://via.placeholder.com/400x600/1a1a1a/ffffff?text=No+Cover'
+  const fallbackCover = COVER_FALLBACK
   const ratingNum = game.rating ? parseFloat(game.rating) : null
 
   const effectiveColor = getEffectiveColor(dominantColor)
-
-  // ── Chrome tint helpers ─────────────────────────────────────────────────
-  // When chromeTint is set the status puck and action buttons swap their
-  // default amber gradient for a vibrant → vibrantDark gradient.
-  const puckStyle = chromeTint
-    ? {
-        background: `linear-gradient(180deg,
-          rgb(${chromeTint.vibrant.r},${chromeTint.vibrant.g},${chromeTint.vibrant.b}) 0%,
-          rgb(${chromeTint.vibrantDark.r},${chromeTint.vibrantDark.g},${chromeTint.vibrantDark.b}) 100%)`,
-      }
-    : {}
-
-  // Border override for the active status chip wrapper
-  const activeChipStyle = chromeTint
-    ? { borderColor: `rgb(${chromeTint.vibrantDark.r},${chromeTint.vibrantDark.g},${chromeTint.vibrantDark.b})` }
-    : {}
 
   // Action-circle (FAB) tint: full vibrant → vibrantDark gradient fill
   const fabStyle = chromeTint
@@ -640,84 +581,6 @@ function GameDetail() {
 
       {/* ── Content Area ── */}
       <div className="gd-content">
-
-        {/* Playing Status */}
-        <div className="gd-section">
-          <p className="gd-section-label">Playing Status</p>
-          <div className="gd-status-chips">
-            {STATUS_OPTIONS.map((opt) => {
-              const isActive = status === opt.key
-              return (
-                <motion.button
-                  key={opt.key}
-                  className={`gd-status-chip${isActive ? ' gd-status-chip--active' : ''}`}
-                  style={isActive ? activeChipStyle : {}}
-                  onClick={() => handleStatusChange(opt.key)}
-                  whileTap={motionPrefs.reduced ? {} : { scale: 1.06 }}
-                  transition={{ scale: { duration: 0.2, ease: 'easeOut' } }}
-                >
-                  {isActive && (
-                    <motion.div
-                      className="status-puck"
-                      layoutId={`game-${gameId}-status-puck`}
-                      style={puckStyle}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{
-                        layout: motionPrefs.transition,
-                        opacity: motionPrefs.reduced ? { duration: 0 } : { duration: 0.18 },
-                      }}
-                      aria-hidden="true"
-                    />
-                  )}
-                  <motion.span
-                    className="gd-status-chip-label"
-                    initial={false}
-                    animate={{ color: isActive ? '#ffffff' : 'rgba(255,255,255,0.6)' }}
-                    transition={motionPrefs.reduced ? { duration: 0 } : { duration: 0.12, ease: 'easeInOut' }}
-                  >
-                    {opt.label}
-                  </motion.span>
-                </motion.button>
-              )
-            })}
-          </div>
-
-          {status === 'currently' && (
-            <div className="gd-progress-fields">
-              <div className="gd-progress-field">
-                <span className="gd-field-label">Progress</span>
-                <div className="gd-slider-row">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={progress.progressPercent ?? 0}
-                    onChange={(e) => handleProgressChange(e.target.value)}
-                    className="gd-range"
-                  />
-                  <span className="gd-pct-label">{progress.progressPercent ?? 0}%</span>
-                </div>
-              </div>
-              <div className="gd-progress-field">
-                <label className="gd-field-label" htmlFor="gd-hours">Hours Played</label>
-                <input
-                  id="gd-hours"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={progress.hoursPlayed ?? ''}
-                  onChange={(e) => handleHoursChange(e.target.value)}
-                  placeholder="0"
-                  className="gd-hours-input"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="gd-divider" />
 
         {/* Top Reviews — above Information per Sprint 5 layout */}
         <div className="gd-section">

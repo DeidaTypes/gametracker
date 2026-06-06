@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getReviewsForUser } from '../services/reviewService'
 import { useAuth } from '../contexts/AuthContext'
 import StarRating from '../components/StarRating'
+import Skeleton from '../components/Skeleton'
 import './Reviews.css'
 
 function Reviews() {
@@ -50,22 +51,39 @@ function Reviews() {
     <div className="reviews-page">
       <div className="reviews-header">
         <h1>Reviews</h1>
-        <p className="reviews-subtitle">
-          {loading
-            ? 'Loading…'
-            : reviews.length === 0
+        {loading ? (
+          <Skeleton variant="text" width={80} height={14} className="reviews-subtitle-sk" />
+        ) : (
+          <p className="reviews-subtitle">
+            {reviews.length === 0
               ? 'Your game reviews will appear here'
               : `${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}`}
-        </p>
+          </p>
+        )}
       </div>
 
-      {!loading && reviews.length === 0 ? (
-        <div className="empty-reviews">
+      {loading ? (
+        <div className="reviews-grid reviews-grid--skeleton" aria-hidden="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="review-box review-box--skeleton">
+              <div className="review-box-content">
+                <Skeleton variant="text" width="55%" height={16} style={{ marginBottom: 8 }} />
+                <Skeleton variant="text" width="90%" height={13} />
+                <Skeleton variant="text" width="75%" height={13} style={{ marginTop: 4 }} />
+              </div>
+              <div className="review-box-footer">
+                <Skeleton variant="rect" width={80} height={20} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <div className="empty-reviews content-fade-in">
           <h2>No reviews yet</h2>
           <p>Start reviewing games to share your thoughts!</p>
         </div>
       ) : (
-        <div className="reviews-grid">
+        <div className="reviews-grid content-fade-in">
           {reviews.map((review) => {
             const hours = Number(review.hours_played) || 0
             const dateLabel = review.created_at

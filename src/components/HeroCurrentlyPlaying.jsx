@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNowStrict } from 'date-fns'
+import { PlayCircle } from 'lucide-react'
 import SharedCover from './SharedCover'
+import EmptyState from './EmptyState'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './HeroCurrentlyPlaying.css'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -40,25 +43,13 @@ function HeroEmpty() {
   const navigate = useNavigate()
   return (
     <div className="hcp-empty">
-      <div className="hcp-empty-icon" aria-hidden="true">🎮</div>
-      <p className="hcp-empty-title">Pick something to play</p>
-      <p className="hcp-empty-body">
-        Mark a game as Playing and it will show up here.
-      </p>
-      <div className="hcp-empty-actions">
-        <button
-          className="hcp-empty-cta"
-          onClick={() => navigate('/library')}
-        >
-          Your Library
-        </button>
-        <button
-          className="hcp-empty-cta hcp-empty-cta--secondary"
-          onClick={() => navigate('/search')}
-        >
-          Search Games
-        </button>
-      </div>
+      <EmptyState
+        icon={PlayCircle}
+        title="Nothing in progress."
+        body="Mark a game as Playing to see it here."
+        cta="Browse games"
+        onCta={() => navigate('/search')}
+      />
     </div>
   )
 }
@@ -74,9 +65,7 @@ function SecondaryCard({ game, onClick }) {
             className="hcp-mini-cover"
             loading="lazy"
             onError={(e) => {
-              e.target.src =
-                'https://via.placeholder.com/100x150/1a1a2e/ffffff?text=' +
-                encodeURIComponent(game.title)
+              e.target.src = COVER_FALLBACK
             }}
           />
         </SharedCover>
@@ -150,9 +139,7 @@ export default function HeroCurrentlyPlaying({ games }) {
                 className="hcp-cover"
                 loading="eager"
                 onError={(e) => {
-                  e.target.src =
-                    'https://via.placeholder.com/120x180/1a1a2e/ffffff?text=' +
-                    encodeURIComponent(spotlight.title)
+                  e.target.src = COVER_FALLBACK
                 }}
               />
             </SharedCover>

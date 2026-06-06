@@ -11,12 +11,9 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  animation: asOverlayIn 240ms ease-out;
-}
-
-@keyframes asOverlayIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  /* Enter/exit animation is driven by Framer Motion in ActionSheet.jsx
+     (fade 150 ms backdrop, spring slide-up sheet). CSS keyframes are
+     intentionally absent so the two systems don't fight. */
 }
 
 .action-sheet {
@@ -31,18 +28,6 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   outline: none;
-  animation: asSlideUp 240ms ease-out;
-}
-
-@keyframes asSlideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 .action-sheet__handle {
@@ -56,7 +41,7 @@
 .action-sheet__title {
   margin: 4px 24px 0;
   padding-bottom: 8px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);
@@ -79,7 +64,7 @@
   background: transparent;
   border: none;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
@@ -122,10 +107,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Reduced motion */
+/* Reduced motion: Framer Motion already collapses to 0 ms via
+   useMotionPreference; this rule is a defence-in-depth fallback for
+   any global transitions that might inherit duration here. */
 @media (prefers-reduced-motion: reduce) {
   .action-sheet-overlay,
   .action-sheet {
     animation: none;
+    transition: none;
   }
 }

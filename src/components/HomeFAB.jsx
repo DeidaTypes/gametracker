@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { LuPlus, LuPencilLine, LuListPlus, LuCircleCheck, LuChevronRight } from 'react-icons/lu'
 import ActionSheet from './ActionSheet'
 import CreateListModal from './CreateListModal'
+import GamePickerSheet from './GamePickerSheet'
+import Pressable from './Pressable'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from './Toast'
 import './HomeFAB.css'
@@ -21,6 +23,7 @@ function FabRow({ Icon, label }) {
 function HomeFAB() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [createListOpen, setCreateListOpen] = useState(false)
+  const [gamePickerOpen, setGamePickerOpen] = useState(false)
   const fabRef = useRef(null)
   const navigate = useNavigate()
 
@@ -62,10 +65,26 @@ function HomeFAB() {
     navigate(`/list/${listId}`)
   }
 
+  const handleWriteReview = () => {
+    // Cancel focus-return because the picker sheet is opening instead
+    pendingFocusRef.current = false
+    setGamePickerOpen(true)
+  }
+
+  const handleGamePicked = (game) => {
+    setGamePickerOpen(false)
+    navigate(`/review/new?gameId=${game.id}`, { state: { game } })
+  }
+
+  const handleGamePickerCancel = () => {
+    setGamePickerOpen(false)
+    fabRef.current?.focus()
+  }
+
   const sheetItems = [
     {
       label: <FabRow Icon={LuPencilLine} label="Write a review" />,
-      onClick: () => navigate('/review/new'),
+      onClick: handleWriteReview,
     },
     {
       label: <FabRow Icon={LuListPlus} label="Create a list" />,
@@ -83,14 +102,14 @@ function HomeFAB() {
 
   return createPortal(
     <>
-      <button
+      <Pressable
         ref={fabRef}
         className="home-fab"
         aria-label="Quick actions"
         onClick={handleSheetOpen}
       >
         <LuPlus size={24} strokeWidth={2.5} aria-hidden="true" />
-      </button>
+      </Pressable>
 
       <ActionSheet
         isOpen={sheetOpen}
@@ -103,6 +122,12 @@ function HomeFAB() {
         isOpen={createListOpen}
         onClose={() => setCreateListOpen(false)}
         onCreate={handleCreateList}
+      />
+
+      <GamePickerSheet
+        isOpen={gamePickerOpen}
+        onSelect={handleGamePicked}
+        onCancel={handleGamePickerCancel}
       />
     </>,
     document.body,

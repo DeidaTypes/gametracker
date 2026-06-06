@@ -21,6 +21,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
@@ -49,9 +50,9 @@
 }
 
 .dm-inbox__title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -95,7 +96,7 @@
 
 .dm-inbox__empty-h2 {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -103,7 +104,7 @@
 
 .dm-inbox__empty-sub {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   color: var(--color-text-tertiary);
   max-width: 280px;
@@ -186,7 +187,7 @@
 
 .dm-inbox-row__name {
   flex: 1;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -201,7 +202,7 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
@@ -217,12 +218,12 @@
   height: 8px;
   border-radius: var(--radius-full);
   background: var(--color-brand-primary);
-  box-shadow: 0 0 6px rgba(200, 150, 90, 0.6);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
 }
 
 .dm-inbox-row__preview {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
@@ -300,9 +301,9 @@
 .dm-compose__title {
   margin: 0;
   text-align: center;
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -332,7 +333,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   outline: none;
   transition: border-color var(--transition-fast);
@@ -358,7 +359,7 @@
 .dm-compose__hint {
   margin: var(--spacing-md) 0;
   text-align: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
@@ -434,7 +435,7 @@
 }
 
 .dm-compose-row__name {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -445,7 +446,7 @@
 }
 
 .dm-compose-row__handle {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   line-height: 1.2;

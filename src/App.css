@@ -5,18 +5,45 @@
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* The shell is locked to the *real* visible viewport. 100dvh tracks the
+     live WebView viewport on iOS (handling the dynamic browser chrome)
+     while 100vh is the fallback for engines without dvh. The shell itself
+     NEVER scrolls — overflow:hidden clips it to the viewport so only the
+     inner <main> scroll-area can scroll. */
+  height: 100vh;
+  height: 100dvh;
+  /* Fluid full-bleed width so the shell adapts to any device (iPhone 17
+     included) instead of inheriting a smaller intrinsic size. 100% (not a
+     fixed pixel width) keeps it safe against the vw-scrollbar gotcha;
+     overflow-x is already clamped on html/body/#root in index.css. */
+  width: 100%;
+  overflow: hidden;
   /* Transparent so the ambient body gradient (set in theme.css) shows
      through every page. */
   background: transparent;
   position: relative;
 }
 
-/* ---- Main scrollable content area ---- */
+/* ---- Main content area — the single scroll container ----
+   This <main> is the ONE and only vertical scroll area in the app. It
+   flexes to fill the space between the (fixed) top bar and (fixed) bottom
+   nav and owns native momentum scrolling. The top/bottom nav are fixed
+   siblings outside this element, so they never scroll and never overlap
+   the scroll context.
+
+   `min-height: 0` is required so this flex child is allowed to shrink
+   below its content size — without it the flex item refuses to constrain
+   its height and overflow-y:auto never produces a scrollbar. */
 .main-content {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Native iOS momentum scrolling. */
+  -webkit-overflow-scrolling: touch;
+  /* Keep scroll energy inside this container — never chain to the shell
+     (which can't scroll) or trigger the browser's own pull-to-refresh. */
+  overscroll-behavior-y: contain;
   /* Transparent — body's fixed gradient supplies the page background. */
   background: transparent;
   position: relative;
@@ -40,9 +67,10 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   gap: var(--spacing-lg);
   color: var(--color-text-tertiary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);

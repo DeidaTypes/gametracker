@@ -1,0 +1,29 @@
+/* =============================================
+   SKELETON PRIMITIVE
+   Shape variants — the shimmer animation is
+   inherited from .skeleton in theme.css.
+   ============================================= */
+
+.sk {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Rounded rectangle — default */
+.sk--rect {
+  border-radius: var(--radius-md);
+}
+
+/* Circle */
+.sk--circle {
+  border-radius: 50%;
+}
+
+/* Single text line — thinner rect, smaller radius */
+.sk--text {
+  border-radius: var(--radius-sm);
+  /* height defaults to 1em when no explicit height is passed */
+  min-height: 1em;
+}
+
+/* .content-fade-in is defined globally in src/styles/theme.css */

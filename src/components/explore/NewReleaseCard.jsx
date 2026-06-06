@@ -2,6 +2,8 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getBestImageUrl } from '../../services/imageUtils'
 import SharedCover from '../SharedCover'
+import Pressable from '../Pressable'
+import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './NewReleaseCard.css'
 
 function formatReleaseDate(date) {
@@ -21,13 +23,12 @@ function formatReleaseDate(date) {
 
 function NewReleaseCard({ game }) {
   const navigate = useNavigate()
-  const fallback = `https://via.placeholder.com/300x450/1a1a1a/ffffff?text=${encodeURIComponent(game.title || 'Game')}`
+  const fallback = COVER_FALLBACK
   const img = getBestImageUrl(game, 600) || game.image
   const releaseLabel = formatReleaseDate(game.releaseDate)
 
   return (
-    <button
-      type="button"
+    <Pressable
       className="new-release-card"
       onClick={() =>
         navigate(`/game/${game.id}`, { state: { coverImage: img } })
@@ -49,7 +50,7 @@ function NewReleaseCard({ game }) {
           <span className="new-release-card__date">{releaseLabel}</span>
         )}
       </div>
-    </button>
+    </Pressable>
   )
 }
 

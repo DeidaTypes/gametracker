@@ -4,6 +4,7 @@
 
 .home {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg-primary);
   padding-bottom: var(--bottom-nav-safe-area);
   overflow-x: hidden;
@@ -17,7 +18,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xl);
-  padding-top: var(--spacing-xl);
+  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
   max-width: var(--page-max-width);
   margin: 0 auto;
 }
@@ -83,6 +84,71 @@
   width: 100%;
   height: 200px;
   border-radius: var(--radius-xl);
+}
+
+/* =============================================
+   HOME SEARCH PILL
+   A thin pill-shaped search trigger at the top of the home feed.
+   The inner <motion.div> carries layoutId="search-bar" so Framer
+   Motion can morph it into the overlay's input on open.
+   ============================================= */
+
+.home-search-pill {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-search-pill:active .home-search-pill-inner {
+  filter: brightness(0.9);
+}
+
+.home-search-pill-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 14px 0 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  width: 100%;
+}
+
+.home-search-pill-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.home-search-pill-placeholder {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* The AnimatePresence children are absolutely positioned inside the
+   overflow-hidden container so they can slide in/out. */
+.home-search-placeholder {
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  line-height: 20px;
 }
 
 /* =============================================

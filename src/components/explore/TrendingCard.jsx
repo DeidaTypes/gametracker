@@ -2,24 +2,31 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getBestImageUrl } from '../../services/imageUtils'
 import SharedCover from '../SharedCover'
+import Pressable from '../Pressable'
+import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './TrendingCard.css'
 
 const STATUS_VERB = {
+  reviewed: 'reviewed',
   played: 'finished',
+  completed: 'finished',
+  finished: 'finished',
   currently: 'are playing',
+  playing: 'are playing',
+  'currently-playing': 'are playing',
   want: 'added',
+  'want-to-play': 'added',
+  dropped: 'dropped',
 }
 
 function TrendingCard({ entry }) {
   const navigate = useNavigate()
   const { game, peopleCount, mostCommonStatus } = entry
   const verb = STATUS_VERB[mostCommonStatus] || 'logged'
-  const fallback = `https://via.placeholder.com/300x450/1a1a1a/ffffff?text=${encodeURIComponent(game.title || 'Game')}`
   const img = getBestImageUrl(game, 600) || game.image
 
   return (
-    <button
-      type="button"
+    <Pressable
       className="trending-card"
       onClick={() =>
         navigate(`/game/${game.id}`, { state: { coverImage: img } })
@@ -31,7 +38,7 @@ function TrendingCard({ entry }) {
             src={img}
             alt={game.title}
             loading="lazy"
-            onError={(e) => { e.currentTarget.src = fallback }}
+            onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}
           />
         </SharedCover>
       </div>
@@ -41,7 +48,7 @@ function TrendingCard({ entry }) {
           {peopleCount} {peopleCount === 1 ? 'person' : 'people'} {verb}
         </span>
       </div>
-    </button>
+    </Pressable>
   )
 }
 

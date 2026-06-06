@@ -62,7 +62,7 @@
 }
 
 .form-field__label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -81,7 +81,7 @@
 }
 
 .form-field__counter {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-caption);
@@ -101,7 +101,7 @@
   border-radius: var(--form-field-radius);
   padding: var(--form-field-pad-y) var(--form-field-pad-x);
   color: var(--form-field-text);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -154,7 +154,7 @@
 }
 
 .form-field__hint {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-caption);
@@ -163,7 +163,7 @@
 }
 
 .form-field__error {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -228,7 +228,7 @@
   background: transparent;
   border: none;
   color: var(--form-label-color);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-medium);
   line-height: 1;
@@ -262,7 +262,7 @@
   appearance: none;
   -moz-appearance: textfield;
   text-align: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
@@ -286,7 +286,7 @@
   align-items: center;
   padding-right: 14px;
   padding-left: 4px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -310,7 +310,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
@@ -349,7 +349,7 @@
 }
 
 .form-button--primary:hover:not(:disabled) {
-  background: #D2A26A;
+  background: var(--accent-hover, #60a5fa);
   filter: brightness(1.05);
 }
 
@@ -574,7 +574,7 @@
      completely inert on tap; flash the surface instead so the press still
      reads visually. */
   .form-button--primary:active:not(:disabled) {
-    background: #B0824D;
+    background: var(--accent-press, #2563eb);
   }
 
   .form-button--secondary:active:not(:disabled) {

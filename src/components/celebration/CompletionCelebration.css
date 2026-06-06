@@ -16,7 +16,7 @@
   overflow-y: auto;
   /* Background is set inline (vertical gradient using extracted color
      fading to navy). Fallback color in case JS hasn't applied it yet. */
-  background-color: #0C1322;
+  background-color: var(--color-bg-primary);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 24px rgba(200, 150, 90, 0.35));
+  filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.35));
 }
 
 .completion-celebration__content {
@@ -64,7 +64,7 @@
 }
 
 .completion-celebration__eyebrow {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
@@ -110,7 +110,7 @@
 }
 
 .completion-celebration__title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 32px;
   font-weight: 700;
   line-height: 1.1;
@@ -126,7 +126,7 @@
 }
 
 .completion-celebration__subtitle {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 15px;
   font-weight: 400;
   line-height: 1.5;
@@ -159,7 +159,7 @@
 }
 
 .completion-celebration__stat-num {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
   line-height: 1;
@@ -169,7 +169,7 @@
 }
 
 .completion-celebration__stat-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;

@@ -176,7 +176,7 @@ export default function CompletionCelebration() {
         // Background must match the card's own gradient — html-to-image
         // honours backgroundColor when the source element is transparent.
         // Our ShareCard has its own background, so this is a fallback.
-        backgroundColor: '#0C1322',
+        backgroundColor: 'var(--color-bg-primary)',
       })
       storeShareableCard(head.igdbGameId, dataUrl)
       // Sprint 4 verification preview. Wrapped in a query-string guard so
@@ -260,13 +260,13 @@ export default function CompletionCelebration() {
     ? `linear-gradient(180deg,
         rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.65) 0%,
         rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.22) 32%,
-        rgba(12, 19, 34, 0.96) 70%,
-        #0C1322 100%)`
+        rgba(10, 15, 31, 0.96) 70%,
+        #0a0f1f 100%)`
     : `linear-gradient(180deg,
-        rgba(200, 150, 90, 0.55) 0%,
-        rgba(200, 150, 90, 0.18) 32%,
-        rgba(12, 19, 34, 0.96) 70%,
-        #0C1322 100%)`
+        rgba(59, 130, 246, 0.55) 0%,
+        rgba(59, 130, 246, 0.18) 32%,
+        rgba(10, 15, 31, 0.96) 70%,
+        #0a0f1f 100%)`
 
   // Cover entrance: spring 280/22 over ~480ms. Reduced motion → instant.
   const coverInitial = reduced ? { scale: 1, opacity: 1 } : { scale: 0.6, opacity: 0 }
@@ -306,7 +306,7 @@ export default function CompletionCelebration() {
             <path
               d="M30 49 L43 62 L66 36"
               fill="none"
-              stroke="#C8965A"
+              stroke="#3b82f6"
               strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"

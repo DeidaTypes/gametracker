@@ -106,7 +106,7 @@
 }
 
 .mobile-nav-header h1 {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-title);

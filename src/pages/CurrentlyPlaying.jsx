@@ -6,6 +6,7 @@ import AppShell from '../components/AppShell'
 import SharedCover from '../components/SharedCover'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getDominantColor } from '../services/colorExtract'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './CurrentlyPlaying.css'
 
 function GameRow({ game }) {
@@ -44,9 +45,7 @@ function GameRow({ game }) {
             src={game.image}
             alt={game.title}
             onError={(e) => {
-              e.target.src =
-                'https://via.placeholder.com/200x280/1a1a2e/ffffff?text=' +
-                encodeURIComponent(game.title)
+              e.target.src = COVER_FALLBACK
             }}
           />
         </SharedCover>

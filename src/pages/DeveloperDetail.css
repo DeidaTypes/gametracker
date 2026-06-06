@@ -4,6 +4,7 @@
 
 .dev-detail-page {
   min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: var(--bottom-nav-safe-area);
   padding-bottom: calc(var(--bottom-nav-safe-area) + env(safe-area-inset-bottom, 0px));
   background: var(--color-bg-primary);
@@ -31,7 +32,7 @@
   background: none;
   border: none;
   color: var(--color-brand-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);
@@ -50,9 +51,9 @@
 }
 
 .dev-detail-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);

@@ -1,131 +1,135 @@
 import React from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import {
-  HiOutlineHome,
-  HiHome,
-  HiOutlineGlobe,
-  HiGlobe,
-  HiOutlineSearch,
-  HiSearch,
-  HiOutlineBookOpen,
-  HiBookOpen,
-  HiOutlineUser,
-  HiUser,
-} from 'react-icons/hi'
-import { useTabBarCompact } from '../hooks/useTabBarCompact'
-import { useGameColor } from '../contexts/GameColorContext'
+import { House, Compass, BookCopy, User } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import './BottomNav.css'
 
+/**
+ * Cobalt-Modern floating-pill bottom navigation.
+ *
+ * Four icon-only tabs (Home, Discover, Library, Profile) sit in a centered
+ * pill that floats 12 px above the bottom of the viewport. The active tab
+ * is highlighted with a cobalt pill that visually slides from the
+ * previously-active tab via Framer Motion's `layoutId` shared element.
+ *
+ * Notes:
+ *   - "Discover" merges the legacy Explore + Search tabs. The /explore and
+ *     /search routes both still resolve (App.jsx aliases /explore → the
+ *     same component as /discover); this tab reads as active for any of
+ *     /discover, /explore, /search, or /browse/*.
+ *   - Reduced-motion users get an instant transition instead of the
+ *     spring (no animation at all between tab states).
+ *   - Capacitor Haptics fires a light impact on tap when running in the
+ *     native iOS shell. The import is dynamic + try/catch so the web
+ *     build is a no-op when the plugin is unavailable.
+ */
 const NAV_ITEMS = [
-  { to: '/', label: 'Home', Outline: HiOutlineHome, Solid: HiHome },
-  { to: '/explore', label: 'Explore', Outline: HiOutlineGlobe, Solid: HiGlobe },
-  { to: '/search', label: 'Search', Outline: HiOutlineSearch, Solid: HiSearch },
-  { to: '/library', label: 'Library', Outline: HiOutlineBookOpen, Solid: HiBookOpen },
-  { to: '/profile', label: 'Profile', Outline: HiOutlineUser, Solid: HiUser },
+  {
+    id: 'home',
+    to: '/',
+    label: 'Home',
+    Icon: House,
+    isActive: (path) => path === '/' || path === '/home',
+  },
+  {
+    id: 'discover',
+    to: '/discover',
+    label: 'Discover',
+    Icon: Compass,
+    isActive: (path) =>
+      path.startsWith('/discover') ||
+      path.startsWith('/explore') ||
+      path.startsWith('/search') ||
+      path.startsWith('/browse'),
+  },
+  {
+    id: 'library',
+    to: '/library',
+    label: 'Library',
+    Icon: BookCopy,
+    isActive: (path) =>
+      path.startsWith('/library') ||
+      path.startsWith('/wishlist') ||
+      path.startsWith('/list/') ||
+      path.startsWith('/smart-list/'),
+  },
+  {
+    id: 'profile',
+    to: '/profile',
+    label: 'Profile',
+    Icon: User,
+    isActive: (path) =>
+      path.startsWith('/profile') ||
+      path.startsWith('/user/') ||
+      path.startsWith('/messages') ||
+      path.startsWith('/stats'),
+  },
 ]
 
-/**
- * Bottom tab bar with iOS-26 shrink-on-scroll behavior.
- *
- * The bar listens (via <useTabBarCompact>) to the shared `.main-content`
- * scroll container that App renders. Scrolling DOWN past 60 px collapses
- * the bar into a centered floating pill (~70% width, 28px radius, lifted
- * 8 px above the bottom edge); labels fade out, only icons remain.
- * Scrolling UP — or returning within 60 px of the top — re-expands it to
- * the full-width flush bar.
- *
- * Animation: motion's `layout` prop drives width / border-radius / position
- * via FLIP using a spring (stiffness 280, damping 30). Label opacity
- * cross-fades in parallel.
- *
- * Reduced-motion: the layout still toggles (functional behavior preserved)
- * but the spring is replaced with a zero-duration transition so the change
- * is instant.
- */
-function BottomNav({ scrollContainerRef }) {
+// Light haptic on tab change. Mirrors src/utils/share.js — dynamic import
+// + try/catch so missing-plugin / web builds quietly no-op.
+async function triggerHaptic() {
+  try {
+    const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
+    await Haptics.impact({ style: ImpactStyle.Light })
+  } catch {
+    /* no-op on web or when the plugin isn't available */
+  }
+}
+
+function BottomNav() {
   const location = useLocation()
-  const compact = useTabBarCompact(scrollContainerRef)
   const reduced = useReducedMotion()
-  const { swatches } = useGameColor()
   const { unreadCount } = useUnreadMessages()
 
-  if (location.pathname === '/onboarding') {
-    return null
-  }
+  // Hide on onboarding (App.jsx already guards auth/login screens).
+  if (location.pathname === '/onboarding') return null
 
-  const layoutTransition = reduced
+  // Per spec: spring stiffness 380 / damping 30; instant for reduced-motion.
+  const pillTransition = reduced
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 280, damping: 30 }
-
-  // Labels cross-fade slightly faster than the layout spring settles, so the
-  // pill never flashes a half-faded label mid-flight.
-  const labelTransition = reduced
-    ? { duration: 0 }
-    : { duration: 0.18, ease: 'easeOut' }
-
-  // When a game detail page is active, override the amber accent with the
-  // game's vibrant swatch via a CSS custom property.  The CSS transitions
-  // on `.bottom-nav-item.active` pick up the change and animate over 280ms.
-  const accentStyle = swatches
-    ? {
-        '--nav-accent': `rgb(${swatches.vibrant.r},${swatches.vibrant.g},${swatches.vibrant.b})`,
-        '--nav-accent-glow': `rgba(${swatches.vibrant.r},${swatches.vibrant.g},${swatches.vibrant.b},0.65)`,
-      }
-    : undefined
+    : { type: 'spring', stiffness: 380, damping: 30 }
 
   return (
-    <motion.nav
-      className={`bottom-nav ${compact ? 'compact' : ''}`}
-      style={accentStyle}
-      layout
-      transition={layoutTransition}
-    >
-      {NAV_ITEMS.map(({ to, label, Outline, Solid }) => {
-        // The Profile tab is the visual home for direct messages until
-        // DMs get their own slot — render a small copper dot when the
-        // signed-in user has unread DMs so the badge is visible from
-        // anywhere in the app. Sourced from <UnreadMessagesProvider>
-        // which subscribes to realtime + in-app change events.
-        const showUnreadDot = to === '/profile' && unreadCount > 0
+    <nav className="bottom-nav" aria-label="Primary">
+      {NAV_ITEMS.map(({ id, to, label, Icon, isActive }) => {
+        const active = isActive(location.pathname)
+        // Profile tab carries the unread-DM dot until messages get their
+        // own slot (Prompt 4 will add a dedicated entry point).
+        const showUnreadDot = id === 'profile' && unreadCount > 0
         return (
-          <NavLink
-            key={to}
+          <Link
+            key={id}
             to={to}
-            className={({ isActive }) =>
-              `bottom-nav-item ${isActive ? 'active' : ''}`
-            }
+            aria-label={label}
+            aria-current={active ? 'page' : undefined}
+            className={`bottom-nav-item ${active ? 'active' : ''}`}
+            onClick={() => {
+              triggerHaptic()
+            }}
           >
-            {({ isActive }) => (
-              <>
-                <span className="bottom-nav-icon-wrap">
-                  {isActive ? (
-                    <Solid className="bottom-nav-icon" />
-                  ) : (
-                    <Outline className="bottom-nav-icon" />
-                  )}
-                  {showUnreadDot && (
-                    <span
-                      className="bottom-nav-unread"
-                      aria-label={`${unreadCount} unread messages`}
-                    />
-                  )}
-                </span>
-                <motion.span
-                  className="bottom-nav-label"
-                  animate={{ opacity: compact ? 0 : 1 }}
-                  transition={labelTransition}
-                  aria-hidden={compact || undefined}
-                >
-                  {label}
-                </motion.span>
-              </>
+            {active && (
+              <motion.span
+                layoutId="nav-pill"
+                className="bottom-nav-pill"
+                transition={pillTransition}
+                aria-hidden="true"
+              />
             )}
-          </NavLink>
+            <span className="bottom-nav-icon-wrap">
+              <Icon className="bottom-nav-icon" aria-hidden="true" />
+              {showUnreadDot && (
+                <span
+                  className="bottom-nav-unread"
+                  aria-label={`${unreadCount} unread messages`}
+                />
+              )}
+            </span>
+          </Link>
         )
       })}
-    </motion.nav>
+    </nav>
   )
 }
 

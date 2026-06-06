@@ -18,7 +18,7 @@
 
 .fav-picker-help {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
 }
@@ -95,7 +95,7 @@
 
 .fav-picker-tile--picked .fav-picker-cover {
   border-color: var(--color-brand-primary);
-  box-shadow: 0 0 0 3px rgba(200, 150, 90, 0.18);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .fav-picker-cover img {
@@ -111,7 +111,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-muted);
@@ -133,7 +133,7 @@
 }
 
 .fav-picker-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);

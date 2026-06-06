@@ -2,18 +2,18 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import StarRating from '../StarRating'
 import SharedCover from '../SharedCover'
+import Pressable from '../Pressable'
 import { getBestImageUrl } from '../../services/imageUtils'
+import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './JustFinishedCard.css'
 
 function JustFinishedCard({ entry }) {
   const navigate = useNavigate()
   const { game, reviewer, rating } = entry
-  const fallback = `https://via.placeholder.com/300x450/1a1a1a/ffffff?text=${encodeURIComponent(game.title || 'Game')}`
   const img = getBestImageUrl(game, 600) || game.image
 
   return (
-    <button
-      type="button"
+    <Pressable
       className="just-finished-card"
       onClick={() =>
         navigate(`/game/${game.id}`, { state: { coverImage: img } })
@@ -25,7 +25,7 @@ function JustFinishedCard({ entry }) {
             src={img}
             alt={game.title}
             loading="lazy"
-            onError={(e) => { e.currentTarget.src = fallback }}
+            onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}
           />
         </SharedCover>
       </div>
@@ -40,7 +40,7 @@ function JustFinishedCard({ entry }) {
           </div>
         ) : null}
       </div>
-    </button>
+    </Pressable>
   )
 }
 

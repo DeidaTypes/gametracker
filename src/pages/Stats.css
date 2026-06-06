@@ -5,6 +5,7 @@
 
 .stats-page {
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 0 0 var(--bottom-nav-safe-area);
   background: transparent;
 }
@@ -18,6 +19,7 @@
   display: flex;
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
   background: linear-gradient(
     180deg,
     var(--color-bg-primary) 60%,
@@ -85,7 +87,7 @@
 }
 
 .stats-eyebrow {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -133,17 +135,17 @@
 }
 
 .stats-headline-num {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
-  text-shadow: 0 1px 0 rgba(200, 150, 90, 0.18);
+  text-shadow: 0 1px 0 rgba(59, 130, 246, 0.18);
 }
 
 .stats-headline-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -181,16 +183,16 @@
 }
 
 .stats-donut-center-num {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
 }
 
 .stats-donut-center-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -229,7 +231,7 @@
 }
 
 .stats-genre-name {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
@@ -239,7 +241,7 @@
 }
 
 .stats-genre-hours {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
@@ -290,7 +292,7 @@
 }
 
 .stats-top-rank {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
   color: var(--color-brand-primary);
@@ -327,7 +329,7 @@
 }
 
 .stats-top-cover span {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   color: var(--color-text-tertiary);
   font-size: var(--font-size-title);
 }
@@ -340,7 +342,7 @@
 }
 
 .stats-top-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -372,9 +374,9 @@
 }
 
 .stats-top-hours {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-display);
   white-space: nowrap;
@@ -410,26 +412,26 @@
   inset: 0;
   background: radial-gradient(
     circle at top right,
-    rgba(200, 150, 90, 0.18) 0%,
+    rgba(59, 130, 246, 0.18) 0%,
     transparent 60%
   );
   pointer-events: none;
 }
 
 .stats-streak-num {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 56px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   position: relative;
   z-index: 1;
-  text-shadow: 0 2px 0 rgba(200, 150, 90, 0.2);
+  text-shadow: 0 2px 0 rgba(59, 130, 246, 0.2);
 }
 
 .stats-streak-sub {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   color: var(--color-text-secondary);
   position: relative;
@@ -458,7 +460,7 @@
 }
 
 .stats-heatmap-total {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
@@ -471,7 +473,7 @@
 }
 
 .stats-heatmap-key-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -507,7 +509,7 @@
 }
 
 .stats-heatmap-month-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 10px;
   font-weight: var(--font-weight-medium);
   line-height: 1;
@@ -556,23 +558,23 @@
 }
 
 .stats-heatmap-cell[data-level='1'] {
-  background: rgba(200, 150, 90, 0.32);
+  background: rgba(59, 130, 246, 0.32);
 }
 
 .stats-heatmap-cell[data-level='2'] {
-  background: rgba(200, 150, 90, 0.6);
+  background: rgba(59, 130, 246, 0.6);
 }
 
 .stats-heatmap-cell[data-level='3'] {
   background: var(--color-brand-primary);
-  box-shadow: 0 0 8px rgba(200, 150, 90, 0.35);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
 }
 
 button.stats-heatmap-cell:hover,
 button.stats-heatmap-cell:focus-visible {
   transform: scale(1.25);
   box-shadow: 0 0 0 1px var(--color-brand-primary),
-    0 0 8px rgba(200, 150, 90, 0.45);
+    0 0 8px rgba(59, 130, 246, 0.45);
   outline: none;
   z-index: 2;
 }
@@ -595,7 +597,7 @@ button.stats-heatmap-cell:focus-visible {
   border: 1px solid var(--color-border-hover);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   white-space: nowrap;
   pointer-events: none;
   z-index: 10;
@@ -691,7 +693,7 @@ button.stats-heatmap-cell:focus-visible {
   inset: 0;
   background: radial-gradient(
     circle at top right,
-    rgba(200, 150, 90, 0.12) 0%,
+    rgba(59, 130, 246, 0.12) 0%,
     transparent 60%
   );
   pointer-events: none;
@@ -705,7 +707,7 @@ button.stats-heatmap-cell:focus-visible {
 
 .stats-lowdata-copy {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary);
@@ -721,7 +723,7 @@ button.stats-heatmap-cell:focus-visible {
   border: 1px solid var(--color-brand-primary);
   background: transparent;
   color: var(--color-brand-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;

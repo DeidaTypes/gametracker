@@ -36,7 +36,7 @@
 
 .auth-title {
   margin: 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
   line-height: var(--line-height-display-l);
   font-weight: var(--font-weight-bold, 700);
@@ -46,7 +46,7 @@
 
 .auth-subtitle {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary, rgba(255, 255, 255, 0.55));
@@ -76,7 +76,7 @@
   background: rgba(160, 72, 72, 0.12);
   border: 1px solid rgba(160, 72, 72, 0.4);
   color: rgba(220, 170, 170, 0.95);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
   font-weight: var(--font-weight-medium);
@@ -94,7 +94,7 @@
 
 .auth-footer {
   text-align: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
   color: rgba(255, 255, 255, 0.55);

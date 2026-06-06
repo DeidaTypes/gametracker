@@ -49,11 +49,20 @@
   }
 }
 
+/* Motion-wrapped modals own their own enter/exit animation via Framer
+   Motion; suppress the CSS keyframes so the two systems don't fight.
+   When migrating a new modal to motion, add `clm-overlay` /
+   `clm-sheet` (or equivalent) and the class will be picked up here. */
+.modal-overlay.clm-overlay,
+.modal-content.clm-sheet {
+  animation: none;
+}
+
 /* Modal title — EditProfileModal still uses a bare <h2> */
 .modal-content h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -106,22 +115,22 @@
 }
 
 .modal-eyebrow {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-label);
-  color: rgba(200, 150, 90, 0.8);
+  color: rgba(59, 130, 246, 0.8);
   display: block;
 }
 
 /* Override the base h2 rule for the new header treatment */
 .create-list-modal .modal-title,
 .add-games-modal .modal-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -129,7 +138,7 @@
 }
 
 .modal-subtitle {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -277,14 +286,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 28px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-tertiary);
   background: linear-gradient(
     135deg,
-    rgba(200, 150, 90, 0.14) 0%,
-    rgba(200, 150, 90, 0.05) 100%
+    rgba(59, 130, 246, 0.14) 0%,
+    rgba(59, 130, 246, 0.05) 100%
   );
 }
 
@@ -314,7 +323,7 @@
 
 .create-list-games-title {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -323,7 +332,7 @@
 
 .create-list-games-caption {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -418,7 +427,7 @@
 }
 
 .search-result-item.selected {
-  background: rgba(200, 150, 90, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   cursor: default;
 }
 
@@ -438,12 +447,12 @@
   justify-content: center;
   background: linear-gradient(
     135deg,
-    rgba(200, 150, 90, 0.14) 0%,
-    rgba(200, 150, 90, 0.04) 100%
+    rgba(59, 130, 246, 0.14) 0%,
+    rgba(59, 130, 246, 0.04) 100%
   );
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-tertiary);
 }
 
@@ -486,8 +495,8 @@
   width: 30px;
   height: 30px;
   border-radius: var(--radius-full);
-  background: rgba(200, 150, 90, 0.18);
-  border: 1px solid rgba(200, 150, 90, 0.35);
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.35);
   color: var(--color-brand-primary);
   font-size: 20px;
   font-weight: var(--font-weight-bold);
@@ -500,8 +509,8 @@
 }
 
 .search-result-item:hover .result-game-add-btn {
-  background: rgba(200, 150, 90, 0.28);
-  border-color: rgba(200, 150, 90, 0.6);
+  background: rgba(59, 130, 246, 0.28);
+  border-color: rgba(59, 130, 246, 0.6);
 }
 
 .result-game-add-btn:active {
@@ -513,7 +522,7 @@
   width: 30px;
   height: 30px;
   border-radius: var(--radius-full);
-  background: rgba(200, 150, 90, 0.12);
+  background: rgba(59, 130, 246, 0.12);
   color: var(--color-brand-primary);
   font-size: 16px;
   font-weight: var(--font-weight-bold);
@@ -532,7 +541,7 @@
 
 .selected-games-section__label {
   display: block;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -607,12 +616,12 @@
   justify-content: center;
   background: linear-gradient(
     135deg,
-    rgba(200, 150, 90, 0.16) 0%,
-    rgba(200, 150, 90, 0.04) 100%
+    rgba(59, 130, 246, 0.16) 0%,
+    rgba(59, 130, 246, 0.04) 100%
   );
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
 
@@ -663,7 +672,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);
@@ -776,5 +785,469 @@
   }
   .selected-game-thumb__remove:active {
     background: rgba(0, 0, 0, 0.85);
+  }
+}
+
+/* ============================================================
+   New 3-tap Create List sheet  (clm-* namespace)
+   ============================================================ */
+
+/* ── Sheet container ── */
+.clm-sheet {
+  background: var(--color-surface, var(--color-bg-elevated));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 540px;
+  width: 100%;
+  max-height: 88vh;
+  overflow: hidden;
+  /* Snap to bottom on all screens */
+  margin-top: auto;
+}
+
+/* On desktop center it like a normal modal */
+@media (min-width: 769px) {
+  .clm-overlay {
+    align-items: center;
+  }
+
+  .clm-sheet {
+    border-radius: var(--radius-xl);
+    margin-top: 0;
+    max-height: 80vh;
+  }
+}
+
+/* ── Header row: [✕]  New List  [Create] ── */
+.clm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.clm-header-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  flex: 1;
+  text-align: center;
+}
+
+.clm-cancel-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.clm-cancel-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.clm-cancel-btn:active {
+  transform: scale(0.92);
+}
+
+/* Cobalt Create button */
+.clm-create-btn {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-md);
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-primary, #3b82f6);
+  border: none;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
+}
+
+.clm-create-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.clm-create-btn:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+.clm-create-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* ── Scrollable body ── */
+.clm-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.clm-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.clm-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clm-body::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-xs);
+}
+
+/* ── Name input ── */
+.clm-name-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--color-border);
+  border-radius: 0;
+  padding: var(--spacing-xs) 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.clm-name-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.clm-name-input:focus {
+  border-bottom-color: var(--color-brand-primary, #3b82f6);
+}
+
+/* ── Games panel ── */
+.clm-games-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  /* Subtle entrance; respects reduced-motion via the media query below */
+  animation: clmPanelIn 0.18s ease both;
+}
+
+@keyframes clmPanelIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Selected strip ── */
+.clm-selected-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.clm-selected-label {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.clm-selected-strip {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-xs);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+  flex-wrap: nowrap;
+}
+
+.clm-selected-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.clm-selected-strip::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: var(--radius-xs);
+}
+
+.clm-selected-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 64px;
+}
+
+.clm-selected-img {
+  width: 64px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  display: block;
+}
+
+.clm-selected-img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.18) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.clm-selected-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: rgba(160, 72, 72, 0.95);
+  color: #fff;
+  border: 2px solid var(--color-bg-elevated);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.clm-selected-remove:hover {
+  background: rgba(196, 72, 72, 0.98);
+  transform: scale(1.1);
+}
+
+.clm-selected-remove:active {
+  transform: scale(0.9);
+}
+
+/* ── Search input row ── */
+.clm-search-row {
+  position: relative;
+}
+
+.clm-search-input {
+  width: 100%;
+  background: var(--color-bg-secondary, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+  /* Remove default search input decorations */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.clm-search-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.clm-search-input:focus {
+  border-color: var(--color-brand-primary, #3b82f6);
+}
+
+/* Remove the native × clear button from search inputs */
+.clm-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* ── Status line ── */
+.clm-status {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+}
+
+.clm-status--error {
+  color: rgba(196, 130, 130, 0.95);
+}
+
+/* ── 2-column results grid ── */
+.clm-results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+/* Each cell is a button so the whole cover + title is tappable */
+.clm-result-item {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clm-result-item:active {
+  opacity: 0.75;
+}
+
+/* ── Cover wrapper: maintains 3:4 aspect ratio ── */
+.clm-result-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.clm-result-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.clm-result-img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.18) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+}
+
+/* Selected-state overlay on the cover */
+.clm-result-item--selected .clm-result-cover {
+  border-color: var(--color-brand-primary, #3b82f6);
+}
+
+.clm-result-item--selected .clm-result-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.22);
+  pointer-events: none;
+}
+
+/* Cobalt checkmark badge in top-right corner */
+.clm-checkmark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-primary, #3b82f6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Game title below the cover */
+.clm-result-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Mobile: sheet always slides up from the bottom ── */
+@media (max-width: 768px) {
+  .clm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .clm-sheet {
+    max-width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+    /* Extra bottom padding so Create button clears the home indicator */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .clm-body {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-md));
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .clm-games-panel {
+    animation: none;
+  }
+
+  .clm-cancel-btn,
+  .clm-create-btn,
+  .clm-selected-remove {
+    transition: none;
+  }
+
+  .clm-cancel-btn:active,
+  .clm-create-btn:not(:disabled):active,
+  .clm-result-item:active {
+    transform: none;
+    opacity: 0.7;
+  }
+
+  .clm-selected-remove:hover,
+  .clm-selected-remove:active {
+    transform: none;
   }
 }

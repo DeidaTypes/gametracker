@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import { logActivity } from './activityService'
+import { applyBlockFilter } from './blockService'
+import { getFlaggedContentIds } from './reportService'
 
 /**
  * Review Service — Supabase-backed.
@@ -28,7 +30,7 @@ import { logActivity } from './activityService'
  *   --   delete: user_id = auth.uid()
  *
  * The new public API is async (Supabase). Several downstream services
- * (profileStatsService, smartListService, communityMockService) still call
+ * (profileStatsService, smartListService) still call
  * the legacy sync `getAllReviews()` / `getReviewCount()` helpers — those
  * are kept as thin shims over an in-memory cache of the *current user's*
  * reviews, hydrated by `loadCurrentUserReviewsCache(userId)` on auth resolve.
@@ -128,20 +130,33 @@ export async function getReviewsForUser(userId) {
  * FROM reviews JOIN users ON reviews.user_id = users.id
  * WHERE igdb_game_id = $1
  * ORDER BY created_at DESC LIMIT 20
+ *
+ * Sprint 7: filters out reviews authored by users the current user
+ * has blocked (or who have blocked the current user) via the
+ * blockService cache.
  */
 export async function getReviewsForGame(igdbGameId) {
   if (igdbGameId == null) return []
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
-    .eq('igdb_game_id', Number(igdbGameId))
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let query = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .eq('igdb_game_id', Number(igdbGameId))
+        .order('created_at', { ascending: false })
+        .limit(20)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
   if (error) {
     console.error('[reviews] getReviewsForGame failed:', error.message)
     return []
   }
-  return data || []
+  const rows = data || []
+  return flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
 }
 
 /**
@@ -156,11 +171,13 @@ export async function getReviewsForGame(igdbGameId) {
  */
 export async function getReviewById(reviewId) {
   if (!reviewId) return null
-  const { data, error } = await supabase
+  let query = supabase
     .from('reviews')
     .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
     .eq('id', reviewId)
     .maybeSingle()
+  query = await applyBlockFilter(query, 'user_id')
+  const { data, error } = await query
   if (error) {
     console.error('[reviews] getReviewById failed:', error.message)
     return null
@@ -185,20 +202,30 @@ export async function getReviewsForGamePaginated({ gameId, page = 1, limit = 20 
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
-    .eq('igdb_game_id', Number(gameId))
-    .order('created_at', { ascending: false })
-    .range(from, to)
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let query = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .eq('igdb_game_id', Number(gameId))
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
 
   if (error) {
     console.error('[reviews] getReviewsForGamePaginated failed:', error.message)
     return { items: [], hasMore: false }
   }
 
-  const items = data || []
-  return { items, hasMore: items.length === limit }
+  const allItems = data || []
+  const items =
+    flaggedIds.size > 0 ? allItems.filter((r) => !flaggedIds.has(r.id)) : allItems
+  return { items, hasMore: allItems.length === limit }
 }
 
 /**
@@ -206,16 +233,25 @@ export async function getReviewsForGamePaginated({ gameId, page = 1, limit = 20 
  * display_name + avatar_url. Used by the Explore community feed.
  */
 export async function getRecentCommunityReviews(limit = 20) {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, users!reviews_user_id_fkey(display_name, avatar_url)')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let query = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(display_name, avatar_url)')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
   if (error) {
     console.error('[reviews] getRecentCommunityReviews failed:', error.message)
     return []
   }
-  return data || []
+  const rows = data || []
+  return flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
 }
 
 /**
@@ -233,17 +269,26 @@ export async function getRecentCommunityReviews(limit = 20) {
  */
 export async function getReviewsForTimeline({ sinceDays = 14, limit = 200 } = {}) {
   const sinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString()
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
-    .gte('created_at', sinceIso)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let query = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
   if (error) {
     console.error('[reviews] getReviewsForTimeline failed:', error.message)
     return []
   }
-  return data || []
+  const rows = data || []
+  return flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
 }
 
 /**
@@ -282,20 +327,30 @@ export async function getReviewsFromFollowing({ page = 1, limit = 10 } = {}) {
   const from = (page - 1) * limit
   const to = from + limit - 1
 
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
-    .in('user_id', followeeIds)
-    .order('created_at', { ascending: false })
-    .range(from, to)
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let query = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .in('user_id', followeeIds)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
 
   if (error) {
     console.error('[reviews] getReviewsFromFollowing failed:', error.message)
     return { items: [], hasMore: false }
   }
 
-  const items = data || []
-  return { items, hasMore: items.length === limit }
+  const allItems = data || []
+  const items =
+    flaggedIds.size > 0 ? allItems.filter((r) => !flaggedIds.has(r.id)) : allItems
+  return { items, hasMore: allItems.length === limit }
 }
 
 /**
@@ -313,12 +368,14 @@ export async function searchReviewsByText(query, limit = 20) {
   // Escape Postgres LIKE wildcards in the user input so a user typing
   // "%" or "_" doesn't accidentally match everything.
   const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
-  const { data, error } = await supabase
+  let q = supabase
     .from('reviews')
     .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
     .ilike('body', `%${escaped}%`)
     .order('created_at', { ascending: false })
     .limit(limit)
+  q = await applyBlockFilter(q, 'user_id')
+  const { data, error } = await q
   if (error) {
     console.error('[reviews] searchReviewsByText failed:', error.message)
     return []

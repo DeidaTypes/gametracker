@@ -4,6 +4,7 @@
 
 .sld-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg-primary);
   padding-bottom: var(--bottom-nav-safe-area);
 }
@@ -11,6 +12,7 @@
 /* --- Header --- */
 .sld-header {
   padding: var(--spacing-lg) var(--container-padding) var(--spacing-md);
+  padding-top: calc(var(--spacing-lg) + env(safe-area-inset-top, 0px));
   border-bottom: 1px solid var(--color-border);
   max-width: var(--page-max-width);
   margin: 0 auto;
@@ -23,7 +25,7 @@
   background: none;
   border: none;
   color: var(--color-brand-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);
@@ -39,7 +41,7 @@
 
 .sld-eyebrow {
   display: block;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -50,9 +52,9 @@
 }
 
 .sld-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -104,9 +106,9 @@
 /* Rank number */
 .sld-rank {
   flex: 0 0 28px;
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   color: var(--color-text-muted);
   text-align: center;
@@ -141,7 +143,7 @@
 
 .sld-game-title {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -153,7 +155,7 @@
 }
 
 .sld-badge {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-caption);

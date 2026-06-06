@@ -1,0 +1,19 @@
+/* Left-edge swipe-to-go-back surface.
+   Fills its parent so the whole secondary screen slides as one piece
+   under the finger. The X transform is applied imperatively by
+   SwipeBackWrapper.jsx; only the during-drag shadow lives here. */
+.swipe-back {
+  width: 100%;
+}
+
+/* will-change is applied ONLY while dragging. Persisting it would
+   establish a containing block for fixed-position descendants in the
+   resting state (same as an active transform), which can shift any
+   in-page position:fixed chrome. Scoping it to the drag keeps the
+   resting layout untouched. */
+.swipe-back--dragging {
+  will-change: transform;
+  /* Soft edge shadow so the page reads as a layer lifting off the one
+     behind it (matching native iOS push depth). */
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45);
+}

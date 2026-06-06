@@ -18,9 +18,9 @@
 }
 
 .section-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: #ffffff;
@@ -33,7 +33,7 @@
 .show-all {
   color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);

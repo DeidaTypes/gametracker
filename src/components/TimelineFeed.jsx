@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Users } from 'lucide-react'
 import ReviewCard from './ReviewCard'
+import EmptyState from './EmptyState'
 import { getReviewsForTimeline, getReviewsFromFollowing } from '../services/reviewService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
@@ -94,7 +95,7 @@ function SkeletonReviewCard() {
  *   'no-reviews'— user has follows but they have written no reviews
  *   'loaded'    — at least one review row rendered
  */
-function TimelineFeed() {
+function TimelineFeed({ refreshKey = 0 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [tab, setTab] = useState('popular')
@@ -172,6 +173,13 @@ function TimelineFeed() {
   useEffect(() => {
     loadPopular()
   }, [loadPopular])
+
+  // Tracks the last refreshKey we acted on. Declared here (next to the
+  // Popular state) but the refresh effect itself lives further down,
+  // AFTER loadFriends is declared — otherwise referencing loadFriends in
+  // the effect's dependency array hits the const temporal dead zone and
+  // throws on render, taking the whole Home page down with it.
+  const prevRefreshKeyRef = useRef(refreshKey)
 
   const visibleRows = allRows ? allRows.slice(0, page * PAGE_SIZE) : []
   const hasMore = allRows ? visibleRows.length < allRows.length : false
@@ -264,6 +272,27 @@ function TimelineFeed() {
       loadFriends()
     }
   }, [tab, friendsStatus, loadFriends])
+
+  // When the parent Home page triggers a pull-to-refresh (refreshKey
+  // increments), re-fetch whichever tab is active and reset the idle
+  // Friends tab so it re-loads next time the user switches to it.
+  // NOTE: must stay below loadFriends/loadPopular so the dependency
+  // array doesn't reference them before they're initialized.
+  useEffect(() => {
+    if (refreshKey === prevRefreshKeyRef.current) return
+    prevRefreshKeyRef.current = refreshKey
+    if (tab === 'popular') {
+      setAllRows(null)
+      loadPopular()
+    } else {
+      loadFriends()
+    }
+    // Reset Friends so it reloads if user switches to it post-refresh.
+    if (tab !== 'friends') {
+      setFriendsStatus('idle')
+      setFriendsRows([])
+    }
+  }, [refreshKey, tab, loadPopular, loadFriends])
 
   // ── IntersectionObserver sentinel — Friends tab ────────────────────
   useEffect(() => {
@@ -382,24 +411,19 @@ function TimelineFeed() {
               <SkeletonReviewCard />
             </>
           ) : friendsStatus === 'no-follows' ? (
-            <div className="tf-friends-empty">
-              <p className="tf-friends-empty__text">
-                Follow people to see their reviews here.
-              </p>
-              <button
-                type="button"
-                className="tf-friends-empty__cta"
-                onClick={() => navigate('/search?tab=users')}
-              >
-                Find people
-              </button>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="It's quiet in here."
+              body="Follow people to see their reviews, lists, and what they're playing."
+              cta="Find people to follow"
+              onCta={() => navigate('/search')}
+            />
           ) : friendsStatus === 'no-reviews' ? (
-            <div className="tf-friends-empty">
-              <p className="tf-friends-empty__text">
-                The people you follow haven&apos;t reviewed anything yet. Check back later.
-              </p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="Nothing from friends yet."
+              body="The people you follow haven't reviewed anything yet. Check back later."
+            />
           ) : (
             <>
               {friendsRows.map((row) => (

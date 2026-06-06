@@ -7,7 +7,9 @@ import React, {
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft, LuEllipsis } from 'react-icons/lu'
+import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
+import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { getReviewById } from '../services/reviewService'
@@ -117,6 +119,7 @@ function CommentRow({
   onReply,
   onEdit,
   onDelete,
+  onReport,
 }) {
   const [kebabOpen, setKebabOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -255,44 +258,59 @@ function CommentRow({
                 Reply
               </button>
             )}
-            {isOwn && (
-              <div className="rc-comment__kebab" ref={kebabRef}>
-                <button
-                  type="button"
-                  className="rc-comment__kebab-btn"
-                  onClick={() => setKebabOpen((v) => !v)}
-                  aria-label="More options"
-                  aria-expanded={kebabOpen}
-                >
-                  <LuEllipsis size={16} aria-hidden="true" />
-                </button>
-                {kebabOpen && (
-                  <div className="rc-comment__kebab-menu" role="menu">
+            <div className="rc-comment__kebab" ref={kebabRef}>
+              <button
+                type="button"
+                className="rc-comment__kebab-btn"
+                onClick={() => setKebabOpen((v) => !v)}
+                aria-label="More options"
+                aria-expanded={kebabOpen}
+              >
+                <LuEllipsis size={16} aria-hidden="true" />
+              </button>
+              {kebabOpen && (
+                <div className="rc-comment__kebab-menu" role="menu">
+                  {isOwn && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setKebabOpen(false)
+                          setEditing(true)
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="rc-comment__kebab-menu-danger"
+                        onClick={() => {
+                          setKebabOpen(false)
+                          onDelete(comment)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {!isOwn && (
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => {
                         setKebabOpen(false)
-                        setEditing(true)
+                        onReport(comment)
                       }}
                     >
-                      Edit
+                      <HiOutlineFlag size={14} aria-hidden="true" />
+                      Report
                     </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="rc-comment__kebab-menu-danger"
-                      onClick={() => {
-                        setKebabOpen(false)
-                        onDelete(comment)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -323,6 +341,9 @@ function ReviewComments() {
   const [replyTo, setReplyTo] = useState(null)
   const [posting, setPosting] = useState(false)
   const composerInputRef = useRef(null)
+
+  // Report sheet
+  const [reportTarget, setReportTarget] = useState(null)
 
   const isAuthed = !!user
 
@@ -523,6 +544,10 @@ function ReviewComments() {
     }
   }, [])
 
+  const handleReport = useCallback((comment) => {
+    setReportTarget(comment)
+  }, [])
+
   const handleDelete = useCallback(async (comment) => {
     // Window.confirm is fine here — every delete confirm in the app
     // (DeleteConfirmModal) is bound to a specific surface and rebuilding
@@ -604,7 +629,7 @@ function ReviewComments() {
               No comments yet — be the first to start the conversation.
             </div>
           ) : (
-            threaded.map((c) => (
+              threaded.map((c) => (
               <div key={c.id} className="rc-thread__group">
                 <CommentRow
                   comment={c}
@@ -613,6 +638,7 @@ function ReviewComments() {
                   onReply={handleReplyClick}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onReport={handleReport}
                 />
                 {c.replies.map((r) => (
                   <CommentRow
@@ -623,6 +649,7 @@ function ReviewComments() {
                     onReply={handleReplyClick}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onReport={handleReport}
                   />
                 ))}
               </div>
@@ -630,6 +657,13 @@ function ReviewComments() {
           )}
         </section>
       </div>
+
+      <ReportSheet
+        isOpen={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        contentType="comment"
+        contentId={reportTarget?.id}
+      />
 
       <form className="rc-composer" onSubmit={handleSubmit}>
         {replyTo && (

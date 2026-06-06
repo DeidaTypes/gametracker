@@ -18,6 +18,7 @@ import {
 import { getUserByUsername } from '../services/userService'
 import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
+import ReportSheet from '../components/ReportSheet'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -113,6 +114,9 @@ function MessagesThread() {
   const [sending, setSending] = useState(false)
   const composerRef = useRef(null)
   const scrollRef = useRef(null)
+
+  // Report sheet — holds the message being reported (incoming only).
+  const [reportTarget, setReportTarget] = useState(null)
 
   const partnerId = partner?.id || null
   const currentUserId = user?.id || null
@@ -408,11 +412,19 @@ function MessagesThread() {
                 key={m.id}
                 message={m}
                 isOutgoing={m.sender_id === currentUserId}
+                onReport={m.sender_id !== currentUserId ? setReportTarget : undefined}
               />
             ))}
           </ul>
         )}
       </div>
+
+      <ReportSheet
+        isOpen={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        contentType="message"
+        contentId={reportTarget?.id}
+      />
 
       <form className="dm-thread__composer" onSubmit={handleSend}>
         <textarea
@@ -451,20 +463,89 @@ function MessagesThread() {
    Single bubble
    ============================================================ */
 
-function Bubble({ message, isOutgoing }) {
+function Bubble({ message, isOutgoing, onReport }) {
+  const [contextMenuOpen, setContextMenuOpen] = useState(false)
+  const pressTimerRef = useRef(null)
+  const bubbleRef = useRef(null)
+
+  // Close context menu on outside click/touch.
+  useEffect(() => {
+    if (!contextMenuOpen) return undefined
+    function handleOutside(e) {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target)) {
+        setContextMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [contextMenuOpen])
+
+  const startPress = () => {
+    if (!onReport) return
+    pressTimerRef.current = window.setTimeout(() => {
+      setContextMenuOpen(true)
+    }, 500)
+  }
+
+  const cancelPress = () => {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current)
+      pressTimerRef.current = null
+    }
+  }
+
   return (
     <li
       className={`dm-bubble-row${
         isOutgoing ? ' dm-bubble-row--out' : ' dm-bubble-row--in'
       }`}
     >
-      <div
-        className={`dm-bubble${
-          isOutgoing ? ' dm-bubble--out' : ' dm-bubble--in'
-        }${message.__pending ? ' dm-bubble--pending' : ''}`}
-      >
-        <p className="dm-bubble__body">{message.body}</p>
-        <span className="dm-bubble__time">{bubbleTime(message.created_at)}</span>
+      <div className="dm-bubble-row__inner" ref={bubbleRef}>
+        <div
+          className={`dm-bubble${
+            isOutgoing ? ' dm-bubble--out' : ' dm-bubble--in'
+          }${message.__pending ? ' dm-bubble--pending' : ''}`}
+          onMouseDown={startPress}
+          onMouseUp={cancelPress}
+          onMouseLeave={cancelPress}
+          onTouchStart={startPress}
+          onTouchEnd={cancelPress}
+          onTouchCancel={cancelPress}
+          onContextMenu={(e) => {
+            if (onReport) {
+              e.preventDefault()
+              setContextMenuOpen(true)
+            }
+          }}
+        >
+          <p className="dm-bubble__body">{message.body}</p>
+          <span className="dm-bubble__time">{bubbleTime(message.created_at)}</span>
+        </div>
+
+        {contextMenuOpen && onReport && (
+          <div
+            className={`dm-bubble__context-menu${
+              isOutgoing ? '' : ' dm-bubble__context-menu--in'
+            }`}
+            role="menu"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="dm-bubble__context-btn"
+              onClick={() => {
+                setContextMenuOpen(false)
+                onReport(message)
+              }}
+            >
+              Report
+            </button>
+          </div>
+        )}
       </div>
     </li>
   )

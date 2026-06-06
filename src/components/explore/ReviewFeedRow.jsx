@@ -5,6 +5,7 @@ import StarRating from '../StarRating'
 import SharedCover from '../SharedCover'
 import SpoilerOverlay from '../SpoilerOverlay'
 import { useAuth } from '../../contexts/AuthContext'
+import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './ReviewFeedRow.css'
 
 function timeAgo(timestamp) {
@@ -73,7 +74,7 @@ function ReviewFeedRow({ review }) {
   const v = normaliseFeedReview(review)
   if (!v) return null
 
-  const fallback = `https://via.placeholder.com/120x180/1a1a1a/ffffff?text=${encodeURIComponent(v.gameTitle || '?')}`
+  const fallback = COVER_FALLBACK
   const img = v.gameImage || fallback
 
   // Don't blur the viewer's own reviews even on a community feed.

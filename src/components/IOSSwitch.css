@@ -1,0 +1,86 @@
+/* ============================================================
+   iOS-style toggle switch.
+   ============================================================ */
+
+.ios-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 51px;
+  height: 31px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ios-switch__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.ios-switch--disabled .ios-switch__input {
+  cursor: not-allowed;
+}
+
+.ios-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: rgba(120, 130, 156, 0.32);
+  transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ios-switch--on .ios-switch__track {
+  background: var(--accent);
+}
+
+.ios-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.25),
+    0 1px 1px rgba(0, 0, 0, 0.18);
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.ios-switch--on .ios-switch__thumb {
+  transform: translateX(20px);
+}
+
+.ios-switch--disabled {
+  opacity: 0.45;
+}
+
+/* Keyboard focus ring on the hidden input — falls on the track so
+   it remains visible. Uses the standard accent so it matches the
+   rest of the app's focus styling. */
+.ios-switch__input:focus-visible + .ios-switch__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-switch__thumb,
+  .ios-switch__track {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .ios-switch__thumb,
+body[data-reduce-motion='true'] .ios-switch__track {
+  transition: none !important;
+}

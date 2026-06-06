@@ -31,7 +31,7 @@
 }
 
 .reorder-pins__slot {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: var(--font-weight-bold, 700);
   color: var(--color-text-tertiary);
@@ -71,7 +71,7 @@
 }
 
 .reorder-pins__game {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: var(--font-weight-semibold, 600);
   color: var(--color-text-primary);
@@ -82,7 +82,7 @@
 }
 
 .reorder-pins__title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 12px;
   color: var(--color-text-secondary);
   line-height: 1.2;
@@ -133,7 +133,7 @@
   flex: 1;
   padding: 12px 16px;
   border-radius: var(--radius-full, 999px);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body, 15px);
   font-weight: var(--font-weight-bold, 700);
   cursor: pointer;
@@ -157,7 +157,7 @@
   border: none;
   background: var(--color-brand-gradient, var(--color-brand-primary));
   color: var(--color-bg-primary);
-  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
 }
 
 .reorder-pins__save:disabled {

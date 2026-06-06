@@ -4,6 +4,7 @@ import AppShell from '../components/AppShell'
 import SharedCover from '../components/SharedCover'
 import { getBestImageUrl } from '../services/imageUtils'
 import { getMostPlayed, getUnfinished, getTopRated } from '../services/smartListService'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './SmartListDetail.css'
 
 const LIST_CONFIG = {
@@ -96,11 +97,7 @@ function SmartListDetail() {
                       className="sld-cover-img"
                       loading="lazy"
                       onError={(e) => {
-                        e.target.src =
-                          game.image ||
-                          `https://via.placeholder.com/120x180/152035/C8965A?text=${encodeURIComponent(
-                            game.title
-                          )}`
+                        e.target.src = game.image || COVER_FALLBACK
                       }}
                     />
                   </SharedCover>

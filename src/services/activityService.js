@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { applyBlockFilter, isMutuallyBlocked, loadBlockedIds } from './blockService'
 
 /**
  * Activity Service — Supabase-backed activity feed.
@@ -159,12 +160,25 @@ export async function logActivity({
 export async function getActivitiesForUser(userId, { limit = 50, offset = 0 } = {}) {
   if (!userId) return []
 
-  const { data: rows, error } = await supabase
+  // Sprint 7 — short-circuit if the requested user is blocked in
+  // either direction. The activities table feed for one user is a
+  // self-contained slice (only their own rows), so the block check
+  // is at the user level rather than per-row.
+  await loadBlockedIds()
+  if (isMutuallyBlocked(userId)) return []
+
+  let query = supabase
     .from(TABLE)
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
+  // Defence-in-depth: applyBlockFilter is a no-op when only one user
+  // is in scope and they aren't blocked, so this is essentially a
+  // future-proof guard for any cross-user feed code that might land
+  // here later.
+  query = await applyBlockFilter(query, 'user_id')
+  const { data: rows, error } = await query
   if (error) {
     console.error('[activity] getActivitiesForUser failed:', error.message)
     return []

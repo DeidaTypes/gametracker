@@ -12,12 +12,12 @@
 }
 
 .rating-star.full {
-  filter: drop-shadow(0 0 6px rgba(200, 150, 90, 0.5));
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
   color: var(--color-brand-primary);
 }
 
 .rating-star.half {
-  filter: drop-shadow(0 0 4px rgba(200, 150, 90, 0.3));
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.3));
   color: var(--color-brand-primary);
 }
 

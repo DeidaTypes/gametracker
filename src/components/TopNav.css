@@ -43,9 +43,9 @@
 }
 
 .logo-text {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -67,7 +67,7 @@
   border-radius: var(--radius-full);
   padding: 9px 40px 9px var(--spacing-md);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -88,7 +88,7 @@
 .search-input.focused {
   background: var(--color-surface-hover);
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px rgba(200, 150, 90, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-icon-button {
@@ -133,7 +133,7 @@
   padding: 7px var(--spacing-md);
   text-decoration: none;
   color: var(--color-text-tertiary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
@@ -152,8 +152,8 @@
 
 .top-nav-link.active {
   color: var(--color-brand-primary);
-  background: rgba(200, 150, 90, 0.08);
-  border-color: rgba(200, 150, 90, 0.2);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
 /* ---- Suggestions dropdown ---- */
@@ -204,7 +204,7 @@
   justify-content: center;
   padding: var(--spacing-md);
   color: var(--color-text-tertiary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -230,7 +230,7 @@
 
 .suggestion-title {
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
@@ -244,7 +244,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -262,7 +262,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   color: var(--color-text-secondary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
 }
 
 .loading-text::before {

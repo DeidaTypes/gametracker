@@ -15,7 +15,7 @@ const ShareCard = forwardRef(function ShareCard(
 ) {
   const accent = accentRgb
     ? `rgb(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b})`
-    : '#C8965A'
+    : '#3b82f6'
 
   // Same vertical gradient as the on-screen celebration: extracted color
   // at the top, our deep navy at the bottom.
@@ -23,13 +23,13 @@ const ShareCard = forwardRef(function ShareCard(
     ? `linear-gradient(180deg,
         rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.55) 0%,
         rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.18) 36%,
-        rgba(12, 19, 34, 0.95) 72%,
-        #0C1322 100%)`
+        rgba(10, 15, 31, 0.95) 72%,
+        #0a0f1f 100%)`
     : `linear-gradient(180deg,
-        rgba(200, 150, 90, 0.45) 0%,
-        rgba(200, 150, 90, 0.14) 36%,
-        rgba(12, 19, 34, 0.95) 72%,
-        #0C1322 100%)`
+        rgba(59, 130, 246, 0.45) 0%,
+        rgba(59, 130, 246, 0.14) 36%,
+        rgba(10, 15, 31, 0.95) 72%,
+        #0a0f1f 100%)`
 
   return (
     <div

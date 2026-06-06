@@ -2,6 +2,8 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getBestImageUrl } from '../services/imageUtils'
 import SharedCover from './SharedCover'
+import Pressable from './Pressable'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './GameCard.css'
 
 function GameCard({ game }) {
@@ -10,14 +12,24 @@ function GameCard({ game }) {
   const imageUrl = getBestImageUrl(game, 800) || game.image
 
   const handleClick = () => {
-    // Pass the source cover URL through to GameDetail so the hero can
-    // show it as the shared-element flight target before the higher-res
-    // IGDB cover_big has loaded.
     navigate(`/game/${game.id}`, { state: { coverImage: imageUrl } })
   }
 
   return (
-    <div className="game-card" onClick={handleClick}>
+    <Pressable
+      as="div"
+      role="button"
+      tabIndex={0}
+      className="game-card"
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
+      aria-label={`View ${game.title}`}
+    >
       <div className="game-card-image-container">
         <SharedCover gameId={game.id} imageSrc={imageUrl}>
           <img
@@ -25,10 +37,10 @@ function GameCard({ game }) {
             alt={game.title}
             className="game-card-image"
             onError={(e) => {
-              if (e.target.src !== game.image) {
-                e.target.src = game.image || 'https://via.placeholder.com/300x400/1a1a1a/ffffff?text=' + encodeURIComponent(game.title)
+              if (e.target.src !== game.image && game.image) {
+                e.target.src = game.image
               } else {
-                e.target.src = 'https://via.placeholder.com/300x400/1a1a1a/ffffff?text=' + encodeURIComponent(game.title)
+                e.target.src = COVER_FALLBACK
               }
             }}
           />
@@ -41,7 +53,7 @@ function GameCard({ game }) {
           <div className="play-indicator">View Details →</div>
         </div>
       </div>
-    </div>
+    </Pressable>
   )
 }
 

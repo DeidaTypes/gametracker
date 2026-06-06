@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Pencil, ChevronRight } from 'lucide-react'
+import { FaInstagram, FaXTwitter, FaYoutube, FaTiktok } from 'react-icons/fa6'
 import { updateProfile, generateDefaultAvatar } from '../services/profileService'
 import { uploadBanner, removeBanner } from '../services/storageService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from './Toast'
 import { AUTH_ERRORS } from '../services/auth'
-import {
-  TextField,
-  TextArea,
-  SubmitButton,
-  SecondaryButton,
-  DestructiveButton,
-} from './forms'
-import FavoriteGamesPicker from './FavoriteGamesPicker'
-import './CreateListModal.css'
+import ActionSheet from './ActionSheet'
+import FavoritesPickerSheet from './FavoritesPickerSheet'
+import BioEditModal from './BioEditModal'
 import './EditProfileModal.css'
 
 const DISPLAY_NAME_MAX = 50
@@ -21,8 +17,6 @@ const USERNAME_MAX = 20
 const BIO_MAX = 160
 const HANDLE_MAX = 30
 
-// Strip a leading '@' and any whitespace so what we persist is always the
-// raw handle. The '@' is added at display time only.
 function normalizeHandle(input) {
   return (input || '').trim().replace(/^@+/, '')
 }
@@ -35,9 +29,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   const [bio, setBio] = useState(profile?.bio || '')
   const [avatar, setAvatar] = useState(profile?.avatar || null)
   const [avatarPreview, setAvatarPreview] = useState(null)
-  // Banner: bannerUrl is the persisted public URL; bannerPreview is the
-  // ephemeral FileReader data-URL shown immediately after the user picks a
-  // file (before the upload finishes).
   const [bannerUrl, setBannerUrl] = useState(profile?.bannerUrl || null)
   const [bannerPreview, setBannerPreview] = useState(null)
   const [bannerUploading, setBannerUploading] = useState(false)
@@ -46,9 +37,20 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   const [youtubeHandle, setYoutubeHandle] = useState(profile?.youtubeHandle || '')
   const [tiktokHandle, setTiktokHandle] = useState(profile?.tiktokHandle || '')
   const [favoriteGames, setFavoriteGames] = useState(profile?.favoriteGames || [])
+
+  // Sheet / overlay states
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [bannerSheetOpen, setBannerSheetOpen] = useState(false)
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
+  const [signOutSheetOpen, setSignOutSheetOpen] = useState(false)
+  const [bioSheetOpen, setBioSheetOpen] = useState(false)
+
+  // Inline focus tracking for character counters
+  const [focusedField, setFocusedField] = useState(null)
+
   const [errors, setErrors] = useState({})
   const [loggingOut, setLoggingOut] = useState(false)
+
   const fileInputRef = useRef(null)
   const bannerFileInputRef = useRef(null)
 
@@ -57,7 +59,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setDisplayName(profile.displayName || '')
       setUsername(profile.username || '')
       setBio(profile.bio || '')
-      setAvatar(profile.avatar)
+      setAvatar(profile.avatar || null)
       setAvatarPreview(
         profile.avatar?.type === 'data' ? profile.avatar.data : null
       )
@@ -68,33 +70,67 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setYoutubeHandle(profile.youtubeHandle || '')
       setTiktokHandle(profile.tiktokHandle || '')
       setFavoriteGames(profile.favoriteGames || [])
+      setErrors({})
     }
   }, [profile])
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click()
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [isOpen])
+
+  // isDirty: Save button is enabled only when at least one field has changed
+  const isDirty = useMemo(() => {
+    const p = profile || {}
+    if (displayName !== (p.displayName || '')) return true
+    if (username !== (p.username || '')) return true
+    if (bio !== (p.bio || '')) return true
+    if (avatar !== (p.avatar || null)) return true
+    if (instagramHandle !== (p.instagramHandle || '')) return true
+    if (xHandle !== (p.xHandle || '')) return true
+    if (youtubeHandle !== (p.youtubeHandle || '')) return true
+    if (tiktokHandle !== (p.tiktokHandle || '')) return true
+    const curIds = favoriteGames.map((g) => String(g.id)).join(',')
+    const origIds = (p.favoriteGames || []).map((g) => String(g.id)).join(',')
+    if (curIds !== origIds) return true
+    return false
+  }, [profile, displayName, username, bio, avatar, instagramHandle, xHandle, youtubeHandle, tiktokHandle, favoriteGames])
+
+  /* ── Avatar ──────────────────────────────────────────────────── */
+
+  const handleAvatarPhotoLibrary = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.removeAttribute('capture')
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleAvatarTakePhoto = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute('capture', 'user')
+      fileInputRef.current.click()
+    }
   }
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     if (!file.type.startsWith('image/')) {
-      setErrors({ ...errors, avatar: 'Please select an image file' })
+      showToast('Please select an image file', 'error')
       return
     }
-
     if (file.size > 2 * 1024 * 1024) {
-      setErrors({ ...errors, avatar: 'Image must be less than 2MB' })
+      showToast('Image must be less than 2MB', 'error')
       return
     }
-
     const reader = new FileReader()
     reader.onloadend = () => {
-      const base64String = reader.result
-      setAvatar({ type: 'data', data: base64String })
-      setAvatarPreview(base64String)
-      setErrors({ ...errors, avatar: null })
+      const base64 = reader.result
+      setAvatar({ type: 'data', data: base64 })
+      setAvatarPreview(base64)
     }
     reader.readAsDataURL(file)
   }
@@ -102,24 +138,32 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   const handleRemoveAvatar = () => {
     setAvatar(null)
     setAvatarPreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const avatarSrc = avatarPreview || null
+
+  /* ── Banner ──────────────────────────────────────────────────── */
+
+  const handleBannerPhotoLibrary = () => {
+    if (bannerFileInputRef.current) {
+      bannerFileInputRef.current.removeAttribute('capture')
+      bannerFileInputRef.current.click()
     }
   }
 
-  /* ── Banner upload / remove ─────────────────────────────────── */
-
-  const handleBannerClick = () => {
-    if (!bannerUploading) bannerFileInputRef.current?.click()
+  const handleBannerTakePhoto = () => {
+    if (bannerFileInputRef.current) {
+      bannerFileInputRef.current.setAttribute('capture', 'environment')
+      bannerFileInputRef.current.click()
+    }
   }
 
   const handleBannerChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Reset input so selecting the same file again fires a change event
     if (bannerFileInputRef.current) bannerFileInputRef.current.value = ''
 
-    // Show immediate preview via FileReader
     const reader = new FileReader()
     reader.onloadend = () => setBannerPreview(reader.result)
     reader.readAsDataURL(file)
@@ -152,8 +196,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  /* ── Submit ──────────────────────────────────────────────────── */
+
+  const handleSubmit = () => {
     const newErrors = {}
 
     if (!displayName.trim()) {
@@ -165,8 +210,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     if (username.trim()) {
       const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/
       if (!usernamePattern.test(username)) {
-        newErrors.username =
-          'Username must be 3–20 characters and contain only letters, numbers, and underscores'
+        newErrors.username = 'Username must be 3–20 characters (letters, numbers, underscores)'
       }
     }
 
@@ -183,8 +227,8 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       displayName: displayName.trim(),
       username: username.trim() || null,
       bio: bio.trim(),
-      avatar: avatar,
-      bannerUrl: bannerUrl,
+      avatar,
+      bannerUrl,
       instagramHandle: normalizeHandle(instagramHandle),
       xHandle: normalizeHandle(xHandle),
       youtubeHandle: normalizeHandle(youtubeHandle),
@@ -201,7 +245,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setDisplayName(profile.displayName || '')
       setUsername(profile.username || '')
       setBio(profile.bio || '')
-      setAvatar(profile.avatar)
+      setAvatar(profile.avatar || null)
       setAvatarPreview(
         profile.avatar?.type === 'data' ? profile.avatar.data : null
       )
@@ -227,10 +271,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     } catch (err) {
       const code = err?.code
       if (code === AUTH_ERRORS.NETWORK) {
-        showToast(
-          "Couldn't reach the server. Check your connection.",
-          'error'
-        )
+        showToast("Couldn't reach the server. Check your connection.", 'error')
       } else {
         showToast(err?.message || 'Failed to log out. Try again.', 'error')
       }
@@ -239,271 +280,376 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
   }
 
-  const getAvatarDisplay = () => {
-    if (avatarPreview) return avatarPreview
-    return null
-  }
-
   const defaultAvatar = generateDefaultAvatar(displayName || 'User')
+  const bannerSrc = bannerPreview || bannerUrl
 
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={handleCancel}>
-      <div
-        className="modal-content edit-profile-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>Edit Profile</h2>
-        <form onSubmit={handleSubmit} className="edit-profile-form">
-          {/* ── Banner upload (Sprint 7) — positioned above avatar ──── */}
-          <div className="banner-group">
-            <span className="banner-group__label">Profile Banner</span>
-            <div className="banner-upload-area">
+    <>
+      <div className="ep-overlay" onClick={handleCancel}>
+        <div className="ep-sheet" onClick={(e) => e.stopPropagation()}>
+
+          {/* ── Top bar ─────────────────────────────────────────── */}
+          <div className="ep-topbar">
+            <button
+              type="button"
+              className="ep-topbar__btn ep-topbar__btn--cancel"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+            <h1 className="ep-topbar__title">Edit Profile</h1>
+            <button
+              type="button"
+              className="ep-topbar__btn ep-topbar__btn--save"
+              onClick={handleSubmit}
+              disabled={!isDirty}
+            >
+              Save
+            </button>
+          </div>
+
+          {/* ── Scrollable body ─────────────────────────────────── */}
+          <div className="ep-scroll-body">
+
+            {/* ── Banner + avatar hero ──────────────────────────── */}
+            <div className="ep-hero">
               <div
-                className="banner-preview-container"
-                onClick={handleBannerClick}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleBannerClick()}
-                aria-label="Upload banner image"
+                className="ep-banner"
+                style={bannerSrc ? { backgroundImage: `url(${bannerSrc})` } : undefined}
               >
-                {bannerPreview || bannerUrl ? (
-                  <img
-                    src={bannerPreview || bannerUrl}
-                    alt="Banner preview"
-                    className="banner-preview-image"
-                  />
-                ) : (
-                  <div className="banner-placeholder">
-                    <span className="banner-placeholder__icon" aria-hidden="true">＋</span>
-                    <span className="banner-placeholder__text">Upload banner</span>
-                  </div>
-                )}
                 {bannerUploading && (
-                  <div className="banner-spinner-overlay" aria-hidden="true">
-                    <div className="banner-spinner" />
+                  <div className="ep-banner__spinner-overlay" aria-hidden="true">
+                    <div className="ep-banner__spinner" />
                   </div>
                 )}
-                {!bannerUploading && (bannerPreview || bannerUrl) && (
-                  <div className="banner-change-overlay">
-                    <span className="banner-change-text">Change</span>
-                  </div>
-                )}
-              </div>
-              <div className="banner-actions">
                 <button
                   type="button"
-                  className="banner-upload-btn"
-                  onClick={handleBannerClick}
-                  disabled={bannerUploading}
+                  className="ep-change-btn ep-change-btn--banner"
+                  onClick={() => setBannerSheetOpen(true)}
+                  aria-label="Change banner"
                 >
-                  {bannerUploading ? 'Uploading…' : 'Upload banner'}
+                  <Pencil size={14} strokeWidth={2} />
                 </button>
-                {bannerUrl && !bannerUploading && (
+              </div>
+
+              <div className="ep-avatar-wrap">
+                <div className="ep-avatar">
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="" className="ep-avatar__img" />
+                  ) : (
+                    <div
+                      className="ep-avatar__fallback"
+                      style={{ backgroundColor: defaultAvatar.color }}
+                    >
+                      {defaultAvatar.initials}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="ep-change-btn ep-change-btn--avatar"
+                  onClick={() => setAvatarSheetOpen(true)}
+                  aria-label="Change avatar"
+                >
+                  <Pencil size={14} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Form groups ──────────────────────────────────── */}
+            <div className="ep-groups">
+
+              {/* PROFILE section */}
+              <div className="ep-group">
+                <p className="ep-group__label">Profile</p>
+                <div className="ep-section">
+
+                  {/* Name */}
+                  <div className={`ep-row${errors.displayName ? ' ep-row--error' : ''}`}>
+                    <label htmlFor="ep-name" className="ep-row__field-label">Name</label>
+                    <div className="ep-row__right">
+                      <input
+                        id="ep-name"
+                        className="ep-row__input"
+                        value={displayName}
+                        onChange={(e) => {
+                          setDisplayName(e.target.value)
+                          if (errors.displayName) setErrors({ ...errors, displayName: null })
+                        }}
+                        onFocus={() => setFocusedField('displayName')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="Your name"
+                        maxLength={DISPLAY_NAME_MAX}
+                      />
+                      {focusedField === 'displayName' && (
+                        <span className="ep-counter">{displayName.length}/{DISPLAY_NAME_MAX}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="ep-row-divider" />
+
+                  {/* Username */}
+                  <div className={`ep-row${errors.username ? ' ep-row--error' : ''}`}>
+                    <label htmlFor="ep-username" className="ep-row__field-label">Username</label>
+                    <div className="ep-row__right ep-row__right--prefix">
+                      <span className="ep-row__prefix">@</span>
+                      <input
+                        id="ep-username"
+                        className="ep-row__input"
+                        value={username}
+                        onChange={(e) => {
+                          setUsername(
+                            e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+                          )
+                          if (errors.username) setErrors({ ...errors, username: null })
+                        }}
+                        onFocus={() => setFocusedField('username')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="username"
+                        maxLength={USERNAME_MAX}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {focusedField === 'username' && (
+                        <span className="ep-counter">{username.length}/{USERNAME_MAX}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="ep-row-divider" />
+
+                  {/* Bio — tappable preview */}
                   <button
                     type="button"
-                    className="banner-remove-btn"
-                    onClick={handleRemoveBanner}
+                    className="ep-row ep-row--tappable"
+                    onClick={() => setBioSheetOpen(true)}
                   >
-                    Remove banner
+                    <span className="ep-row__field-label">Bio</span>
+                    <span className={`ep-row__bio-preview${!bio ? ' ep-row__bio-preview--empty' : ''}`}>
+                      {bio || 'Add a bio…'}
+                    </span>
                   </button>
-                )}
-              </div>
-              <input
-                ref={bannerFileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleBannerChange}
-                style={{ display: 'none' }}
-              />
-            </div>
-          </div>
 
-          <div className="avatar-group">
-            <span className="avatar-group__label">Avatar</span>
-            <div className="avatar-upload-container">
-              <div
-                className="avatar-preview-container"
-                onClick={handleAvatarClick}
-              >
-                {getAvatarDisplay() ? (
-                  <img
-                    src={getAvatarDisplay()}
-                    alt="Avatar preview"
-                    className="avatar-preview-image"
-                  />
-                ) : (
-                  <div
-                    className="avatar-generated"
-                    style={{ backgroundColor: defaultAvatar.color }}
-                  >
-                    {defaultAvatar.initials}
-                  </div>
-                )}
-                <div className="avatar-overlay">
-                  <span className="avatar-change-text">Change</span>
                 </div>
               </div>
-              {avatarPreview && (
-                <button
-                  type="button"
-                  className="remove-avatar-button"
-                  onClick={handleRemoveAvatar}
-                >
-                  Remove
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                style={{ display: 'none' }}
-              />
-            </div>
-            {errors.avatar && (
-              <div className="error-message">{errors.avatar}</div>
-            )}
-          </div>
 
-          <TextField
-            label="Display Name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Your display name"
-            maxLength={DISPLAY_NAME_MAX}
-            required
-          />
-          {errors.displayName && (
-            <div className="error-message">{errors.displayName}</div>
-          )}
+              {/* SOCIAL section */}
+              <div className="ep-group">
+                <p className="ep-group__label">Social</p>
+                <div className="ep-section">
 
-          <TextField
-            label="Username"
-            value={username}
-            onChange={(e) =>
-              setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
-            }
-            placeholder="username"
-            maxLength={USERNAME_MAX}
-            hint="3–20 characters, letters, numbers, and underscores only"
-          />
-          {errors.username && (
-            <div className="error-message">{errors.username}</div>
-          )}
-
-          <TextArea
-            label="Bio"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell us about yourself..."
-            maxLength={BIO_MAX}
-          />
-          {errors.bio && <div className="error-message">{errors.bio}</div>}
-
-          {/* ── Social handles (Sprint 5)
-              Stored raw without leading '@'. The '@' is added at display
-              time only. We strip it here too in case the user types it. */}
-          <fieldset className="edit-profile-socials">
-            <legend className="edit-profile-socials__legend">Social</legend>
-
-            <TextField
-              label="Instagram"
-              value={instagramHandle}
-              onChange={(e) => setInstagramHandle(e.target.value.replace(/^@+/, ''))}
-              placeholder="handle"
-              maxLength={HANDLE_MAX}
-              hint="Your Instagram handle (no @)"
-            />
-
-            <TextField
-              label="X"
-              value={xHandle}
-              onChange={(e) => setXHandle(e.target.value.replace(/^@+/, ''))}
-              placeholder="handle"
-              maxLength={HANDLE_MAX}
-              hint="Your X handle (no @)"
-            />
-
-            <TextField
-              label="YouTube"
-              value={youtubeHandle}
-              onChange={(e) => setYoutubeHandle(e.target.value.replace(/^@+/, ''))}
-              placeholder="handle"
-              maxLength={HANDLE_MAX}
-              hint="Your YouTube channel handle (no @)"
-            />
-
-            <TextField
-              label="TikTok"
-              value={tiktokHandle}
-              onChange={(e) => setTiktokHandle(e.target.value.replace(/^@+/, ''))}
-              placeholder="handle"
-              maxLength={HANDLE_MAX}
-              hint="Your TikTok handle (no @)"
-            />
-          </fieldset>
-
-          {/* ── Favorite Games picker (Sprint 5)
-              Up to 4 games from the user's library, surfaced on the
-              Profile Home tab. We render a tiny preview strip so the
-              user can see what they've got selected without re-opening
-              the picker. */}
-          <div className="edit-profile-favs">
-            <div className="edit-profile-favs__header">
-              <span className="edit-profile-favs__label">Favorite Games</span>
-              <SecondaryButton
-                onClick={() => setPickerOpen(true)}
-                className="edit-profile-favs__btn"
-              >
-                {favoriteGames.length > 0 ? 'Change' : 'Pick games'}
-              </SecondaryButton>
-            </div>
-            {favoriteGames.length === 0 ? (
-              <p className="edit-profile-favs__empty">
-                Pick up to 4 games from your library to feature on your
-                Profile.
-              </p>
-            ) : (
-              <div className="edit-profile-favs__strip">
-                {favoriteGames.map((g) => (
-                  <div key={g.id} className="edit-profile-favs__cover">
-                    {g.image ? (
-                      <img src={g.image} alt="" loading="lazy" />
-                    ) : (
-                      <span>{g.title?.charAt(0) || '?'}</span>
-                    )}
+                  <div className="ep-row">
+                    <FaInstagram className="ep-row__icon" aria-hidden="true" />
+                    <div className="ep-row__right">
+                      <input
+                        className="ep-row__input"
+                        value={instagramHandle}
+                        onChange={(e) => setInstagramHandle(e.target.value.replace(/^@+/, ''))}
+                        onFocus={() => setFocusedField('instagram')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="handle"
+                        maxLength={HANDLE_MAX}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {focusedField === 'instagram' && (
+                        <span className="ep-counter">{instagramHandle.length}/{HANDLE_MAX}</span>
+                      )}
+                    </div>
                   </div>
-                ))}
+
+                  <div className="ep-row-divider" />
+
+                  <div className="ep-row">
+                    <FaXTwitter className="ep-row__icon" aria-hidden="true" />
+                    <div className="ep-row__right">
+                      <input
+                        className="ep-row__input"
+                        value={xHandle}
+                        onChange={(e) => setXHandle(e.target.value.replace(/^@+/, ''))}
+                        onFocus={() => setFocusedField('x')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="handle"
+                        maxLength={HANDLE_MAX}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {focusedField === 'x' && (
+                        <span className="ep-counter">{xHandle.length}/{HANDLE_MAX}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="ep-row-divider" />
+
+                  <div className="ep-row">
+                    <FaYoutube className="ep-row__icon" aria-hidden="true" />
+                    <div className="ep-row__right">
+                      <input
+                        className="ep-row__input"
+                        value={youtubeHandle}
+                        onChange={(e) => setYoutubeHandle(e.target.value.replace(/^@+/, ''))}
+                        onFocus={() => setFocusedField('youtube')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="handle"
+                        maxLength={HANDLE_MAX}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {focusedField === 'youtube' && (
+                        <span className="ep-counter">{youtubeHandle.length}/{HANDLE_MAX}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="ep-row-divider" />
+
+                  <div className="ep-row">
+                    <FaTiktok className="ep-row__icon" aria-hidden="true" />
+                    <div className="ep-row__right">
+                      <input
+                        className="ep-row__input"
+                        value={tiktokHandle}
+                        onChange={(e) => setTiktokHandle(e.target.value.replace(/^@+/, ''))}
+                        onFocus={() => setFocusedField('tiktok')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="handle"
+                        maxLength={HANDLE_MAX}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                      />
+                      {focusedField === 'tiktok' && (
+                        <span className="ep-counter">{tiktokHandle.length}/{HANDLE_MAX}</span>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+                <p className="ep-group__footnote">Just handles — no @.</p>
               </div>
-            )}
-          </div>
 
-          <div className="modal-actions">
-            <SecondaryButton onClick={handleCancel}>Cancel</SecondaryButton>
-            <SubmitButton type="submit">Save Changes</SubmitButton>
-          </div>
+              {/* FAVORITES section */}
+              <div className="ep-group">
+                <p className="ep-group__label">Favorites</p>
+                <div className="ep-section">
+                  <button
+                    type="button"
+                    className="ep-row ep-row--tappable ep-row--nav"
+                    onClick={() => setPickerOpen(true)}
+                  >
+                    <span className="ep-row__field-label">Favorite games</span>
+                    <span className="ep-row__meta">{favoriteGames.length}/4</span>
+                    <ChevronRight size={16} className="ep-row__chevron" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
 
-          <div className="edit-profile-logout">
-            <DestructiveButton
-              type="button"
-              onClick={handleLogOut}
-              disabled={loggingOut}
-            >
-              {loggingOut ? 'Logging out…' : 'Log out'}
-            </DestructiveButton>
-          </div>
-        </form>
-      </div>
+              {/* ACCOUNT section */}
+              <div className="ep-group">
+                <p className="ep-group__label">Account</p>
+                <div className="ep-section">
+                  <button
+                    type="button"
+                    className="ep-row ep-row--destructive"
+                    onClick={() => setSignOutSheetOpen(true)}
+                    disabled={loggingOut}
+                  >
+                    <span className="ep-row__destructive-label">
+                      {loggingOut ? 'Signing out…' : 'Sign out'}
+                    </span>
+                  </button>
+                </div>
+              </div>
 
-      <FavoriteGamesPicker
+            </div>{/* /ep-groups */}
+          </div>{/* /ep-scroll-body */}
+
+        </div>{/* /ep-sheet */}
+      </div>{/* /ep-overlay */}
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarChange}
+        style={{ display: 'none' }}
+      />
+      <input
+        ref={bannerFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleBannerChange}
+        style={{ display: 'none' }}
+      />
+
+      {/* ── Bio modal ──────────────────────────────────────────── */}
+      <BioEditModal
+        isOpen={bioSheetOpen}
+        onClose={() => setBioSheetOpen(false)}
+        currentBio={bio}
+        onSave={(updatedProfile) => setBio(updatedProfile.bio || '')}
+      />
+
+      {/* ── Banner action sheet ────────────────────────────────── */}
+      <ActionSheet
+        isOpen={bannerSheetOpen}
+        onClose={() => setBannerSheetOpen(false)}
+        title="Change Banner"
+        items={[
+          { label: 'Photo Library', onClick: handleBannerPhotoLibrary },
+          { label: 'Take Photo', onClick: handleBannerTakePhoto },
+          ...(bannerUrl
+            ? [{ label: 'Remove Banner', onClick: handleRemoveBanner, destructive: true }]
+            : []),
+        ]}
+      />
+
+      {/* ── Avatar action sheet ────────────────────────────────── */}
+      <ActionSheet
+        isOpen={avatarSheetOpen}
+        onClose={() => setAvatarSheetOpen(false)}
+        title="Change Photo"
+        items={[
+          { label: 'Photo Library', onClick: handleAvatarPhotoLibrary },
+          { label: 'Take Photo', onClick: handleAvatarTakePhoto },
+          ...(avatarPreview
+            ? [{ label: 'Remove Photo', onClick: handleRemoveAvatar, destructive: true }]
+            : []),
+        ]}
+      />
+
+      {/* ── Sign-out confirm action sheet ─────────────────────── */}
+      <ActionSheet
+        isOpen={signOutSheetOpen}
+        onClose={() => setSignOutSheetOpen(false)}
+        title="Sign out of GameTracker?"
+        items={[
+          { label: 'Sign out', onClick: handleLogOut, destructive: true },
+        ]}
+      />
+
+      {/* ── Favorites picker sheet ────────────────────────────── */}
+      <FavoritesPickerSheet
         isOpen={pickerOpen}
-        initialSelected={favoriteGames}
+        initialFavorites={favoriteGames}
         onSave={(games) => setFavoriteGames(games)}
         onClose={() => setPickerOpen(false)}
       />
-    </div>
+    </>
   )
 }
 

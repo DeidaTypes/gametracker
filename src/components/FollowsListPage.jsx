@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
+import { UserPlus, UserMinus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getProfile, generateDefaultAvatar } from '../services/profileService'
 import { getUserByUsername } from '../services/userService'
@@ -12,7 +13,9 @@ import {
   getFollowing,
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
+import { shareContent } from '../utils/share'
 import { showToast } from './Toast'
+import EmptyState from './EmptyState'
 import '../pages/UserFollows.css'
 
 /**
@@ -271,6 +274,17 @@ function FollowsListPage({ mode }) {
   const titleHandle =
     resolvedUser?.username || resolvedUser?.display_name || decodedUsername || 'user'
 
+  const isOwnProfile = currentUserId && targetUserId && currentUserId === targetUserId
+
+  const handleShareProfile = async () => {
+    const url = `${window.location.origin}/user/${encodeURIComponent(titleHandle)}`
+    await shareContent({
+      title: `${titleHandle} on GameTracker`,
+      text: 'Check out my GameTracker profile!',
+      url,
+    })
+  }
+
   const switchTab = (next) => {
     if (next === mode) return
     navigate(`/user/${encodeURIComponent(decodedUsername || titleHandle)}/${next}`, {
@@ -332,11 +346,23 @@ function FollowsListPage({ mode }) {
             <span className="skeleton follows-page__loading-row" aria-hidden="true" />
           </>
         ) : rows.length === 0 ? (
-          <p className="follows-page__empty">
-            {mode === 'followers'
-              ? 'No followers yet.'
-              : 'Not following anyone yet.'}
-          </p>
+          mode === 'followers' ? (
+            <EmptyState
+              icon={UserPlus}
+              title="No followers yet."
+              body={isOwnProfile ? 'Share your profile to start growing your audience.' : undefined}
+              cta={isOwnProfile ? 'Share profile' : undefined}
+              onCta={isOwnProfile ? handleShareProfile : undefined}
+            />
+          ) : (
+            <EmptyState
+              icon={UserMinus}
+              title="Not following anyone yet."
+              body={isOwnProfile ? 'Find people to follow and their activity will show up on your home feed.' : undefined}
+              cta={isOwnProfile ? 'Find people to follow' : undefined}
+              onCta={isOwnProfile ? () => navigate('/search') : undefined}
+            />
+          )
         ) : (
           <>
             {rows.map((row) => (

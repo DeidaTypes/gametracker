@@ -4,7 +4,7 @@
   justify-content: center;
   border-radius: 50%;
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0;
   flex-shrink: 0;

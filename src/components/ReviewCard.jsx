@@ -9,9 +9,11 @@ import {
   HiPlay,
   HiDotsVertical,
   HiOutlinePencil,
+  HiOutlineFlag,
 } from 'react-icons/hi'
 import { LuPin, LuPinOff } from 'react-icons/lu'
 import StarRating from './StarRating'
+import Pressable from './Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { shareContent } from '../utils/share'
@@ -19,6 +21,7 @@ import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
+import ReportSheet from './ReportSheet'
 import './ReviewCard.css'
 
 /**
@@ -61,6 +64,7 @@ function ReviewCard({
   const [bodyOverflows, setBodyOverflows] = useState(false)
   const [heartPulse, setHeartPulse] = useState(false)
   const [kebabOpen, setKebabOpen] = useState(false)
+  const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
 
@@ -178,6 +182,7 @@ function ReviewCard({
   const displayedLikeCount = likeState.count || review.likeCount || 0
 
   return (
+    <>
     <motion.article
       className="review-card"
       initial={reduced ? false : { opacity: 0 }}
@@ -188,8 +193,7 @@ function ReviewCard({
         <div className="review-card__own-pill">Your review</div>
       )}
 
-      <button
-        type="button"
+      <Pressable
         className="review-card__cover-header"
         onClick={goToGame}
         style={dominantStyle}
@@ -209,7 +213,7 @@ function ReviewCard({
         <div className="review-card__play-btn" aria-hidden="true">
           <HiPlay size={18} />
         </div>
-      </button>
+      </Pressable>
 
       {review.title && (
         <h3 className="review-card__title">{review.title}</h3>
@@ -250,8 +254,7 @@ function ReviewCard({
 
       <div className="review-card__actions">
         <div className="review-card__actions-left">
-          <button
-            type="button"
+          <Pressable
             onClick={handleLike}
             aria-label={likeState.liked ? 'Unlike' : 'Like'}
             aria-pressed={likeState.liked}
@@ -268,81 +271,104 @@ function ReviewCard({
               <HiOutlineHeart className="review-card__heart-icon" />
             )}
             <span>{displayedLikeCount}</span>
-          </button>
-          <button type="button" onClick={goToComments} aria-label="Comment">
+          </Pressable>
+          <Pressable onClick={goToComments} aria-label="Comment">
             <HiOutlineChat />
             <span>{review.commentCount || 0}</span>
-          </button>
+          </Pressable>
         </div>
         <div className="review-card__actions-right">
-          <button
-            type="button"
+          <Pressable
             className="review-card__share"
             onClick={handleShare}
             aria-label="Share"
           >
             <HiOutlineShare />
-          </button>
-          {isOwn && (
-            <div className="review-card__kebab-wrap" ref={kebabRef}>
-              <button
-                type="button"
-                className="review-card__kebab-btn"
-                onClick={() => setKebabOpen((v) => !v)}
-                aria-label="More options"
-                aria-expanded={kebabOpen}
-              >
-                <HiDotsVertical />
-              </button>
-              {kebabOpen && (
-                <div className="review-card__kebab-menu" role="menu">
+          </Pressable>
+          <div className="review-card__kebab-wrap" ref={kebabRef}>
+            <button
+              type="button"
+              className="review-card__kebab-btn"
+              onClick={() => setKebabOpen((v) => !v)}
+              aria-label="More options"
+              aria-expanded={kebabOpen}
+            >
+              <HiDotsVertical />
+            </button>
+            {kebabOpen && (
+              <div className="review-card__kebab-menu" role="menu">
+                {isOwn && (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setKebabOpen(false)
+                        onEdit?.()
+                      }}
+                    >
+                      <HiOutlinePencil />
+                      Edit review
+                    </button>
+                    {isPinned ? (
+                      onUnpin && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setKebabOpen(false)
+                            onUnpin()
+                          }}
+                        >
+                          <LuPinOff />
+                          Unpin from profile
+                        </button>
+                      )
+                    ) : (
+                      onPin && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setKebabOpen(false)
+                            onPin()
+                          }}
+                        >
+                          <LuPin />
+                          Pin to profile
+                        </button>
+                      )
+                    )}
+                  </>
+                )}
+                {!isOwn && (
                   <button
                     type="button"
                     role="menuitem"
+                    className="review-card__kebab-menu-report"
                     onClick={() => {
                       setKebabOpen(false)
-                      onEdit?.()
+                      setReportSheetOpen(true)
                     }}
                   >
-                    <HiOutlinePencil />
-                    Edit review
+                    <HiOutlineFlag />
+                    Report review
                   </button>
-                  {isPinned ? (
-                    onUnpin && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          onUnpin()
-                        }}
-                      >
-                        <LuPinOff />
-                        Unpin from profile
-                      </button>
-                    )
-                  ) : (
-                    onPin && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          onPin()
-                        }}
-                      >
-                        <LuPin />
-                        Pin to profile
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </motion.article>
+
+    <ReportSheet
+      isOpen={reportSheetOpen}
+      onClose={() => setReportSheetOpen(false)}
+      contentType="review"
+      contentId={review.id}
+    />
+    </>
   )
 }
 

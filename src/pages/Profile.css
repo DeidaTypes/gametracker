@@ -1,96 +1,101 @@
 /* ============================================================
-   PROFILE PAGE — Sprint 5 rebuild (Musicboard-inspired)
-
-   Six-row header → tab bar → tab content. The page palette stays
-   on the GameTracker design system (deep navy + warm copper). Only
-   the layout patterns are borrowed from Musicboard.
+   PROFILE PAGE — Cobalt Modern redesign
+   Header strip → optional banner → centered hero (avatar / name
+   / handle / bio) → stats row → action row → tab strip → content.
+   All accents use var(--accent) cobalt; typography is DM Sans.
    ============================================================ */
 
 .profile-page {
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: transparent;
   padding-bottom: var(--bottom-nav-safe-area);
 }
 
 /* ============================================================
-   HEADER — six rows in fixed order
+   HEADER STRIP — back / centered title / more
    ============================================================ */
 
-.profile-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--page-padding) var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* ── Row 1: top nav (back / username / actions) ─────────────── */
-
-.profile-header__row1 {
+.profile-header-strip {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: var(--spacing-sm);
-  min-height: 44px;
+  gap: 8px;
+  padding: 12px var(--page-padding);
+  /* Sit below the safe-area inset with 12px of breathing room. */
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  min-height: 56px;
 }
 
-.profile-header__icon-btn {
-  display: inline-flex;
+.profile-header-strip__slot {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  border: none;
-  background: transparent;
-  color: var(--color-text-primary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast);
+  gap: 4px;
+  min-height: 40px;
 }
 
-.profile-header__icon-btn:hover {
-  background: var(--color-surface);
+.profile-header-strip__slot--left {
+  justify-self: start;
 }
 
-.profile-header__icon-btn:active {
-  background: var(--color-surface-active);
+.profile-header-strip__slot--right {
+  justify-self: end;
+  position: relative;
 }
 
-.profile-header__username {
-  font-family: var(--font-serif);
+.profile-header-strip__title {
+  justify-self: center;
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   text-align: center;
   margin: 0;
-  /* Truncate gracefully if the username is unusually long. */
+  /* Cap so a very long display name can't push into either side slot. */
+  max-width: 60vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.profile-header__nav-actions {
-  display: flex;
+.profile-header-strip__icon-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  position: relative;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
 }
 
-.profile-header__kebab-wrap {
-  position: relative;
+.profile-header-strip__icon-btn:hover {
+  background: var(--color-surface);
 }
 
-.profile-header__kebab-menu {
+.profile-header-strip__icon-btn:active {
+  background: var(--color-surface-active);
+}
+
+.profile-header-strip__kebab-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-header-strip__kebab-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
   min-width: 180px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: 6px;
@@ -99,231 +104,302 @@
   flex-direction: column;
 }
 
-.profile-header__kebab-menu button {
+.profile-header-strip__kebab-menu button {
   background: none;
   border: none;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   text-align: left;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   cursor: pointer;
 }
 
-.profile-header__kebab-menu button:hover {
+.profile-header-strip__kebab-menu button:hover {
   background: var(--color-surface);
 }
 
-/* ── Banner — full-bleed 180px strip between Row 1 and Row 2 ──── */
-
-.profile-header__banner {
-  /* Bleed to the horizontal edges of the padded header */
-  margin-top: calc(-1 * var(--spacing-md));
-  margin-left: calc(-1 * var(--page-padding));
-  margin-right: calc(-1 * var(--page-padding));
-  height: 180px;
-  overflow: hidden;
-  flex-shrink: 0;
+.profile-header-strip__kebab-menu-item--destructive {
+  color: var(--status-danger) !important;
+  font-weight: var(--font-weight-semibold);
 }
 
-.profile-header__banner-img {
+.profile-header-strip__kebab-menu-item--destructive:hover {
+  background: rgba(248, 113, 113, 0.1) !important;
+}
+
+/* Skeleton placeholders for the header strip */
+.profile-header-strip__title-sk {
+  justify-self: center;
+  width: 140px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+}
+
+/* ============================================================
+   BANNER — optional full-bleed strip above the hero
+   ============================================================ */
+
+.profile-banner {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+}
+
+.profile-banner__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* When the banner is present, pull the avatar row up so the avatar
-   overlaps the bottom ~50% of itself over the banner edge. The flex
-   gap (--spacing-md) between banner and row2 is also absorbed here. */
-.profile-header__row2--has-banner {
-  margin-top: calc(-48px - var(--spacing-md));
-  position: relative;
-  z-index: 1;
+/* ============================================================
+   IG-STYLE PROFILE HERO — Instagram compact left-aligned layout
+   avatar (left) + stats (right), then name/handle/bio/actions
+   stacked below, all left-aligned with 16px page padding.
+   ============================================================ */
+
+.profile-ig-hero {
+  padding: 12px var(--page-padding) 0;
 }
 
-/* Give the avatar a stronger border when sitting on the banner */
-.profile-header__row2--has-banner .profile-header__avatar {
-  border-color: var(--color-bg-base, #0d0f1a);
-  border-width: 3px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+/* When a banner is present, give the hero a top margin so it
+   sits below the banner with a clean separation. */
+.profile-ig-hero--has-banner {
+  padding-top: 16px;
 }
 
-/* ── Row 2: avatar + 3 stat numerals ───────────────────────── */
+/* ── Row 1: Avatar + Stats ── */
 
-.profile-header__row2 {
+.profile-ig-hero__top-row {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 20px;
 }
 
-.profile-header__avatar {
+/* Avatar — 84px circle with 2px cobalt ring */
+.profile-ig-hero__avatar {
+  width: 84px;
+  height: 84px;
   flex-shrink: 0;
-  width: 96px;
-  height: 96px;
   border-radius: var(--radius-full);
   overflow: hidden;
-  border: 2px solid var(--color-border);
-  background: var(--color-bg-tertiary);
   padding: 0;
+  background: var(--bg-surface);
+  border: 2px solid var(--accent);
   cursor: default;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color var(--transition-smooth);
+  transition: border-color var(--transition-fast);
 }
 
-.profile-header__avatar--editable {
+.profile-ig-hero__avatar--editable {
   cursor: pointer;
 }
 
-.profile-header__avatar--editable:hover {
-  border-color: var(--color-brand-primary);
+.profile-ig-hero__avatar--editable:hover {
+  border-color: var(--accent-hover);
 }
 
-.profile-header__avatar-img {
+.profile-ig-hero__avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.profile-header__avatar-fallback {
+.profile-ig-hero__avatar-fallback {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-display-l);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 28px;
   font-weight: var(--font-weight-bold);
   line-height: 1;
-  letter-spacing: var(--letter-spacing-display);
 }
 
-.profile-header__stats {
+/* Stats group — takes remaining width, evenly distributed */
+.profile-ig-hero__stats {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  gap: var(--spacing-sm);
-  min-width: 0;
 }
 
-.profile-header__stat {
-  flex: 1;
+/* Individual stat — stacked count + label, centered */
+.profile-ig-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   background: none;
   border: none;
-  padding: 8px 4px;
-  cursor: pointer;
-  font-family: var(--font-sans);
+  padding: 6px 4px;
+  font-family: var(--font-body);
+  cursor: default;
   -webkit-tap-highlight-color: transparent;
-  border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
-}
-
-.profile-header__stat:hover {
-  background: var(--color-surface);
-}
-
-.profile-header__stat-value {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-}
-
-.profile-header__stat-label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-
-/* ── Row 3: display name (serif h1) ────────────────────────── */
-
-.profile-header__row3 {
-  display: flex;
-}
-
-.profile-header__display-name {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: var(--font-weight-bold);
-  line-height: 1.2;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-  margin: 0;
-}
-
-/* ── Row 4: bio (or empty CTA on own profile) ──────────────── */
-
-.profile-header__row4 {
-  display: flex;
-}
-
-.profile-header__bio {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--color-text-secondary);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.profile-header__bio-cta {
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.profile-header__bio-cta:hover {
-  color: var(--color-brand-primary);
-}
-
-/* ── Row 5: socials + share ────────────────────────────────── */
-
-.profile-header__row5 {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.profile-header__socials {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast);
   min-width: 0;
 }
 
-.profile-header__social {
+.profile-ig-stat--clickable {
+  cursor: pointer;
+}
+
+.profile-ig-stat--clickable:active {
+  opacity: 0.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-ig-stat--clickable:active {
+    opacity: 1;
+  }
+}
+
+.profile-ig-stat__value {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* Instagram style: sentence-case, no uppercase, no letter-spacing */
+.profile-ig-stat__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.2;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Row 2: Display name ── */
+
+.profile-ig-hero__name {
+  margin: 16px 0 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+/* ── Row 3: @username ── */
+
+.profile-ig-hero__handle {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+/* ── Row 4: Bio ── */
+
+.profile-ig-hero__bio-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.profile-ig-hero__bio {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.profile-ig-hero__bio--tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 140ms ease;
+}
+
+.profile-ig-hero__bio--tappable:hover {
+  opacity: 0.75;
+}
+
+.profile-ig-hero__bio--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  overflow: visible;
+}
+
+.profile-ig-hero__bio-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-ig-hero__bio-toggle:hover {
+  color: var(--accent-hover);
+}
+
+/* Empty-bio CTA on own profile */
+.profile-ig-hero__bio-cta {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-ig-hero__bio-cta:hover {
+  color: var(--accent);
+}
+
+/* Social handles — left-aligned row of pill chips */
+.profile-ig-hero__socials {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-ig-hero__social {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   padding: 6px 10px;
   border-radius: var(--radius-full);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -333,222 +409,123 @@
   max-width: 100%;
 }
 
-.profile-header__social:hover {
+.profile-ig-hero__social:hover {
   background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
-.profile-header__social-handle {
+.profile-ig-hero__social-handle {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 140px;
 }
 
-.profile-header__share {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.profile-header__share:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-}
-
-/* ── Row 6: actions ────────────────────────────────────────── */
-
-.profile-header__row6 {
+/* ── Action buttons row ── */
+.profile-ig-hero__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  margin-top: 16px;
 }
 
-.profile-header__edit-btn {
+/* Each button takes exactly half the row */
+.profile-ig-btn {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-  min-height: 44px;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
 }
 
-.profile-header__edit-btn:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
+/* Primary cobalt fill — Follow on other profile */
+.profile-ig-btn--primary {
+  background: var(--accent);
+  color: #ffffff;
+  border: 1px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
-.profile-header__follow-btn {
-  flex: 7;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
-  border-radius: var(--radius-full);
-  border: none;
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 4px 12px rgba(200, 150, 90, 0.3);
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
-  min-height: 44px;
-}
-
-.profile-header__follow-btn:hover {
-  box-shadow: 0 6px 16px rgba(200, 150, 90, 0.45);
+.profile-ig-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
   transform: translateY(-1px);
 }
 
-.profile-header__follow-btn:active {
+.profile-ig-btn--primary:active {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
   transform: translateY(0) scale(0.98);
 }
 
-.profile-header__follow-btn:disabled {
+.profile-ig-btn--primary:disabled {
   cursor: default;
   opacity: 0.7;
 }
 
-/* "Following" — flipped to a quieter outlined state so the unfollow
-   action reads as the destructive choice (the user is already engaged,
-   so the affordance only needs to surface the toggle, not push it). */
-.profile-header__follow-btn--following {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
+/* Secondary outlined — Edit Profile, Share Profile, Message */
+.profile-ig-btn--secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
 }
 
-.profile-header__follow-btn--following:hover {
+.profile-ig-btn--secondary:hover {
   background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-  box-shadow: none;
-  transform: none;
+  border-color: var(--border-strong);
 }
 
-.profile-header__msg-btn {
-  flex: 3;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 12px;
+/* Following state — secondary style with border-strong */
+.profile-ig-btn--following {
+  border-color: var(--border-strong);
+}
+
+/* ── IG hero skeleton (loading state) ── */
+.profile-ig-hero--skeleton {
+  gap: 0;
+}
+
+.profile-ig-hero__avatar-sk {
+  width: 84px;
+  height: 84px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-  min-height: 44px;
-  white-space: nowrap;
-}
-
-.profile-header__msg-btn:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-}
-
-.profile-header__follow-icon-btn {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.profile-header__follow-icon-btn:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
+.profile-ig-stat-sk {
+  width: 52px;
+  height: 40px;
+  border-radius: var(--radius-sm);
 }
 
-.profile-header__follow-icon-btn:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.profile-header__follow-icon-btn--following {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-}
-
-.profile-header__follow-icon-btn--following:hover {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-}
-
-/* ── Header skeletons ──────────────────────────────────────── */
-
-.profile-header__title-sk {
-  height: 18px;
+.profile-ig-hero__name-sk {
+  margin-top: 16px;
+  width: 140px;
+  height: 15px;
   border-radius: var(--radius-xs);
-  width: 60%;
-  justify-self: center;
 }
 
-.profile-header__actions-sk {
-  width: 80px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  justify-self: end;
-}
-
-.profile-header__avatar-sk {
-  width: 96px;
-  height: 96px;
-  border-radius: var(--radius-full);
-}
-
-.profile-header__stats-sk {
-  flex: 1;
-  display: flex;
-  gap: var(--spacing-md);
-}
-
-.profile-header__stat-sk {
-  flex: 1;
-  height: 48px;
-  border-radius: var(--radius-md);
+.profile-ig-hero__handle-sk {
+  margin-top: 6px;
+  width: 90px;
+  height: 13px;
+  border-radius: var(--radius-xs);
 }
 
 /* ============================================================
-   TAB BAR — matches the Popular/New (Sprint 5 P5) styling
+   TAB STRIP — Home / Reviews / Lists with sliding cobalt underline
    ============================================================ */
 
 .profile-tabs {
@@ -556,48 +533,60 @@
   align-items: flex-end;
   gap: var(--spacing-md);
   padding: 0 var(--page-padding);
-  border-bottom: 1px solid var(--color-border);
+  margin-top: 24px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile-tab {
+  position: relative;
   background: none;
   border: none;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 16px;
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
   padding: 12px 4px 14px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
   min-height: 44px;
+  transition: color var(--transition-fast);
 }
 
 .profile-tab:hover {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .profile-tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-brand-primary);
+  color: var(--text-primary);
+}
+
+/* Animated underline — Framer Motion shares this element across tabs
+   via layoutId so it slides instead of cross-fading. The vertical
+   offset (-1px) overlaps the parent's border so the underline reads
+   as a continuous bar with the tab strip's bottom rule. */
+.profile-tab__underline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile-header__avatar,
-  .profile-header__icon-btn,
-  .profile-header__share,
-  .profile-header__edit-btn,
-  .profile-header__follow-btn,
-  .profile-header__msg-btn,
-  .profile-header__follow-icon-btn,
-  .profile-header__social,
+  .profile-header-strip__icon-btn,
+  .profile-ig-hero__avatar,
+  .profile-ig-hero__bio-toggle,
+  .profile-ig-hero__bio-cta,
+  .profile-ig-hero__social,
+  .profile-ig-btn,
   .profile-tab {
     transition: none;
   }
-  .profile-header__follow-btn:hover {
+  .profile-ig-btn--primary:hover,
+  .profile-ig-btn--primary:active {
     transform: none;
   }
 }
@@ -623,7 +612,7 @@
 
 .profile-empty__copy {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   color: var(--color-text-muted);
 }
@@ -637,11 +626,11 @@
   border: none;
   background: var(--color-brand-primary);
   color: var(--color-bg-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(200, 150, 90, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* ============================================================
@@ -669,9 +658,9 @@
 }
 
 .profile-home__section-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 20px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -700,9 +689,57 @@
 
 .profile-home__empty {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
+}
+
+/* Edit button — top-right of any home-tab section (Favorites) */
+.profile-home__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-home__edit-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent);
+}
+
+/* Empty-state "Add favorites" CTA button */
+.profile-home__fav-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-home__fav-empty-cta:hover {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── Favorite Games row ────────────────────────────────────── */
@@ -767,7 +804,7 @@
 }
 
 .profile-favorite-card__name {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -779,7 +816,7 @@
 }
 
 .profile-favorite-card__dev {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   letter-spacing: var(--letter-spacing-label);
   color: var(--color-text-tertiary);
@@ -841,7 +878,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 22px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-muted);
@@ -905,7 +942,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-label);
@@ -925,7 +962,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   padding: 4px 10px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
@@ -1015,6 +1052,17 @@
   background: var(--color-bg-tertiary);
 }
 
+.profile-list-row__mosaic--custom-cover {
+  display: block;
+}
+
+.profile-list-row__cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .profile-list-row__body {
   display: flex;
   flex-direction: column;
@@ -1024,7 +1072,7 @@
 
 .profile-list-row__name {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-title);
@@ -1037,7 +1085,7 @@
 
 .profile-list-row__desc {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   display: -webkit-box;
@@ -1061,7 +1109,7 @@
   justify-content: center;
   background: var(--color-bg-tertiary);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: var(--font-weight-bold);
   object-fit: cover;
@@ -1076,7 +1124,7 @@ img.profile-list-row__author-avatar {
 }
 
 .profile-list-row__author-name {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
@@ -1094,7 +1142,7 @@ img.profile-list-row__author-avatar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
@@ -1110,29 +1158,10 @@ img.profile-list-row__author-avatar {
    ============================================================ */
 
 @media (max-width: 380px) {
-  .profile-header {
-    padding: var(--spacing-md) 16px var(--spacing-lg);
-    gap: var(--spacing-sm);
-  }
-
-  .profile-header__avatar {
-    width: 80px;
-    height: 80px;
-  }
-
-  .profile-header__stat-value {
-    font-size: 22px;
-  }
-
-  .profile-header__display-name {
-    font-size: 20px;
-  }
-
-  .profile-header__msg-btn {
-    font-size: 12px;
-    padding: 12px 8px;
-  }
-
+  .profile-header-strip,
+  .profile-hero,
+  .profile-stats,
+  .profile-actions,
   .profile-tabs,
   .profile-home,
   .profile-reviews,
@@ -1140,28 +1169,47 @@ img.profile-list-row__author-avatar {
     padding-left: 16px;
     padding-right: 16px;
   }
+
+  .profile-hero__name {
+    font-size: 20px;
+  }
+
+  .profile-action--secondary {
+    font-size: 13px;
+    padding: 11px 12px;
+  }
 }
 
 @media (min-width: 769px) {
-  .profile-header,
-  .profile-tabs {
-    max-width: var(--page-max-width);
-    margin: 0 auto;
-    padding-left: var(--page-padding-desktop);
-    padding-right: var(--page-padding-desktop);
-  }
-
+  .profile-header-strip,
+  .profile-hero,
+  .profile-stats,
+  .profile-actions,
+  .profile-tabs,
   .profile-home,
   .profile-reviews,
   .profile-lists {
     max-width: var(--page-max-width);
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
     padding-left: var(--page-padding-desktop);
     padding-right: var(--page-padding-desktop);
   }
 
-  .profile-header__avatar {
-    width: 120px;
-    height: 120px;
+  /* Banner stays full-bleed regardless of viewport width — the
+     constrained content beneath it overlaps for the avatar effect. */
+  .profile-banner {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .profile-hero__avatar {
+    width: 104px;
+    height: 104px;
+  }
+
+  .profile-hero__avatar-fallback {
+    font-size: 36px;
   }
 }

@@ -1,0 +1,265 @@
+/* ============================================================
+   Settings — iOS 26 grouped-list pattern.
+   Top bar with back chevron + centered title, then a
+   scrollable column of grouped sections each rendered as a
+   surface-card stack of rows.
+   ============================================================ */
+
+.settings-page {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 0 calc(var(--bottom-nav-safe-area) + 16px);
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: rgba(10, 15, 31, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-header__back:hover {
+  background: rgba(148, 168, 212, 0.08);
+}
+
+.settings-header__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.settings-header__spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.settings-page__body {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ============================================================
+   Group
+   ============================================================ */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group__title {
+  margin: 0 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.settings-group__rows {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--surface-1-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-group__footer {
+  margin: 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   Row
+   ============================================================ */
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 0.5px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  text-align: left;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  gap: 12px;
+}
+
+.settings-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-row--tappable {
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.settings-row--tappable:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-row--tappable:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.settings-row--toggle {
+  cursor: default;
+}
+
+.settings-row--disabled {
+  opacity: 0.5;
+}
+
+.settings-row--centered {
+  justify-content: center;
+  text-align: center;
+}
+
+.settings-row--destructive {
+  color: var(--status-danger);
+  font-weight: 600;
+}
+
+.settings-row--destructive .settings-row__signout-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-row__label {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  color: inherit;
+}
+
+.settings-row__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row__trailing {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.settings-row__chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.settings-row--centered .settings-row__chevron,
+.settings-row--centered .settings-row__value {
+  display: none;
+}
+
+/* When a value AND a chevron are both rendered, push the chevron out
+   to the very edge with a small gap from the value text. */
+.settings-row--tappable .settings-row__value + .settings-row__chevron {
+  margin-left: 4px;
+}
+
+.settings-row__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   Footnote
+   ============================================================ */
+
+.settings-footnote {
+  margin: 16px 8px 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.settings-footnote span {
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   Larger-text scaling (extra padding so 17px body still
+   fits comfortably in 48px tall rows).
+   ============================================================ */
+body[data-larger-text='true'] .settings-row {
+  min-height: 52px;
+  font-size: 16px;
+}
+
+body[data-larger-text='true'] .settings-row__value {
+  font-size: 15px;
+}
+
+/* ============================================================
+   Reduced-motion override (when in-app toggle is on).
+   ============================================================ */
+body[data-reduce-motion='true'] .settings-row,
+body[data-reduce-motion='true'] .settings-header__back {
+  transition: none !important;
+}

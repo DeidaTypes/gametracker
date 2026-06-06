@@ -19,7 +19,7 @@
   .primary-card:hover {
     transform: scale(1.02);
     filter: brightness(1.04);
-    box-shadow: var(--shadow-xl), 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: var(--shadow-xl), 0 4px 16px rgba(59, 130, 246, 0.15);
     border-color: var(--color-border-hover);
   }
 }
@@ -72,14 +72,14 @@
   background: rgba(12, 19, 34, 0.82);
   backdrop-filter: blur(6px);
   color: var(--color-brand-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-label);
   letter-spacing: var(--letter-spacing-label);
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(200, 150, 90, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   white-space: nowrap;
 }
 
@@ -100,7 +100,7 @@
 }
 
 .primary-card-eyebrow {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -117,7 +117,7 @@
 }
 
 .primary-card-pill {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -130,9 +130,9 @@
 }
 
 .primary-card-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -141,7 +141,7 @@
 
 .primary-card-cta {
   margin-top: var(--spacing-sm);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);

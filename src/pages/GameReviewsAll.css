@@ -17,6 +17,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-sm) var(--page-padding, 20px);
+  padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top, 0px));
   position: sticky;
   top: 0;
   z-index: 50;
@@ -43,9 +44,9 @@
 }
 
 .gra-header-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-display);
   margin: 0;
@@ -85,7 +86,7 @@
   border: none;
   text-align: left;
   font-size: 14px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   color: var(--color-text-primary);
   cursor: pointer;
 }
@@ -134,7 +135,7 @@
   border: none;
   border-radius: var(--radius-full);
   padding: 10px 24px;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: var(--font-weight-semibold);
   cursor: pointer;

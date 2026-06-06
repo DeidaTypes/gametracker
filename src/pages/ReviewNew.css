@@ -1,0 +1,491 @@
+/* ============================================================
+   ReviewNew — iOS 26 compact review composer
+   ============================================================ */
+
+.rnc-page {
+  min-height: 100dvh;
+  background: var(--bg-base, #0a0f1f);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+
+.rnc-topbar {
+  flex-shrink: 0;
+  height: 52px;
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-base, #0a0f1f);
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.rnc-topbar-cancel,
+.rnc-topbar-post {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent, #3b82f6);
+  background: none;
+  border: none;
+  padding: 0 0 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+  min-width: 56px;
+}
+
+.rnc-topbar-cancel {
+  text-align: left;
+}
+
+.rnc-topbar-post {
+  font-weight: 600;
+  text-align: right;
+}
+
+.rnc-topbar-post--disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.rnc-topbar-cancel:active,
+.rnc-topbar-post:not(.rnc-topbar-post--disabled):active {
+  opacity: 0.6;
+}
+
+.rnc-topbar-title {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  letter-spacing: 0;
+  padding-bottom: 14px;
+  flex: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ── Scrollable content ──────────────────────────────────────────────────── */
+
+.rnc-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+
+/* ── Game header ─────────────────────────────────────────────────────────── */
+
+.rnc-game-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rnc-game-cover {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.rnc-game-cover--placeholder {
+  background: var(--bg-surface, #131a35);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.rnc-game-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rnc-game-title {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rnc-game-meta {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary, #94a8d4);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Rating row ──────────────────────────────────────────────────────────── */
+
+.rnc-rating-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* StarRating "md" size = 32px stars. Override gap slightly to feel compact. */
+.rnc-stars {
+  gap: 6px !important;
+}
+
+.rnc-rating-hint {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary, #94a8d4);
+  margin: 0;
+}
+
+/* ── iOS grouped container ───────────────────────────────────────────────── */
+
+.rnc-group {
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-lg, 14px);
+  overflow: hidden;
+}
+
+.rnc-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  min-height: 44px;
+}
+
+.rnc-group-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+  letter-spacing: 0;
+}
+
+.rnc-group-divider {
+  height: 0.5px;
+  background: var(--border-subtle, rgba(148, 168, 212, 0.12));
+  margin-left: 16px;
+}
+
+/* ── Hours stepper ───────────────────────────────────────────────────────── */
+
+.rnc-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 28px;
+  background: rgba(148, 168, 212, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rnc-stepper-btn {
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--accent, #3b82f6);
+  font-size: 18px;
+  font-weight: 400;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  line-height: 1;
+  transition: background 100ms ease;
+}
+
+.rnc-stepper-btn:active {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.rnc-stepper-value {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #f0f3fa);
+  min-width: 32px;
+  text-align: center;
+  user-select: none;
+}
+
+/* ── iOS switch ──────────────────────────────────────────────────────────── */
+
+.rnc-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.rnc-switch input[type='checkbox'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rnc-switch-track {
+  display: block;
+  width: 51px;
+  height: 31px;
+  background: rgba(148, 168, 212, 0.18);
+  border-radius: 999px;
+  position: relative;
+  transition: background 200ms ease;
+  flex-shrink: 0;
+}
+
+.rnc-switch input:checked + .rnc-switch-track {
+  background: var(--accent, #3b82f6);
+}
+
+.rnc-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rnc-switch input:checked + .rnc-switch-track .rnc-switch-thumb {
+  transform: translateX(20px);
+}
+
+.rnc-switch input:focus-visible + .rnc-switch-track {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+
+.rnc-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.rnc-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 12px;
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-lg, 14px);
+  color: var(--text-primary, #f0f3fa);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.rnc-textarea::placeholder {
+  color: var(--text-tertiary, #5c6b8a);
+}
+
+.rnc-textarea:focus {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.rnc-char-count {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 4px 0 0;
+  text-align: right;
+  align-self: flex-end;
+}
+
+/* ── Heart button ────────────────────────────────────────────────────────── */
+
+.rnc-heart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rnc-heart-btn--on {
+  transform: scale(1.1);
+}
+
+.rnc-heart-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── Tip line ────────────────────────────────────────────────────────────── */
+
+.rnc-tip {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.rnc-tip em {
+  font-style: italic;
+}
+
+.rnc-tip code {
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 10px;
+  background: rgba(148, 168, 212, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* ── Empty / error state ─────────────────────────────────────────────────── */
+
+.rnc-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+  gap: 16px;
+}
+
+.rnc-empty-icon {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.rnc-empty-heading {
+  font-family: var(--font-display, 'DM Sans', system-ui, sans-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #f0f3fa);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.rnc-empty-body {
+  font-size: 15px;
+  color: var(--text-secondary, #94a8d4);
+  margin: 0;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.rnc-empty-body--error {
+  color: var(--status-danger, #f87171);
+}
+
+.rnc-choose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  height: 48px;
+  border-radius: 24px;
+  border: none;
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 140ms ease, transform 100ms ease;
+}
+
+.rnc-choose-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Loading state ───────────────────────────────────────────────────────── */
+
+.rnc-page--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.rnc-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent, #3b82f6);
+  border-radius: 50%;
+  animation: rncSpin 700ms linear infinite;
+}
+
+@keyframes rncSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .rnc-spinner {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .rnc-switch-track,
+  .rnc-switch-thumb,
+  .rnc-heart-btn {
+    transition: none;
+  }
+
+  .rnc-heart-btn--on,
+  .rnc-heart-btn:active {
+    transform: none;
+  }
+
+  .rnc-switch input:checked + .rnc-switch-track .rnc-switch-thumb {
+    transition: none;
+  }
+}

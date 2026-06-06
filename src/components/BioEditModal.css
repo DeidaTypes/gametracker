@@ -1,0 +1,152 @@
+/* ============================================================
+   BioEditModal — centered modal for inline bio editing
+   ============================================================ */
+
+.bio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  /* var(--bg-base) is #0a0f1f; hard-coded to allow 60% alpha */
+  background: rgba(10, 15, 31, 0.60);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.bio-modal-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg, 14px);
+  max-width: 360px;
+  width: 100%;
+  padding: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+.bio-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.bio-modal-title {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.bio-modal-close {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 8px);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 140ms ease;
+  flex-shrink: 0;
+  /* Bleed the button to the card edge so padding stays 20px */
+  margin: -8px -8px -8px 0;
+}
+
+.bio-modal-close:hover {
+  color: var(--text-primary);
+}
+
+/* ── Textarea ────────────────────────────────────────────── */
+
+.bio-modal-textarea {
+  display: block;
+  width: 100%;
+  min-height: 100px;
+  max-height: 200px;
+  padding: 12px 14px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  color: var(--text-primary);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  /* 16px prevents iOS auto-zoom on focus */
+  font-size: 16px;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  overflow-y: auto;
+  transition: border-color 140ms ease;
+  /* Prevent iOS text size adjustment */
+  -webkit-text-size-adjust: 100%;
+}
+
+.bio-modal-textarea:focus {
+  border-color: var(--accent);
+}
+
+.bio-modal-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ── Character counter ───────────────────────────────────── */
+
+.bio-modal-counter {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+  margin: 6px 0 0;
+  line-height: 1;
+}
+
+.bio-modal-counter--over {
+  color: #e05454;
+  font-weight: 600;
+}
+
+/* ── Save button ─────────────────────────────────────────── */
+
+.bio-modal-save {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin-top: 16px;
+  background: var(--accent);
+  /* Dark text on cobalt fill */
+  color: #0a0f1f;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.bio-modal-save:not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
+.bio-modal-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bio-modal-overlay,
+  .bio-modal-card {
+    animation: none;
+    transition: none;
+  }
+}

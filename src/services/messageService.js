@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { loadBlockedIds, isMutuallyBlocked } from './blockService'
 
 /**
  * Direct Messages Service — Supabase-backed.
@@ -92,6 +93,14 @@ export async function getInbox() {
   const userId = await getCurrentUserId()
   if (!userId) return []
 
+  // Sprint 7 — hydrate the block cache so the post-fetch filter
+  // below has the latest blocked-set. Inbox rows come back joined
+  // on BOTH sender + recipient via embedded selects so a server-side
+  // not.in is awkward (we'd need to filter the joined column, not
+  // the row column). Post-filtering once on `partnerId` is cheaper
+  // and keeps the surrounding query identical.
+  await loadBlockedIds()
+
   // Pull every message the current user can see (RLS already scopes
   // this to "I'm sender or I'm recipient"). Joined twice on users so
   // we have both ends without a follow-up round-trip.
@@ -147,7 +156,14 @@ export async function getInbox() {
     }
   }
 
-  return Array.from(conversations.values()).sort(
+  // Sprint 7 — hide entire conversations whose partner is blocked
+  // (either direction). Done after the conversation rollup so the
+  // unread counts we keep are still accurate for the visible threads.
+  const all = Array.from(conversations.values()).filter(
+    (c) => !isMutuallyBlocked(c.partnerId)
+  )
+
+  return all.sort(
     (a, b) =>
       new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at)
   )
@@ -177,6 +193,13 @@ export async function getThread(otherUserId) {
   if (!otherUserId) return []
   const userId = await getCurrentUserId()
   if (!userId) return []
+
+  // Sprint 7 — refuse to load a thread with a blocked partner. The
+  // server-side filter is moot here because both participants are
+  // by definition allowed to see the thread (via RLS), so we do the
+  // policy-level block check client-side.
+  await loadBlockedIds()
+  if (isMutuallyBlocked(otherUserId)) return []
 
   // Match both directions of the pair. RLS enforces the participant
   // check too, but filtering server-side here keeps the wire payload
@@ -266,6 +289,16 @@ export async function sendMessage({ recipientId, body }) {
   if (!userId) throw new Error('You must be signed in to send a message.')
   if (userId === recipientId) {
     throw new Error("You can't message yourself.")
+  }
+
+  // Sprint 7 — refuse to send a message to a blocked user (either
+  // direction). The block table is hidden via RLS for the recipient
+  // so the canonical enforcement is on the read side, but failing
+  // fast here gives the sender a friendlier error than waiting for
+  // the message to be silently filtered out at receive time.
+  await loadBlockedIds()
+  if (isMutuallyBlocked(recipientId)) {
+    throw new Error("You can't message this user.")
   }
 
   const insert = {

@@ -1,9 +1,80 @@
 /* =====================================================
-   EDITORIAL BOOKSHELF DESIGN SYSTEM
-   Deep Navy + Warm Amber — v2
+   COBALT MODERN DESIGN SYSTEM
+   Deep Midnight + Cobalt Blue — v3
    ===================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+/* =====================================================
+   ACCESSIBILITY: COLOR-BLIND MODE
+   ---------------------------------------------------------------
+   The Settings page sets one of these data-cbm values on <body>
+   so app-wide CSS swaps the cobalt accent + status tokens for
+   palettes that stay distinguishable for the most common forms
+   of color blindness.
+   - default cobalt #3b82f6 stays for protan/tritan (already
+     fine for those deficiencies)
+   - deuteranopia gets a slightly bluer cobalt #2563eb
+   - status green collides with red for deutan/protan, so we
+     swap to teal-blue / orange for both
+   ===================================================== */
+body[data-cbm='deutan'] {
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-press: #1e40af;
+  --color-brand-primary: #2563eb;
+  --color-brand-secondary: #3b82f6;
+  --status-success: #06b6d4;
+  --status-danger: #f97316;
+  --color-status-playing: #06b6d4;
+  --color-status-want: #f97316;
+}
+
+body[data-cbm='protan'] {
+  --status-success: #06b6d4;
+  --status-danger: #f97316;
+  --color-status-playing: #06b6d4;
+  --color-status-want: #f97316;
+}
+
+body[data-cbm='tritan'] {
+  --status-success: #16a34a;
+  --status-danger: #dc2626;
+  --status-warning: #ec4899;
+}
+
+/* =====================================================
+   ACCESSIBILITY: REDUCE MOTION
+   ---------------------------------------------------------------
+   App-controlled override of the OS prefers-reduced-motion
+   setting. When the user toggles "Reduce motion" on in Settings
+   we collapse every CSS animation/transition AND every Framer
+   Motion duration via the same data-attribute branch in
+   useMotionPreference / useAutoAnimateMotion.
+   ===================================================== */
+body[data-reduce-motion='true'] *,
+body[data-reduce-motion='true'] *::before,
+body[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* =====================================================
+   ACCESSIBILITY: LARGER TEXT
+   ---------------------------------------------------------------
+   Scales the body / caption / title type tokens by 1.125x
+   app-wide. Display tokens are scaled less aggressively so
+   hero headers don't blow out on small screens.
+   ===================================================== */
+body[data-larger-text='true'] {
+  --font-size-body: 17px;       /* 15 * 1.13 */
+  --font-size-caption: 15px;    /* 13 * 1.15 */
+  --font-size-title: 20px;      /* 18 * 1.11 */
+  --font-size-label: 12px;      /* 11 * 1.09 */
+  --font-size-display-l: 32px;  /* 28 * 1.14 */
+  --font-size-display-xl: 40px; /* 36 * 1.11 */
+}
+
 
 :root {
   /* ---- Spacing Scale ---- */
@@ -20,8 +91,11 @@
   --container-padding-sm: 16px;
 
   /* ---- Font Families ---- */
-  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  /* Legacy aliases — kept so any token reference not yet migrated still resolves */
+  --font-serif: var(--font-display);
+  --font-sans: var(--font-body);
 
   /* =============================================
      TYPOGRAPHY SCALE — six intentional roles
@@ -93,18 +167,35 @@
   --letter-spacing-widest: var(--letter-spacing-label);
 
   /* =============================================
-     COLOR SYSTEM — Deep Navy + Warm Amber
+     COLOR SYSTEM — Deep Midnight + Cobalt Blue
      ============================================= */
 
-  /* Backgrounds — layered depth */
-  --color-bg-primary: #0C1322;      /* deepest navy */
-  --color-bg-secondary: #101929;    /* nav surfaces */
-  --color-bg-tertiary: #152035;     /* cards, panels */
-  --color-bg-elevated: #1C2A44;     /* highest elevation */
+  /* ---- Cobalt Modern shorthand tokens ---- */
+  --bg-base:      #0a0f1f;   /* deep midnight, full-page background */
+  --bg-surface:   #131a35;   /* cards, sheets, raised surfaces */
+  --bg-surface-2: #1a2240;   /* secondary surface (modals, popovers) */
+  --accent:       #3b82f6;   /* cobalt — primary interactive accent */
+  --accent-hover: #60a5fa;   /* lighter cobalt for hover */
+  --accent-press: #2563eb;   /* darker cobalt for press */
+  --text-primary:   #f0f3fa; /* primary text */
+  --text-secondary: #94a8d4; /* muted text */
+  --text-tertiary:  #5c6b8a; /* hint text / placeholders */
+  --border-subtle: rgba(148, 168, 212, 0.12);
+  --border-strong: rgba(148, 168, 212, 0.24);
+  /* Status colors — distinct from brand accent */
+  --status-success: #34d399;
+  --status-warning: #fbbf24;
+  --status-danger:  #f87171;
 
-  /* Ambient app gradient — base navy ±4% lightness */
-  --color-bg-gradient-top: #111B31;     /* base +4% lightness */
-  --color-bg-gradient-bottom: #070B13;  /* base -4% lightness */
+  /* Backgrounds — layered depth */
+  --color-bg-primary: #0a0f1f;      /* deep midnight */
+  --color-bg-secondary: #131a35;    /* nav surfaces */
+  --color-bg-tertiary: #131a35;     /* cards, panels */
+  --color-bg-elevated: #1a2240;     /* highest elevation */
+
+  /* Ambient app gradient — base midnight ±3% lightness */
+  --color-bg-gradient-top: #0e1428;     /* base +3% lightness */
+  --color-bg-gradient-bottom: #060a14;  /* base -3% lightness */
   --color-bg-gradient: linear-gradient(
     180deg,
     var(--color-bg-gradient-top) 0%,
@@ -112,22 +203,24 @@
     var(--color-bg-gradient-bottom) 100%
   );
 
-  /* Text — warm-cream spectrum */
-  --color-text-primary: #EDE8DF;    /* warm cream white */
-  --color-text-secondary: #A2AFBF;  /* muted blue-gray */
-  --color-text-tertiary: #64788F;   /* dim */
-  --color-text-muted: #3A4E63;      /* very dim */
+  /* Text — cool-white spectrum */
+  --color-text-primary: #f0f3fa;    /* near-white */
+  --color-text-secondary: #94a8d4;  /* muted cobalt-gray */
+  --color-text-tertiary: #5c6b8a;   /* dim */
+  --color-text-muted: #3a4a66;      /* very dim */
 
-  /* Brand — warm amber/gold (replaces electric blue) */
-  --color-brand-primary: #C8965A;
-  --color-brand-secondary: #E8C49A;
-  --color-brand-primary-dark: #A17236;   /* amber -15% lightness, for vertical gradients */
-  --color-brand-gradient: linear-gradient(135deg, #C8965A 0%, #E8C49A 100%);
+  /* Brand — cobalt blue */
+  --color-brand-primary: #3b82f6;
+  --color-brand-secondary: #60a5fa;
+  --color-brand-primary-dark: #2563eb;   /* cobalt -15% lightness, for vertical gradients */
+  --color-brand-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   --color-brand-vertical-gradient: linear-gradient(
     180deg,
     var(--color-brand-primary) 0%,
     var(--color-brand-primary-dark) 100%
   );
+  /* Legacy alias — keeps RatingsHistogram working without JSX edit */
+  --accent-copper: var(--color-brand-primary);
 
   /* Accent palette */
   --color-accent-sage: #7BA68C;
@@ -140,18 +233,18 @@
   --color-accent-orange: #C4634E;
 
   /* Surface */
-  --color-surface: rgba(255, 248, 238, 0.05);
-  --color-surface-hover: rgba(255, 248, 238, 0.09);
-  --color-surface-active: rgba(255, 248, 238, 0.13);
+  --color-surface: rgba(148, 168, 212, 0.05);
+  --color-surface-hover: rgba(148, 168, 212, 0.09);
+  --color-surface-active: rgba(148, 168, 212, 0.13);
 
-  /* Borders — warm gold tint */
-  --color-border: rgba(200, 150, 90, 0.14);
-  --color-border-hover: rgba(200, 150, 90, 0.30);
-  --color-border-focus: rgba(200, 150, 90, 0.60);
+  /* Borders — cobalt tint */
+  --color-border: rgba(148, 168, 212, 0.12);
+  --color-border-hover: rgba(148, 168, 212, 0.30);
+  --color-border-focus: rgba(59, 130, 246, 0.60);
 
   /* Glass */
-  --glass-bg: rgba(12, 19, 34, 0.85);
-  --glass-border: rgba(200, 150, 90, 0.12);
+  --glass-bg: rgba(10, 15, 31, 0.85);
+  --glass-border: rgba(148, 168, 212, 0.12);
 
   /* ---- Border Radius ---- */
   --radius-xs: 3px;
@@ -167,7 +260,7 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7), 0 6px 18px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 24px rgba(200, 150, 90, 0.18), 0 0 48px rgba(200, 150, 90, 0.08);
+  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.18), 0 0 48px rgba(59, 130, 246, 0.08);
   --shadow-cover: 4px 8px 24px rgba(0, 0, 0, 0.65);
 
   /* ---- Surface Elevations ----
@@ -204,14 +297,14 @@
   --cover-ratio: 2 / 3;
 
   /* ---- Skeleton ---- */
-  --skeleton-base: rgba(255, 248, 238, 0.05);
-  --skeleton-shimmer: rgba(255, 248, 238, 0.10);
+  --skeleton-base: rgba(148, 168, 212, 0.05);
+  --skeleton-shimmer: rgba(148, 168, 212, 0.10);
 
   /* ---- Status Colors ---- */
   --color-status-playing: #7BA68C;
   --color-status-played: #4A7FA5;
   --color-status-want: #C4634E;
-  --color-status-review: #C8965A;
+  --color-status-review: #3b82f6;
 
   /* ---- Sprint 5: Review Card & Cover Header ---- */
   --review-card-radius: 16px;
@@ -240,7 +333,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   /* Ambient vertical gradient: subtle navy lift at the top, deeper navy at the
      bottom. Stays anchored to the viewport so every page reads as one
      continuous depth. */
@@ -256,12 +349,12 @@ body {
   overflow-x: hidden;
 }
 
-/* Soften the gradient on small screens — the ±4% spread can read as a hard band
-   on narrow viewports. Pull both ends in toward the base navy. */
+/* Soften the gradient on small screens — the ±3% spread can read as a hard band
+   on narrow viewports. Pull both ends in toward the base midnight. */
 @media (max-width: 480px) {
   :root {
-    --color-bg-gradient-top: #0F1729;     /* base +2% */
-    --color-bg-gradient-bottom: #090F1A;  /* base -2% */
+    --color-bg-gradient-top: #0c1224;     /* base +2% */
+    --color-bg-gradient-bottom: #07090f;  /* base -2% */
   }
 }
 
@@ -272,9 +365,9 @@ body {
 
 /* Screen headers — "Currently Playing", "Your Library", "Edit Profile" */
 .text-display-xl {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -282,9 +375,9 @@ body {
 
 /* Section headers within a screen — "Trending this week" */
 .text-display-l {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-l);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
@@ -292,7 +385,7 @@ body {
 
 /* Game titles in lists, list-item names */
 .text-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -302,7 +395,7 @@ body {
 
 /* Descriptions, review text, paragraph copy */
 .text-body {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
@@ -312,7 +405,7 @@ body {
 
 /* Genre tags, timestamps, "X games" counts */
 .text-caption {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
@@ -322,7 +415,7 @@ body {
 
 /* Section labels — "TRACKERS", "DETAILS", "ABOUT" */
 .text-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);
@@ -333,16 +426,16 @@ body {
 
 /* Legacy class aliases — older JSX still references these names. */
 .text-display { /* alias of .text-display-xl */
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
 }
 
 .text-subtitle { /* alias of .text-title */
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
@@ -351,12 +444,24 @@ body {
 }
 
 .text-meta { /* alias of .text-caption */
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
   letter-spacing: var(--letter-spacing-body);
   color: var(--color-text-tertiary);
+}
+
+/* Global display-header baseline — applies to semantic headings and
+   common title classes used throughout the app. Component CSS may
+   override font-size and line-height; these three properties are
+   non-negotiable for DM Sans display crispness. */
+h1, h2,
+.page-title,
+.section-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
 }
 
 /* =============================================
@@ -412,6 +517,26 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
+    animation: none;
+  }
+}
+
+/* =============================================
+   CONTENT FADE-IN
+   Apply to any wrapper that replaces a skeleton
+   so content fades in over 200 ms.
+   ============================================= */
+@keyframes content-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.content-fade-in {
+  animation: content-fade-in 200ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-fade-in {
     animation: none;
   }
 }
@@ -534,22 +659,22 @@ body {
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-xl);
   background: var(--color-brand-gradient);
-  color: #0C1322;
+  color: #ffffff;
   border: none;
   border-radius: var(--radius-full);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   cursor: pointer;
   transition: all var(--transition-smooth);
   text-decoration: none;
-  box-shadow: 0 4px 16px rgba(200, 150, 90, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
   letter-spacing: 0.2px;
 }
 
 .cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(200, 150, 90, 0.45);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.45);
 }
 
 .cta-button:active {

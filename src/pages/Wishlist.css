@@ -5,6 +5,7 @@
 .wishlist-page {
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: var(--bottom-nav-safe-area);
   background: transparent;
 }
@@ -12,13 +13,14 @@
 /* ---- Header ---- */
 .wishlist-header {
   padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg);
+  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
   border-bottom: 1px solid var(--color-border);
 }
 
 .wishlist-header h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);

@@ -1,8 +1,11 @@
 /* ============================================================
    BadgesRow — Profile Home tab badge strip.
-   Section header (title + chevron) + horizontal list of 64 px
-   circular tier-bordered icons. Mirrors the
-   `.profile-home__section-header` rhythm used by Recent Activity.
+   Section header (title + chevron) + horizontal snap-scroll list of
+   64 px circular icons.
+
+   Visual rules (Sprint 6 polish):
+     Earned     → cobalt ring (var(--accent)) + full opacity
+     In-progress → subtle gray ring + 40 % opacity
    ============================================================ */
 
 .badges-row-section {
@@ -19,10 +22,10 @@
 }
 
 .badges-row-section__title {
-  font-family: var(--font-serif);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-display-l);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   margin: 0;
@@ -47,15 +50,18 @@
   color: var(--color-text-primary);
 }
 
-/* Horizontal strip of badge icons. Allows overflow-x scroll on
-   ultra-narrow viewports so the row never clips below 5 items. */
+/* Horizontal strip — momentum scroll + snap so a badge never rests
+   half-visible. Overflow is hidden on y to prevent stray scrollbar. */
 .badges-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--spacing-md);
-  padding: 4px 0;
+  padding: 4px 0 8px;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -64,41 +70,53 @@
   display: none;
 }
 
+/* Base badge button */
 .badges-row__item {
   flex-shrink: 0;
+  scroll-snap-align: start;
   width: 64px;
   height: 64px;
   border-radius: var(--radius-full);
-  border: 3px solid var(--tier-bronze);
-  background: var(--color-bg-tertiary);
+  border: 3px solid transparent;
+  background: var(--bg-surface);
   color: var(--color-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
   box-shadow: var(--shadow-sm);
 }
 
 .badges-row__item:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-/* Per-tier glow halo so an "Earned Gold" badge reads as more
-   important than a "Bronze in-progress" one without needing copy. */
-.badges-row__item--bronze {
-  box-shadow: 0 0 0 4px rgba(205, 127, 50, 0.10), var(--shadow-sm);
+/* ── Earned: cobalt ring + full opacity ──────────────────── */
+.badges-row__item--earned {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.25),
+    var(--shadow-sm);
+  opacity: 1;
 }
-.badges-row__item--silver {
-  box-shadow: 0 0 0 4px rgba(192, 192, 192, 0.12), var(--shadow-sm);
+
+.badges-row__item--earned:hover {
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.20),
+    var(--shadow-md);
 }
-.badges-row__item--gold {
-  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.14), var(--shadow-sm);
+
+/* ── Unearned (in-progress): gray ring + 40 % opacity ────── */
+.badges-row__item--unearned {
+  border-color: var(--border-strong);
+  opacity: 0.4;
 }
-.badges-row__item--platinum {
-  box-shadow: 0 0 0 4px rgba(229, 228, 226, 0.18), var(--shadow-sm);
+
+.badges-row__item--unearned:hover {
+  opacity: 0.6;
 }
 
 @media (prefers-reduced-motion: reduce) {

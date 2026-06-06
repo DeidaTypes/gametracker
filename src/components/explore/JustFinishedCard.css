@@ -11,7 +11,7 @@
   cursor: pointer;
   text-align: left;
   scroll-snap-align: start;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   color: inherit;
   transition: transform 200ms ease, filter 200ms ease;
   -webkit-tap-highlight-color: transparent;
@@ -19,12 +19,12 @@
 
 @media (hover: hover) {
   .just-finished-card:hover {
-    transform: scale(1.02);
+    transform: translateY(-2px) scale(1.02);
     filter: brightness(1.04);
   }
 
   .just-finished-card:hover .just-finished-card__cover {
-    box-shadow: var(--shadow-cover), 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: var(--shadow-cover), 0 4px 16px rgba(59, 130, 246, 0.15);
   }
 }
 
@@ -56,7 +56,7 @@
 }
 
 .just-finished-card__title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
@@ -70,7 +70,7 @@
 }
 
 .just-finished-card__user {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);

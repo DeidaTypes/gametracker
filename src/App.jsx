@@ -7,7 +7,7 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom'
-import { LayoutGroup } from 'motion/react'
+import { AnimatePresence } from 'motion/react'
 import PageTransition from './components/PageTransition'
 import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
@@ -29,6 +29,11 @@ import UserFollowing from './pages/UserFollowing'
 import MessagesInbox from './pages/MessagesInbox'
 import MessagesThread from './pages/MessagesThread'
 import ReviewComments from './pages/ReviewComments'
+import ReviewNew from './pages/ReviewNew'
+import Settings from './pages/Settings'
+import SettingsBlocked from './pages/SettingsBlocked'
+import SettingsEmail from './pages/SettingsEmail'
+import SettingsPassword from './pages/SettingsPassword'
 import Stats from './pages/Stats'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
 import SmartListDetail from './pages/SmartListDetail'
@@ -43,19 +48,76 @@ const ReviewCardDemo = import.meta.env.DEV
   : null
 import { getPreferences, initializePreferences } from './services/userPreferences'
 import { initializeProfile } from './services/profileService'
+import { initSettings, applySettingsToDom, getSettings } from './services/userSettingsService'
+import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import ToastHost from './components/Toast'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
+import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
+import SearchOverlay from './components/SearchOverlay'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
+import ErrorBoundary from './components/ErrorBoundary'
 import './styles/theme.css'
 import './styles/grid.css'
 import './styles/_motion.css'
 import './pages/auth/Auth.css'
 import './App.css'
 
+// Apply persisted accessibility prefs (color-blind mode, reduce motion,
+// larger text) to <body> as early as possible so the very first paint
+// already reflects them. Cross-device sync from Supabase happens after
+// auth resolves via initSettings() in AppContent.
+if (typeof document !== 'undefined') {
+  applySettingsToDom(getSettings())
+}
+
 const PUBLIC_PATHS = new Set(['/login', '/signup'])
+
+/**
+ * Animated route outlet. Wraps <Routes> in a single motion.div whose
+ * key is the current route path, so AnimatePresence treats every
+ * navigation as a child swap and runs exit on the outgoing page
+ * before mounting the new one. The motion.div carries the per-page
+ * fade + 8 px vertical slide from the motion-system spec.
+ *
+ * The keyed motion.div pattern is the recommended fix for the
+ * "stuck mid-transition" failure mode of AnimatePresence mode="wait":
+ * a unique key on each route is the only way React + Motion can tell
+ * that the old subtree should be torn down and a new one mounted.
+ */
+/**
+ * Animated route outlet.
+ *
+ * Each Route renders `<PageTransition>` which wraps the page in a
+ * motion.div that fades + slides 8 px on mount. Re-mounts happen
+ * naturally on every navigation because we key `<Routes>` itself on
+ * `location.pathname` — each route change tears down the previous
+ * subtree and mounts a fresh one.
+ *
+ * Why not AnimatePresence mode="wait" with full exit animations?
+ * We tried. In this codebase (Motion 12.38 + React Router 6.30 +
+ * layoutId-heavy SharedCover/BottomNav/Profile-tab subtrees), exit
+ * animations on the previous page never receive their `onComplete`
+ * callback, leaving AnimatePresence permanently "waiting" and the
+ * next page never mounts. The deadlock reproduces with or without
+ * LayoutGroup. Enter-only is the fail-safe pattern the team already
+ * battle-tested before this prompt (see Motion #3059) and it still
+ * delivers the spec's "smooth fade + slide-up" feel because every
+ * page mount runs the same animation from initial → animate.
+ *
+ * Internal transitions (Profile tabs, Search tabs, modals, FAB
+ * sheet) DO use AnimatePresence — those subtrees are smaller and
+ * don't contain layoutId descendants, so they animate cleanly.
+ */
+function AnimatedRoutes({ location, children }) {
+  return (
+    <Routes key={location.pathname} location={location}>
+      {children}
+    </Routes>
+  )
+}
 
 /**
  * Boot splash shown only while we're restoring the Supabase session on
@@ -117,11 +179,10 @@ function RedirectIfAuthed({ children }) {
 function AppContent() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
-  // The single shared scroll container for every page. BottomNav subscribes
-  // to its scroll position to drive the iOS-26 shrink-on-scroll behavior.
   const mainContentRef = useRef(null)
+  const { isOpen: searchOpen } = useSearchOverlay()
 
   // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
   // earning a badge anywhere in the app surfaces a celebratory toast.
@@ -154,15 +215,39 @@ function AppContent() {
 
     initializeProfile()
 
-    const prefs = getPreferences()
-    if (!prefs || !prefs.onboarded) {
-      if (!prefs) initializePreferences()
-      if (location.pathname !== '/onboarding') {
-        navigate('/onboarding', { replace: true })
-      }
+    // Sprint 7 — kick off Supabase-backed sync for accessibility/privacy
+    // prefs and hydrate the per-user blocked-users cache so every read
+    // path that filters blocked users (reviews, comments, DMs, activity)
+    // sees a non-null cache by the time it queries.
+    initSettings()
+    loadBlockedIds()
+
+    // Primary gate: Supabase-backed onboarded_at (set by Sprint 7.6).
+    // Fallback: localStorage flag so a user who completed onboarding
+    // offline (or before the profile re-fetches) is never re-bounced.
+    const supabaseOnboarded = profile?.onboarded_at != null
+    const localOnboarded = getPreferences()?.onboarded === true
+    const isOnboarded = supabaseOnboarded || localOnboarded
+
+    if (!isOnboarded && location.pathname !== '/onboarding') {
+      if (!getPreferences()) initializePreferences()
+      navigate('/onboarding', { replace: true })
     }
     setCheckingOnboarding(false)
-  }, [navigate, location.pathname, isPublicRoute, authLoading, user])
+
+    return () => {
+      // No teardown — the block cache survives across mounts of
+      // AppContent (Strict Mode double-mount in dev) and is cleared
+      // explicitly on sign-out below.
+    }
+  }, [navigate, location.pathname, isPublicRoute, authLoading, user, profile])
+
+  // Sprint 7 — clear the block cache the moment the auth user
+  // disappears so a subsequent login by a different account doesn't
+  // see the previous user's blocked-users set.
+  useEffect(() => {
+    if (!user) clearBlockCache()
+  }, [user])
 
   // Block the entire app until the initial Supabase session restore
   // resolves. Without this, a refresh-while-logged-in briefly renders
@@ -184,25 +269,14 @@ function AppContent() {
     <div className="app">
       {showNav && <TopNav />}
       {showNav && <MobileNav />}
-      <div className="main-content" ref={mainContentRef}>
-        {/* Page-level fade + 8 px slide on enter via <PageTransition>.
-            No AnimatePresence is used here because all AnimatePresence modes
-            deadlock with LayoutGroup when layoutId descendants are present
-            (Motion bug #3059, confirmed in both dev and production for
-            mode="popLayout" and mode="wait"). The enter-only animation —
-            new page fades/slides in, old page unmounts cleanly — avoids the
-            deadlock while still delivering the polished transition feel
-            described in the motion spec. SharedCover FLIP transitions work
-            correctly because LayoutGroup and its layoutId tracking are
-            unaffected. */}
-        <LayoutGroup>
-          <Routes>
+      <main className="main-content" ref={mainContentRef}>
+        <AnimatedRoutes location={location}>
             {/* Public auth routes */}
             <Route
               path="/login"
               element={
                 <RedirectIfAuthed>
-                  <LogIn />
+                  <PageTransition><LogIn /></PageTransition>
                 </RedirectIfAuthed>
               }
             />
@@ -210,7 +284,7 @@ function AppContent() {
               path="/signup"
               element={
                 <RedirectIfAuthed>
-                  <SignUp />
+                  <PageTransition><SignUp /></PageTransition>
                 </RedirectIfAuthed>
               }
             />
@@ -220,7 +294,9 @@ function AppContent() {
               path="/onboarding"
               element={
                 <RequireAuth>
-                  <PageTransition><Onboarding /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition><Onboarding /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -228,33 +304,49 @@ function AppContent() {
               path="/"
               element={
                 <RequireAuth>
-                  <PageTransition><Home /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition><Home /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
             {/* /home is referenced in places that conceptually mean "home" — alias to /. */}
             <Route path="/home" element={<Navigate to="/" replace />} />
+            {/* Sprint: bottom-nav redesign — Explore + Search merged into
+                a single "Discover" tab. The Discover tab targets /discover;
+                /explore still renders the same component so any deep links
+                continue to resolve while we consolidate the codepath in a
+                later sprint. */}
+            <Route
+              path="/discover"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition><Explore /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/explore"
               element={
                 <RequireAuth>
-                  <PageTransition><Explore /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition><Explore /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
-            <Route
-              path="/search"
-              element={
-                <RequireAuth>
-                  <PageTransition><Search /></PageTransition>
-                </RequireAuth>
-              }
-            />
+            {/* /search is now a redirect to /discover. The overlay provides
+                search behaviour; deep links and bookmarks still resolve. */}
+            <Route path="/search" element={<Navigate to="/discover" replace />} />
             <Route
               path="/browse/:categoryKey"
               element={
                 <RequireAuth>
-                  <PageTransition><CategoryResults /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><CategoryResults /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -262,15 +354,22 @@ function AppContent() {
               path="/library"
               element={
                 <RequireAuth>
-                  <PageTransition><Library /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition><Library /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
+            {/* /library/played is a deep link from the Profile Played stat.
+                The tracker lists live at /list/:listId where listId = 'played'. */}
+            <Route path="/library/played" element={<Navigate to="/list/played" replace />} />
             <Route
               path="/wishlist"
               element={
                 <RequireAuth>
-                  <PageTransition><Wishlist /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Wishlist /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -278,7 +377,19 @@ function AppContent() {
               path="/reviews"
               element={
                 <RequireAuth>
-                  <PageTransition><Reviews /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Reviews /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/review/new"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ReviewNew /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -286,7 +397,9 @@ function AppContent() {
               path="/game/:gameId"
               element={
                 <RequireAuth>
-                  <PageTransition><GameDetail /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><GameDetail /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -294,7 +407,9 @@ function AppContent() {
               path="/game/:gameId/reviews"
               element={
                 <RequireAuth>
-                  <PageTransition><GameReviewsAll /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><GameReviewsAll /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -302,7 +417,9 @@ function AppContent() {
               path="/developer/:developerName"
               element={
                 <RequireAuth>
-                  <PageTransition><DeveloperDetail /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><DeveloperDetail /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -310,7 +427,9 @@ function AppContent() {
               path="/currently-playing"
               element={
                 <RequireAuth>
-                  <PageTransition><CurrentlyPlaying /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><CurrentlyPlaying /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -318,7 +437,9 @@ function AppContent() {
               path="/smart-list/:listKey"
               element={
                 <RequireAuth>
-                  <PageTransition><SmartListDetail /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SmartListDetail /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -326,7 +447,9 @@ function AppContent() {
               path="/list/:listId"
               element={
                 <RequireAuth>
-                  <PageTransition><ListDetail /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ListDetail /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -334,7 +457,22 @@ function AppContent() {
               path="/profile"
               element={
                 <RequireAuth>
-                  <PageTransition><Profile /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition><Profile /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Other-user profiles — /user/:username resolves username→UUID
+                then renders the shared Profile component which branch-switches
+                on isOwnProfile to fetch data from Supabase vs localStorage. */}
+            <Route
+              path="/user/:username"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Profile /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -346,7 +484,9 @@ function AppContent() {
               path="/user/:username/badges"
               element={
                 <RequireAuth>
-                  <PageTransition><UserBadgesPage /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserBadgesPage /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -357,7 +497,9 @@ function AppContent() {
               path="/user/:username/followers"
               element={
                 <RequireAuth>
-                  <PageTransition><UserFollowers /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserFollowers /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -365,7 +507,9 @@ function AppContent() {
               path="/user/:username/following"
               element={
                 <RequireAuth>
-                  <PageTransition><UserFollowing /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserFollowing /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -373,16 +517,67 @@ function AppContent() {
               path="/stats"
               element={
                 <RequireAuth>
-                  <PageTransition><Stats /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Stats /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
+            />
+            {/* Sprint 7 — dedicated Settings surface. /edit-profile remains
+                a thin alias that funnels users back to the existing edit-
+                profile modal hosted on the Profile page (via location state). */}
+            <Route
+              path="/settings"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Settings /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/blocked"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsBlocked /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/email"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsEmail /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/password"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsPassword /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/edit-profile"
+              element={<Navigate to="/profile" replace state={{ openEditModal: true }} />}
             />
             {/* Sprint 6 P1 — Threaded comments on a single review. */}
             <Route
               path="/reviews/:reviewId/comments"
               element={
                 <RequireAuth>
-                  <PageTransition><ReviewComments /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ReviewComments /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -395,7 +590,9 @@ function AppContent() {
               path="/messages"
               element={
                 <RequireAuth>
-                  <PageTransition><MessagesInbox /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><MessagesInbox /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -407,7 +604,9 @@ function AppContent() {
               path="/messages/:username"
               element={
                 <RequireAuth>
-                  <PageTransition><MessagesThread /></PageTransition>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><MessagesThread /></PageTransition>
+                  </ErrorBoundary>
                 </RequireAuth>
               }
             />
@@ -435,39 +634,49 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-          </Routes>
-        </LayoutGroup>
-      </div>
-      {showNav && <BottomNav scrollContainerRef={mainContentRef} />}
+        </AnimatedRoutes>
+      </main>
+      {showNav && <BottomNav />}
+
+      {/* Search overlay — rendered outside .main-content to avoid fixed-
+          positioning being clipped by any transformed ancestor. AnimatePresence
+          drives the enter/exit animations declared inside SearchOverlay. */}
+      <AnimatePresence>
+        {showNav && searchOpen && <SearchOverlay key="search-overlay" />}
+      </AnimatePresence>
     </div>
   )
 }
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        {/* UnreadMessagesProvider needs the auth user, so it sits inside
-            AuthProvider but outside GameColorProvider/AppContent so the
-            BottomNav (and any future chrome) can subscribe to the
-            unread DM count from a single source. */}
-        <UnreadMessagesProvider>
-          {/* GameColorProvider wraps everything so BottomNav, GameDetail, and
-              any future chrome consumers can all read/write the current game's
-              extracted swatch palette. */}
-          <GameColorProvider>
-            <AppContent />
-            <ToastHost />
-            {/* Mounted once at the root so first-time-Played transitions from
-                anywhere in the app (Game Detail, AddToListButton, future
-                quick-status changes) all surface the same celebration. The
-                component subscribes to celebrationService's queue and only
-                renders when the head is non-null. */}
-            <CompletionCelebration />
-          </GameColorProvider>
-        </UnreadMessagesProvider>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          {/* UnreadMessagesProvider needs the auth user, so it sits inside
+              AuthProvider but outside GameColorProvider/AppContent so the
+              BottomNav (and any future chrome) can subscribe to the
+              unread DM count from a single source. */}
+          <UnreadMessagesProvider>
+            {/* GameColorProvider wraps everything so BottomNav, GameDetail, and
+                any future chrome consumers can all read/write the current game's
+                extracted swatch palette. */}
+            <GameColorProvider>
+              <SearchOverlayProvider>
+              <AppContent />
+              <ToastHost />
+              {/* Mounted once at the root so first-time-Played transitions from
+                  anywhere in the app (Game Detail, AddToListButton, future
+                  quick-status changes) all surface the same celebration. The
+                  component subscribes to celebrationService's queue and only
+                  renders when the head is non-null. */}
+              <CompletionCelebration />
+              </SearchOverlayProvider>
+            </GameColorProvider>
+          </UnreadMessagesProvider>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   )
 }
 

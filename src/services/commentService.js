@@ -1,4 +1,6 @@
 import { supabase } from './supabase'
+import { applyBlockFilter } from './blockService'
+import { getFlaggedContentIds } from './reportService'
 
 /**
  * Comment Service — Supabase-backed.
@@ -85,16 +87,25 @@ async function getCurrentUserId() {
  */
 export async function getCommentsForReview(reviewId) {
   if (!reviewId) return []
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*, users!comments_user_id_fkey(username, display_name, avatar_url)')
-    .eq('review_id', reviewId)
-    .order('created_at', { ascending: true })
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('comment'),
+    (async () => {
+      let query = supabase
+        .from('comments')
+        .select('*, users!comments_user_id_fkey(username, display_name, avatar_url)')
+        .eq('review_id', reviewId)
+        .order('created_at', { ascending: true })
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
   if (error) {
     console.error('[comments] getCommentsForReview failed:', error.message)
     return []
   }
-  return data || []
+  const rows = data || []
+  return flaggedIds.size > 0 ? rows.filter((c) => !flaggedIds.has(c.id)) : rows
 }
 
 /**
@@ -103,10 +114,12 @@ export async function getCommentsForReview(reviewId) {
  */
 export async function getCommentCount(reviewId) {
   if (!reviewId) return 0
-  const { count, error } = await supabase
+  let query = supabase
     .from('comments')
     .select('*', { count: 'exact', head: true })
     .eq('review_id', reviewId)
+  query = await applyBlockFilter(query, 'user_id')
+  const { count, error } = await query
   if (error) {
     console.error('[comments] getCommentCount failed:', error.message)
     return 0
@@ -133,10 +146,12 @@ export async function getCommentCountsForReviews(reviewIds) {
   if (!reviewIds || reviewIds.length === 0) return counts
   for (const id of reviewIds) counts.set(id, 0)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('comments')
     .select('review_id')
     .in('review_id', reviewIds)
+  query = await applyBlockFilter(query, 'user_id')
+  const { data, error } = await query
 
   if (error) {
     console.error(

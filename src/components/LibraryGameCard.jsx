@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './LibraryGameCard.css'
 
 function LibraryGameCard({ game, onDelete, listId, index = 0 }) {
@@ -45,7 +46,7 @@ function LibraryGameCard({ game, onDelete, listId, index = 0 }) {
           alt={game.title}
           className="library-game-card-image"
           onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/300x400/1a1a1a/ffffff?text=' + encodeURIComponent(game.title)
+            e.target.src = COVER_FALLBACK
           }}
         />
         <div className="library-game-card-gradient-overlay"></div>

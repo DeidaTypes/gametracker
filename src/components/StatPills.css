@@ -28,7 +28,7 @@
 }
 
 .stat-pill-value {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-display-l);
   font-weight: var(--font-weight-bold);
   line-height: 1;
@@ -37,7 +37,7 @@
 }
 
 .stat-pill-label {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-label);

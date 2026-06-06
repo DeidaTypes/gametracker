@@ -7,6 +7,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   /* Reserve room for the fixed composer + bottom nav so the last
      bubble isn't hidden under it. */
   padding-bottom: calc(120px + var(--bottom-nav-safe-area));
@@ -24,6 +25,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
@@ -99,7 +101,7 @@
 }
 
 .dm-thread__partner-name {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 16px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -163,7 +165,7 @@
 
 .dm-thread__empty-h2 {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -171,7 +173,7 @@
 
 .dm-thread__empty-sub {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   color: var(--color-text-tertiary);
   max-width: 280px;
@@ -232,7 +234,7 @@
 
 .dm-bubble__body {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   white-space: pre-wrap;
@@ -240,7 +242,7 @@
 }
 
 .dm-bubble__time {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: var(--font-weight-medium);
   letter-spacing: 0.02em;
@@ -285,7 +287,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: 22px;
   resize: none;
@@ -312,8 +314,8 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--color-brand-primary);
-  color: #0C1322;
-  font-family: var(--font-sans);
+  color: #ffffff;
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
@@ -329,11 +331,71 @@
   cursor: not-allowed;
 }
 
+/* ── Bubble context menu (long-press / right-click on incoming) ──── */
+
+.dm-bubble-row__inner {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.dm-bubble-row--in .dm-bubble-row__inner {
+  align-items: flex-start;
+}
+
+.dm-bubble-row--out .dm-bubble-row__inner {
+  align-items: flex-end;
+}
+
+.dm-bubble__context-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-bubble__context-menu--in {
+  right: auto;
+  left: 0;
+}
+
+.dm-bubble__context-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.dm-bubble__context-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dm-thread__back,
   .dm-thread__partner,
   .dm-thread__input,
-  .dm-thread__send {
+  .dm-thread__send,
+  .dm-bubble__context-btn {
     transition: none;
   }
 }

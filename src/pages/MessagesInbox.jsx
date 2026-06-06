@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuSearch, LuX } from 'react-icons/lu'
-import { Edit3 } from 'lucide-react'
+import { Edit3, MessageCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getInbox } from '../services/messageService'
 import { searchUsers } from '../services/userService'
 import { useDebounce } from '../hooks/useDebounce'
 import { generateDefaultAvatar } from '../services/profileService'
 import { supabase } from '../services/supabase'
+import EmptyState from '../components/EmptyState'
 import './MessagesInbox.css'
 
 /* ============================================================
@@ -188,10 +189,11 @@ function MessagesInbox() {
           </div>
         ) : conversations.length === 0 ? (
           <div className="dm-inbox__empty">
-            <p className="dm-inbox__empty-h2">No messages yet</p>
-            <p className="dm-inbox__empty-sub">
-              Tap the compose icon to start a conversation.
-            </p>
+            <EmptyState
+              icon={MessageCircle}
+              title="No messages yet."
+              body="Tap someone's profile to send them a message."
+            />
           </div>
         ) : (
           <ul className="dm-inbox__list" role="list">

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { applyBlockFilter } from './blockService'
 
 /**
  * Follow Service — Supabase-backed.
@@ -220,7 +221,7 @@ export async function getFollowing(userId, limit = 20, offset = 0) {
   if (!userId) return []
   const from = Math.max(0, offset)
   const to = from + Math.max(1, limit) - 1
-  const { data, error } = await supabase
+  let query = supabase
     .from('follows')
     .select(
       'followee_id, created_at, followee:users!followee_id(id, username, display_name, avatar_url)'
@@ -228,6 +229,11 @@ export async function getFollowing(userId, limit = 20, offset = 0) {
     .eq('follower_id', userId)
     .order('created_at', { ascending: false })
     .range(from, to)
+  // Filter out follow rows whose followee is in the current user's
+  // blocked-set (either direction). The follower side is already the
+  // viewed-profile owner, so the row column we filter is the followee.
+  query = await applyBlockFilter(query, 'followee_id')
+  const { data, error } = await query
   if (error) {
     console.error('[follows] getFollowing failed:', error.message)
     return []
@@ -252,7 +258,7 @@ export async function getFollowers(userId, limit = 20, offset = 0) {
   if (!userId) return []
   const from = Math.max(0, offset)
   const to = from + Math.max(1, limit) - 1
-  const { data, error } = await supabase
+  let query = supabase
     .from('follows')
     .select(
       'follower_id, created_at, follower:users!follower_id(id, username, display_name, avatar_url)'
@@ -260,6 +266,10 @@ export async function getFollowers(userId, limit = 20, offset = 0) {
     .eq('followee_id', userId)
     .order('created_at', { ascending: false })
     .range(from, to)
+  // Filter out follow rows whose follower is in the current user's
+  // blocked-set (either direction).
+  query = await applyBlockFilter(query, 'follower_id')
+  const { data, error } = await query
   if (error) {
     console.error('[follows] getFollowers failed:', error.message)
     return []

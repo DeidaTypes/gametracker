@@ -248,9 +248,8 @@ function GamesTabResults({
       <div className="sp-empty">
         <EmptyState
           variant="search"
-          copy={`No results for "${query.trim()}" — try a different spelling or browse by genre`}
-          cta="Browse genres"
-          onCta={onClearQuery}
+          title={`No results for "${query.trim()}".`}
+          body="Try a different search term or browse by genre."
         />
         {genres && genres.length > 0 && (
           <div className="sp-section sp-empty-genres">
@@ -427,7 +426,11 @@ function ReviewsTabResults({ rows, isLoading }) {
   if (!rows || rows.length === 0) {
     return (
       <div className="sp-section">
-        <p className="sp-noresults-text">No reviews match this search yet.</p>
+        <EmptyState
+          variant="search"
+          title="No reviews match this search."
+          body="Try a different search term."
+        />
       </div>
     )
   }
@@ -604,7 +607,7 @@ function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
   if (!rows || rows.length === 0) {
     return (
       <div className="sp-section">
-        <p className="sp-noresults-text">No users found.</p>
+        <EmptyState variant="search" title="No users found." body="Try a different search term." />
       </div>
     )
   }
@@ -653,10 +656,28 @@ function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
    LISTS TAB
    ============================================= */
 
-function ListMosaic({ games }) {
+function ListMosaic({ games, coverImageUrl, listName }) {
+  if (coverImageUrl) {
+    return (
+      <div className="sp-list-mosaic sp-list-mosaic--custom-cover">
+        <img
+          src={coverImageUrl}
+          alt={listName ? `${listName} cover` : 'List cover'}
+          className="sp-list-cover-img"
+          loading="lazy"
+        />
+      </div>
+    )
+  }
+
   const slots = Array.from({ length: 6 })
+  const filledGames = (games || []).filter((g) => g?.image)
+  const mosaicAlt = filledGames.length > 0
+    ? `${listName ?? 'List'} — covers of ${filledGames.map((g) => g.title).filter(Boolean).join(', ')}`
+    : `${listName ?? 'List'} cover`
+
   return (
-    <div className="sp-list-mosaic">
+    <div className="sp-list-mosaic" role="img" aria-label={mosaicAlt}>
       {slots.map((_, idx) => {
         const game = games?.[idx]
         if (game?.image) {
@@ -686,7 +707,11 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
         className="sp-list-row__main"
         onClick={() => onTap(list)}
       >
-        <ListMosaic games={list.previewGames || list.games} />
+        <ListMosaic
+          games={list.previewGames || list.games}
+          coverImageUrl={list.coverImageUrl}
+          listName={list.name}
+        />
         <div className="sp-list-row__body">
           <h3 className="sp-list-row__title">{list.name}</h3>
           {list.description && (
@@ -763,7 +788,7 @@ function ListsTabResults({ rows, isLoading, onTapList }) {
   if (!rows || rows.length === 0) {
     return (
       <div className="sp-section">
-        <p className="sp-noresults-text">No lists found.</p>
+        <EmptyState variant="search" title="No lists found." body="Try a different search term." />
       </div>
     )
   }

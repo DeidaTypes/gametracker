@@ -6,13 +6,14 @@ import { logActivity } from './activityService'
  *
  * Schema (lists + list_games tables):
  *   lists (
- *     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- *     user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- *     name        text NOT NULL,
- *     description text,
- *     is_public   boolean NOT NULL DEFAULT true,
- *     created_at  timestamptz NOT NULL DEFAULT now(),
- *     updated_at  timestamptz NOT NULL DEFAULT now()
+ *     id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ *     user_id          uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ *     name             text NOT NULL,
+ *     description      text,
+ *     is_public        boolean NOT NULL DEFAULT true,
+ *     cover_image_url  text,
+ *     created_at       timestamptz NOT NULL DEFAULT now(),
+ *     updated_at       timestamptz NOT NULL DEFAULT now()
  *   )
  *
  *   list_games (
@@ -71,10 +72,12 @@ function rowToList(row) {
     .map(rowToGame)
   return {
     id: row.id,
+    userId: row.user_id,
     name: row.name,
     description: row.description || '',
     isPublic: row.is_public ?? true,
     isCustom: true,
+    coverImageUrl: row.cover_image_url || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     games,
@@ -125,7 +128,7 @@ export async function searchPublicLists(query, limit = 20) {
   const { data, error } = await supabase
     .from('lists')
     .select(
-      'id, name, description, user_id, is_public, created_at, updated_at,' +
+      'id, name, description, user_id, is_public, cover_image_url, created_at, updated_at,' +
         ' users(username, display_name, avatar_url),' +
         ' list_games(igdb_game_id, game_title, game_image, position)'
     )
@@ -141,6 +144,7 @@ export async function searchPublicLists(query, limit = 20) {
     id: row.id,
     name: row.name,
     description: row.description || '',
+    coverImageUrl: row.cover_image_url || null,
     author: row.users
       ? {
           username: row.users.username || '',
@@ -258,16 +262,16 @@ export async function addGameToList(
 ) {
   if (!listId || igdbGameId == null) return
 
-  const { error } = await supabase.from('list_games').upsert(
-    {
-      list_id: listId,
-      igdb_game_id: Number(igdbGameId),
-      position: Number(position),
-      game_title: gameData.title || null,
-      game_image: gameData.image || null,
-    },
-    { onConflict: 'list_id,igdb_game_id' }
-  )
+  const payload = {
+    list_id: listId,
+    igdb_game_id: Number(igdbGameId),
+    position: Number(position),
+    game_title: gameData.title || null,
+    game_image: gameData.image || null,
+  }
+  const { error } = await supabase
+    .from('list_games')
+    .upsert(payload, { onConflict: 'list_id,igdb_game_id' })
   if (error) {
     console.error('[lists] addGameToList failed:', error.message)
     throw new Error(error.message)

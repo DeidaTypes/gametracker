@@ -28,7 +28,7 @@
   cursor: pointer;
   transition: all var(--transition-smooth);
   white-space: nowrap;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   flex-shrink: 0;
 }
 

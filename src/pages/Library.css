@@ -1,446 +1,645 @@
 /* ============================================
-   LIBRARY PAGE — Premium Cover-Led Design
+   LIBRARY PAGE — Hero + Trackers + Lists
+   Cobalt design language, DM Sans throughout.
    ============================================ */
 
 .library-page {
-  padding: 0;
   min-height: 100vh;
-  padding-bottom: var(--bottom-nav-safe-area);
+  min-height: 100dvh;
+  padding: 0 0 var(--bottom-nav-safe-area);
   background: transparent;
 }
 
-/* ---- Header ---- */
-.library-header {
-  padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg) var(--page-padding);
-  border-bottom: 1px solid var(--color-border);
+/* =============================================
+   HERO
+   180px tall. Cobalt-tinted surface. Title +
+   subtitle left, "+ New list" right, 5 recent
+   covers along the bottom.
+   ============================================= */
+
+.lib-hero {
+  position: relative;
+  min-height: 180px;
+  padding: var(--spacing-xl) var(--page-padding) var(--spacing-md);
+  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0) 60%),
+    linear-gradient(180deg, #1a2240 0%, var(--bg-surface) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  overflow: hidden;
 }
 
-.library-header-top {
+.lib-hero-row {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
   gap: var(--spacing-md);
 }
 
-.library-header h1 {
-  font-family: var(--font-serif);
-  font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-display-xl);
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
+.lib-hero-text {
+  min-width: 0;
+}
+
+.lib-hero-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
   margin: 0 0 4px 0;
 }
 
-.library-subtitle {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
+.lib-hero-sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary);
   margin: 0;
 }
 
-.create-list-button {
+/* Cobalt outline button (not filled). Pairs with the filled state on
+   :hover so the button still reads as the primary CTA. */
+.lib-hero-newbtn {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-full);
-  font-weight: var(--font-weight-semibold);
-  font-family: 'Inter', sans-serif;
-  font-size: var(--font-size-body);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
-  transition: all var(--transition-smooth);
   white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.create-list-button:hover {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-  box-shadow: 0 4px 16px rgba(91, 143, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.create-list-button:active {
-  transform: translateY(0) scale(0.97);
-}
-
-/* ---- Lists Container ---- */
-.library-lists-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2xl);
-  padding: var(--spacing-xl) var(--page-padding);
-}
-
-.library-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.section-title {
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  margin-bottom: var(--spacing-xs);
-  padding: 0 4px;
-}
-
-.library-lists {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-/* ---- List Item Card ---- */
-.library-list-item {
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  transition: all var(--transition-smooth);
-  /* overflow: visible so the actions menu-dropdown can escape the card boundary */
-  position: relative;
-}
-
-.library-list-item:hover {
-  border-color: var(--color-border-hover);
-  box-shadow: var(--shadow-md);
-}
-
-/* Row wrapper — owns height, padding, and gap so the header can be overflow:hidden
-   without trapping the actions column's dropdown */
-.list-item-inner {
-  display: flex;
-  align-items: center;
-  height: 96px;
-  padding: 0 16px;
-  gap: 16px;
-}
-
-/* Clickable area — flex:1 fills the space left by the fixed-width actions column;
-   overflow:hidden + border-radius clips the hover background to rounded corners */
-.list-item-header {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  cursor: pointer;
-  gap: 16px;
-  overflow: hidden;
-  border-radius: calc(var(--radius-lg) - 2px);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 80ms ease-out;
 }
 
-.list-item-header:hover {
-  background: var(--color-surface);
+@media (hover: hover) {
+  .lib-hero-newbtn:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.18);
+  }
 }
 
-.list-item-header:active {
-  background: rgba(200, 150, 90, 0.06);
-  transition: background-color 80ms ease-out;
+.lib-hero-newbtn:active {
+  background: rgba(59, 130, 246, 0.18);
 }
 
-/* Title column — fixed width; never compresses into the thumbnail strip */
-.list-item-title-col {
-  flex-shrink: 0;
-  flex-basis: 130px;
-  width: 130px;
-  min-width: 0;
-}
-
-/* Custom lists get a slightly wider title column to fit name + description */
-.list-item-title-col--custom {
-  flex-basis: 180px;
-  width: 180px;
-}
-
-.list-item-name {
-  /* 16px/600 — compact enough for "Currently Playing" to fit on one line in 130px */
-  font-size: 16px;
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  letter-spacing: var(--letter-spacing-body);
-  color: var(--color-text-primary);
-  margin: 0 0 4px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-item-description {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  letter-spacing: var(--letter-spacing-body);
-  color: var(--color-text-secondary);
-  margin: 0 0 2px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-item-count {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-muted);
-}
-
-/* ---- Cover Preview ---- */
-.list-item-preview {
-  /* Takes all remaining space; clips excess thumbnails cleanly */
-  flex: 1 1 auto;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.preview-covers {
+/* Recent-covers strip — 36×48 portrait covers overlapping by 8px each.
+   Hidden entirely when the user has no tracked games (handled in JSX). */
+.lib-hero-recents {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  margin-top: auto;
 }
 
-.preview-cover {
-  /* 2:3 portrait ratio — correct for game box art */
-  width: 56px;
-  height: 84px;
-  border-radius: 6px;
+.lib-hero-recent {
+  position: relative;
+  width: 36px;
+  height: 48px;
+  margin-left: -8px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-surface-2);
   overflow: hidden;
-  flex-shrink: 0;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  /* Overlap each cover by 12px to form a fan */
-  margin-left: -12px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* First thumbnail has no negative margin */
-.preview-cover--first {
+.lib-hero-recent:first-child {
   margin-left: 0;
 }
 
-.preview-cover-image {
+@media (hover: hover) {
+  .lib-hero-recent:hover {
+    transform: translateY(-2px);
+    z-index: 100 !important;
+  }
+}
+
+.lib-hero-recent:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.lib-hero-recent-img,
+.lib-hero-recent-fallback {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.preview-cover-placeholder {
+.lib-hero-recent-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* =============================================
+   SECTIONS — shared
+   ============================================= */
+
+.lib-section {
+  padding: 0 var(--page-padding);
+}
+
+.lib-section--trackers {
+  margin-top: 16px;
+}
+
+.lib-section--lists {
+  margin-top: 24px;
+}
+
+.lib-section-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+/* =============================================
+   TRACKERS — three 96px cards
+   ============================================= */
+
+.lib-trackers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.lib-tracker-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 96px;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  gap: var(--spacing-md);
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-smooth);
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .lib-tracker-card:hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-strong);
+  }
+  .lib-tracker-card:hover .lib-tracker-fan-card {
+    transform: translateX(calc(var(--fan-x) * 1.1))
+               rotate(calc(var(--fan-r) * 1.1));
+  }
+}
+
+.lib-tracker-card:active {
+  transform: scale(0.99);
+}
+
+.lib-tracker-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.lib-tracker-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-tracker-count {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Fan stack ── */
+
+.lib-tracker-fan-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  /* Reserve enough horizontal room for the spread fan without colliding
+     with the title column. The 3 covers fan ~22px each side of center. */
+  width: 124px;
+}
+
+.lib-tracker-fan {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.lib-tracker-fan-card {
+  grid-area: 1 / 1;
+  width: 56px;
+  height: 76px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-surface-2);
+  box-shadow: var(--shadow-cover);
+  transform-origin: center 85%;
+  transform: translateX(var(--fan-x)) rotate(var(--fan-r));
+  transition: transform var(--transition-smooth);
+}
+
+.lib-tracker-fan-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lib-tracker-fan-fallback {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
   font-size: 18px;
-  font-weight: var(--font-weight-bold);
-  background: linear-gradient(135deg, rgba(91, 143, 255, 0.08) 0%, rgba(91, 143, 255, 0.03) 100%);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: rgba(59, 130, 246, 0.08);
 }
 
-.preview-more-indicator {
-  /* Pill follows the last thumbnail in the overlap stack */
-  width: 40px;
-  height: 84px;
-  margin-left: -12px;
-  border-radius: 0 6px 6px 0;
-  flex-shrink: 0;
+/* ── Empty tracker mini-card ──
+   Replaces the fan with a muted silhouette + copy. */
+
+.lib-tracker-card--empty {
+  background: rgba(148, 168, 212, 0.03);
+}
+
+.lib-tracker-empty {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(91, 143, 255, 0.08);
-  color: var(--color-brand-primary);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-bold);
-  border: 1px dashed rgba(91, 143, 255, 0.3);
-  border-left: none;
-}
-
-.preview-empty {
-  font-size: var(--font-size-caption);
-  color: var(--color-text-muted);
-  font-style: italic;
-  padding: 0 4px;
-}
-
-/* ---- Actions ---- */
-.list-item-actions {
-  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  width: 100%;
 }
 
-.add-games-button,
-.menu-button {
-  width: 34px;
-  height: 34px;
+.lib-tracker-empty-silhouette {
+  width: 44px;
+  height: 60px;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(148, 168, 212, 0.22);
+  background: rgba(148, 168, 212, 0.03);
+}
+
+.lib-tracker-empty-copy {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* =============================================
+   CUSTOM LISTS — 2-column mosaic grid
+   ============================================= */
+
+/* Custom list skeleton — 4 cards matching lib-list-card shape */
+.lib-list-card--skeleton {
+  pointer-events: none;
+}
+
+/* Square mosaic placeholder */
+.lib-list-mosaic-skeleton {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: calc(var(--radius-lg) - 4px);
+}
+
+/* Title placeholder — 70% wide */
+.lib-sk-name {
+  width: 70%;
+  height: 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
+}
+
+/* Count placeholder — 40% wide */
+.lib-sk-count {
+  width: 40%;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.lib-lists-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.lib-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-smooth);
+}
+
+@media (hover: hover) {
+  .lib-list-card:hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+  }
+}
+
+.lib-list-card:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Square 2x2 mosaic. aspect-ratio:1/1 locks the card height to its
+   width regardless of the title length below. */
+.lib-list-mosaic {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  background: var(--bg-base);
+  border-radius: calc(var(--radius-lg) - 4px);
+  overflow: hidden;
+}
+
+.lib-list-mosaic-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-surface-2);
+  overflow: hidden;
+}
+
+.lib-list-mosaic-cell--empty {
+  background: rgba(148, 168, 212, 0.04);
+}
+
+.lib-list-mosaic-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lib-list-mosaic-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  font-size: 18px;
-  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: rgba(59, 130, 246, 0.08);
 }
 
-.add-games-button:hover {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-  color: white;
-  box-shadow: 0 2px 12px rgba(91, 143, 255, 0.4);
-}
-
-.menu-button:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-}
-
-.menu-container {
-  position: relative;
-}
-
-.menu-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background: var(--color-bg-elevated);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xl);
-  z-index: 100;
-  min-width: 160px;
-  overflow: hidden;
-  animation: fadeIn var(--transition-fast) ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.menu-item {
+/* SharedCover wraps the <img> in its own div — make sure both fill the cell. */
+.lib-list-mosaic-cell > * {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: transparent;
-  border: none;
-  color: var(--color-text-primary);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-  font-family: 'Inter', sans-serif;
+  height: 100%;
+  display: block;
 }
 
-.menu-item:hover {
-  background: var(--color-surface-hover);
+/* Custom cover image replaces the 2×2 mosaic grid */
+.lib-list-mosaic--custom-cover {
+  display: block;
 }
 
-.menu-item.delete-item {
-  color: var(--color-accent-pink);
+.lib-list-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.menu-item.delete-item:hover {
-  background: rgba(244, 114, 182, 0.1);
+.lib-list-meta {
+  padding: 2px 4px 4px;
+  min-width: 0;
 }
 
-/* ---- Empty States ---- */
-.empty-list-expanded {
-  padding: var(--spacing-2xl) var(--spacing-xl);
-  text-align: center;
-  border-radius: var(--radius-md);
-  margin-top: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.02);
+.lib-list-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.empty-list-expanded p {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
+.lib-list-count {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary);
   margin: 0;
 }
 
-/* ---- Responsive ---- */
-@media (max-width: 359px) {
-  .library-header {
-    padding: var(--spacing-lg) var(--container-padding-sm) var(--spacing-md) var(--container-padding-sm);
-  }
+/* Empty custom-lists state — full-width card with cobalt link. */
+.lib-lists-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
 
-  /* On very narrow phones, step the screen header down one rung
-     to Display L (28 / 1.1) so it doesn't crowd. */
-  .library-header h1 {
-    font-size: var(--font-size-display-l);
-    line-height: var(--line-height-display-l);
-  }
+.lib-lists-empty-copy {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: 0;
+}
 
-  .library-lists-container {
-    padding: var(--spacing-lg) var(--container-padding-sm);
-  }
+.lib-lists-empty-link {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast),
+              background-color var(--transition-fast);
+}
 
-  /* On very narrow phones, tighten horizontal padding and reduce title column */
-  .list-item-inner {
-    padding: 0 12px;
-    gap: 10px;
-  }
-
-  .list-item-title-col {
-    flex-basis: 110px;
-    width: 110px;
-  }
-
-  .list-item-title-col--custom {
-    flex-basis: 140px;
-    width: 140px;
+@media (hover: hover) {
+  .lib-lists-empty-link:hover {
+    color: var(--accent-hover);
+    background: rgba(59, 130, 246, 0.10);
   }
 }
 
-@media (max-width: 480px) {
-  .library-header-top {
-    flex-direction: row;
-    align-items: center;
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+
+@media (max-width: 359px) {
+  .lib-hero {
+    padding: var(--spacing-lg) var(--container-padding-sm) var(--spacing-sm);
+  }
+
+  .lib-hero-title {
+    font-size: 24px;
+  }
+
+  .lib-section {
+    padding: 0 var(--container-padding-sm);
+  }
+
+  /* Tighter card padding on very narrow phones. The fan can't shrink
+     further without breaking the 56×76 spec, so we trim the title
+     column instead. */
+  .lib-tracker-card {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .lib-tracker-fan-wrap {
+    width: 116px;
+  }
+
+  .lib-tracker-title {
+    font-size: 16px;
   }
 }
 
 @media (min-width: 769px) {
-  .library-header {
-    padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-xl) var(--page-padding-desktop);
+  .lib-hero {
+    padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-lg);
+    min-height: 200px;
   }
 
-  /* Desktop keeps the canonical Display XL — no override. */
-  .library-lists-container {
-    padding: var(--spacing-2xl) var(--page-padding-desktop);
+  .lib-section {
+    padding: 0 var(--page-padding-desktop);
+  }
+
+  .lib-hero,
+  .lib-section {
     max-width: var(--page-max-width);
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
   }
 
-  .list-item-inner {
+  .lib-hero-title {
+    font-size: 32px;
+  }
+
+  .lib-tracker-card {
     height: 104px;
     padding: 0 20px;
-    gap: 20px;
   }
 
+  /* On wider viewports, fit 3 columns of lists rather than 2 — keeps
+     the mosaic from ballooning to ~480px squares on tablet/desktop. */
+  .lib-lists-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
+/* =============================================
+   REDUCED MOTION
+   ============================================= */
+
 @media (prefers-reduced-motion: reduce) {
-  .list-item-header,
-  .list-item-header:active {
+  .lib-hero-newbtn,
+  .lib-hero-recent,
+  .lib-tracker-card,
+  .lib-tracker-fan-card,
+  .lib-list-card,
+  .lib-lists-empty-link {
     transition: none;
+  }
+
+  .lib-tracker-card:active,
+  .lib-list-card:active,
+  .lib-hero-recent:active {
+    transform: none;
+  }
+
+  @media (hover: hover) {
+    .lib-tracker-card:hover .lib-tracker-fan-card,
+    .lib-list-card:hover,
+    .lib-hero-recent:hover {
+      transform: translateX(var(--fan-x, 0)) rotate(var(--fan-r, 0));
+    }
   }
 }

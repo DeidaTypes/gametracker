@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
+import { Search } from 'lucide-react'
 import {
   useTrendingThisWeek,
   useJustFinished,
@@ -14,6 +16,7 @@ import NewReleaseCard from '../components/explore/NewReleaseCard'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
 import { ReviewRowSkeletonList } from '../components/skeletons/ReviewRowSkeleton'
+import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import './Explore.css'
 
 // ─── Section primitives ────────────────────────────────────────────────────
@@ -40,6 +43,8 @@ function ScrollRow({ items, render }) {
 
 function Explore() {
   const navigate = useNavigate()
+  const { isOpen, open } = useSearchOverlay()
+  const reduced = useReducedMotion()
 
   // Each hook fires immediately on mount; they run concurrently.
   // The community mock service shares a single in-flight pool fetch so the
@@ -91,7 +96,7 @@ function Explore() {
         />
       ) : (
         <div className="explore-section__pad">
-          <p className="explore-section-empty">Nobody finished a game in the last 24 hours.</p>
+          <p className="explore-section-empty">No recently finished games yet.</p>
         </div>
       )}
     </section>
@@ -171,7 +176,35 @@ function Explore() {
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
-      <div className="explore-page">{sections}</div>
+      <div className="explore-page">
+        {/* Page header — title on the left, search icon on the right.
+            The motion.div wrapping the icon carries layoutId="search-bar"
+            (when the overlay is closed) so Framer Motion can morph the
+            icon into the overlay's input bar on open. */}
+        <div className="explore-header">
+          <h1 className="explore-header__title">Discover</h1>
+          <button
+            type="button"
+            className="explore-search-btn"
+            onClick={open}
+            aria-label="Search"
+          >
+            <motion.div
+              layoutId={isOpen ? undefined : 'search-bar'}
+              className="explore-search-btn__inner"
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 380, damping: 30 }
+              }
+            >
+              <Search size={22} aria-hidden="true" />
+            </motion.div>
+          </button>
+        </div>
+
+        {sections}
+      </div>
     </SharedCoverScope>
   )
 }

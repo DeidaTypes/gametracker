@@ -11,7 +11,7 @@
   cursor: pointer;
   text-align: left;
   scroll-snap-align: start;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   color: inherit;
   transition: transform 200ms ease, filter 200ms ease;
   -webkit-tap-highlight-color: transparent;
@@ -19,12 +19,12 @@
 
 @media (hover: hover) {
   .trending-card:hover {
-    transform: scale(1.02);
+    transform: translateY(-2px) scale(1.02);
     filter: brightness(1.04);
   }
 
   .trending-card:hover .trending-card__cover {
-    box-shadow: var(--shadow-cover), 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: var(--shadow-cover), 0 4px 16px rgba(59, 130, 246, 0.15);
   }
 }
 
@@ -57,7 +57,7 @@
 }
 
 .trending-card__title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
@@ -71,7 +71,7 @@
 }
 
 .trending-card__badge {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);

@@ -1,462 +1,426 @@
 /* ============================================================
-   Edit Profile modal — uses .modal-overlay/.modal-content from
-   CreateListModal.css. Form fields are the new editorial system.
+   Edit Profile — iOS 26 grouped-list redesign
    ============================================================ */
-.edit-profile-modal {
-  max-width: 550px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
 
-.edit-profile-modal::-webkit-scrollbar {
-  width: 8px;
-}
-
-.edit-profile-modal::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-
-.edit-profile-modal::-webkit-scrollbar-thumb {
-  background: var(--color-border-hover);
-  border-radius: var(--radius-xs);
-}
-
-.edit-profile-form {
+/* ── Full-screen overlay ──────────────────────────────────── */
+.ep-overlay {
+  position: fixed;
+  inset: 0;
+  /* Must sit above BottomNav (z-index: 1000) and ActionSheet portals */
+  z-index: 1100;
+  background: var(--bg-base);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
 }
 
-.error-message {
-  color: rgba(196, 130, 130, 0.95);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  margin: -8px 0 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-}
-
-/* ── Sprint 7: banner upload ─────────────────────────────────────────── */
-
-.banner-group {
+/* ── Sheet (fills the overlay) ───────────────────────────── */
+.ep-sheet {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.banner-group__label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.banner-upload-area {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.banner-preview-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-md);
+  /* Use 100dvh so it fills the real viewport on mobile, not just 100% */
+  height: 100dvh;
+  height: 100vh; /* fallback for browsers without dvh */
   overflow: hidden;
-  cursor: pointer;
-  border: 1.5px dashed var(--color-border-hover);
-  background: var(--color-bg-tertiary);
-  transition: border-color var(--transition-smooth);
-  -webkit-tap-highlight-color: transparent;
+  background: var(--bg-base);
 }
 
-.banner-preview-container:hover {
-  border-color: var(--color-brand-primary);
-}
-
-.banner-preview-container:focus-visible {
-  outline: 2px solid var(--color-brand-primary);
-  outline-offset: 2px;
-}
-
-.banner-preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.banner-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  /* Copper-tinted placeholder per spec */
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-brand-primary-rgb, 184, 115, 51), 0.08) 0%,
-    rgba(var(--color-brand-primary-rgb, 184, 115, 51), 0.03) 100%
-  );
-}
-
-.banner-placeholder__icon {
-  font-size: 28px;
-  color: var(--color-brand-primary);
-  line-height: 1;
-}
-
-.banner-placeholder__text {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
-}
-
-/* Hover overlay when a banner is already set */
-.banner-change-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 15, 0.55);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--transition-smooth);
-}
-
-.banner-preview-container:hover .banner-change-overlay {
-  opacity: 1;
-}
-
-.banner-change-text {
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Upload spinner overlay */
-.banner-spinner-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 15, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.banner-spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--color-brand-primary);
-  border-radius: 50%;
-  animation: banner-spin 0.7s linear infinite;
-}
-
-@keyframes banner-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Action buttons below the banner preview */
-.banner-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.banner-upload-btn {
-  padding: 7px 16px;
-  background: transparent;
-  border: 1px solid var(--color-brand-primary);
-  color: var(--color-brand-primary);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.banner-upload-btn:hover:not(:disabled) {
-  background: rgba(var(--color-brand-primary-rgb, 184, 115, 51), 0.1);
-}
-
-.banner-upload-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.banner-remove-btn {
-  padding: 7px 16px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.55);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.banner-remove-btn:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .banner-spinner {
-    animation: none;
-  }
-  .banner-change-overlay,
-  .banner-preview-container,
-  .banner-upload-btn,
-  .banner-remove-btn {
-    transition: none;
-  }
-}
-
-/* Avatar Upload */
-.avatar-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.avatar-group__label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.avatar-upload-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.avatar-preview-container {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-  border: 2px solid var(--color-brand-primary);
-  box-shadow: var(--shadow-lg);
-}
-
-.avatar-preview-container:hover {
-  border-color: var(--color-brand-secondary);
-  box-shadow: var(--shadow-xl);
-}
-
-.avatar-preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-generated {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #FFFFFF;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  letter-spacing: var(--letter-spacing-display);
-}
-
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 15, 0.6);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--transition-smooth);
-}
-
-.avatar-preview-container:hover .avatar-overlay {
-  opacity: 1;
-}
-
-.avatar-change-text {
-  color: #FFFFFF;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body);
-}
-
-.remove-avatar-button {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.55);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
-  cursor: pointer;
-  transition: all var(--transition-smooth);
-}
-
-.remove-avatar-button:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* ── Sprint 5: socials fieldset + favorite-games preview strip ───────── */
-
-.edit-profile-socials {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  margin: 0;
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.edit-profile-socials__legend {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  padding: 0 6px;
-}
-
-.edit-profile-favs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.edit-profile-favs__header {
+/* ── Top bar ─────────────────────────────────────────────── */
+.ep-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
+  /* Pad the top for the notch/Dynamic Island on iOS */
+  padding: env(safe-area-inset-top, 0px) 16px 0;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-bottom: 0.5px solid var(--border-subtle);
 }
 
-.edit-profile-favs__label {
-  font-family: var(--font-sans);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.edit-profile-favs__btn {
-  padding: 6px 14px !important;
-  min-height: unset !important;
-  font-size: var(--font-size-caption) !important;
-  border-radius: var(--radius-full) !important;
-}
-
-.edit-profile-favs__empty {
+.ep-topbar__title {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--font-size-caption);
-  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0;
 }
 
-.edit-profile-favs__strip {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.ep-topbar__btn {
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--accent);
+  min-width: 60px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.edit-profile-favs__cover {
-  width: 56px;
-  aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
+.ep-topbar__btn--cancel {
+  text-align: left;
+  font-weight: 400;
+}
+
+.ep-topbar__btn--save {
+  text-align: right;
+  font-weight: 700;
+}
+
+.ep-topbar__btn--save:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Scrollable body ─────────────────────────────────────── */
+.ep-scroll-body {
+  flex: 1;
+  /* min-height: 0 is critical — without it a flex child with overflow
+     does not shrink below its content height and never scrolls */
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.ep-scroll-body::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Hero: banner + avatar ───────────────────────────────── */
+.ep-hero {
+  position: relative;
+  /* 180px banner + 52px overflow (half avatar + bottom breathing room) */
+  padding-bottom: 52px;
+}
+
+.ep-banner {
+  position: relative;
+  height: 180px;
+  background-color: var(--bg-surface-2);
+  background-size: cover;
+  background-position: center;
+}
+
+.ep-change-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  font-weight: var(--font-weight-bold);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  color: var(--text-secondary);
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.edit-profile-favs__cover img {
+.ep-change-btn:hover {
+  background: var(--bg-surface-2);
+  border-color: var(--border-strong);
+}
+
+.ep-change-btn--banner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+/* Avatar wrap — positioned so avatar overlaps bottom of banner */
+.ep-avatar-wrap {
+  position: absolute;
+  /* avatar top = 180 - 44 = 136px (half overlap into banner) */
+  top: 136px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.ep-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  overflow: hidden;
+  background: var(--bg-surface-2);
+  box-shadow: 0 0 0 3px var(--bg-base);
+}
+
+.ep-avatar__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* Log-out row — sits below the Save/Cancel row, visually separated by
-   a hairline divider so it reads as a distinct, terminal action rather
-   than a peer of the form-submit buttons. */
-.edit-profile-logout {
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  justify-content: center;
-}
-
-.edit-profile-logout .form-button {
+.ep-avatar__fallback {
   width: 100%;
-  max-width: 240px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .edit-profile-modal {
-    max-width: 100%;
-    padding: var(--spacing-xl) var(--spacing-lg);
-    /* Dynamic formula: clears tab bar + home indicator + 16px breathing room */
-    padding-bottom: calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom, 0px) + 16px);
-    border-radius: 0;
-    max-height: 100vh;
+.ep-change-btn--avatar {
+  position: absolute;
+  bottom: 2px;
+  right: -6px;
+  z-index: 4;
+}
+
+/* ── Upload spinner overlay ──────────────────────────────── */
+.ep-banner__spinner-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 31, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.ep-banner__spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ep-spin 0.7s linear infinite;
+}
+
+@keyframes ep-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Form groups container ───────────────────────────────── */
+.ep-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 16px;
+  padding-bottom: calc(var(--tab-bar-height, 58px) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+/* ── Single group (label + section card + optional footnote) */
+.ep-group__label {
+  margin: 0 0 8px 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.ep-group__footnote {
+  margin: 6px 0 0 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* ── Section card ────────────────────────────────────────── */
+.ep-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 14px);
+  overflow: hidden;
+}
+
+/* ── Row ─────────────────────────────────────────────────── */
+.ep-row {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 14px;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ep-row--tappable {
+  cursor: pointer;
+}
+
+.ep-row--tappable:active {
+  background: var(--color-surface-active, rgba(148, 168, 212, 0.13));
+}
+
+.ep-row--error {
+  border-bottom: 1px solid var(--status-danger) !important;
+}
+
+/* Thin inset divider between rows */
+.ep-row-divider {
+  height: 0.5px;
+  background: var(--border-subtle);
+  margin: 0 14px;
+}
+
+/* ── Row internals ───────────────────────────────────────── */
+.ep-row__field-label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  min-width: 80px;
+  cursor: inherit;
+}
+
+.ep-row__icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* Right column — input + optional counter stacked */
+.ep-row__right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ep-row__right--prefix {
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+/* The "@" prefix for username */
+.ep-row__prefix {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ep-row__input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+  text-align: right;
+  padding: 0;
+  /* prevent default iOS styling */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ep-row__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ── Character counter (focus-only) ──────────────────────── */
+.ep-counter {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  text-align: right;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Bio preview in the row ──────────────────────────────── */
+.ep-row__bio-preview {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ep-row__bio-preview--empty {
+  color: var(--text-tertiary);
+}
+
+/* ── Nav row (Favorites) ─────────────────────────────────── */
+.ep-row--nav .ep-row__meta {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ep-row--nav .ep-row__chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ── Destructive row (Sign out) ──────────────────────────── */
+.ep-row--destructive {
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ep-row--destructive:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ep-row__destructive-label {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--status-danger);
+}
+
+
+/* ── Reduced motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ep-banner__spinner {
+    animation: none;
+  }
+  .ep-change-btn,
+  .ep-topbar__btn {
+    transition: none;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .avatar-preview-container,
-  .avatar-overlay,
-  .remove-avatar-button {
-    transition: none;
+/* ── Desktop: cap width and center ──────────────────────────*/
+@media (min-width: 600px) {
+  .ep-overlay {
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 15, 31, 0.75);
+  }
+
+  .ep-sheet {
+    width: 100%;
+    max-width: 480px;
+    /* Use max-height so the sheet can be shorter than the viewport
+       while still allowing internal flex scrolling */
+    height: 90vh;
+    height: 90dvh;
+    border-radius: var(--radius-xl, 18px);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
   }
 }

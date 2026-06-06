@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import SectionHeader from './SectionHeader'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './ContinuePlaying.css'
 
 function ContinuePlaying({ games }) {
@@ -31,9 +32,7 @@ function ContinuePlaying({ games }) {
                   alt={game.title}
                   className="cp-cover"
                   onError={(e) => {
-                    e.target.src =
-                      'https://via.placeholder.com/200x280/1a1a1a/ffffff?text=' +
-                      encodeURIComponent(game.title)
+                    e.target.src = COVER_FALLBACK
                   }}
                 />
                 <div className="cp-overlay">

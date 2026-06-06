@@ -27,7 +27,7 @@
   }
 
   .library-game-card:hover .library-game-card-image-container {
-    box-shadow: var(--shadow-xl), var(--shadow-glow), 0 4px 16px rgba(200, 150, 90, 0.15);
+    box-shadow: var(--shadow-xl), var(--shadow-glow), 0 4px 16px rgba(59, 130, 246, 0.15);
     border-color: var(--color-border-hover);
   }
 }
@@ -74,7 +74,7 @@
 }
 
 .library-game-card-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-body);
