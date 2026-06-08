@@ -529,7 +529,7 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  transition: bottom 0.25s cubic-bezier(0.17, 0.59, 0.4, 1);
+  transition: bottom 0.30s cubic-bezier(0.36, 0.66, 0.04, 1);
 }
 
 /* Optional reply-hint banner shown above the input row */
