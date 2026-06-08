@@ -189,6 +189,16 @@
 
 .rc-comment__avatar-wrap {
   flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-full);
+}
+
+.rc-comment__avatar-wrap:disabled {
+  cursor: default;
 }
 
 .rc-comment__avatar {
@@ -234,6 +244,16 @@
   color: var(--color-text-primary);
   line-height: 1.2;
   overflow-wrap: anywhere;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rc-comment__name:disabled {
+  cursor: default;
 }
 
 .rc-comment__time,
@@ -423,14 +443,17 @@
   cursor: not-allowed;
 }
 
-/* ── Composer ───────────────────────────────────────────────────────── */
+/* ── Composer trigger bar ────────────────────────────────────────────
+   Tap-only; contains no <input> so the keyboard never opens here.
+   Tapping opens the CenteredModal which lifts above the keyboard via
+   --keyboard-inset (see CenteredModal.css). No keyboard-inset needed
+   on this bar because no text input lives inside it.
+   ─────────────────────────────────────────────────────────────────── */
 
-.rc-composer {
+.rc-composer-trigger {
   position: fixed;
   left: 0;
   right: 0;
-  /* Sit above the bottom nav, with iOS home indicator handled by the
-     parent app shell's safe area variable. */
   bottom: var(--bottom-nav-safe-area);
   z-index: 6;
   padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
@@ -438,112 +461,160 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.rc-composer__reply-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 auto 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  background: rgba(59, 130, 246, 0.12);
+.rc-composer-trigger__placeholder {
+  display: block;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-tertiary);
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  max-width: 100%;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── CenteredModal composer content ──────────────────────────────────
+   The CenteredModal shell already handles keyboard-inset and
+   max-height via --keyboard-inset; these rules style the inner card.
+   ─────────────────────────────────────────────────────────────────── */
+
+.rc-modal-composer {
+  display: flex;
+  flex-direction: column;
+}
+
+.rc-modal-composer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.rc-modal-composer__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: var(--letter-spacing-display);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rc-composer__reply-chip strong {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-.rc-composer__reply-cancel {
+.rc-modal-composer__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 2px;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   padding: 0;
+  margin-left: var(--spacing-sm);
   background: transparent;
   border: none;
   color: var(--color-text-tertiary);
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
   border-radius: var(--radius-full);
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.rc-composer__reply-cancel:hover {
+.rc-modal-composer__close:hover {
   color: var(--color-text-primary);
   background: var(--color-surface);
 }
 
-.rc-composer__row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: var(--page-max-width);
-  margin: 0 auto;
+.rc-modal-composer__body {
+  padding: var(--spacing-md) var(--spacing-lg);
+  flex: 1;
+  min-height: 0;
 }
 
-.rc-composer__input {
-  flex: 1;
-  min-height: 40px;
-  max-height: 140px;
+.rc-modal-composer__input {
+  width: 100%;
+  min-height: 100px;
   padding: 10px 12px;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   color: var(--color-text-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
-  resize: none;
+  resize: vertical;
   outline: none;
+  box-sizing: border-box;
   transition: border-color var(--transition-fast);
 }
 
-.rc-composer__input::placeholder {
+.rc-modal-composer__input::placeholder {
   color: var(--color-text-tertiary);
 }
 
-.rc-composer__input:focus {
+.rc-modal-composer__input:focus {
   border-color: var(--color-border-focus);
 }
 
-.rc-composer__input:disabled {
+.rc-modal-composer__input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.rc-composer__send {
+.rc-modal-composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-md);
+  border-top: 1px solid var(--color-border);
   flex-shrink: 0;
-  padding: 10px 18px;
-  border: none;
-  border-radius: var(--radius-full);
-  background: var(--color-brand-primary);
-  color: #ffffff;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  transition: filter var(--transition-fast), opacity var(--transition-fast);
 }
 
-.rc-composer__send:hover:not(:disabled) {
+.rc-modal-composer__btn {
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.rc-modal-composer__btn--ghost {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.rc-modal-composer__btn--ghost:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.rc-modal-composer__btn--primary {
+  background: var(--color-brand-primary);
+  color: #ffffff;
+}
+
+.rc-modal-composer__btn--primary:hover:not(:disabled) {
   filter: brightness(1.05);
 }
 
-.rc-composer__send:disabled {
+.rc-modal-composer__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -556,9 +627,9 @@
   .rc-comment__kebab-btn,
   .rc-comment__edit-input,
   .rc-comment__edit-btn,
-  .rc-composer__input,
-  .rc-composer__send,
-  .rc-composer__reply-cancel {
+  .rc-modal-composer__close,
+  .rc-modal-composer__input,
+  .rc-modal-composer__btn {
     transition: none;
   }
 }
