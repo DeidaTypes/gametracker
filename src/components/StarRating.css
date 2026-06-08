@@ -44,7 +44,7 @@
   }
 }
 
-/* ── Gold stars — static brightness lift so they read warm on dark bg ── */
+/* ── Gold stars — tight edge glimmer, reads as a specular highlight not a glow ── */
 .star-rating__layer--fill {
-  filter: brightness(1.15);
+  filter: brightness(1.1) drop-shadow(0 0 2px rgba(255, 225, 90, 0.80));
 }
