@@ -4,11 +4,25 @@ import '@fontsource/dm-sans/600.css'
 import '@fontsource/dm-sans/700.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Capacitor } from '@capacitor/core'
 import App from './App'
 import './index.css'
 
-// Register Service Worker for PWA (iOS 15+ and Android 24+)
-if ('serviceWorker' in navigator) {
+// Service worker must not run inside the Capacitor native app — it caches
+// the bundle and only yields to a new worker after a full quit/relaunch,
+// causing stale Discover data and the "quit-to-refresh" symptom.
+if (Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
+  // Evict any stale SW already installed on test devices / TestFlight users.
+  navigator.serviceWorker.getRegistrations()
+    .then((regs) => regs.forEach((r) => r.unregister()))
+    .catch(() => {})
+  if (typeof caches !== 'undefined') {
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {})
+  }
+}
+
+// Register Service Worker for PWA on web only (iOS 15+ and Android 24+)
+if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
@@ -18,6 +32,44 @@ if ('serviceWorker' in navigator) {
         console.log('SW registration failed: ', registrationError)
       })
   })
+}
+
+// ── ONE global keyboard-inset source of truth ──────────────────────────────
+//
+// Capacitor's Keyboard `resize` is set to "none" (see capacitor.config.json),
+// so the WebView stays full-height and window.visualViewport reports the real
+// keyboard height. We translate that into a single CSS variable —
+// `--keyboard-inset` on <html> — that every modal consumes to lift its content
+// above the keyboard. This is the SINGLE place the inset is written; no other
+// component should compute its own keyboard offset.
+//
+// `setAccessoryBarVisible(true)` adds a ~44px "Done" bar above the keyboard
+// that visualViewport does NOT report, so we pad the inset by that amount when
+// the keyboard is up — content then clears BOTH the keyboard and the bar.
+const ACCESSORY_BAR_PX = 44
+let keyboardVisible = false
+
+function writeKeyboardInset() {
+  if (typeof document === 'undefined') return
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  let inset = vv
+    ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0))
+    : 0
+  if (inset > 0 || keyboardVisible) inset += ACCESSORY_BAR_PX
+  document.documentElement.style.setProperty(
+    '--keyboard-inset',
+    `${Math.round(inset)}px`,
+  )
+}
+
+if (typeof window !== 'undefined') {
+  // Seed it so the variable always resolves (e.g. on first paint / web).
+  document.documentElement.style.setProperty('--keyboard-inset', '0px')
+  const vv = window.visualViewport
+  if (vv) {
+    vv.addEventListener('resize', writeKeyboardInset)
+    vv.addEventListener('scroll', writeKeyboardInset)
+  }
 }
 
 // iOS keyboard fixes — dynamic import so the web build stays a no-op
@@ -37,18 +89,27 @@ if ('serviceWorker' in navigator) {
     // Fix 4: Done accessory bar above keyboard on all inputs.
     await Keyboard.setAccessoryBarVisible({ isVisible: true })
 
-    // Fix 1 + Fix 3: body class strategy
+    // Fix 1 + Fix 3: body class strategy. Each lifecycle event also keeps the
+    // global --keyboard-inset in sync (the visualViewport listener above does
+    // the heavy lifting; these guarantee correct values at the animation ends).
     await Keyboard.addListener('keyboardWillShow', () => {
+      keyboardVisible = true
       document.body.classList.add('keyboard-open', 'keyboard-animating')
+      writeKeyboardInset()
     })
     await Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisible = true
       document.body.classList.remove('keyboard-animating')
+      writeKeyboardInset()
     })
     await Keyboard.addListener('keyboardWillHide', () => {
       document.body.classList.add('keyboard-animating')
     })
     await Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisible = false
       document.body.classList.remove('keyboard-open', 'keyboard-animating')
+      // Force the inset back to 0 — the keyboard is fully gone.
+      document.documentElement.style.setProperty('--keyboard-inset', '0px')
     })
   } catch {
     // no-op on web or when the plugin is unavailable
