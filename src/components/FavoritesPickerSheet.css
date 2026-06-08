@@ -1,49 +1,12 @@
 /* ============================================================
-   FavoritesPickerSheet — full-height bottom sheet for editing
-   favorite games. Pattern mirrors GamePickerSheet.css.
+   FavoritesPickerSheet — centered popup (CenteredModal) for editing
+   favorite games. Presentation shell is .cm-card; rules below style
+   its contents.
    ============================================================ */
 
-/* ── Overlay / backdrop ─────────────────────────────────── */
-
-.fps-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 1040;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-/* ── Sheet container ────────────────────────────────────── */
-
-.fps-sheet {
-  width: 100%;
-  max-width: 480px;
-  height: calc(100dvh - 32px);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-elevated, #1a2240);
-  border-radius: 20px 20px 0 0;
-  box-shadow:
-    0 -4px 48px rgba(0, 0, 0, 0.6),
-    0 -1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0px);
-  overflow: hidden;
-}
-
-/* ── Drag handle ────────────────────────────────────────── */
-
-.fps-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.18);
-  margin: 12px auto 0;
-  flex-shrink: 0;
+/* Give the picker room for the cover grid: fill available popup height. */
+.cm-card.fps-sheet {
+  height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
 }
 
 /* ── Header row: title + Done ───────────────────────────── */
@@ -53,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px 12px;
+  padding: 16px 20px 12px;
 }
 
 .fps-title {

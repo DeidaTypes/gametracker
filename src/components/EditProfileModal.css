@@ -82,6 +82,17 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* The WebView stays full-height (Keyboard resize: none), so reserve room
+     at the bottom equal to the keyboard + accessory bar. This lets a focused
+     field (name, username, social handles) scroll up above the keyboard. */
+  padding-bottom: var(--keyboard-inset, 0px);
+  transition: padding-bottom 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-scroll-body {
+    transition: none;
+  }
 }
 
 .ep-scroll-body::-webkit-scrollbar {
@@ -318,7 +329,7 @@
   border: none;
   outline: none;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--text-primary);
   text-align: right;

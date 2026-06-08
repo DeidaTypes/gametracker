@@ -19,6 +19,7 @@ import {
   LuPin,
   LuArrowUpDown,
   LuSettings,
+  LuMail,
 } from 'react-icons/lu'
 import { HiDotsVertical } from 'react-icons/hi'
 import { SlidersHorizontal, PenLine, List } from 'lucide-react'
@@ -78,6 +79,7 @@ import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
 import PinnedListsSection from '../components/PinnedListsSection'
+import ProfileRatingsChart from '../components/ProfileRatingsChart'
 import './Profile.css'
 
 /* ============================================================
@@ -1206,6 +1208,19 @@ function Profile() {
                 <SlidersHorizontal size={20} aria-hidden="true" />
               </button>
             )}
+            {/* Envelope — opens the DM inbox. Shown on own profile only;
+                other-user profiles have the "Message" action button in
+                the hero, so a header icon there would be redundant. */}
+            {isOwnProfile && (
+              <button
+                type="button"
+                className="profile-header-strip__icon-btn"
+                aria-label="Messages"
+                onClick={() => navigate('/messages')}
+              >
+                <LuMail size={22} aria-hidden="true" />
+              </button>
+            )}
             {/* Sprint 7 — gear sits to the LEFT of the ellipsis on the
                 signed-in user's own profile and opens the Settings page.
                 Hidden on other-user profiles since they have no settings
@@ -1482,7 +1497,7 @@ function Profile() {
                   onClick={() => {
                     const handle =
                       profile?.username ||
-                      profile?.displayName ||
+                      profile?.id ||
                       ''
                     if (!handle) return
                     navigate(`/messages/${encodeURIComponent(handle)}`)
@@ -1577,6 +1592,8 @@ function Profile() {
                   onReviewsChevron={() => setActiveTab('reviews')}
                   onListsChevron={() => setActiveTab('lists')}
                   onTapList={(id) => navigate(`/list/${id}`)}
+                  allReviews={allReviews}
+                  onReviewTap={(id) => navigate(`/review/${id}`)}
                 />
               )}
 
@@ -1737,6 +1754,8 @@ function HomeTab({
   pinnedLists,
   onReviewsChevron,
   onListsChevron,
+  allReviews,
+  onReviewTap,
 }) {
   return (
     <div className="profile-home">
@@ -1800,14 +1819,7 @@ function HomeTab({
         </section>
       )}
 
-      {/* Section 2 — Badges (Sprint 5 P9). BadgesRow owns its own
-          section header + chevron so it can disappear entirely when
-          there are zero earned + zero in-progress badges (it returns
-          null in that case). Wrapping it in a bare <section> here
-          would leave an empty container in the DOM. */}
-      <BadgesRow user={user} username={userIdentifier} />
-
-      {/* Section 3 — Recent Activity: horizontal scroll rail of the
+      {/* Section 2 — Recent Activity: horizontal scroll rail of the
           user's most recent reviews/ratings, each as a cover tile with
           star rating. Hidden entirely when the user has no reviews;
           chevron routes to the Reviews tab. */}
@@ -1816,11 +1828,25 @@ function HomeTab({
         onSeeAll={onReviewsChevron}
       />
 
+      {/* Section 3 — Badges (Sprint 5 P9). BadgesRow owns its own
+          section header + chevron so it can disappear entirely when
+          there are zero earned + zero in-progress badges (it returns
+          null in that case). Wrapping it in a bare <section> here
+          would leave an empty container in the DOM. */}
+      <BadgesRow user={user} username={userIdentifier} />
+
       {/* Section 4 — Pinned Lists. Hidden entirely when the user has no
           pinned lists; chevron routes to the Lists tab. */}
       <PinnedListsSection
         pinnedLists={pinnedLists}
         onSeeAll={onListsChevron}
+      />
+
+      {/* Section 5 — Ratings distribution. Hidden entirely when the
+          user has zero reviews (ProfileRatingsChart returns null). */}
+      <ProfileRatingsChart
+        reviews={allReviews}
+        onReviewTap={onReviewTap}
       />
 
       {/* Legacy activity thumbs — kept for now but deprioritised; can be

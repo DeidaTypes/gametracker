@@ -29,10 +29,25 @@ export const AUTH_ERRORS = Object.freeze({
   INVALID_CREDENTIALS: 'invalid_credentials',
   EMAIL_TAKEN: 'email_taken',
   WEAK_PASSWORD: 'weak_password',
+  USERNAME_TAKEN: 'username_taken',
+  USERNAME_INVALID: 'username_invalid',
   NETWORK: 'network',
   PROFILE_BOOTSTRAP_FAILED: 'profile_bootstrap_failed',
   UNKNOWN: 'unknown',
 })
+
+// Handle format mirrored from EditProfileModal / profileService so the
+// signup-time rule and the edit-profile rule never drift apart.
+export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
+
+/** Lowercase + strip a leading @ and any disallowed characters. */
+export function normalizeUsername(input) {
+  return (input || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/[^a-z0-9_]/g, '')
+}
 
 function isNetworkError(err) {
   if (!err) return false
@@ -90,7 +105,15 @@ class AuthError extends Error {
    Profile-row bootstrap (signup hot path)
    ============================================================ */
 
-async function insertProfileRowWithRetry({ id, displayName }, attempts = 3) {
+// True when a Postgres unique-violation is on the username index rather
+// than the primary key (id). A pkey clash means "row already exists from a
+// retry" (recoverable); a username clash means the handle is taken.
+function isUsernameConflict(error) {
+  const haystack = `${error?.message || ''} ${error?.details || ''}`
+  return /users_username_key|\busername\b/i.test(haystack)
+}
+
+async function insertProfileRowWithRetry({ id, displayName, username }, attempts = 3) {
   // Supabase doesn't expose multi-statement transactions to the JS client,
   // so we approximate atomicity via retry-on-failure. If all retries fail
   // we still surface the error so the caller can decide what to do (we
@@ -100,6 +123,11 @@ async function insertProfileRowWithRetry({ id, displayName }, attempts = 3) {
     const { error } = await supabase.from('users').insert({
       id,
       display_name: displayName,
+      // username is UNIQUE and nullable — only write it when supplied so
+      // the unique index isn't tripped by multiple NULLs (Postgres allows
+      // many NULLs in a unique column, but being explicit keeps intent
+      // clear).
+      ...(username ? { username } : {}),
       // created_at is also DB-defaulted, but stamp it client-side too so
       // the row sorts correctly in any read-after-write before the DB
       // round-trips.
@@ -107,16 +135,51 @@ async function insertProfileRowWithRetry({ id, displayName }, attempts = 3) {
     })
     if (!error) return
     lastErr = error
-    // 23505 = unique_violation. If the row already exists from a prior
-    // attempt that succeeded but whose response was lost, that's fine —
-    // treat as success.
-    if (error.code === '23505') return
+    // 23505 = unique_violation. A username clash must surface to the user
+    // (the handle is taken); a primary-key clash means the row already
+    // exists from a prior attempt whose response was lost — treat as success.
+    if (error.code === '23505') {
+      if (isUsernameConflict(error)) {
+        throw new AuthError(
+          AUTH_ERRORS.USERNAME_TAKEN,
+          'That username is already taken. Please choose another.',
+          error
+        )
+      }
+      return
+    }
     // Don't bother retrying validation errors (4xx-ish on PostgREST).
     if (error.code && /^[24]/.test(error.code)) break
     // Backoff: 200ms, 600ms, 1200ms.
     await new Promise((r) => setTimeout(r, 200 * (i + 1) * (i + 1)))
   }
   throw lastErr || new Error('Failed to insert profile row')
+}
+
+/**
+ * Best-effort check that a username isn't already taken. Relies on the
+ * `users_select_all` RLS policy (readable by anon) so it can run *before*
+ * the auth user is created — avoiding an orphaned auth account when the
+ * handle is unavailable. The DB unique index is still the source of truth;
+ * this is just for a clean pre-flight error.
+ *
+ * @returns {Promise<boolean>} true when the handle appears available
+ */
+export async function isUsernameAvailableRemote(username) {
+  const handle = normalizeUsername(username)
+  if (!handle) return true
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('username', handle)
+    .maybeSingle()
+  if (error) {
+    // Soft-fail open: if the check itself errors we let the unique index
+    // be the backstop rather than blocking a legitimate signup.
+    console.warn('[auth] username availability check failed:', error.message)
+    return true
+  }
+  return !data
 }
 
 /* ============================================================
@@ -135,16 +198,38 @@ async function insertProfileRowWithRetry({ id, displayName }, attempts = 3) {
  * code and the caller should surface "your account was partially created,
  * please contact support" rather than silently leaving a half-baked user.
  *
- * @param {{ email: string, password: string, displayName: string }} args
+ * @param {{ email: string, password: string, displayName: string, username?: string }} args
  * @returns {Promise<{ user: object, session: object|null, profile: object }>}
  */
-export async function signUp({ email, password, displayName }) {
+export async function signUp({ email, password, displayName, username }) {
   const trimmedDisplayName = (displayName || '').trim()
   if (!trimmedDisplayName) {
     throw new AuthError(
       AUTH_ERRORS.UNKNOWN,
       'Display name is required to create an account.'
     )
+  }
+
+  // Normalize + validate the optional username up front so we never create
+  // an auth user for an obviously-invalid handle.
+  const normalizedUsername = normalizeUsername(username)
+  if (normalizedUsername && !USERNAME_PATTERN.test(normalizedUsername)) {
+    throw new AuthError(
+      AUTH_ERRORS.USERNAME_INVALID,
+      'Username must be 3–20 characters (letters, numbers, underscores).'
+    )
+  }
+
+  // Pre-flight availability check (before the auth user exists) so a taken
+  // handle doesn't leave an orphaned auth account behind.
+  if (normalizedUsername) {
+    const available = await isUsernameAvailableRemote(normalizedUsername)
+    if (!available) {
+      throw new AuthError(
+        AUTH_ERRORS.USERNAME_TAKEN,
+        'That username is already taken. Please choose another.'
+      )
+    }
   }
 
   let authData
@@ -184,6 +269,7 @@ export async function signUp({ email, password, displayName }) {
     await insertProfileRowWithRetry({
       id: user.id,
       displayName: trimmedDisplayName,
+      username: normalizedUsername || null,
     })
     const { data: profileRow, error: fetchErr } = await supabase
       .from('users')
@@ -193,6 +279,11 @@ export async function signUp({ email, password, displayName }) {
     if (fetchErr) throw fetchErr
     profile = profileRow
   } catch (err) {
+    // A taken username is a normal, user-correctable condition — surface
+    // it as-is rather than collapsing it into the generic bootstrap error.
+    if (err instanceof AuthError && err.code === AUTH_ERRORS.USERNAME_TAKEN) {
+      throw err
+    }
     throw new AuthError(
       AUTH_ERRORS.PROFILE_BOOTSTRAP_FAILED,
       'Your account was created, but we could not finish setting up your profile. Please log in and try again, or contact support.',

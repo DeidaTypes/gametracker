@@ -11,28 +11,28 @@ import { getFlaggedContentIds } from './reportService'
  * Schema (mirrored from supabase/comments.sql — run that file in the
  * Supabase SQL editor before this code is exercised):
  *
- *   CREATE TABLE comments (
+ *   CREATE TABLE review_comments (
  *     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  *     review_id         uuid NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
  *     user_id           uuid NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
- *     parent_comment_id uuid REFERENCES comments(id) ON DELETE CASCADE,
+ *     parent_comment_id uuid REFERENCES review_comments(id) ON DELETE CASCADE,
  *     body              text NOT NULL CHECK (length(body) BETWEEN 1 AND 2000),
  *     created_at        timestamptz NOT NULL DEFAULT now(),
  *     updated_at        timestamptz NOT NULL DEFAULT now()
  *   );
  *
- *   CREATE INDEX comments_review_idx ON comments(review_id, created_at);
- *   CREATE INDEX comments_parent_idx ON comments(parent_comment_id);
+ *   CREATE INDEX review_comments_review_idx ON review_comments(review_id, created_at);
+ *   CREATE INDEX review_comments_parent_idx ON review_comments(parent_comment_id);
  *
- *   ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ *   ALTER TABLE review_comments ENABLE ROW LEVEL SECURITY;
  *
- *   CREATE POLICY comments_select_all ON comments
+ *   CREATE POLICY review_comments_select_all ON review_comments
  *     FOR SELECT USING (true);
- *   CREATE POLICY comments_insert_self ON comments
+ *   CREATE POLICY review_comments_insert_self ON review_comments
  *     FOR INSERT WITH CHECK (auth.uid() = user_id);
- *   CREATE POLICY comments_update_own ON comments
+ *   CREATE POLICY review_comments_update_own ON review_comments
  *     FOR UPDATE USING (auth.uid() = user_id);
- *   CREATE POLICY comments_delete_own ON comments
+ *   CREATE POLICY review_comments_delete_own ON review_comments
  *     FOR DELETE USING (auth.uid() = user_id);
  *
  * Mirrors src/services/likeService.js + followService.js:
@@ -91,8 +91,8 @@ export async function getCommentsForReview(reviewId) {
     getFlaggedContentIds('comment'),
     (async () => {
       let query = supabase
-        .from('comments')
-        .select('*, users!comments_user_id_fkey(username, display_name, avatar_url)')
+        .from('review_comments')
+        .select('*, users(username, display_name, avatar_url)')
         .eq('review_id', reviewId)
         .order('created_at', { ascending: true })
       query = await applyBlockFilter(query, 'user_id')
@@ -115,7 +115,7 @@ export async function getCommentsForReview(reviewId) {
 export async function getCommentCount(reviewId) {
   if (!reviewId) return 0
   let query = supabase
-    .from('comments')
+    .from('review_comments')
     .select('*', { count: 'exact', head: true })
     .eq('review_id', reviewId)
   query = await applyBlockFilter(query, 'user_id')
@@ -147,7 +147,7 @@ export async function getCommentCountsForReviews(reviewIds) {
   for (const id of reviewIds) counts.set(id, 0)
 
   let query = supabase
-    .from('comments')
+    .from('review_comments')
     .select('review_id')
     .in('review_id', reviewIds)
   query = await applyBlockFilter(query, 'user_id')
@@ -215,7 +215,7 @@ export async function postComment({ reviewId, body, parentCommentId = null }) {
   // is itself a top-level comment.
   if (parentCommentId) {
     const { data: parent, error: parentErr } = await supabase
-      .from('comments')
+      .from('review_comments')
       .select('id, parent_comment_id, review_id')
       .eq('id', parentCommentId)
       .maybeSingle()
@@ -240,9 +240,9 @@ export async function postComment({ reviewId, body, parentCommentId = null }) {
   }
 
   const { data, error } = await supabase
-    .from('comments')
+    .from('review_comments')
     .insert(insert)
-    .select('*, users!comments_user_id_fkey(username, display_name, avatar_url)')
+    .select('*, users(username, display_name, avatar_url)')
     .single()
 
   if (error) {
@@ -268,10 +268,10 @@ export async function updateComment(commentId, body) {
   }
 
   const { data, error } = await supabase
-    .from('comments')
+    .from('review_comments')
     .update({ body: trimmed, updated_at: new Date().toISOString() })
     .eq('id', commentId)
-    .select('*, users!comments_user_id_fkey(username, display_name, avatar_url)')
+    .select('*, users(username, display_name, avatar_url)')
     .single()
 
   if (error) {
@@ -289,11 +289,91 @@ export async function updateComment(commentId, body) {
 export async function deleteComment(commentId) {
   if (!commentId) throw new Error('commentId is required')
   const { error } = await supabase
-    .from('comments')
+    .from('review_comments')
     .delete()
     .eq('id', commentId)
   if (error) {
     console.error('[comments] deleteComment failed:', error.message)
     throw new Error(error.message)
   }
+}
+
+/* ============================================================
+   Comment likes — comment_likes table
+   ============================================================ */
+
+/**
+ * INSERT a like row. Idempotent — 23505 unique-violation is swallowed
+ * so optimistic UI races don't surface as errors. Mirrors likeReview.
+ */
+export async function likeComment(commentId) {
+  if (!commentId) throw new Error('commentId is required')
+  const userId = await getCurrentUserId()
+  if (!userId) throw new Error('You must be signed in to like a comment.')
+  const { error } = await supabase
+    .from('comment_likes')
+    .insert({ comment_id: commentId, user_id: userId })
+  if (error) {
+    if (error.code === '23505') return
+    console.error('[comments] likeComment failed:', error.message)
+    throw new Error(error.message)
+  }
+}
+
+/**
+ * DELETE the like row. No-op when no row exists. Mirrors unlikeReview.
+ */
+export async function unlikeComment(commentId) {
+  if (!commentId) throw new Error('commentId is required')
+  const userId = await getCurrentUserId()
+  if (!userId) throw new Error('You must be signed in to unlike a comment.')
+  const { error } = await supabase
+    .from('comment_likes')
+    .delete()
+    .eq('comment_id', commentId)
+    .eq('user_id', userId)
+  if (error) {
+    console.error('[comments] unlikeComment failed:', error.message)
+    throw new Error(error.message)
+  }
+}
+
+/**
+ * Batch-load like states for an array of comment IDs.
+ *
+ * Returns a Map<commentId, { liked: boolean, count: number }>.
+ * Every input id is present in the result (count = 0, liked = false
+ * if no rows) so callers can use `.get(id)` without fallbacks.
+ *
+ * One query fetches all rows; client-side aggregation keeps it to a
+ * single round-trip regardless of comment count.
+ *
+ * @param {string[]} commentIds
+ * @param {string|null} userId — the current user's id, or null when
+ *   signed out (all `liked` values return false in that case)
+ * @returns {Promise<Map<string, { liked: boolean, count: number }>>}
+ */
+export async function getCommentLikeStates(commentIds, userId) {
+  const result = new Map()
+  if (!commentIds?.length) return result
+  for (const id of commentIds) result.set(id, { liked: false, count: 0 })
+
+  const { data, error } = await supabase
+    .from('comment_likes')
+    .select('comment_id, user_id')
+    .in('comment_id', commentIds)
+
+  if (error) {
+    console.error('[comments] getCommentLikeStates failed:', error.message)
+    return result
+  }
+
+  for (const row of data || []) {
+    const prev = result.get(row.comment_id) || { liked: false, count: 0 }
+    result.set(row.comment_id, {
+      liked: userId ? prev.liked || row.user_id === userId : false,
+      count: prev.count + 1,
+    })
+  }
+  return result
 }

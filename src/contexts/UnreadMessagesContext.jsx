@@ -12,6 +12,7 @@ import {
   getUnreadCount,
   MESSAGES_CHANGED_EVENT,
 } from '../services/messageService'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 
 const UnreadMessagesContext = createContext({ unreadCount: 0, refresh: () => {} })
 
@@ -40,6 +41,9 @@ export function UnreadMessagesProvider({ children }) {
   const { user } = useAuth()
   const userId = user?.id || null
   const [unreadCount, setUnreadCount] = useState(0)
+  // Bumped on every app resume so the realtime effect below tears down the
+  // dead (post-suspend) channel and re-subscribes onto a fresh socket.
+  const [resumeKey, setResumeKey] = useState(0)
 
   const refresh = useCallback(async () => {
     if (!userId) {
@@ -63,7 +67,21 @@ export function UnreadMessagesProvider({ children }) {
     refresh()
   }, [userId, refresh])
 
+  // When the app returns to the foreground the suspended WebSocket is dead.
+  // Bump resumeKey (the realtime effect depends on it) so the channel is
+  // recreated on a fresh socket, and refetch so the count is immediately
+  // correct without waiting for a realtime echo.
+  useEffect(() => {
+    const onResume = () => {
+      setResumeKey((k) => k + 1)
+      refresh()
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [refresh])
+
   // Realtime subscription — refetch on any DM mutation that affects me.
+  // Keyed on resumeKey so a resume tears this channel down and re-subscribes.
   useEffect(() => {
     if (!userId) return undefined
     const channel = supabase
@@ -93,7 +111,7 @@ export function UnreadMessagesProvider({ children }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [userId, refresh])
+  }, [userId, refresh, resumeKey])
 
   // In-app event — sendMessage / markThreadAsRead emit this so the
   // dot updates instantly even before the realtime echo arrives.

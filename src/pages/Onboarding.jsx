@@ -20,6 +20,7 @@ import { searchGames } from '../services/igdb'
 import {
   setGameStatus,
   initializeLibrary,
+  updateGameProgress,
 } from '../services/libraryService'
 import { updateProfile } from '../services/profileService'
 import { completeOnboarding } from '../services/onboardingService'
@@ -121,7 +122,14 @@ export default function Onboarding() {
         if (seedGames.length > 0) {
           updateProfile({ favoriteGames: seedGames.slice(0, 4) })
           initializeLibrary()
+          const seededAt = new Date().toISOString()
           for (const game of seedGames) {
+            // Pre-stamp playedFirstAt so setGameStatus's celebration guard
+            // sees a non-null value and skips queueCelebration. Without this
+            // the three "Played" writes each enqueue a CompletionCelebration,
+            // which fires on top of Home and can route the user into the
+            // review composer instead of landing on the dashboard.
+            updateGameProgress(game.id, { playedFirstAt: seededAt })
             setGameStatus(game.id, 'played', game)
           }
         }

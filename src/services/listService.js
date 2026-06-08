@@ -12,6 +12,8 @@ import { logActivity } from './activityService'
  *     description      text,
  *     is_public        boolean NOT NULL DEFAULT true,
  *     cover_image_url  text,
+ *     is_pinned        boolean NOT NULL DEFAULT false,
+ *     pinned_at        timestamptz,
  *     created_at       timestamptz NOT NULL DEFAULT now(),
  *     updated_at       timestamptz NOT NULL DEFAULT now()
  *   )
@@ -33,6 +35,10 @@ import { logActivity } from './activityService'
  *   lists — write:  user_id = auth.uid()
  *   list_games — inherits via CASCADE / same user_id via list ownership
  */
+
+export const LIST_PIN_CHANGED_EVENT = 'listPinChanged'
+
+const MAX_PINNED_LISTS = 5
 
 const LIBRARY_STORAGE_KEY = 'gameLibrary'
 const MIGRATED_KEY = 'customLists_migratedToSupabase'
@@ -78,16 +84,27 @@ function rowToList(row) {
     isPublic: row.is_public ?? true,
     isCustom: true,
     coverImageUrl: row.cover_image_url || null,
+    isPinned: row.is_pinned ?? false,
+    pinnedAt: row.pinned_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     games,
     gameCount: games.length,
-    previewGames: games.slice(0, 4),
+    previewGames: games.slice(0, 6),
   }
 }
 
 function notifyChange() {
   try {
+    window.dispatchEvent(new Event('libraryUpdated'))
+  } catch {
+    // SSR / no-window — best effort
+  }
+}
+
+function notifyPinChange() {
+  try {
+    window.dispatchEvent(new Event(LIST_PIN_CHANGED_EVENT))
     window.dispatchEvent(new Event('libraryUpdated'))
   } catch {
     // SSR / no-window — best effort
@@ -105,7 +122,7 @@ export async function getListsForUser(userId) {
   if (!userId) return []
   const { data, error } = await supabase
     .from('lists')
-    .select('*, list_games(igdb_game_id, game_title, game_image, position, added_at)')
+    .select('*, is_pinned, pinned_at, list_games(igdb_game_id, game_title, game_image, position, added_at)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
   if (error) {
@@ -326,6 +343,81 @@ export async function reorderListGames(listId, orderedGameIds) {
     )
   )
   notifyChange()
+}
+
+// ── List pinning ──────────────────────────────────────────────────────────────
+
+/**
+ * Returns the user's pinned lists (is_pinned = true), ordered by pinned_at DESC,
+ * capped at MAX_PINNED_LISTS (5). Returns the full list shape including previewGames.
+ */
+export async function getPinnedListsForUser(userId) {
+  if (!userId) return []
+  const { data, error } = await supabase
+    .from('lists')
+    .select('*, is_pinned, pinned_at, list_games(igdb_game_id, game_title, game_image, position, added_at)')
+    .eq('user_id', userId)
+    .eq('is_pinned', true)
+    .order('pinned_at', { ascending: false, nullsFirst: false })
+    .limit(MAX_PINNED_LISTS)
+  if (error) {
+    console.error('[lists] getPinnedListsForUser failed:', error.message)
+    return []
+  }
+  return (data || []).map(rowToList)
+}
+
+/**
+ * Pin a list. Enforces the MAX_PINNED_LISTS (5) cap. Throws with
+ * err.code = 'LIST_PINS_FULL' when the cap would be exceeded so callers
+ * can show a specific toast.
+ */
+export async function pinList(listId) {
+  if (!listId) throw new Error('listId is required')
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+  if (userErr || !user) throw new Error('Must be signed in to pin a list.')
+
+  const { count, error: countErr } = await supabase
+    .from('lists')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_pinned', true)
+  if (countErr) throw new Error(countErr.message)
+  if (count >= MAX_PINNED_LISTS) {
+    const err = new Error(`You already have ${MAX_PINNED_LISTS} pinned lists. Unpin one first.`)
+    err.code = 'LIST_PINS_FULL'
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('lists')
+    .update({ is_pinned: true, pinned_at: new Date().toISOString() })
+    .eq('id', listId)
+    .eq('user_id', user.id)
+  if (error) {
+    console.error('[lists] pinList failed:', error.message)
+    throw new Error(error.message)
+  }
+  notifyPinChange()
+}
+
+/**
+ * Unpin a list. Clears is_pinned and pinned_at.
+ */
+export async function unpinList(listId) {
+  if (!listId) throw new Error('listId is required')
+  const { error } = await supabase
+    .from('lists')
+    .update({ is_pinned: false, pinned_at: null })
+    .eq('id', listId)
+  if (error) {
+    console.error('[lists] unpinList failed:', error.message)
+    throw new Error(error.message)
+  }
+  notifyPinChange()
 }
 
 // ── One-time localStorage → Supabase migration ───────────────────────────────

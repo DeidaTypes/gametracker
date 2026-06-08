@@ -41,6 +41,7 @@ function reviewerFromJoin(row) {
  * that reviewed or tracked the game in the window.
  */
 export async function getTrendingThisWeek(limit = 10) {
+  const _t0 = Date.now()
   try {
     const sinceIso = new Date(Date.now() - TRENDING_WINDOW_MS).toISOString()
 
@@ -51,7 +52,7 @@ export async function getTrendingThisWeek(limit = 10) {
           .select('igdb_game_id, user_id, game_title, game_image, created_at')
           .gte('created_at', sinceIso)
           .order('created_at', { ascending: false })
-          .limit(300)
+          .limit(100)
         q = await applyBlockFilter(q, 'user_id')
         return q
       })(),
@@ -61,12 +62,13 @@ export async function getTrendingThisWeek(limit = 10) {
           .select('igdb_game_id, user_id, status, game_title, game_image, updated_at')
           .gte('updated_at', sinceIso)
           .order('updated_at', { ascending: false })
-          .limit(300)
+          .limit(100)
         q = await applyBlockFilter(q, 'user_id')
         return q
       })(),
     ])
 
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingThisWeek Promise.all (reviews+trackers): ${Date.now() - _t0}ms`)
     const reviewRows = reviewsRes.error ? [] : reviewsRes.data || []
     const trackerRows = trackersRes.error ? [] : trackersRes.data || []
 
@@ -100,7 +102,7 @@ export async function getTrendingThisWeek(limit = 10) {
       )
     }
 
-    return Array.from(byGame.values())
+    const result = Array.from(byGame.values())
       .map((e) => ({
         game: e.game,
         peopleCount: e.users.size,
@@ -109,6 +111,8 @@ export async function getTrendingThisWeek(limit = 10) {
       .filter((e) => e.peopleCount > 0)
       .sort((a, b) => b.peopleCount - a.peopleCount)
       .slice(0, limit)
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingThisWeek TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
+    return result
   } catch (err) {
     console.error('[community] getTrendingThisWeek failed:', err)
     return []
@@ -135,6 +139,7 @@ function dominantStatus(counts) {
  * Real source only. Empty result → the section renders its empty state.
  */
 export async function getJustFinished(limit = 20) {
+  const _t0 = Date.now()
   try {
     let q = supabase
       .from('game_trackers')
@@ -146,12 +151,13 @@ export async function getJustFinished(limit = 20) {
       .limit(limit * 2)
     q = await applyBlockFilter(q, 'user_id')
     const { data, error } = await q
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getJustFinished query: ${Date.now() - _t0}ms`)
     if (error) {
       console.error('[community] getJustFinished failed:', error.message)
       return []
     }
 
-    return (data || [])
+    const result = (data || [])
       .filter((row) => row.game_image && row.igdb_game_id != null)
       .slice(0, limit)
       .map((row) => ({
@@ -165,6 +171,8 @@ export async function getJustFinished(limit = 20) {
         rating: row.rating != null ? Number(row.rating) : null,
         timestamp: row.updated_at ? new Date(row.updated_at).getTime() : 0,
       }))
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getJustFinished TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
+    return result
   } catch (err) {
     console.error('[community] getJustFinished crashed:', err)
     return []

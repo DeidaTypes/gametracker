@@ -35,8 +35,9 @@ function toReviewCardShape(row, likeCounts, commentCounts) {
       developer: '',
     },
     author: {
-      username:
-        row.users?.username || row.users?.display_name || 'Anonymous',
+      username: row.users?.username || null,
+      displayName: row.users?.display_name || 'Anonymous',
+      userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
     },
     title: null,
@@ -358,7 +359,7 @@ function TimelineFeed({ refreshKey = 0 }) {
             className={`tf-tab${tab === 'friends' ? ' tf-tab--active' : ''}`}
             onClick={() => setTab('friends')}
           >
-            Friends
+            Following
           </button>
         </div>
 
@@ -421,7 +422,7 @@ function TimelineFeed({ refreshKey = 0 }) {
           ) : friendsStatus === 'no-reviews' ? (
             <EmptyState
               icon={Users}
-              title="Nothing from friends yet."
+              title="Nothing from following yet."
               body="The people you follow haven't reviewed anything yet. Check back later."
             />
           ) : (

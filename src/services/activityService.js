@@ -197,30 +197,30 @@ export async function getActivitiesForUser(userId, { limit = 50, offset = 0 } = 
     }
   }
 
+  // Run both secondary lookups in parallel — they are independent and were
+  // previously sequential (a waterfall that doubled the round-trip time on
+  // profiles with both list and review activity).
+  const [listResult, reviewResult] = await Promise.all([
+    listTargetIds.size > 0
+      ? supabase.from('lists').select('id, name').in('id', [...listTargetIds])
+      : Promise.resolve({ data: [], error: null }),
+    reviewTargetIds.size > 0
+      ? supabase.from('reviews').select('id, rating, game_title, igdb_game_id').in('id', [...reviewTargetIds])
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
   const listMap = new Map()
-  if (listTargetIds.size > 0) {
-    const { data: lists, error: listErr } = await supabase
-      .from('lists')
-      .select('id, name')
-      .in('id', [...listTargetIds])
-    if (listErr) {
-      console.error('[activity] list-name lookup failed:', listErr.message)
-    } else {
-      for (const l of lists || []) listMap.set(l.id, l)
-    }
+  if (listResult.error) {
+    console.error('[activity] list-name lookup failed:', listResult.error.message)
+  } else {
+    for (const l of listResult.data || []) listMap.set(l.id, l)
   }
 
   const reviewMap = new Map()
-  if (reviewTargetIds.size > 0) {
-    const { data: reviews, error: reviewErr } = await supabase
-      .from('reviews')
-      .select('id, rating, game_title, igdb_game_id')
-      .in('id', [...reviewTargetIds])
-    if (reviewErr) {
-      console.error('[activity] review-rating lookup failed:', reviewErr.message)
-    } else {
-      for (const r of reviews || []) reviewMap.set(r.id, r)
-    }
+  if (reviewResult.error) {
+    console.error('[activity] review-rating lookup failed:', reviewResult.error.message)
+  } else {
+    for (const r of reviewResult.data || []) reviewMap.set(r.id, r)
   }
 
   return rows.map((r) => {

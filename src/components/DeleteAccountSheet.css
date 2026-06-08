@@ -1,36 +1,13 @@
 /* ============================================================
-   DeleteAccountSheet — two-step account deletion confirm sheet.
-   Follows the same bottom-sheet pattern used by BioEditSheet and
-   ActionSheet: backdrop fade + spring slide-up.
+   DeleteAccountSheet — two-step account deletion confirm dialog.
+   Presented as a centered popup (CenteredModal / .cm-card); the rules
+   below style the content that lives inside it.
    ============================================================ */
 
-.del-acct-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(0, 0, 0, 0.6);
+.del-acct-sheet__scroll {
+  /* flex/overflow provided by .cm-scroll */
   display: flex;
-  align-items: flex-end;
-}
-
-.del-acct-sheet {
-  width: 100%;
-  max-height: 92dvh;
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  outline: none;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-}
-
-.del-acct-sheet__handle {
-  width: 36px;
-  height: 4px;
-  background: var(--border-subtle);
-  border-radius: 2px;
-  margin: 12px auto 0;
+  flex-direction: column;
 }
 
 .del-acct-sheet__header {
@@ -132,7 +109,7 @@
   width: 100%;
   padding: 11px 14px;
   font-family: var(--font-mono, monospace);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--text-primary);
@@ -170,7 +147,7 @@
   width: 100%;
   padding: 11px 14px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-secondary);
   background: var(--bg-input, rgba(255, 255, 255, 0.06));
   border: 1.5px solid var(--border-subtle);

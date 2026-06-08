@@ -7,10 +7,18 @@
    ============================================================ */
 
 .auth-page {
+  /* Fill the scroll viewport so the form sits in the true vertical center
+     rather than collapsing to content height (which left it pinned to the
+     top on iOS). 100dvh tracks the live WebView viewport; 100vh is the
+     fallback for engines without dvh. */
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
   display: flex;
+  /* Column + justify-content:center makes the *vertical* axis the centered
+     one explicitly, so the card is reliably centered top-to-bottom on web
+     and in the iOS WebView. align-items centers it horizontally. */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-2xl) var(--container-padding);

@@ -386,7 +386,7 @@ function UsersResults({ rows, isLoading, onTapUser, currentUserId }) {
               <UserAvatar url={u.avatar_url} name={displayName || username} />
               <div className="so-user-row__text">
                 <span className="so-user-row__username">
-                  {username ? `@${username}` : displayName || 'Unknown'}
+                  {username || displayName || 'Unknown'}
                 </span>
                 {displayName && username && (
                   <span className="so-user-row__display">{displayName}</span>
@@ -464,7 +464,7 @@ function ListsResults({ rows, isLoading, onTapList }) {
             )}
             {list.author && (
               <span className="so-list-row__author">
-                @{list.author.username || list.author.displayName}
+                {list.author.username || list.author.displayName}
               </span>
             )}
           </div>
@@ -587,9 +587,11 @@ function SearchOverlay() {
         displayName: item.displayName,
         avatarUrl: item.avatarUrl || null,
       })
+      close()
       if (item.username) {
-        close()
-        navigate(`/user/${item.username}`)
+        navigate(`/user/${encodeURIComponent(item.username)}`)
+      } else if (item.id) {
+        navigate(`/user/id/${encodeURIComponent(item.id)}`)
       }
     },
     [close, navigate]

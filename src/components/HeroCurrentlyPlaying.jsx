@@ -39,16 +39,15 @@ function upgradeIgdbUrl(url, token) {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function HeroEmpty() {
-  const navigate = useNavigate()
+function HeroEmpty({ onAddGame }) {
   return (
     <div className="hcp-empty">
       <EmptyState
         icon={PlayCircle}
         title="Nothing in progress."
-        body="Mark a game as Playing to see it here."
-        cta="Browse games"
-        onCta={() => navigate('/search')}
+        body="Start a game and pick up right where you left off here."
+        cta="Add a game"
+        onCta={onAddGame}
       />
     </div>
   )
@@ -77,14 +76,15 @@ function SecondaryCard({ game, onClick }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function HeroCurrentlyPlaying({ games }) {
+export default function HeroCurrentlyPlaying({ games, onAddGame, boxed = false }) {
   const navigate = useNavigate()
   const eyebrow = useMemo(getTimeOfDayLabel, [])
+  const rootClass = `hcp${boxed ? ' hcp--boxed' : ''}`
 
   if (!games || games.length === 0) {
     return (
-      <div className="hcp">
-        <HeroEmpty />
+      <div className={rootClass}>
+        <HeroEmpty onAddGame={onAddGame} />
       </div>
     )
   }
@@ -107,7 +107,7 @@ export default function HeroCurrentlyPlaying({ games }) {
   }
 
   return (
-    <div className="hcp">
+    <div className={rootClass}>
       {/* ── Hero ── */}
       <div
         className="hcp-hero"

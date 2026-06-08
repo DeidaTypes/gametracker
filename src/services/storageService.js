@@ -2,8 +2,10 @@ import { supabase } from './supabase'
 import { updateProfile } from './profileService'
 
 const BUCKET = 'profile-banners'
+const AVATAR_BUCKET = 'avatars'
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
+const AVATAR_MAX_SIZE = 10 * 1024 * 1024 // 10 MB (compressed before upload)
 
 const EXT_MAP = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 
@@ -109,6 +111,99 @@ export async function removeBanner(currentUser, oldBannerUrl) {
   updateProfile({ bannerUrl: null })
 
   await deleteStorageObject(extractStoragePath(oldBannerUrl))
+}
+
+/**
+ * Upload a profile avatar for `currentUser`.
+ *
+ * Expects a File or Blob (already compressed by the caller).
+ * Validates MIME type. Uploads to the `avatars` bucket at a user-scoped,
+ * timestamped path so re-uploads bust CDN caches. Writes `avatar_url` to
+ * `users` and syncs to the localStorage profile blob. Deletes the old
+ * object when `oldAvatarUrl` is supplied.
+ *
+ * @param {File|Blob} file            Compressed avatar file.
+ * @param {object}    currentUser     Supabase auth user (must have `.id`).
+ * @param {string}    [oldAvatarUrl]  Previous public URL to delete.
+ * @param {string}    [mimeType]      MIME type of the blob (default 'image/jpeg').
+ * @returns {Promise<string>} Public URL of the newly-uploaded avatar.
+ */
+export async function uploadAvatar(file, currentUser, oldAvatarUrl, mimeType = 'image/jpeg') {
+  const mime = file.type || mimeType
+  if (!ALLOWED_MIME.includes(mime)) {
+    throw new Error('Avatar must be a JPEG, PNG, or WebP image.')
+  }
+  if (file.size > AVATAR_MAX_SIZE) {
+    throw new Error('Avatar must be less than 10 MB.')
+  }
+
+  const extMap = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+  const ext = extMap[mime] || 'jpg'
+  const path = `${currentUser.id}/avatar-${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { contentType: mime, upsert: false })
+
+  if (uploadError) throw uploadError
+
+  const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path)
+  const publicUrl = urlData.publicUrl
+
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ avatar_url: publicUrl })
+    .eq('id', currentUser.id)
+
+  if (updateError) throw updateError
+
+  // Keep the local profile blob in sync. The avatar field is updated to a
+  // URL-type shape so Profile.jsx reads it correctly.
+  updateProfile({ avatar: { type: 'url', data: publicUrl }, avatarUrl: publicUrl })
+
+  // Delete the previous avatar object after the new one is safely stored.
+  if (oldAvatarUrl) {
+    await deleteAvatarObject(extractAvatarPath(oldAvatarUrl))
+  }
+
+  return publicUrl
+}
+
+/**
+ * Remove a user's avatar: clears `users.avatar_url`, wipes the localStorage
+ * profile field, and deletes the storage object.
+ *
+ * @param {object} currentUser   Supabase auth user.
+ * @param {string} oldAvatarUrl  Current public URL.
+ */
+export async function removeAvatar(currentUser, oldAvatarUrl) {
+  const { error } = await supabase
+    .from('users')
+    .update({ avatar_url: null })
+    .eq('id', currentUser.id)
+
+  if (error) throw error
+
+  updateProfile({ avatar: null, avatarUrl: null })
+
+  await deleteAvatarObject(extractAvatarPath(oldAvatarUrl))
+}
+
+function extractAvatarPath(publicUrl) {
+  if (!publicUrl) return null
+  const marker = `/${AVATAR_BUCKET}/`
+  const idx = publicUrl.indexOf(marker)
+  if (idx === -1) return null
+  return publicUrl.slice(idx + marker.length)
+}
+
+async function deleteAvatarObject(path) {
+  if (!path) return
+  try {
+    await supabase.storage.from(AVATAR_BUCKET).remove([path])
+  } catch {
+    // intentionally swallowed
+  }
 }
 
 /**

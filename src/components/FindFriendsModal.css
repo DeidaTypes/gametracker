@@ -1,0 +1,226 @@
+/* ============================================================
+   FindFriendsModal — focused user-search popup.
+   Presented inside CenteredModal (.cm-card): the shell provides the
+   surface, rounding, centering, and keyboard-aware sizing. These styles
+   lay out the pinned search band and the scrollable results body.
+   Namespace: ffm-*
+   ============================================================ */
+
+/* ── Pinned search band — fixed at the top of the card, stays visible
+   above the keyboard, never scrolls away ── */
+.ffm-search-pinned {
+  flex-shrink: 0;
+  padding: 16px 16px 12px;
+}
+
+.ffm-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ffm-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.ffm-search-input {
+  width: 100%;
+  height: 44px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 0 16px 0 40px;
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast, 120ms ease);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ffm-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ffm-search-input:focus {
+  border-color: var(--accent);
+}
+
+/* ── Scrollable results body ── */
+.ffm-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 16px 16px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Status / hint lines ── */
+.ffm-status {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 12px);
+  font-weight: var(--font-weight-medium, 500);
+  line-height: var(--line-height-caption, 1.4);
+  color: var(--text-tertiary);
+}
+
+.ffm-status--error {
+  color: var(--status-danger);
+}
+
+.ffm-status--hint {
+  font-style: italic;
+}
+
+/* ── Results list ── */
+.ffm-results-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ffm-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.ffm-user-row:last-child {
+  border-bottom: none;
+}
+
+.ffm-user-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Avatar: 44 × 44 circle ── */
+.ffm-user-row__avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: block;
+}
+
+.ffm-user-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ffm-user-row__avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* ── Name + handle stack ── */
+.ffm-user-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ffm-user-row__name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ffm-user-row__handle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Follow / Following toggle ── */
+.ffm-user-row__follow {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--color-bg-primary, #0b1020);
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 12px);
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 32px;
+  transition: background var(--transition-fast, 120ms ease),
+    color var(--transition-fast, 120ms ease),
+    border-color var(--transition-fast, 120ms ease),
+    opacity var(--transition-fast, 120ms ease);
+}
+
+.ffm-user-row__follow:active {
+  opacity: 0.8;
+}
+
+.ffm-user-row__follow:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ffm-user-row__follow--following {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .ffm-search-input,
+  .ffm-user-row__follow {
+    transition: none;
+  }
+}

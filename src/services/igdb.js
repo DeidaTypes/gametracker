@@ -6,6 +6,31 @@
 import { normalizeGame, normalizeGames } from './normalizeGame'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 
+/**
+ * Run a timeout-wrapped fetch, retrying ONCE on a transient connection
+ * failure (timeout / network drop / aborted socket). This is the
+ * "fail fast and retry" half of the resume-recovery story: the very first
+ * IGDB request after the app returns from background can ride a socket the
+ * OS tore down while the WebView was suspended. fetchWithTimeout guarantees
+ * that stale request rejects quickly (instead of spinning forever); this
+ * wrapper then transparently retries on a brand-new connection so the user
+ * sees games load rather than an error banner.
+ *
+ * Only rejections (timeout/network) are retried — an HTTP response that
+ * arrives with a non-2xx status resolves normally and is handled by the
+ * caller, so we never retry a genuine 400/401.
+ */
+async function fetchIgdbWithRetry(input, init, retries = 1) {
+  try {
+    return await fetchWithTimeout(input, init)
+  } catch (err) {
+    if (retries > 0) {
+      return fetchIgdbWithRetry(input, init, retries - 1)
+    }
+    throw err
+  }
+}
+
 const CLIENT_ID = import.meta.env.VITE_IGDB_CLIENT_ID || 'YOUR_CLIENT_ID'
 const CLIENT_SECRET = import.meta.env.VITE_IGDB_CLIENT_SECRET || 'YOUR_CLIENT_SECRET'
 
@@ -59,7 +84,7 @@ async function fetchNewToken() {
     )
   }
 
-  const response = await fetchWithTimeout(`${API_BASE}/api/twitch/oauth2/token`, {
+  const response = await fetchIgdbWithRetry(`${API_BASE}/api/twitch/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -113,6 +138,7 @@ async function igdbRequest(endpoint, query) {
 
   const cached = responseCache.get(cacheKey)
   if (cached && Date.now() < cached.expiresAt) {
+    if (import.meta.env.DEV) console.log(`[⏱ igdb] cache HIT (${cacheKey.slice(0,60)})`)
     return cached.data
   }
 
@@ -136,7 +162,7 @@ async function executeIgdbRequest(endpoint, query, cacheKey) {
 
   const token = await getAccessToken()
 
-  const response = await fetchWithTimeout(`${API_BASE}/api/igdb/v4/${endpoint}`, {
+  const response = await fetchIgdbWithRetry(`${API_BASE}/api/igdb/v4/${endpoint}`, {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -167,7 +193,8 @@ async function executeIgdbRequest(endpoint, query, cacheKey) {
 // Edge Function path — POST { endpoint, query } to the deployed igdb-proxy and
 // return the IGDB JSON. Twitch auth happens server-side inside the function.
 async function executeViaEdgeProxy(endpoint, query, cacheKey) {
-  const response = await fetchWithTimeout(PROXY_URL, {
+  const _t0 = Date.now()
+  const response = await fetchIgdbWithRetry(PROXY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -181,6 +208,7 @@ async function executeViaEdgeProxy(endpoint, query, cacheKey) {
     body: JSON.stringify({ endpoint, query }),
   })
 
+  if (import.meta.env.DEV) console.log(`[⏱ igdb] EdgeProxy TTFB (${endpoint}): ${Date.now() - _t0}ms`)
   if (!response.ok) {
     const errorText = await response.text()
     if (response.status === 401) {
@@ -192,6 +220,7 @@ async function executeViaEdgeProxy(endpoint, query, cacheKey) {
   }
 
   const data = await response.json()
+  if (import.meta.env.DEV) console.log(`[⏱ igdb] EdgeProxy total (${endpoint}, query=${query.slice(0,40).replace(/\n/g,' ')}…): ${Date.now() - _t0}ms, rows=${Array.isArray(data)?data.length:'?'}`)
 
   responseCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
 
@@ -241,7 +270,10 @@ export async function getUpcomingReleases(limit = 30) {
   const now = Math.floor(Date.now() / 1000)
   const thirtyDaysFromNow = now + (30 * 24 * 60 * 60)
 
-  const query = `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date, summary, involved_companies.company.name;
+  // Explore's NewReleaseCard only needs name + cover + release date.
+  // Removed: genres.name, rating, rating_count, summary, involved_companies.company.name
+  // (each extra field adds IGDB query cost; involved_companies requires a subquery join).
+  const query = `fields name, cover.image_id, first_release_date;
 where first_release_date > ${now} & first_release_date < ${thirtyDaysFromNow} & cover != null;
 sort first_release_date asc;
 limit ${limit};`
@@ -270,16 +302,12 @@ function formatUpcomingGames(games) {
           year = releaseDate.getFullYear()
         }
 
-        const genres = game.genres?.map((g) => g.name).join(', ') || 'Unknown'
-        const developer = game.involved_companies?.[0]?.company?.name || 'Unknown'
-        const rating = game.rating ? (game.rating / 20).toFixed(1) : null
-
         return {
           id: game.id,
           title: game.name,
-          developer,
-          genre: genres,
-          rating,
+          developer: game.involved_companies?.[0]?.company?.name || 'Unknown',
+          genre: game.genres?.map((g) => g.name).join(', ') || 'Unknown',
+          rating: game.rating ? (game.rating / 20).toFixed(1) : null,
           year,
           image: coverUrl,
           description: game.summary || '',
@@ -288,6 +316,38 @@ function formatUpcomingGames(games) {
       }),
     'igdb'
   )
+}
+
+/**
+ * Recent releases for the Discover "NEW" carousel.
+ * Fetches games released in the past 90 days sorted newest-first; widens
+ * automatically to the past year if the tighter window yields fewer than
+ * half the requested limit. Cover required, real data only.
+ */
+export async function getRecentReleasesForDiscover(limit = 20) {
+  const now = Math.floor(Date.now() / 1000)
+  const ninetyDaysAgo = now - 90 * 24 * 60 * 60
+
+  const query = `fields name, cover.image_id, first_release_date;
+where first_release_date >= ${ninetyDaysAgo} & first_release_date <= ${now} & cover != null;
+sort first_release_date desc;
+limit ${limit};`
+
+  try {
+    let games = await igdbRequest('games', query)
+    if (games.length < Math.ceil(limit / 2)) {
+      const oneYearAgo = now - 365 * 24 * 60 * 60
+      const fallbackQuery = `fields name, cover.image_id, first_release_date;
+where first_release_date >= ${oneYearAgo} & first_release_date <= ${now} & cover != null;
+sort first_release_date desc;
+limit ${limit};`
+      games = await igdbRequest('games', fallbackQuery)
+    }
+    return formatUpcomingGames(games)
+  } catch (err) {
+    console.error('[igdb] getRecentReleasesForDiscover failed:', err)
+    return []
+  }
 }
 
 export async function getRecentlyReleasedGames(limit = 30) {

@@ -1,0 +1,207 @@
+/* ============================================================
+   ProfileRatingsChart
+   Vertical bar histogram for a user's own review ratings.
+   Sits on the Profile Home tab between Badges and Recent Reviews.
+   ============================================================ */
+
+.prc-section {
+  padding: 0 16px 28px;
+}
+
+.prc-section-title {
+  font-family: var(--font-display, 'DM Serif Display', serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+  line-height: 1.2;
+}
+
+/* ---- Chart area ---- */
+.prc-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 52px; /* MAX_BAR_PX + a little breathing room */
+}
+
+.prc-bar-btn {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  /* Expand tap target slightly without affecting layout */
+  margin: 0 -1px;
+}
+
+.prc-bar-btn--active {
+  cursor: pointer;
+}
+
+.prc-bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+  opacity: 0.2;
+  /* No entrance animation — just static heights for simplicity */
+}
+
+.prc-bar-btn--active .prc-bar-fill {
+  opacity: 1;
+}
+
+.prc-bar-btn--active:active .prc-bar-fill {
+  opacity: 0.65;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .prc-bar-fill {
+    transition: none;
+  }
+}
+
+/* ---- Axis labels ---- */
+.prc-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.prc-axis-label {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* ============================================================
+   Bucket modal (inside CenteredModal)
+   ============================================================ */
+
+.prc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--bg-surface-2, #1a2240);
+  flex-shrink: 0;
+}
+
+.prc-modal-title {
+  font-family: var(--font-display, 'DM Serif Display', serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.prc-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+}
+
+.prc-modal-close:active {
+  background: var(--bg-surface-2, #1a2240);
+}
+
+/* Scrollable list */
+.prc-modal-list {
+  overflow-y: auto;
+  max-height: 380px;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prc-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 60px;
+}
+
+.prc-modal-item:active {
+  background: var(--bg-surface-2, #1a2240);
+}
+
+.prc-modal-cover {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--bg-surface-2, #1a2240);
+}
+
+.prc-modal-cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-2, #1a2240);
+}
+
+.prc-modal-cover--placeholder span {
+  font-family: var(--font-display, 'DM Serif Display', serif);
+  font-size: 18px;
+  color: var(--text-tertiary);
+}
+
+.prc-modal-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.prc-modal-game {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.prc-modal-excerpt {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prc-modal-chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}

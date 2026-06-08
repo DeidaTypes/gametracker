@@ -265,8 +265,11 @@
   left: 0;
   right: 0;
   /* Sit above the bottom nav. var(--bottom-nav-safe-area) accounts for
-     the iOS home indicator on devices with no chin. */
-  bottom: var(--bottom-nav-safe-area);
+     the iOS home indicator on devices with no chin. When the keyboard is
+     up the nav is hidden, so we lift to the keyboard top instead using the
+     single global --keyboard-inset (which already includes the accessory
+     bar). max() picks whichever is taller. */
+  bottom: max(var(--bottom-nav-safe-area), var(--keyboard-inset, 0px));
   z-index: 6;
   display: flex;
   align-items: flex-end;
@@ -276,6 +279,7 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
+  transition: bottom 0.2s ease;
 }
 
 .dm-thread__input {
@@ -395,6 +399,7 @@
   .dm-thread__partner,
   .dm-thread__input,
   .dm-thread__send,
+  .dm-thread__composer,
   .dm-bubble__context-btn {
     transition: none;
   }

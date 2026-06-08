@@ -78,11 +78,21 @@ export function getSearchHistory() {
 }
 
 // Add viewed game
-export function addViewedGame(gameId, gameTitle) {
+export function addViewedGame(gameId, gameTitle, gameImage = null) {
   const viewed = getViewedGames()
-  // Remove if exists and add to front
+  // Remove if exists and add to front. Preserve a previously-stored image
+  // if this call doesn't carry one, so re-views never blank out the cover.
+  const prev = viewed.find(g => g.id === gameId)
   const filtered = viewed.filter(g => g.id !== gameId)
-  const updated = [{ id: gameId, title: gameTitle, date: new Date().toISOString() }, ...filtered].slice(0, 50)
+  const updated = [
+    {
+      id: gameId,
+      title: gameTitle,
+      image: gameImage || prev?.image || null,
+      date: new Date().toISOString(),
+    },
+    ...filtered,
+  ].slice(0, 50)
   localStorage.setItem(VIEWED_GAMES_KEY, JSON.stringify(updated))
   
   // Also update preferences

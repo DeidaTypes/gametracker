@@ -10,24 +10,24 @@ import { supabase } from './supabase'
  * Schema (run in the Supabase SQL editor before this code is
  * exercised — mirrored here for reference, matches BACKEND_SCHEMA.md):
  *
- *   CREATE TABLE likes (
+ *   CREATE TABLE review_likes (
  *     user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  *     review_id  uuid NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
  *     created_at timestamptz NOT NULL DEFAULT now(),
  *     PRIMARY KEY (user_id, review_id)
  *   );
  *
- *   CREATE INDEX likes_review_idx ON likes(review_id);
+ *   CREATE INDEX review_likes_review_idx ON review_likes(review_id);
  *
- *   ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
+ *   ALTER TABLE review_likes ENABLE ROW LEVEL SECURITY;
  *
- *   CREATE POLICY likes_select_all ON likes
+ *   CREATE POLICY review_likes_select_all ON review_likes
  *     FOR SELECT USING (true);
  *
- *   CREATE POLICY likes_insert_self ON likes
+ *   CREATE POLICY review_likes_insert_self ON review_likes
  *     FOR INSERT WITH CHECK (auth.uid() = user_id);
  *
- *   CREATE POLICY likes_delete_self ON likes
+ *   CREATE POLICY review_likes_delete_self ON review_likes
  *     FOR DELETE USING (auth.uid() = user_id);
  *
  * Mirrors src/services/followService.js:
@@ -71,7 +71,7 @@ export async function likeReview(reviewId) {
   if (!userId) throw new Error('You must be signed in to like a review.')
 
   const { error } = await supabase
-    .from('likes')
+    .from('review_likes')
     .insert({ user_id: userId, review_id: reviewId })
 
   if (error) {
@@ -94,7 +94,7 @@ export async function unlikeReview(reviewId) {
   if (!userId) throw new Error('You must be signed in to unlike a review.')
 
   const { error } = await supabase
-    .from('likes')
+    .from('review_likes')
     .delete()
     .eq('user_id', userId)
     .eq('review_id', reviewId)
@@ -120,7 +120,7 @@ export async function isLiked(reviewId) {
   if (!userId) return false
 
   const { data, error } = await supabase
-    .from('likes')
+    .from('review_likes')
     .select('user_id')
     .eq('user_id', userId)
     .eq('review_id', reviewId)
@@ -139,7 +139,7 @@ export async function isLiked(reviewId) {
 export async function getLikeCount(reviewId) {
   if (!reviewId) return 0
   const { count, error } = await supabase
-    .from('likes')
+    .from('review_likes')
     .select('*', { count: 'exact', head: true })
     .eq('review_id', reviewId)
   if (error) {
@@ -171,7 +171,7 @@ export async function getLikeCountsForReviews(reviewIds) {
   for (const id of reviewIds) counts.set(id, 0)
 
   const { data, error } = await supabase
-    .from('likes')
+    .from('review_likes')
     .select('review_id')
     .in('review_id', reviewIds)
 
@@ -240,7 +240,7 @@ export async function migrateLocalLikesIfNeeded(userId) {
     }
 
     const { error } = await supabase
-      .from('likes')
+      .from('review_likes')
       .upsert(rows, {
         onConflict: 'user_id,review_id',
         ignoreDuplicates: true,

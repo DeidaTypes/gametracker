@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import HomeSearchBar from '../components/HomeSearchBar'
 import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
-import WantToPlayCard from '../components/WantToPlayCard'
+import BacklogSection from '../components/BacklogSection'
+import SocialActivityCard from '../components/SocialActivityCard'
 import HomeFAB from '../components/HomeFAB'
-import PopularNewSection from '../components/PopularNewSection'
-import TimelineFeed from '../components/TimelineFeed'
-import { getGamesFromList, getContinuePlayingGames } from '../services/libraryService'
+import TrackerSearchModal from '../components/TrackerSearchModal'
+import {
+  getGamesFromList,
+  getContinuePlayingGames,
+} from '../services/libraryService'
+import { getProfile } from '../services/profileService'
+import { useAuth } from '../contexts/AuthContext'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Home.css'
+import '../components/HomeShelf.css'
 
 function HomeSkeleton() {
   return (
@@ -23,11 +32,35 @@ function HomeSkeleton() {
   )
 }
 
+/**
+ * Home — the personalized dashboard.
+ *
+ * Top to bottom: a greeting + inline search, then the user's own games:
+ * Continue Playing (hero), Your Backlog (Want to Play), and Recently Played.
+ * There is no Popular / New / social-timeline content here anymore — that
+ * lives on Discover. Every "add a game" affordance opens a focused tracker
+ * search popup (TrackerSearchModal) instead of navigating away to Explore.
+ */
 function Home() {
+  const navigate = useNavigate()
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [continueGames, setContinueGames] = useState([])
   const [wantToPlayGames, setWantToPlayGames] = useState([])
-  const [feedRefreshKey] = useState(0)
+  // Focused "add to tracker" popup. status drives which list the picked
+  // game lands in ('currently' | 'want' | 'played').
+  const [addOpen, setAddOpen] = useState(false)
+  const [addStatus, setAddStatus] = useState('currently')
+
+  const openAdd = useCallback((status) => {
+    setAddStatus(status)
+    setAddOpen(true)
+  }, [])
+
+  const displayName =
+    profile?.display_name?.trim() ||
+    getProfile()?.displayName?.trim() ||
+    'player'
 
   const loadHomeData = useCallback(() => {
     try {
@@ -49,12 +82,14 @@ function Home() {
     window.addEventListener('reviewAdded', handleUpdate)
     window.addEventListener('storage', handleUpdate)
     window.addEventListener('activityUpdated', handleUpdate)
+    window.addEventListener(APP_RESUMED_EVENT, handleUpdate)
 
     return () => {
       window.removeEventListener('libraryUpdated', handleUpdate)
       window.removeEventListener('reviewAdded', handleUpdate)
       window.removeEventListener('storage', handleUpdate)
       window.removeEventListener('activityUpdated', handleUpdate)
+      window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
     }
   }, [loadHomeData])
 
@@ -73,37 +108,69 @@ function Home() {
       <div className="home">
         <div className="home-body">
 
-          {/* ── Inline search ────────────────────────────────────────
-              Home searches IN PLACE — tapping the field focuses it (the
-              keyboard appears because the user chose to search) and live
-              results drop down here in context. This is intentionally
+          {/* ── Greeting + inline search ─────────────────────────────
+              Home searches IN PLACE — tapping the field focuses it and
+              live results drop down here in context. This is intentionally
               different from Discover, whose search button navigates to the
-              full-screen SearchOverlay. No layoutId here: the morph-into-
-              overlay animation belongs to Discover only.
+              full-screen SearchOverlay.
           ─────────────────────────────────────────────────────── */}
-          <div className="home-section home-section-padded">
+          <header className="home-section home-section-padded home-greeting-block">
+            <h1 className="home-greeting">Welcome back, {displayName}</h1>
             <HomeSearchBar />
-          </div>
+          </header>
 
-          {/* Currently Playing — hero + secondary carousel */}
-          <section className="home-section home-section--bleed">
-            <HeroCurrentlyPlaying games={continueGames} />
+          {/* ── Currently Playing — boxed hero, most prominent ── */}
+          <section className="home-section home-section-padded">
+            <div className="shelf-box shelf-box--hero">
+              <div className="shelf-head">
+                <h2 className="shelf-title">Currently Playing</h2>
+                {continueGames.length > 0 && (
+                  <button
+                    type="button"
+                    className="shelf-link"
+                    onClick={() =>
+                      navigate('/list/currently-playing', {
+                        state: { selectedListId: 'currently-playing' },
+                      })
+                    }
+                    aria-label="Open your Currently Playing list"
+                  >
+                    <ChevronRight size={20} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              <HeroCurrentlyPlaying
+                boxed
+                games={continueGames}
+                onAddGame={() => openAdd('currently')}
+              />
+            </div>
           </section>
 
-          {/* Want to Play card */}
-          <section className="home-section">
-            <WantToPlayCard games={wantToPlayGames} />
+          {/* ── Your Backlog — boxed "what's next" card ── */}
+          <section className="home-section home-section-padded">
+            <BacklogSection
+              games={wantToPlayGames}
+              onAddGame={() => openAdd('want')}
+            />
           </section>
 
-          {/* Popular / New This Week — Sprint 5 P5 */}
-          <PopularNewSection />
+          {/* ── Social Activity — Activity / Lists / Favorites swipeable card (from Following) ── */}
+          <section className="home-section home-section-padded">
+            <SocialActivityCard />
+          </section>
 
-          {/* Timeline feed — Sprint 5 P5 */}
-          <TimelineFeed refreshKey={feedRefreshKey} />
 
         </div>
       </div>
+
       <HomeFAB />
+
+      <TrackerSearchModal
+        isOpen={addOpen}
+        onClose={() => setAddOpen(false)}
+        status={addStatus}
+      />
     </AppShell>
   )
 }

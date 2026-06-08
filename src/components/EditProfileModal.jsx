@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Pencil, ChevronRight } from 'lucide-react'
 import { FaInstagram, FaXTwitter, FaYoutube, FaTiktok } from 'react-icons/fa6'
 import { updateProfile, generateDefaultAvatar } from '../services/profileService'
-import { uploadBanner, removeBanner } from '../services/storageService'
+import { updateUserProfile } from '../services/userService'
+import { uploadBanner, removeBanner, uploadAvatar, removeAvatar } from '../services/storageService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from './Toast'
 import { AUTH_ERRORS } from '../services/auth'
@@ -11,6 +12,49 @@ import ActionSheet from './ActionSheet'
 import FavoritesPickerSheet from './FavoritesPickerSheet'
 import BioEditModal from './BioEditModal'
 import './EditProfileModal.css'
+
+const AVATAR_MAX_FILE_MB = 10
+const AVATAR_MAX_PX = 1200
+const AVATAR_QUALITY = 0.85
+
+/**
+ * Compress an image File/Blob to at most AVATAR_MAX_PX × AVATAR_MAX_PX at
+ * AVATAR_QUALITY. Returns a Promise<Blob> (image/jpeg). Falls back to the
+ * original file if the Canvas API is unavailable (SSR / very old browser).
+ */
+async function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width <= AVATAR_MAX_PX && height <= AVATAR_MAX_PX) {
+        // Already small — still re-encode at quality 0.85 to strip EXIF.
+      } else {
+        const ratio = Math.min(AVATAR_MAX_PX / width, AVATAR_MAX_PX / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => resolve(blob || file),
+          'image/jpeg',
+          AVATAR_QUALITY
+        )
+      } catch {
+        resolve(file)
+      }
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
 
 const DISPLAY_NAME_MAX = 50
 const USERNAME_MAX = 20
@@ -50,6 +94,13 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
   const [errors, setErrors] = useState({})
   const [loggingOut, setLoggingOut] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  // Track the pending avatar file and its preview URL. The actual upload to
+  // Supabase Storage happens at save time (not immediately on file pick) so
+  // the user can cancel without orphaning a storage object.
+  const [pendingAvatarFile, setPendingAvatarFile] = useState(null)
 
   const fileInputRef = useRef(null)
   const bannerFileInputRef = useRef(null)
@@ -61,7 +112,11 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setBio(profile.bio || '')
       setAvatar(profile.avatar || null)
       setAvatarPreview(
-        profile.avatar?.type === 'data' ? profile.avatar.data : null
+        profile.avatar?.type === 'url'
+          ? profile.avatar.data
+          : profile.avatar?.type === 'data'
+          ? profile.avatar.data
+          : null
       )
       setBannerUrl(profile.bannerUrl || null)
       setBannerPreview(null)
@@ -70,6 +125,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setYoutubeHandle(profile.youtubeHandle || '')
       setTiktokHandle(profile.tiktokHandle || '')
       setFavoriteGames(profile.favoriteGames || [])
+      setPendingAvatarFile(null)
       setErrors({})
     }
   }, [profile])
@@ -88,7 +144,8 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     if (displayName !== (p.displayName || '')) return true
     if (username !== (p.username || '')) return true
     if (bio !== (p.bio || '')) return true
-    if (avatar !== (p.avatar || null)) return true
+    if (pendingAvatarFile != null) return true
+    if (avatar === null && p.avatar != null) return true
     if (instagramHandle !== (p.instagramHandle || '')) return true
     if (xHandle !== (p.xHandle || '')) return true
     if (youtubeHandle !== (p.youtubeHandle || '')) return true
@@ -97,7 +154,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     const origIds = (p.favoriteGames || []).map((g) => String(g.id)).join(',')
     if (curIds !== origIds) return true
     return false
-  }, [profile, displayName, username, bio, avatar, instagramHandle, xHandle, youtubeHandle, tiktokHandle, favoriteGames])
+  }, [profile, displayName, username, bio, avatar, pendingAvatarFile, instagramHandle, xHandle, youtubeHandle, tiktokHandle, favoriteGames])
 
   /* ── Avatar ──────────────────────────────────────────────────── */
 
@@ -115,29 +172,43 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
   }
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
     if (!file) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select an image file', 'error')
       return
     }
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Image must be less than 2MB', 'error')
+    if (file.size > AVATAR_MAX_FILE_MB * 1024 * 1024) {
+      showToast(`Image must be less than ${AVATAR_MAX_FILE_MB}MB`, 'error')
       return
     }
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64 = reader.result
-      setAvatar({ type: 'data', data: base64 })
-      setAvatarPreview(base64)
+    setAvatarUploading(true)
+    try {
+      const compressed = await compressImage(file)
+      const previewUrl = URL.createObjectURL(compressed)
+      setPendingAvatarFile(compressed)
+      // Revoke any previous preview URL to avoid memory leaks.
+      setAvatarPreview((prev) => {
+        if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev)
+        return previewUrl
+      })
+      setAvatar({ type: 'pending' })
+    } catch {
+      showToast('Could not process image. Try another file.', 'error')
+    } finally {
+      setAvatarUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleRemoveAvatar = () => {
+    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview)
+    }
     setAvatar(null)
     setAvatarPreview(null)
+    setPendingAvatarFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -198,7 +269,8 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
   /* ── Submit ──────────────────────────────────────────────────── */
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (saving || avatarUploading) return
     const newErrors = {}
 
     if (!displayName.trim()) {
@@ -223,11 +295,78 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       return
     }
 
+    const trimmedName = displayName.trim()
+    const trimmedUsername = username.trim() || null
+
+    setSaving(true)
+
+    // Upload a pending avatar to Supabase Storage first so we have the URL
+    // before we write the Supabase row.
+    let resolvedAvatarUrl = profile?.avatarUrl || null
+    let resolvedAvatar = avatar
+    if (pendingAvatarFile && user?.id) {
+      try {
+        const newUrl = await uploadAvatar(
+          pendingAvatarFile,
+          user,
+          profile?.avatarUrl || null
+        )
+        resolvedAvatarUrl = newUrl
+        resolvedAvatar = { type: 'url', data: newUrl }
+        setPendingAvatarFile(null)
+        if (avatarPreview && avatarPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(avatarPreview)
+          setAvatarPreview(newUrl)
+        }
+      } catch (uploadErr) {
+        setSaving(false)
+        showToast(uploadErr?.message || 'Failed to upload photo. Try again.', 'error')
+        return
+      }
+    } else if (avatar === null && profile?.avatarUrl) {
+      // User explicitly removed avatar.
+      try {
+        await removeAvatar(user, profile.avatarUrl)
+        resolvedAvatarUrl = null
+        resolvedAvatar = null
+      } catch {
+        // Non-fatal — local state will clear regardless.
+      }
+    }
+
+    // Persist all editable fields to Supabase in a single update so bio,
+    // avatar_url, display_name, and username are all authoritative server-side.
+    try {
+      if (user?.id) {
+        await updateUserProfile(user.id, {
+          displayName: trimmedName,
+          username: trimmedUsername,
+          bio: bio.trim(),
+          avatarUrl: resolvedAvatarUrl,
+          favoriteGames,
+        })
+      }
+    } catch (err) {
+      setSaving(false)
+      if (err?.code === AUTH_ERRORS.USERNAME_TAKEN) {
+        setErrors({ username: 'That username is already taken' })
+        return
+      }
+      if (err?.code === AUTH_ERRORS.USERNAME_INVALID) {
+        setErrors({ username: err.message })
+        return
+      }
+      // Network / unknown — still write locally so the user's own device
+      // reflects the change.
+      showToast("Saved locally. Couldn't sync to the server — try again later.", 'error')
+    }
+
     const updated = updateProfile({
-      displayName: displayName.trim(),
-      username: username.trim() || null,
+      displayName: trimmedName,
+      username: trimmedUsername,
       bio: bio.trim(),
-      avatar,
+      avatar: resolvedAvatar,
+      avatarUrl: resolvedAvatarUrl,
       bannerUrl,
       instagramHandle: normalizeHandle(instagramHandle),
       xHandle: normalizeHandle(xHandle),
@@ -236,18 +375,27 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       favoriteGames,
     })
 
+    setSaving(false)
+    showToast('Profile saved', 'success')
     onUpdate(updated)
     onClose()
   }
 
   const handleCancel = () => {
+    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview)
+    }
     if (profile) {
       setDisplayName(profile.displayName || '')
       setUsername(profile.username || '')
       setBio(profile.bio || '')
       setAvatar(profile.avatar || null)
       setAvatarPreview(
-        profile.avatar?.type === 'data' ? profile.avatar.data : null
+        profile.avatar?.type === 'url'
+          ? profile.avatar.data
+          : profile.avatar?.type === 'data'
+          ? profile.avatar.data
+          : null
       )
       setBannerUrl(profile.bannerUrl || null)
       setBannerPreview(null)
@@ -257,6 +405,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setTiktokHandle(profile.tiktokHandle || '')
       setFavoriteGames(profile.favoriteGames || [])
     }
+    setPendingAvatarFile(null)
     setErrors({})
     onClose()
   }
@@ -304,9 +453,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
               type="button"
               className="ep-topbar__btn ep-topbar__btn--save"
               onClick={handleSubmit}
-              disabled={!isDirty}
+              disabled={!isDirty || saving || avatarUploading}
             >
-              Save
+              {avatarUploading ? 'Optimizing…' : saving ? 'Saving…' : 'Save'}
             </button>
           </div>
 

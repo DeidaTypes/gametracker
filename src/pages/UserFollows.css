@@ -78,6 +78,26 @@
   height: 36px;
 }
 
+.follows-page__find {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.follows-page__find:hover {
+  background: var(--color-surface);
+}
+
 /* ── Tabs (Followers / Following) ──────────────────────────── */
 
 .follows-page__tabs {
@@ -272,6 +292,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .follows-page__back,
+  .follows-page__find,
   .follows-page__tab,
   .follow-row,
   .follow-row__follow {

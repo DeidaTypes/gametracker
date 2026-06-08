@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { searchGames } from '../services/searchService'
 import {
   getGamesFromList,
@@ -11,8 +11,8 @@ import {
   getListById,
   isTrackerList,
 } from '../services/listService'
+import CenteredModal from './CenteredModal'
 import { showToast } from './Toast'
-import './CreateListModal.css'
 import './AddGamesModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -149,68 +149,12 @@ function AddGamesModal({
 
   const debounceRef = useRef(null)
   const searchCallIdRef = useRef(0)
-  const sheetRef = useRef(null)
 
   const isCustom = listId ? !isTrackerList(listId) : false
 
-  // ── Keyboard-aware sizing ──────────────────────────────────────────────
-  // Measure the visible viewport (the area ABOVE the keyboard) and feed it to
-  // the sheet as CSS variables. `--agm-avail` caps the sheet height so the
-  // pinned input + scrollable results always fit above the keyboard, and
-  // `--agm-bottom` lifts the bottom-anchored sheet off the keyboard in the
-  // (rare) case the WebView isn't natively resized. Works whether the
-  // Capacitor Keyboard `resize` mode is `native` or not.
-  const syncSheetMetrics = useCallback(() => {
-    const sheet = sheetRef.current
-    if (!sheet) return
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null
-    const winH = typeof window !== 'undefined' ? window.innerHeight : 0
-    const availH = vv ? vv.height : winH
-    const bottomInset = vv
-      ? Math.max(0, winH - vv.height - (vv.offsetTop || 0))
-      : 0
-    sheet.style.setProperty('--agm-avail', `${Math.round(availH)}px`)
-    sheet.style.setProperty('--agm-bottom', `${Math.round(bottomInset)}px`)
-  }, [])
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    syncSheetMetrics()
-
-    let kbShow
-    let kbHide
-    ;(async () => {
-      try {
-        const { Keyboard } = await import('@capacitor/keyboard')
-        const settle = () => {
-          // The visual viewport settles a beat after the event fires, so
-          // sample a few times across the keyboard animation window.
-          syncSheetMetrics()
-          requestAnimationFrame(syncSheetMetrics)
-          setTimeout(syncSheetMetrics, 80)
-          setTimeout(syncSheetMetrics, 280)
-        }
-        kbShow = await Keyboard.addListener('keyboardWillShow', settle)
-        kbHide = await Keyboard.addListener('keyboardWillHide', settle)
-      } catch {
-        /* no-op on web or when the plugin is unavailable */
-      }
-    })()
-
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null
-    vv?.addEventListener('resize', syncSheetMetrics)
-    vv?.addEventListener('scroll', syncSheetMetrics)
-    window.addEventListener('resize', syncSheetMetrics)
-
-    return () => {
-      kbShow?.remove?.()
-      kbHide?.remove?.()
-      vv?.removeEventListener('resize', syncSheetMetrics)
-      vv?.removeEventListener('scroll', syncSheetMetrics)
-      window.removeEventListener('resize', syncSheetMetrics)
-    }
-  }, [isOpen, syncSheetMetrics])
+  // Keyboard-aware sizing is handled by CenteredModal: the card centers in
+  // the visual viewport, so the pinned search input + results stay visible
+  // above the keyboard.
 
   // Load existing games on open; reset on close.
   useEffect(() => {
@@ -359,8 +303,6 @@ function AddGamesModal({
     onClose()
   }
 
-  if (!isOpen) return null
-
   const allExistingGames = [...existingGames, ...addedGames]
   const hasMoreThanThreshold = allExistingGames.length > COLLAPSE_THRESHOLD
   const visibleExistingGames = existingExpanded
@@ -368,131 +310,128 @@ function AddGamesModal({
     : allExistingGames.slice(0, COLLAPSE_THRESHOLD)
 
   return (
-    <div className="modal-overlay" onClick={handleDone}>
-      <div
-        ref={sheetRef}
-        className="modal-content add-games-modal agm-sheet"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ── Grab handle ── */}
-        <div className="agm-grab-handle" aria-hidden="true" />
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={handleDone}
+      ariaLabel={`Add games to ${listName || 'list'}`}
+      maxWidth={400}
+      className="agm-card"
+    >
+      {/* ── Header row: title left, Done top-right ── */}
+      <div className="agm-header">
+        <h2 className="agm-header-title">Add to {listName || 'List'}</h2>
+        <button type="button" className="agm-done-link" onClick={handleDone}>
+          Done
+        </button>
+      </div>
 
-        {/* ── Header row ── */}
-        <div className="agm-header">
-          <h2 className="agm-header-title">Add to {listName || 'List'}</h2>
-          <button type="button" className="agm-done-link" onClick={handleDone}>
-            Done
-          </button>
-        </div>
-
-        {/* ── Pinned search input — stays fixed below the header, always
-             visible above the keyboard, never scrolls away ── */}
-        <div className="agm-search-pinned">
-          <div className="agm-search-row">
-            <svg
-              className="agm-search-icon"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5" />
-              <path
-                d="M10.5 10.5L14 14"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              type="text"
-              className="agm-search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search games…"
-              autoComplete="off"
-              autoFocus
+      {/* ── Pinned search input — stays fixed below the header, always
+           visible above the keyboard, never scrolls away ── */}
+      <div className="agm-search-pinned">
+        <div className="agm-search-row">
+          <svg
+            className="agm-search-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5" />
+            <path
+              d="M10.5 10.5L14 14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
             />
-          </div>
+          </svg>
+          <input
+            type="text"
+            className="agm-search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search games…"
+            autoComplete="off"
+            autoFocus
+          />
         </div>
+      </div>
 
-        {/* ── Scrollable results body — shrinks to the space above the
-             keyboard; results scroll here without covering the input ── */}
-        <div className="agm-body">
-          {/* Status */}
-          {isSearching && (
-            <p className="agm-status" aria-live="polite">
-              Searching…
+      {/* ── Scrollable results body — shrinks to the space above the
+           keyboard; results scroll here without covering the input ── */}
+      <div className="agm-body cm-scroll">
+        {/* Status */}
+        {isSearching && (
+          <p className="agm-status" aria-live="polite">
+            Searching…
+          </p>
+        )}
+        {searchError && (
+          <p className="agm-status agm-status--error" role="alert">
+            {searchError}
+          </p>
+        )}
+
+        {/* Search results */}
+        {searchResults.length > 0 && (
+          <div className="agm-results-list" role="list">
+            {searchResults.map((game) => (
+              <GameRow
+                key={game.id}
+                game={game}
+                mode="search"
+                isInList={isGameInList(game)}
+                onAdd={handleAddGame}
+                onRemove={handleRemoveGame}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* No results */}
+        {!isSearching &&
+          searchTerm.trim() !== '' &&
+          searchTerm.trim() === lastCompletedQuery &&
+          searchResults.length === 0 &&
+          !searchError && (
+            <p className="agm-status agm-status--hint">
+              No games found for &ldquo;{searchTerm}&rdquo;.
             </p>
           )}
-          {searchError && (
-            <p className="agm-status agm-status--error" role="alert">
-              {searchError}
-            </p>
-          )}
 
-          {/* Search results */}
-          {searchResults.length > 0 && (
+        {/* ── In this list section ── */}
+        {allExistingGames.length > 0 && (
+          <div className="agm-in-list">
+            <div className="agm-in-list-header">
+              <span className="agm-in-list-label">
+                In this list ({allExistingGames.length})
+              </span>
+              {hasMoreThanThreshold && (
+                <button
+                  type="button"
+                  className="agm-show-all-btn"
+                  onClick={() => setExistingExpanded((s) => !s)}
+                >
+                  {existingExpanded ? 'Show less' : 'Show all'}
+                </button>
+              )}
+            </div>
             <div className="agm-results-list" role="list">
-              {searchResults.map((game) => (
+              {visibleExistingGames.map((game) => (
                 <GameRow
-                  key={game.id}
+                  key={game.id ?? game.igdb_game_id}
                   game={game}
-                  mode="search"
-                  isInList={isGameInList(game)}
+                  mode="existing"
+                  isInList={true}
                   onAdd={handleAddGame}
                   onRemove={handleRemoveGame}
                 />
               ))}
             </div>
-          )}
-
-          {/* No results */}
-          {!isSearching &&
-            searchTerm.trim() !== '' &&
-            searchTerm.trim() === lastCompletedQuery &&
-            searchResults.length === 0 &&
-            !searchError && (
-              <p className="agm-status agm-status--hint">
-                No games found for &ldquo;{searchTerm}&rdquo;.
-              </p>
-            )}
-
-          {/* ── In this list section ── */}
-          {allExistingGames.length > 0 && (
-            <div className="agm-in-list">
-              <div className="agm-in-list-header">
-                <span className="agm-in-list-label">
-                  In this list ({allExistingGames.length})
-                </span>
-                {hasMoreThanThreshold && (
-                  <button
-                    type="button"
-                    className="agm-show-all-btn"
-                    onClick={() => setExistingExpanded((s) => !s)}
-                  >
-                    {existingExpanded ? 'Show less' : 'Show all'}
-                  </button>
-                )}
-              </div>
-              <div className="agm-results-list" role="list">
-                {visibleExistingGames.map((game) => (
-                  <GameRow
-                    key={game.id ?? game.igdb_game_id}
-                    game={game}
-                    mode="existing"
-                    isInList={true}
-                    onAdd={handleAddGame}
-                    onRemove={handleRemoveGame}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </CenteredModal>
   )
 }
 

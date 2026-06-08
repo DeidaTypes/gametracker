@@ -11,10 +11,16 @@
    html + #root were previously unclamped; only body/.main-content were,
    which is insufficient inside the WKWebView. The background carries the
    base color too so route swaps never flash white. */
+html {
+  /* Prevent iOS from reflowing text on orientation change or navigation. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body,
 #root {
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
   background-color: var(--bg-base, #0a0f1f);
 }
@@ -57,9 +63,10 @@ code {
 }
 
 /* Fix 2 — Prevent iOS WebView auto-zoom on inputs whose font-size is
-   below 16px. This is a floor: specific inputs may override upward. */
+   below 16px. !important overrides any component-level CSS that sets a
+   smaller size (forms.css uses --font-size-body = 15px etc.). */
 input, textarea, select {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 
 /* Fix 1 — Hide the floating pill nav and FAB when the iOS keyboard is

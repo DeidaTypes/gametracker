@@ -44,6 +44,46 @@
 }
 
 /* =============================================
+   GREETING HEADER
+   "Welcome back, {name}" + inline search below it
+   ============================================= */
+
+.home-greeting-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.home-greeting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  overflow-wrap: break-word;
+}
+
+/* =============================================
+   SECTION TITLE — serif display header per section
+   ============================================= */
+
+.home-section-title {
+  margin: 0 0 var(--spacing-sm);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+.home-section-title--padded {
+  padding: 0 var(--container-padding);
+}
+
+/* =============================================
    SKELETON LOADING
    ============================================= */
 

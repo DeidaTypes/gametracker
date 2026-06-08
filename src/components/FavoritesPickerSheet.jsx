@@ -5,22 +5,21 @@ import React, {
   useCallback,
   useMemo,
 } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence, Reorder } from 'motion/react'
+import { Reorder } from 'motion/react'
 import { LuX, LuSearch, LuCheck } from 'react-icons/lu'
 import { searchGames } from '../services/igdb'
 import { getGamesFromList } from '../services/libraryService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
+import CenteredModal from './CenteredModal'
 import './FavoritesPickerSheet.css'
 
 const MAX_FAVORITES = 4
 
 /**
- * Full-height bottom sheet for editing Favorite Games on the Profile.
+ * Centered popup (CenteredModal) for editing Favorite Games on the Profile.
  *
  * Layout (top → bottom):
- *   Drag handle
  *   Header row: title + Done button
  *   Current favorites strip — horizontal, drag-to-reorder via Framer
  *     Motion Reorder.Group. Each card has an X remove button.
@@ -54,7 +53,7 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
   const debounceRef = useRef(null)
   const { reduced } = useMotionPreference()
 
-  // Reset internal state when the sheet opens
+  // Reset internal state when the picker opens
   useEffect(() => {
     if (isOpen) {
       setFavorites(initialFavorites.slice())
@@ -66,32 +65,12 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
-  // Auto-focus search when sheet opens
+  // Auto-focus search when the picker opens
   useEffect(() => {
     if (!isOpen) return undefined
     const id = setTimeout(() => inputRef.current?.focus(), 120)
     return () => clearTimeout(id)
   }, [isOpen])
-
-  // Lock body scroll while sheet is open
-  useEffect(() => {
-    if (!isOpen) return undefined
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [isOpen])
-
-  // Escape key closes sheet
-  useEffect(() => {
-    if (!isOpen) return undefined
-    const handleKey = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
 
   // Library games — shown as suggestions when the search input is empty.
   // Computed once per open event to avoid reshuffling while the user types.
@@ -188,255 +167,229 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
     onClose()
   }, [favorites, onSave, onClose])
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
-
   // Grid source: IGDB results when searching, library otherwise
   const displayGames = query.trim() ? results : libraryGames
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fps-overlay"
-          onClick={onClose}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit favorite games"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={backdropTransition}
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Edit favorite games"
+      maxWidth={480}
+      className="fps-sheet"
+    >
+      {/* Header: title + Done */}
+      <div className="fps-header">
+        <h2 className="fps-title">Favorite Games</h2>
+        <button
+          type="button"
+          className="fps-done-btn"
+          onClick={handleDone}
         >
-          <motion.div
-            className="fps-sheet"
-            onClick={(e) => e.stopPropagation()}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
+          Done
+        </button>
+      </div>
+
+      {/* Current favorites — horizontal drag-to-reorder strip */}
+      <div className="fps-favorites-section">
+        <p className="fps-favorites-label">
+          {favorites.length} / {MAX_FAVORITES} selected
+          {favorites.length > 0 && (
+            <span className="fps-favorites-label__hint">
+              {' '}· drag to reorder
+            </span>
+          )}
+        </p>
+        {favorites.length > 0 ? (
+          <Reorder.Group
+            as="div"
+            axis="x"
+            values={favorites}
+            onReorder={setFavorites}
+            className="fps-favorites-strip"
           >
-            {/* Drag handle */}
-            <div className="fps-handle" aria-hidden="true" />
-
-            {/* Header: title + Done */}
-            <div className="fps-header">
-              <h2 className="fps-title">Favorite Games</h2>
-              <button
-                type="button"
-                className="fps-done-btn"
-                onClick={handleDone}
+            {favorites.map((fav) => (
+              <Reorder.Item
+                key={fav.id}
+                value={fav}
+                className="fps-fav-item"
+                whileDrag={reduced ? {} : { scale: 1.08, zIndex: 10 }}
               >
-                Done
-              </button>
-            </div>
-
-            {/* Current favorites — horizontal drag-to-reorder strip */}
-            <div className="fps-favorites-section">
-              <p className="fps-favorites-label">
-                {favorites.length} / {MAX_FAVORITES} selected
-                {favorites.length > 0 && (
-                  <span className="fps-favorites-label__hint">
-                    {' '}· drag to reorder
-                  </span>
-                )}
-              </p>
-              {favorites.length > 0 ? (
-                <Reorder.Group
-                  as="div"
-                  axis="x"
-                  values={favorites}
-                  onReorder={setFavorites}
-                  className="fps-favorites-strip"
-                >
-                  {favorites.map((fav) => (
-                    <Reorder.Item
-                      key={fav.id}
-                      value={fav}
-                      className="fps-fav-item"
-                      whileDrag={reduced ? {} : { scale: 1.08, zIndex: 10 }}
-                    >
-                      <div className="fps-fav-cover">
-                        {fav.image ? (
-                          <img
-                            src={fav.image}
-                            alt={fav.title}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span className="fps-fav-cover__fallback">
-                            {fav.title?.charAt(0) || '?'}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="fps-fav-remove"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeFromFavorites(fav.id)
-                          }}
-                          aria-label={`Remove ${fav.title} from favorites`}
-                        >
-                          <LuX size={10} strokeWidth={3} />
-                        </button>
-                      </div>
-                      <span className="fps-fav-name" aria-hidden="true">
-                        {fav.title}
-                      </span>
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
-              ) : (
-                <p className="fps-favorites-empty">
-                  Tap a game below to add it
-                </p>
-              )}
-            </div>
-
-            {/* Search input */}
-            <div className="fps-search-wrap">
-              <div className="fps-search-row">
-                <LuSearch
-                  size={18}
-                  className="fps-search-icon"
-                  aria-hidden="true"
-                />
-                <input
-                  ref={inputRef}
-                  type="search"
-                  className="fps-search-input"
-                  placeholder="Search all games…"
-                  value={query}
-                  onChange={handleQueryChange}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                />
-                {query && (
+                <div className="fps-fav-cover">
+                  {fav.image ? (
+                    <img
+                      src={fav.image}
+                      alt={fav.title}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="fps-fav-cover__fallback">
+                      {fav.title?.charAt(0) || '?'}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    className="fps-search-clear"
-                    onClick={() => {
-                      setQuery('')
-                      setResults([])
-                      inputRef.current?.focus()
+                    className="fps-fav-remove"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeFromFavorites(fav.id)
                     }}
-                    aria-label="Clear search"
+                    aria-label={`Remove ${fav.title} from favorites`}
                   >
-                    <LuX size={16} />
+                    <LuX size={10} strokeWidth={3} />
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Scrollable body — 2-column cover grid */}
-            <div className="fps-body">
-              {/* Loading */}
-              {query.trim() && loading && (
-                <div
-                  className="fps-state-row fps-state-row--loading"
-                  aria-live="polite"
-                >
-                  <span className="fps-spinner" aria-hidden="true" />
-                  Searching…
                 </div>
-              )}
+                <span className="fps-fav-name" aria-hidden="true">
+                  {fav.title}
+                </span>
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
+        ) : (
+          <p className="fps-favorites-empty">
+            Tap a game below to add it
+          </p>
+        )}
+      </div>
 
-              {/* Error */}
-              {query.trim() && !loading && error && (
-                <p
-                  className="fps-state-row fps-state-row--error"
-                  aria-live="assertive"
+      {/* Search input */}
+      <div className="fps-search-wrap">
+        <div className="fps-search-row">
+          <LuSearch
+            size={18}
+            className="fps-search-icon"
+            aria-hidden="true"
+          />
+          <input
+            ref={inputRef}
+            type="search"
+            className="fps-search-input"
+            placeholder="Search all games…"
+            value={query}
+            onChange={handleQueryChange}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+          />
+          {query && (
+            <button
+              type="button"
+              className="fps-search-clear"
+              onClick={() => {
+                setQuery('')
+                setResults([])
+                inputRef.current?.focus()
+              }}
+              aria-label="Clear search"
+            >
+              <LuX size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable body — 2-column cover grid */}
+      <div className="fps-body cm-scroll">
+        {/* Loading */}
+        {query.trim() && loading && (
+          <div
+            className="fps-state-row fps-state-row--loading"
+            aria-live="polite"
+          >
+            <span className="fps-spinner" aria-hidden="true" />
+            Searching…
+          </div>
+        )}
+
+        {/* Error */}
+        {query.trim() && !loading && error && (
+          <p
+            className="fps-state-row fps-state-row--error"
+            aria-live="assertive"
+          >
+            {error}
+          </p>
+        )}
+
+        {/* No results */}
+        {query.trim() && !loading && !error && results.length === 0 && (
+          <p
+            className="fps-state-row fps-state-row--empty"
+            aria-live="polite"
+          >
+            No games found for &ldquo;{query}&rdquo;
+          </p>
+        )}
+
+        {/* Section label when showing library */}
+        {!query.trim() && libraryGames.length > 0 && (
+          <p className="fps-section-label">Your library</p>
+        )}
+
+        {/* Empty library state */}
+        {!query.trim() && libraryGames.length === 0 && (
+          <p className="fps-state-row fps-state-row--empty">
+            Add games to your library and they&rsquo;ll appear here.
+          </p>
+        )}
+
+        {/* 2-column cover grid */}
+        {displayGames.length > 0 && (!query.trim() || (!loading && !error)) && (
+          <ul
+            className="fps-grid"
+            role="listbox"
+            aria-multiselectable="true"
+            aria-label="Game results"
+          >
+            {displayGames.map((game) => {
+              const picked = isPicked(game.id)
+              const shaking = shakingId === String(game.id)
+              return (
+                <li
+                  key={game.id}
+                  className={`fps-grid-cell${shaking ? ' fps-grid-cell--shake' : ''}`}
                 >
-                  {error}
-                </p>
-              )}
-
-              {/* No results */}
-              {query.trim() && !loading && !error && results.length === 0 && (
-                <p
-                  className="fps-state-row fps-state-row--empty"
-                  aria-live="polite"
-                >
-                  No games found for &ldquo;{query}&rdquo;
-                </p>
-              )}
-
-              {/* Section label when showing library */}
-              {!query.trim() && libraryGames.length > 0 && (
-                <p className="fps-section-label">Your library</p>
-              )}
-
-              {/* Empty library state */}
-              {!query.trim() && libraryGames.length === 0 && (
-                <p className="fps-state-row fps-state-row--empty">
-                  Add games to your library and they&rsquo;ll appear here.
-                </p>
-              )}
-
-              {/* 2-column cover grid */}
-              {displayGames.length > 0 && (!query.trim() || (!loading && !error)) && (
-                <ul
-                  className="fps-grid"
-                  role="listbox"
-                  aria-multiselectable="true"
-                  aria-label="Game results"
-                >
-                  {displayGames.map((game) => {
-                    const picked = isPicked(game.id)
-                    const shaking = shakingId === String(game.id)
-                    return (
-                      <li
-                        key={game.id}
-                        className={`fps-grid-cell${shaking ? ' fps-grid-cell--shake' : ''}`}
-                      >
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={picked}
-                          className={`fps-grid-tile${picked ? ' fps-grid-tile--picked' : ''}`}
-                          onClick={() => toggleGame(game)}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={picked}
+                    className={`fps-grid-tile${picked ? ' fps-grid-tile--picked' : ''}`}
+                    onClick={() => toggleGame(game)}
+                  >
+                    <div className="fps-grid-cover">
+                      {game.image ? (
+                        <img
+                          src={game.image}
+                          alt=""
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="fps-grid-cover__fallback">
+                          {game.title?.charAt(0) || '?'}
+                        </span>
+                      )}
+                      {picked && (
+                        <span
+                          className="fps-grid-check"
+                          aria-hidden="true"
                         >
-                          <div className="fps-grid-cover">
-                            {game.image ? (
-                              <img
-                                src={game.image}
-                                alt=""
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span className="fps-grid-cover__fallback">
-                                {game.title?.charAt(0) || '?'}
-                              </span>
-                            )}
-                            {picked && (
-                              <span
-                                className="fps-grid-check"
-                                aria-hidden="true"
-                              >
-                                <LuCheck size={14} strokeWidth={2.5} />
-                              </span>
-                            )}
-                          </div>
-                          <span className="fps-grid-title">
-                            {game.title}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+                          <LuCheck size={14} strokeWidth={2.5} />
+                        </span>
+                      )}
+                    </div>
+                    <span className="fps-grid-title">
+                      {game.title}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </CenteredModal>
   )
 }
 

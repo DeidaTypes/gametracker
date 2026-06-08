@@ -6,14 +6,11 @@ import React, {
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ReviewCard from '../components/ReviewCard'
-import ReviewForm from '../components/ReviewForm'
 import { getGameById } from '../services/igdb'
 import { getReviewsForGamePaginated } from '../services/reviewService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
-import { showToast } from '../components/Toast'
-import { postReview } from '../services/reviewService'
 import './GameReviewsAll.css'
 
 const PAGE_SIZE = 20
@@ -30,10 +27,9 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
       developer: game?.developers?.[0] || '',
     },
     author: {
-      username:
-        row.users?.username ||
-        row.users?.display_name ||
-        'Anonymous',
+      username: row.users?.username || null,
+      displayName: row.users?.display_name || 'Anonymous',
+      userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
     },
     title: null,
@@ -76,7 +72,6 @@ export default function GameReviewsAll() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingInitial, setLoadingInitial] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [showReviewForm, setShowReviewForm] = useState(false)
   const [kebabOpen, setKebabOpen] = useState(false)
 
   const sentinelRef = useRef(null)
@@ -192,30 +187,22 @@ export default function GameReviewsAll() {
     }
   }, [kebabOpen])
 
-  // ── Review submit (re-uses existing postReview flow) ──────────────────
-  const handleReviewSubmit = async (reviewData) => {
-    const { text, rating, liked, containsSpoilers, hoursPlayed } = reviewData
-    try {
-      await postReview({
-        igdbGameId: gameId,
-        body: text,
-        rating: Number(rating),
-        liked: !!liked,
-        hasSpoilers: !!containsSpoilers,
-        gameTitle: game?.title,
-        gameImage: game?.image,
-        hoursPlayed: Number(hoursPlayed) || 0,
-      })
-      setShowReviewForm(false)
-      // Reload from page 1 to pick up the new review.
+  // ── Open the single review composer (keyboard-aware ReviewNew popup) ───
+  // Pass the loaded game in route state so it renders without a refetch.
+  const openReviewComposer = useCallback(() => {
+    navigate(`/review/new?gameId=${gameId}`, { state: { game } })
+  }, [navigate, gameId, game])
+
+  // After the composer posts and navigates back, reload from page 1 so the
+  // new review shows up. ReviewNew dispatches `reviewAdded`.
+  useEffect(() => {
+    const handleReviewAdded = () => {
       setLoadingInitial(true)
       fetchPage(1)
-    } catch (err) {
-      console.error('[GameReviewsAll] postReview failed:', err)
-      showToast('Could not save your review. Please try again.', 'error')
-      setShowReviewForm(false)
     }
-  }
+    window.addEventListener('reviewAdded', handleReviewAdded)
+    return () => window.removeEventListener('reviewAdded', handleReviewAdded)
+  }, [fetchPage])
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -256,7 +243,7 @@ export default function GameReviewsAll() {
                 role="menuitem"
                 onClick={() => {
                   setKebabOpen(false)
-                  setShowReviewForm(true)
+                  openReviewComposer()
                 }}
               >
                 Write a review
@@ -279,7 +266,7 @@ export default function GameReviewsAll() {
             <p className="gra-empty-text">No reviews yet.</p>
             <button
               className="gra-empty-cta"
-              onClick={() => setShowReviewForm(true)}
+              onClick={openReviewComposer}
             >
               Be the first to review
             </button>
@@ -300,7 +287,7 @@ export default function GameReviewsAll() {
                 variant="default"
                 showOwnPill={own}
                 isOwn={own}
-                onEdit={() => setShowReviewForm(true)}
+                onEdit={openReviewComposer}
               />
             )
           })
@@ -321,19 +308,6 @@ export default function GameReviewsAll() {
         )}
       </div>
 
-      {/* Review modal */}
-      {game && (
-        <ReviewForm
-          gameId={gameId}
-          gameTitle={game.title}
-          gameImage={game.image}
-          gameYear={game.year}
-          gameDeveloper={game.developers?.[0]}
-          onSubmit={handleReviewSubmit}
-          onCancel={() => setShowReviewForm(false)}
-          isOpen={showReviewForm}
-        />
-      )}
     </div>
   )
 }

@@ -36,6 +36,7 @@ function GameCard({ game }) {
             src={imageUrl}
             alt={game.title}
             className="game-card-image"
+            loading="lazy"
             onError={(e) => {
               if (e.target.src !== game.image && game.image) {
                 e.target.src = game.image

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { LuSearch } from 'react-icons/lu'
 import { StarRating } from '../components/forms'
 import GamePickerSheet from '../components/GamePickerSheet'
+import CenteredModal from '../components/CenteredModal'
+import IOSSwitch from '../components/IOSSwitch'
 import { getGameById } from '../services/igdb'
 import { postReview } from '../services/reviewService'
 import { setGameStatus } from '../services/libraryService'
@@ -21,16 +22,34 @@ function ReviewNew() {
   const [game, setGame] = useState(location.state?.game ?? null)
   const [loadingGame, setLoadingGame] = useState(false)
   const [gameError, setGameError] = useState(null)
-  const [showPicker, setShowPicker] = useState(false)
 
   // Composer state
   const [rating, setRating] = useState(0)
   const [text, setText] = useState('')
-  const [hoursPlayed, setHoursPlayed] = useState(0)
+  // hoursRaw is the string the user types; parsed to a number at submit time.
+  const [hoursRaw, setHoursRaw] = useState('0')
   const [loved, setLoved] = useState(false)
   const [containsSpoilers, setContainsSpoilers] = useState(false)
   const [markCompleted, setMarkCompleted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Drives the popup enter/exit animation. We keep the route mounted until the
+  // close animation finishes, then run the queued navigation — so the popup
+  // closes smoothly and returns to the game detail page with no jump.
+  const [open, setOpen] = useState(true)
+  const pendingNavRef = useRef(null)
+
+  const closeWith = useCallback((action) => {
+    pendingNavRef.current = action ?? null
+    setOpen(false)
+  }, [])
+
+  const handleExited = useCallback(() => {
+    const action = pendingNavRef.current
+    pendingNavRef.current = null
+    if (action) action()
+    else navigate(-1)
+  }, [navigate])
 
   // Load game by ID if we have a param but no pre-loaded state
   useEffect(() => {
@@ -60,28 +79,41 @@ function ReviewNew() {
   }, [gameIdParam, location.state?.game])
 
   const hasInput = rating > 0 || text.trim().length > 0
+  const canPost = !submitting && hasInput
 
   const handleCancel = useCallback(() => {
     if (hasInput && !window.confirm('Discard this review?')) return
-    navigate(-1)
-  }, [hasInput, navigate])
-
-  const canPost = !submitting && (rating > 0 || text.trim().length >= 10)
+    closeWith(() => navigate(-1))
+  }, [hasInput, navigate, closeWith])
 
   const handlePost = useCallback(async () => {
     if (!canPost || !game) return
     setSubmitting(true)
     try {
-      await postReview({
-        igdbGameId: game.id,
-        body: text.trim(),
-        rating: Number(rating),
-        liked: !!loved,
-        hasSpoilers: !!containsSpoilers,
-        gameTitle: game.title,
-        gameImage: game.image,
-        hoursPlayed: Number(hoursPlayed) || 0,
-      })
+      // Belt-and-suspenders timeout: each Supabase fetch already races against
+      // a 15 s timeout (via the global fetchWithTimeout override on the
+      // Supabase client), but this outer race guarantees the entire post
+      // operation (auth.getUser + insert) settles within 12 seconds total —
+      // so a stalled WKWebView connection can never pin the spinner for minutes.
+      const deadline = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Request timed out. Please check your connection.')),
+          12000
+        )
+      )
+      await Promise.race([
+        postReview({
+          igdbGameId: game.id,
+          body: text.trim(),
+          rating: Number(rating),
+          liked: !!loved,
+          hasSpoilers: !!containsSpoilers,
+          gameTitle: game.title,
+          gameImage: game.image,
+          hoursPlayed: Math.min(parseFloat(hoursRaw) || 0, 9999),
+        }),
+        deadline,
+      ])
 
       if (markCompleted) {
         setGameStatus(game.id, 'played', game)
@@ -89,103 +121,135 @@ function ReviewNew() {
 
       window.dispatchEvent(new Event('reviewAdded'))
       showToast('Review saved!', 'success')
-      navigate(-1)
+      // Close smoothly, then navigate back to the game detail page.
+      closeWith(() => navigate(-1))
     } catch (err) {
       console.error('[ReviewNew] postReview failed:', err)
       showToast('Could not save your review. Please try again.', 'error')
-    } finally {
       setSubmitting(false)
     }
-  }, [canPost, game, text, rating, loved, containsSpoilers, hoursPlayed, markCompleted, navigate])
+  }, [canPost, game, text, rating, loved, containsSpoilers, hoursRaw, markCompleted, navigate, closeWith])
 
   const handleGamePicked = useCallback((picked) => {
-    setShowPicker(false)
     navigate(`/review/new?gameId=${picked.id}`, {
       replace: true,
       state: { game: picked },
     })
   }, [navigate])
 
-  const adjustHours = (delta) => {
-    setHoursPlayed((prev) => Math.max(0, (Number(prev) || 0) + delta))
+  // Permit: empty, up-to-4 digits, optionally followed by a dot + one digit.
+  const handleHoursChange = (e) => {
+    const v = e.target.value
+    if (!/^(\d{0,4}(\.\d?)?)?$/.test(v)) return
+    setHoursRaw(v)
   }
+
+  const handleHoursBlur = () => {
+    const n = parseFloat(hoursRaw)
+    if (!hoursRaw || isNaN(n) || n < 0) {
+      setHoursRaw('0')
+    } else {
+      const clamped = Math.min(n, 9999)
+      // Trim a trailing dot: "12." → "12"
+      setHoursRaw(clamped % 1 === 0 ? String(clamped) : clamped.toFixed(1))
+    }
+  }
+
+  const adjustHours = (delta) => {
+    const current = parseFloat(hoursRaw) || 0
+    const next = Math.max(0, Math.min(9999, Math.round((current + delta) * 10) / 10))
+    setHoursRaw(next % 1 === 0 ? String(next) : next.toFixed(1))
+  }
+
+  const hoursInputRef = useRef(null)
 
   const coverSrc = game?.image ?? null
   const developer = game?.developers?.[0] ?? game?.developer ?? null
   const gameMeta = [game?.year, developer].filter(Boolean).join(' · ')
 
-  // ── Shared top bar ───────────────────────────────────────────────────────
-
-  const TopBar = ({ postDisabled = true, onPost }) => (
-    <div className="rnc-topbar">
-      <button className="rnc-topbar-cancel" onClick={handleCancel} type="button">
-        Cancel
-      </button>
-      <span className="rnc-topbar-title">Write review</span>
-      <button
-        className={`rnc-topbar-post${postDisabled ? ' rnc-topbar-post--disabled' : ''}`}
-        onClick={onPost}
-        disabled={postDisabled}
-        type="button"
-        aria-disabled={postDisabled}
-      >
-        {submitting ? '…' : 'Post'}
-      </button>
-    </div>
-  )
-
-  // ── No gameId → open picker immediately; cancel goes back ───────────────
+  // ── No gameId → pick a game first; cancel goes back ─────────────────────
 
   if (!gameIdParam && !loadingGame) {
     return (
-      <div className="rnc-page">
-        <GamePickerSheet
-          isOpen
-          onSelect={handleGamePicked}
-          onCancel={() => navigate(-1)}
-        />
-      </div>
+      <GamePickerSheet
+        isOpen
+        onSelect={handleGamePicked}
+        onCancel={() => navigate(-1)}
+      />
     )
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  // ── Loading the game → quiet centered popup (no floating spinner) ───────
 
   if (loadingGame) {
     return (
-      <div className="rnc-page rnc-page--loading">
-        <div className="rnc-spinner" aria-label="Loading game…" />
-      </div>
+      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Loading game" maxWidth={360}>
+        <div className="rnc-topbar">
+          <button className="rnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
+            Cancel
+          </button>
+          <span className="rnc-topbar-title">Write review</span>
+          <span className="rnc-topbar-post rnc-topbar-post--disabled" aria-hidden="true">Post</span>
+        </div>
+        <div className="rnc-loading-body">
+          <span className="rnc-inline-spinner" aria-label="Loading game…" />
+        </div>
+      </CenteredModal>
     )
   }
 
-  // ── Game load error ──────────────────────────────────────────────────────
+  // ── Game load error ─────────────────────────────────────────────────────
 
   if (gameError) {
     return (
-      <div className="rnc-page">
-        <TopBar />
-        <div className="rnc-empty">
-          <p className="rnc-empty-body rnc-empty-body--error">{gameError}</p>
-          <button className="rnc-choose-btn" onClick={() => setShowPicker(true)}>
-            <LuSearch size={18} aria-hidden="true" />
-            Try another game
+      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Write review" maxWidth={360}>
+        <div className="rnc-topbar">
+          <button className="rnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
+            Cancel
           </button>
+          <span className="rnc-topbar-title">Write review</span>
+          <span className="rnc-topbar-post rnc-topbar-post--disabled" aria-hidden="true">Post</span>
         </div>
-        {showPicker && (
-          <GamePickerSheet onSelect={handleGamePicked} onCancel={() => setShowPicker(false)} />
-        )}
-      </div>
+        <div className="rnc-error-body">
+          <p className="rnc-error-text">{gameError}</p>
+        </div>
+      </CenteredModal>
     )
   }
 
   // ── Composer ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="rnc-page">
-      <TopBar postDisabled={!canPost} onPost={handlePost} />
+    <CenteredModal
+      isOpen={open}
+      onClose={handleCancel}
+      onExited={handleExited}
+      ariaLabel="Write review"
+      maxWidth={360}
+    >
+      {/* Top row: Cancel | Write review | Post */}
+      <div className="rnc-topbar">
+        <button className="rnc-topbar-cancel" onClick={handleCancel} type="button">
+          Cancel
+        </button>
+        <span className="rnc-topbar-title">Write review</span>
+        <button
+          className={`rnc-topbar-post${!canPost ? ' rnc-topbar-post--disabled' : ''}`}
+          onClick={handlePost}
+          disabled={!canPost}
+          type="button"
+          aria-disabled={!canPost}
+        >
+          {submitting ? (
+            <span className="rnc-post-spinner" aria-label="Posting…" />
+          ) : (
+            'Post'
+          )}
+        </button>
+      </div>
 
-      <div className="rnc-scroll">
-        {/* 1. Game header */}
+      <div className="rnc-scroll cm-scroll">
+        {/* Game header */}
         <div className="rnc-game-header">
           {coverSrc
             ? <img src={coverSrc} alt={game.title} className="rnc-game-cover" />
@@ -197,7 +261,7 @@ function ReviewNew() {
           </div>
         </div>
 
-        {/* 2. Rating row */}
+        {/* Star rating */}
         <div className="rnc-rating-block">
           <StarRating
             value={rating}
@@ -211,111 +275,90 @@ function ReviewNew() {
           </p>
         </div>
 
-        {/* 3. Meta group: hours played + completed */}
-        <div className="rnc-group" role="group" aria-label="Tracking info">
-          <div className="rnc-group-row">
-            <span className="rnc-group-label">Hours played</span>
-            <div className="rnc-stepper">
-              <button
-                type="button"
-                className="rnc-stepper-btn"
-                onClick={() => adjustHours(-0.5)}
-                aria-label="Decrease hours played"
-              >−</button>
-              <span className="rnc-stepper-value">{hoursPlayed}</span>
-              <button
-                type="button"
-                className="rnc-stepper-btn"
-                onClick={() => adjustHours(0.5)}
-                aria-label="Increase hours played"
-              >+</button>
-            </div>
-          </div>
-
-          <div className="rnc-group-divider" aria-hidden="true" />
-
-          <div className="rnc-group-row">
-            <span className="rnc-group-label">Completed</span>
-            <label className="rnc-switch">
-              <input
-                type="checkbox"
-                checked={markCompleted}
-                onChange={(e) => setMarkCompleted(e.target.checked)}
-              />
-              <span className="rnc-switch-track" aria-hidden="true">
-                <span className="rnc-switch-thumb" />
-              </span>
-            </label>
+        {/* Hours played — lives here (upper zone) so it stays visible above the
+            decimal keypad when focused, exactly like the textarea below it. */}
+        <div className="rnc-hours-row">
+          <span className="rnc-group-label">Hours played</span>
+          <div className="rnc-stepper">
+            <button
+              type="button"
+              className="rnc-stepper-btn"
+              onClick={() => adjustHours(-0.5)}
+              aria-label="Decrease hours played"
+            >−</button>
+            <input
+              ref={hoursInputRef}
+              type="text"
+              inputMode="decimal"
+              className="rnc-stepper-input"
+              value={hoursRaw}
+              onChange={handleHoursChange}
+              onBlur={handleHoursBlur}
+              aria-label="Hours played"
+              maxLength={6}
+            />
+            <button
+              type="button"
+              className="rnc-stepper-btn"
+              onClick={() => adjustHours(0.5)}
+              aria-label="Increase hours played"
+            >+</button>
           </div>
         </div>
 
-        {/* 4. Review textarea */}
+        {/* Review text box */}
         <div className="rnc-textarea-wrap">
           <textarea
             className="rnc-textarea"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Write your thoughts… (no spoilers — toggle below if needed)"
+            placeholder="Write your thoughts…"
             maxLength={5000}
             aria-label="Review text"
           />
           <p className="rnc-char-count" aria-live="polite">{text.length}/5000</p>
         </div>
 
-        {/* 5. Meta group: loved it + contains spoilers */}
+        {/* Tips line */}
+        <p className="rnc-tip">
+          Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.
+        </p>
+
+        {/* Toggles: Liked / Contains spoilers / Mark as completed */}
         <div className="rnc-group" role="group" aria-label="Review options">
           <div className="rnc-group-row">
-            <span className="rnc-group-label">Loved it</span>
-            <button
-              type="button"
-              className={`rnc-heart-btn${loved ? ' rnc-heart-btn--on' : ''}`}
-              onClick={() => setLoved((v) => !v)}
-              aria-label={loved ? 'Remove loved' : 'Mark as loved'}
-              aria-pressed={loved}
-            >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill={loved ? 'var(--accent)' : 'none'}
-                stroke={loved ? 'var(--accent)' : 'var(--text-secondary)'}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-            </button>
+            <span className="rnc-group-label">Liked</span>
+            <IOSSwitch
+              checked={loved}
+              onChange={setLoved}
+              label="Mark as liked"
+            />
           </div>
 
           <div className="rnc-group-divider" aria-hidden="true" />
 
           <div className="rnc-group-row">
             <span className="rnc-group-label">Contains spoilers</span>
-            <label className="rnc-switch">
-              <input
-                type="checkbox"
-                checked={containsSpoilers}
-                onChange={(e) => setContainsSpoilers(e.target.checked)}
-              />
-              <span className="rnc-switch-track" aria-hidden="true">
-                <span className="rnc-switch-thumb" />
-              </span>
-            </label>
+            <IOSSwitch
+              checked={containsSpoilers}
+              onChange={setContainsSpoilers}
+              label="Contains spoilers"
+            />
+          </div>
+
+          <div className="rnc-group-divider" aria-hidden="true" />
+
+          <div className="rnc-group-row">
+            <span className="rnc-group-label">Mark as completed</span>
+            <IOSSwitch
+              checked={markCompleted}
+              onChange={setMarkCompleted}
+              label="Mark game as completed"
+            />
           </div>
         </div>
-
-        {/* 6. Tip */}
-        <p className="rnc-tip">
-          Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.
-        </p>
       </div>
-
-      {showPicker && (
-        <GamePickerSheet onSelect={handleGamePicked} onCancel={() => setShowPicker(false)} />
-      )}
-    </div>
+    </CenteredModal>
   )
 }
 

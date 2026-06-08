@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuSearch, LuX } from 'react-icons/lu'
 import { Edit3, MessageCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { getInbox } from '../services/messageService'
+import { getInbox, MESSAGES_CHANGED_EVENT } from '../services/messageService'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { searchUsers } from '../services/userService'
 import { useDebounce } from '../hooks/useDebounce'
 import { generateDefaultAvatar } from '../services/profileService'
 import { supabase } from '../services/supabase'
 import EmptyState from '../components/EmptyState'
+import CenteredModal from '../components/CenteredModal'
 import './MessagesInbox.css'
 
 /* ============================================================
@@ -132,6 +133,18 @@ function MessagesInbox() {
     }
   }, [user?.id, reload])
 
+  /* ── Refetch on iOS resume + after mark-as-read in thread ─── */
+
+  useEffect(() => {
+    const onRefresh = () => reload()
+    window.addEventListener(APP_RESUMED_EVENT, onRefresh)
+    window.addEventListener(MESSAGES_CHANGED_EVENT, onRefresh)
+    return () => {
+      window.removeEventListener(APP_RESUMED_EVENT, onRefresh)
+      window.removeEventListener(MESSAGES_CHANGED_EVENT, onRefresh)
+    }
+  }, [reload])
+
   /* ── Row tap ───────────────────────────────────────────────── */
 
   const openThread = useCallback(
@@ -209,13 +222,12 @@ function MessagesInbox() {
         )}
       </div>
 
-      {composeOpen && (
-        <ComposeSheet
-          onClose={closeCompose}
-          onPick={handlePickRecipient}
-          currentUserId={user?.id}
-        />
-      )}
+      <ComposeSheet
+        isOpen={composeOpen}
+        onClose={closeCompose}
+        onPick={handlePickRecipient}
+        currentUserId={user?.id}
+      />
     </div>
   )
 }
@@ -279,40 +291,26 @@ function ConversationRow({ conversation, currentUserId, onTap }) {
    Compose sheet — pick a recipient by username
    ============================================================ */
 
-function ComposeSheet({ onClose, onPick, currentUserId }) {
+function ComposeSheet({ isOpen, onClose, onPick, currentUserId }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const inputRef = useRef(null)
   const debounced = useDebounce(query, 250)
 
-  // Focus the input on open. Defer to next paint so the slide-up
-  // animation doesn't fight the keyboard for layout.
+  // Reset the query each time the picker opens so a stale search from a
+  // previous compose doesn't linger.
   useEffect(() => {
-    const id = window.requestAnimationFrame(() => {
-      inputRef.current?.focus()
-    })
-    return () => window.cancelAnimationFrame(id)
-  }, [])
+    if (isOpen) setQuery('')
+  }, [isOpen])
 
-  // Lock body scroll while the sheet is open. Mirrors what other
-  // modal/sheet components in the app do (EditProfileModal, etc.)
+  // Focus the input on open. Defer slightly so the popup enter animation
+  // doesn't fight the keyboard for layout.
   useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
-
-  // Esc to close.
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+    if (!isOpen) return undefined
+    const id = setTimeout(() => inputRef.current?.focus(), 120)
+    return () => clearTimeout(id)
+  }, [isOpen])
 
   // Debounced search.
   useEffect(() => {
@@ -342,99 +340,96 @@ function ComposeSheet({ onClose, onPick, currentUserId }) {
     }
   }, [debounced, currentUserId])
 
-  return createPortal(
-    <div
-      className="dm-compose-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="New message"
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="New message"
+      maxWidth={520}
+      className="dm-compose"
     >
-      <div className="dm-compose" onClick={(e) => e.stopPropagation()}>
-        <header className="dm-compose__header">
-          <button
-            type="button"
-            className="dm-compose__close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <LuX size={22} aria-hidden="true" />
-          </button>
-          <h2 className="dm-compose__title">New message</h2>
-          <span className="dm-compose__spacer" aria-hidden="true" />
-        </header>
+      <header className="dm-compose__header">
+        <button
+          type="button"
+          className="dm-compose__close"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          <LuX size={22} aria-hidden="true" />
+        </button>
+        <h2 className="dm-compose__title">New message</h2>
+        <span className="dm-compose__spacer" aria-hidden="true" />
+      </header>
 
-        <div className="dm-compose__search">
-          <LuSearch size={16} aria-hidden="true" className="dm-compose__search-icon" />
-          <input
-            ref={inputRef}
-            type="text"
-            className="dm-compose__input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users by username or display name"
-            aria-label="Search users"
-          />
-        </div>
-
-        <div className="dm-compose__results">
-          {!query.trim() ? (
-            <p className="dm-compose__hint">
-              Start typing to find someone.
-            </p>
-          ) : searching ? (
-            <div aria-hidden="true">
-              <span className="skeleton dm-compose__loading-row" />
-              <span className="skeleton dm-compose__loading-row" />
-            </div>
-          ) : results.length === 0 ? (
-            <p className="dm-compose__hint">No users match "{query}".</p>
-          ) : (
-            <ul role="list" className="dm-compose__list">
-              {results.map((u) => {
-                const fallback = generateDefaultAvatar(
-                  u.display_name || u.username || 'User'
-                )
-                return (
-                  <li key={u.id}>
-                    <button
-                      type="button"
-                      className="dm-compose-row"
-                      onClick={() => onPick(u)}
-                    >
-                      <div className="dm-compose-row__avatar">
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt="" loading="lazy" />
-                        ) : (
-                          <span
-                            className="dm-compose-row__avatar-fallback"
-                            style={{ background: fallback.color }}
-                            aria-hidden="true"
-                          >
-                            {fallback.initials}
-                          </span>
-                        )}
-                      </div>
-                      <div className="dm-compose-row__text">
-                        <span className="dm-compose-row__name">
-                          {u.display_name || u.username || 'Anonymous'}
-                        </span>
-                        {u.username && (
-                          <span className="dm-compose-row__handle">
-                            @{u.username}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+      <div className="dm-compose__search">
+        <LuSearch size={16} aria-hidden="true" className="dm-compose__search-icon" />
+        <input
+          ref={inputRef}
+          type="text"
+          className="dm-compose__input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search users by username or display name"
+          aria-label="Search users"
+        />
       </div>
-    </div>,
-    document.body
+
+      <div className="dm-compose__results cm-scroll">
+        {!query.trim() ? (
+          <p className="dm-compose__hint">
+            Start typing to find someone.
+          </p>
+        ) : searching ? (
+          <div aria-hidden="true">
+            <span className="skeleton dm-compose__loading-row" />
+            <span className="skeleton dm-compose__loading-row" />
+          </div>
+        ) : results.length === 0 ? (
+          <p className="dm-compose__hint">No users match "{query}".</p>
+        ) : (
+          <ul role="list" className="dm-compose__list">
+            {results.map((u) => {
+              const fallback = generateDefaultAvatar(
+                u.display_name || u.username || 'User'
+              )
+              return (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    className="dm-compose-row"
+                    onClick={() => onPick(u)}
+                  >
+                    <div className="dm-compose-row__avatar">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" loading="lazy" />
+                      ) : (
+                        <span
+                          className="dm-compose-row__avatar-fallback"
+                          style={{ background: fallback.color }}
+                          aria-hidden="true"
+                        >
+                          {fallback.initials}
+                        </span>
+                      )}
+                    </div>
+                    <div className="dm-compose-row__text">
+                      <span className="dm-compose-row__name">
+                        {u.display_name || u.username || 'Anonymous'}
+                      </span>
+                      {u.username && (
+                        <span className="dm-compose-row__handle">
+                          {u.username}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </CenteredModal>
   )
 }
 

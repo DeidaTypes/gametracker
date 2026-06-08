@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { logActivity } from './activityService'
 import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
+import { getLikeCountsForReviews } from './likeService'
 
 /**
  * Review Service — Supabase-backed.
@@ -115,9 +116,12 @@ export async function getReviewsForUser(userId) {
   if (!userId) return []
   const { data, error } = await supabase
     .from('reviews')
-    .select('*')
+    .select(
+      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, created_at, updated_at'
+    )
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+    .limit(200)
   if (error) {
     console.error('[reviews] getReviewsForUser failed:', error.message)
     return []
@@ -233,25 +237,89 @@ export async function getReviewsForGamePaginated({ gameId, page = 1, limit = 20 
  * display_name + avatar_url. Used by the Explore community feed.
  */
 export async function getRecentCommunityReviews(limit = 20) {
+  const _t0 = Date.now()
   const [flaggedIds, queryResult] = await Promise.all([
     getFlaggedContentIds('review'),
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(display_name, avatar_url)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(limit)
       query = await applyBlockFilter(query, 'user_id')
       return query
     })(),
   ])
+  if (import.meta.env.DEV) console.log(`[⏱ explore] getRecentCommunityReviews Promise.all done: ${Date.now() - _t0}ms`)
   const { data, error } = await queryResult
+  if (import.meta.env.DEV) console.log(`[⏱ explore] getRecentCommunityReviews TOTAL: ${Date.now() - _t0}ms`)
   if (error) {
     console.error('[reviews] getRecentCommunityReviews failed:', error.message)
     return []
   }
   const rows = data || []
   return flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
+}
+
+/**
+ * Reviews ranked by like count desc, tiebreak recency.
+ * Candidate window: past `days` days, capped at 200 rows. Falls back to
+ * all-time (300 rows) when the window is sparse (< ⌈limit/2⌉ results).
+ * One batch getLikeCountsForReviews call — no N+1 round-trips.
+ *
+ * Used by the Discover page "POPULAR" reviews tab.
+ */
+export async function getPopularReviews({ days = 30, limit = 25 } = {}) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  const [flaggedIds, windowResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let q = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(200)
+      q = await applyBlockFilter(q, 'user_id')
+      return q
+    })(),
+  ])
+
+  const { data: windowData, error: windowErr } = await windowResult
+  if (windowErr) {
+    console.error('[reviews] getPopularReviews window query failed:', windowErr.message)
+    return []
+  }
+
+  let candidates = (windowData || []).filter((r) => !flaggedIds.has(r.id))
+
+  // Widen to all-time when the window is sparse
+  if (candidates.length < Math.ceil(limit / 2)) {
+    let q2 = supabase
+      .from('reviews')
+      .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+      .order('created_at', { ascending: false })
+      .limit(300)
+    q2 = await applyBlockFilter(q2, 'user_id')
+    const { data: allData, error: allErr } = await q2
+    if (!allErr && allData) {
+      candidates = allData.filter((r) => !flaggedIds.has(r.id))
+    }
+  }
+
+  if (candidates.length === 0) return []
+
+  const ids = candidates.map((r) => r.id)
+  const likeCounts = await getLikeCountsForReviews(ids)
+
+  return candidates
+    .sort((a, b) => {
+      const la = likeCounts.get(a.id) || 0
+      const lb = likeCounts.get(b.id) || 0
+      if (lb !== la) return lb - la
+      return new Date(b.created_at) - new Date(a.created_at)
+    })
+    .slice(0, limit)
 }
 
 /**

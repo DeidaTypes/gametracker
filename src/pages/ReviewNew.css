@@ -1,57 +1,48 @@
 /* ============================================================
-   ReviewNew — iOS 26 compact review composer
+   ReviewNew — review composer, presented inside CenteredModal.
+   The popup shell (.cm-card) provides the surface, rounding,
+   centering, and keyboard-aware sizing. These styles only lay
+   out the composer's internal content.
    ============================================================ */
 
-.rnc-page {
-  min-height: 100dvh;
-  background: var(--bg-base, #0a0f1f);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── Top bar ─────────────────────────────────────────────────────────────── */
+/* ── Top row: Cancel | Write review | Post ──────────────────────────────── */
 
 .rnc-topbar {
   flex-shrink: 0;
   height: 52px;
-  padding-top: env(safe-area-inset-top, 0px);
-  height: calc(52px + env(safe-area-inset-top, 0px));
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  padding-left: 20px;
-  padding-right: 20px;
-  padding-bottom: 0;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--bg-base, #0a0f1f);
+  padding: 0 16px;
   border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
 }
 
 .rnc-topbar-cancel,
 .rnc-topbar-post {
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1;
   color: var(--accent, #3b82f6);
   background: none;
   border: none;
-  padding: 0 0 14px;
+  padding: 6px 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 120ms ease;
   min-width: 56px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .rnc-topbar-cancel {
+  justify-content: flex-start;
   text-align: left;
 }
 
 .rnc-topbar-post {
-  font-weight: 600;
+  font-weight: 700;
+  justify-content: flex-end;
   text-align: right;
 }
 
@@ -68,27 +59,33 @@
 
 .rnc-topbar-title {
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary, #f0f3fa);
   letter-spacing: 0;
-  padding-bottom: 14px;
   flex: 1;
   text-align: center;
   pointer-events: none;
 }
 
+/* Inline Post spinner — replaces any floating circle/spinner. */
+.rnc-post-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--accent, #3b82f6) 35%, transparent);
+  border-top-color: var(--accent, #3b82f6);
+  border-radius: 50%;
+  animation: rncSpin 700ms linear infinite;
+}
+
 /* ── Scrollable content ──────────────────────────────────────────────────── */
 
 .rnc-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 32px);
+  gap: 14px;
+  padding: 16px;
 }
 
 /* ── Game header ─────────────────────────────────────────────────────────── */
@@ -100,8 +97,8 @@
 }
 
 .rnc-game-cover {
-  width: 48px;
-  height: 64px;
+  width: 44px;
+  height: 60px;
   object-fit: cover;
   border-radius: 6px;
   flex-shrink: 0;
@@ -109,7 +106,7 @@
 }
 
 .rnc-game-cover--placeholder {
-  background: var(--bg-surface, #131a35);
+  background: var(--bg-surface-2, #1a2240);
   border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
 }
 
@@ -150,7 +147,6 @@
   padding: 4px 0;
 }
 
-/* StarRating "md" size = 32px stars. Override gap slightly to feel compact. */
 .rnc-stars {
   gap: 6px !important;
 }
@@ -163,140 +159,7 @@
   margin: 0;
 }
 
-/* ── iOS grouped container ───────────────────────────────────────────────── */
-
-.rnc-group {
-  background: var(--bg-surface, #131a35);
-  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: var(--radius-lg, 14px);
-  overflow: hidden;
-}
-
-.rnc-group-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  min-height: 44px;
-}
-
-.rnc-group-label {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--text-primary, #f0f3fa);
-  letter-spacing: 0;
-}
-
-.rnc-group-divider {
-  height: 0.5px;
-  background: var(--border-subtle, rgba(148, 168, 212, 0.12));
-  margin-left: 16px;
-}
-
-/* ── Hours stepper ───────────────────────────────────────────────────────── */
-
-.rnc-stepper {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  height: 28px;
-  background: rgba(148, 168, 212, 0.08);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.rnc-stepper-btn {
-  width: 32px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--accent, #3b82f6);
-  font-size: 18px;
-  font-weight: 400;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  padding: 0;
-  line-height: 1;
-  transition: background 100ms ease;
-}
-
-.rnc-stepper-btn:active {
-  background: rgba(59, 130, 246, 0.15);
-}
-
-.rnc-stepper-value {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary, #f0f3fa);
-  min-width: 32px;
-  text-align: center;
-  user-select: none;
-}
-
-/* ── iOS switch ──────────────────────────────────────────────────────────── */
-
-.rnc-switch {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  flex-shrink: 0;
-}
-
-.rnc-switch input[type='checkbox'] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.rnc-switch-track {
-  display: block;
-  width: 51px;
-  height: 31px;
-  background: rgba(148, 168, 212, 0.18);
-  border-radius: 999px;
-  position: relative;
-  transition: background 200ms ease;
-  flex-shrink: 0;
-}
-
-.rnc-switch input:checked + .rnc-switch-track {
-  background: var(--accent, #3b82f6);
-}
-
-.rnc-switch-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
-  background: #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
-  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.rnc-switch input:checked + .rnc-switch-track .rnc-switch-thumb {
-  transform: translateX(20px);
-}
-
-.rnc-switch input:focus-visible + .rnc-switch-track {
-  outline: 2px solid var(--accent, #3b82f6);
-  outline-offset: 2px;
-}
-
-/* ── Textarea ────────────────────────────────────────────────────────────── */
+/* ── Review textarea ─────────────────────────────────────────────────────── */
 
 .rnc-textarea-wrap {
   display: flex;
@@ -305,14 +168,15 @@
 
 .rnc-textarea {
   width: 100%;
-  min-height: 140px;
+  min-height: 120px;
   padding: 12px;
   background: var(--bg-surface, #131a35);
   border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: var(--radius-lg, 14px);
+  border-radius: var(--radius-md, 10px);
   color: var(--text-primary, #f0f3fa);
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.5;
   resize: none;
@@ -327,7 +191,7 @@
 }
 
 .rnc-textarea:focus {
-  border-color: rgba(59, 130, 246, 0.45);
+  border-color: color-mix(in srgb, var(--accent, #3b82f6) 50%, transparent);
 }
 
 .rnc-char-count {
@@ -338,28 +202,6 @@
   margin: 4px 0 0;
   text-align: right;
   align-self: flex-end;
-}
-
-/* ── Heart button ────────────────────────────────────────────────────────── */
-
-.rnc-heart-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  padding: 2px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.rnc-heart-btn--on {
-  transform: scale(1.1);
-}
-
-.rnc-heart-btn:active {
-  transform: scale(0.92);
 }
 
 /* ── Tip line ────────────────────────────────────────────────────────────── */
@@ -385,81 +227,153 @@
   border-radius: 3px;
 }
 
-/* ── Empty / error state ─────────────────────────────────────────────────── */
+/* ── iOS grouped container ───────────────────────────────────────────────── */
 
-.rnc-empty {
-  flex: 1;
+.rnc-group {
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  /* overflow: clip keeps the border-radius clipping behaviour identical to
+     overflow: hidden but does NOT create a scroll-container. Without this,
+     iOS treats .rnc-group as a scroll trap and absorbs native focus-scroll
+     and touch-scroll instead of propagating them up to .cm-scroll. */
+  overflow: clip;
+}
+
+.rnc-group-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 48px 20px;
-  text-align: center;
-  gap: 16px;
+  justify-content: space-between;
+  padding: 0 14px;
+  min-height: 48px;
+  gap: 12px;
 }
 
-.rnc-empty-icon {
-  font-size: 56px;
-  line-height: 1;
-}
-
-.rnc-empty-heading {
-  font-family: var(--font-display, 'DM Sans', system-ui, sans-serif);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary, #f0f3fa);
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
-.rnc-empty-body {
-  font-size: 15px;
-  color: var(--text-secondary, #94a8d4);
-  margin: 0;
-  max-width: 280px;
-  line-height: 1.5;
-}
-
-.rnc-empty-body--error {
-  color: var(--status-danger, #f87171);
-}
-
-.rnc-choose-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 24px;
-  height: 48px;
-  border-radius: 24px;
-  border: none;
-  background: var(--accent, #3b82f6);
-  color: #fff;
+.rnc-group-label {
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
   font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 140ms ease, transform 100ms ease;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+  letter-spacing: 0;
 }
 
-.rnc-choose-btn:active {
-  transform: scale(0.97);
+.rnc-group-divider {
+  height: 0.5px;
+  background: var(--border-subtle, rgba(148, 168, 212, 0.12));
+  margin-left: 14px;
 }
 
-/* ── Loading state ───────────────────────────────────────────────────────── */
+/* ── Hours played row (upper zone, above the textarea) ──────────────────── */
 
-.rnc-page--loading {
+/* Sits between the star rating and the textarea so it's always visible above
+   the decimal keypad when focused — no scroll-into-view needed. */
+.rnc-hours-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  min-height: 48px;
+  gap: 12px;
+}
+
+/* ── Hours stepper ───────────────────────────────────────────────────────── */
+
+.rnc-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 34px;
+  background: rgba(148, 168, 212, 0.08);
+  border-radius: 8px;
+  /* overflow: clip instead of hidden — clips the border-radius visually but
+     does NOT create a scroll container. overflow: hidden was trapping iOS's
+     scroll-focused-element walk here (same as .rnc-group was), preventing
+     scroll from propagating up to .cm-scroll when the keypad opens. */
+  overflow: clip;
+}
+
+.rnc-stepper-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  background: none;
+  border: none;
+  color: var(--accent, #3b82f6);
+  font-size: 18px;
+  font-weight: 400;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  line-height: 1;
+  transition: background 100ms ease;
+  flex-shrink: 0;
 }
 
-.rnc-spinner {
-  width: 36px;
-  height: 36px;
+.rnc-stepper-btn:active {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Typeable hours field — 16px prevents iOS auto-zoom on focus */
+.rnc-stepper-input {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary, #f0f3fa);
+  background: none;
+  border: none;
+  outline: none;
+  width: 64px;
+  text-align: center;
+  padding: 0 4px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Hide number spinner arrows on desktop browsers */
+.rnc-stepper-input::-webkit-inner-spin-button,
+.rnc-stepper-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.rnc-stepper-input::placeholder {
+  color: var(--text-tertiary, #5c6b8a);
+}
+
+/* ── Loading / error bodies ──────────────────────────────────────────────── */
+
+.rnc-loading-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.rnc-inline-spinner {
+  width: 32px;
+  height: 32px;
   border: 3px solid rgba(255, 255, 255, 0.12);
   border-top-color: var(--accent, #3b82f6);
   border-radius: 50%;
   animation: rncSpin 700ms linear infinite;
+}
+
+.rnc-error-body {
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.rnc-error-text {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  color: var(--status-danger, #f87171);
+  margin: 0;
+  line-height: 1.5;
 }
 
 @keyframes rncSpin {
@@ -469,23 +383,13 @@
 /* ── Reduced motion ──────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .rnc-spinner {
-    animation: none;
-    opacity: 0.5;
+  .rnc-inline-spinner,
+  .rnc-post-spinner {
+    animation-duration: 1400ms;
   }
+}
 
-  .rnc-switch-track,
-  .rnc-switch-thumb,
-  .rnc-heart-btn {
-    transition: none;
-  }
-
-  .rnc-heart-btn--on,
-  .rnc-heart-btn:active {
-    transform: none;
-  }
-
-  .rnc-switch input:checked + .rnc-switch-track .rnc-switch-thumb {
-    transition: none;
-  }
+body[data-reduce-motion='true'] .rnc-inline-spinner,
+body[data-reduce-motion='true'] .rnc-post-spinner {
+  animation-duration: 1400ms;
 }

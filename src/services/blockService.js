@@ -78,22 +78,31 @@ export function getBlockedIdsSync() {
  * promise so we never double-fetch.
  */
 export async function loadBlockedIds() {
+  // Fast-path A: join any in-flight hydration without an extra auth round-trip
+  if (_hydratePromise) return _hydratePromise
+  // Fast-path B: warm cache for the same user. clearBlockCache() is called on
+  // sign-out so _cachedUserId going non-null always implies the current user.
+  if (_cache && _cachedUserId) return _cache
+
+  const _t0 = Date.now()
   const userId = await getCurrentUserId()
+  if (import.meta.env.DEV) console.log(`[⏱ blocks] auth.getUser(): ${Date.now() - _t0}ms`)
   if (!userId) {
     _cache = { selfBlocked: new Set(), blockedMe: new Set(), all: new Set() }
     _cachedUserId = null
     return _cache
   }
 
-  if (_cache && _cachedUserId === userId) return _cache
   if (_hydratePromise) return _hydratePromise
 
   _hydratePromise = (async () => {
+    const _t0 = Date.now()
     try {
       const { data, error } = await supabase
         .from('blocked_users')
         .select('blocker_id, blocked_id')
         .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)
+      if (import.meta.env.DEV) console.log(`[⏱ blocks] blocked_users query: ${Date.now() - _t0}ms`)
       if (error) {
         console.error('[blocks] loadBlockedIds failed:', error.message)
         _cache = {

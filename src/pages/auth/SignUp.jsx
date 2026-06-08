@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
-import { AUTH_ERRORS } from '../../services/auth'
+import { AUTH_ERRORS, USERNAME_PATTERN, normalizeUsername } from '../../services/auth'
+import { syncProfileFromSupabase } from '../../services/profileService'
 import './Auth.css'
 
 const DISPLAY_NAME_MAX = 50
+const USERNAME_MAX = 20
 const MIN_PASSWORD_LENGTH = 6
 
 function SignUp() {
@@ -15,6 +17,7 @@ function SignUp() {
   const { signUp } = useAuth()
 
   const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -28,8 +31,19 @@ function SignUp() {
     if (submitting) return
 
     const trimmedName = displayName.trim()
+    const trimmedUsername = normalizeUsername(username)
     if (!trimmedName) {
-      setFormError('Please enter a display name.')
+      setFormError('Please enter your name.')
+      return
+    }
+    if (!trimmedUsername) {
+      setFormError('Please choose a username.')
+      return
+    }
+    if (!USERNAME_PATTERN.test(trimmedUsername)) {
+      setFormError(
+        'Username must be 3–20 characters (letters, numbers, underscores).'
+      )
       return
     }
     if (!email.trim()) {
@@ -46,17 +60,29 @@ function SignUp() {
     setFormError(null)
     setSubmitting(true)
     try {
-      await signUp({
+      const { profile } = await signUp({
         email: email.trim(),
         password,
         displayName: trimmedName,
+        username: trimmedUsername,
       })
+      // Mirror the just-created server profile into the localStorage store
+      // the own-profile UI reads, so the entered name + username show up
+      // immediately instead of a stock default.
+      syncProfileFromSupabase(profile)
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const code = err?.code
       if (code === AUTH_ERRORS.EMAIL_TAKEN) {
         setFormError(
           'An account with this email already exists. Try logging in.'
+        )
+      } else if (code === AUTH_ERRORS.USERNAME_TAKEN) {
+        setFormError('That username is already taken. Please choose another.')
+      } else if (code === AUTH_ERRORS.USERNAME_INVALID) {
+        setFormError(
+          err?.message ||
+            'Username must be 3–20 characters (letters, numbers, underscores).'
         )
       } else if (code === AUTH_ERRORS.WEAK_PASSWORD) {
         setFormError(
@@ -101,7 +127,7 @@ function SignUp() {
           )}
 
           <TextField
-            label="Display name"
+            label="Name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="What should we call you?"
@@ -109,6 +135,24 @@ function SignUp() {
             autoComplete="name"
             required
             autoFocus
+          />
+
+          <TextField
+            label="Username"
+            value={username}
+            onChange={(e) =>
+              setUsername(
+                e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+              )
+            }
+            placeholder="username"
+            maxLength={USERNAME_MAX}
+            autoComplete="username"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            hint="3–20 characters: letters, numbers, underscores."
+            required
           />
 
           <TextField

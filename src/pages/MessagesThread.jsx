@@ -15,7 +15,9 @@ import {
   sendMessage,
   markThreadAsRead,
 } from '../services/messageService'
-import { getUserByUsername } from '../services/userService'
+import { getUserByUsername, getUserById } from '../services/userService'
+import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
 import ReportSheet from '../components/ReportSheet'
@@ -78,15 +80,31 @@ function MessagesThread() {
     }
     setResolving(true)
     setResolveError(false)
+
+    // Try username first. If that returns nothing AND the param looks
+    // like a UUID (inbox/compose may navigate with partner.id when the
+    // partner has no username set), fall back to getUserById so those
+    // deep-links don't land on "User not found".
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
     getUserByUsername(decodedUsername)
-      .then((row) => {
+      .then(async (row) => {
         if (cancelled) return
-        if (!row?.id) {
-          setResolveError(true)
-          setPartner(null)
-        } else {
+        if (row?.id) {
           setPartner(row)
+          return
         }
+        if (UUID_RE.test(decodedUsername)) {
+          const byId = await getUserById(decodedUsername)
+          if (cancelled) return
+          if (byId?.id) {
+            setPartner(byId)
+            return
+          }
+        }
+        setResolveError(true)
+        setPartner(null)
       })
       .catch(() => {
         if (!cancelled) {
@@ -158,6 +176,19 @@ function MessagesThread() {
     // itself as read immediately since the user is looking at the
     // thread right now.
   }, [partnerId, currentUserId, isSelf, messages.length])
+
+  /* ── Refetch on iOS resume + cross-surface send/read ──────── */
+
+  useEffect(() => {
+    if (!partnerId) return undefined
+    const onResume = () => loadThread()
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    window.addEventListener(MESSAGES_CHANGED_EVENT, onResume)
+    return () => {
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+      window.removeEventListener(MESSAGES_CHANGED_EVENT, onResume)
+    }
+  }, [partnerId, loadThread])
 
   /* ── Realtime subscription ────────────────────────────────── */
 

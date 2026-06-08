@@ -206,8 +206,17 @@
    because html-to-image needs computed styles + layout to capture. */
 .completion-celebration__share-host {
   position: fixed;
-  top: -100000px;
+  top: 0;
   left: 0;
+  /* The ShareCard inside is a fixed 1080×1920 canvas. A position:fixed
+     element is NOT clipped by overflow-x:hidden on html/body/#root, so
+     leaving it at its natural size pushes ~1080px past the viewport and
+     creates an app-wide horizontal scroll. Collapse the host to 0×0 and
+     clip the oversized child: html-to-image captures the .share-card node
+     by ref, so its intrinsic 1080×1920 size is preserved for the capture. */
+  width: 0;
+  height: 0;
+  overflow: hidden;
   pointer-events: none;
   opacity: 0;
 }

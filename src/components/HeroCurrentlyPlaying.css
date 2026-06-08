@@ -10,6 +10,39 @@
   gap: var(--spacing-lg);
 }
 
+/* ── Boxed variant ──
+   When the hero lives inside a .shelf-box card on Home, drop the
+   page-edge bleed so it sits neatly within the card padding and reads
+   consistently with the Backlog / Recent Activity boxes. ── */
+
+.hcp--boxed {
+  gap: var(--spacing-md);
+}
+
+.hcp--boxed .hcp-hero {
+  margin: 0;
+  width: 100%;
+  border-radius: var(--radius-lg);
+}
+
+.hcp--boxed .hcp-secondary {
+  padding: 0;
+}
+
+.hcp--boxed .hcp-secondary-rail {
+  margin: 0 calc(-1 * var(--spacing-md));
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+}
+
+.hcp--boxed .hcp-empty {
+  margin: 0;
+  background: none;
+  border: none;
+  min-height: 180px;
+  padding: var(--spacing-md) var(--spacing-sm);
+}
+
 /* ── Hero container ─────────────────────────── */
 
 .hcp-hero {

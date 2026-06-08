@@ -123,7 +123,7 @@ export async function prefetchLikeStatesForReviews(reviewIds) {
     } = await supabase.auth.getUser()
     if (user) {
       const { data, error } = await supabase
-        .from('likes')
+        .from('review_likes')
         .select('review_id')
         .eq('user_id', user.id)
         .in('review_id', reviewIds)

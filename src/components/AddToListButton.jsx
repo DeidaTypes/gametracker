@@ -109,7 +109,7 @@ function AddToListButton({ game, variant, fabStyle }) {
   }, [isOpen, dismiss])
 
   // Consistent 300 ms-feel spring shared with the app's other bottom
-  // sheets (ReviewForm / ReportSheet). Reduced motion → instant swap.
+  // sheets (ReportSheet). Reduced motion → instant swap.
   const backdropTransition = reduced ? { duration: 0 } : { duration: 0.2 }
   const sheetTransition = reduced
     ? { duration: 0 }

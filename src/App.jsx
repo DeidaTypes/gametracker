@@ -29,6 +29,7 @@ import UserFollowing from './pages/UserFollowing'
 import MessagesInbox from './pages/MessagesInbox'
 import MessagesThread from './pages/MessagesThread'
 import ReviewComments from './pages/ReviewComments'
+import ReviewDetail from './pages/ReviewDetail'
 import ReviewNew from './pages/ReviewNew'
 import Settings from './pages/Settings'
 import SettingsBlocked from './pages/SettingsBlocked'
@@ -58,6 +59,7 @@ import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
 import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
 import SearchOverlay from './components/SearchOverlay'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
+import { useAppResume } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
 import './styles/theme.css'
 import './styles/grid.css'
@@ -190,6 +192,12 @@ function AppContent() {
   // semantics so we don't toast for already-earned badges on page load.
   useBadgeUnlockWatcher()
 
+  // Recover after the app is backgrounded and resumed: refresh the Supabase
+  // session, reconnect dropped realtime sockets, and trigger every
+  // resume-aware screen/hook to refetch — so games reload automatically
+  // without a force-quit. (See useAppResume for the full rationale.)
+  useAppResume()
+
   const isPublicRoute = PUBLIC_PATHS.has(location.pathname)
 
   useEffect(() => {
@@ -248,6 +256,17 @@ function AppContent() {
   useEffect(() => {
     if (!user) clearBlockCache()
   }, [user])
+
+  // Scroll-to-top on every route change. The .main-content div persists
+  // across navigations (only its child <Routes> subtree re-mounts), so
+  // its scrollTop carries over and screens appear scrolled-down on entry.
+  // Reset it to 0 whenever the pathname changes so every screen starts at
+  // the true top, with the first header fully visible.
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0
+    }
+  }, [location.pathname])
 
   // Block the entire app until the initial Supabase session restore
   // resolves. Without this, a refresh-while-logged-in briefly renders
@@ -476,6 +495,19 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Fallback route for users without a username set — navigated to
+                by review cards and follow rows when author.username is null.
+                Profile.jsx detects the UUID param and uses getUserById. */}
+            <Route
+              path="/user/id/:userId"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><Profile /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             {/* Sprint 5 P9 — Full badge grid for any user. The page resolves
                 :username → user_id internally so deep links from a chevron
                 tap on the BadgesRow work for both own + future other-user
@@ -577,6 +609,28 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><ReviewComments /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Sprint 7 P1 — Canonical review detail + CenteredModal composer. */}
+            <Route
+              path="/review/:id"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ReviewDetail /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Share-URL alias: /reviews/:id → /review/:id */}
+            <Route
+              path="/reviews/:id"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ReviewDetail /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

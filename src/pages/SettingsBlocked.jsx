@@ -27,7 +27,7 @@ function initialsOf(name) {
 function BlockedUserRow({ row, onUnblock }) {
   const u = row.user || {}
   const display = u.display_name || u.username || 'Unknown user'
-  const handle = u.username ? `@${u.username}` : null
+  const handle = u.username || null
 
   const [pending, setPending] = useState(false)
 

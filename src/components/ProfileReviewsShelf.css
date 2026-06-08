@@ -1,0 +1,12 @@
+/* ProfileReviewsShelf — star row pinned under the game title on each tile */
+
+.prs-stars {
+  display: flex;
+  justify-content: flex-start;
+  line-height: 1;
+  margin-top: -1px;
+}
+
+.prs-stars .star-rating-display {
+  gap: 1px;
+}

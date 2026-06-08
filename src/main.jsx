@@ -49,18 +49,22 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
 // the keyboard is up — content then clears BOTH the keyboard and the bar.
 const ACCESSORY_BAR_PX = 44
 let keyboardVisible = false
+// px from @capacitor/keyboard; authoritative on iOS where visualViewport
+// doesn't shrink for the keyboard under resize:"none"
+let nativeKbHeight = 0
 
 function writeKeyboardInset() {
   if (typeof document === 'undefined') return
-  const vv = typeof window !== 'undefined' ? window.visualViewport : null
-  let inset = vv
-    ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0))
-    : 0
-  if (inset > 0 || keyboardVisible) inset += ACCESSORY_BAR_PX
-  document.documentElement.style.setProperty(
-    '--keyboard-inset',
-    `${Math.round(inset)}px`,
-  )
+  let inset
+  if (nativeKbHeight > 0) {
+    inset = nativeKbHeight + ACCESSORY_BAR_PX
+  } else {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    inset = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0
+    if (inset > 0 || keyboardVisible) inset += ACCESSORY_BAR_PX
+    if (!keyboardVisible) inset = 0
+  }
+  document.documentElement.style.setProperty('--keyboard-inset', `${Math.round(inset)}px`)
 }
 
 if (typeof window !== 'undefined') {
@@ -93,13 +97,15 @@ if (typeof window !== 'undefined') {
     // Fix 1 + Fix 3: body class strategy. Each lifecycle event also keeps the
     // global --keyboard-inset in sync (the visualViewport listener above does
     // the heavy lifting; these guarantee correct values at the animation ends).
-    await Keyboard.addListener('keyboardWillShow', () => {
+    await Keyboard.addListener('keyboardWillShow', (info) => {
       keyboardVisible = true
+      nativeKbHeight = (info && info.keyboardHeight) || 0
       document.body.classList.add('keyboard-open', 'keyboard-animating')
       writeKeyboardInset()
     })
-    await Keyboard.addListener('keyboardDidShow', () => {
+    await Keyboard.addListener('keyboardDidShow', (info) => {
       keyboardVisible = true
+      nativeKbHeight = (info && info.keyboardHeight) || nativeKbHeight
       document.body.classList.remove('keyboard-animating')
       writeKeyboardInset()
     })
@@ -108,8 +114,8 @@ if (typeof window !== 'undefined') {
     })
     await Keyboard.addListener('keyboardDidHide', () => {
       keyboardVisible = false
+      nativeKbHeight = 0
       document.body.classList.remove('keyboard-open', 'keyboard-animating')
-      // Force the inset back to 0 — the keyboard is fully gone.
       document.documentElement.style.setProperty('--keyboard-inset', '0px')
     })
   } catch {

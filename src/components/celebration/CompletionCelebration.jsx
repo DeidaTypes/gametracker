@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import Lottie from 'lottie-react'
 import { toPng } from 'html-to-image'
@@ -21,9 +22,6 @@ import { getDominantColor } from '../../services/colorExtract'
 import { getCachedUserReviews } from '../../services/reviewService'
 import { getGamesFromList } from '../../services/libraryService'
 import { useAuth } from '../../contexts/AuthContext'
-import { postReview } from '../../services/reviewService'
-import { showToast } from '../Toast'
-import ReviewForm from '../ReviewForm'
 import ShareCard from './ShareCard'
 
 import celebrationAnimation from '../../assets/lottie/celebration.json'
@@ -89,11 +87,29 @@ const MILESTONE_THRESHOLDS = new Set([5, 10, 25, 50, 100, 250])
 export default function CompletionCelebration() {
   const head = useCurrentCelebration()
   const reduced = useReducedMotion()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { user, profile } = useAuth()
+
+  // Pause the celebration overlay while the review composer is open.
+  //
+  // The celebration is a single document-body portal that renders whenever
+  // the queue head is non-null, regardless of route. "Write a review"
+  // dismisses the current head (advancing the queue) and navigates to
+  // /review/new — but without this guard the *next* queued celebration
+  // would immediately paint on top of the composer, so the user could only
+  // ever reach the composer for the LAST queued game (every earlier click
+  // just looked like it "skipped" to the next prompt). Onboarding seeds
+  // three "Played" games at once, which is exactly how that queue piles up.
+  //
+  // Suppressing the overlay on the composer route lets each game be
+  // reviewed in turn: post → navigate(-1) returns to the launching screen,
+  // the next celebration appears there, and once the queue drains the user
+  // lands cleanly on Home instead of bouncing through stale history entries.
+  const onReviewComposer = location.pathname.startsWith('/review/new')
 
   // Local UI state, reset whenever a new head item arrives.
   const [accentRgb, setAccentRgb] = useState(null)
-  const [showReview, setShowReview] = useState(false)
   const [shareCardPreview, setShareCardPreview] = useState(null)
   const shareCardRef = useRef(null)
 
@@ -101,20 +117,20 @@ export default function CompletionCelebration() {
   useEffect(() => {
     if (head) {
       setAccentRgb(null)
-      setShowReview(false)
       setShareCardPreview(null)
     }
   }, [head?.igdbGameId])
 
-  // Lock body scroll while celebration is open.
+  // Lock body scroll while celebration is open (but not while it's paused
+  // behind the review composer — that route owns its own scroll lock).
   useEffect(() => {
-    if (!head) return
+    if (!head || onReviewComposer) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
     }
-  }, [head])
+  }, [head, onReviewComposer])
 
   // Dominant-color extraction (same path used by GameDetail's hero).
   useEffect(() => {
@@ -130,14 +146,14 @@ export default function CompletionCelebration() {
 
   // ESC to dismiss.
   useEffect(() => {
-    if (!head) return
+    if (!head || onReviewComposer) return
     const onKey = (e) => {
       if (e.key === 'Escape') handleDone()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [head?.igdbGameId, reduced])
+  }, [head?.igdbGameId, reduced, onReviewComposer])
 
   // Stats — derived synchronously per head.
   const stats = useMemo(() => {
@@ -212,44 +228,20 @@ export default function CompletionCelebration() {
   }, [head, reduced, generateShareCard])
 
   /* ------------------------------------------------------------------
-     Write a review — opens the existing ReviewForm pre-filled with the
-     celebrated game. After submit, posts the review then dismisses the
-     celebration. After cancel, leaves the celebration up so the user
-     isn't trapped without a way out.
+     Write a review — routes to the single, keyboard-aware review composer
+     (ReviewNew at /review/new) with the celebrated game pre-loaded. We
+     capture the share card, dismiss the celebration, then navigate, so the
+     review experience is identical everywhere in the app.
      ------------------------------------------------------------------ */
-  const handleOpenReview = () => setShowReview(true)
-  const handleCancelReview = () => setShowReview(false)
+  const handleOpenReview = useCallback(() => {
+    if (!head) return
+    if (!reduced) generateShareCard()
+    const gameId = head.igdbGameId
+    dismissCurrent()
+    navigate(`/review/new?gameId=${gameId}`, { state: { game: head.game } })
+  }, [head, reduced, generateShareCard, navigate])
 
-  const handleReviewSubmit = useCallback(
-    async (data) => {
-      if (!head) return
-      const { rating, text, hoursPlayed, liked, containsSpoilers } = data
-      try {
-        await postReview({
-          igdbGameId: head.igdbGameId,
-          body: text,
-          rating: Number(rating),
-          liked: !!liked,
-          hasSpoilers: !!containsSpoilers,
-          gameTitle: head.game?.title || null,
-          gameImage: head.game?.image || null,
-          hoursPlayed: Number(hoursPlayed) || 0,
-        })
-        // Celebration → review submit pipeline: close the review modal,
-        // then close the celebration. Status is already `played` so we
-        // don't toggle it again.
-        setShowReview(false)
-        if (!reduced) generateShareCard()
-        dismissCurrent()
-      } catch (err) {
-        console.error('[celebration] postReview failed:', err)
-        showToast('Could not save your review. Please try again.', 'error')
-      }
-    },
-    [head, reduced, generateShareCard]
-  )
-
-  if (!head) return null
+  if (!head || onReviewComposer) return null
 
   const accentCss = accentRgb
     ? `rgb(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b})`
@@ -446,20 +438,6 @@ export default function CompletionCelebration() {
         </div>
       )}
 
-      {/* Pre-filled review form. Re-uses the existing ReviewForm modal
-          so the celebration → review handoff is visually identical to
-          the GameDetail flow the user already knows. */}
-      <ReviewForm
-        gameId={head.igdbGameId}
-        gameTitle={head.game?.title}
-        gameImage={head.game?.image}
-        gameYear={head.game?.year}
-        gameDeveloper={head.game?.developers?.[0]}
-        gameStatus="played"
-        onSubmit={handleReviewSubmit}
-        onCancel={handleCancelReview}
-        isOpen={showReview}
-      />
     </div>,
     document.body
   )

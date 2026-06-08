@@ -16,6 +16,7 @@ import {
 import { shareContent } from '../utils/share'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
+import FindFriendsModal from './FindFriendsModal'
 import '../pages/UserFollows.css'
 
 /**
@@ -57,6 +58,9 @@ function FollowsListPage({ mode }) {
   // come in so each Follow button can render its initial state without
   // an N+1 spinner storm.
   const [followingMap, setFollowingMap] = useState({})
+
+  // Find Friends user-search popup (replaces the old "go to Explore" CTA).
+  const [findFriendsOpen, setFindFriendsOpen] = useState(false)
 
   const decodedUsername = decodeURIComponent(username || '')
 
@@ -303,8 +307,15 @@ function FollowsListPage({ mode }) {
         >
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
-        <h1 className="follows-page__title">@{titleHandle}</h1>
-        <span className="follows-page__spacer" aria-hidden="true" />
+        <h1 className="follows-page__title">{titleHandle}</h1>
+        <button
+          type="button"
+          className="follows-page__find"
+          onClick={() => setFindFriendsOpen(true)}
+          aria-label="Find friends"
+        >
+          <UserPlus size={20} aria-hidden="true" />
+        </button>
       </header>
 
       <div
@@ -359,8 +370,8 @@ function FollowsListPage({ mode }) {
               icon={UserMinus}
               title="Not following anyone yet."
               body={isOwnProfile ? 'Find people to follow and their activity will show up on your home feed.' : undefined}
-              cta={isOwnProfile ? 'Find people to follow' : undefined}
-              onCta={isOwnProfile ? () => navigate('/search') : undefined}
+              cta={isOwnProfile ? 'Find friends' : undefined}
+              onCta={isOwnProfile ? () => setFindFriendsOpen(true) : undefined}
             />
           )
         ) : (
@@ -372,10 +383,13 @@ function FollowsListPage({ mode }) {
                 currentUserId={currentUserId}
                 following={!!followingMap[row.id]}
                 onToggle={() => toggleFollow(row.id)}
-                onTap={() =>
-                  row.username &&
-                  navigate(`/user/${encodeURIComponent(row.username)}`)
-                }
+                onTap={() => {
+                  if (row.username) {
+                    navigate(`/user/${encodeURIComponent(row.username)}`)
+                  } else if (row.id) {
+                    navigate(`/user/id/${encodeURIComponent(row.id)}`)
+                  }
+                }}
               />
             ))}
             {!endReached && (
@@ -388,6 +402,12 @@ function FollowsListPage({ mode }) {
           </>
         )}
       </div>
+
+      <FindFriendsModal
+        isOpen={findFriendsOpen}
+        onClose={() => setFindFriendsOpen(false)}
+        currentUserId={currentUserId}
+      />
     </div>
   )
 }
@@ -422,7 +442,7 @@ function FollowRow({ row, currentUserId, following, onToggle, onTap }) {
         </div>
         <div className="follow-row__text">
           <span className="follow-row__username">
-            {row.username ? `@${row.username}` : row.displayName || 'Unknown'}
+            {row.username || row.displayName || 'Unknown'}
           </span>
           {row.displayName && row.username && (
             <span className="follow-row__display">{row.displayName}</span>

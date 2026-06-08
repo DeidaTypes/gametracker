@@ -244,31 +244,11 @@
   font-weight: var(--font-weight-medium);
 }
 
-/* ── Compose sheet ──────────────────────────────────────────────────── */
+/* ── Compose dialog (centered popup via CenteredModal / .cm-card) ─────── */
 
-.dm-compose-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  animation: dmOverlayIn 180ms ease-out;
-}
-
-.dm-compose {
-  width: 100%;
-  max-width: 520px;
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-secondary);
-  border-top-left-radius: var(--radius-2xl);
-  border-top-right-radius: var(--radius-2xl);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-xl);
-  animation: dmSheetIn 220ms cubic-bezier(0.4, 0, 0.2, 1);
+/* Give the recipient picker room: fill available popup height. */
+.cm-card.dm-compose {
+  height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
 }
 
 .dm-compose__header {
@@ -277,6 +257,7 @@
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .dm-compose__close {
@@ -317,6 +298,7 @@
   display: flex;
   align-items: center;
   margin: var(--spacing-md) var(--page-padding) 0;
+  flex-shrink: 0;
 }
 
 .dm-compose__search-icon {
@@ -457,16 +439,6 @@
 
 /* ── Animations ─────────────────────────────────────────────────────── */
 
-@keyframes dmOverlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes dmSheetIn {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .dm-inbox__back,
   .dm-inbox__compose,
@@ -475,19 +447,5 @@
   .dm-compose__input,
   .dm-compose-row {
     transition: none;
-  }
-  .dm-compose-overlay,
-  .dm-compose {
-    animation: none;
-  }
-}
-
-@media (min-width: 769px) {
-  .dm-compose-overlay {
-    align-items: center;
-  }
-  .dm-compose {
-    border-radius: var(--radius-2xl);
-    max-height: 80vh;
   }
 }

@@ -15,9 +15,16 @@ function formatReleaseDate(date) {
   const releaseDay = new Date(d)
   releaseDay.setHours(0, 0, 0, 0)
   const days = Math.round((releaseDay - today) / 86400000)
-  if (days <= 0) return 'Out today'
+  if (days === 0) return 'Out today'
   if (days === 1) return 'Tomorrow'
-  if (days < 7) return `In ${days} days`
+  if (days > 1 && days < 7) return `In ${days} days`
+  // Past release: show short date
+  if (days < 0) {
+    const sameYear = d.getFullYear() === new Date().getFullYear()
+    return sameYear
+      ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 

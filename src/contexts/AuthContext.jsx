@@ -21,6 +21,8 @@ import {
 } from '../services/reviewService'
 import { migrateLocalListsIfNeeded } from '../services/listService'
 import { migrateLocalLikesIfNeeded } from '../services/likeService'
+import { syncProfileFromSupabase } from '../services/profileService'
+import { loadBlockedIds, clearBlockCache } from '../services/blockService'
 
 const AuthContext = createContext(null)
 
@@ -76,6 +78,15 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Keep the localStorage profile mirror (read synchronously by the
+  // own-profile UI) in step with the authoritative Supabase row. This is
+  // what makes the name + username captured at signup show up everywhere
+  // and survive a reinstall / different device — without it the local
+  // store would fall back to its empty default.
+  useEffect(() => {
+    if (profile) syncProfileFromSupabase(profile)
+  }, [profile])
+
   // Subscribe to auth state changes (sign in / out / token refresh).
   useEffect(() => {
     const unsubscribe = onAuthStateChange(({ user: nextUser, profile: nextProfile }) => {
@@ -92,11 +103,18 @@ export function AuthProvider({ children }) {
   // sync helpers (profile stats, smart lists, mock community) read from.
   // When the user logs out, clear the cache so a subsequent login by a
   // different account doesn't see the previous user's reviews.
+  //
+  // Also pre-warm the block cache here so community feed queries (Explore,
+  // Home timeline) never pay the auth.getUser() + blocked_users round-trip
+  // at page-render time — they will find the cache already populated.
   useEffect(() => {
     if (!user) {
       clearReviewCache()
+      clearBlockCache()
       return
     }
+    // Fire-and-forget: warm the block cache so Explore queries are instant.
+    loadBlockedIds().catch(() => {})
     let cancelled = false
     ;(async () => {
       try {

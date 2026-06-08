@@ -14,6 +14,10 @@
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
+  /* Lift the centered card above the keyboard (+ accessory bar) using the
+     single global inset written in main.jsx. 0 when the keyboard is down. */
+  padding-bottom: calc(24px + var(--keyboard-inset, 0px));
+  transition: padding-bottom 0.2s ease;
 }
 
 .bio-modal-card {
@@ -149,4 +153,11 @@
     animation: none;
     transition: none;
   }
+}
+
+/* The card itself caps to the space above the keyboard so a long bio never
+   pushes the Save button behind it. */
+.bio-modal-card {
+  max-height: calc(100dvh - 48px - var(--keyboard-inset, 0px));
+  overflow-y: auto;
 }

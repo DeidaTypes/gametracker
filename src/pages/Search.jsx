@@ -579,7 +579,7 @@ function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
             >
               <UserAvatar url={item.avatarUrl} name={item.displayName || item.username} />
               <div className="sp-user-row__text">
-                <span className="sp-user-row__username">@{item.username}</span>
+                <span className="sp-user-row__username">{item.username}</span>
                 {item.displayName && (
                   <span className="sp-user-row__display">{item.displayName}</span>
                 )}
@@ -633,7 +633,7 @@ function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
               <UserAvatar url={u.avatar_url} name={displayName || username} />
               <div className="sp-user-row__text">
                 <span className="sp-user-row__username">
-                  {username ? `@${username}` : displayName || 'Unknown'}
+                  {username || displayName || 'Unknown'}
                 </span>
                 {displayName && username && (
                   <span className="sp-user-row__display">{displayName}</span>
@@ -723,9 +723,9 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
               name={list.author?.displayName || list.author?.username}
             />
             <span className="sp-list-row__author-name">
-              {list.author?.username
-                ? `@${list.author.username}`
-                : list.author?.displayName || 'Unknown'}
+              {list.author?.username ||
+                list.author?.displayName ||
+                'Unknown'}
             </span>
           </div>
           <div className="sp-list-row__meta">
@@ -1138,7 +1138,11 @@ function Search() {
         displayName: item.displayName,
         avatarUrl: item.avatarUrl || null,
       })
-      if (item.username) navigate(`/user/${item.username}`)
+      if (item.username) {
+        navigate(`/user/${encodeURIComponent(item.username)}`)
+      } else if (item.id) {
+        navigate(`/user/id/${encodeURIComponent(item.id)}`)
+      }
     },
     [navigate]
   )
