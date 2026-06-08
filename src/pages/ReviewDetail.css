@@ -1,0 +1,765 @@
+/* =====================================================================
+   ReviewDetail — /review/:id
+   The social home of a single review: full review block + threaded
+   comment discussion + inline keyboard-attached composer.
+   Namespace: rd-*
+   ===================================================================== */
+
+/* ── Page shell ──────────────────────────────────────────────────────── */
+
+/*
+ * Fixed-inset layout so the composer bar and thread scroll together as a
+ * single chat-like unit that rides the keyboard.
+ *
+ * --keyboard-inset is written by main.jsx from window.visualViewport and
+ * already includes the 44 px iOS "Done" accessory bar that visualViewport
+ * does not report.  max() selects whichever is larger:
+ *   · keyboard visible  → --keyboard-inset (≥ ~344 px) wins, page rises
+ *                         flush onto the Done bar
+ *   · keyboard hidden   → --bottom-nav-safe-area (80 px) wins, composer
+ *                         parks above the pill nav just like the old trigger
+ *
+ * NO extra JS, no custom offset, no touch of capacitor.config or main.jsx.
+ */
+.rd-page {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: max(var(--keyboard-inset, 0px), var(--bottom-nav-safe-area, 80px));
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.rd-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.rd-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.rd-back:hover {
+  background: var(--color-surface);
+}
+
+.rd-header__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.rd-header__menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rd-header__menu:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* ── Scroll body ─────────────────────────────────────────────────────── */
+
+/*
+ * flex: 1 fills the space between header and composer.
+ * overflow-y: auto makes THIS element the scroll container so
+ * scrollRef.current.scrollTop drives auto-scroll-to-bottom.
+ */
+.rd-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--page-padding) var(--spacing-xl);
+  max-width: var(--page-max-width);
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ── Review skeleton ─────────────────────────────────────────────────── */
+
+.rd-review-skel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--review-card-radius);
+  border: 1px solid var(--color-border);
+}
+
+.rd-review-skel__cover-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.rd-review-skel__cover {
+  width: 64px;
+  height: 86px;
+  border-radius: var(--cover-thumb-radius);
+  flex-shrink: 0;
+}
+
+.rd-review-skel__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.rd-review-skel__line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.rd-review-missing {
+  padding: var(--spacing-lg);
+  border-radius: var(--review-card-radius);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  text-align: center;
+}
+
+/* ── Thread section ──────────────────────────────────────────────────── */
+
+.rd-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.rd-thread__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0;
+}
+
+.rd-thread__divider-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.rd-thread__divider-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-thread__divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.rd-thread__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--spacing-md) 16px;
+}
+
+.rd-thread__line {
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.rd-thread__empty {
+  padding: var(--spacing-2xl) var(--spacing-md);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-body);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+.rd-thread__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* ── "Show N earlier replies" toggle ─────────────────────────────────── */
+
+.rd-thread__replies-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 56px;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: var(--color-brand-primary, var(--accent));
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.rd-thread__replies-toggle:hover {
+  opacity: 0.8;
+}
+
+/* ── Comment row ─────────────────────────────────────────────────────── */
+
+.rd-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-left: 16px;
+  padding-right: var(--spacing-xs);
+}
+
+.rd-comment--reply {
+  margin-left: 56px;
+}
+
+.rd-comment__avatar-wrap {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-full);
+}
+
+.rd-comment__avatar-wrap:disabled {
+  cursor: default;
+}
+
+.rd-comment__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-elevated);
+}
+
+.rd-comment__avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+}
+
+.rd-comment__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rd-comment__header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rd-comment__name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rd-comment__name:disabled {
+  cursor: default;
+}
+
+.rd-comment__time,
+.rd-comment__edited {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+}
+
+.rd-comment__text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Cobalt @mention highlight within comment text */
+.rd-comment__mention {
+  color: var(--color-brand-primary, var(--accent));
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Comment meta row (like + reply + kebab) ─────────────────────────── */
+
+.rd-comment__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.rd-comment__like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  margin: 0;
+  margin-left: -6px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rd-comment__like-btn:hover {
+  color: var(--color-brand-primary, var(--accent));
+  background: var(--color-surface);
+}
+
+.rd-comment__like-btn--liked {
+  color: var(--color-accent-rust, #f87171);
+}
+
+.rd-comment__like-btn--liked:hover {
+  color: var(--color-accent-rust, #f87171);
+}
+
+.rd-comment__like-icon {
+  display: flex;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rd-comment__like-icon--pulse {
+    animation: rd-heart-pulse 260ms ease-out;
+  }
+}
+
+@keyframes rd-heart-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.rd-comment__action-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.rd-comment__action-btn:hover {
+  color: var(--color-brand-primary, var(--accent));
+  background: var(--color-surface);
+}
+
+/* ── Comment kebab ───────────────────────────────────────────────────── */
+
+.rd-comment__kebab {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.rd-comment__kebab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rd-comment__kebab-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.rd-comment__kebab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  min-width: 140px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.rd-comment__kebab-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.rd-comment__kebab-menu button:hover {
+  background: var(--color-surface);
+}
+
+.rd-comment__kebab-menu-danger {
+  color: var(--color-accent-rust, #f87171) !important;
+}
+
+/* ── Inline comment composer bar ─────────────────────────────────────── */
+
+/*
+ * .rd-composer is IN FLOW as the last flex child of .rd-page.
+ * The page itself is position:fixed with bottom:max(--keyboard-inset, 80px),
+ * so this bar naturally rides the keyboard — no position:fixed needed here,
+ * no custom offset computation.
+ *
+ * Accessory-bar note: --keyboard-inset already adds 44 px for the iOS "Done"
+ * bar (see main.jsx ACCESSORY_BAR_PX).  This bar therefore sits flush on top
+ * of the Done bar.  Suppressing the Done bar would require adjusting the
+ * inset calculation which would mean touching main.jsx — out of scope.
+ */
+.rd-composer {
+  flex-shrink: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-top: 1px solid var(--color-border);
+}
+
+/* Optional reply-hint banner shown above the input row */
+.rd-composer__reply-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 6px var(--page-padding) 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.rd-composer__reply-name {
+  color: var(--color-brand-primary, var(--accent));
+  font-weight: var(--font-weight-semibold);
+}
+
+.rd-composer__reply-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.rd-composer__reply-cancel:hover {
+  color: var(--color-text-primary);
+}
+
+/* Avatar + textarea + send button row */
+.rd-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px var(--page-padding);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.rd-composer__avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  background: var(--color-bg-elevated);
+  /* Align with the bottom of a single-line input */
+  margin-bottom: 2px;
+}
+
+.rd-composer__avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/*
+ * The textarea starts at one line height and grows up to ~3 lines via JS
+ * (auto-height on each keystroke).  overflow-y:hidden prevents the browser
+ * scroll handle from appearing as it auto-grows.
+ */
+.rd-composer__input {
+  flex: 1;
+  min-height: 36px;
+  max-height: 90px;
+  padding: 8px 14px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  overflow-y: hidden;
+  transition: border-color var(--transition-fast), max-height var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.rd-composer__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.rd-composer__input:focus {
+  border-color: var(--color-border-focus);
+  /* expand to multi-line when active */
+  max-height: 90px;
+}
+
+/* Send button — copper accent; always visible, dims when empty */
+.rd-composer__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--color-brand-primary, var(--accent));
+  border: none;
+  border-radius: var(--radius-full);
+  color: #ffffff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+  /* Align with bottom of the input */
+  margin-bottom: 1px;
+}
+
+.rd-composer__send:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.rd-composer__send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Inline edit styles (used inside CommentRow, keep these) ─────────── */
+
+.rd-modal-textarea {
+  flex: 1;
+  min-height: 60px;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.rd-modal-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.rd-modal-textarea:focus {
+  border-color: var(--color-border-focus);
+}
+
+.rd-modal-post {
+  padding: 6px 14px;
+  background: var(--color-brand-primary, var(--accent));
+  border: none;
+  border-radius: var(--radius-full);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.rd-modal-post:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.rd-modal-post:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-back,
+  .rd-header__menu,
+  .rd-comment__like-btn,
+  .rd-comment__action-btn,
+  .rd-comment__kebab-btn,
+  .rd-thread__replies-toggle,
+  .rd-composer__input,
+  .rd-composer__send,
+  .rd-composer__reply-cancel,
+  .rd-modal-textarea,
+  .rd-modal-post {
+    transition: none;
+  }
+
+  .rd-comment__like-icon--pulse {
+    animation: none;
+  }
+}
+
+/* ── Compact viewport ────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .rd-comment {
+    margin-left: 12px;
+  }
+
+  .rd-comment--reply {
+    margin-left: 44px;
+  }
+
+  .rd-thread__replies-toggle {
+    margin-left: 44px;
+  }
+}
