@@ -126,3 +126,40 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>,
 )
 
+// === TEMP KEYBOARD DEBUG — remove after diagnosis ===
+;(function kbdDebug() {
+  if (typeof document === 'undefined') return
+  const box = document.createElement('div')
+  box.style.cssText =
+    'position:fixed;top:calc(env(safe-area-inset-top,20px) + 4px);left:8px;z-index:2147483647;' +
+    'background:rgba(0,0,0,.85);color:#3cff7a;font:12px/1.4 monospace;padding:8px 10px;' +
+    'border-radius:8px;pointer-events:none;white-space:pre;'
+  let lastKbH = 'n/a'
+  function render() {
+    const vv = window.visualViewport
+    const inset = getComputedStyle(document.documentElement)
+      .getPropertyValue('--keyboard-inset').trim()
+    box.textContent =
+      'innerH:           ' + window.innerHeight + '\n' +
+      'vv.height:        ' + (vv ? Math.round(vv.height) : 'NO vv') + '\n' +
+      'innerH - vv:      ' + (vv ? Math.round(window.innerHeight - vv.height) : 'n/a') + '\n' +
+      'kb event height:  ' + lastKbH + '\n' +
+      '--keyboard-inset: ' + (inset || '(empty)')
+  }
+  document.body.appendChild(box)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', render)
+    window.visualViewport.addEventListener('scroll', render)
+  }
+  ;(async () => {
+    try {
+      const { Keyboard } = await import('@capacitor/keyboard')
+      Keyboard.addListener('keyboardWillShow', (i) => { lastKbH = String(i && i.keyboardHeight); render() })
+      Keyboard.addListener('keyboardDidShow',  (i) => { lastKbH = String(i && i.keyboardHeight); render() })
+      Keyboard.addListener('keyboardDidHide',  ()  => { lastKbH = '0'; render() })
+    } catch (e) {}
+  })()
+  setInterval(render, 300)
+  render()
+})()
+// === END TEMP KEYBOARD DEBUG ===
