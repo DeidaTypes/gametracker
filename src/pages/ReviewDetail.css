@@ -10,15 +10,12 @@
 /*
  * Normal-flow page — same pattern as the DM thread (MessagesThread.css).
  * The composer bar is independently position:fixed; this page just reserves
- * padding-bottom so the last comment is never hidden behind it.
+ * padding-bottom (inside .rd-scroll) so the last comment is never hidden behind it.
  */
 .rd-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  /* Reserve space for the fixed composer bar (≈56 px) above the nav. */
-  padding-bottom: calc(72px + var(--bottom-nav-safe-area));
+  height: 100dvh;
   background: transparent;
 }
 
@@ -97,16 +94,16 @@
  * page.  overflow-y: auto makes this the real scroll container so that
  * scrollRef.current.scrollTop = scrollRef.current.scrollHeight drives the
  * auto-scroll-to-bottom behaviour (matches MessagesThread pattern).
+ * padding-bottom reserves room for the fixed composer bar.
  */
 .rd-scroll {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   gap: var(--spacing-lg);
-  padding: var(--spacing-lg) var(--page-padding) var(--spacing-xl);
+  padding: var(--spacing-lg) var(--page-padding) calc(120px + var(--bottom-nav-safe-area));
   max-width: var(--page-max-width);
   width: 100%;
   margin: 0 auto;

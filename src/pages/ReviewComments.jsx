@@ -367,6 +367,9 @@ function ReviewComments() {
   const [replyTo, setReplyTo] = useState(null)
   const [posting, setPosting] = useState(false)
   const composerInputRef = useRef(null)
+  // Scrollable body — used to scroll the thread to bottom when the
+  // keyboard opens, keeping the newest comments visible above the composer.
+  const scrollRef = useRef(null)
   // Sentinel at the bottom of the thread list; scrolled into view when the
   // keyboard opens so the last comment stays visible above the raised bar.
   const threadBottomRef = useRef(null)
@@ -514,11 +517,12 @@ function ReviewComments() {
   }, [])
 
   // When the textarea gains focus the keyboard slides in; after it settles
-  // (~320 ms) scroll the bottom sentinel into view so the last comment
-  // stays visible above the raised composer bar.
+  // (~320 ms) scroll the internal .rc-scroll container to the bottom so the
+  // last comment stays visible above the raised composer bar.
   const handleComposerFocus = useCallback(() => {
     setTimeout(() => {
-      threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
     }, 320)
   }, [])
 
@@ -631,7 +635,7 @@ function ReviewComments() {
         <span className="rc-header__spacer" aria-hidden="true" />
       </header>
 
-      <div className="rc-scroll">
+      <div className="rc-scroll" ref={scrollRef}>
         <div className="rc-review-wrap">
           {reviewLoading ? (
             <div className="rc-review-skel" aria-hidden="true">

@@ -6,12 +6,8 @@
 .rc-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100dvh;
   background: transparent;
-  /* Reserve room for the fixed composer so the last thread item
-     isn't hidden under it. */
-  padding-bottom: calc(120px + var(--bottom-nav-safe-area));
 }
 
 /* ── Header ─────────────────────────────────────────────────────────── */
@@ -87,8 +83,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   gap: var(--spacing-lg);
-  padding: var(--spacing-lg) var(--page-padding) var(--spacing-xl);
+  padding: var(--spacing-lg) var(--page-padding) calc(120px + var(--bottom-nav-safe-area));
   max-width: var(--page-max-width);
   width: 100%;
   margin: 0 auto;
