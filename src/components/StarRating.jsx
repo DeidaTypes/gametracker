@@ -21,8 +21,8 @@ function StarRating({ rating, size = 20 }) {
         >
           <path
             d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-            fill="var(--color-brand-primary)"
-            stroke="var(--color-brand-primary)"
+            fill="var(--star)"
+            stroke="var(--star)"
             strokeWidth="1"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -47,13 +47,13 @@ function StarRating({ rating, size = 20 }) {
           </defs>
           <path
             d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-            stroke="rgba(59, 130, 246, 0.3)"
+            stroke="var(--star-empty)"
             strokeWidth="1.5"
             fill="none"
           />
           <path
             d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-            fill="var(--color-brand-primary)"
+            fill="var(--star)"
             clipPath={`url(#half-clip-${rating})`}
           />
         </svg>
@@ -73,7 +73,7 @@ function StarRating({ rating, size = 20 }) {
           <path
             d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
             fill="none"
-            stroke="rgba(59, 130, 246, 0.3)"
+            stroke="var(--star-empty)"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"

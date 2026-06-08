@@ -102,7 +102,9 @@
   padding: var(--form-field-pad-y) var(--form-field-pad-x);
   color: var(--form-field-text);
   font-family: var(--font-body);
-  font-size: var(--font-size-body);
+  /* max() keeps 16px floor (prevents iOS auto-zoom) while allowing
+     larger values from --font-size-body when larger-text mode is active. */
+  font-size: max(16px, var(--font-size-body));
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
   letter-spacing: var(--letter-spacing-body);
@@ -489,7 +491,7 @@
 }
 
 .form-star__outline {
-  stroke: rgba(255, 255, 255, 0.2);
+  stroke: var(--star-empty);
   fill: none;
   stroke-width: 1.4;
   stroke-linejoin: round;
@@ -498,11 +500,11 @@
 
 .form-star--filled .form-star__outline,
 .form-star--half .form-star__outline {
-  stroke: var(--color-brand-primary);
+  stroke: var(--star);
 }
 
 .form-star__fill {
-  fill: var(--color-brand-primary);
+  fill: var(--star);
   transition: opacity 150ms ease;
 }
 

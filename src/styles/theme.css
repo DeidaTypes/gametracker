@@ -320,6 +320,10 @@ body[data-larger-text='true'] {
   --tier-bronze: #CD7F32;
   --tier-silver: #C0C0C0;
   --tier-gold: #FFD700;
+
+  /* ---- Rating Stars — intentional exception to the all-cobalt rule ---- */
+  --star:       #f5b50a;                    /* rich gold — filled/half stars only */
+  --star-empty: rgba(148, 168, 212, 0.30); /* neutral muted — unfilled star ring */
 }
 
 /* =============================================

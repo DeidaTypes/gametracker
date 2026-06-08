@@ -12,17 +12,16 @@
 }
 
 .rating-star.full {
-  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
-  color: var(--color-brand-primary);
+  filter: drop-shadow(0 0 6px rgba(245, 181, 10, 0.5));
+  color: var(--star);
 }
 
 .rating-star.half {
-  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.3));
-  color: var(--color-brand-primary);
+  filter: drop-shadow(0 0 4px rgba(245, 181, 10, 0.3));
+  color: var(--star);
 }
 
 .rating-star.empty {
-  opacity: 0.3;
-  color: var(--color-text-tertiary);
+  color: var(--star-empty);
 }
 

@@ -4,19 +4,17 @@ import { motion } from 'motion/react'
 import { getGameById } from '../services/igdb'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
-import ReviewForm from '../components/ReviewForm'
 import ReviewCard from '../components/ReviewCard'
 import AddToListButton from '../components/AddToListButton'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import RatingsHistogram from '../components/RatingsHistogram'
 import SimilarGamesRow from '../components/SimilarGamesRow'
-import { postReview, getReviewsForGame } from '../services/reviewService'
+import { getReviewsForGame } from '../services/reviewService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
-import { getGameStatus, setGameStatus } from '../services/libraryService'
-import { showToast } from '../components/Toast'
+import { getGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import './GameDetail.css'
 
@@ -96,14 +94,14 @@ function PartialStarRow({ rating, size = 16 }) {
             </defs>
             <path
               d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-              stroke="rgba(200,150,90,0.3)"
+              stroke="var(--star-empty)"
               strokeWidth="1.5"
               fill="none"
             />
             {pct > 0 && (
               <path
                 d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                fill="var(--color-brand-primary)"
+                fill="var(--star)"
                 clipPath={`url(#${clipId})`}
               />
             )}
@@ -130,10 +128,9 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
       developer: game?.developers?.[0] || '',
     },
     author: {
-      username:
-        row.users?.username ||
-        row.users?.display_name ||
-        'Anonymous',
+      username: row.users?.username || null,
+      displayName: row.users?.display_name || 'Anonymous',
+      userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
     },
     title: null,
@@ -151,7 +148,7 @@ function GameDetail() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const targetReviewId = searchParams.get('review')
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   // Source cover image for the shared-element flight. Comes either from
   // the navigation state (if the caller passed it) or from a small
   // module-level cache of the most recently rendered cover for this
@@ -169,7 +166,6 @@ function GameDetail() {
   // Sprint 6 P1 — real comment counts per review id, fetched once per
   // refresh. The ReviewCard badge consumes these via toReviewCardShape.
   const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
-  const [showReviewForm, setShowReviewForm] = useState(false)
   const [status, setStatus] = useState(null)
   const [dominantColor, setDominantColor] = useState(null)
   // Chrome-tint swatches: set after async extraction, cleared on unmount.
@@ -222,7 +218,7 @@ function GameDetail() {
         const gameData = await getGameById(gameId)
         setGame(gameData)
 
-        addViewedGame(gameId, gameData.title)
+        addViewedGame(gameId, gameData.title, gameData.image)
         refreshFromStore()
 
         // Kick off all post-load work in parallel — none of these block
@@ -255,13 +251,21 @@ function GameDetail() {
         refreshFromStore()
       }
     }
+    // Refresh the in-page review list after the composer posts a review and
+    // navigates back. ReviewNew (the single composer) dispatches this event.
+    const handleReviewAdded = () => {
+      refreshReviews()
+      refreshFromStore()
+    }
     window.addEventListener('libraryUpdated', handleLibraryUpdate)
     window.addEventListener('storage', handleLibraryUpdate)
+    window.addEventListener('reviewAdded', handleReviewAdded)
     return () => {
       window.removeEventListener('libraryUpdated', handleLibraryUpdate)
       window.removeEventListener('storage', handleLibraryUpdate)
+      window.removeEventListener('reviewAdded', handleReviewAdded)
     }
-  }, [refreshFromStore])
+  }, [refreshFromStore, refreshReviews])
 
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
@@ -290,52 +294,14 @@ function GameDetail() {
     return () => window.cancelAnimationFrame(id)
   }, [targetReviewId, loading, reviews])
 
-  const handleReviewSubmit = async (reviewData) => {
-    const { markCompleted, containsSpoilers, text, rating, liked, hoursPlayed } =
-      reviewData
-    try {
-      const created = await postReview({
-        igdbGameId: gameId,
-        body: text,
-        rating: Number(rating),
-        liked: !!liked,
-        hasSpoilers: !!containsSpoilers,
-        gameTitle: game.title,
-        gameImage: game.image,
-        hoursPlayed: Number(hoursPlayed) || 0,
-      })
-
-      // Optimistically prepend with the joined-user shape so the in-page
-      // list shows the avatar + name immediately, before the next refresh.
-      const optimisticUser = {
-        display_name: profile?.display_name || profile?.displayName || user?.email || 'You',
-        avatar_url: profile?.avatar_url || null,
-      }
-      setReviews([{ ...created, users: optimisticUser }, ...reviews])
-      setShowReviewForm(false)
-
-      if (markCompleted && status !== 'played') {
-        setStatus('played')
-        setGameStatus(gameId, 'played', game)
-      }
-
-      // Activity logging now happens automatically inside reviewService.postReview
-      // and libraryService.setGameStatus. This event is purely for listeners that
-      // want the same `reviewAdded` notification under the existing name —
-      // reviewService dispatches it itself, this is a redundant safety net.
-      window.dispatchEvent(new Event('reviewAdded'))
-
-      // Refresh the in-page list so the new review's real id, like and
-      // comment counts replace the optimistic placeholder. The user stays
-      // on this game detail page — no navigation — and just sees the list
-      // reconcile in place.
-      refreshReviews()
-    } catch (err) {
-      console.error('[gameDetail] postReview failed:', err)
-      showToast('Could not save your review. Please try again.', 'error')
-      setShowReviewForm(false)
-    }
-  }
+  // Single review composer for the whole app: the keyboard-aware ReviewNew
+  // popup at /review/new. We pass the loaded game in route state so it renders
+  // instantly without a refetch. When the user posts, ReviewNew dispatches the
+  // `reviewAdded` event and navigates back here, where our listener (below)
+  // refreshes the in-page list.
+  const openReviewComposer = useCallback(() => {
+    navigate(`/review/new?gameId=${gameId}`, { state: { game } })
+  }, [navigate, gameId, game])
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -568,7 +534,7 @@ function GameDetail() {
           <button
             className="gd-action-circle"
             style={fabStyle}
-            onClick={() => setShowReviewForm(true)}
+            onClick={openReviewComposer}
             aria-label="Write a review"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -614,7 +580,7 @@ function GameDetail() {
                   <p className="gd-reviews-empty-text">Be the first to review this game</p>
                   <button
                     className="gd-reviews-empty-cta"
-                    onClick={() => setShowReviewForm(true)}
+                    onClick={openReviewComposer}
                   >
                     Write a review
                   </button>
@@ -644,7 +610,7 @@ function GameDetail() {
                         variant="default"
                         showOwnPill={own}
                         isOwn={own}
-                        onEdit={() => setShowReviewForm(true)}
+                        onEdit={openReviewComposer}
                       />
                     </div>
                   )
@@ -773,18 +739,6 @@ function GameDetail() {
         </div>
       )}
 
-      {/* Review Modal (portaled to body) */}
-      <ReviewForm
-        gameId={gameId}
-        gameTitle={game.title}
-        gameImage={game.image}
-        gameYear={game.year}
-        gameDeveloper={game.developers?.length > 0 ? game.developers[0] : undefined}
-        gameStatus={status}
-        onSubmit={handleReviewSubmit}
-        onCancel={() => setShowReviewForm(false)}
-        isOpen={showReviewForm}
-      />
     </div>
   )
 }
