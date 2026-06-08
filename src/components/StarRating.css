@@ -43,3 +43,20 @@
     transition: none;
   }
 }
+
+/* ── Gold shimmer — pulses the glow on the filled star layer ── */
+@keyframes starShimmer {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(245, 181, 10, 0.50)); }
+  50%       { filter: drop-shadow(0 0 9px rgba(245, 181, 10, 0.90)); }
+}
+
+.star-rating__layer--fill {
+  animation: starShimmer 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-rating__layer--fill {
+    animation: none;
+    filter: drop-shadow(0 0 6px rgba(245, 181, 10, 0.65));
+  }
+}
