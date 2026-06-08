@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis, LuMail } from 'react-icons/lu'
+import { LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag, HiHeart, HiOutlineHeart } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
 import ReportSheet from '../components/ReportSheet'
@@ -969,7 +969,7 @@ function ReviewDetail() {
             disabled={!draft.trim() || posting}
             aria-label="Send comment"
           >
-            <LuMail size={16} aria-hidden="true" />
+            <LuSend size={15} aria-hidden="true" />
           </button>
         </div>
       </div>

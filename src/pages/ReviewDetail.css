@@ -109,6 +109,13 @@
   margin: 0 auto;
 }
 
+/* When the keyboard is open the composer has risen to bottom:--keyboard-inset.
+   Increase the scroll container's padding-bottom to match so the last comment
+   is never hidden behind the raised bar and the gap above the keyboard closes. */
+body.keyboard-open .rd-scroll {
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 24px);
+}
+
 /* ── Review skeleton ─────────────────────────────────────────────────── */
 
 .rd-review-skel {
