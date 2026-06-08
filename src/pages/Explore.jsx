@@ -1,25 +1,28 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
 import {
   useTrendingThisWeek,
-  useJustFinished,
-  useRecentReviews,
-  useNewReleases,
+  useDiscoverGamesNew,
+  useFollowingReviews,
+  usePopularReviews,
 } from '../hooks/useExploreData'
-import SectionHeader from '../components/SectionHeader'
 import TrendingCard from '../components/explore/TrendingCard'
-import JustFinishedCard from '../components/explore/JustFinishedCard'
-import ReviewFeedRow from '../components/explore/ReviewFeedRow'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
-import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
+import ReviewCard from '../components/ReviewCard'
+import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
 import { ReviewRowSkeletonList } from '../components/skeletons/ReviewRowSkeleton'
+import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
+import { useAuth } from '../contexts/AuthContext'
+import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
+import { getCommentCountsForReviews } from '../services/commentService'
+import { getLikeCountsForReviews } from '../services/likeService'
 import './Explore.css'
 
-// ─── Section primitives ────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────
 
 function ErrorBanner({ message }) {
   return (
@@ -39,148 +42,144 @@ function ScrollRow({ items, render }) {
   )
 }
 
+/** Map a raw Supabase review row → shape ReviewCard expects. */
+function toReviewCardShape(row, likeCounts, commentCounts) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    game: {
+      id: String(row.igdb_game_id || ''),
+      name: row.game_title || 'Unknown Game',
+      coverUrl: row.game_image || '',
+      developer: '',
+    },
+    author: {
+      username: row.users?.username || null,
+      displayName: row.users?.display_name || 'Anonymous',
+      userId: row.user_id,
+      avatarUrl: row.users?.avatar_url || '',
+    },
+    title: null,
+    body: row.body || '',
+    rating: Number(row.rating) || 0,
+    likeCount: likeCounts?.get(row.id) || 0,
+    commentCount: commentCounts?.get(row.id) || 0,
+    createdAt: row.created_at,
+  }
+}
+
+/**
+ * "Word / Word" slash toggle — left option default-selected.
+ * Active label: var(--accent) cobalt. Inactive + slash: var(--color-text-tertiary).
+ * options[0] = left (should be the default); options[1] = right.
+ */
+function SlashToggle({ options, value, onChange }) {
+  return (
+    <div className="discover-slash-toggle" role="group" aria-label="View options">
+      <button
+        type="button"
+        className={`discover-slash-toggle__btn${value === options[0].value ? ' discover-slash-toggle__btn--active' : ''}`}
+        onClick={() => onChange(options[0].value)}
+        aria-pressed={value === options[0].value}
+      >
+        {options[0].label}
+      </button>
+      <span className="discover-slash-toggle__sep" aria-hidden="true">/</span>
+      <button
+        type="button"
+        className={`discover-slash-toggle__btn${value === options[1].value ? ' discover-slash-toggle__btn--active' : ''}`}
+        onClick={() => onChange(options[1].value)}
+        aria-pressed={value === options[1].value}
+      >
+        {options[1].label}
+      </button>
+    </div>
+  )
+}
+
+const GAMES_TABS = [
+  { value: 'popular', label: 'Popular' },
+  { value: 'new',     label: 'New' },
+]
+
+const REVIEWS_TABS = [
+  { value: 'popular',   label: 'Popular' },
+  { value: 'following', label: 'Following' },
+]
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 function Explore() {
   const navigate = useNavigate()
   const { isOpen, open } = useSearchOverlay()
   const reduced = useReducedMotion()
+  const { user } = useAuth()
 
-  // Each hook fires immediately on mount; they run concurrently.
-  // The community mock service shares a single in-flight pool fetch so the
-  // three community sections only pay one IGDB roundtrip between them.
-  const trending = useTrendingThisWeek()
-  const finished = useJustFinished()
-  const reviews = useRecentReviews()
-  const releases = useNewReleases()
+  const [gamesTab, setGamesTab]     = useState('popular')
+  const [reviewsTab, setReviewsTab] = useState('popular')
+  const [findFriendsOpen, setFindFriendsOpen] = useState(false)
 
-  const sections = []
+  // All four data sources fire at mount in parallel (no sequential waterfall).
+  const trending        = useTrendingThisWeek()   // games POPULAR tab
+  const newGames        = useDiscoverGamesNew()    // games NEW tab
+  const followingReviews = useFollowingReviews()   // reviews FOLLOWING tab
+  const popularReviews   = usePopularReviews()     // reviews POPULAR tab
 
-  // 1. Trending this week
-  sections.push(
-    <section key="trending" className="explore-section">
-      <div className="explore-section__pad">
-        <SectionHeader title="Trending this week" />
-      </div>
-      {trending.loading ? (
-        <GameCardSkeletonRow count={6} />
-      ) : trending.error ? (
-        <ErrorBanner message="Could not load trending games." />
-      ) : trending.data && trending.data.length > 0 ? (
-        <ScrollRow
-          items={trending.data}
-          render={(entry) => <TrendingCard key={entry.game.id} entry={entry} />}
-        />
-      ) : (
-        <div className="explore-section__pad">
-          <p className="explore-section-empty">No trending activity yet — check back later.</p>
-        </div>
-      )}
-    </section>
-  )
+  // Unified like + comment counts for cards currently visible.
+  const [likeCounts, setLikeCounts]       = useState(() => new Map())
+  const [commentCounts, setCommentCounts] = useState(() => new Map())
 
-  // 2. Just finished
-  sections.push(
-    <section key="finished" className="explore-section">
-      <div className="explore-section__pad">
-        <SectionHeader title="Just finished" />
-      </div>
-      {finished.loading ? (
-        <GameCardSkeletonRow count={6} />
-      ) : finished.error ? (
-        <ErrorBanner message="Could not load recently finished games." />
-      ) : finished.data && finished.data.length > 0 ? (
-        <ScrollRow
-          items={finished.data}
-          render={(entry) => <JustFinishedCard key={entry.id} entry={entry} />}
-        />
-      ) : (
-        <div className="explore-section__pad">
-          <p className="explore-section-empty">No recently finished games yet.</p>
-        </div>
-      )}
-    </section>
-  )
+  // Prefetch like + comment counts for whichever reviews are loaded.
+  // Runs whenever either feed's data arrives so switching tabs shows counts
+  // without waiting for a separate round-trip.
+  useEffect(() => {
+    const allRows = [
+      ...(followingReviews.data || []),
+      ...(popularReviews.data  || []),
+    ]
+    if (!allRows.length) return
+    const ids = [...new Set(allRows.map((r) => r.id))]
+    Promise.all([
+      prefetchLikeStatesForReviews(ids),
+      getCommentCountsForReviews(ids),
+    ]).then(([, cCounts]) => {
+      setCommentCounts(cCounts)
+    }).catch(() => {})
+    getLikeCountsForReviews(ids).then(setLikeCounts).catch(() => {})
+  }, [followingReviews.data, popularReviews.data])
 
-  // 3. Recent reviews (vertical feed)
-  sections.push(
-    <section key="reviews" className="explore-section">
-      <div className="explore-section__pad">
-        <SectionHeader
-          title="Recent reviews"
-          action="Your reviews"
-          onAction={() => navigate('/reviews')}
-        />
-      </div>
-      {reviews.loading ? (
-        <ReviewRowSkeletonList count={4} />
-      ) : reviews.error ? (
-        <ErrorBanner message="Could not load reviews." />
-      ) : reviews.data && reviews.data.length > 0 ? (
-        <div className="explore-review-feed">
-          {reviews.data.map((r) => (
-            <ReviewFeedRow key={r.id} review={r} />
-          ))}
-        </div>
-      ) : (
-        <div className="explore-section__pad">
-          <p className="explore-section-empty">No reviews yet — be the first to write one.</p>
-        </div>
-      )}
-    </section>
-  )
+  // Active data for each section.
+  const activeGamesState   = gamesTab   === 'popular' ? trending        : newGames
+  const activeReviewsState = reviewsTab === 'popular'  ? popularReviews  : followingReviews
 
-  // 4. New releases
-  sections.push(
-    <section key="releases" className="explore-section">
-      <div className="explore-section__pad">
-        <SectionHeader title="New releases" />
-      </div>
-      {releases.loading ? (
-        <GameCardSkeletonRow count={6} />
-      ) : releases.error ? (
-        <ErrorBanner message="Could not load upcoming releases." />
-      ) : releases.data && releases.data.length > 0 ? (
-        <ScrollRow
-          items={releases.data}
-          render={(g) => <NewReleaseCard key={g.id} game={g} />}
-        />
-      ) : (
-        <div className="explore-section__pad">
-          <p className="explore-section-empty">No new releases in the next 30 days.</p>
-        </div>
-      )}
-    </section>
-  )
-
-  // The same game can show up across Trending / Just Finished / Recent
-  // Reviews / New Releases. Drop the layoutId on duplicates so Motion has
-  // exactly one source for the cover-to-hero flight.
+  // Gather all game ids across both carousel options so SharedCover
+  // has exactly one layoutId source per game.
   const duplicateIds = useMemo(() => {
     const trendingGames = (trending.data || []).map((e) => e.game)
-    const finishedGames = (finished.data || []).map((e) => e.game)
-    // Real Supabase review rows expose `igdb_game_id`; the legacy mock
-    // shape exposes `r.game.id`. Coerce both into the { id, image } shape
-    // findDuplicateGameIds expects.
-    const reviewGames = (reviews.data || []).map((r) =>
-      r.game ? r.game : { id: r.igdb_game_id, image: r.game_image }
-    )
-    const releaseGames = releases.data || []
-    return findDuplicateGameIds(
-      trendingGames,
-      finishedGames,
-      reviewGames,
-      releaseGames
-    )
-  }, [trending.data, finished.data, reviews.data, releases.data])
+    const newGamesArr   = (newGames.data  || []).map((g) => ({ id: g.id, image: g.image }))
+    const reviewGames   = [
+      ...(followingReviews.data || []),
+      ...(popularReviews.data   || []),
+    ].map((r) => ({ id: r.igdb_game_id, image: r.game_image }))
+    return findDuplicateGameIds(trendingGames, newGamesArr, reviewGames)
+  }, [trending.data, newGames.data, followingReviews.data, popularReviews.data])
+
+  // ── Reviews section helpers ─────────────────────────────────────────────
+
+  const reviewsData = activeReviewsState.data
+
+  // "Following" empty state: user follows nobody (or they have no reviews).
+  const showFollowingEmpty =
+    reviewsTab === 'following' &&
+    !activeReviewsState.loading &&
+    !activeReviewsState.error &&
+    (!reviewsData || reviewsData.length === 0)
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="explore-page">
-        {/* Page header — title on the left, search icon on the right.
-            The motion.div wrapping the icon carries layoutId="search-bar"
-            (when the overlay is closed) so Framer Motion can morph the
-            icon into the overlay's input bar on open. */}
+
+        {/* ── Page header ── */}
         <div className="explore-header">
           <h1 className="explore-header__title">Discover</h1>
           <button
@@ -203,8 +202,103 @@ function Explore() {
           </button>
         </div>
 
-        {sections}
+        {/* ── Section 1: Games carousel ── */}
+        <section className="explore-section explore-section--0">
+          <div className="explore-section__pad discover-section-header">
+            <h2 className="discover-section-title">Trending this week</h2>
+            <SlashToggle
+              options={GAMES_TABS}
+              value={gamesTab}
+              onChange={setGamesTab}
+            />
+          </div>
+
+          {activeGamesState.loading ? (
+            <GameCardSkeletonRow count={6} />
+          ) : activeGamesState.error ? (
+            <ErrorBanner
+              message={
+                gamesTab === 'popular'
+                  ? 'Could not load trending games.'
+                  : 'Could not load new releases.'
+              }
+            />
+          ) : activeGamesState.data && activeGamesState.data.length > 0 ? (
+            <ScrollRow
+              items={activeGamesState.data}
+              render={
+                gamesTab === 'popular'
+                  ? (entry) => <TrendingCard key={entry.game.id} entry={entry} />
+                  : (game) => <NewReleaseCard key={game.id} game={game} />
+              }
+            />
+          ) : (
+            <div className="explore-section__pad">
+              <p className="explore-section-empty">
+                {gamesTab === 'popular'
+                  ? 'No trending activity yet — check back later.'
+                  : 'No recent releases found.'}
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* ── Section 2: Reviews feed ── */}
+        <section className="explore-section explore-section--1">
+          <div className="explore-section__pad discover-section-header">
+            <h2 className="discover-section-title">Reviews</h2>
+            <SlashToggle
+              options={REVIEWS_TABS}
+              value={reviewsTab}
+              onChange={setReviewsTab}
+            />
+          </div>
+
+          {activeReviewsState.loading ? (
+            <ReviewRowSkeletonList count={4} />
+          ) : activeReviewsState.error ? (
+            <ErrorBanner message="Could not load reviews." />
+          ) : showFollowingEmpty ? (
+            /* Empty "Following" state — CTA to find people */
+            <div className="discover-empty-following">
+              <p className="discover-empty-following__msg">
+                Follow people to see their reviews here.
+              </p>
+              <button
+                type="button"
+                className="discover-empty-following__cta"
+                onClick={() => setFindFriendsOpen(true)}
+              >
+                Find people to follow
+              </button>
+            </div>
+          ) : reviewsData && reviewsData.length > 0 ? (
+            <div className="explore-review-feed">
+              {reviewsData.map((r) => (
+                <ReviewCard
+                  key={r.id}
+                  review={toReviewCardShape(r, likeCounts, commentCounts)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="explore-section__pad">
+              <p className="explore-section-empty">
+                {reviewsTab === 'popular'
+                  ? 'No popular reviews yet — check back later.'
+                  : 'No reviews yet — be the first to write one.'}
+              </p>
+            </div>
+          )}
+        </section>
+
       </div>
+
+      <FindFriendsModal
+        isOpen={findFriendsOpen}
+        onClose={() => setFindFriendsOpen(false)}
+        currentUserId={user?.id || null}
+      />
     </SharedCoverScope>
   )
 }

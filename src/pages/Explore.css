@@ -123,7 +123,10 @@
 .explore-review-feed {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-md, 12px);
+  padding: 0 var(--page-padding);
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* ---- Review feed skeleton ---- */
@@ -272,6 +275,133 @@
 
 .explore-error-banner__retry:hover {
   background: rgba(196, 99, 78, 0.15);
+}
+
+/* =============================================
+   DISCOVER — section header with text toggle
+   ============================================= */
+
+.discover-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.discover-section-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* "Word / Word" slash toggle (Popular / New, Popular / Following).
+   Left label is the default selection. Active = cobalt, inactive + sep = muted. */
+.discover-slash-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.discover-slash-toggle__btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  padding: 6px 3px;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms ease;
+  user-select: none;
+  line-height: 1;
+}
+
+.discover-slash-toggle__btn--active {
+  color: var(--accent);
+}
+
+.discover-slash-toggle__btn:active {
+  opacity: 0.65;
+}
+
+.discover-slash-toggle__sep {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-slash-toggle__btn {
+    transition: none;
+  }
+}
+
+/* =============================================
+   DISCOVER — empty "Following" state with CTA
+   ============================================= */
+
+.discover-empty-following {
+  padding: 32px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.discover-empty-following__msg {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 260px;
+}
+
+.discover-empty-following__cta {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  color: var(--color-bg-primary, #0c1221);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 10px 22px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 150ms ease;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.discover-empty-following__cta:hover {
+  background: var(--accent-hover);
+}
+
+.discover-empty-following__cta:active {
+  background: var(--accent-press);
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-empty-following__cta {
+    transition: none;
+  }
 }
 
 /* =============================================
