@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useId } from 'react'
 import './forms.css'
 
 const STARS = [1, 2, 3, 4, 5]
@@ -21,6 +21,7 @@ function StarRating({
   className = '',
   'aria-label': ariaLabel = 'Rating',
 }) {
+  const uid = useId()
   const [hover, setHover] = useState(0)
   const [punchIndex, setPunchIndex] = useState(null)
   const punchTimerRef = useRef(null)
@@ -67,7 +68,9 @@ function StarRating({
       .filter(Boolean)
       .join(' ')
 
-    const clipId = `form-star-clip-${star}-${size}`
+    // uid is unique per component instance — prevents duplicate-id warnings
+    // when multiple pickers appear on the same page.
+    const clipId = `fsc-${uid.replace(/:/g, '')}-${star}`
 
     return (
       <span key={star} className={classes}>
@@ -128,9 +131,8 @@ function StarRating({
         .filter(Boolean)
         .join(' ')}
       role={readOnly ? 'img' : 'group'}
-      aria-label={
-        readOnly ? `${value} out of 5 stars` : ariaLabel
-      }
+      aria-label={readOnly ? `${value} out of 5 stars` : ariaLabel}
+      onPointerLeave={readOnly ? undefined : () => setHover(0)}
     >
       {STARS.map(renderStar)}
     </div>

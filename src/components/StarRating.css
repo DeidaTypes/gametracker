@@ -1,27 +1,45 @@
+/*
+ * StarRating display component — overlay technique.
+ *
+ * Structure:
+ *   .star-rating-display          (inline-flex, relative, establishes stacking context)
+ *     .star-rating__layer--base   (flex row of 5 empty stars, in normal flow → sets the element's width)
+ *     .star-rating__layer--fill   (absolute, same flex row of 5 gold stars,
+ *                                  overflow:hidden, width = fillPct% of base)
+ */
+
 .star-rating-display {
+  position: relative;
   display: inline-flex;
+  line-height: 1;
+  /* Prevent shrinking when nested in tight flex parents */
+  flex-shrink: 0;
+}
+
+.star-rating__layer {
+  display: flex;
   align-items: center;
   gap: 3px;
-  line-height: 1;
 }
 
-.rating-star {
-  display: inline-block;
+/* ── Fill layer ── */
+.star-rating__layer--fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* flex-shrink:0 keeps the gold stars the same size as the base layer
+     even though the container is narrower than the star row. */
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  overflow: hidden;
+  /* Prevent the absolutely-positioned layer from interfering with
+     pointer events on surrounding UI. */
+  pointer-events: none;
 }
 
-.rating-star.full {
-  filter: drop-shadow(0 0 6px rgba(245, 181, 10, 0.5));
-  color: var(--star);
+/* prefers-reduced-motion — no transitions on this component currently,
+   but guard for any future additions. */
+@media (prefers-reduced-motion: reduce) {
+  .star-rating__layer--fill {
+    transition: none;
+  }
 }
-
-.rating-star.half {
-  filter: drop-shadow(0 0 4px rgba(245, 181, 10, 0.3));
-  color: var(--star);
-}
-
-.rating-star.empty {
-  color: var(--star-empty);
-}
-
