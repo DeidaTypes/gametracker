@@ -61,7 +61,6 @@ const NAV_ITEMS = [
     Icon: User,
     isActive: (path) =>
       path.startsWith('/profile') ||
-      path.startsWith('/user/') ||
       path.startsWith('/messages') ||
       path.startsWith('/stats'),
   },
