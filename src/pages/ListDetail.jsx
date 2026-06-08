@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
-import { HiDotsVertical, HiPlus, HiArrowLeft, HiPencil } from 'react-icons/hi'
+import { LuChevronLeft } from 'react-icons/lu'
+import { HiDotsVertical, HiPlus, HiPencil } from 'react-icons/hi'
 import { PlayCircle, CheckCircle2, Bookmark, List } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
@@ -23,6 +24,8 @@ import {
   removeGameFromList,
   reorderListGames,
   isTrackerList,
+  pinList,
+  unpinList,
 } from '../services/listService'
 import { uploadListCover, removeListCover } from '../services/listCoverService'
 import { supabase } from '../services/supabase'
@@ -155,6 +158,42 @@ function ListDetail() {
     listInfo?.isCustom &&
     currentUserId != null &&
     currentUserId === listInfo?.userId
+
+  // ── Pin state (own custom lists only) ────────────────────────────────────
+
+  const [isPinned, setIsPinned] = useState(false)
+
+  useEffect(() => {
+    setIsPinned(listInfo?.isPinned ?? false)
+  }, [listInfo?.isPinned])
+
+  const handlePinToggle = async () => {
+    if (!isOwner) return
+    const wasPin = isPinned
+
+    // Optimistic
+    setIsPinned(!wasPin)
+
+    try {
+      if (wasPin) {
+        await unpinList(listId)
+        showToast('Unpinned', 'success')
+      } else {
+        await pinList(listId)
+        showToast('Pinned to profile', 'success')
+      }
+    } catch (err) {
+      setIsPinned(wasPin)
+      if (err?.code === 'LIST_PINS_FULL') {
+        showToast('You can only pin 5 lists. Unpin one first.', 'error')
+      } else {
+        showToast(
+          wasPin ? "Couldn't unpin — please try again." : "Couldn't pin — please try again.",
+          'error'
+        )
+      }
+    }
+  }
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
@@ -317,6 +356,10 @@ function ListDetail() {
   const actionSheetItems = isOwner
     ? [
         {
+          label: isPinned ? 'Unpin from profile' : 'Pin to profile',
+          onClick: handlePinToggle,
+        },
+        {
           label: 'Duplicate list',
           onClick: handleDuplicate,
         },
@@ -465,18 +508,22 @@ function ListDetail() {
 
   return (
     <div className="list-detail-page content-fade-in">
-      <CoverArea />
-
-      <header className="list-detail-header">
+      {/* 1. Back bar — always first, sits below the iOS status bar */}
+      <div className="list-detail-back-bar">
         <button
+          type="button"
           className="list-detail-back"
           onClick={() => navigate(-1)}
           aria-label="Go back"
         >
-          <HiArrowLeft />
-          <span>Back</span>
+          <LuChevronLeft size={22} aria-hidden="true" />
         </button>
+      </div>
 
+      {/* 2. Cover collage — below the back bar, never in the status bar */}
+      <CoverArea />
+
+      <header className="list-detail-header">
         <div className="list-detail-header-row">
           <div className="list-detail-title-block">
             <span className="list-detail-eyebrow">
