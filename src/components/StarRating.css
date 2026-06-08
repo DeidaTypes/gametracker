@@ -44,18 +44,7 @@
   }
 }
 
-/* ── Gold shimmer — subtle brightness pulse on the filled star layer ── */
-@keyframes starShimmer {
-  0%, 100% { filter: brightness(0.88); }
-  50%       { filter: brightness(1.18); }
-}
-
+/* ── Gold stars — static brightness lift so they read warm on dark bg ── */
 .star-rating__layer--fill {
-  animation: starShimmer 2.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .star-rating__layer--fill {
-    animation: none;
-  }
+  filter: brightness(1.15);
 }
