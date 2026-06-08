@@ -9,7 +9,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft, LuEllipsis } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
-import CenteredModal from '../components/CenteredModal'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
@@ -362,13 +361,15 @@ function ReviewComments() {
   const [commentsLoading, setCommentsLoading] = useState(true)
 
   // Composer state. `replyTo` holds the parent comment object (not just
-  // the id) so we can pass the parent's id to postComment without a second
-  // lookup. composerOpen drives the CenteredModal keyboard-aware popup.
+  // the id) so we can prepend "@displayName " on focus AND pass the
+  // parent's id to postComment without a second lookup.
   const [draft, setDraft] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [posting, setPosting] = useState(false)
-  const [composerOpen, setComposerOpen] = useState(false)
-  const modalInputRef = useRef(null)
+  const composerInputRef = useRef(null)
+  // Sentinel at the bottom of the thread list; scrolled into view when the
+  // keyboard opens so the last comment stays visible above the raised bar.
+  const threadBottomRef = useRef(null)
 
   // Report sheet
   const [reportTarget, setReportTarget] = useState(null)
@@ -480,36 +481,49 @@ function ReviewComments() {
 
   /* ── Composer ───────────────────────────────────────────────── */
 
-  // Auto-focus the textarea whenever the modal opens so the keyboard
-  // appears immediately and the user can start typing without an extra tap.
-  useEffect(() => {
-    if (!composerOpen) return undefined
-    const t = setTimeout(() => modalInputRef.current?.focus(), 80)
-    return () => clearTimeout(t)
-  }, [composerOpen])
-
-  const openComposer = useCallback(() => {
-    if (!isAuthed) {
-      showToast('Sign in to leave a comment.', 'error')
-      return
+  const focusComposer = useCallback(() => {
+    const el = composerInputRef.current
+    if (!el) return
+    el.focus()
+    const len = el.value.length
+    try {
+      el.setSelectionRange(len, len)
+    } catch {
+      // Some browsers throw on non-text inputs; ignore.
     }
-    setComposerOpen(true)
-  }, [isAuthed])
-
-  const handleReplyClick = useCallback((parent) => {
-    setReplyTo(parent)
-    const name = displayNameFor(parent.users)
-    setDraft(`@${name} `)
-    setComposerOpen(true)
   }, [])
 
-  const handleComposerClose = useCallback(() => {
-    setComposerOpen(false)
+  const handleReplyClick = useCallback(
+    (parent) => {
+      setReplyTo(parent)
+      const name = displayNameFor(parent.users)
+      const mention = `@${name} `
+      setDraft((prev) => {
+        if (prev.startsWith(mention)) return prev
+        const stripped = prev.replace(/^@\S+\s*/, '')
+        return mention + stripped
+      })
+      window.requestAnimationFrame(focusComposer)
+    },
+    [focusComposer]
+  )
+
+  const handleCancelReply = useCallback(() => {
     setReplyTo(null)
-    setDraft('')
+    setDraft((prev) => prev.replace(/^@\S+\s*/, ''))
   }, [])
 
-  const handleSubmit = async () => {
+  // When the textarea gains focus the keyboard slides in; after it settles
+  // (~320 ms) scroll the bottom sentinel into view so the last comment
+  // stays visible above the raised composer bar.
+  const handleComposerFocus = useCallback(() => {
+    setTimeout(() => {
+      threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 320)
+  }, [])
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.()
     if (!isAuthed) {
       showToast('Sign in to leave a comment.', 'error')
       return
@@ -532,7 +546,6 @@ function ReviewComments() {
       })
       setDraft('')
       setReplyTo(null)
-      setComposerOpen(false)
     } catch (err) {
       console.error('[ReviewComments] postComment failed:', err)
       showToast(
@@ -676,6 +689,9 @@ function ReviewComments() {
               </div>
             ))
           )}
+          {/* Sentinel: scrolled into view after the keyboard opens so the
+              last comment stays visible above the raised composer bar. */}
+          <div ref={threadBottomRef} aria-hidden="true" />
         </section>
       </div>
 
@@ -686,90 +702,51 @@ function ReviewComments() {
         contentId={reportTarget?.id}
       />
 
-      {/* Tap-only trigger bar — contains no <input> so the keyboard never
-          opens here. Tapping opens the CenteredModal which uses
-          --keyboard-inset to stay above the keyboard. */}
-      <div
-        className="rc-composer-trigger"
-        role="button"
-        tabIndex={0}
-        aria-label="Add a comment"
-        onClick={openComposer}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') openComposer()
-        }}
-      >
-        <span className="rc-composer-trigger__placeholder">
-          {isAuthed ? 'Add a comment…' : 'Sign in to leave a comment'}
-        </span>
-      </div>
-
-      {/* CenteredModal composer — keyboard-aware via --keyboard-inset
-          (see CenteredModal.css). No custom keyboard offset needed. */}
-      <CenteredModal
-        isOpen={composerOpen}
-        onClose={handleComposerClose}
-        ariaLabel={
-          replyTo
-            ? `Reply to ${displayNameFor(replyTo.users)}`
-            : 'Add a comment'
-        }
-        maxWidth={420}
-      >
-        <div className="rc-modal-composer">
-          <header className="rc-modal-composer__header">
-            <h2 className="rc-modal-composer__title">
-              {replyTo
-                ? `Reply to ${displayNameFor(replyTo.users)}`
-                : 'Add a comment'}
-            </h2>
+      <form className="rc-composer" onSubmit={handleSubmit}>
+        {replyTo && (
+          <div className="rc-composer__reply-chip">
+            <span>
+              Replying to <strong>{displayNameFor(replyTo.users)}</strong>
+            </span>
             <button
               type="button"
-              className="rc-modal-composer__close"
-              onClick={handleComposerClose}
-              aria-label="Cancel"
+              className="rc-composer__reply-cancel"
+              onClick={handleCancelReply}
+              aria-label="Cancel reply"
             >
               ×
             </button>
-          </header>
-          <div className="rc-modal-composer__body">
-            <textarea
-              ref={modalInputRef}
-              className="rc-modal-composer__input"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Write a comment…"
-              rows={4}
-              maxLength={2000}
-              disabled={posting}
-              aria-label="Comment text"
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  handleSubmit()
-                }
-              }}
-            />
           </div>
-          <div className="rc-modal-composer__footer">
-            <button
-              type="button"
-              className="rc-modal-composer__btn rc-modal-composer__btn--ghost"
-              onClick={handleComposerClose}
-              disabled={posting}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rc-modal-composer__btn rc-modal-composer__btn--primary"
-              onClick={handleSubmit}
-              disabled={posting || !draft.trim()}
-            >
-              {posting ? 'Posting…' : 'Post'}
-            </button>
-          </div>
+        )}
+        <div className="rc-composer__row">
+          <textarea
+            ref={composerInputRef}
+            className="rc-composer__input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={
+              isAuthed ? 'Add a comment…' : 'Sign in to leave a comment'
+            }
+            rows={1}
+            maxLength={2000}
+            disabled={!isAuthed || posting}
+            aria-label="Comment text"
+            onFocus={handleComposerFocus}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                handleSubmit(e)
+              }
+            }}
+          />
+          <button
+            type="submit"
+            className="rc-composer__send"
+            disabled={!isAuthed || posting || !draft.trim()}
+          >
+            {posting ? 'Posting…' : 'Post'}
+          </button>
         </div>
-      </CenteredModal>
+      </form>
     </div>
   )
 }
