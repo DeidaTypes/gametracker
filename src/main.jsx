@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom/client'
 import { Capacitor } from '@capacitor/core'
 import App from './App'
 import './index.css'
+import { initAppLifecycle } from './services/appLifecycle'
 
 // Service worker must not run inside the Capacitor native app — it caches
 // the bundle and only yields to a new worker after a full quit/relaunch,
@@ -115,6 +116,9 @@ if (typeof window !== 'undefined') {
     // no-op on web or when the plugin is unavailable
   }
 })()
+
+// Start Supabase auth lifecycle management (native-only; no-op on web).
+initAppLifecycle()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
