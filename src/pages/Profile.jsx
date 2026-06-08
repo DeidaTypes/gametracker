@@ -30,9 +30,15 @@ import {
 } from 'react-icons/fa6'
 import { useAuth } from '../contexts/AuthContext'
 import { getReviewsForUser } from '../services/reviewService'
-import { getListsForUser } from '../services/listService'
+import {
+  getListsForUser,
+  getPinnedListsForUser,
+  pinList as pinListSvc,
+  unpinList as unpinListSvc,
+  LIST_PIN_CHANGED_EVENT,
+} from '../services/listService'
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
-import { getUserByUsername } from '../services/userService'
+import { getUserByUsername, getUserById } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
   followUser,
@@ -70,7 +76,25 @@ import BioEditModal from '../components/BioEditModal'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
+import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
+import PinnedListsSection from '../components/PinnedListsSection'
 import './Profile.css'
+
+/* ============================================================
+   fetchWithTimeout — resolves to `fallback` after `ms` ms rather than
+   hanging forever. Never rejects, so a single timed-out call can't abort
+   the whole Promise.all on Profile load. Use for every Supabase read on
+   this page so a stalled mobile connection always clears the loading state.
+   ============================================================ */
+
+const PROFILE_TIMEOUT_MS = 10_000
+
+function safeWithTimeout(promise, fallback, ms = PROFILE_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
 
 /* ============================================================
    Sort persistence — same shape as before so existing localStorage
@@ -158,8 +182,11 @@ function rowToReviewCard(row, likeCounts, commentCounts) {
       developer: '',
     },
     author: {
-      username:
-        row.users?.username || row.users?.display_name || 'Anonymous',
+      // Keep the raw username so ReviewCard can navigate correctly.
+      // ReviewCard falls back to /user/id/:userId when username is null.
+      username: row.users?.username || null,
+      displayName: row.users?.display_name || 'Anonymous',
+      userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
     },
     title: null,
@@ -288,7 +315,7 @@ function buildGameImageMap(reviews, lists, favorites) {
 function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { username: paramUsername } = useParams()
+  const { username: paramUsername, userId: paramUserId } = useParams()
   const { user } = useAuth()
   const reducedMotion = useReducedMotion()
 
@@ -299,11 +326,13 @@ function Profile() {
   // profiles, or null when it's the signed-in user's own profile.
   // `userNotFound` is set true when the lookup returns no row.
   const [resolvedUser, setResolvedUser] = useState(null)
-  const [resolving, setResolving] = useState(!!paramUsername)
+  // Resolving when either param is present.
+  const [resolving, setResolving] = useState(!!(paramUsername || paramUserId))
   const [userNotFound, setUserNotFound] = useState(false)
 
   useEffect(() => {
-    if (!paramUsername) {
+    // No param → own profile.
+    if (!paramUsername && !paramUserId) {
       setResolvedUser(null)
       setResolving(false)
       setUserNotFound(false)
@@ -312,6 +341,34 @@ function Profile() {
     let cancelled = false
     setResolving(true)
     setUserNotFound(false)
+
+    // /user/id/:userId route — look up by UUID directly.
+    if (paramUserId) {
+      const decodedId = decodeURIComponent(paramUserId)
+      // Fast-path: own userId.
+      if (user?.id && user.id === decodedId) {
+        if (!cancelled) { setResolvedUser(null); setResolving(false) }
+        return
+      }
+      safeWithTimeout(getUserById(decodedId), null, 8_000)
+        .then((row) => {
+          if (cancelled) return
+          if (!row) {
+            setUserNotFound(true)
+            setResolvedUser(null)
+          } else {
+            setResolvedUser(row)
+            setUserNotFound(false)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) { setUserNotFound(true); setResolvedUser(null) }
+        })
+        .finally(() => { if (!cancelled) setResolving(false) })
+      return () => { cancelled = true }
+    }
+
+    // /user/:username route.
     const decoded = decodeURIComponent(paramUsername)
     // Fast-path: check against the signed-in user's own username so we
     // don't make a Supabase round-trip just to land on own profile.
@@ -321,7 +378,10 @@ function Profile() {
       if (!cancelled) { setResolvedUser(null); setResolving(false) }
       return
     }
-    getUserByUsername(decoded)
+    // 8-second timeout so a stalled connection doesn't leave resolving=true
+    // (skeleton visible) forever. On timeout, safeWithTimeout resolves to null
+    // which the .then() branch treats as "not found" — clears the skeleton.
+    safeWithTimeout(getUserByUsername(decoded), null, 8_000)
       .then((row) => {
         if (cancelled) return
         if (!row) {
@@ -337,12 +397,12 @@ function Profile() {
       })
       .finally(() => { if (!cancelled) setResolving(false) })
     return () => { cancelled = true }
-  }, [paramUsername, user?.id])
+  }, [paramUsername, paramUserId, user?.id])
 
   // /profile (no param) is always the signed-in user.
-  // /user/:username is own profile when the username matches, otherwise
-  // it is another user's profile.
-  const isOwnProfile = !paramUsername || (!resolving && resolvedUser === null && !userNotFound)
+  // /user/:username is own profile when the username matches.
+  // /user/id/:userId is own profile when the UUID matches.
+  const isOwnProfile = (!paramUsername && !paramUserId) || (!resolving && resolvedUser === null && !userNotFound)
   const targetUserId = resolvedUser?.id || user?.id
 
   // Local profile blob (display name / avatar / bio / socials / favorites).
@@ -407,6 +467,10 @@ function Profile() {
   const [pinnedRows, setPinnedRows] = useState([])
   const [showReorderModal, setShowReorderModal] = useState(false)
 
+  // Pinned lists (Section B on the Home tab). Loaded in parallel with
+  // the main data fetch; ordered by pinned_at DESC, cap 5.
+  const [pinnedLists, setPinnedLists] = useState([])
+
   // ── Follow graph (Sprint 6) ─────────────────────────────────────
   // followersCount is the count shown on the Followers stat numeral.
   // `following` is the state of the Follow / Following toggle on
@@ -461,14 +525,19 @@ function Profile() {
         // sorted list below it. The pinned-review IDs are then merged
         // into the like/comment prefetch below so cards in the Pinned
         // section render with filled hearts + accurate comment counts.
-        const [rows, lists, acts, pins] = await Promise.all([
-          getReviewsForUser(targetUserId),
-          getListsForUser(targetUserId),
-          getActivitiesForUser(targetUserId, { limit: 8 }),
-          getPinsForUser(targetUserId),
+        // Each call is guarded by safeWithTimeout so a stalled mobile
+        // connection resolves to an empty fallback rather than hanging
+        // the profile data indefinitely.
+        const [rows, lists, acts, pins, pinnedListData] = await Promise.all([
+          safeWithTimeout(getReviewsForUser(targetUserId), []),
+          safeWithTimeout(getListsForUser(targetUserId), []),
+          safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
+          safeWithTimeout(getPinsForUser(targetUserId), []),
+          safeWithTimeout(getPinnedListsForUser(targetUserId), []),
         ])
         setAllReviews(rows)
         setPinnedRows(pins)
+        setPinnedLists(pinnedListData)
         setCustomLists(
           lists.map((l) => ({
             id: l.id,
@@ -509,8 +578,8 @@ function Profile() {
           }
           const ids = Array.from(idSet)
           const [counts, cCounts] = await Promise.all([
-            prefetchLikeStatesForReviews(ids),
-            getCommentCountsForReviews(ids),
+            safeWithTimeout(prefetchLikeStatesForReviews(ids), new Map()),
+            safeWithTimeout(getCommentCountsForReviews(ids), new Map()),
           ])
           setReviewLikeCounts(counts)
           setReviewCommentCounts(cCounts)
@@ -526,6 +595,7 @@ function Profile() {
         setActivities([])
         setReviewLikeCounts(new Map())
         setPinnedRows([])
+        setPinnedLists([])
       }
     } else {
       setAllReviews([])
@@ -533,6 +603,7 @@ function Profile() {
       setActivities([])
       setReviewLikeCounts(new Map())
       setPinnedRows([])
+      setPinnedLists([])
     }
   }, [targetUserId, isOwnProfile, resolvedUser])
 
@@ -549,6 +620,8 @@ function Profile() {
     // other screen (Home/Game detail). Either way we re-load so the
     // Pinned section stays in sync without a hard refresh.
     window.addEventListener(PIN_CHANGED_EVENT, refresh)
+    // List pin changes (pin/unpin from ListDetail or ListsTab).
+    window.addEventListener(LIST_PIN_CHANGED_EVENT, refresh)
     return () => {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('reviewAdded', refresh)
@@ -556,6 +629,7 @@ function Profile() {
       window.removeEventListener('libraryUpdated', refresh)
       window.removeEventListener('activityUpdated', refresh)
       window.removeEventListener(PIN_CHANGED_EVENT, refresh)
+      window.removeEventListener(LIST_PIN_CHANGED_EVENT, refresh)
     }
   }, [loadProfileData])
 
@@ -654,6 +728,20 @@ function Profile() {
   const gameImageMap = useMemo(
     () => buildGameImageMap(allReviews, customLists, profile?.favoriteGames || []),
     [allReviews, customLists, profile?.favoriteGames]
+  )
+
+  // Section A: most recent 10 reviews/ratings by created_at for the
+  // Home tab reviews shelf. Sorted independently of the Reviews tab
+  // sort so the shelf always shows newest-first regardless of the user's
+  // chosen sort preference on that tab.
+  const recentReviews = useMemo(
+    () =>
+      allReviews
+        .slice()
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, 10)
+        .map((row) => rowToReviewCard(row, reviewLikeCounts, reviewCommentCounts)),
+    [allReviews, reviewLikeCounts, reviewCommentCounts]
   )
 
   // Avoid SharedCover layoutId collisions across all the cover surfaces
@@ -908,6 +996,76 @@ function Profile() {
     [pinnedRows]
   )
 
+  // Pin a custom list to the profile Home tab (Section B).
+  // Optimistic: prepend to pinnedLists + flip flag in customLists,
+  // roll back + toast on failure. Max 5; disabled with a toast at cap.
+  const handlePinList = useCallback(
+    async (list) => {
+      if (!list || !isOwnProfile) return
+      if (pinnedLists.length >= 5) {
+        showToast('You can only pin 5 lists. Unpin one first.', 'error')
+        return
+      }
+      const nowStr = new Date().toISOString()
+      const optimisticPinned = [
+        { ...list, isPinned: true, pinnedAt: nowStr },
+        ...pinnedLists,
+      ].slice(0, 5)
+      const prevPinned = pinnedLists
+      setPinnedLists(optimisticPinned)
+      setCustomLists((cls) =>
+        cls.map((l) =>
+          l.id === list.id ? { ...l, isPinned: true, pinnedAt: nowStr } : l
+        )
+      )
+      try {
+        await pinListSvc(list.id)
+        showToast('Pinned to profile', 'success')
+      } catch (err) {
+        console.error('[profile] pinList failed:', err)
+        setPinnedLists(prevPinned)
+        setCustomLists((cls) =>
+          cls.map((l) =>
+            l.id === list.id ? { ...l, isPinned: false, pinnedAt: null } : l
+          )
+        )
+        if (err?.code === 'LIST_PINS_FULL') {
+          showToast('You can only pin 5 lists. Unpin one first.', 'error')
+        } else {
+          showToast("Couldn't pin list — please try again.", 'error')
+        }
+      }
+    },
+    [pinnedLists, isOwnProfile]
+  )
+
+  // Unpin a custom list. Optimistic removal from both state slices;
+  // roll back + toast on failure.
+  const handleUnpinList = useCallback(
+    async (listId) => {
+      if (!listId) return
+      const prevPinned = pinnedLists
+      setPinnedLists((pls) => pls.filter((l) => l.id !== listId))
+      setCustomLists((cls) =>
+        cls.map((l) =>
+          l.id === listId ? { ...l, isPinned: false, pinnedAt: null } : l
+        )
+      )
+      try {
+        await unpinListSvc(listId)
+        showToast('Unpinned', 'success')
+      } catch (err) {
+        console.error('[profile] unpinList failed:', err)
+        setPinnedLists(prevPinned)
+        setCustomLists((cls) =>
+          cls.map((l) => (l.id === listId ? { ...l, isPinned: true } : l))
+        )
+        showToast("Couldn't unpin list — please try again.", 'error')
+      }
+    },
+    [pinnedLists]
+  )
+
   const handleCreateList = async (listName, description, initialGames) => {
     const listId = await createList({
       name: listName,
@@ -926,7 +1084,7 @@ function Profile() {
 
   // While the username → UUID resolution round-trip is in-flight, show
   // the same skeleton to avoid a blank flash before the profile paints.
-  if (resolving || !profile) {
+  if (resolving || (!profile && !userNotFound)) {
     return (
       <div className="profile-page" aria-hidden="true">
         <div className="profile-header-strip">
@@ -975,7 +1133,11 @@ function Profile() {
   /* ── Display data ─────────────────────────────────────────────── */
 
   const defaultAvatar = generateDefaultAvatar(profile.displayName || 'User')
-  const avatarDisplay = profile.avatar?.type === 'data' ? profile.avatar.data : null
+  // Support both legacy base64 (`type: 'data'`) and new Storage URL (`type: 'url'`).
+  const avatarDisplay =
+    profile.avatar?.type === 'url' || profile.avatar?.type === 'data'
+      ? profile.avatar.data
+      : profile.avatarUrl || null
 
   // Sprint 7 — own profile reads from localStorage blob; other profiles
   // use the Supabase-fetched value loaded in `loadProfileData`.
@@ -1113,7 +1275,7 @@ function Profile() {
                           setBlockSheetOpen(true)
                         }}
                       >
-                        Block @{profile.username || profile.displayName || 'user'}
+                        Block {profile.username || profile.displayName || 'user'}
                       </button>
                     </>
                   )}
@@ -1206,9 +1368,9 @@ function Profile() {
             {profile.displayName || 'You'}
           </h2>
 
-          {/* ── Row 3: @username (hidden when empty) ── */}
+          {/* ── Row 3: username (no @ prefix — cleaner look) ── */}
           {(profile.username || '').trim().length > 0 && (
-            <p className="profile-ig-hero__handle">@{profile.username.trim()}</p>
+            <p className="profile-ig-hero__handle">{profile.username.trim()}</p>
           )}
 
           {/* ── Row 4: Bio — 3-line clamp + more/less toggle ── */}
@@ -1410,6 +1572,11 @@ function Profile() {
                   user={user}
                   isOwnProfile={isOwnProfile}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
+                  recentReviews={recentReviews}
+                  pinnedLists={pinnedLists}
+                  onReviewsChevron={() => setActiveTab('reviews')}
+                  onListsChevron={() => setActiveTab('lists')}
+                  onTapList={(id) => navigate(`/list/${id}`)}
                 />
               )}
 
@@ -1441,6 +1608,8 @@ function Profile() {
                   authorUsername={profile.username || profile.displayName || ''}
                   authorAvatarUrl={avatarDisplay}
                   authorAvatarFallback={defaultAvatar}
+                  onPinList={isOwnProfile ? handlePinList : undefined}
+                  onUnpinList={isOwnProfile ? handleUnpinList : undefined}
                 />
               )}
             </motion.div>
@@ -1512,12 +1681,12 @@ function Profile() {
         <ActionSheet
           isOpen={blockSheetOpen}
           onClose={() => setBlockSheetOpen(false)}
-          title={`Block @${profile.username || profile.displayName || 'user'}? They won't be able to see your profile, message you, or interact with your content.`}
+          title={`Block ${profile.username || profile.displayName || 'user'}? They won't be able to see your profile, message you, or interact with your content.`}
           items={[
             {
               label: blockPending
                 ? 'Blocking…'
-                : `Block @${profile.username || profile.displayName || 'user'}`,
+                : `Block ${profile.username || profile.displayName || 'user'}`,
               destructive: true,
               disabled: blockPending,
               onClick: async () => {
@@ -1564,6 +1733,10 @@ function HomeTab({
   user,
   isOwnProfile,
   onEditFavorites,
+  recentReviews,
+  pinnedLists,
+  onReviewsChevron,
+  onListsChevron,
 }) {
   return (
     <div className="profile-home">
@@ -1634,12 +1807,28 @@ function HomeTab({
           would leave an empty container in the DOM. */}
       <BadgesRow user={user} username={userIdentifier} />
 
-      {/* Section 3 — Recent Activity. Hidden entirely when empty per
-          the no-fabricated-data rule; no placeholder copy is shown. */}
-      {activities.length > 0 && (
+      {/* Section 3 — Recent Activity: horizontal scroll rail of the
+          user's most recent reviews/ratings, each as a cover tile with
+          star rating. Hidden entirely when the user has no reviews;
+          chevron routes to the Reviews tab. */}
+      <ProfileReviewsShelf
+        reviews={recentReviews}
+        onSeeAll={onReviewsChevron}
+      />
+
+      {/* Section 4 — Pinned Lists. Hidden entirely when the user has no
+          pinned lists; chevron routes to the Lists tab. */}
+      <PinnedListsSection
+        pinnedLists={pinnedLists}
+        onSeeAll={onListsChevron}
+      />
+
+      {/* Legacy activity thumbs — kept for now but deprioritised; can be
+          surfaced in a dedicated Activity page in a later sprint. */}
+      {activities.length > 0 && false && (
         <section className="profile-home__section">
           <div className="profile-home__section-header">
-            <h3 className="profile-home__section-title">Recent Activity</h3>
+            <h3 className="profile-home__section-title">Activity</h3>
             <button
               type="button"
               className="profile-home__chevron-btn"
@@ -1823,6 +2012,8 @@ function ListsTab({
   authorUsername,
   authorAvatarUrl,
   authorAvatarFallback,
+  onPinList,
+  onUnpinList,
 }) {
   if (lists.length === 0) {
     return (
@@ -1858,6 +2049,9 @@ function ListsTab({
               authorUsername={authorUsername}
               authorAvatarUrl={authorAvatarUrl}
               authorAvatarFallback={authorAvatarFallback}
+              isOwnProfile={isOwnProfile}
+              onPin={onPinList ? () => onPinList(list) : undefined}
+              onUnpin={onUnpinList ? () => onUnpinList(list.id) : undefined}
             />
           </li>
         ))}
@@ -1868,13 +2062,17 @@ function ListsTab({
 
 /* List row matches Musicboard reference image #2: 6-cover horizontal
    mosaic strip on top, then list name (bold), description (1 line),
-   author row, and a like/comment/share row at the bottom. */
+   author row, and a like/comment/share row at the bottom.
+   Pin/unpin button appears in the meta row for the list owner. */
 function ListRow({
   list,
   onTap,
   authorUsername,
   authorAvatarUrl,
   authorAvatarFallback,
+  isOwnProfile,
+  onPin,
+  onUnpin,
 }) {
   const slots = Array.from({ length: 6 }, (_, i) => list.previewGames?.[i] || null)
   const mosaicAlt = slots.filter(Boolean).length > 0
@@ -1930,7 +2128,7 @@ function ListRow({
             </span>
           )}
           <span className="profile-list-row__author-name">
-            @{authorUsername || 'you'}
+            {authorUsername || 'you'}
           </span>
         </div>
 
@@ -1950,6 +2148,29 @@ function ListRow({
           <span className="profile-list-row__meta-item profile-list-row__meta-item--share" aria-hidden="true">
             <LuShare2 size={14} />
           </span>
+
+          {/* Pin / Unpin affordance — owner only */}
+          {isOwnProfile && (list.isPinned ? (
+            <button
+              type="button"
+              className="profile-list-row__pin-btn profile-list-row__pin-btn--active"
+              onClick={(e) => { e.stopPropagation(); onUnpin?.() }}
+              aria-label="Unpin list from profile"
+              title="Unpin"
+            >
+              <LuPin size={14} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="profile-list-row__pin-btn"
+              onClick={(e) => { e.stopPropagation(); onPin?.() }}
+              aria-label="Pin list to profile"
+              title="Pin to profile"
+            >
+              <LuPin size={14} aria-hidden="true" />
+            </button>
+          ))}
         </div>
       </div>
     </article>

@@ -1,12 +1,19 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
+import {
+  AUTH_ERRORS,
+  AuthError,
+  USERNAME_PATTERN,
+  normalizeUsername,
+} from './auth'
 
 /**
  * Lightweight user lookups used by the Search screen's Users tab and
- * (eventually) the Profile-by-username route.
+ * the Profile-by-username route, plus the authoritative write path for
+ * editable profile fields (display_name / username) on the `users` table.
  *
- * Read-only — write paths for the `users` table live in auth.js
- * (signup bootstrap) and profileService (avatar / display_name updates).
+ * The signup-time bootstrap insert lives in auth.js; profileService owns
+ * the localStorage mirror that the own-profile UI reads synchronously.
  */
 
 /**
@@ -23,7 +30,6 @@ export async function searchUsers(query, limit = 20) {
   let q = supabase
     .from('users')
     .select('id, username, display_name, avatar_url')
-    .is('deleted_at', null)
     .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%`)
     .limit(limit)
   q = await applyBlockFilter(q, 'id')
@@ -46,7 +52,6 @@ export async function getUserByUsername(username) {
   const { data, error } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url, bio')
-    .is('deleted_at', null)
     .ilike('username', trimmed)
     .maybeSingle()
   if (error) {
@@ -54,4 +59,202 @@ export async function getUserByUsername(username) {
     return null
   }
   return data || null
+}
+
+/**
+ * Look up a single user by their UUID. Used as a fallback navigation
+ * target when a user has no username set — routes like /user/id/:userId
+ * call this instead of getUserByUsername.
+ *
+ * @param {string} userId  UUID from auth.users / public.users
+ * @returns {Promise<object|null>}
+ */
+export async function getUserById(userId) {
+  const trimmed = (userId || '').trim()
+  if (!trimmed) return null
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, bio')
+    .eq('id', trimmed)
+    .maybeSingle()
+  if (error) {
+    console.error('[users] getUserById failed:', error.message)
+    return null
+  }
+  return data || null
+}
+
+/**
+ * Persist editable profile fields to the authoritative `users` row. Used by
+ * Edit Profile so that display name / username / favoriteGames changed after
+ * signup are written server-side and survive a reinstall or a different device.
+ *
+ * Throws an AuthError(USERNAME_TAKEN) when the chosen handle collides with
+ * another account so the caller can show a clean inline error.
+ *
+ * @param {string} userId
+ * @param {{ displayName?: string, username?: string|null, bio?: string, avatarUrl?: string|null, favoriteGames?: Array }} fields
+ */
+export async function updateUserProfile(userId, { displayName, username, bio, avatarUrl, favoriteGames } = {}) {
+  if (!userId) throw new Error('updateUserProfile requires a userId')
+
+  const patch = {}
+  if (displayName !== undefined) {
+    const trimmed = (displayName || '').trim()
+    if (trimmed) patch.display_name = trimmed
+  }
+  if (username !== undefined) {
+    const handle = normalizeUsername(username)
+    if (handle && !USERNAME_PATTERN.test(handle)) {
+      throw new AuthError(
+        AUTH_ERRORS.USERNAME_INVALID,
+        'Username must be 3–20 characters (letters, numbers, underscores).'
+      )
+    }
+    patch.username = handle || null
+  }
+  if (bio !== undefined) {
+    patch.bio = (bio || '').trim() || null
+  }
+  if (avatarUrl !== undefined) {
+    patch.avatar_url = avatarUrl || null
+  }
+  if (favoriteGames !== undefined) {
+    // Store a slim shape: { id, title, image } per game — enough for the
+    // SocialActivityCard to render covers without a follow-up IGDB round-trip.
+    patch.favorite_games = (Array.isArray(favoriteGames) ? favoriteGames : [])
+      .slice(0, 4)
+      .map((g) => ({ id: g.id, title: g.title || '', image: g.image || null }))
+  }
+
+  if (Object.keys(patch).length === 0) return
+
+  const { error } = await supabase
+    .from('users')
+    .update(patch)
+    .eq('id', userId)
+
+  if (error) {
+    if (error.code === '23505') {
+      throw new AuthError(
+        AUTH_ERRORS.USERNAME_TAKEN,
+        'That username is already taken. Please choose another.',
+        error
+      )
+    }
+    throw new AuthError(AUTH_ERRORS.UNKNOWN, error.message, error)
+  }
+}
+
+/**
+ * Fetch public lists from all users that `userId` follows, ordered by most
+ * recently updated, bounded to `limit`. Returns the same list shape as
+ * getListsForUser so ListTile can render without adaptation.
+ *
+ * @param {string} userId  The current signed-in user id (the follower).
+ * @param {number} limit
+ * @returns {Promise<Array>}
+ */
+export async function getListsFromFollowing(userId, limit = 8) {
+  if (!userId) return []
+  try {
+    const { data: followRows, error: followErr } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', userId)
+    if (followErr || !followRows?.length) return []
+
+    const followeeIds = followRows.map((r) => r.followee_id)
+
+    const { data, error } = await supabase
+      .from('lists')
+      .select(
+        'id, name, description, user_id, is_public, cover_image_url, created_at, updated_at,' +
+          ' users(username, display_name, avatar_url),' +
+          ' list_games(igdb_game_id, game_title, game_image, position)'
+      )
+      .in('user_id', followeeIds)
+      .eq('is_public', true)
+      .order('updated_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('[users] getListsFromFollowing failed:', error.message)
+      return []
+    }
+
+    return (data || []).map((row) => {
+      const games = (row.list_games || [])
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((g) => ({ id: g.igdb_game_id, title: g.game_title || '', image: g.game_image || null }))
+      const author = row.users
+        ? { username: row.users.username || '', displayName: row.users.display_name || '' }
+        : null
+      return {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        gameCount: games.length,
+        previewGames: games.slice(0, 4),
+        author,
+        updatedAt: row.updated_at,
+      }
+    })
+  } catch (err) {
+    console.error('[users] getListsFromFollowing crashed:', err)
+    return []
+  }
+}
+
+/**
+ * Fetch favorite games for all users that `userId` follows. Each entry
+ * carries the game data plus which followed user favorited it.
+ *
+ * @param {string} userId  The current signed-in user id (the follower).
+ * @param {number} limit   Max total favorite entries returned.
+ * @returns {Promise<Array<{ game: { id, title, image }, owner: { id, username, displayName, avatarUrl } }>>}
+ */
+export async function getFollowingFavorites(userId, limit = 12) {
+  if (!userId) return []
+  try {
+    const { data: followRows, error: followErr } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', userId)
+    if (followErr || !followRows?.length) return []
+
+    const followeeIds = followRows.map((r) => r.followee_id)
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, favorite_games')
+      .in('id', followeeIds)
+      .is('deleted_at', null)
+
+    if (error) {
+      console.error('[users] getFollowingFavorites failed:', error.message)
+      return []
+    }
+
+    const items = []
+    for (const row of data || []) {
+      const favs = Array.isArray(row.favorite_games) ? row.favorite_games : []
+      for (const g of favs) {
+        if (!g?.id) continue
+        items.push({
+          game: { id: g.id, title: g.title || '', image: g.image || null },
+          owner: {
+            id: row.id,
+            username: row.username || '',
+            displayName: row.display_name || row.username || '',
+            avatarUrl: row.avatar_url || null,
+          },
+        })
+      }
+    }
+    return items.slice(0, limit)
+  } catch (err) {
+    console.error('[users] getFollowingFavorites crashed:', err)
+    return []
+  }
 }
