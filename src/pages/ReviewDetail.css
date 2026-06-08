@@ -8,27 +8,17 @@
 /* ── Page shell ──────────────────────────────────────────────────────── */
 
 /*
- * Fixed-inset layout so the composer bar and thread scroll together as a
- * single chat-like unit that rides the keyboard.
- *
- * --keyboard-inset is written by main.jsx from window.visualViewport and
- * already includes the 44 px iOS "Done" accessory bar that visualViewport
- * does not report.  max() selects whichever is larger:
- *   · keyboard visible  → --keyboard-inset (≥ ~344 px) wins, page rises
- *                         flush onto the Done bar
- *   · keyboard hidden   → --bottom-nav-safe-area (80 px) wins, composer
- *                         parks above the pill nav just like the old trigger
- *
- * NO extra JS, no custom offset, no touch of capacitor.config or main.jsx.
+ * Normal-flow page — same pattern as the DM thread (MessagesThread.css).
+ * The composer bar is independently position:fixed; this page just reserves
+ * padding-bottom so the last comment is never hidden behind it.
  */
 .rd-page {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: max(var(--keyboard-inset, 0px), var(--bottom-nav-safe-area, 80px));
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* Reserve space for the fixed composer bar (≈56 px) above the nav. */
+  padding-bottom: calc(72px + var(--bottom-nav-safe-area));
   background: transparent;
 }
 
@@ -47,7 +37,6 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 
 .rd-back {
@@ -104,24 +93,23 @@
 /* ── Scroll body ─────────────────────────────────────────────────────── */
 
 /*
- * flex: 1 fills the space between header and composer.
- * overflow-y: auto makes THIS element the scroll container so
- * scrollRef.current.scrollTop drives auto-scroll-to-bottom.
+ * flex: 1 fills the space between the sticky header and the bottom of the
+ * page.  overflow-y: auto makes this the real scroll container so that
+ * scrollRef.current.scrollTop = scrollRef.current.scrollHeight drives the
+ * auto-scroll-to-bottom behaviour (matches MessagesThread pattern).
  */
 .rd-scroll {
   flex: 1;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  display: flex;
-  flex-direction: column;
   gap: var(--spacing-lg);
   padding: var(--spacing-lg) var(--page-padding) var(--spacing-xl);
   max-width: var(--page-max-width);
   width: 100%;
   margin: 0 auto;
-  box-sizing: border-box;
 }
 
 /* ── Review skeleton ─────────────────────────────────────────────────── */
@@ -522,18 +510,24 @@
 /* ── Inline comment composer bar ─────────────────────────────────────── */
 
 /*
- * .rd-composer is IN FLOW as the last flex child of .rd-page.
- * The page itself is position:fixed with bottom:max(--keyboard-inset, 80px),
- * so this bar naturally rides the keyboard — no position:fixed needed here,
- * no custom offset computation.
+ * position: fixed so the bar rides the keyboard independently of the page
+ * scroll — same pattern as MessagesThread (.dm-thread__composer).
  *
- * Accessory-bar note: --keyboard-inset already adds 44 px for the iOS "Done"
- * bar (see main.jsx ACCESSORY_BAR_PX).  This bar therefore sits flush on top
- * of the Done bar.  Suppressing the Done bar would require adjusting the
- * inset calculation which would mean touching main.jsx — out of scope.
+ * bottom: max(--bottom-nav-safe-area, --keyboard-inset)
+ *   · keyboard hidden  → max(80px, 0px)  = 80px  — parks above the pill nav
+ *   · keyboard visible → max(80px, ~344px) = ~344px — rises with the keyboard
+ *
+ * --keyboard-inset is written by main.jsx from window.visualViewport and
+ * already includes ACCESSORY_BAR_PX (44 px) for the iOS "Done" bar, so the
+ * composer sits flush on the Done bar's top edge when the keyboard is open.
+ * No custom offset, no touch of main.jsx or capacitor.config.json.
  */
 .rd-composer {
-  flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(var(--bottom-nav-safe-area), var(--keyboard-inset, 0px));
+  z-index: 6;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
