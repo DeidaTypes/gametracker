@@ -231,7 +231,6 @@
   color: var(--star);
   margin: 0;
   letter-spacing: 1px;
-  text-shadow: 0 0 8px rgba(245, 181, 10, 0.75);
 }
 
 /* ── Lists tab ── */

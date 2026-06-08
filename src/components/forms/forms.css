@@ -503,11 +503,6 @@
   stroke: var(--star);
 }
 
-.form-star--filled,
-.form-star--half {
-  filter: drop-shadow(0 0 5px rgba(245, 181, 10, 0.70));
-}
-
 .form-star__fill {
   fill: var(--star);
   transition: opacity 150ms ease;
