@@ -160,13 +160,30 @@ function ReviewCard({
     bumpSharesCount(1)
   }
 
-  const goToGame = () => navigate(`/game/${review.game.id}`)
-  const goToComments = () => navigate(`/reviews/${review.id}/comments`)
+  const goToReview = () => {
+    if (variant === 'detail') return
+    navigate(`/reviews/${review.id}/comments`)
+  }
+  const goToGame = (e) => {
+    e.stopPropagation()
+    navigate(`/game/${review.game.id}`)
+  }
 
   const handleAuthorClick = (e) => {
     e.stopPropagation()
-    if (onAuthorClick) onAuthorClick(review.author.username)
-    else navigate(`/user/${review.author.username}`)
+    const username = review.author.username
+    const userId = review.author.userId || review.userId
+    const target = username
+      ? `/user/${encodeURIComponent(username)}`
+      : userId
+      ? `/user/id/${encodeURIComponent(userId)}`
+      : null
+    if (!target) return
+    if (onAuthorClick) {
+      onAuthorClick(username || userId)
+    } else {
+      navigate(target)
+    }
   }
 
   // The CSS gradient reads --dominant-rgb as space-separated channels so
@@ -175,7 +192,8 @@ function ReviewCard({
     ? { '--dominant-rgb': `${color.r} ${color.g} ${color.b}` }
     : undefined
 
-  const clampClass = variant === 'compact' ? 'clamp-3' : 'clamp-5'
+  // detail variant: no body clamping, card is not a tappable button
+  const clampClass = variant === 'compact' ? 'clamp-3' : variant === 'detail' ? '' : 'clamp-5'
   // likeState.count is now the canonical, Supabase-backed count
   // (seeded by parents via prefetchLikeStatesForReviews); the
   // review.likeCount fallback keeps demo / dev fixtures rendering.
@@ -188,6 +206,10 @@ function ReviewCard({
       initial={reduced ? false : { opacity: 0 }}
       animate={reduced ? undefined : { opacity: 1 }}
       transition={{ duration: 0.2 }}
+      onClick={variant === 'detail' ? undefined : goToReview}
+      role={variant === 'detail' ? undefined : 'button'}
+      tabIndex={variant === 'detail' ? undefined : 0}
+      onKeyDown={variant === 'detail' ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') goToReview() }}
     >
       {showOwnPill && (
         <div className="review-card__own-pill">Your review</div>
@@ -197,6 +219,7 @@ function ReviewCard({
         className="review-card__cover-header"
         onClick={goToGame}
         style={dominantStyle}
+        aria-label={`View ${review.game.name}`}
       >
         <img
           src={review.game.coverUrl}
@@ -206,9 +229,13 @@ function ReviewCard({
         />
         <div className="review-card__cover-meta">
           <div className="review-card__game-name">{review.game.name}</div>
-          <div className="review-card__game-sub">
-            {review.game.developer} · Game
-          </div>
+          {(review.game.platform || review.game.year || review.game.developer) && (
+            <div className="review-card__game-sub">
+              {review.game.platform || review.game.year
+                ? [review.game.platform, review.game.year].filter(Boolean).join(' · ')
+                : review.game.developer}
+            </div>
+          )}
         </div>
         <div className="review-card__play-btn" aria-hidden="true">
           <HiPlay size={18} />
@@ -229,7 +256,7 @@ function ReviewCard({
           <button
             type="button"
             className="review-card__read-more"
-            onClick={() => setExpanded(true)}
+            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
           >
             Read more…
           </button>
@@ -241,21 +268,27 @@ function ReviewCard({
         className="review-card__author"
         onClick={handleAuthorClick}
       >
-        <img
-          src={review.author.avatarUrl}
-          className="review-card__avatar"
-          alt=""
-          loading="lazy"
-        />
+        {review.author.avatarUrl ? (
+          <img
+            src={review.author.avatarUrl}
+            className="review-card__avatar"
+            alt=""
+            loading="lazy"
+          />
+        ) : (
+          <div className="review-card__avatar review-card__avatar--fallback" aria-hidden="true">
+            {(review.author.username || review.author.displayName || '?').charAt(0).toUpperCase()}
+          </div>
+        )}
         <span className="review-card__username">
-          {review.author.username}
+          {review.author.username || review.author.displayName || 'Anonymous'}
         </span>
       </button>
 
       <div className="review-card__actions">
         <div className="review-card__actions-left">
           <Pressable
-            onClick={handleLike}
+            onClick={(e) => { e.stopPropagation(); handleLike() }}
             aria-label={likeState.liked ? 'Unlike' : 'Like'}
             aria-pressed={likeState.liked}
           >
@@ -272,7 +305,7 @@ function ReviewCard({
             )}
             <span>{displayedLikeCount}</span>
           </Pressable>
-          <Pressable onClick={goToComments} aria-label="Comment">
+          <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
             <HiOutlineChat />
             <span>{review.commentCount || 0}</span>
           </Pressable>
@@ -280,7 +313,7 @@ function ReviewCard({
         <div className="review-card__actions-right">
           <Pressable
             className="review-card__share"
-            onClick={handleShare}
+            onClick={(e) => { e.stopPropagation(); handleShare() }}
             aria-label="Share"
           >
             <HiOutlineShare />
@@ -289,7 +322,7 @@ function ReviewCard({
             <button
               type="button"
               className="review-card__kebab-btn"
-              onClick={() => setKebabOpen((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setKebabOpen((v) => !v) }}
               aria-label="More options"
               aria-expanded={kebabOpen}
             >
@@ -302,7 +335,8 @@ function ReviewCard({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setKebabOpen(false)
                         onEdit?.()
                       }}
@@ -315,7 +349,8 @@ function ReviewCard({
                         <button
                           type="button"
                           role="menuitem"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setKebabOpen(false)
                             onUnpin()
                           }}
@@ -329,7 +364,8 @@ function ReviewCard({
                         <button
                           type="button"
                           role="menuitem"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setKebabOpen(false)
                             onPin()
                           }}
@@ -346,7 +382,8 @@ function ReviewCard({
                     type="button"
                     role="menuitem"
                     className="review-card__kebab-menu-report"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setKebabOpen(false)
                       setReportSheetOpen(true)
                     }}
