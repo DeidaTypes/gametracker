@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis } from 'react-icons/lu'
+import { LuChevronLeft, LuEllipsis, LuArrowUp } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
 import ReportSheet from '../components/ReportSheet'
@@ -746,8 +746,9 @@ function ReviewComments() {
             type="submit"
             className="rc-composer__send"
             disabled={!isAuthed || posting || !draft.trim()}
+            aria-label="Send comment"
           >
-            {posting ? 'Posting…' : 'Post'}
+            <LuArrowUp size={16} aria-hidden="true" />
           </button>
         </div>
       </form>
