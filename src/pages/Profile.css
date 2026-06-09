@@ -1244,3 +1244,89 @@ img.profile-list-row__author-avatar {
     font-size: 36px;
   }
 }
+
+/* =============================================
+   PROFILE — Yearly Challenge section
+   ============================================= */
+
+.profile-challenge-section {
+  /* inherits .profile-home__section padding */
+}
+
+.profile-challenge-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.profile-challenge-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-challenge-headline {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-title);
+}
+
+.profile-challenge-sub {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+.profile-challenge-edit {
+  margin-top: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  line-height: var(--line-height-caption);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-challenge-edit:hover,
+.profile-challenge-edit:focus-visible {
+  color: var(--accent-hover);
+  text-decoration: underline;
+  outline: none;
+}
+
+/* Milestone badge strip */
+.profile-milestone-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.profile-milestone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-amber, #f59e0b);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}

@@ -4,6 +4,7 @@ import { getContinuePlayingGames } from '../services/libraryService'
 import { getCachedActivityCalendar, computeStreaks, toLocalDateKey, invalidateActivityCache } from '../services/statsService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
+import { getGoalProgress } from '../services/goalService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -71,6 +72,16 @@ export function useTodayData() {
   const [daysLogged, setDaysLogged] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Yearly goal progress.
+  const thisYear = new Date().getFullYear()
+  const [goalProgress, setGoalProgress] = useState({
+    hasGoal: false,
+    target: null,
+    current: 0,
+    year: thisYear,
+    percent: 0,
+  })
+
   // Derive Now Playing + progress (synchronous, local).
   const refreshNowPlaying = useCallback(() => {
     const games = getContinuePlayingGames(1)
@@ -112,13 +123,16 @@ export function useTodayData() {
     }
 
     try {
-      // 60 days covers the 7-day rolling window plus enough history
-      // to compute the current streak accurately.
-      const counts = await getCachedActivityCalendar(user.id, 60)
+      // Run activity calendar + goal progress in parallel.
+      const [counts, gp] = await Promise.all([
+        getCachedActivityCalendar(user.id, 60),
+        getGoalProgress(user.id, new Date().getFullYear()),
+      ])
       const cells = buildWeekCells(counts)
       setWeekCells(cells)
       setStreak(computeStreaks(counts))
       setDaysLogged(countActiveDays(cells))
+      setGoalProgress(gp)
     } catch (err) {
       console.error('[useTodayData] activity fetch failed:', err)
       const cells = buildWeekCells(new Map())
@@ -169,5 +183,6 @@ export function useTodayData() {
     streak,
     daysLogged,
     isLoading,
+    goalProgress,
   }
 }

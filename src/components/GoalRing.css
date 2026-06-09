@@ -1,0 +1,185 @@
+/* =============================================
+   GOAL RING — Yearly challenge progress ring
+   Cobalt Modern · DM Sans · CSS variables only
+   ============================================= */
+
+/* ── Shared base ─────────────────────────────── */
+
+.goal-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.goal-ring__svg {
+  display: block;
+}
+
+/* SVG track ring */
+.goal-ring__track {
+  stroke: var(--border-strong);
+}
+
+/* Progress arc — cobalt by default */
+.goal-ring__fill {
+  stroke: var(--accent);
+  transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring__fill { transition: none; }
+}
+
+[data-reduce-motion='true'] .goal-ring__fill {
+  transition: none;
+}
+
+/* Completed arc — warm amber glow */
+.goal-ring__fill--complete {
+  stroke: var(--color-amber, #f59e0b);
+}
+
+/* ── Compact variant (TodayCard, 52×52) ─────── */
+
+.goal-ring--compact {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.goal-ring__label-compact {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.goal-ring__count-compact {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.goal-ring__target-compact {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+}
+
+/* ── Full variant (Profile, 100×100) ─────────── */
+
+.goal-ring--full {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.goal-ring__label-full {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.goal-ring__count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.goal-ring__sep {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+  margin: 0 1px;
+}
+
+.goal-ring__sub {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+/* ── No-goal state ────────────────────────────── */
+
+.goal-ring--no-goal {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.goal-ring--no-goal.goal-ring--full {
+  width: auto;
+  height: auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-ring__set-prompt {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  text-align: center;
+  line-height: var(--line-height-caption);
+}
+
+/* Compact no-goal: tiny "+" button */
+.goal-ring__set-prompt-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  border: 1.5px dashed var(--border-strong);
+  font-size: 18px;
+  color: var(--color-text-tertiary);
+  font-weight: 300;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.goal-ring--no-goal:hover .goal-ring__set-prompt-compact,
+.goal-ring--no-goal:focus-visible .goal-ring__set-prompt-compact {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring__set-prompt-compact { transition: none; }
+}
+
+[data-reduce-motion='true'] .goal-ring__set-prompt-compact {
+  transition: none;
+}
+
+/* ── Complete animation (subtle pulse) ────────── */
+
+.goal-ring--complete .goal-ring__fill--complete {
+  filter: drop-shadow(0 0 4px var(--color-amber, #f59e0b));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring--complete .goal-ring__fill--complete { filter: none; }
+}
+
+[data-reduce-motion='true'] .goal-ring--complete .goal-ring__fill--complete {
+  filter: none;
+}

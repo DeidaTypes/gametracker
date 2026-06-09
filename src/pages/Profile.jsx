@@ -39,6 +39,8 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
+import { getGoalProgress, setGoal } from '../services/goalService'
+import { getStreakData, MILESTONES, isMilestoneSeen } from '../services/streakMilestoneService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
@@ -69,6 +71,8 @@ import CreateListModal from '../components/CreateListModal'
 import FavoritesPickerSheet from '../components/FavoritesPickerSheet'
 import GamePickerSheet from '../components/GamePickerSheet'
 import BadgesRow from '../components/BadgesRow'
+import GoalRing from '../components/GoalRing'
+import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
 import EmptyState from '../components/EmptyState'
 import ReorderPinsModal from '../components/ReorderPinsModal'
@@ -435,6 +439,14 @@ function Profile() {
   // Sprint 8 — Report profile sheet (other-user profiles only)
   const [reportProfileOpen, setReportProfileOpen] = useState(false)
 
+  // Yearly challenge + streak milestones (own profile only).
+  const thisYear = new Date().getFullYear()
+  const [goalProgress, setGoalProgress] = useState({
+    hasGoal: false, target: null, current: 0, year: thisYear, percent: 0,
+  })
+  const [streakData, setStreakData] = useState(null)
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false)
+
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
   // — if the bio fits inside the 3-line clamp there's no "more" link.
@@ -530,13 +542,17 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData] = await Promise.all([
+        const [rows, lists, acts, pins, pinnedListData, gp, sd] = await Promise.all([
           safeWithTimeout(getReviewsForUser(targetUserId), []),
           safeWithTimeout(getListsForUser(targetUserId), []),
           safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
           safeWithTimeout(getPinsForUser(targetUserId), []),
           safeWithTimeout(getPinnedListsForUser(targetUserId), []),
+          isOwnProfile ? safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null) : Promise.resolve(null),
+          isOwnProfile ? safeWithTimeout(getStreakData(targetUserId), null) : Promise.resolve(null),
         ])
+        if (gp) setGoalProgress(gp)
+        if (sd) setStreakData(sd)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
@@ -1594,6 +1610,9 @@ function Profile() {
                   onTapList={(id) => navigate(`/list/${id}`)}
                   allReviews={allReviews}
                   onReviewTap={(id) => navigate(`/review/${id}`)}
+                  goalProgress={goalProgress}
+                  streakData={streakData}
+                  onSetGoal={() => setGoalSheetOpen(true)}
                 />
               )}
 
@@ -1731,6 +1750,22 @@ function Profile() {
           contentType="profile"
           contentId={targetUserId}
         />
+
+        {/* Yearly challenge — set / edit goal sheet (own profile only). */}
+        {isOwnProfile && (
+          <SetGoalSheet
+            isOpen={goalSheetOpen}
+            onClose={() => setGoalSheetOpen(false)}
+            onSave={async (target) => {
+              if (!user?.id) return
+              await setGoal(user.id, goalProgress.year, target)
+              const updated = await getGoalProgress(user.id, goalProgress.year)
+              if (updated) setGoalProgress(updated)
+            }}
+            year={goalProgress.year}
+            current={goalProgress.target ?? 0}
+          />
+        )}
       </div>
     </SharedCoverScope>
   )
@@ -1756,9 +1791,91 @@ function HomeTab({
   onListsChevron,
   allReviews,
   onReviewTap,
+  goalProgress,
+  streakData,
+  onSetGoal,
 }) {
+  // Earned milestone badges: milestones where isMilestoneSeen = true AND longest_streak >= milestone
+  const earnedMilestones = isOwnProfile && user?.id && streakData
+    ? MILESTONES.filter(
+        (m) => (streakData.longest_streak ?? 0) >= m && isMilestoneSeen(user.id, m)
+      )
+    : []
+
   return (
     <div className="profile-home">
+      {/* Yearly Challenge — compact ring + milestone badge strip (own profile) */}
+      {isOwnProfile && goalProgress && (
+        <section className="profile-home__section profile-challenge-section">
+          <div className="profile-home__section-header">
+            <h3 className="profile-home__section-title">
+              {goalProgress.year} Challenge
+            </h3>
+          </div>
+          <div className="profile-challenge-row">
+            <GoalRing
+              current={goalProgress.current}
+              target={goalProgress.target}
+              year={goalProgress.year}
+              variant="full"
+              onSet={onSetGoal}
+            />
+            <div className="profile-challenge-info">
+              {goalProgress.hasGoal ? (
+                <>
+                  <p className="profile-challenge-headline">
+                    {goalProgress.current >= goalProgress.target
+                      ? 'Goal reached!'
+                      : `${goalProgress.target - goalProgress.current} to go`}
+                  </p>
+                  <p className="profile-challenge-sub">
+                    {goalProgress.current} of {goalProgress.target} games finished
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-challenge-edit"
+                    onClick={onSetGoal}
+                    aria-label="Edit yearly goal"
+                  >
+                    Edit goal
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="profile-challenge-headline">No goal set</p>
+                  <p className="profile-challenge-sub">
+                    Set a target for how many games you want to finish in {goalProgress.year}.
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-challenge-edit"
+                    onClick={onSetGoal}
+                    aria-label={`Set a ${goalProgress.year} goal`}
+                  >
+                    Set goal
+                  </button>
+                </>
+              )}
+              {/* Streak milestone badges — quiet, earned-only */}
+              {earnedMilestones.length > 0 && (
+                <div className="profile-milestone-badges" aria-label="Streak milestones earned">
+                  {earnedMilestones.map((m) => (
+                    <span
+                      key={m}
+                      className="profile-milestone-badge"
+                      title={`${m}-day streak milestone`}
+                      aria-label={`${m}-day streak`}
+                    >
+                      🔥{m}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Section 1 — Favorite Games (hidden when empty on others' profiles;
           own profile shows empty state with an edit affordance) */}
       {(favoriteGames.length > 0 || isOwnProfile) && (

@@ -1,0 +1,152 @@
+/* =============================================
+   SET GOAL SHEET
+   Cobalt Modern · DM Sans · CSS variables only
+   ============================================= */
+
+.sgs-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+.sgs-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.sgs-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  align-self: center;
+  margin-bottom: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.sgs-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+}
+
+.sgs-sub {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-body);
+}
+
+/* ── Input ──────────────────────────────────── */
+
+.sgs-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.sgs-input {
+  flex: 1;
+  background: var(--bg-surface-2);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 12px var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  min-width: 0;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.sgs-input::-webkit-inner-spin-button,
+.sgs-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.sgs-input:focus {
+  border-color: var(--accent);
+}
+
+.sgs-input-unit {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sgs-hint {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Buttons ─────────────────────────────────── */
+
+.sgs-save-btn {
+  margin-top: var(--spacing-xs);
+  padding: 14px var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sgs-save-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sgs-save-btn:not(:disabled):active {
+  opacity: 0.85;
+}
+
+.sgs-cancel-btn {
+  padding: 12px var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sgs-cancel-btn:active {
+  background: var(--bg-surface-2);
+}

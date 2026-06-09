@@ -21,6 +21,12 @@
   justify-content: space-between;
 }
 
+.tc-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .tc-title {
   margin: 0;
   font-family: var(--font-display);
@@ -316,4 +322,93 @@
 
 .tc-calendar-link:focus-visible {
   text-decoration: underline;
+}
+
+/* ── Session controls ───────────────────────────────────────────────────────── */
+
+.tc-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tc-start-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-brand-primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-brand-primary, #3b82f6);
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-start-btn:active {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.tc-start-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Active session row (dot + timer + Stop) */
+.tc-session-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tc-session-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-brand-primary, #3b82f6);
+  flex-shrink: 0;
+  animation: tc-dot-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-session-dot { animation: none; }
+}
+
+@keyframes tc-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+.tc-session-timer {
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-brand-primary, #3b82f6);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+}
+
+.tc-session-stop-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.07);
+  color: #ef4444;
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-session-stop-btn:active {
+  background: rgba(239, 68, 68, 0.16);
 }

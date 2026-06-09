@@ -1,10 +1,21 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Flame, ChevronRight } from 'lucide-react'
 import { useTodayData } from '../hooks/useTodayData'
 import SharedCover from './SharedCover'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { useSession } from '../contexts/SessionContext'
+import GoalRing from './GoalRing'
+import SetGoalSheet from './SetGoalSheet'
+import { useAuth } from '../contexts/AuthContext'
+import { setGoal } from '../services/goalService'
 import './TodayCard.css'
+
+function formatSessionTime(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 // ── Cover URL helper ─────────────────────────────────────────────────────────
 
@@ -25,7 +36,17 @@ function StreakChip({ count }) {
   )
 }
 
-function NowPlayingRow({ game, progress, navigate }) {
+function NowPlayingRow({
+  game,
+  progress,
+  navigate,
+  isActiveSession,
+  sessionElapsed,
+  onStartSession,
+  onStopSession,
+  sessionStarting,
+  isStopping,
+}) {
   if (!game) return null
 
   const src = coverSrc(game.image)
@@ -82,13 +103,54 @@ function NowPlayingRow({ game, progress, navigate }) {
           <span className="tc-progress-label">{progress.label}</span>
         ) : null}
 
-        <button
-          className="tc-continue-btn"
-          type="button"
-          onClick={goToGame}
-        >
-          Continue <ChevronRight size={13} aria-hidden="true" />
-        </button>
+        {/* Session controls */}
+        {isActiveSession ? (
+          <div className="tc-session-row">
+            <span className="tc-session-dot" aria-hidden="true" />
+            <span
+              className="tc-session-timer"
+              aria-live="off"
+              aria-label={`Session time: ${formatSessionTime(sessionElapsed)}`}
+            >
+              {formatSessionTime(sessionElapsed)}
+            </span>
+            <button
+              className="tc-session-stop-btn"
+              type="button"
+              onClick={onStopSession}
+              disabled={isStopping}
+              aria-label="Stop play session"
+            >
+              {isStopping ? '…' : 'Stop'}
+            </button>
+          </div>
+        ) : (
+          <div className="tc-action-row">
+            <button
+              className="tc-start-btn"
+              type="button"
+              onClick={onStartSession}
+              disabled={sessionStarting}
+              aria-label={`Start playing ${game.title}`}
+            >
+              {sessionStarting ? '…' : (
+                <>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  Play
+                </>
+              )}
+            </button>
+            <button
+              className="tc-continue-btn"
+              type="button"
+              onClick={goToGame}
+            >
+              View <ChevronRight size={13} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -123,20 +185,77 @@ function WeekRow({ cells }) {
 
 export default function TodayCard() {
   const navigate = useNavigate()
-  const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading } =
+  const { user } = useAuth()
+  const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading, goalProgress } =
     useTodayData()
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false)
+
+  const {
+    session: activeSession,
+    elapsed: sessionElapsed,
+    isStarting: sessionStarting,
+    isStopping,
+    startGameSession,
+    stopGameSession,
+  } = useSession()
+
+  const isActiveSession =
+    nowPlaying != null &&
+    activeSession?.igdb_game_id != null &&
+    String(activeSession.igdb_game_id) === String(nowPlaying.id)
+
+  const handleStartSession = useCallback(() => {
+    if (!nowPlaying) return
+    startGameSession(nowPlaying.id, {
+      gameTitle: nowPlaying.title,
+      gameImage: nowPlaying.image,
+    })
+  }, [startGameSession, nowPlaying])
+
+  const handleStopSession = useCallback(() => {
+    stopGameSession()
+  }, [stopGameSession])
+
+  const handleGoalSave = useCallback(async (target) => {
+    if (!user?.id) return
+    await setGoal(user.id, goalProgress.year, target)
+    // Re-fetch goal on next activity update — dispatch libraryUpdated to wake the hook
+    window.dispatchEvent(new Event('activityUpdated'))
+  }, [user?.id, goalProgress.year])
 
   return (
+    <>
     <div className="tc-card">
       {/* Header */}
       <div className="tc-header">
         <h2 className="tc-title">Today</h2>
-        <StreakChip count={streak.current} />
+        <div className="tc-header-right">
+          <StreakChip count={streak.current} />
+          {!isLoading && (
+            <GoalRing
+              current={goalProgress.current}
+              target={goalProgress.target}
+              year={goalProgress.year}
+              variant="compact"
+              onSet={() => setGoalSheetOpen(true)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Now Playing — hidden when no game is Playing */}
       {nowPlaying && (
-        <NowPlayingRow game={nowPlaying} progress={progress} navigate={navigate} />
+        <NowPlayingRow
+          game={nowPlaying}
+          progress={progress}
+          navigate={navigate}
+          isActiveSession={isActiveSession}
+          sessionElapsed={sessionElapsed}
+          onStartSession={handleStartSession}
+          onStopSession={handleStopSession}
+          sessionStarting={sessionStarting}
+          isStopping={isStopping}
+        />
       )}
 
       {/* Divider between now-playing and week row */}
@@ -162,5 +281,14 @@ export default function TodayCard() {
         </div>
       )}
     </div>
+
+    <SetGoalSheet
+      isOpen={goalSheetOpen}
+      onClose={() => setGoalSheetOpen(false)}
+      onSave={handleGoalSave}
+      year={goalProgress.year}
+      current={goalProgress.target ?? 0}
+    />
+    </>
   )
 }

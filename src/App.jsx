@@ -54,11 +54,15 @@ import { initSettings, applySettingsToDom, getSettings } from './services/userSe
 import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import ToastHost from './components/Toast'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
+import MilestoneCelebration from './components/MilestoneCelebration'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
 import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
+import { SessionProvider } from './contexts/SessionContext'
 import SearchOverlay from './components/SearchOverlay'
+import SessionPill from './components/SessionPill'
+import StopSessionSheet from './components/StopSessionSheet'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import { useAppResume } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -703,6 +707,14 @@ function AppContent() {
       </main>
       {showNav && <BottomNav />}
 
+      {/* Persistent session timer pill — floats above BottomNav when a
+          session is running. Rendered outside .main-content so fixed
+          positioning is not clipped by any transformed ancestor. */}
+      {showNav && <SessionPill />}
+
+      {/* Stop-session confirmation sheet — appears after stopGameSession(). */}
+      <StopSessionSheet />
+
       {/* Search overlay — rendered outside .main-content to avoid fixed-
           positioning being clipped by any transformed ancestor. AnimatePresence
           drives the enter/exit animations declared inside SearchOverlay. */}
@@ -728,6 +740,9 @@ function App() {
                 extracted swatch palette. */}
             <GameColorProvider>
               <SearchOverlayProvider>
+              {/* SessionProvider sits inside AuthProvider (needs user) and
+                  outside AppContent so the pill/sheet render outside routes. */}
+              <SessionProvider>
               <AppContent />
               <ToastHost />
               {/* Mounted once at the root so first-time-Played transitions from
@@ -736,6 +751,11 @@ function App() {
                   component subscribes to celebrationService's queue and only
                   renders when the head is non-null. */}
               <CompletionCelebration />
+              {/* Mounted once at root — listens to 'streakUpdated' events and
+                  shows the 7 / 30 / 100-day milestone celebration once per
+                  milestone per user (localStorage-gated). Never guilt, only joy. */}
+              <MilestoneCelebration />
+              </SessionProvider>
               </SearchOverlayProvider>
             </GameColorProvider>
           </UnreadMessagesProvider>
