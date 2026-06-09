@@ -351,7 +351,7 @@ function ReviewCard({
                       onClick={(e) => {
                         e.stopPropagation()
                         setKebabOpen(false)
-                        onEdit?.()
+                        onEdit?.(review)
                       }}
                     >
                       <HiOutlinePencil />

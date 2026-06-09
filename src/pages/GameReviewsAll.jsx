@@ -36,6 +36,8 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
     body: row.body || '',
     rating: Number(row.rating) || 0,
     hoursPlayed: Number(row.hours_played) || 0,
+    liked: !!row.liked,
+    hasSpoilers: !!row.has_spoilers,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,
@@ -190,8 +192,10 @@ export default function GameReviewsAll() {
 
   // ── Open the single review composer (keyboard-aware ReviewNew popup) ───
   // Pass the loaded game in route state so it renders without a refetch.
-  const openReviewComposer = useCallback(() => {
-    navigate(`/review/new?gameId=${gameId}`, { state: { game } })
+  const openReviewComposer = useCallback((reviewShape) => {
+    navigate(`/review/new?gameId=${gameId}`, {
+      state: { game, editReview: reviewShape || null },
+    })
   }, [navigate, gameId, game])
 
   // After the composer posts and navigates back, reload from page 1 so the

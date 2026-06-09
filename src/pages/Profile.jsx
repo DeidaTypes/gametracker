@@ -199,6 +199,9 @@ function rowToReviewCard(row, likeCounts, commentCounts) {
     title: null,
     body: row.body || '',
     rating: Number(row.rating) || 0,
+    hoursPlayed: Number(row.hours_played) || 0,
+    liked: !!row.liked,
+    hasSpoilers: !!row.has_spoilers,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,
@@ -995,6 +998,23 @@ function Profile() {
     [pinnedRows]
   )
 
+  const handleEditReview = useCallback(
+    (reviewShape) => {
+      if (!reviewShape?.id) return
+      navigate(`/review/new?gameId=${reviewShape.game.id}`, {
+        state: {
+          game: {
+            id: reviewShape.game.id,
+            title: reviewShape.game.name,
+            image: reviewShape.game.coverUrl,
+          },
+          editReview: reviewShape,
+        },
+      })
+    },
+    [navigate]
+  )
+
   // Persist a new pin order from the reorder modal. Optimistic local
   // re-order, rollback on failure. Throws on failure so the modal's
   // catch can keep the sheet open for retry.
@@ -1639,6 +1659,7 @@ function Profile() {
                   currentUserId={user?.id}
                   onPinReview={handlePinReview}
                   onUnpinReview={handleUnpinReview}
+                  onEditReview={isOwnProfile ? handleEditReview : undefined}
                   onOpenReorder={() => setShowReorderModal(true)}
                 />
               )}
@@ -2062,6 +2083,7 @@ function ReviewsTab({
   currentUserId,
   onPinReview,
   onUnpinReview,
+  onEditReview,
   onOpenReorder,
 }) {
   const hasPins = pinnedRows.length > 0
@@ -2125,6 +2147,7 @@ function ReviewsTab({
                     showOwnPill={!!own}
                     isOwn={!!own}
                     isPinned
+                    onEdit={own ? onEditReview : undefined}
                     onUnpin={own ? () => onUnpinReview(row.id) : undefined}
                   />
                 )
@@ -2146,6 +2169,7 @@ function ReviewsTab({
               showOwnPill={!!own}
               isOwn={!!own}
               isPinned={false}
+              onEdit={own ? onEditReview : undefined}
               onPin={own ? () => onPinReview(row) : undefined}
             />
           )
