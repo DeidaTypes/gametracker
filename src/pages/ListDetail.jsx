@@ -480,9 +480,6 @@ function ListDetail() {
       {/* 2. Title block — eyebrow + list name */}
       <div className="list-detail-body">
         <div className="list-detail-title-block">
-          <span className="list-detail-eyebrow">
-            {listInfo.isCustom ? 'List' : 'Tracker'}
-          </span>
           <h1 className="list-detail-title">{listInfo.name}</h1>
         </div>
 
