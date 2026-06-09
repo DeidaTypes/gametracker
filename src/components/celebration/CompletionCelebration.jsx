@@ -6,10 +6,11 @@ import React, {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import Lottie from 'lottie-react'
 import { toPng } from 'html-to-image'
+import { Share } from '@capacitor/share'
 
 import {
   subscribe as subscribeCelebration,
@@ -17,11 +18,10 @@ import {
   dismissCurrent,
   storeShareableCard,
 } from '../../services/celebrationService'
-import { getGameProgress } from '../../services/libraryService'
 import { getDominantColor } from '../../services/colorExtract'
 import { getCachedUserReviews } from '../../services/reviewService'
-import { getGamesFromList } from '../../services/libraryService'
 import { useAuth } from '../../contexts/AuthContext'
+import StarRating from '../StarRating'
 import ShareCard from './ShareCard'
 
 import celebrationAnimation from '../../assets/lottie/celebration.json'
@@ -40,46 +40,7 @@ function useCurrentCelebration() {
   return head
 }
 
-/* ============================================================
-   Stat helpers
-   ============================================================ */
-function diffDays(fromIso, toIso) {
-  if (!fromIso) return null
-  const from = new Date(fromIso).getTime()
-  const to = toIso ? new Date(toIso).getTime() : Date.now()
-  if (!Number.isFinite(from) || !Number.isFinite(to)) return null
-  const ms = Math.max(0, to - from)
-  return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)))
-}
-
-function formatHours(h) {
-  if (h == null || Number.isNaN(Number(h))) return '0'
-  const num = Number(h)
-  if (num >= 100) return Math.round(num).toString()
-  return num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)
-}
-
-/**
- * Reviews the user has written for games currently on Played status.
- * Spec calls this "you're a critic now" milestone — count is the value
- * shown; multiples of 5 / 10 / 25 get a small flex (rendered by parent).
- */
-function countPlayedReviews() {
-  try {
-    const playedGames = getGamesFromList('played') || []
-    const playedIds = new Set(playedGames.map((g) => String(g.id)))
-    const reviews = getCachedUserReviews()
-    let n = 0
-    for (const r of reviews) {
-      if (r?.igdb_game_id != null && playedIds.has(String(r.igdb_game_id))) n++
-    }
-    return n
-  } catch {
-    return 0
-  }
-}
-
-const MILESTONE_THRESHOLDS = new Set([5, 10, 25, 50, 100, 250])
+const SNIPPET_MAX = 140
 
 /* ============================================================
    CompletionCelebration — single mount in App
@@ -87,28 +48,14 @@ const MILESTONE_THRESHOLDS = new Set([5, 10, 25, 50, 100, 250])
 export default function CompletionCelebration() {
   const head = useCurrentCelebration()
   const reduced = useReducedMotion()
-  const navigate = useNavigate()
   const location = useLocation()
   const { user, profile } = useAuth()
 
-  // Pause the celebration overlay while the review composer is open.
-  //
-  // The celebration is a single document-body portal that renders whenever
-  // the queue head is non-null, regardless of route. "Write a review"
-  // dismisses the current head (advancing the queue) and navigates to
-  // /review/new — but without this guard the *next* queued celebration
-  // would immediately paint on top of the composer, so the user could only
-  // ever reach the composer for the LAST queued game (every earlier click
-  // just looked like it "skipped" to the next prompt). Onboarding seeds
-  // three "Played" games at once, which is exactly how that queue piles up.
-  //
-  // Suppressing the overlay on the composer route lets each game be
-  // reviewed in turn: post → navigate(-1) returns to the launching screen,
-  // the next celebration appears there, and once the queue drains the user
-  // lands cleanly on Home instead of bouncing through stale history entries.
+  // Pause while the review composer is open so a queued celebration
+  // doesn't paint on top of the composer. See original comment above
+  // for full rationale.
   const onReviewComposer = location.pathname.startsWith('/review/new')
 
-  // Local UI state, reset whenever a new head item arrives.
   const [accentRgb, setAccentRgb] = useState(null)
   const [shareCardPreview, setShareCardPreview] = useState(null)
   const shareCardRef = useRef(null)
@@ -121,8 +68,7 @@ export default function CompletionCelebration() {
     }
   }, [head?.igdbGameId])
 
-  // Lock body scroll while celebration is open (but not while it's paused
-  // behind the review composer — that route owns its own scroll lock).
+  // Lock body scroll while celebration is open.
   useEffect(() => {
     if (!head || onReviewComposer) return
     const prev = document.body.style.overflow
@@ -132,7 +78,7 @@ export default function CompletionCelebration() {
     }
   }, [head, onReviewComposer])
 
-  // Dominant-color extraction (same path used by GameDetail's hero).
+  // Dominant-color extraction.
   useEffect(() => {
     if (!head?.game?.image) return
     let cancelled = false
@@ -148,29 +94,33 @@ export default function CompletionCelebration() {
   useEffect(() => {
     if (!head || onReviewComposer) return
     const onKey = (e) => {
-      if (e.key === 'Escape') handleDone()
+      if (e.key === 'Escape') dismissCurrent()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [head?.igdbGameId, reduced, onReviewComposer])
+  }, [head?.igdbGameId, onReviewComposer])
 
-  // Stats — derived synchronously per head.
-  const stats = useMemo(() => {
-    if (!head) {
-      return { hours: 0, days: null, reviews: 0, milestone: false }
-    }
-    const progress = getGameProgress(head.igdbGameId)
-    const startedIso = head.game?.addedAt || progress.lastPlayedAt || null
-    const days = diffDays(startedIso, head.completedAt)
-    const reviewsForPlayed = countPlayedReviews()
-    return {
-      hours: progress.hoursPlayed ?? 0,
-      days,
-      reviews: reviewsForPlayed,
-      milestone: MILESTONE_THRESHOLDS.has(reviewsForPlayed),
-    }
-  }, [head])
+  // Look up the user's own review for this game from the in-memory cache.
+  // postReview() prepends to _cachedUserReviews synchronously before
+  // dispatching reviewAdded, so by the time this celebration renders after
+  // a ReviewNew submit the review is already present in the cache.
+  const userReview = useMemo(() => {
+    if (!head) return null
+    const reviews = getCachedUserReviews()
+    return (
+      reviews.find((r) => String(r.igdb_game_id) === String(head.igdbGameId)) ||
+      null
+    )
+  }, [head?.igdbGameId])
+
+  const reviewRating = userReview?.rating ? Number(userReview.rating) : 0
+  const reviewBody = userReview?.body?.trim() || ''
+  const reviewHours = userReview?.hours_played ? Number(userReview.hours_played) : 0
+
+  const snippet =
+    reviewBody.length > SNIPPET_MAX
+      ? reviewBody.slice(0, SNIPPET_MAX).trimEnd() + '\u2026'
+      : reviewBody
 
   const displayName =
     profile?.display_name ||
@@ -179,9 +129,8 @@ export default function CompletionCelebration() {
     'You'
 
   /* ------------------------------------------------------------------
-     Share-card generation (Sprint 4: preview only).
-     Skipped under reduced-motion per spec — "it's not a visual experience,
-     it's a media artifact" and we don't want to spend the CPU.
+     Share-card generation — rasterise the offscreen ShareCard for
+     sharing. Skipped under reduced-motion (no CPU spent on visual).
      ------------------------------------------------------------------ */
   const generateShareCard = useCallback(async () => {
     if (reduced || !shareCardRef.current || !head) return null
@@ -189,22 +138,18 @@ export default function CompletionCelebration() {
       const dataUrl = await toPng(shareCardRef.current, {
         cacheBust: true,
         pixelRatio: 1,
-        // Background must match the card's own gradient — html-to-image
-        // honours backgroundColor when the source element is transparent.
-        // Our ShareCard has its own background, so this is a fallback.
         backgroundColor: 'var(--color-bg-primary)',
       })
       storeShareableCard(head.igdbGameId, dataUrl)
-      // Sprint 4 verification preview. Wrapped in a query-string guard so
-      // the preview is opt-in for testing without shipping it on by
-      // default. Set ?previewShareCard=1 in the URL to see the captured
-      // PNG inline before pressing Done.
       try {
-        if (typeof window !== 'undefined' && window.location?.search?.includes('previewShareCard=1')) {
+        if (
+          typeof window !== 'undefined' &&
+          window.location?.search?.includes('previewShareCard=1')
+        ) {
           setShareCardPreview(dataUrl)
         }
       } catch {
-        // Non-fatal: preview is a debug affordance.
+        // Non-fatal debug affordance.
       }
       return dataUrl
     } catch (err) {
@@ -214,32 +159,43 @@ export default function CompletionCelebration() {
   }, [reduced, head])
 
   /* ------------------------------------------------------------------
-     Done — closes the celebration, generates the share card in the
-     background. Reduced-motion users skip the capture entirely.
+     Share — fires Capacitor Share if available, falls back to
+     Web Share API, then clipboard.
      ------------------------------------------------------------------ */
-  const handleDone = useCallback(async () => {
+  const handleShare = useCallback(async () => {
     if (!head) return
-    if (!reduced) {
-      // Fire-and-forget so the celebration dismisses immediately and the
-      // user doesn't sit on a frozen overlay while we rasterise 1080×1920.
-      generateShareCard()
+    const title = head.game?.title || 'a game'
+    const ratingText = reviewRating > 0 ? ` \u2014 ${reviewRating}/5 stars` : ''
+    const shareText = `Just finished ${title}${ratingText} on GameTracker`
+
+    if (!reduced) generateShareCard()
+
+    try {
+      await Share.share({
+        title: `Finished ${title}`,
+        text: shareText,
+        dialogTitle: 'Share',
+      })
+    } catch {
+      try {
+        if (typeof navigator?.share === 'function') {
+          await navigator.share({ title: `Finished ${title}`, text: shareText })
+        } else if (navigator?.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareText)
+        }
+      } catch {
+        // User dismissed the sheet — ignore.
+      }
     }
-    dismissCurrent()
-  }, [head, reduced, generateShareCard])
+  }, [head, reviewRating, reduced, generateShareCard])
 
   /* ------------------------------------------------------------------
-     Write a review — routes to the single, keyboard-aware review composer
-     (ReviewNew at /review/new) with the celebrated game pre-loaded. We
-     capture the share card, dismiss the celebration, then navigate, so the
-     review experience is identical everywhere in the app.
+     Done — dismisses the celebration.
      ------------------------------------------------------------------ */
-  const handleOpenReview = useCallback(() => {
+  const handleDone = useCallback(() => {
     if (!head) return
-    if (!reduced) generateShareCard()
-    const gameId = head.igdbGameId
     dismissCurrent()
-    navigate(`/review/new?gameId=${gameId}`, { state: { game: head.game } })
-  }, [head, reduced, generateShareCard, navigate])
+  }, [head])
 
   if (!head || onReviewComposer) return null
 
@@ -247,7 +203,6 @@ export default function CompletionCelebration() {
     ? `rgb(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b})`
     : 'var(--color-brand-primary)'
 
-  // Vertical gradient: extracted color at the top, navy at the bottom.
   const backdropGradient = accentRgb
     ? `linear-gradient(180deg,
         rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.65) 0%,
@@ -260,12 +215,14 @@ export default function CompletionCelebration() {
         rgba(10, 15, 31, 0.96) 70%,
         #0a0f1f 100%)`
 
-  // Cover entrance: spring 280/22 over ~480ms. Reduced motion → instant.
   const coverInitial = reduced ? { scale: 1, opacity: 1 } : { scale: 0.6, opacity: 0 }
   const coverAnimate = { scale: 1, opacity: 1 }
   const coverTransition = reduced
     ? { duration: 0 }
     : { type: 'spring', stiffness: 280, damping: 22 }
+
+  // Whether there's any real verdict content to show in the card.
+  const hasVerdict = reviewRating > 0 || snippet || reviewHours > 0
 
   return createPortal(
     <div
@@ -275,17 +232,10 @@ export default function CompletionCelebration() {
       aria-modal="true"
       aria-labelledby="completion-celebration-title"
     >
-      {/* Confetti — Lottie. Reduced motion gets a static checkmark in
-          amber instead. Anchored top-center, particles fall toward the
-          cover. Pointer-events disabled so taps land on the CTAs. */}
+      {/* Confetti / reduced-motion fallback */}
       {reduced ? (
         <div className="completion-celebration__static-mark" aria-hidden="true">
-          <svg
-            viewBox="0 0 96 96"
-            width="96"
-            height="96"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 96 96" width="96" height="96" aria-hidden="true">
             <circle cx="48" cy="48" r="44" fill="rgba(200,150,90,0.14)" />
             <circle
               cx="48"
@@ -298,7 +248,7 @@ export default function CompletionCelebration() {
             <path
               d="M30 49 L43 62 L66 36"
               fill="none"
-              stroke="#3b82f6"
+              stroke="var(--color-brand-primary)"
               strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -306,8 +256,6 @@ export default function CompletionCelebration() {
           </svg>
         </div>
       ) : (
-        // `key` remounts the Lottie player when the queue advances so the
-        // confetti replays for every celebration, not just the first.
         <div
           key={`confetti-${head.igdbGameId}`}
           className="completion-celebration__confetti"
@@ -317,19 +265,16 @@ export default function CompletionCelebration() {
             animationData={celebrationAnimation}
             loop={false}
             autoplay
-            rendererSettings={{
-              preserveAspectRatio: 'xMidYMin slice',
-            }}
+            rendererSettings={{ preserveAspectRatio: 'xMidYMin slice' }}
           />
         </div>
       )}
 
       <div className="completion-celebration__content">
+        {/* Badge */}
         <span className="completion-celebration__eyebrow">Completed</span>
 
-        {/* `key` forces remount when the queue shifts to the next game so
-            the spring entrance fires for each celebration in turn — without
-            it, the motion.div sees the same props and skips `initial`. */}
+        {/* Cover — spring entrance, remounts per game so animation replays */}
         <motion.div
           key={`cover-${head.igdbGameId}`}
           className="completion-celebration__cover-wrap"
@@ -362,47 +307,46 @@ export default function CompletionCelebration() {
           {head.game?.title || 'Game complete'}
         </h2>
         <p className="completion-celebration__subtitle">
-          You finished it. That's a real one.
+          You finished it. That&rsquo;s a real one.
         </p>
 
-        <div className="completion-celebration__stats">
-          <div className="completion-celebration__stat">
-            <span className="completion-celebration__stat-num">
-              {formatHours(stats.hours)}
-            </span>
-            <span className="completion-celebration__stat-label">Hours</span>
+        {/* Verdict card — only rendered when there's real data to show */}
+        {hasVerdict && (
+          <div className="completion-celebration__verdict">
+            {reviewRating > 0 && (
+              <div className="completion-celebration__rating-wrap">
+                <span className="completion-celebration__rating-label">Your Rating</span>
+                <StarRating rating={reviewRating} size={28} />
+                <span className="completion-celebration__rating-value">
+                  {reviewRating}&thinsp;/&thinsp;5
+                </span>
+              </div>
+            )}
+
+            {snippet && (
+              <p className="completion-celebration__snippet">
+                &ldquo;{snippet}&rdquo;
+              </p>
+            )}
+
+            {reviewHours > 0 && (
+              <p className="completion-celebration__hours">
+                {reviewHours % 1 === 0
+                  ? reviewHours.toFixed(0)
+                  : reviewHours.toFixed(1)}{' '}
+                hrs played
+              </p>
+            )}
           </div>
-          <div className="completion-celebration__stat-divider" aria-hidden="true" />
-          <div className="completion-celebration__stat">
-            <span className="completion-celebration__stat-num">
-              {stats.days ?? '—'}
-            </span>
-            <span className="completion-celebration__stat-label">
-              {stats.days === 1 ? 'Day' : 'Days'}
-            </span>
-          </div>
-          <div className="completion-celebration__stat-divider" aria-hidden="true" />
-          <div className="completion-celebration__stat">
-            <span className="completion-celebration__stat-num">
-              {stats.reviews}
-            </span>
-            <span className="completion-celebration__stat-label">
-              {stats.milestone
-                ? "Reviews · You're a critic"
-                : stats.reviews === 1
-                  ? 'Review'
-                  : 'Reviews'}
-            </span>
-          </div>
-        </div>
+        )}
 
         <div className="completion-celebration__ctas">
           <button
             type="button"
-            onClick={handleOpenReview}
+            onClick={handleShare}
             className="form-button form-button--primary completion-celebration__cta-primary"
           >
-            Write a review
+            Share
           </button>
           <button
             type="button"
@@ -415,29 +359,23 @@ export default function CompletionCelebration() {
       </div>
 
       {/* Offscreen share-card render target. html-to-image walks this DOM
-          subtree to produce the 1080×1920 PNG. It is *not* the visible
-          celebration card — that's the .completion-celebration__content
-          tree above. */}
+          subtree to produce the PNG. Not the visible card — that's above. */}
       <div className="completion-celebration__share-host" aria-hidden="true">
         <ShareCard
           ref={shareCardRef}
           game={head.game}
           displayName={displayName}
-          hoursPlayed={stats.hours}
-          daysPlaying={stats.days}
-          reviewCount={stats.reviews}
+          rating={reviewRating}
           accentRgb={accentRgb}
         />
       </div>
 
-      {/* Sprint 4 manual verification preview. Hidden behind a query-string
-          gate (`?previewShareCard=1`) so it doesn't ship by default. */}
+      {/* Debug preview gate: ?previewShareCard=1 */}
       {shareCardPreview && (
         <div className="completion-celebration__preview" aria-hidden="true">
           <img src={shareCardPreview} alt="" />
         </div>
       )}
-
     </div>,
     document.body
   )

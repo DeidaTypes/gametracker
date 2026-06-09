@@ -103,48 +103,53 @@
   text-align: center;
 }
 
-.share-card__stats {
+/* Rating section — replaces the old stats row */
+.share-card__rating {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 40px;
-  width: 100%;
+  gap: 24px;
   margin-top: auto;
   margin-bottom: 80px;
 }
 
-.share-card__stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.share-card__stat-num {
-  font-family: var(--font-display);
-  font-size: 96px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: #f0f3fa;
-  font-variant-numeric: tabular-nums;
-}
-
-.share-card__stat-label {
-  font-size: 22px;
+.share-card__rating-label {
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #5c6b8a;
-  margin-top: 16px;
 }
 
-.share-card__stat-divider {
-  width: 1px;
-  height: 88px;
-  background: rgba(59, 130, 246, 0.22);
-  flex-shrink: 0;
+/* Two-layer star row (same technique as StarRating.jsx) */
+.share-card__stars-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.share-card__stars-base {
+  display: flex;
+  align-items: center;
+}
+
+.share-card__stars-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.share-card__rating-value {
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #f5b50a;
 }
 
 .share-card__watermark {
