@@ -1,0 +1,199 @@
+/* LogSessionModal — Cobalt Modern, DM Sans, CSS variables only */
+
+.lsm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.lsm-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lsm-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lsm-close:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Body ── */
+
+.lsm-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lsm-field-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label, 11px);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 4px;
+}
+
+/* ── Duration row ── */
+
+.lsm-duration-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.lsm-unit-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lsm-num-input {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: var(--font-weight-bold, 700);
+  width: 100%;
+  text-align: center;
+  outline: none;
+  min-width: 0;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.lsm-num-input::-webkit-outer-spin-button,
+.lsm-num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.lsm-unit {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 12px);
+  color: rgba(255, 255, 255, 0.38);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lsm-sep {
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.28);
+  flex-shrink: 0;
+}
+
+/* ── Date input ── */
+
+.lsm-date-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body, 15px);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: dark;
+  transition: border-color 0.15s ease;
+}
+
+.lsm-date-input:focus {
+  border-color: var(--accent);
+}
+
+/* ── Footer ── */
+
+.lsm-footer {
+  display: flex;
+  gap: 8px;
+  padding: 4px 20px 20px;
+}
+
+.lsm-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body, 15px);
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.lsm-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.lsm-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.lsm-btn--cancel {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.lsm-btn--cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--text-primary);
+}
+
+.lsm-btn--save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.lsm-btn--save:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lsm-close,
+  .lsm-date-input,
+  .lsm-btn--cancel,
+  .lsm-btn {
+    transition: none;
+  }
+  .lsm-btn:not(:disabled):active {
+    transform: none;
+  }
+}

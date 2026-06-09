@@ -20,7 +20,9 @@ import { getTracker, setHoursPlayed, setProgressOverride } from '../services/hou
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
 import { useSession } from '../contexts/SessionContext'
-import GameJournalSection from '../components/GameJournalSection'
+import LogSessionModal from '../components/LogSessionModal'
+import { logManualSession, getManualSessionsForGame, deleteManualSession } from '../services/sessionService'
+import ActionSheet from '../components/ActionSheet'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -327,13 +329,15 @@ function GameDetail() {
     setEditingHours(false)
 
     async function loadTrackerAndTtb() {
-      const [t, b] = await Promise.all([
+      const [t, b, s] = await Promise.all([
         getTracker(gameId).catch(() => null),
         getTimeToBeat(gameId).catch(() => null),
+        getManualSessionsForGame(gameId).catch(() => []),
       ])
       if (cancelled) return
       setTracker(t)
       setTtb(b)
+      setSessions(s)
       setTrackerReady(true)
     }
 
@@ -390,13 +394,74 @@ function GameDetail() {
     return () => window.cancelAnimationFrame(id)
   }, [targetReviewId, loading, reviews])
 
-  // Single review composer for the whole app: the keyboard-aware ReviewNew
-  // popup at /review/new. We pass the loaded game in route state so it renders
-  // instantly without a refetch. When the user posts, ReviewNew dispatches the
-  // `reviewAdded` event and navigates back here, where our listener (below)
-  // refreshes the in-page list.
+  // ── Log session state ─────────────────────────────────────────────────────
+  const [logSessionOpen, setLogSessionOpen] = useState(false)
+  const [logSaving, setLogSaving] = useState(false)
+  const [sessions, setSessions] = useState([])
+
+  const [composeSheetOpen, setComposeSheetOpen] = useState(false)
+
+  // ── Session helpers ───────────────────────────────────────────────────────
+  function formatDuration(mins) {
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    if (h > 0 && m > 0) return `${h}h ${m}m`
+    if (h > 0) return `${h}h`
+    return `${m}m`
+  }
+
+  function formatPlayedOn(dateStr) {
+    const [y, mo, d] = dateStr.split('-').map(Number)
+    return new Date(y, mo - 1, d).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  const refreshSessions = useCallback(async () => {
+    const data = await getManualSessionsForGame(gameId).catch(() => [])
+    setSessions(data)
+  }, [gameId])
+
+  const handleLogSession = useCallback(async ({ totalMinutes, playedOn }) => {
+    setLogSaving(true)
+    try {
+      const result = await logManualSession(gameId, totalMinutes, playedOn, {
+        gameTitle: game?.title,
+        gameImage: game?.image,
+      })
+      if (result) {
+        setTracker(t => ({ ...t, hours_played: result.newHours }))
+        setLocalHours(null)
+        await refreshSessions()
+        setLogSessionOpen(false)
+        showToast(`${formatDuration(totalMinutes)} logged`)
+      } else {
+        showToast('Could not save — try again')
+      }
+    } finally {
+      setLogSaving(false)
+    }
+  }, [gameId, game, refreshSessions])
+
+  const handleDeleteSession = useCallback(async (sessionId, mins) => {
+    const result = await deleteManualSession(sessionId, gameId, mins)
+    if (result) {
+      setTracker(t => ({ ...t, hours_played: result.newHours }))
+      setLocalHours(null)
+      setSessions(prev => prev.filter(s => s.id !== sessionId))
+      showToast(`${formatDuration(mins)} removed`)
+    } else {
+      showToast('Could not delete — try again')
+    }
+  }, [gameId])
+
   const openReviewComposer = useCallback(() => {
     navigate(`/review/new?gameId=${gameId}`, { state: { game } })
+  }, [navigate, gameId, game])
+
+  const openJournalComposer = useCallback(() => {
+    navigate(`/journal/new?gameId=${gameId}`, { state: { game } })
   }, [navigate, gameId, game])
 
   const handleShare = async () => {
@@ -762,8 +827,8 @@ function GameDetail() {
           <button
             className="gd-action-circle"
             style={fabStyle}
-            onClick={openReviewComposer}
-            aria-label="Write a review"
+            onClick={() => setComposeSheetOpen(true)}
+            aria-label="Write or journal"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -772,6 +837,159 @@ function GameDetail() {
           <AddToListButton game={game} variant="icon" fabStyle={fabStyle} />
         </div>
       </div>
+
+      {/* ── Progress Block — only for library games ── */}
+      {status && trackerReady && (
+        <>
+          <div className="gd-progress-block">
+            <p className="gd-progress-section-label">Your Progress</p>
+
+            {progress !== null && (
+              <div
+                className="gd-progress-bar-track"
+                aria-label={`${Math.round(progress * 100)}% complete`}
+              >
+                <div
+                  className="gd-progress-bar-fill"
+                  style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }}
+                />
+              </div>
+            )}
+
+            <div className="gd-progress-header">
+              <span className="gd-progress-label">
+                {effectiveHours % 1 === 0
+                  ? `${effectiveHours} hr`
+                  : `${effectiveHours.toFixed(1)} hr`}
+                {progress !== null && ` · ${Math.round(progress * 100)}%`}
+              </span>
+              {tracker?.progress_override != null && (
+                <span className="gd-override-badge">Manual</span>
+              )}
+            </div>
+
+            <div className="gd-hours-row">
+              {editingHours ? (
+                <div className="gd-hours-input-wrap">
+                  <input
+                    ref={hoursInputRef}
+                    className="gd-hours-input"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    min="0"
+                    value={inputDraft}
+                    onChange={e => setInputDraft(e.target.value)}
+                    onBlur={confirmHoursInput}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmHoursInput() }}
+                    aria-label="Edit total hours"
+                  />
+                  <span className="gd-hours-unit">hrs</span>
+                  <button className="gd-hours-confirm" onClick={confirmHoursInput} aria-label="Confirm hours">✓</button>
+                </div>
+              ) : (
+                <div className="gd-hours-stepper">
+                  <button
+                    className="gd-step-btn"
+                    onClick={() => handleStep(-0.5)}
+                    aria-label="Decrease by 0.5 hours"
+                  >
+                    −
+                  </button>
+                  <button
+                    className="gd-hours-display"
+                    onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
+                    aria-label="Edit total hours directly"
+                  >
+                    {effectiveHours % 1 === 0
+                      ? `${effectiveHours}h`
+                      : `${effectiveHours.toFixed(1)}h`}
+                  </button>
+                  <button
+                    className="gd-step-btn"
+                    onClick={() => handleStep(0.5)}
+                    aria-label="Increase by 0.5 hours"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+
+              <button
+                className="gd-log-session-btn"
+                onClick={() => setLogSessionOpen(true)}
+                aria-label="Log a play session"
+              >
+                + Log Play
+              </button>
+
+              <button
+                className="gd-override-toggle-btn"
+                onClick={() => setOverrideOpen(v => !v)}
+              >
+                {overrideOpen ? 'Hide' : 'Set %'}
+              </button>
+            </div>
+
+            {overrideOpen && (
+              <div className="gd-override-panel">
+                <div className="gd-override-slider-row">
+                  <input
+                    type="range"
+                    className="gd-override-slider"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={
+                      effectiveOverride != null
+                        ? Math.round(effectiveOverride)
+                        : Math.round((progress ?? 0) * 100)
+                    }
+                    onChange={e => handleOverrideChange(e.target.value)}
+                    aria-label="Manual progress percentage"
+                  />
+                  <span className="gd-override-val">
+                    {effectiveOverride != null
+                      ? `${Math.round(effectiveOverride)}%`
+                      : `${Math.round((progress ?? 0) * 100)}%`}
+                  </span>
+                </div>
+                {effectiveOverride != null && (
+                  <button className="gd-override-clear-btn" onClick={handleClearOverride}>
+                    Clear manual override
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {sessions.length > 0 && (
+            <div className="gd-session-history">
+              <p className="gd-session-history-label">Logged Sessions</p>
+              <div className="gd-session-history-list">
+                {sessions.map(s => (
+                  <div key={s.id} className="gd-session-item">
+                    <span className="gd-session-item-date">{formatPlayedOn(s.playedOn)}</span>
+                    <span className="gd-session-item-duration">{formatDuration(s.minutes)}</span>
+                    <button
+                      className="gd-session-delete-btn"
+                      onClick={() => handleDeleteSession(s.id, s.minutes)}
+                      aria-label={`Delete session from ${s.playedOn}`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* ── Time to Beat ── visible for any game that has IGDB TTB data,
            regardless of library status. At least one field must be non-null;
@@ -837,7 +1055,7 @@ function GameDetail() {
                   <p className="gd-reviews-empty-text">Be the first to review this game</p>
                   <button
                     className="gd-reviews-empty-cta"
-                    onClick={openReviewComposer}
+                    onClick={() => setComposeSheetOpen(true)}
                   >
                     Write a review
                   </button>
@@ -878,14 +1096,6 @@ function GameDetail() {
         </div>
 
         <div className="gd-divider" />
-
-        {/* Your Journal — dated notes for library games only */}
-        {status && (
-          <>
-            <GameJournalSection game={game} user={user} status={status} />
-            <div className="gd-divider" />
-          </>
-        )}
 
         {/* Information — About + Details + Screenshots, with histogram on top */}
         <div className="gd-section">
@@ -975,6 +1185,30 @@ function GameDetail() {
         />
 
       </div>
+
+      {/* ── Log Session Modal ── */}
+      <LogSessionModal
+        isOpen={logSessionOpen}
+        onClose={() => setLogSessionOpen(false)}
+        onSave={handleLogSession}
+        isSaving={logSaving}
+      />
+
+      {/* ── Compose action sheet: Write review / Add to journal ── */}
+      <ActionSheet
+        isOpen={composeSheetOpen}
+        onClose={() => setComposeSheetOpen(false)}
+        items={[
+          {
+            label: 'Write a review',
+            onClick: () => { setComposeSheetOpen(false); openReviewComposer() },
+          },
+          {
+            label: 'Add to journal',
+            onClick: () => { setComposeSheetOpen(false); openJournalComposer() },
+          },
+        ]}
+      />
 
       {/* ── Screenshot Lightbox ── */}
       {lightboxSrc && (
