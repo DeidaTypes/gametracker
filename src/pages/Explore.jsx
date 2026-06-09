@@ -342,7 +342,7 @@ function Explore() {
           )}
         </section>
 
-        {/* ── Section 2: Reviews feed ── */}
+        {/* ── Section 2: Reviews feed (preview — 3 cards max) ── */}
         <section className="explore-section explore-section--1">
           <div className="explore-section__pad discover-section-header">
             <h2 className="discover-section-title">Reviews</h2>
@@ -354,7 +354,7 @@ function Explore() {
           </div>
 
           {activeReviewsState.loading ? (
-            <ReviewRowSkeletonList count={4} />
+            <ReviewRowSkeletonList count={3} />
           ) : activeReviewsState.error ? (
             <ErrorBanner message="Could not load reviews." />
           ) : showFollowingEmpty ? (
@@ -372,14 +372,41 @@ function Explore() {
               </button>
             </div>
           ) : reviewsData && reviewsData.length > 0 ? (
-            <div className="explore-review-feed">
-              {reviewsData.map((r) => (
-                <ReviewCard
-                  key={r.id}
-                  review={toReviewCardShape(r, likeCounts, commentCounts)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="explore-review-feed">
+                {reviewsData.slice(0, 3).map((r) => (
+                  <ReviewCard
+                    key={r.id}
+                    review={toReviewCardShape(r, likeCounts, commentCounts)}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="discover-see-all-btn"
+                onClick={() =>
+                  navigate('/discover/reviews', {
+                    state: { tab: reviewsTab },
+                  })
+                }
+              >
+                See all reviews
+                <svg
+                  className="discover-see-all-btn__chevron"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </>
           ) : (
             <div className="explore-section__pad">
               <p className="explore-section-empty">
