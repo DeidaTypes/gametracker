@@ -428,6 +428,11 @@
   margin-top: 40px;
 }
 
+/* Fourth explore-section (Got an hour?): same 40px rhythm. */
+.gotw-outer + .explore-section + .explore-section + .explore-section + .explore-section {
+  margin-top: 40px;
+}
+
 /* =============================================
    DESKTOP (769px+)
    ============================================= */
