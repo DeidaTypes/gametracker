@@ -16,6 +16,9 @@ import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getTracker, setHoursPlayed, setProgressOverride } from '../services/hoursService'
+import { getTimeToBeat } from '../services/timeToBeatService'
+import { computeProgress } from '../services/progressHelper'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -178,6 +181,22 @@ function GameDetail() {
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
 
+  // ── Hours / Progress state ──────────────────────────────────────────────────
+  const [tracker, setTracker] = useState(null)
+  const [trackerReady, setTrackerReady] = useState(false)
+  const [ttb, setTtb] = useState(null)
+  // Optimistic local hours — non-null while a debounced save is in flight.
+  const [localHours, setLocalHours] = useState(null)
+  const [editingHours, setEditingHours] = useState(false)
+  const [inputDraft, setInputDraft] = useState('')
+  const [overrideOpen, setOverrideOpen] = useState(false)
+  // Optimistic local override — non-null while a debounced save is in flight.
+  const [localOverride, setLocalOverride] = useState(null)
+  const [toastMsg, setToastMsg] = useState(null)
+  const saveHoursTimer = useRef(null)
+  const saveOverrideTimer = useRef(null)
+  const toastTimerRef = useRef(null)
+
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
   }, [gameId])
@@ -267,6 +286,41 @@ function GameDetail() {
     }
   }, [refreshFromStore, refreshReviews])
 
+  // Fetch the tracker row + TTB data once the game's library status is known.
+  // Re-runs when the gameId changes (new game) or status flips to truthy (just added).
+  useEffect(() => {
+    if (!status) return
+    let cancelled = false
+    setTrackerReady(false)
+    setLocalHours(null)
+    setLocalOverride(null)
+    setOverrideOpen(false)
+    setEditingHours(false)
+
+    async function loadTrackerAndTtb() {
+      const [t, b] = await Promise.all([
+        getTracker(gameId).catch(() => null),
+        getTimeToBeat(gameId).catch(() => null),
+      ])
+      if (cancelled) return
+      setTracker(t)
+      setTtb(b)
+      setTrackerReady(true)
+    }
+
+    loadTrackerAndTtb()
+    return () => { cancelled = true }
+  }, [status, gameId])
+
+  // Clean up debounce timers on unmount so stale callbacks never fire.
+  useEffect(() => {
+    return () => {
+      clearTimeout(saveHoursTimer.current)
+      clearTimeout(saveOverrideTimer.current)
+      clearTimeout(toastTimerRef.current)
+    }
+  }, [])
+
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
     return () => {
@@ -310,6 +364,97 @@ function GameDetail() {
       } catch {}
     } else {
       navigator.clipboard?.writeText(window.location.href)
+    }
+  }
+
+  // ── Progress computed values ────────────────────────────────────────────────
+  // Prefer local (optimistic) values while a save is in flight.
+  const effectiveHours = localHours !== null ? localHours : (tracker?.hours_played ?? 0)
+  const effectiveOverride = localOverride !== null ? localOverride : (tracker?.progress_override ?? null)
+  const progress = (status && trackerReady)
+    ? computeProgress({
+        hoursPlayed: effectiveHours,
+        progressOverride: effectiveOverride,
+        normallySeconds: ttb?.normallySeconds ?? null,
+      })
+    : null
+
+  // ── Toast helper ─────────────────────────────────────────────────────────────
+  const showToast = (msg) => {
+    setToastMsg(msg)
+    clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToastMsg(null), 3000)
+  }
+
+  // ── Hours handlers ────────────────────────────────────────────────────────────
+  // Stepper: increment/decrement in 0.5-hr steps with 800ms debounced persist.
+  const handleStep = (delta) => {
+    const prev = effectiveHours
+    const next = Math.max(0, Math.round((prev + delta) * 2) / 2)
+    setLocalHours(next)
+    clearTimeout(saveHoursTimer.current)
+    saveHoursTimer.current = setTimeout(async () => {
+      const result = await setHoursPlayed(gameId, next, {
+        game_title: game?.title,
+        game_image: game?.image,
+      })
+      if (result) {
+        setTracker(t => ({ ...t, hours_played: result.hours_played }))
+        setLocalHours(null)
+      } else {
+        setLocalHours(prev)
+        showToast('Could not save — try again')
+      }
+    }, 800)
+  }
+
+  // Input: confirm typed value (rounds to 1 decimal), immediate persist.
+  const confirmHoursInput = () => {
+    const parsed = parseFloat(inputDraft)
+    setEditingHours(false)
+    if (isNaN(parsed) || parsed < 0) return
+    const prev = effectiveHours
+    const next = Math.max(0, Math.round(parsed * 10) / 10)
+    setLocalHours(next)
+    setHoursPlayed(gameId, next, { game_title: game?.title, game_image: game?.image })
+      .then(result => {
+        if (result) {
+          setTracker(t => ({ ...t, hours_played: result.hours_played }))
+          setLocalHours(null)
+        } else {
+          setLocalHours(prev)
+          showToast('Could not save — try again')
+        }
+      })
+  }
+
+  // ── Override handlers ─────────────────────────────────────────────────────────
+  // Slider: 400ms debounced persist of the manual % override.
+  const handleOverrideChange = (val) => {
+    const num = parseFloat(val)
+    const prev = effectiveOverride
+    setLocalOverride(num)
+    clearTimeout(saveOverrideTimer.current)
+    saveOverrideTimer.current = setTimeout(async () => {
+      const result = await setProgressOverride(gameId, num)
+      if (result) {
+        setTracker(t => ({ ...t, progress_override: result.progress_override }))
+        setLocalOverride(null)
+      } else {
+        setLocalOverride(prev)
+        showToast('Could not save override — try again')
+      }
+    }, 400)
+  }
+
+  // Clear: removes the manual override and falls back to hours-based estimate.
+  const handleClearOverride = async () => {
+    setLocalOverride(null)
+    const result = await setProgressOverride(gameId, null)
+    if (result) {
+      setTracker(t => ({ ...t, progress_override: null }))
+    } else {
+      showToast('Could not clear override — try again')
     }
   }
 
@@ -544,6 +689,140 @@ function GameDetail() {
           <AddToListButton game={game} variant="icon" fabStyle={fabStyle} />
         </div>
       </div>
+
+      {/* ── Your Progress ── library games only; waits for tracker fetch ── */}
+      {status && trackerReady && progress && (
+        <div className="gd-progress-block">
+
+          {/* Label row: "24 / ~39 hrs" + optional "manual" badge */}
+          <div className="gd-progress-header">
+            <span className="gd-progress-label">{progress.label}</span>
+            {effectiveOverride !== null && (
+              <span className="gd-override-badge">manual</span>
+            )}
+          </div>
+
+          {/* Bar — only when showBar is true (TTB data present or override set) */}
+          {progress.showBar && (
+            <div
+              className="gd-progress-bar-track"
+              role="progressbar"
+              aria-valuenow={Math.round(progress.percent)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Progress: ${Math.round(progress.percent)}%`}
+            >
+              <div
+                className="gd-progress-bar-fill"
+                style={{ width: `${Math.min(100, progress.percent)}%` }}
+              />
+            </div>
+          )}
+
+          {/* Hours stepper row + override toggle */}
+          <div className="gd-hours-row">
+            {editingHours ? (
+              <div className="gd-hours-input-wrap">
+                <input
+                  className="gd-hours-input"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={inputDraft}
+                  onChange={e => setInputDraft(e.target.value)}
+                  onBlur={confirmHoursInput}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') confirmHoursInput()
+                    if (e.key === 'Escape') setEditingHours(false)
+                  }}
+                  autoFocus
+                  aria-label="Hours played"
+                />
+                <span className="gd-hours-unit">hrs</span>
+                <button
+                  className="gd-hours-confirm"
+                  onClick={confirmHoursInput}
+                  aria-label="Confirm hours"
+                >✓</button>
+              </div>
+            ) : (
+              <div className="gd-hours-stepper">
+                <button
+                  className="gd-step-btn"
+                  onClick={() => handleStep(-0.5)}
+                  aria-label="Decrease hours by 0.5"
+                >−</button>
+                <button
+                  className="gd-hours-display"
+                  onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
+                  aria-label={`${effectiveHours} hours played, tap to edit`}
+                >
+                  {effectiveHours % 1 === 0
+                    ? `${effectiveHours} hrs`
+                    : `${effectiveHours.toFixed(1)} hrs`}
+                </button>
+                <button
+                  className="gd-step-btn"
+                  onClick={() => handleStep(0.5)}
+                  aria-label="Increase hours by 0.5"
+                >+</button>
+              </div>
+            )}
+
+            <button
+              className="gd-override-toggle-btn"
+              onClick={() => setOverrideOpen(v => !v)}
+              aria-expanded={overrideOpen}
+              aria-label={overrideOpen ? 'Close progress override' : 'Set progress manually'}
+            >
+              {effectiveOverride !== null ? 'Adjust %' : 'Set %'}
+            </button>
+          </div>
+
+          {/* Override panel — slider + clear */}
+          {overrideOpen && (
+            <div className="gd-override-panel">
+              <div className="gd-override-slider-row">
+                <span className="gd-override-pct">
+                  {Math.round(effectiveOverride ?? progress.percent ?? 0)}%
+                </span>
+                <input
+                  className="gd-override-slider"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={effectiveOverride !== null
+                    ? Math.round(effectiveOverride)
+                    : Math.round(progress.percent ?? 0)}
+                  onChange={e => handleOverrideChange(e.target.value)}
+                  aria-label="Manual progress percentage"
+                />
+                {effectiveOverride !== null && (
+                  <button
+                    className="gd-override-clear-btn"
+                    onClick={handleClearOverride}
+                    aria-label="Clear manual override"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="gd-override-hint">
+                {effectiveOverride !== null
+                  ? 'Manual override active — hours still tracked above'
+                  : 'Set a manual % for endless or live-service games'}
+              </p>
+            </div>
+          )}
+
+          {/* Inline error toast */}
+          {toastMsg && (
+            <div className="gd-toast" role="alert" aria-live="polite">
+              {toastMsg}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Content Area ── */}
       <div className="gd-content">
