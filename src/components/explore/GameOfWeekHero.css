@@ -1,0 +1,232 @@
+/* =============================================
+   GAME OF THE WEEK HERO
+   Editorial featured-game slot — top of Discover.
+   Cobalt Modern: DM Sans, CSS variables only, iOS-safe.
+   ============================================= */
+
+/* ── Outer wrapper ── */
+.gotw-outer {
+  padding: 0 var(--page-padding);
+  margin-bottom: var(--spacing-lg);
+  /* Same fade-in as explore-section but fires immediately (no delay) */
+  opacity: 0;
+  transform: translateY(10px);
+  animation: exploreSectionIn 0.45s ease forwards;
+}
+
+@media (min-width: 769px) {
+  .gotw-outer {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gotw-outer {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ── Hero card ── */
+.gotw-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  min-height: 172px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: var(--bg-surface);
+  box-shadow:
+    var(--surface-2-shadow),
+    0 0 0 1px var(--border-subtle);
+  /* Subtle cobalt glow */
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.gotw-hero:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gotw-hero:active {
+  transform: scale(0.985);
+  transition: transform 80ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gotw-hero:active {
+    transform: none;
+  }
+}
+
+/* ── Cobalt accent bar — 2px gradient stripe at top ── */
+.gotw-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-brand-gradient);
+  z-index: 2;
+}
+
+/* ── Blurred background art ── */
+.gotw-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.gotw-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Heavy blur + desaturate so text remains legible */
+  filter: blur(22px) brightness(0.3) saturate(1.4);
+  /* Scale up slightly to hide blur-edge artifacts */
+  transform: scale(1.08);
+}
+
+.gotw-bg-overlay {
+  position: absolute;
+  inset: 0;
+  /* Dark midnights-to-surface gradient for depth */
+  background: linear-gradient(
+    135deg,
+    rgba(10, 15, 31, 0.50) 0%,
+    rgba(19, 26, 53, 0.72) 100%
+  );
+}
+
+/* ── Foreground layout row ── */
+.gotw-fg {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  /* Extra top padding to clear the accent bar */
+  padding-top: calc(var(--spacing-md) + 2px);
+}
+
+/* ── Cover image ── */
+.gotw-cover-wrap {
+  flex-shrink: 0;
+  width: 86px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-cover);
+}
+
+.gotw-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Info stack ── */
+.gotw-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+/* "GAME OF THE WEEK" eyebrow — extends global .eyebrow from theme.css */
+.gotw-eyebrow {
+  margin-bottom: 1px;
+}
+
+/* Game title */
+.gotw-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+  margin: 0;
+  /* Clamp to 2 lines on small screens */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Release year */
+.gotw-year {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--text-secondary);
+}
+
+/* Blurb copy */
+.gotw-blurb {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  /* Clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Stats row ── */
+.gotw-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Base stat pill */
+.gotw-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Rating pill — gold tint */
+.gotw-stat--rating {
+  color: var(--star);
+  background: rgba(245, 181, 10, 0.10);
+  border: 1px solid rgba(245, 181, 10, 0.22);
+}
+
+/* TTB pill — muted cobalt */
+.gotw-stat--ttb {
+  color: var(--text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ── Loading skeleton ── */
+.gotw-skeleton {
+  width: 100%;
+  height: 172px;
+  border-radius: var(--radius-xl);
+  /* Uses global .skeleton shimmer from theme.css */
+}

@@ -10,6 +10,7 @@ import {
 } from '../hooks/useExploreData'
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
+import GameOfWeekHero from '../components/explore/GameOfWeekHero'
 import ReviewCard from '../components/ReviewCard'
 import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
@@ -202,6 +203,9 @@ function Explore() {
             </motion.div>
           </button>
         </div>
+
+        {/* ── Game of the Week hero — editorial featured slot ── */}
+        <GameOfWeekHero />
 
         {/* ── Section 1: Games carousel ── */}
         <section className="explore-section explore-section--0">

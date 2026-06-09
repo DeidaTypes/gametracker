@@ -405,6 +405,25 @@
 }
 
 /* =============================================
+   GAME OF THE WEEK HERO — section spacing
+   When the hero is present the first explore-section is no longer :first-child,
+   so we restore the inter-section gap that the :first-child + sibling selector
+   previously established.
+   ============================================= */
+
+/* First explore-section after hero needs no extra top margin — the hero's
+   own margin-bottom already provides the gap. */
+.gotw-outer + .explore-section {
+  margin-top: 0;
+}
+
+/* Second explore-section (Reviews): restore the 32px that
+   .explore-section:first-child + .explore-section previously gave it. */
+.gotw-outer + .explore-section + .explore-section {
+  margin-top: 32px;
+}
+
+/* =============================================
    DESKTOP (769px+)
    ============================================= */
 @media (min-width: 769px) {
