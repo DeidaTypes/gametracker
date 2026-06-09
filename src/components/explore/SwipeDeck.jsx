@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getDiscoveryDeck } from '../../services/igdb'
 import { getAllLists, addGameToList, getGamesFromList } from '../../services/libraryService'
@@ -6,6 +7,10 @@ import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
 import { SwipeCard } from './SwipeCard'
 import './SwipeDeck.css'
+
+// sessionStorage key used to preserve deck state when the user taps a card
+// to view its detail page and then navigates back.
+const DECK_SESSION_KEY = 'gt:swipe-deck-state:v1'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -74,6 +79,7 @@ const REFILL_THRESHOLD = 5
  */
 export function SwipeDeck() {
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [pool, setPool]             = useState(null)  // null = initial loading
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -109,10 +115,27 @@ export function SwipeDeck() {
         } catch { /* non-fatal */ }
       }
 
-      // 3. Taste seed: top-rated played games drive similar_games suggestions.
+      // 3. Restore deck state when returning from a card-tap to GameDetail.
+      //    The tap handler serialises pool + currentIdx to sessionStorage before
+      //    navigating; we pick it up here so the same card is still on top.
+      try {
+        const raw = sessionStorage.getItem(DECK_SESSION_KEY)
+        if (raw) {
+          sessionStorage.removeItem(DECK_SESSION_KEY)
+          const saved = JSON.parse(raw)
+          if (Array.isArray(saved.pool) && saved.pool.length > 0 && !cancelRef.current) {
+            for (const g of saved.pool) seenIdsRef.current.add(String(g.id))
+            setPool(saved.pool)
+            setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
+            return
+          }
+        }
+      } catch { /* non-fatal — fall through to fresh fetch */ }
+
+      // 4. Taste seed: top-rated played games drive similar_games suggestions.
       const tasteGameIds = getTopRatedPlayedIds(3)
 
-      // 4. Fetch the first randomised batch.
+      // 5. Fetch the first randomised batch.
       const excludeIds = new Set([...libraryIdsRef.current, ...seenIdsRef.current])
       let games = []
       try {
@@ -210,6 +233,21 @@ export function SwipeDeck() {
     setCurrentIdx((i) => i + 1)
   }, [])
 
+  // Tap the card body → open game detail. Saves deck state so returning from
+  // GameDetail restores the same card as the top of the deck.
+  const handleTap = useCallback(
+    (game) => {
+      try {
+        sessionStorage.setItem(
+          DECK_SESSION_KEY,
+          JSON.stringify({ pool, currentIdx })
+        )
+      } catch { /* storage full — non-fatal */ }
+      navigate(`/game/${game.id}`)
+    },
+    [navigate, pool, currentIdx]
+  )
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   // Initial loading skeleton
@@ -300,16 +338,19 @@ export function SwipeDeck() {
             isTop={true}
             onSwipeRight={handleSwipeRight}
             onSwipeLeft={handleSwipeLeft}
+            onTap={handleTap}
           />
         )}
       </div>
 
-      {/* Tap-button alternatives — accessibility + reduced-motion safety */}
+      {/* Tap-button alternatives — accessibility + reduced-motion safety.
+          stopPropagation prevents button taps from bubbling to the card body
+          and accidentally triggering card-tap navigation. */}
       <div className="swipe-deck__actions">
         <button
           type="button"
           className="swipe-deck__btn swipe-deck__btn--skip"
-          onClick={() => handleSwipeLeft(topGame)}
+          onClick={(e) => { e.stopPropagation(); handleSwipeLeft(topGame) }}
           aria-label="Skip this game"
         >
           <span className="swipe-deck__btn-icon" aria-hidden="true">✕</span>
@@ -319,7 +360,7 @@ export function SwipeDeck() {
         <button
           type="button"
           className="swipe-deck__btn swipe-deck__btn--add"
-          onClick={() => topGame && handleSwipeRight(topGame)}
+          onClick={(e) => { e.stopPropagation(); topGame && handleSwipeRight(topGame) }}
           aria-label={`Add ${topGame?.title ?? 'this game'} to backlog`}
         >
           <span className="swipe-deck__btn-icon" aria-hidden="true">♥</span>

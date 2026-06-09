@@ -3,6 +3,7 @@ import { useMotionPreference } from '../../hooks/useMotionPreference'
 import './SwipeCard.css'
 
 const SWIPE_THRESHOLD = 80 // px horizontal drag to trigger swipe action
+const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
 
 /**
  * Derive a short display label from a comma-separated genre string.
@@ -36,7 +37,7 @@ function firstGenreLabel(genreStr) {
  *   onSwipeRight   (game) => void  called after exit animation completes
  *   onSwipeLeft    (game) => void  called after exit animation completes
  */
-export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft }) {
+export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap }) {
   const { reduced } = useMotionPreference()
 
   // Drag tracking — ref for latest value (no stale closures in handlers),
@@ -98,14 +99,22 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft }
     if (!draggingRef.current) return
     draggingRef.current = false
     setIsDragging(false)
-    const { x } = dragRef.current
-    if (x > SWIPE_THRESHOLD) triggerSwipe('right')
-    else if (x < -SWIPE_THRESHOLD) triggerSwipe('left')
-    else {
+    const { x, y } = dragRef.current
+    if (x > SWIPE_THRESHOLD) {
+      triggerSwipe('right')
+    } else if (x < -SWIPE_THRESHOLD) {
+      triggerSwipe('left')
+    } else if (Math.abs(x) < TAP_THRESHOLD && Math.abs(y) < TAP_THRESHOLD) {
+      // Pure tap — reset drag state then navigate; card stays in deck
+      dragRef.current = { x: 0, y: 0 }
+      setDragDisplay({ x: 0, y: 0 })
+      onTap?.()
+    } else {
+      // Partial drag — snap card back
       dragRef.current = { x: 0, y: 0 }
       setDragDisplay({ x: 0, y: 0 })
     }
-  }, [triggerSwipe])
+  }, [triggerSwipe, onTap])
 
   const coverUrl  = game.image || game.coverUrl || null
   const genreTag  = firstGenreLabel(game.genre)
