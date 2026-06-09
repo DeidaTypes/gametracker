@@ -66,11 +66,15 @@
 
 .tc-cover-btn {
   flex-shrink: 0;
+  position: relative;
+  width: 48px;
+  height: 64px;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
   border-radius: var(--radius-md);
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 

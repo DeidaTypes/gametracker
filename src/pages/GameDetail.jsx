@@ -196,6 +196,12 @@ function GameDetail() {
   const saveHoursTimer = useRef(null)
   const saveOverrideTimer = useRef(null)
   const toastTimerRef = useRef(null)
+  // Tracks the currently-displayed game so debounced save callbacks don't
+  // mutate state after the user has already navigated to a different game.
+  const gameIdRef = useRef(gameId)
+  // Ref to the hours number input for iOS keyboard compatibility —
+  // focus() called via setTimeout(120) matches the app-wide pattern.
+  const hoursInputRef = useRef(null)
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
@@ -328,6 +334,19 @@ function GameDetail() {
     }
   }, [])
 
+  // Keep gameIdRef in sync so save callbacks can detect game navigation.
+  useEffect(() => {
+    gameIdRef.current = gameId
+  }, [gameId])
+
+  // Focus the hours input when editing mode opens — 120ms matches the
+  // app-wide pattern for iOS WebView keyboard triggering.
+  useEffect(() => {
+    if (!editingHours) return
+    const t = setTimeout(() => hoursInputRef.current?.focus(), 120)
+    return () => clearTimeout(t)
+  }, [editingHours])
+
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
     return () => {
@@ -398,13 +417,16 @@ function GameDetail() {
   const handleStep = (delta) => {
     const prev = effectiveHours
     const next = Math.max(0, Math.round((prev + delta) * 2) / 2)
+    const capturedGameId = gameId
     setLocalHours(next)
     clearTimeout(saveHoursTimer.current)
     saveHoursTimer.current = setTimeout(async () => {
-      const result = await setHoursPlayed(gameId, next, {
+      const result = await setHoursPlayed(capturedGameId, next, {
         game_title: game?.title,
         game_image: game?.image,
       })
+      // Guard: only update UI state if the user hasn't navigated away.
+      if (gameIdRef.current !== capturedGameId) return
       if (result) {
         setTracker(t => ({ ...t, hours_played: result.hours_played }))
         setLocalHours(null)
@@ -422,9 +444,11 @@ function GameDetail() {
     if (isNaN(parsed) || parsed < 0) return
     const prev = effectiveHours
     const next = Math.max(0, Math.round(parsed * 10) / 10)
+    const capturedGameId = gameId
     setLocalHours(next)
-    setHoursPlayed(gameId, next, { game_title: game?.title, game_image: game?.image })
+    setHoursPlayed(capturedGameId, next, { game_title: game?.title, game_image: game?.image })
       .then(result => {
+        if (gameIdRef.current !== capturedGameId) return
         if (result) {
           setTracker(t => ({ ...t, hours_played: result.hours_played }))
           setLocalHours(null)
@@ -440,10 +464,12 @@ function GameDetail() {
   const handleOverrideChange = (val) => {
     const num = parseFloat(val)
     const prev = effectiveOverride
+    const capturedGameId = gameId
     setLocalOverride(num)
     clearTimeout(saveOverrideTimer.current)
     saveOverrideTimer.current = setTimeout(async () => {
-      const result = await setProgressOverride(gameId, num)
+      const result = await setProgressOverride(capturedGameId, num)
+      if (gameIdRef.current !== capturedGameId) return
       if (result) {
         setTracker(t => ({ ...t, progress_override: result.progress_override }))
         setLocalOverride(null)
@@ -456,8 +482,10 @@ function GameDetail() {
 
   // Clear: removes the manual override and falls back to hours-based estimate.
   const handleClearOverride = async () => {
+    const capturedGameId = gameId
     setLocalOverride(null)
-    const result = await setProgressOverride(gameId, null)
+    const result = await setProgressOverride(capturedGameId, null)
+    if (gameIdRef.current !== capturedGameId) return
     if (result) {
       setTracker(t => ({ ...t, progress_override: null }))
     } else {
@@ -763,8 +791,10 @@ function GameDetail() {
             {editingHours ? (
               <div className="gd-hours-input-wrap">
                 <input
+                  ref={hoursInputRef}
                   className="gd-hours-input"
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="0.5"
                   value={inputDraft}
@@ -774,7 +804,6 @@ function GameDetail() {
                     if (e.key === 'Enter') confirmHoursInput()
                     if (e.key === 'Escape') setEditingHours(false)
                   }}
-                  autoFocus
                   aria-label="Hours played"
                 />
                 <span className="gd-hours-unit">hrs</span>
