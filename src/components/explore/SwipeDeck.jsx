@@ -1,81 +1,177 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { fetchSwipeDeckPool } from '../../services/igdb'
-import { getAllLists, addGameToList } from '../../services/libraryService'
+import { getDiscoveryDeck } from '../../services/igdb'
+import { getAllLists, addGameToList, getGamesFromList } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
 import { SwipeCard } from './SwipeCard'
 import './SwipeDeck.css'
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/** Build the set of every game ID already tracked in localStorage. */
+function buildLocalLibraryIds() {
+  const ids = new Set()
+  try {
+    const allLists = getAllLists()
+    for (const list of Object.values(allLists)) {
+      for (const g of list.games ?? []) {
+        if (g.id != null) ids.add(String(g.id))
+      }
+    }
+  } catch { /* ignore */ }
+  return ids
+}
+
 /**
- * SwipeDeck — "Swipe to discover" card stack on the Discover page.
+ * Return up to `n` numeric IGDB game IDs from the user's "played" list,
+ * sorted by rating (highest first). Used as the taste-seed input.
+ */
+function getTopRatedPlayedIds(n = 3) {
+  try {
+    const played = getGamesFromList('played')
+    return played
+      .filter((g) => g.id && g.rating != null)
+      .sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating))
+      .slice(0, n)
+      .map((g) => Number(g.id))
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+// How many cards from the end of the pool to trigger a background refill.
+const REFILL_THRESHOLD = 5
+
+// ── Component ──────────────────────────────────────────────────────────────
+
+/**
+ * SwipeDeck — "Swipe to discover" randomised card stack on the Discover page.
  *
  * Pool source
- *   fetchSwipeDeckPool() → IGDB popular games (rating > 72, last 5 yrs),
- *   cached by igdbRequest's 5-min in-memory + Edge Function proxy cache.
+ *   getDiscoveryDeck() fires 3 parallel IGDB queries with randomised genre,
+ *   era, and offset axes — so every session surfaces a different mix of
+ *   classics, indie gems, and genre surprises. Quality-gated on total_rating
+ *   and total_rating_count; not sorted by popularity.
  *
  * Exclusion
- *   On mount, reads ALL localStorage lists (want-to-play, currently-playing,
- *   played, dropped, custom lists) and removes any matching IGDB game ID from
- *   the candidate pool. Snapshot-at-mount — session additions are reflected
- *   immediately by the deck advancing past them via the right-swipe write.
+ *   On mount, reads every localStorage list AND queries Supabase game_trackers
+ *   for the signed-in user, then removes any matching IGDB game ID from the
+ *   candidate pool. seenIds is tracked in a ref across the entire session so
+ *   refill batches never repeat earlier cards.
  *
- * Right swipe / ♥ button
- *   Optimistic: addGameToList('want-to-play', game) — instant localStorage write
- *   + dispatches 'libraryUpdated'. Then fire-and-forget Supabase upsert to
- *   game_trackers (user_id, igdb_game_id, status='want', game_title, game_image).
+ * Refill
+ *   When the deck reaches REFILL_THRESHOLD cards from the end, a fresh batch
+ *   (new randomised axes) is fetched in the background and appended. The deck
+ *   only shows "That's all for now" when IGDB truly returns nothing new.
  *
- * Left swipe / ✕ button
- *   Skip — session-local only; not persisted anywhere.
+ * Right swipe / ♥
+ *   Optimistic addGameToList('want-to-play') + async Supabase upsert.
  *
- * Exhausted
- *   "That's all for now" state when currentIdx >= pool.length.
+ * Left swipe / ✕
+ *   Session-local skip — not persisted.
  */
 export function SwipeDeck() {
   const { user } = useAuth()
 
-  const [pool, setPool]           = useState(null) // null = loading
+  const [pool, setPool]             = useState(null)  // null = initial loading
   const [currentIdx, setCurrentIdx] = useState(0)
-  const cancelRef = useRef(false)
+  const [refilling, setRefilling]   = useState(false)
+  const [exhausted, setExhausted]   = useState(false)
 
-  // Fetch + filter pool on mount
+  // Refs persist across renders / refills without triggering re-renders.
+  const seenIdsRef    = useRef(new Set()) // all IDs shown this session
+  const libraryIdsRef = useRef(new Set()) // all IDs in user's library
+  const cancelRef     = useRef(false)
+
+  // ── Initial load ──────────────────────────────────────────────────────────
+
   useEffect(() => {
     cancelRef.current = false
 
-    fetchSwipeDeckPool(40)
-      .then((games) => {
+    async function load() {
+      // 1. Snapshot localStorage library IDs.
+      libraryIdsRef.current = buildLocalLibraryIds()
+
+      // 2. Merge in Supabase game_trackers (cross-device accuracy; best-effort).
+      if (user?.id) {
+        try {
+          const { data } = await supabase
+            .from('game_trackers')
+            .select('igdb_game_id')
+            .eq('user_id', user.id)
+          for (const row of data ?? []) {
+            if (row.igdb_game_id) {
+              libraryIdsRef.current.add(String(row.igdb_game_id))
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      // 3. Taste seed: top-rated played games drive similar_games suggestions.
+      const tasteGameIds = getTopRatedPlayedIds(3)
+
+      // 4. Fetch the first randomised batch.
+      const excludeIds = new Set([...libraryIdsRef.current, ...seenIdsRef.current])
+      let games = []
+      try {
+        games = await getDiscoveryDeck({ excludeIds, tasteGameIds, limit: 30 })
+      } catch { games = [] }
+
+      if (cancelRef.current) return
+
+      for (const g of games) seenIdsRef.current.add(String(g.id))
+      setPool(games)
+    }
+
+    load().catch(() => {
+      if (!cancelRef.current) setPool([])
+    })
+
+    return () => { cancelRef.current = true }
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Background refill ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (
+      pool === null ||
+      exhausted ||
+      refilling ||
+      pool.length === 0 ||
+      currentIdx < pool.length - REFILL_THRESHOLD
+    ) return
+
+    setRefilling(true)
+
+    const excludeIds   = new Set([...libraryIdsRef.current, ...seenIdsRef.current])
+    const tasteGameIds = getTopRatedPlayedIds(3)
+
+    getDiscoveryDeck({ excludeIds, tasteGameIds, limit: 30 })
+      .then((newGames) => {
         if (cancelRef.current) return
 
-        // Build a set of every game ID already in any localStorage list.
-        const allLists = getAllLists()
-        const trackedIds = new Set()
-        for (const list of Object.values(allLists)) {
-          for (const g of list.games ?? []) {
-            if (g.id != null) trackedIds.add(String(g.id))
-          }
+        // Only keep games not already seen this session.
+        const fresh = newGames.filter((g) => !seenIdsRef.current.has(String(g.id)))
+
+        if (fresh.length === 0) {
+          setExhausted(true)
+          return
         }
 
-        // Filter out tracked games; cap deck at 25 cards.
-        const filtered = games
-          .filter((g) => !trackedIds.has(String(g.id)))
-          .slice(0, 25)
-
-        setPool(filtered)
+        for (const g of fresh) seenIdsRef.current.add(String(g.id))
+        setPool((prev) => [...prev, ...fresh])
       })
-      .catch(() => {
-        if (!cancelRef.current) setPool([])
-      })
-
-    return () => {
-      cancelRef.current = true
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => { if (!cancelRef.current) setExhausted(true) })
+      .finally(() => { if (!cancelRef.current) setRefilling(false) })
+  }, [currentIdx, pool, refilling, exhausted])
 
   // ── Swipe handlers ─────────────────────────────────────────────────────────
 
   const handleSwipeRight = useCallback(
     (game) => {
-      // 1. Optimistic localStorage write (immediate)
+      // Optimistic: write to localStorage immediately.
       addGameToList('want-to-play', {
         id:        String(game.id),
         title:     game.title,
@@ -86,7 +182,7 @@ export function SwipeDeck() {
         rating:    game.rating   ?? null,
       })
 
-      // 2. Async Supabase upsert — fire-and-forget, never blocks the UI.
+      // Async Supabase upsert — fire-and-forget, never blocks UI.
       if (user?.id) {
         supabase
           .from('game_trackers')
@@ -101,15 +197,10 @@ export function SwipeDeck() {
             { onConflict: 'user_id,igdb_game_id' }
           )
           .then()
-          .catch((err) =>
-            console.error('[SwipeDeck] game_trackers upsert failed:', err)
-          )
+          .catch((err) => console.error('[SwipeDeck] game_trackers upsert failed:', err))
       }
 
-      // 3. Confirm to the user
       showToast(`Added "${game.title}" to Backlog`, 'success', 2500)
-
-      // 4. Advance the deck
       setCurrentIdx((i) => i + 1)
     },
     [user]
@@ -121,7 +212,7 @@ export function SwipeDeck() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // Loading skeleton
+  // Initial loading skeleton
   if (pool === null) {
     return (
       <div className="swipe-deck">
@@ -138,11 +229,11 @@ export function SwipeDeck() {
     )
   }
 
-  // Error / no games — section stays hidden (parent controls visibility)
+  // Empty result — hide section (parent controls outer visibility)
   if (pool.length === 0) return null
 
-  // Exhausted — all cards swiped
-  if (currentIdx >= pool.length) {
+  // Deck exhausted and no refill coming — show end state
+  if (currentIdx >= pool.length && (exhausted || !refilling)) {
     return (
       <div className="swipe-deck">
         <div className="swipe-deck__exhausted" role="status">
@@ -156,9 +247,24 @@ export function SwipeDeck() {
     )
   }
 
-  // Active deck — show top 3 cards in back-to-front DOM order so the top
-  // card (rendered last) naturally appears above the others without
-  // requiring explicit z-index juggling.
+  // Waiting for the refill batch to arrive — brief loading interstitial
+  if (currentIdx >= pool.length && refilling) {
+    return (
+      <div className="swipe-deck">
+        <div className="swipe-deck__scene" aria-busy="true" aria-label="Loading more games">
+          <div className="swipe-deck__skel swipe-deck__skel--2" />
+          <div className="swipe-deck__skel swipe-deck__skel--1" />
+          <div className="swipe-deck__skel swipe-deck__skel--0" />
+        </div>
+        <div className="swipe-deck__actions swipe-deck__actions--ghost" aria-hidden="true">
+          <div className="swipe-deck__btn-ghost" />
+          <div className="swipe-deck__btn-ghost" />
+        </div>
+      </div>
+    )
+  }
+
+  // Active deck — render top 3 cards (back-to-front so top card is on top).
   const topGame  = pool[currentIdx]
   const midGame  = pool[currentIdx + 1]
   const backGame = pool[currentIdx + 2]
@@ -221,7 +327,6 @@ export function SwipeDeck() {
         </button>
       </div>
 
-      {/* Hint text */}
       <p className="swipe-deck__hint" aria-hidden="true">
         Swipe right to add · left to skip
       </p>

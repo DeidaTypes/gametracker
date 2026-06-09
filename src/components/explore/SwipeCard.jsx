@@ -5,6 +5,20 @@ import './SwipeCard.css'
 const SWIPE_THRESHOLD = 80 // px horizontal drag to trigger swipe action
 
 /**
+ * Derive a short display label from a comma-separated genre string.
+ * "Role-playing (RPG), Adventure" → "RPG"
+ * "Real Time Strategy (RTS)"      → "RTS"
+ * "Adventure"                     → "Adventure"
+ */
+function firstGenreLabel(genreStr) {
+  if (!genreStr) return null
+  const first = genreStr.split(',')[0].trim()
+  const parens = first.match(/\(([^)]+)\)/)
+  if (parens) return parens[1]
+  return first.length > 20 ? first.slice(0, 18) + '…' : first
+}
+
+/**
  * SwipeCard — one game card in the "Swipe to discover" deck.
  *
  * Top card (isTop=true): responds to pointer drag gestures. Swiping past
@@ -16,7 +30,7 @@ const SWIPE_THRESHOLD = 80 // px horizontal drag to trigger swipe action
  * card is removed.
  *
  * Props
- *   game           { id, title, image, year, developer }
+ *   game           { id, title, image, year, genre, developer }
  *   stackIndex     0 = top, 1 = mid, 2 = back
  *   isTop          true only for the interactive top card
  *   onSwipeRight   (game) => void  called after exit animation completes
@@ -93,7 +107,8 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft }
     }
   }, [triggerSwipe])
 
-  const coverUrl = game.image || game.coverUrl || null
+  const coverUrl  = game.image || game.coverUrl || null
+  const genreTag  = firstGenreLabel(game.genre)
 
   // Compute transform + transition for this card's position in the stack.
   let transform = ''
@@ -166,8 +181,11 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft }
       {/* Gradient overlay — fades the bottom so text stays readable */}
       <div className="swipe-card__gradient" aria-hidden="true" />
 
-      {/* Title + year */}
+      {/* Genre tag + title + year */}
       <div className="swipe-card__info" aria-hidden="true">
+        {genreTag && (
+          <span className="swipe-card__genre">{genreTag}</span>
+        )}
         <p className="swipe-card__title">{game.title}</p>
         {game.year ? <p className="swipe-card__year">{game.year}</p> : null}
       </div>

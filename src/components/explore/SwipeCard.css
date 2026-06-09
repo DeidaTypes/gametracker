@@ -90,6 +90,27 @@
   pointer-events: none;
 }
 
+/* ---- Genre tag ---- */
+
+.swipe-card__genre {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .swipe-card__title {
   font-family: var(--font-body);
   font-size: var(--font-size-title);

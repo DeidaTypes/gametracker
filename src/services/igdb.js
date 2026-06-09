@@ -1169,15 +1169,9 @@ limit 8;`
 }
 
 /**
- * Swipe-to-discover candidate pool — high-quality recent games.
- *
- * Quality bar: IGDB rating > 72 (out of 100 ≈ 3.6/5), at least 30 player
- * ratings, cover required, released in the last 5 years. Sorted by
- * popularity (rating_count) so the most-loved games surface first.
- *
- * The response goes through igdbRequest()'s built-in 5-min in-memory cache
- * + the Edge Function proxy, so re-mounting the Discover page after a brief
- * background stint is effectively free.
+ * fetchSwipeDeckPool — legacy popularity-sorted pool (kept for reference).
+ * New code uses getDiscoveryDeck() for varied, randomized discovery.
+ * @deprecated Use getDiscoveryDeck() instead.
  */
 export async function fetchSwipeDeckPool(limit = 40) {
   const fiveYearsAgo = Math.floor(Date.now() / 1000) - 5 * 365 * 24 * 60 * 60
@@ -1194,6 +1188,220 @@ limit ${limit};`
     console.error('[igdb] fetchSwipeDeckPool failed:', err)
     return []
   }
+}
+
+// ─── Discovery deck — randomized multi-axis discovery engine ─────────────────
+//
+// Every session a fresh mix: 3 parallel IGDB queries with independently
+// randomised genre, era window, and offset. Quality-gated (not popularity-
+// sorted), so a classic 1998 JRPG and a 2023 indie can both surface.
+
+const IGDB_GENRES_CACHE_KEY = 'gt:igdb-genres:v1'
+const IGDB_GENRES_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+/** Fetch all IGDB genres and cache them in localStorage for 7 days. */
+async function fetchIgdbGenres() {
+  try {
+    const raw = localStorage.getItem(IGDB_GENRES_CACHE_KEY)
+    if (raw) {
+      const cached = JSON.parse(raw)
+      if (Date.now() < cached.expiresAt && Array.isArray(cached.genres) && cached.genres.length > 0) {
+        return cached.genres
+      }
+    }
+  } catch { /* ignore */ }
+
+  const query = `fields id, name; limit 50;`
+  const genres = await igdbRequest('genres', query)
+
+  if (Array.isArray(genres) && genres.length > 0) {
+    const toCache = genres
+      .filter((g) => g && g.id && g.name)
+      .map((g) => ({ id: g.id, name: g.name }))
+    try {
+      localStorage.setItem(
+        IGDB_GENRES_CACHE_KEY,
+        JSON.stringify({ genres: toCache, expiresAt: Date.now() + IGDB_GENRES_CACHE_TTL })
+      )
+    } catch { /* storage full — ignore */ }
+    return toCache
+  }
+  return []
+}
+
+// Fallback genre set when the IGDB genres endpoint is unavailable.
+const FALLBACK_GENRES = [
+  { id: 12, name: 'Role-playing (RPG)' },
+  { id: 31, name: 'Adventure' },
+  { id: 5,  name: 'Shooter' },
+  { id: 8,  name: 'Platform' },
+  { id: 9,  name: 'Puzzle' },
+  { id: 11, name: 'Real Time Strategy (RTS)' },
+  { id: 14, name: 'Sport' },
+  { id: 15, name: 'Strategy' },
+  { id: 25, name: 'Hack and slash/Beat \'em up' },
+  { id: 32, name: 'Indie' },
+]
+
+// Era windows for the randomized discovery axis.
+const DISCOVERY_ERAS = [
+  { label: 'classic', start: 0,          end: 946684800  }, // before 2000
+  { label: '2000s',   start: 946684800,  end: 1262304000 }, // 2000–2010
+  { label: '2010s',   start: 1262304000, end: 1514764800 }, // 2010–2018
+  { label: 'modern',  start: 1514764800, end: null        }, // 2018–now
+]
+
+function randomPick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+/**
+ * Fetch games from IGDB similar_games lists of the user's top-rated titles,
+ * filtered to quality-gate and not already in excludeIds/seenInBatch.
+ * Used as a minority taste seed — keeps the deck feeling personally relevant.
+ */
+async function fetchDiscoveryTasteSeed(tasteIgdbIds, excludeIds, seenInBatch) {
+  if (!tasteIgdbIds || tasteIgdbIds.length === 0) return []
+  try {
+    const simQuery = `fields similar_games;
+where id = (${tasteIgdbIds.join(',')});
+limit ${tasteIgdbIds.length};`
+    const results = await igdbRequest('games', simQuery)
+
+    const seedIds = []
+    const localSeen = new Set()
+    for (const g of results || []) {
+      for (const sid of g.similar_games || []) {
+        const id = typeof sid === 'object' ? sid.id : sid
+        const key = String(id)
+        if (!localSeen.has(key) && !excludeIds.has(key) && !seenInBatch.has(key)) {
+          localSeen.add(key)
+          seedIds.push(id)
+        }
+      }
+    }
+    if (!seedIds.length) return []
+
+    const limited = seedIds.slice(0, 20)
+    const gameQuery = `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name;
+where id = (${limited.join(',')}) & cover != null & total_rating >= 70;
+limit ${limited.length};`
+
+    const games = await igdbRequest('games', gameQuery)
+    return (games || []).filter((g) => g.id && g.name && g.cover?.image_id)
+  } catch (err) {
+    console.warn('[igdb] fetchDiscoveryTasteSeed failed:', err)
+    return []
+  }
+}
+
+/**
+ * getDiscoveryDeck — randomized, varied discovery pool for "Swipe to Discover".
+ *
+ * Fires 3 IGDB sub-queries in parallel, each with independently randomised:
+ *   • genre  — from the cached /genres list (seeded from IGDB, updated weekly)
+ *   • era    — pre-2000 / 2000s / 2010s / 2018+ (equal probability per slot)
+ *   • offset — 0–99, so repeated calls rarely return the same page
+ *
+ * Quality gate (tunable dials):
+ *   total_rating >= 75        keeps good games only
+ *   total_rating_count >= 20  keeps recognisable titles (not junk)
+ *   category = 0              main games only (no DLC / ports / expansions)
+ *   version_parent = null     no regional variant clutter
+ *   cover != null             always has artwork
+ *
+ * Results are de-duped, shuffled (Fisher-Yates), and can be seeded with
+ * similar_games from the user's top-rated played titles to add relevance.
+ * Games already in the user's library or seen this session are excluded.
+ *
+ * @param {Object}      opts
+ * @param {Set<string>} opts.excludeIds   – IGDB IDs to exclude (library + seen)
+ * @param {number[]}    opts.tasteGameIds – IGDB IDs of user's top-rated games
+ * @param {number}      opts.limit        – max cards to return (default 30)
+ * @returns {Promise<Array>} formatted game objects (same shape as formatGames)
+ */
+export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = [], limit = 30 } = {}) {
+  const now = Math.floor(Date.now() / 1000)
+
+  // Resolve genre list — cached; falls back to a hardcoded set if IGDB is down.
+  let allGenres = FALLBACK_GENRES
+  try {
+    const fetched = await fetchIgdbGenres()
+    if (fetched.length > 0) allGenres = fetched
+  } catch { /* use fallback */ }
+
+  const eras = DISCOVERY_ERAS.map((e) => ({ ...e, end: e.end ?? now }))
+
+  // Build 3 sub-queries with independent randomised axes.
+  const axes = Array.from({ length: 3 }, () => {
+    const genre  = randomPick(allGenres)
+    const era    = randomPick(eras)
+    const offset = Math.floor(Math.random() * 100)
+
+    const query =
+      `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name;\n` +
+      `where category = 0 & version_parent = null & cover != null` +
+      ` & total_rating_count >= 20 & total_rating >= 75` +
+      ` & genres = (${genre.id})` +
+      ` & first_release_date >= ${era.start} & first_release_date < ${era.end};\n` +
+      `sort total_rating desc; limit 25; offset ${offset};`
+
+    return { genre, era, offset, query }
+  })
+
+  if (import.meta.env.DEV) {
+    axes.forEach(({ genre, era, offset }) =>
+      console.log(`[discovery] axis → genre="${genre.name}" era="${era.label}" offset=${offset}`)
+    )
+  }
+
+  // Fire all 3 concurrently; individual failures are tolerated.
+  const settled = await Promise.allSettled(
+    axes.map(({ query }) => igdbRequest('games', query))
+  )
+
+  // Combine, de-dupe, and exclude library/seen IDs.
+  const seenInBatch = new Set()
+  const combined = []
+
+  for (const result of settled) {
+    if (result.status !== 'fulfilled' || !Array.isArray(result.value)) continue
+    for (const g of result.value) {
+      if (!g?.id || !g?.name || !g?.cover?.image_id) continue
+      const key = String(g.id)
+      if (seenInBatch.has(key) || excludeIds.has(key)) continue
+      seenInBatch.add(key)
+      combined.push(g)
+    }
+  }
+
+  // Optional taste seed — minority (≤ ¼ of limit) from similar_games.
+  if (tasteGameIds.length > 0) {
+    const seedGames = await fetchDiscoveryTasteSeed(tasteGameIds.slice(0, 3), excludeIds, seenInBatch)
+    const seedLimit = Math.ceil(limit / 4)
+    for (const g of seedGames.slice(0, seedLimit)) {
+      const key = String(g.id)
+      if (!seenInBatch.has(key)) {
+        seenInBatch.add(key)
+        combined.push(g)
+      }
+    }
+  }
+
+  // Fisher-Yates shuffle — ensures genre/era mix is interleaved, not grouped.
+  for (let i = combined.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[combined[i], combined[j]] = [combined[j], combined[i]]
+  }
+
+  // Normalise total_rating → rating so formatGames() can consume it.
+  const toFormat = combined.slice(0, limit).map((g) => ({
+    ...g,
+    rating:       g.total_rating       ?? g.rating       ?? null,
+    rating_count: g.total_rating_count ?? g.rating_count ?? null,
+  }))
+
+  return formatGames(toFormat)
 }
 
 // Test API connection
