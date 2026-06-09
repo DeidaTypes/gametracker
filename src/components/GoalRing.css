@@ -20,12 +20,12 @@
 
 /* SVG track ring */
 .goal-ring__track {
-  stroke: var(--border-strong);
+  stroke: var(--goal-track);
 }
 
-/* Progress arc — cobalt by default */
+/* Progress arc — emerald goal ring */
 .goal-ring__fill {
-  stroke: var(--accent);
+  stroke: var(--goal);
   transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
