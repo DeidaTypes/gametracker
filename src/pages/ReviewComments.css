@@ -376,75 +376,13 @@ body.keyboard-open .rc-scroll {
   color: var(--color-accent-rust) !important;
 }
 
-/* ── Edit-in-place ──────────────────────────────────────────────────── */
+/* ── Comment: editing highlight ─────────────────────────────────────── */
 
-.rc-comment__edit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.rc-comment__edit-input {
-  width: 100%;
-  resize: vertical;
-  min-height: 60px;
-  padding: 8px 10px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+.rc-comment--editing {
+  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.06);
   border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.rc-comment__edit-input:focus {
-  border-color: var(--color-border-focus);
-}
-
-.rc-comment__edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-xs);
-}
-
-.rc-comment__edit-btn {
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background var(--transition-fast), color var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.rc-comment__edit-btn--ghost {
-  background: transparent;
-  border-color: var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.rc-comment__edit-btn--ghost:hover {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-.rc-comment__edit-btn--primary {
-  background: var(--color-brand-primary);
-  color: #ffffff;
-}
-
-.rc-comment__edit-btn--primary:hover {
-  filter: brightness(1.05);
-}
-
-.rc-comment__edit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  outline: 1px solid rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.25);
+  outline-offset: 2px;
 }
 
 /* ── Composer ───────────────────────────────────────────────────────── */
@@ -467,6 +405,26 @@ body.keyboard-open .rc-scroll {
   transform: translateY(calc(-1 * max(0px, var(--keyboard-inset, 0px) - var(--bottom-nav-safe-area, 80px))));
   transition: transform 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
   will-change: transform;
+}
+
+/* Edit-mode strip — sits directly above the composer row */
+.rc-composer__edit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.14);
+  border: 1px solid rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.35);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rc-composer__reply-chip {
@@ -581,14 +539,18 @@ body.keyboard-open .rc-scroll {
   cursor: not-allowed;
 }
 
+/* Save variant — same size/shape, slightly warmer tint to signal edit mode */
+.rc-composer__send--save {
+  background: var(--color-brand-primary, var(--accent));
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .rc-back,
   .rc-comment__action,
   .rc-comment__kebab-btn,
-  .rc-comment__edit-input,
-  .rc-comment__edit-btn,
+  .rc-comment--editing,
   .rc-composer,
   .rc-composer__input,
   .rc-composer__send,

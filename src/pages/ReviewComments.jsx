@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
+import { LuCheck, LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
 import ReportSheet from '../components/ReportSheet'
@@ -117,16 +117,14 @@ function CommentRow({
   comment,
   isReply,
   isOwn,
+  isEditing,
   onReply,
-  onEdit,
+  onEditStart,
   onDelete,
   onReport,
 }) {
   const navigate = useNavigate()
   const [kebabOpen, setKebabOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(comment.body)
-  const [saving, setSaving] = useState(false)
   const kebabRef = useRef(null)
 
   // Tapping a commenter's avatar or name opens their profile. Prefer
@@ -140,10 +138,6 @@ function CommentRow({
       navigate(`/user/id/${encodeURIComponent(authorUserId)}`)
     }
   }
-
-  useEffect(() => {
-    setDraft(comment.body)
-  }, [comment.body])
 
   useEffect(() => {
     if (!kebabOpen) return undefined
@@ -160,28 +154,6 @@ function CommentRow({
     }
   }, [kebabOpen])
 
-  const handleSaveEdit = async () => {
-    const trimmed = draft.trim()
-    if (!trimmed) {
-      showToast('Comment cannot be empty.', 'error')
-      return
-    }
-    if (trimmed === comment.body) {
-      setEditing(false)
-      return
-    }
-    setSaving(true)
-    try {
-      await onEdit(comment.id, trimmed)
-      setEditing(false)
-    } catch (err) {
-      // Toast surfaced by parent — keep the editor open so the user
-      // can retry without retyping.
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const edited =
     comment.updated_at &&
     comment.created_at &&
@@ -194,7 +166,7 @@ function CommentRow({
 
   return (
     <article
-      className={`rc-comment${isReply ? ' rc-comment--reply' : ''}`}
+      className={`rc-comment${isReply ? ' rc-comment--reply' : ''}${isEditing ? ' rc-comment--editing' : ''}`}
       data-comment-id={comment.id}
     >
       <button
@@ -236,110 +208,74 @@ function CommentRow({
           )}
         </header>
 
-        {editing ? (
-          <div className="rc-comment__edit">
-            <textarea
-              className="rc-comment__edit-input"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              aria-label="Edit comment"
-            />
-            <div className="rc-comment__edit-actions">
-              <button
-                type="button"
-                className="rc-comment__edit-btn rc-comment__edit-btn--ghost"
-                onClick={() => {
-                  setDraft(comment.body)
-                  setEditing(false)
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rc-comment__edit-btn rc-comment__edit-btn--primary"
-                onClick={handleSaveEdit}
-                disabled={saving || !draft.trim()}
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="rc-comment__text">{comment.body}</p>
-        )}
+        <p className="rc-comment__text">{comment.body}</p>
 
-        {!editing && (
-          <div className="rc-comment__actions">
-            {/* Only top-level comments get a Reply button — replies
-                cannot have their own replies. */}
-            {!isReply && (
-              <button
-                type="button"
-                className="rc-comment__action"
-                onClick={() => onReply(comment)}
-              >
-                Reply
-              </button>
-            )}
-            <div className="rc-comment__kebab" ref={kebabRef}>
-              <button
-                type="button"
-                className="rc-comment__kebab-btn"
-                onClick={() => setKebabOpen((v) => !v)}
-                aria-label="More options"
-                aria-expanded={kebabOpen}
-              >
-                <LuEllipsis size={16} aria-hidden="true" />
-              </button>
-              {kebabOpen && (
-                <div className="rc-comment__kebab-menu" role="menu">
-                  {isOwn && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          setEditing(true)
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="rc-comment__kebab-menu-danger"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          onDelete(comment)
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  {!isOwn && (
+        <div className="rc-comment__actions">
+          {/* Only top-level comments get a Reply button — replies
+              cannot have their own replies. */}
+          {!isReply && (
+            <button
+              type="button"
+              className="rc-comment__action"
+              onClick={() => onReply(comment)}
+            >
+              Reply
+            </button>
+          )}
+          <div className="rc-comment__kebab" ref={kebabRef}>
+            <button
+              type="button"
+              className="rc-comment__kebab-btn"
+              onClick={() => setKebabOpen((v) => !v)}
+              aria-label="More options"
+              aria-expanded={kebabOpen}
+            >
+              <LuEllipsis size={16} aria-hidden="true" />
+            </button>
+            {kebabOpen && (
+              <div className="rc-comment__kebab-menu" role="menu">
+                {isOwn && (
+                  <>
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => {
                         setKebabOpen(false)
-                        onReport(comment)
+                        onEditStart(comment)
                       }}
                     >
-                      <HiOutlineFlag size={14} aria-hidden="true" />
-                      Report
+                      Edit
                     </button>
-                  )}
-                </div>
-              )}
-            </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="rc-comment__kebab-menu-danger"
+                      onClick={() => {
+                        setKebabOpen(false)
+                        onDelete(comment)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+                {!isOwn && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setKebabOpen(false)
+                      onReport(comment)
+                    }}
+                  >
+                    <HiOutlineFlag size={14} aria-hidden="true" />
+                    Report
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </article>
   )
@@ -366,19 +302,28 @@ function ReviewComments() {
   // parent's id to postComment without a second lookup.
   const [draft, setDraft] = useState('')
   const [replyTo, setReplyTo] = useState(null)
+  // `editingComment` is the full comment object being edited via the
+  // pinned composer, or null when in normal add-a-comment mode.
+  const [editingComment, setEditingComment] = useState(null)
   const [posting, setPosting] = useState(false)
   const composerInputRef = useRef(null)
-  // Scrollable body — used to scroll the thread to bottom when the
-  // keyboard opens, keeping the newest comments visible above the composer.
+  // Keep a ref in sync with editingComment so handleComposerFocus can
+  // read the current value without being a stale closure.
+  const editingCommentRef = useRef(null)
+  // Scrollable body — used to scroll the thread when the keyboard opens.
   const scrollRef = useRef(null)
-  // Sentinel at the bottom of the thread list; scrolled into view when the
-  // keyboard opens so the last comment stays visible above the raised bar.
+  // Sentinel at the bottom of the thread list.
   const threadBottomRef = useRef(null)
 
   // Report sheet
   const [reportTarget, setReportTarget] = useState(null)
 
   const isAuthed = !!user
+
+  // Keep ref in sync so handleComposerFocus sees the latest value.
+  useEffect(() => {
+    editingCommentRef.current = editingComment
+  }, [editingComment])
 
   /* ── Initial load ────────────────────────────────────────────── */
 
@@ -499,6 +444,8 @@ function ReviewComments() {
 
   const handleReplyClick = useCallback(
     (parent) => {
+      // Exit edit mode if the user switches to a reply instead.
+      setEditingComment(null)
       setReplyTo(parent)
       const name = displayNameFor(parent.users)
       const mention = `@${name} `
@@ -517,14 +464,37 @@ function ReviewComments() {
     setDraft((prev) => prev.replace(/^@\S+\s*/, ''))
   }, [])
 
-  // When the textarea gains focus the keyboard slides in; after it settles
-  // (~320 ms) scroll the internal .rc-scroll container to the bottom so the
-  // last comment stays visible above the raised composer bar.
+  // When the textarea gains focus the keyboard slides in. After it
+  // settles (~320 ms) we either scroll the comment being edited into
+  // view (edit mode) or scroll the list to the bottom (normal mode).
   const handleComposerFocus = useCallback(() => {
     setTimeout(() => {
-      const el = scrollRef.current
-      if (el) el.scrollTop = el.scrollHeight
+      const editing = editingCommentRef.current
+      if (editing) {
+        const el = document.querySelector(`[data-comment-id="${editing.id}"]`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      } else {
+        const el = scrollRef.current
+        if (el) el.scrollTop = el.scrollHeight
+      }
     }, 320)
+  }, [])
+
+  // Enter edit mode: pre-fill the pinned composer and focus it.
+  const handleEditStart = useCallback(
+    (comment) => {
+      setReplyTo(null)
+      setEditingComment(comment)
+      setDraft(comment.body)
+      window.requestAnimationFrame(focusComposer)
+    },
+    [focusComposer]
+  )
+
+  // Exit edit mode without saving.
+  const handleCancelEdit = useCallback(() => {
+    setEditingComment(null)
+    setDraft('')
   }, [])
 
   const handleSubmit = async (e) => {
@@ -537,6 +507,39 @@ function ReviewComments() {
     if (!trimmed) return
     if (posting) return
 
+    // ── Edit mode: update the existing comment in place ──────────
+    if (editingComment) {
+      if (trimmed === editingComment.body) {
+        // No change — just exit edit mode.
+        setEditingComment(null)
+        setDraft('')
+        return
+      }
+      setPosting(true)
+      try {
+        const updated = await updateComment(editingComment.id, trimmed)
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === editingComment.id
+              ? { ...c, ...updated, users: updated.users || c.users }
+              : c
+          )
+        )
+        setEditingComment(null)
+        setDraft('')
+      } catch (err) {
+        console.error('[ReviewComments] updateComment failed:', err)
+        showToast(
+          err?.message || "Couldn't update your comment. Please try again.",
+          'error'
+        )
+      } finally {
+        setPosting(false)
+      }
+      return
+    }
+
+    // ── Normal mode: post a new comment ──────────────────────────
     setPosting(true)
     try {
       const inserted = await postComment({
@@ -561,27 +564,6 @@ function ReviewComments() {
       setPosting(false)
     }
   }
-
-  const handleEdit = useCallback(async (commentId, body) => {
-    try {
-      const updated = await updateComment(commentId, body)
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === commentId
-            ? // Preserve the joined users row when the API didn't return one.
-              { ...c, ...updated, users: updated.users || c.users }
-            : c
-        )
-      )
-    } catch (err) {
-      console.error('[ReviewComments] updateComment failed:', err)
-      showToast(
-        err?.message || "Couldn't update your comment. Please try again.",
-        'error'
-      )
-      throw err
-    }
-  }, [])
 
   const handleReport = useCallback((comment) => {
     setReportTarget(comment)
@@ -674,8 +656,9 @@ function ReviewComments() {
                   comment={c}
                   isReply={false}
                   isOwn={!!user && c.user_id === user.id}
+                  isEditing={editingComment?.id === c.id}
                   onReply={handleReplyClick}
-                  onEdit={handleEdit}
+                  onEditStart={handleEditStart}
                   onDelete={handleDelete}
                   onReport={handleReport}
                 />
@@ -685,8 +668,9 @@ function ReviewComments() {
                     comment={r}
                     isReply
                     isOwn={!!user && r.user_id === user.id}
+                    isEditing={editingComment?.id === r.id}
                     onReply={handleReplyClick}
-                    onEdit={handleEdit}
+                    onEditStart={handleEditStart}
                     onDelete={handleDelete}
                     onReport={handleReport}
                   />
@@ -708,7 +692,22 @@ function ReviewComments() {
       />
 
       <form className="rc-composer" onSubmit={handleSubmit}>
-        {replyTo && (
+        {/* Edit-mode strip — shown above the composer when editing a comment */}
+        {editingComment && (
+          <div className="rc-composer__edit-chip">
+            <span>Editing comment</span>
+            <button
+              type="button"
+              className="rc-composer__reply-cancel"
+              onClick={handleCancelEdit}
+              aria-label="Cancel editing"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {/* Reply chip — only shown in reply mode (mutually exclusive with edit) */}
+        {replyTo && !editingComment && (
           <div className="rc-composer__reply-chip">
             <span>
               Replying to <strong>{displayNameFor(replyTo.users)}</strong>
@@ -735,7 +734,7 @@ function ReviewComments() {
             rows={1}
             maxLength={2000}
             disabled={!isAuthed || posting}
-            aria-label="Comment text"
+            aria-label={editingComment ? 'Edit comment text' : 'Comment text'}
             onFocus={handleComposerFocus}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -745,11 +744,14 @@ function ReviewComments() {
           />
           <button
             type="submit"
-            className="rc-composer__send"
+            className={`rc-composer__send${editingComment ? ' rc-composer__send--save' : ''}`}
             disabled={!isAuthed || posting || !draft.trim()}
-            aria-label="Send comment"
+            aria-label={editingComment ? 'Save edit' : 'Send comment'}
           >
-            <LuSend size={15} aria-hidden="true" />
+            {editingComment
+              ? <LuCheck size={15} aria-hidden="true" />
+              : <LuSend size={15} aria-hidden="true" />
+            }
           </button>
         </div>
       </form>
