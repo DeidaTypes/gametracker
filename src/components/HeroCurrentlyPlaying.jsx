@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { PlayCircle } from 'lucide-react'
 import SharedCover from './SharedCover'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { computeProgress } from '../services/progressHelper'
+import { getTimeToBeat } from '../services/timeToBeatService'
 import './HeroCurrentlyPlaying.css'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -81,6 +83,25 @@ export default function HeroCurrentlyPlaying({ games, onAddGame, boxed = false }
   const eyebrow = useMemo(getTimeOfDayLabel, [])
   const rootClass = `hcp${boxed ? ' hcp--boxed' : ''}`
 
+  // Hoist spotlight out so hooks can reference it unconditionally
+  const spotlight = games?.[0] ?? null
+  const others = games?.slice(1) ?? []
+
+  // Fetch TTB for the spotlight game; drives computeProgress
+  const [spotlightTtb, setSpotlightTtb] = useState(null)
+
+  useEffect(() => {
+    if (!spotlight?.id) {
+      setSpotlightTtb(null)
+      return
+    }
+    let cancelled = false
+    getTimeToBeat(spotlight.id).then((data) => {
+      if (!cancelled) setSpotlightTtb(data)
+    })
+    return () => { cancelled = true }
+  }, [spotlight?.id])
+
   if (!games || games.length === 0) {
     return (
       <div className={rootClass}>
@@ -89,14 +110,14 @@ export default function HeroCurrentlyPlaying({ games, onAddGame, boxed = false }
     )
   }
 
-  const [spotlight, ...others] = games
-
   const bgSrc = upgradeIgdbUrl(spotlight.image, 't_1080p')
   const coverSrc = upgradeIgdbUrl(spotlight.image, 't_cover_big')
 
-  const pct = spotlight.progressPercent ?? 0
-  const hours = spotlight.hoursPlayed
-  const hasProgress = pct > 0 || (hours != null && hours > 0)
+  const progress = computeProgress({
+    hoursPlayed: spotlight.hoursPlayed,
+    progressOverride: spotlight.progressPercent,
+    normallySeconds: spotlightTtb?.normallySeconds ?? null,
+  })
   const timeAgo = humanTimeAgo(spotlight.lastPlayedAt || spotlight.addedAt)
 
   function goToSpotlight(e) {
@@ -151,20 +172,39 @@ export default function HeroCurrentlyPlaying({ games, onAddGame, boxed = false }
             <h2 className="hcp-title">{spotlight.title}</h2>
             {timeAgo && <span className="hcp-timestamp">{timeAgo}</span>}
 
-            {hasProgress && (
-              <div className="hcp-progress-block">
-                <div className="hcp-progress-meta">
-                  {pct > 0 && <span className="hcp-pct">{pct}% complete</span>}
-                  {hours > 0 && <span className="hcp-hours">{hours}h played</span>}
-                </div>
-                <div className="hcp-bar-track">
+            <div className="hcp-progress-block">
+              {progress.showBar ? (
+                <>
+                  <div className="hcp-progress-meta">
+                    <span className="hcp-pct">{Math.round(progress.percent)}%</span>
+                    {progress.mainHours != null && (
+                      <span className="hcp-hours">of ~{progress.mainHours}h</span>
+                    )}
+                  </div>
                   <div
-                    className="hcp-bar-fill"
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
+                    className="hcp-bar-track"
+                    role="progressbar"
+                    aria-valuenow={Math.round(progress.percent)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Progress: ${Math.round(progress.percent)}%`}
+                  >
+                    <div
+                      className="hcp-bar-fill"
+                      style={{ width: `${Math.min(progress.percent, 100)}%` }}
+                    />
+                  </div>
+                </>
+              ) : progress.hoursPlayed > 0 ? (
+                <div className="hcp-progress-meta">
+                  <span className="hcp-hours">{progress.label}</span>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="hcp-progress-meta">
+                  <span className="hcp-just-started">Just started</span>
+                </div>
+              )}
+            </div>
 
             <button
               className="hcp-continue-btn"

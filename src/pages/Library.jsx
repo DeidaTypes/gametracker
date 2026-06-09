@@ -18,6 +18,7 @@ import {
   createList,
   addGameToList,
 } from '../services/listService'
+import { getTimeToBeat } from '../services/timeToBeatService'
 import './Library.css'
 
 // Mandatory tracker lists that live in localStorage (not Supabase). The
@@ -61,6 +62,8 @@ function Library() {
   const [isLoadingCustom, setIsLoadingCustom] = useState(true)
   const [errorCustom, setErrorCustom] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  // Backlog hours: sum of main-story times for Want-to-Play games that have TTB data
+  const [backlogHours, setBacklogHours] = useState({ totalHours: null, withoutEstimates: 0 })
 
   const [trackersRef] = useAutoAnimateMotion()
   const [customGridRef] = useAutoAnimateMotion()
@@ -106,6 +109,37 @@ function Library() {
     window.addEventListener('libraryUpdated', handleUpdate)
     return () => window.removeEventListener('libraryUpdated', handleUpdate)
   }, [loadTrackerLists, loadCustomLists])
+
+  // Compute total backlog hours from TTB data for Want-to-Play games.
+  // Runs whenever the want-to-play list changes. Fetches are parallelized
+  // and hit the dual-layer cache so repeat visits are instant.
+  useEffect(() => {
+    const wantGames = trackerLists['want-to-play']?.games || []
+    if (wantGames.length === 0) {
+      setBacklogHours({ totalHours: null, withoutEstimates: 0 })
+      return
+    }
+    let cancelled = false
+    Promise.all(
+      wantGames.map((g) => (g.id ? getTimeToBeat(g.id) : Promise.resolve(null)))
+    ).then((results) => {
+      if (cancelled) return
+      let totalSeconds = 0
+      let withoutEstimates = 0
+      for (const ttb of results) {
+        if (ttb?.normallySeconds != null && ttb.normallySeconds > 0) {
+          totalSeconds += ttb.normallySeconds
+        } else {
+          withoutEstimates++
+        }
+      }
+      setBacklogHours({
+        totalHours: totalSeconds > 0 ? Math.round(totalSeconds / 3600) : null,
+        withoutEstimates,
+      })
+    })
+    return () => { cancelled = true }
+  }, [trackerLists])
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -218,6 +252,11 @@ function Library() {
           <p className="lib-tracker-count">
             {count} {count === 1 ? 'game' : 'games'}
           </p>
+          {id === 'want-to-play' && backlogHours.totalHours !== null && (
+            <p className="lib-tracker-backlog-hint">
+              ~{backlogHours.totalHours.toLocaleString()} hrs
+            </p>
+          )}
         </div>
 
         <div className="lib-tracker-fan-wrap">
@@ -344,6 +383,16 @@ function Library() {
               <p className="lib-hero-sub">
                 {totalTracked} {totalTracked === 1 ? 'game' : 'games'} tracked
               </p>
+              {backlogHours.totalHours !== null && (
+                <p className="lib-hero-backlog">
+                  ~{backlogHours.totalHours.toLocaleString()} hrs of backlog
+                  {backlogHours.withoutEstimates > 0 && (
+                    <span className="lib-hero-backlog-note">
+                      {' '}· +{backlogHours.withoutEstimates} without estimates
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
             <button
               type="button"

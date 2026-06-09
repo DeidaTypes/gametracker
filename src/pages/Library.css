@@ -63,6 +63,22 @@
   margin: 0;
 }
 
+/* Backlog hours total — shown below the tracked-count subtitle when
+   at least one Want-to-Play game has IGDB time-to-beat data. */
+.lib-hero-backlog {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--accent);
+  margin: 3px 0 0;
+}
+
+.lib-hero-backlog-note {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
 /* Cobalt outline button (not filled). Pairs with the filled state on
    :hover so the button still reads as the primary CTA. */
 .lib-hero-newbtn {
@@ -258,6 +274,16 @@
   line-height: 1.3;
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* Time-to-beat backlog hint shown on the Want to Play tracker card. */
+.lib-tracker-backlog-hint {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--accent);
+  margin: 3px 0 0;
 }
 
 /* ── Fan stack ── */

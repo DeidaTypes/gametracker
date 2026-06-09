@@ -222,6 +222,15 @@
   color: var(--color-text-secondary);
 }
 
+.hcp-just-started {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
 .hcp-bar-track {
   height: 4px;
   background: rgba(255, 255, 255, 0.12);
