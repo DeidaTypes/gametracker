@@ -57,7 +57,10 @@ function writeKeyboardInset() {
   if (typeof document === 'undefined') return
   let inset
   if (nativeKbHeight > 0) {
-    inset = nativeKbHeight + ACCESSORY_BAR_PX
+    // On iOS, UIKeyboardFrameEndUserInfoKey (used by @capacitor/keyboard) reports
+    // the full keyboard frame height which already includes the input accessory bar.
+    // Do NOT add ACCESSORY_BAR_PX here — that would double-count it.
+    inset = nativeKbHeight
   } else {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
     inset = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0
@@ -110,7 +113,10 @@ if (typeof window !== 'undefined') {
       writeKeyboardInset()
     })
     await Keyboard.addListener('keyboardWillHide', () => {
+      // Reset the inset NOW (start of hide animation) so the composer slides
+      // down in sync with the keyboard rather than snapping after it's gone.
       document.body.classList.add('keyboard-animating')
+      document.documentElement.style.setProperty('--keyboard-inset', '0px')
     })
     await Keyboard.addListener('keyboardDidHide', () => {
       keyboardVisible = false

@@ -109,11 +109,11 @@
   margin: 0 auto;
 }
 
-/* When the keyboard is open the composer has risen to bottom:--keyboard-inset.
-   Increase the scroll container's padding-bottom to match so the last comment
-   is never hidden behind the raised bar and the gap above the keyboard closes. */
+/* When the keyboard is open the composer has risen. Increase padding-bottom so
+   the last comment stays visible above the raised bar. Use max() so the padding
+   never drops below the default during the hide transition. */
 body.keyboard-open .rd-scroll {
-  padding-bottom: calc(var(--keyboard-inset, 0px) + 24px);
+  padding-bottom: max(calc(120px + var(--bottom-nav-safe-area, 80px)), calc(var(--keyboard-inset, 0px) + 24px));
 }
 
 /* ── Review skeleton ─────────────────────────────────────────────────── */
@@ -530,13 +530,15 @@ body.keyboard-open .rd-scroll {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: max(var(--bottom-nav-safe-area), var(--keyboard-inset, 0px));
+  bottom: var(--bottom-nav-safe-area, 80px);
   z-index: 6;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  transition: bottom 0.30s cubic-bezier(0.36, 0.66, 0.04, 1);
+  transform: translateY(calc(-1 * max(0px, var(--keyboard-inset, 0px) - var(--bottom-nav-safe-area, 80px))));
+  transition: transform 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
+  will-change: transform;
 }
 
 /* Optional reply-hint banner shown above the input row */
@@ -741,6 +743,10 @@ body.keyboard-open .rd-scroll {
   .rd-modal-textarea,
   .rd-modal-post {
     transition: none;
+  }
+
+  .rd-composer {
+    will-change: auto;
   }
 
   .rd-comment__like-icon--pulse {

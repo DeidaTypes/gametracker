@@ -91,11 +91,11 @@
   margin: 0 auto;
 }
 
-/* When the keyboard is open the composer has risen to bottom:--keyboard-inset.
-   Increase the scroll container's padding-bottom to match so the last comment
-   is never hidden behind the raised bar and the gap above the keyboard closes. */
+/* When the keyboard is open the composer has risen. Increase padding-bottom so
+   the last comment stays visible above the raised bar. Use max() so the padding
+   never drops below the default during the hide transition. */
 body.keyboard-open .rc-scroll {
-  padding-bottom: calc(var(--keyboard-inset, 0px) + 24px);
+  padding-bottom: max(calc(120px + var(--bottom-nav-safe-area, 80px)), calc(var(--keyboard-inset, 0px) + 24px));
 }
 
 .rc-review-wrap {
@@ -453,27 +453,20 @@ body.keyboard-open .rc-scroll {
   position: fixed;
   left: 0;
   right: 0;
-  /* THE keyboard fix: when the keyboard is closed --keyboard-inset is 0
-     and this resolves to --bottom-nav-safe-area (80 px). When the keyboard
-     slides in, --keyboard-inset grows to ~keyboard height + 44 px accessory
-     bar (well above 80 px) so the bar rides right above the keyboard.
-     visualViewport fires resize events as the keyboard animates, so the
-     variable updates continuously; the CSS transition smooths any jank. */
-  bottom: max(var(--bottom-nav-safe-area, 0px), var(--keyboard-inset, 0px));
+  /* Static rest position: always above the bottom nav bar.
+     The keyboard lift is handled by transform (GPU-composited) below. */
+  bottom: var(--bottom-nav-safe-area, 80px);
   z-index: 6;
-  padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
+  padding: 10px var(--page-padding) 10px;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  transition: bottom 0.30s cubic-bezier(0.36, 0.66, 0.04, 1);
-}
-
-/* When the keyboard is open env(safe-area-inset-bottom) stays ~34 px in
-   CSS even though the keyboard covers that region. Override it so the
-   composer sits flush against the Done bar, not 34 px above it. */
-body.keyboard-open .rc-composer {
-  padding-bottom: 10px;
+  /* translateY runs on the GPU compositor — no layout recalc, no jank.
+     When --keyboard-inset changes the browser fires the transition automatically. */
+  transform: translateY(calc(-1 * max(0px, var(--keyboard-inset, 0px) - var(--bottom-nav-safe-area, 80px))));
+  transition: transform 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
+  will-change: transform;
 }
 
 .rc-composer__reply-chip {
@@ -601,6 +594,7 @@ body.keyboard-open .rc-composer {
   .rc-composer__send,
   .rc-composer__reply-cancel {
     transition: none;
+    will-change: auto;
   }
 }
 
