@@ -250,6 +250,13 @@ function GameDetail() {
           getGameSwatches(gameData.image, gameId)
             .then(sw => { setChromeTint(sw); setGlobalSwatches(sw) })
             .catch(() => {}),
+          // Fetch TTB for ALL games (not just library games) so the Time to
+          // Beat averages section is visible even before a game is tracked.
+          // The timeToBeatService caches results, so the tracker effect below
+          // will be a cache hit when status becomes truthy.
+          getTimeToBeat(gameId)
+            .then(b => setTtb(b))
+            .catch(() => {}),
         ])
       } catch (err) {
         console.error('Error fetching game:', err)
@@ -690,9 +697,41 @@ function GameDetail() {
         </div>
       </div>
 
+      {/* ── Time to Beat ── visible for any game that has IGDB TTB data,
+           regardless of library status. At least one field must be non-null;
+           if IGDB has no entry the whole section is hidden. ── */}
+      {ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) && (
+        <div className="gd-ttb-block">
+          <p className="gd-ttb-heading">Time to beat</p>
+          <div className="gd-ttb-row">
+            {ttb.hastilySeconds != null && (
+              <span className="gd-ttb-item">
+                Rushed{' '}
+                <span className="gd-ttb-val">~{Math.round(ttb.hastilySeconds / 3600)}h</span>
+              </span>
+            )}
+            {ttb.normallySeconds != null && (
+              <span className="gd-ttb-item gd-ttb-item--main">
+                Main{' '}
+                <span className="gd-ttb-val">~{Math.round(ttb.normallySeconds / 3600)}h</span>
+              </span>
+            )}
+            {ttb.completelySeconds != null && (
+              <span className="gd-ttb-item">
+                Completionist{' '}
+                <span className="gd-ttb-val">~{Math.round(ttb.completelySeconds / 3600)}h</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Your Progress ── library games only; waits for tracker fetch ── */}
       {status && trackerReady && progress && (
         <div className="gd-progress-block">
+
+          {/* Section heading — distinguishes this block from the TTB averages above */}
+          <p className="gd-progress-section-label">Your Progress</p>
 
           {/* Label row: "24 / ~39 hrs" + optional "manual" badge */}
           <div className="gd-progress-header">

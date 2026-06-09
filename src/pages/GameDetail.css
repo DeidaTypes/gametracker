@@ -1482,3 +1482,104 @@
     margin-right: auto;
   }
 }
+
+/* =====================================================
+   TIME TO BEAT BLOCK
+   Informational section — visible for any game that has
+   IGDB game_time_to_beats data, library status or not.
+   Sits between gd-title-section and gd-progress-block.
+   ===================================================== */
+
+.gd-ttb-block {
+  position: relative;
+  z-index: 3;
+  padding: 16px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* "TIME TO BEAT" — small all-caps muted label */
+.gd-ttb-heading {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
+
+/* Horizontal row of inline items; wraps on narrow screens */
+.gd-ttb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  row-gap: 4px;
+}
+
+/* "Rushed ~22h" / "Main ~39h" / "Completionist ~71h" */
+.gd-ttb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* Dot separator between items — generated on all but the last */
+.gd-ttb-item:not(:last-child)::after {
+  content: '·';
+  margin: 0 7px;
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 400;
+}
+
+/* The numeric hour value within each item */
+.gd-ttb-val {
+  font-weight: var(--font-weight-semibold);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* "Main" item gets accent tint — visually links to the progress bar below */
+.gd-ttb-item--main {
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.gd-ttb-item--main .gd-ttb-val {
+  color: var(--accent);
+  opacity: 1;
+}
+
+@media (max-width: 359px) {
+  .gd-ttb-block {
+    padding: 14px 16px 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .gd-ttb-block {
+    padding: 16px 48px 0;
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ── "Your Progress" section label ── */
+/* Small all-caps heading inside gd-progress-block that separates the
+   Your Progress controls from the Time to Beat averages above. */
+.gd-progress-section-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
