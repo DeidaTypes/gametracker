@@ -210,21 +210,42 @@
 }
 
 /* =====================================================
-   TITLE SECTION + FLOATING ACTION BUTTONS
+   TITLE SECTION
    ===================================================== */
 .gd-title-section {
   position: relative;
-  /* Stack above the hero's extended glow (z-index 0–2 of .gd-hero). */
   z-index: 3;
   padding: 0 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
 }
 
 .gd-title-text {
-  flex: 1;
   min-width: 0;
+}
+
+/* ── Action Row — centered, uniform, below genre pills ── */
+.gd-action-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  padding: 20px 20px 0;
+}
+
+@media (max-width: 359px) {
+  .gd-action-row {
+    gap: 28px;
+  }
+}
+
+@media (min-width: 769px) {
+  .gd-action-row {
+    padding: 20px 48px 0;
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .gd-title {
@@ -1132,35 +1153,94 @@
 }
 
 /* =====================================================
-   YOUR PROGRESS BLOCK
-   Sits between gd-title-section and gd-content.
+   YOUR PROGRESS CARD
+   Sits between gd-action-row and gd-content.
    Only rendered for games in the user's library.
    ===================================================== */
 
-.gd-progress-block {
+/* Outer wrapper: holds eyebrow + card */
+.gd-progress-card-wrap {
   position: relative;
   z-index: 3;
   padding: 20px 20px 0;
+}
+
+@media (max-width: 359px) {
+  .gd-progress-card-wrap { padding: 16px 16px 0; }
+}
+
+@media (min-width: 769px) {
+  .gd-progress-card-wrap {
+    padding: 20px 48px 0;
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* "YOUR PROGRESS" eyebrow label above the card */
+.gd-progress-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0 0 10px;
+}
+
+/* Card surface */
+.gd-progress-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* ── Header: label + optional "manual" badge ── */
-.gd-progress-header {
+/* Stat row: big hours label left, percent pill right */
+.gd-progress-stat-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.gd-progress-label {
+.gd-progress-hrs-big {
   font-family: var(--font-body);
-  font-size: var(--font-size-body);
+  font-size: 20px;
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body);
-  color: var(--text-primary);
+  color: var(--color-text-primary, #fff);
+  line-height: 1.2;
 }
 
+/* Percent pill — only shown when percent is not null */
+.gd-progress-pct-pill {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Caption below bar: "N of ~Nh to beat · main story" */
+.gd-progress-caption {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-caption);
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+/* Manual override badge (displayed inside card when override is active) */
 .gd-override-badge {
   font-family: var(--font-body);
   font-size: var(--font-size-label);
@@ -1173,9 +1253,77 @@
   border-radius: 999px;
   padding: 2px 8px;
   line-height: var(--line-height-label);
+  align-self: flex-start;
 }
 
-/* ── Progress bar — cobalt accent, only when showBar is true ── */
+/* Card internal divider */
+.gd-progress-card-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 0 -16px;
+}
+
+/* Primary "Log play" button — full-width, cobalt accent */
+.gd-log-play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.gd-log-play-btn:hover {
+  opacity: 0.88;
+}
+
+.gd-log-play-btn:active {
+  opacity: 0.76;
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-log-play-btn { transition: opacity 0.15s ease; }
+  .gd-log-play-btn:active { transform: none; }
+}
+
+/* Secondary row: "Total [stepper] [Set %]" */
+.gd-progress-secondary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gd-progress-secondary-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Override value display inside the override panel */
+.gd-override-val {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  min-width: 40px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Progress bar — cobalt fill, muted track ── */
 .gd-progress-bar-track {
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
@@ -1466,21 +1614,6 @@
   }
 }
 
-/* ── Progress block responsive overrides ── */
-@media (max-width: 359px) {
-  .gd-progress-block {
-    padding: 16px 16px 0;
-  }
-}
-
-@media (min-width: 769px) {
-  .gd-progress-block {
-    padding: 20px 48px 0;
-    max-width: var(--page-max-width);
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
 
 /* =====================================================
    TIME TO BEAT BLOCK
@@ -1570,18 +1703,6 @@
   }
 }
 
-/* ── "Your Progress" section label ── */
-/* Small all-caps heading inside gd-progress-block that separates the
-   Your Progress controls from the Time to Beat averages above. */
-.gd-progress-section-label {
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
-  margin: 0;
-}
 
 /* ── Play Session Control ───────────────────────────────────────────────────── */
 

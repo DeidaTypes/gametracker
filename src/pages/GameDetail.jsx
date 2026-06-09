@@ -775,7 +775,7 @@ function GameDetail() {
         </div>
       </div>
 
-      {/* ── Title + Action Buttons ── */}
+      {/* ── Title ── */}
       <div className="gd-title-section">
         <div className="gd-title-text">
           <h1 className="gd-title">{game.title}</h1>
@@ -815,154 +815,177 @@ function GameDetail() {
             </div>
           )}
         </div>
-
-        <div className="gd-action-buttons">
-          <button className="gd-action-circle" style={fabStyle} onClick={handleShare} aria-label="Share">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-          </button>
-          <button
-            className="gd-action-circle"
-            style={fabStyle}
-            onClick={() => setComposeSheetOpen(true)}
-            aria-label="Write or journal"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-          </button>
-          <AddToListButton game={game} variant="icon" fabStyle={fabStyle} />
-        </div>
       </div>
 
-      {/* ── Progress Block — only for library games ── */}
+      {/* ── Action Row — centered, below genre pills, above progress ── */}
+      <div className="gd-action-row">
+        <button className="gd-action-circle" style={fabStyle} onClick={handleShare} aria-label="Share">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+        </button>
+        <button
+          className="gd-action-circle"
+          style={fabStyle}
+          onClick={() => setComposeSheetOpen(true)}
+          aria-label="Write or journal"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </button>
+        <AddToListButton game={game} variant="icon" fabStyle={fabStyle} />
+      </div>
+
+      {/* ── Progress Card — only for library games ── */}
       {status && trackerReady && (
         <>
-          <div className="gd-progress-block">
-            <p className="gd-progress-section-label">Your Progress</p>
+          <div className="gd-progress-card-wrap">
+            <p className="gd-progress-eyebrow">Your Progress</p>
+            <div className="gd-progress-card">
 
-            {progress !== null && (
-              <div
-                className="gd-progress-bar-track"
-                aria-label={`${Math.round(progress * 100)}% complete`}
-              >
-                <div
-                  className="gd-progress-bar-fill"
-                  style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }}
-                />
+              {/* Stat row: big hours left, percent pill right (only when percent exists) */}
+              <div className="gd-progress-stat-row">
+                <span className="gd-progress-hrs-big">
+                  {effectiveHours % 1 === 0
+                    ? `${effectiveHours} hrs played`
+                    : `${effectiveHours.toFixed(1)} hrs played`}
+                </span>
+                {progress.percent != null && (
+                  <span className="gd-progress-pct-pill">~{Math.round(progress.percent)}%</span>
+                )}
               </div>
-            )}
 
-            <div className="gd-progress-header">
-              <span className="gd-progress-label">
-                {effectiveHours % 1 === 0
-                  ? `${effectiveHours} hr`
-                  : `${effectiveHours.toFixed(1)} hr`}
-                {progress !== null && ` · ${Math.round(progress * 100)}%`}
-              </span>
-              {tracker?.progress_override != null && (
-                <span className="gd-override-badge">Manual</span>
-              )}
-            </div>
-
-            <div className="gd-hours-row">
-              {editingHours ? (
-                <div className="gd-hours-input-wrap">
-                  <input
-                    ref={hoursInputRef}
-                    className="gd-hours-input"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.5"
-                    min="0"
-                    value={inputDraft}
-                    onChange={e => setInputDraft(e.target.value)}
-                    onBlur={confirmHoursInput}
-                    onKeyDown={e => { if (e.key === 'Enter') confirmHoursInput() }}
-                    aria-label="Edit total hours"
+              {/* Bar — cobalt fill, muted track; only when percent is not null */}
+              {progress.showBar && progress.percent != null && (
+                <div
+                  className="gd-progress-bar-track"
+                  aria-label={`${Math.round(progress.percent)}% complete`}
+                >
+                  <div
+                    className="gd-progress-bar-fill"
+                    style={{ width: `${Math.round(progress.percent)}%` }}
                   />
-                  <span className="gd-hours-unit">hrs</span>
-                  <button className="gd-hours-confirm" onClick={confirmHoursInput} aria-label="Confirm hours">✓</button>
-                </div>
-              ) : (
-                <div className="gd-hours-stepper">
-                  <button
-                    className="gd-step-btn"
-                    onClick={() => handleStep(-0.5)}
-                    aria-label="Decrease by 0.5 hours"
-                  >
-                    −
-                  </button>
-                  <button
-                    className="gd-hours-display"
-                    onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
-                    aria-label="Edit total hours directly"
-                  >
-                    {effectiveHours % 1 === 0
-                      ? `${effectiveHours}h`
-                      : `${effectiveHours.toFixed(1)}h`}
-                  </button>
-                  <button
-                    className="gd-step-btn"
-                    onClick={() => handleStep(0.5)}
-                    aria-label="Increase by 0.5 hours"
-                  >
-                    +
-                  </button>
                 </div>
               )}
 
+              {/* Caption — only when TTB main-story data exists */}
+              {progress.mainHours != null && (
+                <p className="gd-progress-caption">
+                  {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
+                </p>
+              )}
+
+              {tracker?.progress_override != null && (
+                <span className="gd-override-badge">Manual %</span>
+              )}
+
+              <div className="gd-progress-card-divider" />
+
+              {/* Log play — primary full-width CTA */}
               <button
-                className="gd-log-session-btn"
+                className="gd-log-play-btn"
                 onClick={() => setLogSessionOpen(true)}
                 aria-label="Log a play session"
               >
-                + Log Play
+                Log play
               </button>
 
-              <button
-                className="gd-override-toggle-btn"
-                onClick={() => setOverrideOpen(v => !v)}
-              >
-                {overrideOpen ? 'Hide' : 'Set %'}
-              </button>
-            </div>
+              {/* Secondary row: Total stepper + Set % link */}
+              <div className="gd-progress-secondary-row">
+                <span className="gd-progress-secondary-label">Total</span>
 
-            {overrideOpen && (
-              <div className="gd-override-panel">
-                <div className="gd-override-slider-row">
-                  <input
-                    type="range"
-                    className="gd-override-slider"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={
-                      effectiveOverride != null
-                        ? Math.round(effectiveOverride)
-                        : Math.round((progress ?? 0) * 100)
-                    }
-                    onChange={e => handleOverrideChange(e.target.value)}
-                    aria-label="Manual progress percentage"
-                  />
-                  <span className="gd-override-val">
-                    {effectiveOverride != null
-                      ? `${Math.round(effectiveOverride)}%`
-                      : `${Math.round((progress ?? 0) * 100)}%`}
-                  </span>
-                </div>
-                {effectiveOverride != null && (
-                  <button className="gd-override-clear-btn" onClick={handleClearOverride}>
-                    Clear manual override
-                  </button>
+                {editingHours ? (
+                  <div className="gd-hours-input-wrap">
+                    <input
+                      ref={hoursInputRef}
+                      className="gd-hours-input"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.5"
+                      min="0"
+                      value={inputDraft}
+                      onChange={e => setInputDraft(e.target.value)}
+                      onBlur={confirmHoursInput}
+                      onKeyDown={e => { if (e.key === 'Enter') confirmHoursInput() }}
+                      aria-label="Edit total hours"
+                    />
+                    <span className="gd-hours-unit">hrs</span>
+                    <button className="gd-hours-confirm" onClick={confirmHoursInput} aria-label="Confirm hours">✓</button>
+                  </div>
+                ) : (
+                  <div className="gd-hours-stepper">
+                    <button
+                      className="gd-step-btn"
+                      onClick={() => handleStep(-0.5)}
+                      aria-label="Decrease by 0.5 hours"
+                    >
+                      −
+                    </button>
+                    <button
+                      className="gd-hours-display"
+                      onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
+                      aria-label="Edit total hours directly"
+                    >
+                      {effectiveHours % 1 === 0
+                        ? `${effectiveHours}h`
+                        : `${effectiveHours.toFixed(1)}h`}
+                    </button>
+                    <button
+                      className="gd-step-btn"
+                      onClick={() => handleStep(0.5)}
+                      aria-label="Increase by 0.5 hours"
+                    >
+                      +
+                    </button>
+                  </div>
                 )}
+
+                <button
+                  className="gd-override-toggle-btn"
+                  onClick={() => setOverrideOpen(v => !v)}
+                >
+                  {overrideOpen ? 'Hide' : 'Set %'}
+                </button>
               </div>
-            )}
+
+              {/* Override panel — collapsed by default */}
+              {overrideOpen && (
+                <div className="gd-override-panel">
+                  <div className="gd-override-slider-row">
+                    <input
+                      type="range"
+                      className="gd-override-slider"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={
+                        effectiveOverride != null
+                          ? Math.round(effectiveOverride)
+                          : Math.round(progress.percent ?? 0)
+                      }
+                      onChange={e => handleOverrideChange(e.target.value)}
+                      aria-label="Manual progress percentage"
+                    />
+                    <span className="gd-override-val">
+                      {effectiveOverride != null
+                        ? `${Math.round(effectiveOverride)}%`
+                        : `${Math.round(progress.percent ?? 0)}%`}
+                    </span>
+                  </div>
+                  {effectiveOverride != null && (
+                    <button className="gd-override-clear-btn" onClick={handleClearOverride}>
+                      Clear manual override
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Logged Sessions — tidy list below the card; hidden when empty */}
           {sessions.length > 0 && (
             <div className="gd-session-history">
               <p className="gd-session-history-label">Logged Sessions</p>
