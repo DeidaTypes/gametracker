@@ -154,8 +154,8 @@ export default function TodayCard() {
           <button
             className="tc-calendar-link"
             type="button"
-            onClick={() => navigate('/profile')}
-            aria-label="View full activity calendar on Profile"
+            onClick={() => navigate('/activity')}
+            aria-label="View full activity calendar"
           >
             Calendar <ChevronRight size={12} aria-hidden="true" />
           </button>

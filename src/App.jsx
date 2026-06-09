@@ -36,6 +36,7 @@ import SettingsBlocked from './pages/SettingsBlocked'
 import SettingsEmail from './pages/SettingsEmail'
 import SettingsPassword from './pages/SettingsPassword'
 import Stats from './pages/Stats'
+import ActivityCalendar from './pages/ActivityCalendar'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
 import SmartListDetail from './pages/SmartListDetail'
 import ListDetail from './pages/ListDetail'
@@ -551,6 +552,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><Stats /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/activity"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ActivityCalendar /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
