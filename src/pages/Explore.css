@@ -423,6 +423,11 @@
   margin-top: 32px;
 }
 
+/* Third explore-section (Most played): same 40px rhythm as regular siblings. */
+.gotw-outer + .explore-section + .explore-section + .explore-section {
+  margin-top: 40px;
+}
+
 /* =============================================
    DESKTOP (769px+)
    ============================================= */

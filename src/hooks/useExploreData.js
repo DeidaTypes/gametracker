@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   getTrendingThisWeek,
   getJustFinished,
+  getMostPlayedThisWeek,
 } from '../services/communityService'
 import {
   getRecentCommunityReviews,
@@ -106,4 +107,13 @@ export function useFollowingReviews() {
     const result = await getReviewsFromFollowing({ page: 1, limit: 20 })
     return result.items || []
   })
+}
+
+/**
+ * Discover page — "Most played this week" rail.
+ * Top 5 games by summed community session hours in the last 7 days.
+ * Returns [] when no sessions fall in the window → section stays hidden.
+ */
+export function useMostPlayedThisWeek() {
+  return useAsyncSection(() => getMostPlayedThisWeek(5))
 }

@@ -7,10 +7,12 @@ import {
   useDiscoverGamesNew,
   useFollowingReviews,
   usePopularReviews,
+  useMostPlayedThisWeek,
 } from '../hooks/useExploreData'
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
+import MostPlayedRail from '../components/explore/MostPlayedRail'
 import ReviewCard from '../components/ReviewCard'
 import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
@@ -121,11 +123,12 @@ function Explore() {
   const [reviewsTab, setReviewsTab] = useState('popular')
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
 
-  // All four data sources fire at mount in parallel (no sequential waterfall).
-  const trending        = useTrendingThisWeek()   // games POPULAR tab
-  const newGames        = useDiscoverGamesNew()    // games NEW tab
-  const followingReviews = useFollowingReviews()   // reviews FOLLOWING tab
-  const popularReviews   = usePopularReviews()     // reviews POPULAR tab
+  // All data sources fire at mount in parallel (no sequential waterfall).
+  const trending         = useTrendingThisWeek()   // games POPULAR tab
+  const newGames         = useDiscoverGamesNew()    // games NEW tab
+  const followingReviews = useFollowingReviews()    // reviews FOLLOWING tab
+  const popularReviews   = usePopularReviews()      // reviews POPULAR tab
+  const mostPlayed       = useMostPlayedThisWeek()  // most played this week rail
 
   // Unified like + comment counts for cards currently visible.
   const [likeCounts, setLikeCounts]       = useState(() => new Map())
@@ -296,6 +299,20 @@ function Explore() {
             </div>
           )}
         </section>
+
+        {/* ── Section 3: Most played this week ── */}
+        {(mostPlayed.loading || (mostPlayed.data && mostPlayed.data.length > 0)) && (
+          <section className="explore-section explore-section--2">
+            <div className="explore-section__pad discover-section-header">
+              <h2 className="discover-section-title">Most played this week</h2>
+            </div>
+            <MostPlayedRail
+              data={mostPlayed.data}
+              loading={mostPlayed.loading}
+              error={mostPlayed.error}
+            />
+          </section>
+        )}
 
       </div>
 

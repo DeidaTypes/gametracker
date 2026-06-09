@@ -187,4 +187,37 @@ export async function getCommunityReviews(limit = 20) {
   return getRecentCommunityReviews(limit)
 }
 
+/**
+ * "Most played this week" — top games by total community session hours
+ * in the last 7 days, ranked by summed seconds desc.
+ *
+ * Calls the `get_most_played_this_week` SECURITY DEFINER RPC which
+ * aggregates across ALL users' play_sessions while bypassing RLS, but
+ * only returns pre-aggregated data (no personal identifiers).
+ *
+ * Returns: [{ igdb_game_id, game_title, game_image, total_minutes, player_count }]
+ * Returns [] when no sessions fall in the window (correct empty state).
+ */
+export async function getMostPlayedThisWeek(limit = 5) {
+  const _t0 = Date.now()
+  try {
+    const { data, error } = await supabase.rpc('get_most_played_this_week', { top_n: limit })
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getMostPlayedThisWeek: ${Date.now() - _t0}ms`)
+    if (error) {
+      console.error('[community] getMostPlayedThisWeek RPC error:', error.message)
+      return []
+    }
+    return (data || []).map((row) => ({
+      igdb_game_id:  row.igdb_game_id,
+      game_title:    row.game_title   || 'Unknown Game',
+      game_image:    row.game_image   || null,
+      total_minutes: Number(row.total_minutes) || 0,
+      player_count:  Number(row.player_count)  || 0,
+    }))
+  } catch (err) {
+    console.error('[community] getMostPlayedThisWeek crashed:', err)
+    return []
+  }
+}
+
 export { WEEK_MS }
