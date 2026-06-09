@@ -377,6 +377,88 @@ export async function deleteManualSession(sessionId, igdbGameId, minutes) {
   }
 }
 
+// ── Following sessions feed ───────────────────────────────────────────────────
+
+/**
+ * Fetch completed play sessions from users the current user follows,
+ * aggregated by (user_id, igdb_game_id, calendar date) with durations summed.
+ * Scans the last `limit` raw session rows (default 60) before aggregation.
+ *
+ * Returned items are shaped:
+ *   { _type, _sortDate, userId, igdbGameId, playedOn, totalSeconds,
+ *     gameTitle, gameImage, username, avatarUrl }
+ *
+ * @returns {Promise<Array>}
+ */
+export async function getSessionsFromFollowing({ limit = 60 } = {}) {
+  try {
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) return []
+
+    const { data: followRows, error: followErr } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', user.id)
+
+    if (followErr) {
+      console.error('[session] getSessionsFromFollowing follows failed:', followErr.message)
+      return []
+    }
+
+    const followeeIds = (followRows || []).map(r => r.followee_id)
+    if (followeeIds.length === 0) return []
+
+    const { data, error } = await supabase
+      .from('play_sessions')
+      .select(
+        'id, user_id, igdb_game_id, started_at, seconds, game_title, game_image, played_on,' +
+        ' users!play_sessions_user_id_fkey(username, display_name, avatar_url)'
+      )
+      .in('user_id', followeeIds)
+      .not('ended_at', 'is', null)
+      .order('started_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('[session] getSessionsFromFollowing query failed:', error.message)
+      return []
+    }
+
+    // Aggregate per (user_id, igdb_game_id, calendar date), summing seconds
+    const map = new Map()
+    for (const row of (data || [])) {
+      const date = row.played_on || row.started_at?.slice(0, 10)
+      if (!date) continue
+      const key = `${row.user_id}::${row.igdb_game_id}::${date}`
+      if (!map.has(key)) {
+        map.set(key, {
+          _type: 'session',
+          _sortDate: date,
+          userId: row.user_id,
+          igdbGameId: Number(row.igdb_game_id),
+          playedOn: date,
+          totalSeconds: 0,
+          gameTitle: row.game_title || null,
+          gameImage: row.game_image || null,
+          username: row.users?.username || row.users?.display_name || 'someone',
+          avatarUrl: row.users?.avatar_url || null,
+        })
+      }
+      const entry = map.get(key)
+      entry.totalSeconds += Number(row.seconds) || 0
+      if (!entry.gameTitle && row.game_title) entry.gameTitle = row.game_title
+      if (!entry.gameImage && row.game_image) entry.gameImage = row.game_image
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      b.playedOn.localeCompare(a.playedOn)
+    )
+  } catch (err) {
+    console.error('[session] getSessionsFromFollowing crashed:', err)
+    return []
+  }
+}
+
 // ── Abort (discard without saving) ────────────────────────────────────────────
 
 /**
