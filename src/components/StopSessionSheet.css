@@ -1,0 +1,179 @@
+/* StopSessionSheet — bottom sheet confirmation after a session ends.
+   Cobalt Modern dark theme, DM Sans, CSS variables only.
+   Respects prefers-reduced-motion. iOS safe-area-aware. */
+
+/* Backdrop */
+.sss-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  animation: sss-fade-in 0.2s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sss-backdrop { animation: none; }
+}
+
+@keyframes sss-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Sheet */
+.sss-sheet {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--color-bg-elevated, #1a2240);
+  border-top: 1px solid var(--color-border, rgba(148, 168, 212, 0.12));
+  border-radius: 20px 20px 0 0;
+  padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: sss-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sss-sheet { animation: none; }
+}
+
+@keyframes sss-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Drag handle */
+.sss-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-text-muted, #3a4a66);
+  margin: 0 auto 4px;
+}
+
+/* Heading */
+.sss-heading {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f0f3fa);
+  text-align: center;
+  margin: 0;
+}
+
+/* Summary pill: "+1h 12m → 14 hrs" */
+.sss-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--color-surface, rgba(148, 168, 212, 0.05));
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.12));
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.sss-added {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: #22c55e;
+  font-variant-numeric: tabular-nums;
+}
+
+.sss-arrow {
+  font-size: 16px;
+  color: var(--color-text-tertiary, #5c6b8a);
+}
+
+.sss-total {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f0f3fa);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Game name */
+.sss-game-name {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 13px;
+  color: var(--color-text-secondary, #94a8d4);
+  text-align: center;
+  margin: -8px 0 0;
+}
+
+/* Note input */
+.sss-note-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sss-note-label {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #94a8d4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sss-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-tertiary, #5c6b8a);
+}
+
+.sss-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg-secondary, #131a35);
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.12));
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 15px;
+  color: var(--color-text-primary, #f0f3fa);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.sss-note-input::placeholder {
+  color: var(--color-text-muted, #3a4a66);
+}
+
+.sss-note-input:focus {
+  border-color: var(--color-brand-primary, #3b82f6);
+}
+
+/* Done button */
+.sss-done-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-brand-primary, #3b82f6);
+  color: #fff;
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sss-done-btn:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+.sss-done-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
