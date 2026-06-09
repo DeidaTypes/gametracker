@@ -16,7 +16,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
-import { getTracker, setHoursPlayed, setProgressOverride } from '../services/hoursService'
+import { getTracker, setProgressOverride } from '../services/hoursService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
 import { useSession } from '../contexts/SessionContext'
@@ -205,21 +205,15 @@ function GameDetail() {
   const [ttb, setTtb] = useState(null)
   // Optimistic local hours — non-null while a debounced save is in flight.
   const [localHours, setLocalHours] = useState(null)
-  const [editingHours, setEditingHours] = useState(false)
-  const [inputDraft, setInputDraft] = useState('')
   const [overrideOpen, setOverrideOpen] = useState(false)
   // Optimistic local override — non-null while a debounced save is in flight.
   const [localOverride, setLocalOverride] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
-  const saveHoursTimer = useRef(null)
   const saveOverrideTimer = useRef(null)
   const toastTimerRef = useRef(null)
   // Tracks the currently-displayed game so debounced save callbacks don't
   // mutate state after the user has already navigated to a different game.
   const gameIdRef = useRef(gameId)
-  // Ref to the hours number input for iOS keyboard compatibility —
-  // focus() called via setTimeout(120) matches the app-wide pattern.
-  const hoursInputRef = useRef(null)
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
@@ -317,16 +311,14 @@ function GameDetail() {
     }
   }, [refreshFromStore, refreshReviews])
 
-  // Fetch the tracker row + TTB data once the game's library status is known.
-  // Re-runs when the gameId changes (new game) or status flips to truthy (just added).
+  // Fetch the tracker row + TTB data for every game, regardless of library status.
+  // Re-runs when the gameId changes (new game).
   useEffect(() => {
-    if (!status) return
     let cancelled = false
     setTrackerReady(false)
     setLocalHours(null)
     setLocalOverride(null)
     setOverrideOpen(false)
-    setEditingHours(false)
 
     async function loadTrackerAndTtb() {
       const [t, b, s] = await Promise.all([
@@ -343,12 +335,11 @@ function GameDetail() {
 
     loadTrackerAndTtb()
     return () => { cancelled = true }
-  }, [status, gameId])
+  }, [gameId])
 
   // Clean up debounce timers on unmount so stale callbacks never fire.
   useEffect(() => {
     return () => {
-      clearTimeout(saveHoursTimer.current)
       clearTimeout(saveOverrideTimer.current)
       clearTimeout(toastTimerRef.current)
     }
@@ -358,14 +349,6 @@ function GameDetail() {
   useEffect(() => {
     gameIdRef.current = gameId
   }, [gameId])
-
-  // Focus the hours input when editing mode opens — 120ms matches the
-  // app-wide pattern for iOS WebView keyboard triggering.
-  useEffect(() => {
-    if (!editingHours) return
-    const t = setTimeout(() => hoursInputRef.current?.focus(), 120)
-    return () => clearTimeout(t)
-  }, [editingHours])
 
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
@@ -478,7 +461,7 @@ function GameDetail() {
   // Prefer local (optimistic) values while a save is in flight.
   const effectiveHours = localHours !== null ? localHours : (tracker?.hours_played ?? 0)
   const effectiveOverride = localOverride !== null ? localOverride : (tracker?.progress_override ?? null)
-  const progress = (status && trackerReady)
+  const progress = trackerReady
     ? computeProgress({
         hoursPlayed: effectiveHours,
         progressOverride: effectiveOverride,
@@ -491,53 +474,6 @@ function GameDetail() {
     setToastMsg(msg)
     clearTimeout(toastTimerRef.current)
     toastTimerRef.current = setTimeout(() => setToastMsg(null), 3000)
-  }
-
-  // ── Hours handlers ────────────────────────────────────────────────────────────
-  // Stepper: increment/decrement in 0.5-hr steps with 800ms debounced persist.
-  const handleStep = (delta) => {
-    const prev = effectiveHours
-    const next = Math.max(0, Math.round((prev + delta) * 2) / 2)
-    const capturedGameId = gameId
-    setLocalHours(next)
-    clearTimeout(saveHoursTimer.current)
-    saveHoursTimer.current = setTimeout(async () => {
-      const result = await setHoursPlayed(capturedGameId, next, {
-        game_title: game?.title,
-        game_image: game?.image,
-      })
-      // Guard: only update UI state if the user hasn't navigated away.
-      if (gameIdRef.current !== capturedGameId) return
-      if (result) {
-        setTracker(t => ({ ...t, hours_played: result.hours_played }))
-        setLocalHours(null)
-      } else {
-        setLocalHours(prev)
-        showToast('Could not save — try again')
-      }
-    }, 800)
-  }
-
-  // Input: confirm typed value (rounds to 1 decimal), immediate persist.
-  const confirmHoursInput = () => {
-    const parsed = parseFloat(inputDraft)
-    setEditingHours(false)
-    if (isNaN(parsed) || parsed < 0) return
-    const prev = effectiveHours
-    const next = Math.max(0, Math.round(parsed * 10) / 10)
-    const capturedGameId = gameId
-    setLocalHours(next)
-    setHoursPlayed(capturedGameId, next, { game_title: game?.title, game_image: game?.image })
-      .then(result => {
-        if (gameIdRef.current !== capturedGameId) return
-        if (result) {
-          setTracker(t => ({ ...t, hours_played: result.hours_played }))
-          setLocalHours(null)
-        } else {
-          setLocalHours(prev)
-          showToast('Could not save — try again')
-        }
-      })
   }
 
   // ── Override handlers ─────────────────────────────────────────────────────────
@@ -839,179 +775,125 @@ function GameDetail() {
         <AddToListButton game={game} variant="icon" fabStyle={fabStyle} />
       </div>
 
-      {/* ── Progress Card — only for library games ── */}
-      {status && trackerReady && (
-        <>
-          <div className="gd-progress-card-wrap">
-            <p className="gd-progress-eyebrow">Your Progress</p>
-            <div className="gd-progress-card">
+      {/* ── Progress Card — shown on every game detail page ── */}
+      <div className="gd-progress-card-wrap">
+        <p className="gd-progress-eyebrow">Your Progress</p>
+        <div className="gd-progress-card">
 
-              {/* Stat row: big hours left, percent pill right (only when percent exists) */}
-              <div className="gd-progress-stat-row">
-                <span className="gd-progress-hrs-big">
-                  {effectiveHours % 1 === 0
-                    ? `${effectiveHours} hrs played`
-                    : `${effectiveHours.toFixed(1)} hrs played`}
-                </span>
-                {progress.percent != null && (
-                  <span className="gd-progress-pct-pill">~{Math.round(progress.percent)}%</span>
-                )}
-              </div>
-
-              {/* Bar — cobalt fill, muted track; only when percent is not null */}
-              {progress.showBar && progress.percent != null && (
-                <div
-                  className="gd-progress-bar-track"
-                  aria-label={`${Math.round(progress.percent)}% complete`}
-                >
-                  <div
-                    className="gd-progress-bar-fill"
-                    style={{ width: `${Math.round(progress.percent)}%` }}
-                  />
-                </div>
-              )}
-
-              {/* Caption — only when TTB main-story data exists */}
-              {progress.mainHours != null && (
-                <p className="gd-progress-caption">
-                  {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
-                </p>
-              )}
-
-              {tracker?.progress_override != null && (
-                <span className="gd-override-badge">Manual %</span>
-              )}
-
-              <div className="gd-progress-card-divider" />
-
-              {/* Log play — primary full-width CTA */}
-              <button
-                className="gd-log-play-btn"
-                onClick={() => setLogSessionOpen(true)}
-                aria-label="Log a play session"
-              >
-                Log play
-              </button>
-
-              {/* Secondary row: Total stepper + Set % link */}
-              <div className="gd-progress-secondary-row">
-                <span className="gd-progress-secondary-label">Total</span>
-
-                {editingHours ? (
-                  <div className="gd-hours-input-wrap">
-                    <input
-                      ref={hoursInputRef}
-                      className="gd-hours-input"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.5"
-                      min="0"
-                      value={inputDraft}
-                      onChange={e => setInputDraft(e.target.value)}
-                      onBlur={confirmHoursInput}
-                      onKeyDown={e => { if (e.key === 'Enter') confirmHoursInput() }}
-                      aria-label="Edit total hours"
-                    />
-                    <span className="gd-hours-unit">hrs</span>
-                    <button className="gd-hours-confirm" onClick={confirmHoursInput} aria-label="Confirm hours">✓</button>
-                  </div>
-                ) : (
-                  <div className="gd-hours-stepper">
-                    <button
-                      className="gd-step-btn"
-                      onClick={() => handleStep(-0.5)}
-                      aria-label="Decrease by 0.5 hours"
-                    >
-                      −
-                    </button>
-                    <button
-                      className="gd-hours-display"
-                      onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
-                      aria-label="Edit total hours directly"
-                    >
-                      {effectiveHours % 1 === 0
-                        ? `${effectiveHours}h`
-                        : `${effectiveHours.toFixed(1)}h`}
-                    </button>
-                    <button
-                      className="gd-step-btn"
-                      onClick={() => handleStep(0.5)}
-                      aria-label="Increase by 0.5 hours"
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  className="gd-override-toggle-btn"
-                  onClick={() => setOverrideOpen(v => !v)}
-                >
-                  {overrideOpen ? 'Hide' : 'Set %'}
-                </button>
-              </div>
-
-              {/* Override panel — collapsed by default */}
-              {overrideOpen && (
-                <div className="gd-override-panel">
-                  <div className="gd-override-slider-row">
-                    <input
-                      type="range"
-                      className="gd-override-slider"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={
-                        effectiveOverride != null
-                          ? Math.round(effectiveOverride)
-                          : Math.round(progress.percent ?? 0)
-                      }
-                      onChange={e => handleOverrideChange(e.target.value)}
-                      aria-label="Manual progress percentage"
-                    />
-                    <span className="gd-override-val">
-                      {effectiveOverride != null
-                        ? `${Math.round(effectiveOverride)}%`
-                        : `${Math.round(progress.percent ?? 0)}%`}
-                    </span>
-                  </div>
-                  {effectiveOverride != null && (
-                    <button className="gd-override-clear-btn" onClick={handleClearOverride}>
-                      Clear manual override
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Stat row: big hours left, percent pill right (only when percent exists) */}
+          <div className="gd-progress-stat-row">
+            <span className="gd-progress-hrs-big">
+              {effectiveHours % 1 === 0
+                ? `${effectiveHours} hrs played`
+                : `${effectiveHours.toFixed(1)} hrs played`}
+            </span>
+            {progress?.percent != null && (
+              <span className="gd-progress-pct-pill">~{Math.round(progress.percent)}%</span>
+            )}
           </div>
 
-          {/* Logged Sessions — tidy list below the card; hidden when empty */}
-          {sessions.length > 0 && (
-            <div className="gd-session-history">
-              <p className="gd-session-history-label">Logged Sessions</p>
-              <div className="gd-session-history-list">
-                {sessions.map(s => (
-                  <div key={s.id} className="gd-session-item">
-                    <span className="gd-session-item-date">{formatPlayedOn(s.playedOn)}</span>
-                    <span className="gd-session-item-duration">{formatDuration(s.minutes)}</span>
-                    <button
-                      className="gd-session-delete-btn"
-                      onClick={() => handleDeleteSession(s.id, s.minutes)}
-                      aria-label={`Delete session from ${s.playedOn}`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                        <path d="M10 11v6M14 11v6" />
-                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
+          {/* Bar — cobalt fill, muted track; only when percent is not null */}
+          {progress?.showBar && progress?.percent != null && (
+            <div
+              className="gd-progress-bar-track"
+              aria-label={`${Math.round(progress.percent)}% complete`}
+            >
+              <div
+                className="gd-progress-bar-fill"
+                style={{ width: `${Math.round(progress.percent)}%` }}
+              />
             </div>
           )}
-        </>
+
+          {/* Caption — only when TTB main-story data exists */}
+          {progress?.mainHours != null && (
+            <p className="gd-progress-caption">
+              {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
+            </p>
+          )}
+
+          {tracker?.progress_override != null && (
+            <span className="gd-override-badge">Manual %</span>
+          )}
+
+          <div className="gd-progress-card-divider" />
+
+          {/* Log play — primary full-width CTA; the only way to add hours */}
+          <button
+            className="gd-log-play-btn"
+            onClick={() => setLogSessionOpen(true)}
+            aria-label="Log a play session"
+          >
+            Log play
+          </button>
+
+          {/* Set % — unobtrusive link to the manual override panel */}
+          <button
+            className="gd-override-toggle-btn"
+            onClick={() => setOverrideOpen(v => !v)}
+          >
+            {overrideOpen ? 'Hide' : 'Set %'}
+          </button>
+
+          {/* Override panel — collapsed by default */}
+          {overrideOpen && (
+            <div className="gd-override-panel">
+              <div className="gd-override-slider-row">
+                <input
+                  type="range"
+                  className="gd-override-slider"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={
+                    effectiveOverride != null
+                      ? Math.round(effectiveOverride)
+                      : Math.round(progress?.percent ?? 0)
+                  }
+                  onChange={e => handleOverrideChange(e.target.value)}
+                  aria-label="Manual progress percentage"
+                />
+                <span className="gd-override-val">
+                  {effectiveOverride != null
+                    ? `${Math.round(effectiveOverride)}%`
+                    : `${Math.round(progress?.percent ?? 0)}%`}
+                </span>
+              </div>
+              {effectiveOverride != null && (
+                <button className="gd-override-clear-btn" onClick={handleClearOverride}>
+                  Clear manual override
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Logged Sessions — tidy list below the card; hidden when empty */}
+      {sessions.length > 0 && (
+        <div className="gd-session-history">
+          <p className="gd-session-history-label">Logged Sessions</p>
+          <div className="gd-session-history-list">
+            {sessions.map(s => (
+              <div key={s.id} className="gd-session-item">
+                <span className="gd-session-item-date">{formatPlayedOn(s.playedOn)}</span>
+                <span className="gd-session-item-duration">{formatDuration(s.minutes)}</span>
+                <button
+                  className="gd-session-delete-btn"
+                  onClick={() => handleDeleteSession(s.id, s.minutes)}
+                  aria-label={`Delete session from ${s.playedOn}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6M14 11v6" />
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── Time to Beat ── visible for any game that has IGDB TTB data,
