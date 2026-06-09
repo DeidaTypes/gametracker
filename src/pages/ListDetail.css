@@ -422,6 +422,133 @@
   max-width: 60ch;
 }
 
+.list-detail-description--editable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-description--editable:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── "Add a description" placeholder (owner only, no description set) ── */
+.list-detail-desc-placeholder {
+  display: block;
+  width: 100%;
+  max-width: 60ch;
+  padding: 10px 14px;
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.list-detail-desc-placeholder:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-text-secondary);
+}
+
+/* ── Inline textarea edit ── */
+.list-detail-desc-edit-wrap {
+  width: 100%;
+  max-width: 60ch;
+}
+
+.list-detail-desc-textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  padding: 12px 14px;
+  background: var(--bg-base, var(--color-bg-base));
+  border: 1px solid var(--border-subtle, var(--color-border));
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  /* 16px prevents iOS auto-zoom on focus */
+  font-size: 16px;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  overflow-y: auto;
+  transition: border-color var(--transition-fast);
+  -webkit-text-size-adjust: 100%;
+}
+
+.list-detail-desc-textarea:focus {
+  border-color: var(--color-brand-primary);
+}
+
+.list-detail-desc-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.list-detail-desc-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.list-detail-desc-cancel-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-desc-cancel-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.list-detail-desc-save-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-brand-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-desc-save-btn:hover {
+  opacity: 0.88;
+}
+
+.list-detail-desc-save-btn:active {
+  opacity: 0.72;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-desc-textarea,
+  .list-detail-desc-placeholder,
+  .list-detail-description--editable {
+    transition: none;
+  }
+}
+
 /* ── Content ── */
 .list-detail-content {
   padding: var(--spacing-xl) var(--page-padding);
@@ -431,19 +558,19 @@
 
 .list-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--spacing-md);
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: var(--spacing-sm);
 }
 
 @media (min-width: 480px) {
   .list-detail-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   }
 }
 
 @media (min-width: 769px) {
   .list-detail-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   }
 }
 

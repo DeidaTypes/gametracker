@@ -26,6 +26,7 @@ import {
   isTrackerList,
   pinList,
   unpinList,
+  updateList,
 } from '../services/listService'
 import { supabase } from '../services/supabase'
 import './ListDetail.css'
@@ -109,6 +110,11 @@ function ListDetail() {
   // Drag-to-reorder state (custom lists only)
   const dragGameIdRef = useRef(null)
   const [dragOverId, setDragOverId] = useState(null)
+
+  // Inline description editing
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descDraft, setDescDraft] = useState('')
+  const descTextareaRef = useRef(null)
 
   const isTracker = isTrackerList(listId)
 
@@ -320,6 +326,56 @@ function ListDetail() {
         },
       ]
 
+  // ── Inline description editing ────────────────────────────────────────────
+
+  const openDescEdit = () => {
+    setDescDraft(listInfo?.description || '')
+    setEditingDesc(true)
+  }
+
+  const handleDescCancel = () => {
+    setEditingDesc(false)
+    setDescDraft('')
+  }
+
+  const handleDescSave = async () => {
+    const trimmed = descDraft.trim()
+    const prev = listInfo?.description || ''
+    if (trimmed === prev) {
+      setEditingDesc(false)
+      return
+    }
+    setListInfo((l) => ({ ...l, description: trimmed }))
+    setEditingDesc(false)
+    try {
+      await updateList(listId, { description: trimmed })
+      showToast('Description updated', 'success')
+    } catch {
+      setListInfo((l) => ({ ...l, description: prev }))
+      showToast("Couldn't save description. Please try again.", 'error')
+    }
+  }
+
+  // Auto-focus when edit opens
+  useEffect(() => {
+    if (!editingDesc) return
+    const t = setTimeout(() => {
+      const el = descTextareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }, 40)
+    return () => clearTimeout(t)
+  }, [editingDesc])
+
+  // Auto-grow textarea
+  useEffect(() => {
+    const el = descTextareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+  }, [descDraft])
+
   // Viewer can add games only if they own the list or it's a personal tracker list
   const canEdit = isOwner || isTracker
 
@@ -469,9 +525,60 @@ function ListDetail() {
           </span>
         </div>
 
-        {/* 4. Description — only shown when non-empty */}
-        {listInfo.description && (
-          <p className="list-detail-description">{listInfo.description}</p>
+        {/* 4. Description — inline edit for owner, read-only for viewer */}
+        {isOwner && editingDesc ? (
+          <div className="list-detail-desc-edit-wrap">
+            <textarea
+              ref={descTextareaRef}
+              className="list-detail-desc-textarea"
+              value={descDraft}
+              onChange={(e) => setDescDraft(e.target.value)}
+              placeholder="Add a description…"
+              maxLength={500}
+              aria-label="List description"
+            />
+            <div className="list-detail-desc-edit-actions">
+              <button
+                type="button"
+                className="list-detail-desc-cancel-btn"
+                onClick={handleDescCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="list-detail-desc-save-btn"
+                onClick={handleDescSave}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : isOwner ? (
+          listInfo.description ? (
+            <p
+              className="list-detail-description list-detail-description--editable"
+              onClick={openDescEdit}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && openDescEdit()}
+              aria-label="Edit description"
+            >
+              {listInfo.description}
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="list-detail-desc-placeholder"
+              onClick={openDescEdit}
+            >
+              Add a description…
+            </button>
+          )
+        ) : (
+          listInfo.description && (
+            <p className="list-detail-description">{listInfo.description}</p>
+          )
         )}
       </div>
 
