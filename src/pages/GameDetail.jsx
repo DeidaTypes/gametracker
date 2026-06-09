@@ -20,6 +20,7 @@ import { getTracker, setHoursPlayed, setProgressOverride } from '../services/hou
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
 import { useSession } from '../contexts/SessionContext'
+import GameJournalSection from '../components/GameJournalSection'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -801,143 +802,6 @@ function GameDetail() {
         </div>
       )}
 
-      {/* ── Your Progress ── library games only; waits for tracker fetch ── */}
-      {status && trackerReady && progress && (
-        <div className="gd-progress-block">
-
-          {/* Section heading */}
-          <p className="gd-progress-section-label">Your Progress</p>
-
-          {/* Label row: "24 / ~39 hrs" + optional "manual" badge */}
-          <div className="gd-progress-header">
-            <span className="gd-progress-label">{progress.label}</span>
-            {effectiveOverride !== null && (
-              <span className="gd-override-badge">manual</span>
-            )}
-          </div>
-
-          {/* Bar — always rendered; fill only when percent > 0 so 0 hrs = empty track */}
-          <div
-            className="gd-progress-bar-track"
-            role="progressbar"
-            aria-valuenow={Math.round(progress.percent ?? 0)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`Progress: ${Math.round(progress.percent ?? 0)}%`}
-          >
-            {(progress.percent ?? 0) > 0 && (
-              <div
-                className="gd-progress-bar-fill"
-                style={{ width: `${Math.min(100, progress.percent)}%` }}
-              />
-            )}
-          </div>
-
-          {/* Hours stepper row + override toggle */}
-          <div className="gd-hours-row">
-            {editingHours ? (
-              <div className="gd-hours-input-wrap">
-                <input
-                  ref={hoursInputRef}
-                  className="gd-hours-input"
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.5"
-                  value={inputDraft}
-                  onChange={e => setInputDraft(e.target.value)}
-                  onBlur={confirmHoursInput}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') confirmHoursInput()
-                    if (e.key === 'Escape') setEditingHours(false)
-                  }}
-                  aria-label="Hours played"
-                />
-                <span className="gd-hours-unit">hrs</span>
-                <button
-                  className="gd-hours-confirm"
-                  onClick={confirmHoursInput}
-                  aria-label="Confirm hours"
-                >✓</button>
-              </div>
-            ) : (
-              <div className="gd-hours-stepper">
-                <button
-                  className="gd-step-btn"
-                  onClick={() => handleStep(-0.5)}
-                  aria-label="Decrease hours by 0.5"
-                >−</button>
-                <button
-                  className="gd-hours-display"
-                  onClick={() => { setInputDraft(String(effectiveHours)); setEditingHours(true) }}
-                  aria-label={`${effectiveHours} hours played, tap to edit`}
-                >
-                  {effectiveHours % 1 === 0
-                    ? `${effectiveHours} hrs`
-                    : `${effectiveHours.toFixed(1)} hrs`}
-                </button>
-                <button
-                  className="gd-step-btn"
-                  onClick={() => handleStep(0.5)}
-                  aria-label="Increase hours by 0.5"
-                >+</button>
-              </div>
-            )}
-
-            {/* "Adjust %" — always labeled the same; override panel is hidden by default */}
-            <button
-              className="gd-override-toggle-btn"
-              onClick={() => setOverrideOpen(v => !v)}
-              aria-expanded={overrideOpen}
-              aria-label={overrideOpen ? 'Close progress override' : 'Set progress manually'}
-            >
-              Adjust %
-            </button>
-          </div>
-
-          {/* Override panel — collapsed by default; expands when "Adjust %" is tapped */}
-          {overrideOpen && (
-            <div className="gd-override-panel">
-              <div className="gd-override-slider-row">
-                <span className="gd-override-pct">
-                  {effectiveOverride !== null ? Math.round(effectiveOverride) : 0}%
-                </span>
-                <input
-                  className="gd-override-slider"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={effectiveOverride !== null ? Math.round(effectiveOverride) : 0}
-                  onChange={e => handleOverrideChange(e.target.value)}
-                  aria-label="Manual progress percentage"
-                />
-                {effectiveOverride !== null && (
-                  <button
-                    className="gd-override-clear-btn"
-                    onClick={handleClearOverride}
-                    aria-label="Clear manual override"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-              {effectiveOverride !== null && (
-                <p className="gd-override-hint">
-                  Manual override active — hours still tracked above
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Inline error toast */}
-          {toastMsg && (
-            <div className="gd-toast" role="alert" aria-live="polite">
-              {toastMsg}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Content Area ── */}
       <div className="gd-content">
 
@@ -1014,6 +878,14 @@ function GameDetail() {
         </div>
 
         <div className="gd-divider" />
+
+        {/* Your Journal — dated notes for library games only */}
+        {status && (
+          <>
+            <GameJournalSection game={game} user={user} status={status} />
+            <div className="gd-divider" />
+          </>
+        )}
 
         {/* Information — About + Details + Screenshots, with histogram on top */}
         <div className="gd-section">

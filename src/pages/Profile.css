@@ -1330,3 +1330,134 @@ img.profile-list-row__author-avatar {
   letter-spacing: var(--letter-spacing-label);
   white-space: nowrap;
 }
+
+/* ============================================================
+   DIARY TAB
+   Journal entries across all games, reverse-chronological.
+   ============================================================ */
+
+.profile-diary {
+  padding: 0 0 24px;
+}
+
+.profile-diary__empty {
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-diary__empty-text {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.profile-diary__empty-sub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.profile-diary__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-diary__row {
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.10));
+}
+
+.profile-diary__row:last-child {
+  border-bottom: none;
+}
+
+.profile-diary__row-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease;
+}
+
+.profile-diary__row-btn:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-diary__cover {
+  width: 40px;
+  height: 54px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.profile-diary__cover--placeholder {
+  background: var(--bg-surface-2, #1a2240);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.profile-diary__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profile-diary__game-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-diary__date {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+.profile-diary__snippet {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-diary__snippet--spoiler {
+  color: var(--status-warning, #f59e0b);
+  font-style: italic;
+  font-size: 12px;
+}
+
+.profile-diary__chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}

@@ -54,6 +54,8 @@ export const ACTIVITY_TYPES = Object.freeze({
   REVIEW_POSTED: 'review_posted',
   LIST_CREATED: 'list_created',
   GAME_ADDED_TO_LIST: 'game_added_to_list',
+  SESSION_LOGGED: 'session_logged',
+  JOURNAL_WRITTEN: 'journal_written',
 })
 
 /* ============================================================
@@ -291,6 +293,19 @@ export function formatActivityMessage(activity) {
       return `Created the list '${activity.listName || 'Untitled list'}'`
     case 'game_added_to_list':
       return `Added ${gameTitle} to '${activity.listName || 'a list'}'`
+    case 'session_logged': {
+      const addedHrs = activity.metadata?.added_hours
+      if (addedHrs != null && addedHrs >= 1 / 60) {
+        const totalMins = Math.round(addedHrs * 60)
+        const h = Math.floor(totalMins / 60)
+        const m = totalMins % 60
+        const timeStr = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`
+        return `Played ${gameTitle} for ${timeStr}`
+      }
+      return `Played ${gameTitle}`
+    }
+    case 'journal_written':
+      return `Wrote a journal entry for ${gameTitle}`
     default:
       return `Activity on ${gameTitle}`
   }
@@ -318,6 +333,10 @@ export function getActivityHref(activity) {
       // since the list is named in the sentence already.
       if (activity.igdbGameId) return `/game/${activity.igdbGameId}`
       return activity.targetId ? `/list/${activity.targetId}` : null
+    case 'session_logged':
+      return activity.igdbGameId ? `/game/${activity.igdbGameId}` : null
+    case 'journal_written':
+      return activity.igdbGameId ? `/game/${activity.igdbGameId}` : null
     default:
       return null
   }

@@ -1,0 +1,286 @@
+/* ============================================================
+   JournalNew — journal entry composer, presented inside CenteredModal.
+   Mirrors ReviewNew.css structure and class naming (jnc-* prefix).
+   The popup shell (.cm-card) provides the surface, rounding, centering,
+   and keyboard-aware sizing. These styles only lay out the internal content.
+   ============================================================ */
+
+/* ── Top row: Cancel | New journal entry | Save ──────────────────────────── */
+
+.jnc-topbar {
+  flex-shrink: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.jnc-topbar-cancel,
+.jnc-topbar-save {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent, #3b82f6);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+  min-width: 56px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.jnc-topbar-cancel {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.jnc-topbar-save {
+  font-weight: 700;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.jnc-topbar-save--disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.jnc-topbar-cancel:active,
+.jnc-topbar-save:not(.jnc-topbar-save--disabled):active {
+  opacity: 0.6;
+}
+
+.jnc-topbar-title {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  letter-spacing: 0;
+  flex: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Inline Save spinner */
+.jnc-save-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--accent, #3b82f6) 35%, transparent);
+  border-top-color: var(--accent, #3b82f6);
+  border-radius: 50%;
+  animation: jncSpin 700ms linear infinite;
+}
+
+/* ── Scrollable content ──────────────────────────────────────────────────── */
+
+.jnc-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+/* ── Game header ─────────────────────────────────────────────────────────── */
+
+.jnc-game-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jnc-game-cover {
+  width: 44px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.jnc-game-cover--placeholder {
+  background: var(--bg-surface-2, #1a2240);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.jnc-game-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jnc-game-title {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jnc-game-meta {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary, #94a8d4);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+
+.jnc-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.jnc-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 12px;
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  color: var(--text-primary, #f0f3fa);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.jnc-textarea::placeholder {
+  color: var(--text-tertiary, #5c6b8a);
+}
+
+.jnc-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent, #3b82f6) 50%, transparent);
+}
+
+.jnc-char-count {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 4px 0 0;
+  text-align: right;
+  align-self: flex-end;
+  transition: color 120ms ease;
+}
+
+.jnc-char-count--warn {
+  color: var(--status-warning, #f59e0b);
+}
+
+/* ── Tip line ────────────────────────────────────────────────────────────── */
+
+.jnc-tip {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.jnc-tip em {
+  font-style: italic;
+}
+
+.jnc-tip code {
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 10px;
+  background: rgba(148, 168, 212, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* ── iOS grouped container ───────────────────────────────────────────────── */
+
+.jnc-group {
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  overflow: clip;
+}
+
+.jnc-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  min-height: 48px;
+  gap: 12px;
+}
+
+.jnc-group-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+  letter-spacing: 0;
+}
+
+/* ── Loading / error bodies ──────────────────────────────────────────────── */
+
+.jnc-loading-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.jnc-inline-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent, #3b82f6);
+  border-radius: 50%;
+  animation: jncSpin 700ms linear infinite;
+}
+
+.jnc-error-body {
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.jnc-error-text {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  color: var(--status-danger, #f87171);
+  margin: 0;
+  line-height: 1.5;
+}
+
+@keyframes jncSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .jnc-inline-spinner,
+  .jnc-save-spinner {
+    animation-duration: 1400ms;
+  }
+}
+
+body[data-reduce-motion='true'] .jnc-inline-spinner,
+body[data-reduce-motion='true'] .jnc-save-spinner {
+  animation-duration: 1400ms;
+}

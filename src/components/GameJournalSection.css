@@ -1,0 +1,234 @@
+/* ============================================================
+   GameJournalSection — "Your Journal" block on the game detail page.
+   Sits inside gd-content, behind a gd-divider from adjacent sections.
+   ============================================================ */
+
+.gjs-section {
+  padding: 0 20px;
+}
+
+/* ── Header row: heading + "Add entry" button ─────────────────────────────── */
+
+.gjs-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.gjs-heading {
+  font-family: var(--font-display, 'DM Serif Display', Georgia, serif);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.gjs-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.1);
+  border: 0.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 999px;
+  padding: 5px 12px 5px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease, opacity 120ms ease;
+  flex-shrink: 0;
+}
+
+.gjs-add-btn:active {
+  background: rgba(59, 130, 246, 0.2);
+  opacity: 0.8;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.gjs-empty {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 14px;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Skeleton ────────────────────────────────────────────────────────────── */
+
+.gjs-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gjs-skeleton {
+  height: 14px;
+  border-radius: 6px;
+  background: var(--bg-surface-2, #1a2240);
+  animation: gjsPulse 1.4s ease-in-out infinite;
+}
+
+.gjs-skeleton--line {
+  width: 100%;
+}
+
+.gjs-skeleton--short {
+  width: 60%;
+}
+
+@keyframes gjsPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gjs-skeleton {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+body[data-reduce-motion='true'] .gjs-skeleton {
+  animation: none;
+  opacity: 0.6;
+}
+
+/* ── Entry list ──────────────────────────────────────────────────────────── */
+
+.gjs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gjs-entry {
+  position: relative;
+  padding: 14px 0;
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.10));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gjs-entry:last-child {
+  border-bottom: none;
+}
+
+/* ── Entry meta row (date + spoiler badge) ──────────────────────────────── */
+
+.gjs-entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gjs-entry-date {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  line-height: 1.4;
+}
+
+.gjs-spoiler-badge {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--status-warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+  border: 0.5px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.6;
+}
+
+/* ── Entry body ──────────────────────────────────────────────────────────── */
+
+.gjs-entry-body-wrap {
+  position: relative;
+  padding-right: 28px; /* room for the delete button */
+}
+
+.gjs-entry-body-wrap--blurred .gjs-entry-body {
+  filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.gjs-entry-body {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary, #94a8d4);
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  transition: filter 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gjs-entry-body {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .gjs-entry-body {
+  transition: none;
+}
+
+/* ── Reveal spoiler button ───────────────────────────────────────────────── */
+
+.gjs-reveal-btn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+
+/* ── Delete button ───────────────────────────────────────────────────────── */
+
+.gjs-delete-btn {
+  position: absolute;
+  top: 14px;
+  right: 0;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-tertiary, #5c6b8a);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 120ms ease, opacity 120ms ease;
+  line-height: 1;
+}
+
+.gjs-delete-btn:active {
+  color: var(--status-danger, #f87171);
+}
+
+.gjs-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

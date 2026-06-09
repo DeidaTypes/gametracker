@@ -84,6 +84,7 @@ import { showToast } from '../components/Toast'
 import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
 import PinnedListsSection from '../components/PinnedListsSection'
 import ProfileRatingsChart from '../components/ProfileRatingsChart'
+import { getJournalEntriesForUser } from '../services/journalService'
 import './Profile.css'
 
 /* ============================================================
@@ -462,6 +463,7 @@ function Profile() {
   const [allReviews, setAllReviews] = useState([])
   const [customLists, setCustomLists] = useState([])
   const [activities, setActivities] = useState([])
+  const [journalEntries, setJournalEntries] = useState([])
   // Sprint 6 P0 — Map<reviewId, count> fetched once per profile load
   // and re-fetched whenever reviews change. Drives the Most Liked sort
   // and the count rendered on each card. Seeded into useLikeState's
@@ -542,7 +544,7 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData, gp, sd] = await Promise.all([
+        const [rows, lists, acts, pins, pinnedListData, gp, sd, journalRows] = await Promise.all([
           safeWithTimeout(getReviewsForUser(targetUserId), []),
           safeWithTimeout(getListsForUser(targetUserId), []),
           safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
@@ -550,6 +552,7 @@ function Profile() {
           safeWithTimeout(getPinnedListsForUser(targetUserId), []),
           isOwnProfile ? safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null) : Promise.resolve(null),
           isOwnProfile ? safeWithTimeout(getStreakData(targetUserId), null) : Promise.resolve(null),
+          safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
         ])
         if (gp) setGoalProgress(gp)
         if (sd) setStreakData(sd)
@@ -571,6 +574,7 @@ function Profile() {
           }))
         )
         setActivities(acts)
+        setJournalEntries(journalRows || [])
 
         // Sprint 7 — fetch banner URL for other users' profiles.
         // Own profile already has bannerUrl in the localStorage blob.
@@ -611,6 +615,7 @@ function Profile() {
         setAllReviews([])
         setCustomLists([])
         setActivities([])
+        setJournalEntries([])
         setReviewLikeCounts(new Map())
         setPinnedRows([])
         setPinnedLists([])
@@ -619,6 +624,7 @@ function Profile() {
       setAllReviews([])
       setCustomLists([])
       setActivities([])
+      setJournalEntries([])
       setReviewLikeCounts(new Map())
       setPinnedRows([])
       setPinnedLists([])
@@ -633,6 +639,7 @@ function Profile() {
     window.addEventListener('profileUpdated', refresh)
     window.addEventListener('libraryUpdated', refresh)
     window.addEventListener('activityUpdated', refresh)
+    window.addEventListener('journalEntryAdded', refresh)
     // Sprint 6 P3 — pin changes triggered from a ReviewCard kebab can
     // be either on this profile (own) or on a card embedded in some
     // other screen (Home/Game detail). Either way we re-load so the
@@ -646,6 +653,7 @@ function Profile() {
       window.removeEventListener('profileUpdated', refresh)
       window.removeEventListener('libraryUpdated', refresh)
       window.removeEventListener('activityUpdated', refresh)
+      window.removeEventListener('journalEntryAdded', refresh)
       window.removeEventListener(PIN_CHANGED_EVENT, refresh)
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, refresh)
     }
@@ -1536,6 +1544,7 @@ function Profile() {
             { id: 'home', label: 'Home' },
             { id: 'reviews', label: 'Reviews' },
             { id: 'lists', label: 'Lists' },
+            { id: 'diary', label: 'Diary' },
           ].map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -1646,6 +1655,15 @@ function Profile() {
                   authorAvatarFallback={defaultAvatar}
                   onPinList={isOwnProfile ? handlePinList : undefined}
                   onUnpinList={isOwnProfile ? handleUnpinList : undefined}
+                />
+              )}
+
+              {activeTab === 'diary' && (
+                <DiaryTab
+                  entries={journalEntries}
+                  onGameClick={(id, image) =>
+                    navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
+                  }
                 />
               )}
             </motion.div>
@@ -2318,6 +2336,100 @@ function ListRow({
       </div>
     </article>
   )
+}
+
+/* ============================================================
+   ── Diary tab
+   All journal entries for this user, across all games, newest first.
+   Each row = game cover + title + date + snippet, tappable to game detail.
+   Hides cleanly (empty state) when there are no entries.
+   ============================================================ */
+
+function DiaryTab({ entries, onGameClick }) {
+  if (!entries || entries.length === 0) {
+    return (
+      <div className="profile-diary">
+        <div className="profile-diary__empty">
+          <p className="profile-diary__empty-text">No journal entries yet.</p>
+          <p className="profile-diary__empty-sub">
+            Add dated notes from a game's page as you play.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="profile-diary">
+      <ul className="profile-diary__list" aria-label="Diary">
+        {entries.map((entry) => (
+          <li key={entry.id} className="profile-diary__row">
+            <button
+              type="button"
+              className="profile-diary__row-btn"
+              onClick={() => onGameClick(entry.igdb_game_id, entry.game_image)}
+              aria-label={`Go to ${entry.game_title || 'game'}`}
+            >
+              {entry.game_image ? (
+                <img
+                  src={entry.game_image}
+                  alt={entry.game_title || ''}
+                  className="profile-diary__cover"
+                />
+              ) : (
+                <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
+              )}
+              <div className="profile-diary__meta">
+                <p className="profile-diary__game-title">
+                  {entry.game_title || 'Unknown game'}
+                </p>
+                <time
+                  className="profile-diary__date"
+                  dateTime={entry.created_at}
+                  title={new Date(entry.created_at).toLocaleString()}
+                >
+                  {formatDiaryDate(entry.created_at)}
+                </time>
+                {entry.is_spoiler ? (
+                  <p className="profile-diary__snippet profile-diary__snippet--spoiler">
+                    [spoiler]
+                  </p>
+                ) : (
+                  <p className="profile-diary__snippet">
+                    {entry.body?.slice(0, 100)}{entry.body?.length > 100 ? '…' : ''}
+                  </p>
+                )}
+              </div>
+              <svg
+                className="profile-diary__chevron"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function formatDiaryDate(isoString) {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 export default Profile
