@@ -1283,8 +1283,8 @@ limit ${tasteIgdbIds.length};`
     if (!seedIds.length) return []
 
     const limited = seedIds.slice(0, 20)
-    const gameQuery = `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name;
-where id = (${limited.join(',')}) & cover != null & total_rating >= 70;
+    const gameQuery = `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name;
+where id = (${limited.join(',')}) & cover != null;
 limit ${limited.length};`
 
     const games = await igdbRequest('games', gameQuery)
@@ -1333,22 +1333,24 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
   const eras = DISCOVERY_ERAS.map((e) => ({ ...e, end: e.end ?? now }))
 
   // Build 3 sub-queries with independent randomised axes.
-  // NOTE: `version_parent = null` is intentionally omitted — IGDB does not
-  // store explicit nulls for unset relationship fields, so that predicate
-  // returns 0 results in most genre+era combos. `category = 0` (Main Game)
-  // already excludes DLC / expansions / ports / remakes / remasters.
+  // Use `rating` / `rating_count` — these are the fields every proven IGDB
+  // query in this codebase uses. `total_rating` and `total_rating_count` are
+  // sparsely populated (especially for classic/niche games) and cause 0-result
+  // batches. `category` and `version_parent` constraints are intentionally
+  // omitted: they are either sparsely indexed or store no explicit null,
+  // both silently killing results. The cover + rating floor is the quality gate.
   const axes = Array.from({ length: 3 }, () => {
     const genre  = randomPick(allGenres)
     const era    = randomPick(eras)
     const offset = Math.floor(Math.random() * 100)
 
     const query =
-      `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name; ` +
-      `where category = 0 & cover != null` +
-      ` & total_rating_count >= 20 & total_rating >= 70` +
+      `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name; ` +
+      `where cover != null & rating != null & rating_count != null` +
+      ` & rating >= 70 & rating_count >= 10` +
       ` & genres = (${genre.id})` +
       ` & first_release_date >= ${era.start} & first_release_date < ${era.end}; ` +
-      `sort total_rating desc; limit 25; offset ${offset};`
+      `sort rating desc; limit 25; offset ${offset};`
 
     return { genre, era, offset, query }
   })
@@ -1379,18 +1381,18 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
     }
   }
 
-  // Fallback: if all 3 randomised axes returned nothing (e.g. rare genre+era
-  // combo with no rated games), fire one broad safety-net query so the deck
-  // is never empty. No era constraint, genre still random, no offset.
+  // Tier-1 fallback: drop era constraint, keep genre + rating floor.
+  // Fires only when all 3 axes returned nothing (very rare genre + sparse era).
   if (combined.length === 0) {
     try {
       const safeGenre = randomPick(allGenres)
       const safeQuery =
-        `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name; ` +
-        `where category = 0 & cover != null & total_rating_count >= 50 & total_rating >= 70 & genres = (${safeGenre.id}); ` +
-        `sort total_rating desc; limit 25; offset ${Math.floor(Math.random() * 50)};`
-      const fallbackGames = await igdbRequest('games', safeQuery)
-      for (const g of fallbackGames || []) {
+        `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name; ` +
+        `where cover != null & rating != null & rating_count != null` +
+        ` & rating >= 70 & rating_count >= 30 & genres = (${safeGenre.id}); ` +
+        `sort rating_count desc; limit 25; offset ${Math.floor(Math.random() * 50)};`
+      const fallback1 = await igdbRequest('games', safeQuery)
+      for (const g of fallback1 || []) {
         if (!g?.id || !g?.name || !g?.cover?.image_id) continue
         const key = String(g.id)
         if (!seenInBatch.has(key) && !excludeIds.has(key)) {
@@ -1399,6 +1401,23 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
         }
       }
     } catch { /* non-fatal */ }
+  }
+
+  // Tier-2 fallback: use fetchSwipeDeckPool which is proven to always return
+  // results (it powers the existing deck and is a known-good query path).
+  if (combined.length === 0) {
+    try {
+      const pool = await fetchSwipeDeckPool(40)
+      for (const g of pool) {
+        if (!excludeIds.has(String(g.id))) combined.push(g)
+      }
+      // Already formatted — return directly after shuffle.
+      for (let i = combined.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[combined[i], combined[j]] = [combined[j], combined[i]]
+      }
+      return combined.slice(0, limit)
+    } catch { return [] }
   }
 
   // Optional taste seed — minority (≤ ¼ of limit) from similar_games.
@@ -1420,14 +1439,7 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
     ;[combined[i], combined[j]] = [combined[j], combined[i]]
   }
 
-  // Normalise total_rating → rating so formatGames() can consume it.
-  const toFormat = combined.slice(0, limit).map((g) => ({
-    ...g,
-    rating:       g.total_rating       ?? g.rating       ?? null,
-    rating_count: g.total_rating_count ?? g.rating_count ?? null,
-  }))
-
-  return formatGames(toFormat)
+  return formatGames(combined.slice(0, limit))
 }
 
 // Test API connection
