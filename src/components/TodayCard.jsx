@@ -147,7 +147,7 @@ function NowPlayingRow({
               type="button"
               onClick={goToGame}
             >
-              View <ChevronRight size={13} aria-hidden="true" />
+              Continue <ChevronRight size={13} aria-hidden="true" />
             </button>
           </div>
         )}
