@@ -246,7 +246,20 @@ function ReviewCard({
         <h3 className="review-card__title">{review.title}</h3>
       )}
 
-      <StarRating rating={review.rating} size={24} />
+      <div className="review-card__rating-row">
+        <StarRating rating={review.rating} size={24} />
+        {review.hoursPlayed > 0 && (
+          <span
+            className="review-card__hours-chip"
+            aria-label={`${review.hoursPlayed} hours played`}
+          >
+            {review.hoursPlayed % 1 === 0
+              ? review.hoursPlayed
+              : Number(review.hoursPlayed).toFixed(1)}{' '}
+            hrs
+          </span>
+        )}
+      </div>
 
       <div className="review-card__body">
         <p ref={bodyRef} className={expanded ? '' : clampClass}>

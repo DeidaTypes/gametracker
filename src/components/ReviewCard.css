@@ -101,6 +101,23 @@
   flex-shrink: 0;
 }
 
+/* ---------------- Rating row (stars + hours chip) ---------------- */
+
+.review-card__rating-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Muted credibility chip — "42 hrs". Hidden when hoursPlayed is 0. */
+.review-card__hours-chip {
+  font-size: var(--font-size-caption);
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  line-height: 1;
+}
+
 /* ---------------- Title ---------------- */
 
 .review-card__title {

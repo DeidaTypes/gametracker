@@ -35,6 +35,7 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
     title: null,
     body: row.body || '',
     rating: Number(row.rating) || 0,
+    hoursPlayed: Number(row.hours_played) || 0,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,

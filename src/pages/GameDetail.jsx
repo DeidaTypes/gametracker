@@ -19,6 +19,7 @@ import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getTracker, setHoursPlayed, setProgressOverride } from '../services/hoursService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
+import { useSession } from '../contexts/SessionContext'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -139,6 +140,7 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
     title: null,
     body: row.body || '',
     rating: Number(row.rating) || 0,
+    hoursPlayed: Number(row.hours_played) || 0,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,
@@ -180,6 +182,19 @@ function GameDetail() {
   const [descExpanded, setDescExpanded] = useState(false)
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
+
+  // ── Session timer ──────────────────────────────────────────────────────────
+  const {
+    session: activeSession,
+    elapsed: sessionElapsed,
+    isStarting: sessionStarting,
+    stopGameSession,
+    startGameSession,
+  } = useSession()
+
+  const isThisGameSession =
+    activeSession?.igdb_game_id != null &&
+    String(activeSession.igdb_game_id) === String(gameId)
 
   // ── Hours / Progress state ──────────────────────────────────────────────────
   const [tracker, setTracker] = useState(null)
@@ -491,6 +506,38 @@ function GameDetail() {
     } else {
       showToast('Could not clear override — try again')
     }
+  }
+
+  // ── Session handlers ──────────────────────────────────────────────────────
+  const handleStartSession = useCallback(() => {
+    startGameSession(gameId, {
+      gameTitle: game?.title,
+      gameImage: game?.image,
+    })
+  }, [startGameSession, gameId, game])
+
+  const handleStopSession = useCallback(() => {
+    stopGameSession()
+  }, [stopGameSession])
+
+  // On stop: refresh the tracker row so the progress bar reflects the
+  // new hours total immediately (libraryUpdated also fires from context).
+  useEffect(() => {
+    function onLibOrSession() {
+      if (status && !statusChangeInFlight.current) {
+        getTracker(gameId)
+          .then((t) => { if (t) setTracker(t) })
+          .catch(() => {})
+      }
+    }
+    window.addEventListener('libraryUpdated', onLibOrSession)
+    return () => window.removeEventListener('libraryUpdated', onLibOrSession)
+  }, [gameId, status])
+
+  function formatSessionElapsed(s) {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   }
 
   if (loading) {
