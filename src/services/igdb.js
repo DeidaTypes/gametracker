@@ -1333,17 +1333,21 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
   const eras = DISCOVERY_ERAS.map((e) => ({ ...e, end: e.end ?? now }))
 
   // Build 3 sub-queries with independent randomised axes.
+  // NOTE: `version_parent = null` is intentionally omitted — IGDB does not
+  // store explicit nulls for unset relationship fields, so that predicate
+  // returns 0 results in most genre+era combos. `category = 0` (Main Game)
+  // already excludes DLC / expansions / ports / remakes / remasters.
   const axes = Array.from({ length: 3 }, () => {
     const genre  = randomPick(allGenres)
     const era    = randomPick(eras)
     const offset = Math.floor(Math.random() * 100)
 
     const query =
-      `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name;\n` +
-      `where category = 0 & version_parent = null & cover != null` +
-      ` & total_rating_count >= 20 & total_rating >= 75` +
+      `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name; ` +
+      `where category = 0 & cover != null` +
+      ` & total_rating_count >= 20 & total_rating >= 70` +
       ` & genres = (${genre.id})` +
-      ` & first_release_date >= ${era.start} & first_release_date < ${era.end};\n` +
+      ` & first_release_date >= ${era.start} & first_release_date < ${era.end}; ` +
       `sort total_rating desc; limit 25; offset ${offset};`
 
     return { genre, era, offset, query }
@@ -1373,6 +1377,28 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
       seenInBatch.add(key)
       combined.push(g)
     }
+  }
+
+  // Fallback: if all 3 randomised axes returned nothing (e.g. rare genre+era
+  // combo with no rated games), fire one broad safety-net query so the deck
+  // is never empty. No era constraint, genre still random, no offset.
+  if (combined.length === 0) {
+    try {
+      const safeGenre = randomPick(allGenres)
+      const safeQuery =
+        `fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name; ` +
+        `where category = 0 & cover != null & total_rating_count >= 50 & total_rating >= 70 & genres = (${safeGenre.id}); ` +
+        `sort total_rating desc; limit 25; offset ${Math.floor(Math.random() * 50)};`
+      const fallbackGames = await igdbRequest('games', safeQuery)
+      for (const g of fallbackGames || []) {
+        if (!g?.id || !g?.name || !g?.cover?.image_id) continue
+        const key = String(g.id)
+        if (!seenInBatch.has(key) && !excludeIds.has(key)) {
+          seenInBatch.add(key)
+          combined.push(g)
+        }
+      }
+    } catch { /* non-fatal */ }
   }
 
   // Optional taste seed — minority (≤ ¼ of limit) from similar_games.
