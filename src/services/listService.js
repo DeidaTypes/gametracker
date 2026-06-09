@@ -91,6 +91,13 @@ function rowToList(row) {
     games,
     gameCount: games.length,
     previewGames: games.slice(0, 6),
+    author: row.users
+      ? {
+          username: row.users.username || '',
+          displayName: row.users.display_name || '',
+          avatarUrl: row.users.avatar_url || null,
+        }
+      : null,
   }
 }
 
@@ -185,7 +192,7 @@ export async function getListById(listId) {
   if (!listId) return null
   const { data, error } = await supabase
     .from('lists')
-    .select('*, list_games(igdb_game_id, game_title, game_image, position, added_at)')
+    .select('*, list_games(igdb_game_id, game_title, game_image, position, added_at), users(username, display_name, avatar_url)')
     .eq('id', listId)
     .single()
   if (error) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
-import { HiDotsVertical, HiPlus, HiPencil } from 'react-icons/hi'
+import { HiDotsVertical, HiPlus } from 'react-icons/hi'
 import { PlayCircle, CheckCircle2, Bookmark, List } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
@@ -27,9 +27,17 @@ import {
   pinList,
   unpinList,
 } from '../services/listService'
-import { uploadListCover, removeListCover } from '../services/listCoverService'
 import { supabase } from '../services/supabase'
 import './ListDetail.css'
+
+function fmtDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
 
 /* ── Context-aware empty state for tracker and custom list pages ── */
 const TRACKER_EMPTY = {
@@ -95,17 +103,8 @@ function ListDetail() {
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showAddGames, setShowAddGames] = useState(false)
-  const [showCoverActionSheet, setShowCoverActionSheet] = useState(false)
-  const [isUploadingCover, setIsUploadingCover] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
-
-  // Cover image displayed in the hero — may differ from listInfo.coverImageUrl
-  // immediately after an upload (cache-busted URL) before a refresh occurs.
-  const [coverDisplay, setCoverDisplay] = useState(null)
-
-  const fileInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
 
   // Drag-to-reorder state (custom lists only)
   const dragGameIdRef = useRef(null)
@@ -135,7 +134,6 @@ function ListDetail() {
         const data = await getListById(listId)
         setListInfo(data)
         setGames(data?.games || [])
-        setCoverDisplay(data?.coverImageUrl || null)
       } catch (err) {
         console.error('[list-detail] failed to load:', err)
         setLoadError(true)
@@ -296,60 +294,6 @@ function ListDetail() {
 
   // ── Cover upload ──────────────────────────────────────────────────────────
 
-  const handleFileSelected = async (file) => {
-    if (!file) return
-    setIsUploadingCover(true)
-    try {
-      const url = await uploadListCover(listId, file)
-      setCoverDisplay(url)
-      window.dispatchEvent(new Event('libraryUpdated'))
-      showToast('Cover updated', 'success')
-    } catch (err) {
-      showToast(err.message || 'Failed to upload cover.', 'error')
-    } finally {
-      setIsUploadingCover(false)
-      // Reset inputs so re-selecting the same file triggers onChange again.
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      if (cameraInputRef.current) cameraInputRef.current.value = ''
-    }
-  }
-
-  const handleRemoveCover = async () => {
-    setIsUploadingCover(true)
-    try {
-      await removeListCover(listId, currentUserId)
-      setCoverDisplay(null)
-      window.dispatchEvent(new Event('libraryUpdated'))
-      showToast('Cover removed', 'success')
-    } catch (err) {
-      showToast(err.message || 'Failed to remove cover.', 'error')
-    } finally {
-      setIsUploadingCover(false)
-    }
-  }
-
-  // ── Cover action sheet ────────────────────────────────────────────────────
-
-  const coverActionItems = [
-    {
-      label: 'Photo Library',
-      onClick: () => fileInputRef.current?.click(),
-    },
-    {
-      label: 'Take Photo',
-      onClick: () => cameraInputRef.current?.click(),
-    },
-    ...(coverDisplay
-      ? [
-          {
-            label: 'Remove custom cover',
-            destructive: true,
-            onClick: handleRemoveCover,
-          },
-        ]
-      : []),
-  ]
-
   // ── Main action sheet items ───────────────────────────────────────────────
   // Owner sees Duplicate + Delete. Non-owner sees Report list.
 
@@ -376,91 +320,19 @@ function ListDetail() {
         },
       ]
 
-  // ── Cover area (for custom lists) ─────────────────────────────────────────
-
-  const previewGames = listInfo?.previewGames || games.slice(0, 4)
-  const mosaicAlt = previewGames.length > 0
-    ? `${listInfo?.name ?? 'List'} — covers of ${previewGames
-        .map((g) => g.title)
-        .filter(Boolean)
-        .join(', ')}`
-    : `${listInfo?.name ?? 'List'} cover`
-
-  function CoverArea() {
-    if (!listInfo?.isCustom) return null
-
-    return (
-      <div className="list-detail-cover">
-        {coverDisplay ? (
-          <img
-            src={coverDisplay}
-            alt={`${listInfo.name} cover`}
-            className="list-detail-cover__img"
-            draggable={false}
-          />
-        ) : (
-          <div className="list-detail-cover__mosaic" aria-label={mosaicAlt} role="img">
-            {Array.from({ length: 4 }).map((_, idx) => {
-              const g = previewGames[idx]
-              return (
-                <div
-                  key={g?.id || `ph-${idx}`}
-                  className={`list-detail-cover__mosaic-cell${
-                    g ? '' : ' list-detail-cover__mosaic-cell--empty'
-                  }`}
-                >
-                  {g?.image ? (
-                    <img
-                      src={g.image}
-                      alt=""
-                      className="list-detail-cover__mosaic-img"
-                      loading="lazy"
-                      draggable={false}
-                    />
-                  ) : g ? (
-                    <div className="list-detail-cover__mosaic-fallback">
-                      {g.title?.charAt(0) || '?'}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {isOwner && (
-          <button
-            type="button"
-            className="list-detail-cover__edit-btn"
-            onClick={() => setShowCoverActionSheet(true)}
-            aria-label="Edit cover image"
-            disabled={isUploadingCover}
-          >
-            {isUploadingCover ? (
-              <span className="list-detail-cover__spinner" aria-hidden="true" />
-            ) : (
-              <HiPencil aria-hidden="true" />
-            )}
-          </button>
-        )}
-
-        {isUploadingCover && (
-          <div className="list-detail-cover__uploading-overlay" aria-hidden="true">
-            <span className="list-detail-cover__spinner list-detail-cover__spinner--lg" />
-          </div>
-        )}
-      </div>
-    )
-  }
+  // Viewer can add games only if they own the list or it's a personal tracker list
+  const canEdit = isOwner || isTracker
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
       <div className="list-detail-page list-detail-page--loading" aria-busy="true" aria-label="Loading list">
-        <div className="ld-sk-cover skeleton" aria-hidden="true" />
+        <div className="ld-sk-header-bar" aria-hidden="true" />
         <div className="ld-sk-body" aria-hidden="true">
+          <div className="ld-sk-eyebrow skeleton" />
           <div className="ld-sk-title skeleton" />
+          <div className="ld-sk-meta skeleton" />
           <div className="ld-sk-desc skeleton" />
           <div className="ld-sk-divider" aria-hidden="true" />
           {Array.from({ length: 4 }).map((_, i) => (
@@ -506,10 +378,13 @@ function ListDetail() {
     )
   }
 
+  const author = listInfo.author
+
   return (
     <div className="list-detail-page content-fade-in">
-      {/* 1. Back bar — always first, sits below the iOS status bar */}
-      <div className="list-detail-back-bar">
+
+      {/* 1. Header bar — sticky, safe-area-aware, chevron left + "List" centre + actions right */}
+      <header className="list-detail-header-bar">
         <button
           type="button"
           className="list-detail-back"
@@ -518,51 +393,89 @@ function ListDetail() {
         >
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
-      </div>
 
-      {/* 2. Cover collage — below the back bar, never in the status bar */}
-      <CoverArea />
+        <span className="list-detail-header-label" aria-hidden="true">List</span>
 
-      <header className="list-detail-header">
-        <div className="list-detail-header-row">
-          <div className="list-detail-title-block">
-            <span className="list-detail-eyebrow">
-              {listInfo.isCustom ? 'List' : 'Tracker'}
-            </span>
-            <h1 className="list-detail-title">{listInfo.name}</h1>
-            {listInfo.description && (
-              <p className="list-detail-description">{listInfo.description}</p>
-            )}
-            <p className="list-detail-meta">
-              {games.length} {games.length === 1 ? 'game' : 'games'}
-            </p>
-          </div>
-
-          <div className="list-detail-actions">
+        <div className="list-detail-header-actions">
+          {canEdit && (
             <button
-              className="list-detail-action-button"
+              type="button"
+              className="list-detail-header-icon-btn"
               onClick={() => setShowAddGames(true)}
               aria-label="Add games"
-              title="Add games"
             >
-              <HiPlus />
-              <span className="list-detail-action-label">Add Games</span>
+              <HiPlus size={20} aria-hidden="true" />
             </button>
-
-            {listInfo.isCustom && (
-              <button
-                className="list-detail-icon-button"
-                onClick={() => setShowActionSheet(true)}
-                aria-haspopup="dialog"
-                aria-label="More options"
-              >
-                <HiDotsVertical />
-              </button>
-            )}
-          </div>
+          )}
+          {listInfo.isCustom && (
+            <button
+              type="button"
+              className="list-detail-header-icon-btn"
+              onClick={() => setShowActionSheet(true)}
+              aria-haspopup="dialog"
+              aria-label="More options"
+            >
+              <HiDotsVertical size={20} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </header>
 
+      {/* 2. Title block — eyebrow + list name */}
+      <div className="list-detail-body">
+        <div className="list-detail-title-block">
+          <span className="list-detail-eyebrow">
+            {listInfo.isCustom ? 'List' : 'Tracker'}
+          </span>
+          <h1 className="list-detail-title">{listInfo.name}</h1>
+        </div>
+
+        {/* 3. Meta — author row + date + game count */}
+        <div className="list-detail-meta-row">
+          {author && (
+            <>
+              <button
+                type="button"
+                className="list-detail-author-btn"
+                onClick={() => author.username && navigate(`/profile/${author.username}`)}
+              >
+                {author.avatarUrl ? (
+                  <img
+                    src={author.avatarUrl}
+                    alt=""
+                    className="list-detail-author-avatar"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="list-detail-author-avatar list-detail-author-avatar--fallback" aria-hidden="true">
+                    {(author.displayName || author.username || '?').charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="list-detail-author-name">
+                  {author.displayName || author.username}
+                </span>
+              </button>
+              <span className="list-detail-meta-dot" aria-hidden="true">·</span>
+            </>
+          )}
+          {listInfo.createdAt && (
+            <>
+              <span className="list-detail-meta-item">{fmtDate(listInfo.createdAt)}</span>
+              <span className="list-detail-meta-dot" aria-hidden="true">·</span>
+            </>
+          )}
+          <span className="list-detail-meta-item">
+            {games.length} {games.length === 1 ? 'game' : 'games'}
+          </span>
+        </div>
+
+        {/* 4. Description — only shown when non-empty */}
+        {listInfo.description && (
+          <p className="list-detail-description">{listInfo.description}</p>
+        )}
+      </div>
+
+      {/* 5. Games grid */}
       <div className="list-detail-content">
         {games.length > 0 ? (
           <div className="list-detail-grid" ref={gridRef}>
@@ -570,30 +483,16 @@ function ListDetail() {
               <div
                 key={game.id}
                 className={`list-detail-grid-item${
-                  listInfo.isCustom && dragOverId === game.id
-                    ? ' drag-over'
-                    : ''
+                  isOwner && dragOverId === game.id ? ' drag-over' : ''
                 }`}
-                draggable={listInfo.isCustom}
-                onDragStart={
-                  listInfo.isCustom
-                    ? (e) => handleDragStart(e, game.id)
-                    : undefined
-                }
-                onDragOver={
-                  listInfo.isCustom
-                    ? (e) => handleDragOver(e, game.id)
-                    : undefined
-                }
-                onDrop={
-                  listInfo.isCustom
-                    ? (e) => handleDrop(e, game.id)
-                    : undefined
-                }
-                onDragEnd={listInfo.isCustom ? handleDragEnd : undefined}
+                draggable={isOwner}
+                onDragStart={isOwner ? (e) => handleDragStart(e, game.id) : undefined}
+                onDragOver={isOwner ? (e) => handleDragOver(e, game.id) : undefined}
+                onDrop={isOwner ? (e) => handleDrop(e, game.id) : undefined}
+                onDragEnd={isOwner ? handleDragEnd : undefined}
               >
                 <GameCard game={game} />
-                {listInfo.isCustom && (
+                {isOwner && (
                   <button
                     type="button"
                     className="list-detail-remove-button"
@@ -620,27 +519,6 @@ function ListDetail() {
         )}
       </div>
 
-      {/* Hidden file inputs for cover upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => handleFileSelected(e.target.files?.[0])}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => handleFileSelected(e.target.files?.[0])}
-      />
-
       <AddGamesModal
         isOpen={showAddGames}
         onClose={() => {
@@ -651,13 +529,6 @@ function ListDetail() {
         listName={listInfo?.name}
         listDescription={listInfo?.description}
         onAddGames={null}
-      />
-
-      <ActionSheet
-        isOpen={showCoverActionSheet}
-        onClose={() => setShowCoverActionSheet(false)}
-        title="Edit cover"
-        items={coverActionItems}
       />
 
       <ActionSheet
