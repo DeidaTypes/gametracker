@@ -49,6 +49,7 @@ const ALLOWED_ENDPOINTS = new Set([
   'game_modes',
   'companies',
   'involved_companies',
+  'game_time_to_beats',
 ])
 
 // ── Twitch OAuth token cache (per warm instance) ────────────────────────────

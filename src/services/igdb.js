@@ -133,7 +133,7 @@ function extractCoverUrl(game) {
   return null
 }
 
-async function igdbRequest(endpoint, query) {
+export async function igdbRequest(endpoint, query) {
   const cacheKey = `${endpoint}::${query}`
 
   const cached = responseCache.get(cacheKey)
