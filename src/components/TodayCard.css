@@ -1,0 +1,315 @@
+/* =============================================
+   TODAY CARD — Home screen "Today" surface
+   Cobalt Modern, DM Sans, CSS variables only.
+   ============================================= */
+
+.tc-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-md) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* ── Header ─────────────────────────────────── */
+
+.tc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tc-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+/* ── Streak chip ─────────────────────────────── */
+
+.tc-streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-full);
+}
+
+.tc-streak-flame {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.tc-streak-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* ── Now Playing row ─────────────────────────── */
+
+.tc-now-playing {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.tc-cover-btn {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-cover-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tc-cover {
+  display: block;
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+}
+
+.tc-game-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tc-playing-tag {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--accent);
+  line-height: var(--line-height-label);
+}
+
+.tc-game-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ── Progress bar ────────────────────────────── */
+
+.tc-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tc-bar-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.tc-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-bar-fill {
+    transition: none;
+  }
+}
+
+/* App-level reduce-motion override */
+[data-reduce-motion='true'] .tc-bar-fill {
+  transition: none;
+}
+
+.tc-progress-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+/* ── Continue button ─────────────────────────── */
+
+.tc-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  line-height: var(--line-height-caption);
+  -webkit-tap-highlight-color: transparent;
+  margin-top: 2px;
+}
+
+.tc-continue-btn:hover,
+.tc-continue-btn:focus-visible {
+  color: var(--accent-hover);
+  outline: none;
+}
+
+.tc-continue-btn:focus-visible {
+  text-decoration: underline;
+}
+
+/* ── Divider ─────────────────────────────────── */
+
+.tc-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+/* ── 7-day week row ──────────────────────────── */
+
+.tc-week-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.tc-week-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tc-week-cell-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* The dot indicator below the label */
+.tc-week-cell::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-week-cell::after {
+    transition: none;
+  }
+}
+
+[data-reduce-motion='true'] .tc-week-cell::after {
+  transition: none;
+}
+
+/* Active day — filled cobalt dot */
+.tc-week-cell--active::after {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Today — cobalt ring */
+.tc-week-cell--today::after {
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--accent);
+}
+
+/* Today + active */
+.tc-week-cell--today.tc-week-cell--active::after {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--accent);
+}
+
+/* ── Footer caption ──────────────────────────── */
+
+.tc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  padding-top: 2px;
+}
+
+.tc-caption {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+.tc-caption strong {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.tc-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  line-height: var(--line-height-caption);
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tc-calendar-link:hover,
+.tc-calendar-link:focus-visible {
+  color: var(--accent-hover);
+  outline: none;
+}
+
+.tc-calendar-link:focus-visible {
+  text-decoration: underline;
+}

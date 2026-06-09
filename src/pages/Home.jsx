@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import HomeSearchBar from '../components/HomeSearchBar'
-import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
+import TodayCard from '../components/TodayCard'
 import BacklogSection from '../components/BacklogSection'
 import SocialActivityCard from '../components/SocialActivityCard'
 import HomeFAB from '../components/HomeFAB'
 import TrackerSearchModal from '../components/TrackerSearchModal'
-import {
-  getGamesFromList,
-  getContinuePlayingGames,
-} from '../services/libraryService'
+import { getGamesFromList } from '../services/libraryService'
 import { getProfile } from '../services/profileService'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -45,7 +41,6 @@ function Home() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [continueGames, setContinueGames] = useState([])
   const [wantToPlayGames, setWantToPlayGames] = useState([])
   // Focused "add to tracker" popup. status drives which list the picked
   // game lands in ('currently' | 'want' | 'played').
@@ -65,7 +60,6 @@ function Home() {
   const loadHomeData = useCallback(() => {
     try {
       setLoading(true)
-      setContinueGames(getContinuePlayingGames(5))
       setWantToPlayGames(getGamesFromList('want-to-play'))
     } catch (err) {
       console.error('Error loading home data:', err)
@@ -119,32 +113,9 @@ function Home() {
             <HomeSearchBar />
           </header>
 
-          {/* ── Currently Playing — boxed hero, most prominent ── */}
+          {/* ── Today — streak + now playing + 7-day activity week ── */}
           <section className="home-section home-section-padded">
-            <div className="shelf-box shelf-box--hero">
-              <div className="shelf-head">
-                <h2 className="shelf-title">Currently Playing</h2>
-                {continueGames.length > 0 && (
-                  <button
-                    type="button"
-                    className="shelf-link"
-                    onClick={() =>
-                      navigate('/list/currently-playing', {
-                        state: { selectedListId: 'currently-playing' },
-                      })
-                    }
-                    aria-label="Open your Currently Playing list"
-                  >
-                    <ChevronRight size={20} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              <HeroCurrentlyPlaying
-                boxed
-                games={continueGames}
-                onAddGame={() => openAdd('currently')}
-              />
-            </div>
+            <TodayCard />
           </section>
 
           {/* ── Your Backlog — boxed "what's next" card ── */}
