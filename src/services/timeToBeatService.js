@@ -16,7 +16,9 @@ import { igdbRequest } from './igdb'
 
 // ── Dual-layer cache: in-memory (fast) + localStorage (survives reload) ─────
 
-const LS_KEY = 'gt:ttb:v1'
+// v2: invalidates caches that may have stored null when game_time_to_beats
+// was not yet allowed by the igdb-proxy Edge Function.
+const LS_KEY = 'gt:ttb:v2'
 const MEM_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const LS_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours — IGDB TTB data rarely changes
 
@@ -118,12 +120,15 @@ export async function getTimeToBeat(igdbGameId) {
 
   const promise = fetchFromIgdb(id)
     .then((data) => {
+      if (data === null && import.meta.env.DEV) {
+        console.warn(`[timeToBeat] no IGDB entry for game ${id} (null result)`)
+      }
       memCache.set(id, { data, expiresAt: Date.now() + MEM_TTL_MS })
       lsSet(id, data)
       return data
     })
     .catch((err) => {
-      console.error(`[timeToBeat] fetch failed for game ${id}:`, err)
+      console.error(`[timeToBeat] fetch failed for game ${id}:`, err.message ?? err)
       return null
     })
     .finally(() => {

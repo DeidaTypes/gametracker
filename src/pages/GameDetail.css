@@ -1188,7 +1188,6 @@
   background: var(--accent);
   border-radius: 999px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -730,7 +730,7 @@ function GameDetail() {
       {status && trackerReady && progress && (
         <div className="gd-progress-block">
 
-          {/* Section heading — distinguishes this block from the TTB averages above */}
+          {/* Section heading */}
           <p className="gd-progress-section-label">Your Progress</p>
 
           {/* Label row: "24 / ~39 hrs" + optional "manual" badge */}
@@ -741,22 +741,22 @@ function GameDetail() {
             )}
           </div>
 
-          {/* Bar — only when showBar is true (TTB data present or override set) */}
-          {progress.showBar && (
-            <div
-              className="gd-progress-bar-track"
-              role="progressbar"
-              aria-valuenow={Math.round(progress.percent)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Progress: ${Math.round(progress.percent)}%`}
-            >
+          {/* Bar — always rendered; fill only when percent > 0 so 0 hrs = empty track */}
+          <div
+            className="gd-progress-bar-track"
+            role="progressbar"
+            aria-valuenow={Math.round(progress.percent ?? 0)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Progress: ${Math.round(progress.percent ?? 0)}%`}
+          >
+            {(progress.percent ?? 0) > 0 && (
               <div
                 className="gd-progress-bar-fill"
                 style={{ width: `${Math.min(100, progress.percent)}%` }}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Hours stepper row + override toggle */}
           <div className="gd-hours-row">
@@ -808,31 +808,30 @@ function GameDetail() {
               </div>
             )}
 
+            {/* "Adjust %" — always labeled the same; override panel is hidden by default */}
             <button
               className="gd-override-toggle-btn"
               onClick={() => setOverrideOpen(v => !v)}
               aria-expanded={overrideOpen}
               aria-label={overrideOpen ? 'Close progress override' : 'Set progress manually'}
             >
-              {effectiveOverride !== null ? 'Adjust %' : 'Set %'}
+              Adjust %
             </button>
           </div>
 
-          {/* Override panel — slider + clear */}
+          {/* Override panel — collapsed by default; expands when "Adjust %" is tapped */}
           {overrideOpen && (
             <div className="gd-override-panel">
               <div className="gd-override-slider-row">
                 <span className="gd-override-pct">
-                  {Math.round(effectiveOverride ?? progress.percent ?? 0)}%
+                  {effectiveOverride !== null ? Math.round(effectiveOverride) : 0}%
                 </span>
                 <input
                   className="gd-override-slider"
                   type="range"
                   min="0"
                   max="100"
-                  value={effectiveOverride !== null
-                    ? Math.round(effectiveOverride)
-                    : Math.round(progress.percent ?? 0)}
+                  value={effectiveOverride !== null ? Math.round(effectiveOverride) : 0}
                   onChange={e => handleOverrideChange(e.target.value)}
                   aria-label="Manual progress percentage"
                 />
@@ -846,11 +845,11 @@ function GameDetail() {
                   </button>
                 )}
               </div>
-              <p className="gd-override-hint">
-                {effectiveOverride !== null
-                  ? 'Manual override active — hours still tracked above'
-                  : 'Set a manual % for endless or live-service games'}
-              </p>
+              {effectiveOverride !== null && (
+                <p className="gd-override-hint">
+                  Manual override active — hours still tracked above
+                </p>
+              )}
             </div>
           )}
 
