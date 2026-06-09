@@ -1430,6 +1430,18 @@ img.profile-list-row__author-avatar {
   text-overflow: ellipsis;
 }
 
+.profile-diary__entry-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-brand-primary, #3b82f6);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
 .profile-diary__date {
   font-family: var(--font-body);
   font-size: 12px;

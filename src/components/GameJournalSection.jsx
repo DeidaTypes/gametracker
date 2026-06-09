@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   getJournalEntriesForGame,
   deleteJournalEntry,
@@ -18,9 +17,10 @@ import './GameJournalSection.css'
  *   game        — the game object (id, title, image, year, developers)
  *   user        — the authenticated user (or null)
  *   status      — library status string (null means not in library)
+ *   onAddEntry  — () => void — called when the user taps the "+" button;
+ *                 parent opens the inline journal modal
  */
-function GameJournalSection({ game, user, status }) {
-  const navigate = useNavigate()
+function GameJournalSection({ game, user, status, onAddEntry }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [revealedIds, setRevealedIds] = useState(new Set())
@@ -51,8 +51,8 @@ function GameJournalSection({ game, user, status }) {
 
   const handleAddEntry = useCallback(() => {
     if (!game) return
-    navigate(`/journal/new?gameId=${game.id}`, { state: { game } })
-  }, [game, navigate])
+    onAddEntry?.()
+  }, [game, onAddEntry])
 
   const handleReveal = useCallback((id) => {
     setRevealedIds((prev) => {
@@ -91,11 +91,10 @@ function GameJournalSection({ game, user, status }) {
           onClick={handleAddEntry}
           aria-label="Add journal entry"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Add entry
         </button>
       </div>
 
@@ -114,32 +113,41 @@ function GameJournalSection({ game, user, status }) {
             const isSpoiler = entry.is_spoiler && !revealedIds.has(entry.id)
             return (
               <li key={entry.id} className="gjs-entry">
-                <div className="gjs-entry-meta">
-                  <time
-                    className="gjs-entry-date"
-                    dateTime={entry.created_at}
-                    title={new Date(entry.created_at).toLocaleString()}
-                  >
-                    {formatRelativeDate(entry.created_at)}
-                  </time>
-                  {entry.is_spoiler && (
-                    <span className="gjs-spoiler-badge">spoiler</span>
+                {/* Title + date row */}
+                <div className="gjs-entry-header">
+                  {entry.title && (
+                    <p className="gjs-entry-title">{entry.title}</p>
                   )}
+                  <div className="gjs-entry-meta">
+                    <time
+                      className="gjs-entry-date"
+                      dateTime={entry.created_at}
+                      title={new Date(entry.created_at).toLocaleString()}
+                    >
+                      {formatRelativeDate(entry.created_at)}
+                    </time>
+                    {entry.is_spoiler && (
+                      <span className="gjs-spoiler-badge">spoiler</span>
+                    )}
+                  </div>
                 </div>
 
-                <div className={`gjs-entry-body-wrap${isSpoiler ? ' gjs-entry-body-wrap--blurred' : ''}`}>
-                  <p className="gjs-entry-body">{entry.body}</p>
-                  {isSpoiler && (
-                    <button
-                      type="button"
-                      className="gjs-reveal-btn"
-                      onClick={() => handleReveal(entry.id)}
-                      aria-label="Reveal spoiler"
-                    >
-                      Tap to reveal
-                    </button>
-                  )}
-                </div>
+                {/* Notes body — blurred if spoiler */}
+                {entry.body ? (
+                  <div className={`gjs-entry-body-wrap${isSpoiler ? ' gjs-entry-body-wrap--blurred' : ''}`}>
+                    <p className="gjs-entry-body">{entry.body}</p>
+                    {isSpoiler && (
+                      <button
+                        type="button"
+                        className="gjs-reveal-btn"
+                        onClick={() => handleReveal(entry.id)}
+                        aria-label="Reveal spoiler"
+                      >
+                        Tap to reveal
+                      </button>
+                    )}
+                  </div>
+                ) : null}
 
                 <button
                   type="button"

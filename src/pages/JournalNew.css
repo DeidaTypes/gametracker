@@ -137,6 +137,45 @@
   text-overflow: ellipsis;
 }
 
+/* ── Title input (required) ──────────────────────────────────────────────── */
+
+.jnc-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.jnc-title-input {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  color: var(--text-primary, #f0f3fa);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  outline: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.jnc-title-input::placeholder {
+  color: var(--text-tertiary, #5c6b8a);
+  font-weight: 400;
+}
+
+.jnc-title-input:focus {
+  border-color: color-mix(in srgb, var(--accent, #3b82f6) 50%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jnc-title-input {
+    transition: none;
+  }
+}
+
 /* ── Textarea ────────────────────────────────────────────────────────────── */
 
 .jnc-textarea-wrap {

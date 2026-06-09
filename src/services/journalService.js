@@ -33,6 +33,7 @@ const TABLE = 'journal_entries'
  */
 export async function saveJournalEntry({
   igdbGameId,
+  title,
   body,
   isSpoiler = false,
   gameTitle = null,
@@ -49,7 +50,8 @@ export async function saveJournalEntry({
     .insert({
       user_id: user.id,
       igdb_game_id: Number(igdbGameId),
-      body: body.trim(),
+      title: title ? title.trim() : null,
+      body: body ? body.trim() : '',
       is_spoiler: !!isSpoiler,
       game_title: gameTitle || null,
       game_image: gameImage || null,

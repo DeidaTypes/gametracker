@@ -28,15 +28,14 @@
 .gjs-add-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 13px;
-  font-weight: 500;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   color: var(--accent, #3b82f6);
   background: rgba(59, 130, 246, 0.1);
   border: 0.5px solid rgba(59, 130, 246, 0.25);
-  border-radius: 999px;
-  padding: 5px 12px 5px 10px;
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background 120ms ease, opacity 120ms ease;
@@ -122,6 +121,27 @@ body[data-reduce-motion='true'] .gjs-skeleton {
   border-bottom: none;
 }
 
+/* ── Entry header: title + date/badge row ───────────────────────────────── */
+
+.gjs-entry-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 28px; /* room for the delete button */
+}
+
+.gjs-entry-title {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f3fa);
+  margin: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Entry meta row (date + spoiler badge) ──────────────────────────────── */
 
 .gjs-entry-meta {
@@ -156,7 +176,7 @@ body[data-reduce-motion='true'] .gjs-skeleton {
 
 .gjs-entry-body-wrap {
   position: relative;
-  padding-right: 28px; /* room for the delete button */
+  padding-right: 28px;
 }
 
 .gjs-entry-body-wrap--blurred .gjs-entry-body {

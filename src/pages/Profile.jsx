@@ -2383,6 +2383,9 @@ function DiaryTab({ entries, onGameClick }) {
                 <p className="profile-diary__game-title">
                   {entry.game_title || 'Unknown game'}
                 </p>
+                {entry.title && (
+                  <p className="profile-diary__entry-title">{entry.title}</p>
+                )}
                 <time
                   className="profile-diary__date"
                   dateTime={entry.created_at}
@@ -2394,11 +2397,11 @@ function DiaryTab({ entries, onGameClick }) {
                   <p className="profile-diary__snippet profile-diary__snippet--spoiler">
                     [spoiler]
                   </p>
-                ) : (
+                ) : entry.body ? (
                   <p className="profile-diary__snippet">
-                    {entry.body?.slice(0, 100)}{entry.body?.length > 100 ? '…' : ''}
+                    {entry.body.slice(0, 100)}{entry.body.length > 100 ? '…' : ''}
                   </p>
-                )}
+                ) : null}
               </div>
               <svg
                 className="profile-diary__chevron"
