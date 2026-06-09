@@ -324,6 +324,10 @@ body[data-larger-text='true'] {
   /* ---- Rating Stars — intentional exception to the all-cobalt rule ---- */
   --star:       #f5b50a;                    /* rich gold — filled/half stars only */
   --star-empty: rgba(148, 168, 212, 0.30); /* neutral muted — unfilled star ring */
+
+  /* ---- Goal Ring — yearly-goal progress wheel ---- */
+  --goal:       #22c55e; /* goal ring fill  */
+  --goal-track: #1f2937; /* unfilled track  */
 }
 
 /* =============================================
