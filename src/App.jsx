@@ -33,6 +33,7 @@ import ReviewComments from './pages/ReviewComments'
 import ReviewDetail from './pages/ReviewDetail'
 import ReviewNew from './pages/ReviewNew'
 import JournalNew from './pages/JournalNew'
+import JournalEntry from './pages/JournalEntry'
 import Settings from './pages/Settings'
 import SettingsBlocked from './pages/SettingsBlocked'
 import SettingsEmail from './pages/SettingsEmail'
@@ -435,6 +436,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><JournalNew /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/journal/:entryId"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><JournalEntry /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

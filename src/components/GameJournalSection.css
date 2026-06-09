@@ -121,6 +121,36 @@ body[data-reduce-motion='true'] .gjs-skeleton {
   border-bottom: none;
 }
 
+/* ── Tappable entry card button ─────────────────────────────────────────── */
+
+.gjs-entry-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+}
+
+.gjs-entry-btn:active {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gjs-entry-btn {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .gjs-entry-btn {
+  transition: none;
+}
+
 /* ── Entry header: title + date/badge row ───────────────────────────────── */
 
 .gjs-entry-header {
@@ -208,15 +238,12 @@ body[data-reduce-motion='true'] .gjs-entry-body {
   transition: none;
 }
 
-/* ── Reveal spoiler button ───────────────────────────────────────────────── */
+/* ── Spoiler hint (card-level; full reveal happens on the detail page) ───── */
 
-.gjs-reveal-btn {
+.gjs-spoiler-hint {
+  display: block;
   position: absolute;
   inset: 0;
-  width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
   font-size: 13px;
   font-weight: 600;
@@ -224,8 +251,7 @@ body[data-reduce-motion='true'] .gjs-entry-body {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  padding: 0;
+  pointer-events: none;
 }
 
 /* ── Delete button ───────────────────────────────────────────────────────── */

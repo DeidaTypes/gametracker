@@ -1,0 +1,391 @@
+/* =====================================================================
+   JournalEntry page — /journal/:entryId
+   Full-screen entry detail. Shares the header / back-chevron pattern
+   with ReviewComments (rc-*) but uses the je-* prefix here.
+   ===================================================================== */
+
+.je-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: transparent;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.je-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.je-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.je-back:hover {
+  background: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .je-back {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .je-back {
+  transition: none;
+}
+
+.je-header__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-display);
+  text-align: center;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* The right-side slot: either the Edit button or an invisible spacer */
+.je-header__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.je-header__spacer {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+
+.je-edit-btn {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent, #3b82f6);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+}
+
+.je-edit-btn:active {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .je-edit-btn {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .je-edit-btn {
+  transition: none;
+}
+
+/* ── Scroll body ────────────────────────────────────────────────────── */
+
+.je-scroll {
+  flex: 1;
+  padding: 24px var(--page-padding);
+  padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Entry title ────────────────────────────────────────────────────── */
+
+.je-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-display);
+  line-height: 1.25;
+  margin: 0;
+}
+
+/* ── Meta row: date + spoiler badge ─────────────────────────────────── */
+
+.je-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.je-date {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+.je-spoiler-badge {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--status-warning, #f59e0b);
+  background: color-mix(in srgb, var(--status-warning, #f59e0b) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-warning, #f59e0b) 35%, transparent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  line-height: 1.4;
+}
+
+/* ── Body text ──────────────────────────────────────────────────────── */
+
+.je-body-wrap {
+  position: relative;
+  border-radius: var(--radius-md);
+}
+
+.je-body-wrap--blurred .je-body {
+  filter: blur(12px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.je-body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  line-height: 1.65;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.je-reveal-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-md);
+}
+
+.je-reveal-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Game context block ─────────────────────────────────────────────── */
+
+.je-game-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--color-surface, #1a2240);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  margin-top: 4px;
+}
+
+.je-game-block:hover,
+.je-game-block:active {
+  background: var(--color-surface-hover, #1f2a4a);
+  border-color: color-mix(in srgb, var(--accent, #3b82f6) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .je-game-block {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .je-game-block {
+  transition: none;
+}
+
+.je-game-cover {
+  width: 40px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.je-game-cover--placeholder {
+  background: var(--color-surface-elevated, #222c4a);
+  border: 1px solid var(--color-border);
+}
+
+.je-game-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.je-game-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin: 0 0 3px;
+}
+
+.je-game-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.je-game-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+/* ── Owner actions ──────────────────────────────────────────────────── */
+
+.je-owner-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.je-delete-btn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--status-danger, #f87171);
+  background: none;
+  border: none;
+  padding: 10px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+}
+
+.je-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.je-delete-btn:not(:disabled):active {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .je-delete-btn {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .je-delete-btn {
+  transition: none;
+}
+
+/* ── Loading skeleton ───────────────────────────────────────────────── */
+
+.je-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px var(--page-padding);
+}
+
+.je-skel-title {
+  height: 28px;
+  border-radius: var(--radius-sm);
+  width: 65%;
+}
+
+.je-skel-meta {
+  height: 16px;
+  border-radius: var(--radius-sm);
+  width: 40%;
+}
+
+.je-skel-body {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+.je-skel-body--short {
+  width: 75%;
+}
+
+/* ── Not-found state ────────────────────────────────────────────────── */
+
+.je-not-found {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px var(--page-padding);
+  text-align: center;
+}
+
+.je-not-found__text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.je-not-found__back {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent, #3b82f6);
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

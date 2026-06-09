@@ -135,6 +135,72 @@ export async function getJournalEntriesForUser(userId, { limit = 50, offset = 0 
   return data || []
 }
 
+/* ── Read: single entry by id ────────────────────────────────────────────── */
+
+/**
+ * Fetch a single journal entry by its UUID.
+ * Returns null if not found (PGRST116 / 406).
+ *
+ * @param {string} entryId
+ * @returns {Promise<object|null>}
+ */
+export async function getJournalEntryById(entryId) {
+  if (!entryId) return null
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('id', entryId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null // row not found
+    console.error('[journal] getJournalEntryById failed:', error.message)
+    throw error
+  }
+  return data
+}
+
+/* ── Update ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Update an existing journal entry in place.
+ * RLS + the user_id guard ensure only the owner can update.
+ *
+ * @param {string} entryId  UUID of the entry to update
+ * @param {{ title?: string, body?: string, isSpoiler?: boolean }} fields
+ * @returns {Promise<object>} the updated row
+ */
+export async function updateJournalEntry(entryId, { title, body, isSpoiler } = {}) {
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+  if (userErr || !user) throw new Error('Not signed in')
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .update({
+      title: title ? title.trim() : null,
+      body: body ? body.trim() : '',
+      is_spoiler: !!isSpoiler,
+    })
+    .eq('id', entryId)
+    .eq('user_id', user.id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+
+  try {
+    window.dispatchEvent(new Event('journalEntryUpdated'))
+  } catch {
+    // SSR / no-window
+  }
+
+  return data
+}
+
 /* ── Delete ──────────────────────────────────────────────────────────────── */
 
 /**

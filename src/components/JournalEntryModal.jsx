@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import CenteredModal from './CenteredModal'
 import IOSSwitch from './IOSSwitch'
-import { saveJournalEntry } from '../services/journalService'
+import { saveJournalEntry, updateJournalEntry } from '../services/journalService'
 import { showToast } from './Toast'
 import '../pages/JournalNew.css'
 
@@ -9,64 +9,90 @@ const MAX_TITLE = 100
 const MAX_BODY = 2000
 
 /**
- * JournalEntryModal — inline pop-up for writing a new titled journal entry.
+ * JournalEntryModal — pop-up for writing OR editing a titled journal entry.
  *
- * Opens directly on the game detail page (no route change).
- * Fields: required title (1–100 chars), optional notes textarea, spoiler toggle.
- * Saves to journal_entries { title, body, is_spoiler, igdb_game_id, user_id }.
- * Dispatches 'journalEntryAdded' on success so GameJournalSection refreshes.
+ * New entry: omit entryId. Calls saveJournalEntry, dispatches journalEntryAdded.
+ * Edit entry: pass entryId + initialTitle/initialBody/initialIsSpoiler.
+ *             Calls updateJournalEntry, dispatches journalEntryUpdated.
  *
  * Props:
- *   isOpen   boolean
- *   onClose  () => void
- *   game     { id, title, image, year, developers }
+ *   isOpen           boolean
+ *   onClose          () => void
+ *   game             { id, title, image, year, developers }
+ *   entryId?         string  — UUID of entry to edit (omit for new)
+ *   initialTitle?    string  — pre-fill for edit mode
+ *   initialBody?     string  — pre-fill for edit mode
+ *   initialIsSpoiler? boolean — pre-fill for edit mode
  */
-function JournalEntryModal({ isOpen, onClose, game }) {
+function JournalEntryModal({
+  isOpen,
+  onClose,
+  game,
+  entryId,
+  initialTitle = '',
+  initialBody = '',
+  initialIsSpoiler = false,
+}) {
+  const isEditing = !!entryId
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [isSpoiler, setIsSpoiler] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const titleRef = useRef(null)
 
-  // Reset fields when reopened
+  // Reset / pre-fill whenever the modal opens.
   useEffect(() => {
     if (isOpen) {
-      setTitle('')
-      setBody('')
-      setIsSpoiler(false)
+      setTitle(isEditing ? initialTitle : '')
+      setBody(isEditing ? initialBody : '')
+      setIsSpoiler(isEditing ? initialIsSpoiler : false)
       setSubmitting(false)
       const t = setTimeout(() => titleRef.current?.focus(), 150)
       return () => clearTimeout(t)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const canSave = !submitting && title.trim().length > 0 && title.length <= MAX_TITLE
 
   const handleClose = useCallback(() => {
-    if ((title.trim().length > 0 || body.trim().length > 0) && !window.confirm('Discard this entry?')) return
+    const isDirty = isEditing
+      ? title.trim() !== initialTitle.trim() || body.trim() !== initialBody.trim() || isSpoiler !== initialIsSpoiler
+      : title.trim().length > 0 || body.trim().length > 0
+    if (isDirty && !window.confirm(isEditing ? 'Discard changes?' : 'Discard this entry?')) return
     onClose()
-  }, [title, body, onClose])
+  }, [isEditing, title, body, isSpoiler, initialTitle, initialBody, initialIsSpoiler, onClose])
 
   const handleSave = useCallback(async () => {
-    if (!canSave || !game) return
+    if (!canSave) return
     setSubmitting(true)
     try {
-      await saveJournalEntry({
-        igdbGameId: game.id,
-        title: title.trim(),
-        body: body.trim(),
-        isSpoiler,
-        gameTitle: game.title,
-        gameImage: game.image,
-      })
-      showToast('Entry saved!', 'success')
+      if (isEditing) {
+        await updateJournalEntry(entryId, {
+          title: title.trim(),
+          body: body.trim(),
+          isSpoiler,
+        })
+        showToast('Entry updated!', 'success')
+      } else {
+        if (!game) return
+        await saveJournalEntry({
+          igdbGameId: game.id,
+          title: title.trim(),
+          body: body.trim(),
+          isSpoiler,
+          gameTitle: game.title,
+          gameImage: game.image,
+        })
+        showToast('Entry saved!', 'success')
+      }
       onClose()
     } catch (err) {
       console.error('[JournalEntryModal] save failed:', err)
       showToast('Could not save your entry. Please try again.', 'error')
       setSubmitting(false)
     }
-  }, [canSave, game, title, body, isSpoiler, onClose])
+  }, [canSave, isEditing, entryId, game, title, body, isSpoiler, onClose])
 
   const coverSrc = game?.image ?? null
   const developer = game?.developers?.[0] ?? null
@@ -76,15 +102,15 @@ function JournalEntryModal({ isOpen, onClose, game }) {
     <CenteredModal
       isOpen={isOpen}
       onClose={handleClose}
-      ariaLabel="New journal entry"
+      ariaLabel={isEditing ? 'Edit journal entry' : 'New journal entry'}
       maxWidth={360}
     >
-      {/* Top row: Cancel | New journal entry | Save */}
+      {/* Top row: Cancel | [New / Edit] journal entry | Save */}
       <div className="jnc-topbar">
         <button className="jnc-topbar-cancel" onClick={handleClose} type="button">
           Cancel
         </button>
-        <span className="jnc-topbar-title">New journal entry</span>
+        <span className="jnc-topbar-title">{isEditing ? 'Edit entry' : 'New journal entry'}</span>
         <button
           className={`jnc-topbar-save${!canSave ? ' jnc-topbar-save--disabled' : ''}`}
           onClick={handleSave}

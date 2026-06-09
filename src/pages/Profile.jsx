@@ -1661,9 +1661,7 @@ function Profile() {
               {activeTab === 'diary' && (
                 <DiaryTab
                   entries={journalEntries}
-                  onGameClick={(id, image) =>
-                    navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
-                  }
+                  onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
                 />
               )}
             </motion.div>
@@ -2345,7 +2343,7 @@ function ListRow({
    Hides cleanly (empty state) when there are no entries.
    ============================================================ */
 
-function DiaryTab({ entries, onGameClick }) {
+function DiaryTab({ entries, onEntryClick }) {
   if (!entries || entries.length === 0) {
     return (
       <div className="profile-diary">
@@ -2367,8 +2365,8 @@ function DiaryTab({ entries, onGameClick }) {
             <button
               type="button"
               className="profile-diary__row-btn"
-              onClick={() => onGameClick(entry.igdb_game_id, entry.game_image)}
-              aria-label={`Go to ${entry.game_title || 'game'}`}
+              onClick={() => onEntryClick(entry.id)}
+              aria-label={`Open journal entry: ${entry.title || entry.game_title || 'entry'}`}
             >
               {entry.game_image ? (
                 <img

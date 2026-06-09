@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   getJournalEntriesForGame,
   deleteJournalEntry,
@@ -21,6 +22,7 @@ import './GameJournalSection.css'
  *                 parent opens the inline journal modal
  */
 function GameJournalSection({ game, user, status, onAddEntry }) {
+  const navigate = useNavigate()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [revealedIds, setRevealedIds] = useState(new Set())
@@ -113,41 +115,44 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
             const isSpoiler = entry.is_spoiler && !revealedIds.has(entry.id)
             return (
               <li key={entry.id} className="gjs-entry">
-                {/* Title + date row */}
-                <div className="gjs-entry-header">
-                  {entry.title && (
-                    <p className="gjs-entry-title">{entry.title}</p>
-                  )}
-                  <div className="gjs-entry-meta">
-                    <time
-                      className="gjs-entry-date"
-                      dateTime={entry.created_at}
-                      title={new Date(entry.created_at).toLocaleString()}
-                    >
-                      {formatRelativeDate(entry.created_at)}
-                    </time>
-                    {entry.is_spoiler && (
-                      <span className="gjs-spoiler-badge">spoiler</span>
+                {/* Tappable card area — navigates to the entry detail page */}
+                <button
+                  type="button"
+                  className="gjs-entry-btn"
+                  onClick={() => navigate(`/journal/${entry.id}`)}
+                  aria-label={`Open journal entry: ${entry.title || formatRelativeDate(entry.created_at)}`}
+                >
+                  {/* Title + date row */}
+                  <div className="gjs-entry-header">
+                    {entry.title && (
+                      <p className="gjs-entry-title">{entry.title}</p>
                     )}
-                  </div>
-                </div>
-
-                {/* Notes body — blurred if spoiler */}
-                {entry.body ? (
-                  <div className={`gjs-entry-body-wrap${isSpoiler ? ' gjs-entry-body-wrap--blurred' : ''}`}>
-                    <p className="gjs-entry-body">{entry.body}</p>
-                    {isSpoiler && (
-                      <button
-                        type="button"
-                        className="gjs-reveal-btn"
-                        onClick={() => handleReveal(entry.id)}
-                        aria-label="Reveal spoiler"
+                    <div className="gjs-entry-meta">
+                      <time
+                        className="gjs-entry-date"
+                        dateTime={entry.created_at}
+                        title={new Date(entry.created_at).toLocaleString()}
                       >
-                        Tap to reveal
-                      </button>
-                    )}
+                        {formatRelativeDate(entry.created_at)}
+                      </time>
+                      {entry.is_spoiler && (
+                        <span className="gjs-spoiler-badge">spoiler</span>
+                      )}
+                    </div>
                   </div>
-                ) : null}
+
+                  {/* Notes body — blurred if spoiler */}
+                  {entry.body ? (
+                    <div className={`gjs-entry-body-wrap${isSpoiler ? ' gjs-entry-body-wrap--blurred' : ''}`}>
+                      <p className="gjs-entry-body">{entry.body}</p>
+                      {isSpoiler && (
+                        <span className="gjs-spoiler-hint" aria-hidden="true">
+                          Tap to reveal
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
+                </button>
 
                 <button
                   type="button"
