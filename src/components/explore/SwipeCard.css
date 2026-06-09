@@ -1,0 +1,155 @@
+/* =============================================
+   SwipeCard — individual game card in the
+   "Swipe to discover" deck.
+   ============================================= */
+
+.swipe-card {
+  position: absolute;
+  /* Portrait cover ratio — matches IGDB t_cover_big (264×374) */
+  width: 220px;
+  height: 330px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.25);
+  /* z-index layering: top card above stack cards */
+  z-index: 1;
+  will-change: transform;
+}
+
+.swipe-card--stack-0 { z-index: 3; }
+.swipe-card--stack-1 { z-index: 2; }
+.swipe-card--stack-2 { z-index: 1; }
+
+.swipe-card--top {
+  cursor: grab;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.swipe-card--top:active {
+  cursor: grabbing;
+}
+
+/* ---- Cover ---- */
+
+.swipe-card__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.swipe-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.swipe-card__placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* ---- Bottom gradient — text legibility ---- */
+
+.swipe-card__gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 55%;
+  background: linear-gradient(
+    to top,
+    rgba(10, 15, 31, 0.95) 0%,
+    rgba(10, 15, 31, 0.6) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ---- Text overlay ---- */
+
+.swipe-card__info {
+  position: absolute;
+  bottom: 18px;
+  left: 16px;
+  right: 16px;
+  pointer-events: none;
+}
+
+.swipe-card__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  /* Max 2 lines, ellipsis on overflow */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.swipe-card__year {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ---- Direction badges ---- */
+
+.swipe-card__badge {
+  position: absolute;
+  top: 22px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 2.5px solid;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+  /* opacity controlled inline via drag delta */
+  transition: opacity 0.08s linear;
+}
+
+.swipe-card__badge--right {
+  left: 16px;
+  border-color: var(--status-success);
+  color: var(--status-success);
+  background: rgba(52, 211, 153, 0.14);
+  transform: rotate(-14deg);
+}
+
+.swipe-card__badge--left {
+  right: 16px;
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+  background: rgba(248, 113, 113, 0.14);
+  transform: rotate(14deg);
+}
+
+/* ---- prefers-reduced-motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-card {
+    transition: none !important;
+  }
+}

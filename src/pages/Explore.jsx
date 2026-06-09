@@ -19,6 +19,7 @@ import GotAnHourRail, {
   mainStoryHours,
   inBucket,
 } from '../components/explore/GotAnHourRail'
+import { SwipeDeck } from '../components/explore/SwipeDeck'
 import ReviewCard from '../components/ReviewCard'
 import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
@@ -291,6 +292,14 @@ function Explore() {
 
         {/* ── Game of the Week hero — editorial featured slot ── */}
         <GameOfWeekHero />
+
+        {/* ── Section: Swipe to discover ── */}
+        <section className="explore-section explore-section--swipe-deck">
+          <div className="explore-section__pad discover-section-header">
+            <h2 className="discover-section-title">Swipe to discover</h2>
+          </div>
+          <SwipeDeck />
+        </section>
 
         {/* ── Section 1: Games carousel ── */}
         <section className="explore-section explore-section--0">

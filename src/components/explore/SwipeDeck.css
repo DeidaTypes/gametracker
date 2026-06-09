@@ -1,0 +1,203 @@
+/* =============================================
+   SwipeDeck — "Swipe to discover" section on
+   the Discover (Explore) page.
+   ============================================= */
+
+/* ---- Outer wrapper ---- */
+
+.swipe-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  /* Enough horizontal room for the fanned card shadow on small screens */
+  padding: 0 16px;
+}
+
+/* ---- Card scene — sized to fit card + stack overflow ---- */
+
+.swipe-deck__scene {
+  position: relative;
+  /* Card is 220×330; stack adds 20px translateY on the back card */
+  width: 220px;
+  height: 356px;
+}
+
+/* ---- Loading skeletons ---- */
+
+.swipe-deck__skel {
+  position: absolute;
+  width: 220px;
+  height: 330px;
+  border-radius: 18px;
+  background: var(--bg-surface);
+  animation: swipeSkelPulse 1.6s ease-in-out infinite;
+}
+
+.swipe-deck__skel--0 {
+  z-index: 3;
+  transform: translateY(0) scale(1);
+}
+
+.swipe-deck__skel--1 {
+  z-index: 2;
+  transform: translateY(10px) scale(0.96);
+  animation-delay: 0.15s;
+}
+
+.swipe-deck__skel--2 {
+  z-index: 1;
+  transform: translateY(20px) scale(0.92);
+  animation-delay: 0.3s;
+}
+
+@keyframes swipeSkelPulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.9; }
+}
+
+/* ---- Action buttons ---- */
+
+.swipe-deck__actions {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 28px;
+}
+
+.swipe-deck__actions--ghost {
+  pointer-events: none;
+}
+
+.swipe-deck__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.swipe-deck__btn:active {
+  transform: scale(0.92);
+  opacity: 0.75;
+}
+
+.swipe-deck__btn-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  transition: box-shadow 0.15s ease;
+}
+
+.swipe-deck__btn--skip .swipe-deck__btn-icon {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1.5px solid rgba(248, 113, 113, 0.35);
+  color: var(--status-danger);
+}
+
+.swipe-deck__btn--skip:hover .swipe-deck__btn-icon {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.swipe-deck__btn--add .swipe-deck__btn-icon {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1.5px solid rgba(59, 130, 246, 0.35);
+  color: var(--accent);
+}
+
+.swipe-deck__btn--add:hover .swipe-deck__btn-icon {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.swipe-deck__btn-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+}
+
+/* Ghost buttons (skeleton state) */
+.swipe-deck__btn-ghost {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  animation: swipeSkelPulse 1.6s ease-in-out infinite;
+}
+
+/* ---- Hint text ---- */
+
+.swipe-deck__hint {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+/* ---- Exhausted state ---- */
+
+.swipe-deck__exhausted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 24px 16px;
+  text-align: center;
+  min-height: 280px;
+  justify-content: center;
+}
+
+.swipe-deck__exhausted-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1.5px solid rgba(52, 211, 153, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: var(--status-success);
+  margin-bottom: 4px;
+}
+
+.swipe-deck__exhausted-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.swipe-deck__exhausted-body {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: var(--line-height-body);
+}
+
+/* ---- prefers-reduced-motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-deck__skel,
+  .swipe-deck__btn-ghost {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .swipe-deck__btn {
+    transition: none;
+  }
+}

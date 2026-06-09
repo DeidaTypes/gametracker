@@ -1168,6 +1168,34 @@ limit 8;`
   }
 }
 
+/**
+ * Swipe-to-discover candidate pool — high-quality recent games.
+ *
+ * Quality bar: IGDB rating > 72 (out of 100 ≈ 3.6/5), at least 30 player
+ * ratings, cover required, released in the last 5 years. Sorted by
+ * popularity (rating_count) so the most-loved games surface first.
+ *
+ * The response goes through igdbRequest()'s built-in 5-min in-memory cache
+ * + the Edge Function proxy, so re-mounting the Discover page after a brief
+ * background stint is effectively free.
+ */
+export async function fetchSwipeDeckPool(limit = 40) {
+  const fiveYearsAgo = Math.floor(Date.now() / 1000) - 5 * 365 * 24 * 60 * 60
+
+  const query = `fields name, cover.image_id, rating, rating_count, first_release_date, involved_companies.company.name, involved_companies.developer;
+where cover != null & rating > 72 & rating_count > 30 & first_release_date >= ${fiveYearsAgo};
+sort rating_count desc;
+limit ${limit};`
+
+  try {
+    const games = await igdbRequest('games', query)
+    return formatGames(games)
+  } catch (err) {
+    console.error('[igdb] fetchSwipeDeckPool failed:', err)
+    return []
+  }
+}
+
 // Test API connection
 export async function testAPIConnection() {
   try {
