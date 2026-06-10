@@ -1173,31 +1173,35 @@
 }
 
 .gd-action-pair-btn--review {
+  /* Solid fill: slight bright sheen at top-left fading to base accent */
   background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-review) 42%, transparent) 0%,
-    color-mix(in srgb, var(--accent-review) 24%, transparent) 100%
+    160deg,
+    color-mix(in srgb, white 18%, var(--accent-review)) 0%,
+    var(--accent-review) 100%
   );
-  border: 1px solid color-mix(in srgb, var(--accent-review) 70%, transparent);
+  border: 1px solid color-mix(in srgb, white 30%, var(--accent-review));
   color: var(--accent-review-text);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-review) 22%, transparent);
+  box-shadow:
+    0 2px 12px color-mix(in srgb, var(--accent-review) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .gd-action-pair-btn--journal {
   background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-journal) 42%, transparent) 0%,
-    color-mix(in srgb, var(--accent-journal) 24%, transparent) 100%
+    160deg,
+    color-mix(in srgb, white 18%, var(--accent-journal)) 0%,
+    var(--accent-journal) 100%
   );
-  border: 1px solid color-mix(in srgb, var(--accent-journal) 70%, transparent);
+  border: 1px solid color-mix(in srgb, white 30%, var(--accent-journal));
   color: var(--accent-journal-text);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-journal) 22%, transparent);
+  box-shadow:
+    0 2px 12px color-mix(in srgb, var(--accent-journal) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .gd-action-pair-btn--review svg,
 .gd-action-pair-btn--journal svg {
   color: inherit;
-  fill: currentColor;
   flex-shrink: 0;
 }
 
