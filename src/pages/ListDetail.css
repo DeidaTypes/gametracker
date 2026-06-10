@@ -280,6 +280,9 @@
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list-detail-header-actions {
@@ -312,40 +315,13 @@
   transform: scale(0.92);
 }
 
-/* ── Body — title + meta + description ── */
+/* ── Body — meta + description (only rendered when there is content) ── */
 .list-detail-body {
   padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg);
   max-width: var(--page-max-width);
   margin: 0 auto;
-  border-bottom: 1px solid var(--color-border);
 }
 
-.list-detail-title-block {
-  margin-bottom: var(--spacing-sm);
-}
-
-.list-detail-eyebrow {
-  display: block;
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--color-brand-primary);
-  margin-bottom: 6px;
-}
-
-.list-detail-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-display-xl);
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-sm) 0;
-  word-break: break-word;
-}
 
 /* ── Meta row (author · date · count) ── */
 .list-detail-meta-row {
@@ -556,6 +532,17 @@
   margin: 0 auto;
 }
 
+/* Compact game count — single muted line above the grid */
+.list-detail-game-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-md) 0;
+  padding: 0;
+  line-height: 1.4;
+}
+
 .list-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
@@ -656,14 +643,6 @@
   box-shadow: 0 8px 24px rgba(91, 143, 255, 0.35);
 }
 
-/* ── Responsive ── */
-@media (max-width: 480px) {
-  /* Step title down one rung on narrow phones */
-  .list-detail-title {
-    font-size: var(--font-size-display-l);
-    line-height: var(--line-height-display-l);
-  }
-}
 
 @media (min-width: 769px) {
   .list-detail-body {

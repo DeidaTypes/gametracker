@@ -450,7 +450,7 @@ function ListDetail() {
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
 
-        <span className="list-detail-header-label" aria-hidden="true">List</span>
+        <span className="list-detail-header-label">{listInfo.name}</span>
 
         <div className="list-detail-header-actions">
           {canEdit && (
@@ -477,110 +477,107 @@ function ListDetail() {
         </div>
       </header>
 
-      {/* 2. Title block — eyebrow + list name */}
-      <div className="list-detail-body">
-        <div className="list-detail-title-block">
-          <h1 className="list-detail-title">{listInfo.name}</h1>
-        </div>
-
-        {/* 3. Meta — author row + date + game count */}
-        <div className="list-detail-meta-row">
-          {author && (
-            <>
-              <button
-                type="button"
-                className="list-detail-author-btn"
-                onClick={() => author.username && navigate(`/profile/${author.username}`)}
-              >
-                {author.avatarUrl ? (
-                  <img
-                    src={author.avatarUrl}
-                    alt=""
-                    className="list-detail-author-avatar"
-                    loading="lazy"
-                  />
-                ) : (
-                  <span className="list-detail-author-avatar list-detail-author-avatar--fallback" aria-hidden="true">
-                    {(author.displayName || author.username || '?').charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <span className="list-detail-author-name">
-                  {author.displayName || author.username}
-                </span>
-              </button>
-              <span className="list-detail-meta-dot" aria-hidden="true">·</span>
-            </>
-          )}
-          {listInfo.createdAt && (
-            <>
-              <span className="list-detail-meta-item">{fmtDate(listInfo.createdAt)}</span>
-              <span className="list-detail-meta-dot" aria-hidden="true">·</span>
-            </>
-          )}
-          <span className="list-detail-meta-item">
-            {games.length} {games.length === 1 ? 'game' : 'games'}
-          </span>
-        </div>
-
-        {/* 4. Description — inline edit for owner, read-only for viewer */}
-        {isOwner && editingDesc ? (
-          <div className="list-detail-desc-edit-wrap">
-            <textarea
-              ref={descTextareaRef}
-              className="list-detail-desc-textarea"
-              value={descDraft}
-              onChange={(e) => setDescDraft(e.target.value)}
-              placeholder="Add a description…"
-              maxLength={500}
-              aria-label="List description"
-            />
-            <div className="list-detail-desc-edit-actions">
-              <button
-                type="button"
-                className="list-detail-desc-cancel-btn"
-                onClick={handleDescCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="list-detail-desc-save-btn"
-                onClick={handleDescSave}
-              >
-                Save
-              </button>
+      {/* 2. Meta / description body — only rendered when there is content to show */}
+      {(author || listInfo.createdAt || listInfo.description || isOwner) && (
+        <div className="list-detail-body">
+          {/* Author + date row (game count moves below the divider, above the grid) */}
+          {(author || listInfo.createdAt) && (
+            <div className="list-detail-meta-row">
+              {author && (
+                <>
+                  <button
+                    type="button"
+                    className="list-detail-author-btn"
+                    onClick={() => author.username && navigate(`/profile/${author.username}`)}
+                  >
+                    {author.avatarUrl ? (
+                      <img
+                        src={author.avatarUrl}
+                        alt=""
+                        className="list-detail-author-avatar"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="list-detail-author-avatar list-detail-author-avatar--fallback" aria-hidden="true">
+                        {(author.displayName || author.username || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="list-detail-author-name">
+                      {author.displayName || author.username}
+                    </span>
+                  </button>
+                  {listInfo.createdAt && <span className="list-detail-meta-dot" aria-hidden="true">·</span>}
+                </>
+              )}
+              {listInfo.createdAt && (
+                <span className="list-detail-meta-item">{fmtDate(listInfo.createdAt)}</span>
+              )}
             </div>
-          </div>
-        ) : isOwner ? (
-          listInfo.description ? (
-            <p
-              className="list-detail-description list-detail-description--editable"
-              onClick={openDescEdit}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && openDescEdit()}
-              aria-label="Edit description"
-            >
-              {listInfo.description}
-            </p>
+          )}
+
+          {/* Description — inline edit for owner, read-only for viewer */}
+          {isOwner && editingDesc ? (
+            <div className="list-detail-desc-edit-wrap">
+              <textarea
+                ref={descTextareaRef}
+                className="list-detail-desc-textarea"
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                placeholder="Add a description…"
+                maxLength={500}
+                aria-label="List description"
+              />
+              <div className="list-detail-desc-edit-actions">
+                <button
+                  type="button"
+                  className="list-detail-desc-cancel-btn"
+                  onClick={handleDescCancel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="list-detail-desc-save-btn"
+                  onClick={handleDescSave}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : isOwner ? (
+            listInfo.description ? (
+              <p
+                className="list-detail-description list-detail-description--editable"
+                onClick={openDescEdit}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && openDescEdit()}
+                aria-label="Edit description"
+              >
+                {listInfo.description}
+              </p>
+            ) : (
+              <button
+                type="button"
+                className="list-detail-desc-placeholder"
+                onClick={openDescEdit}
+              >
+                Add a description…
+              </button>
+            )
           ) : (
-            <button
-              type="button"
-              className="list-detail-desc-placeholder"
-              onClick={openDescEdit}
-            >
-              Add a description…
-            </button>
-          )
-        ) : (
-          listInfo.description && (
-            <p className="list-detail-description">{listInfo.description}</p>
-          )
-        )}
-      </div>
+            listInfo.description && (
+              <p className="list-detail-description">{listInfo.description}</p>
+            )
+          )}
+        </div>
+      )}
 
       {/* 5. Games grid */}
       <div className="list-detail-content">
+        <p className="list-detail-game-count">
+          {games.length} {games.length === 1 ? 'game' : 'games'}
+        </p>
         {games.length > 0 ? (
           <div className="list-detail-grid" ref={gridRef}>
             {games.map((game) => (
