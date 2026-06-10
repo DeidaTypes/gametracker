@@ -816,89 +816,84 @@ function GameDetail() {
         </button>
       </div>
 
-      {/* ── Progress Card — shown on every game detail page ── */}
+      {/* ── Your Progress — no surrounding box, content floats ── */}
       <div className="gd-progress-card-wrap">
         <p className="gd-progress-eyebrow">Your Progress</p>
-        <div className="gd-progress-card">
 
-          {/* Stat row: big hours left, percent pill right (only when percent exists) */}
-          <div className="gd-progress-stat-row">
-            <span className="gd-progress-hrs-big">
-              {effectiveHours % 1 === 0
-                ? `${effectiveHours} hrs played`
-                : `${effectiveHours.toFixed(1)} hrs played`}
-            </span>
+        {/* Stat row: hours left · optional percent pill · Set % right */}
+        <div className="gd-progress-stat-row">
+          <span className="gd-progress-hrs-big">
+            {effectiveHours % 1 === 0
+              ? `${effectiveHours} hrs played`
+              : `${effectiveHours.toFixed(1)} hrs played`}
+          </span>
+          <div className="gd-progress-stat-row-right">
             {progress?.percent != null && (
               <span className="gd-progress-pct-pill">~{Math.round(progress.percent)}%</span>
             )}
-          </div>
-
-          {/* Bar — cobalt fill, muted track; only when percent is not null */}
-          {progress?.showBar && progress?.percent != null && (
-            <div
-              className="gd-progress-bar-track"
-              aria-label={`${Math.round(progress.percent)}% complete`}
+            {tracker?.progress_override != null && (
+              <span className="gd-override-badge">Manual %</span>
+            )}
+            <button
+              className="gd-override-toggle-btn"
+              onClick={() => setOverrideOpen(v => !v)}
             >
-              <div
-                className="gd-progress-bar-fill"
-                style={{ width: `${Math.round(progress.percent)}%` }}
-              />
-            </div>
-          )}
-
-          {/* Caption — only when TTB main-story data exists */}
-          {progress?.mainHours != null && (
-            <p className="gd-progress-caption">
-              {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
-            </p>
-          )}
-
-          {tracker?.progress_override != null && (
-            <span className="gd-override-badge">Manual %</span>
-          )}
-
-          <div className="gd-progress-card-divider" />
-
-          {/* Set % — unobtrusive link to the manual override panel */}
-          <button
-            className="gd-override-toggle-btn"
-            onClick={() => setOverrideOpen(v => !v)}
-          >
-            {overrideOpen ? 'Hide' : 'Set %'}
-          </button>
-
-          {/* Override panel — collapsed by default */}
-          {overrideOpen && (
-            <div className="gd-override-panel">
-              <div className="gd-override-slider-row">
-                <input
-                  type="range"
-                  className="gd-override-slider"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={
-                    effectiveOverride != null
-                      ? Math.round(effectiveOverride)
-                      : Math.round(progress?.percent ?? 0)
-                  }
-                  onChange={e => handleOverrideChange(e.target.value)}
-                  aria-label="Manual progress percentage"
-                />
-                <span className="gd-override-val">
-                  {effectiveOverride != null
-                    ? `${Math.round(effectiveOverride)}%`
-                    : `${Math.round(progress?.percent ?? 0)}%`}
-                </span>
-              </div>
-              {effectiveOverride != null && (
-                <button className="gd-override-clear-btn" onClick={handleClearOverride}>
-                  Clear manual override
-                </button>
-              )}
-            </div>
-          )}
+              {overrideOpen ? 'Hide' : 'Set %'}
+            </button>
+          </div>
         </div>
+
+        {/* Bar — cobalt fill, muted track; only when percent is not null */}
+        {progress?.showBar && progress?.percent != null && (
+          <div
+            className="gd-progress-bar-track"
+            aria-label={`${Math.round(progress.percent)}% complete`}
+          >
+            <div
+              className="gd-progress-bar-fill"
+              style={{ width: `${Math.round(progress.percent)}%` }}
+            />
+          </div>
+        )}
+
+        {/* Caption — only when TTB main-story data exists */}
+        {progress?.mainHours != null && (
+          <p className="gd-progress-caption">
+            {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
+          </p>
+        )}
+
+        {/* Override panel — collapsed by default */}
+        {overrideOpen && (
+          <div className="gd-override-panel">
+            <div className="gd-override-slider-row">
+              <input
+                type="range"
+                className="gd-override-slider"
+                min={0}
+                max={100}
+                step={1}
+                value={
+                  effectiveOverride != null
+                    ? Math.round(effectiveOverride)
+                    : Math.round(progress?.percent ?? 0)
+                }
+                onChange={e => handleOverrideChange(e.target.value)}
+                aria-label="Manual progress percentage"
+              />
+              <span className="gd-override-val">
+                {effectiveOverride != null
+                  ? `${Math.round(effectiveOverride)}%`
+                  : `${Math.round(progress?.percent ?? 0)}%`}
+              </span>
+            </div>
+            {effectiveOverride != null && (
+              <button className="gd-override-clear-btn" onClick={handleClearOverride}>
+                Clear manual override
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Logged Sessions — tidy list below the card; hidden when empty */}

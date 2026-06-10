@@ -1202,27 +1202,30 @@
    Only rendered for games in the user's library.
    ===================================================== */
 
-/* Outer wrapper: holds eyebrow + card */
+/* Outer wrapper — no box; just horizontal padding + breathing room */
 .gd-progress-card-wrap {
   position: relative;
   z-index: 3;
-  padding: 14px 20px 0;
+  padding: 16px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 @media (max-width: 359px) {
-  .gd-progress-card-wrap { padding: 16px 16px 0; }
+  .gd-progress-card-wrap { padding: 14px 16px 0; }
 }
 
 @media (min-width: 769px) {
   .gd-progress-card-wrap {
-    padding: 20px 48px 0;
+    padding: 16px 48px 0;
     max-width: var(--page-max-width);
     margin-left: auto;
     margin-right: auto;
   }
 }
 
-/* "YOUR PROGRESS" eyebrow label above the card */
+/* "YOUR PROGRESS" eyebrow label */
 .gd-progress-eyebrow {
   font-family: var(--font-body);
   font-size: var(--font-size-label);
@@ -1230,26 +1233,23 @@
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.35);
-  margin: 0 0 10px;
+  margin: 0;
 }
 
-/* Card surface */
-.gd-progress-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Stat row: big hours label left, percent pill right */
+/* Stat row: hours left, right group (pill + Set %) right */
 .gd-progress-stat-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+}
+
+/* Right cluster inside the stat row */
+.gd-progress-stat-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .gd-progress-hrs-big {
@@ -1376,7 +1376,7 @@
 .gd-override-toggle-btn {
   background: none;
   border: none;
-  padding: 6px 0;
+  padding: 4px 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
@@ -1386,7 +1386,6 @@
   white-space: nowrap;
   opacity: 0.8;
   transition: opacity 0.15s ease;
-  margin-left: auto;
 }
 
 .gd-override-toggle-btn:hover {
