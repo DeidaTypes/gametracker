@@ -1173,14 +1173,14 @@
 }
 
 .gd-action-pair-btn--review {
-  background: color-mix(in srgb, var(--accent-review) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-review) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-review) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-review) 90%, transparent);
   color: var(--accent-review-text);
 }
 
 .gd-action-pair-btn--journal {
-  background: color-mix(in srgb, var(--accent-journal) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
+  background: color-mix(in srgb, var(--accent-journal) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-journal) 90%, transparent);
   color: var(--accent-journal-text);
 }
 
@@ -1206,7 +1206,7 @@
 .gd-progress-card-wrap {
   position: relative;
   z-index: 3;
-  padding: 20px 20px 0;
+  padding: 14px 20px 0;
 }
 
 @media (max-width: 359px) {
@@ -1238,10 +1238,10 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Stat row: big hours label left, percent pill right */
@@ -1254,7 +1254,7 @@
 
 .gd-progress-hrs-big {
   font-family: var(--font-body);
-  font-size: 20px;
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary, #fff);
   line-height: 1.2;
@@ -1304,7 +1304,7 @@
 .gd-progress-card-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);
-  margin: 0 -16px;
+  margin: 0 -12px;
 }
 
 /* Primary "Log play" button — full-width, cobalt accent */
