@@ -234,9 +234,9 @@ body[data-larger-text='true'] {
 
   /* Review / Journal button accent colors */
   --accent-review: #5fa28d;
-  --accent-review-text: #8bcab4;
+  --accent-review-text: #d6f2e7;
   --accent-journal: #9b7bb0;
-  --accent-journal-text: #c4a9d6;
+  --accent-journal-text: #e6d6f1;
 
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);

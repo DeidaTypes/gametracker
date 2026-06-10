@@ -1173,15 +1173,32 @@
 }
 
 .gd-action-pair-btn--review {
-  background: color-mix(in srgb, var(--accent-review) 38%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-review) 90%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-review) 42%, transparent) 0%,
+    color-mix(in srgb, var(--accent-review) 24%, transparent) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent-review) 70%, transparent);
   color: var(--accent-review-text);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-review) 22%, transparent);
 }
 
 .gd-action-pair-btn--journal {
-  background: color-mix(in srgb, var(--accent-journal) 38%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-journal) 90%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-journal) 42%, transparent) 0%,
+    color-mix(in srgb, var(--accent-journal) 24%, transparent) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent-journal) 70%, transparent);
   color: var(--accent-journal-text);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent-journal) 22%, transparent);
+}
+
+.gd-action-pair-btn--review svg,
+.gd-action-pair-btn--journal svg {
+  color: inherit;
+  fill: currentColor;
+  flex-shrink: 0;
 }
 
 .gd-action-pair-btn:hover {
