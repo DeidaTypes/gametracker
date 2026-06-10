@@ -82,6 +82,8 @@
   filter: blur(40px) saturate(1.5);
   transform: scale(1.05);
   z-index: 0;
+  /* Decorative only — must not intercept taps on buttons below the hero. */
+  pointer-events: none;
   /* Fade the lower portion of the extension to transparent so the glow
      dissolves smoothly into the app background. */
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
@@ -97,6 +99,8 @@
   bottom: -60vh;
   background: rgba(0, 0, 0, 0.42);
   z-index: 1;
+  /* Decorative only — must not intercept taps on buttons below the hero. */
+  pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
           mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
 }
@@ -1147,6 +1151,8 @@
    Uses --accent-review / --accent-journal tokens from theme.css.
    ======================================================================= */
 .gd-action-pair {
+  position: relative;
+  z-index: 3;
   display: flex;
   gap: 10px;
   padding: 16px 20px 0;
@@ -1160,11 +1166,11 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 9px 12px;
+  padding: 11px 14px;
   border-radius: var(--radius-md);
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease, transform 0.1s ease;
@@ -1173,30 +1179,30 @@
 }
 
 .gd-action-pair-btn--review {
-  /* Solid fill: slight bright sheen at top-left fading to base accent */
+  /* Vivid fill: small bright sheen at top-left keeps colour saturated */
   background: linear-gradient(
     160deg,
-    color-mix(in srgb, white 18%, var(--accent-review)) 0%,
+    color-mix(in srgb, white 10%, var(--accent-review)) 0%,
     var(--accent-review) 100%
   );
-  border: 1px solid color-mix(in srgb, white 30%, var(--accent-review));
+  border: 1px solid color-mix(in srgb, white 40%, var(--accent-review));
   color: var(--accent-review-text);
   box-shadow:
-    0 2px 12px color-mix(in srgb, var(--accent-review) 45%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 3px 18px color-mix(in srgb, var(--accent-review) 65%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
 }
 
 .gd-action-pair-btn--journal {
   background: linear-gradient(
     160deg,
-    color-mix(in srgb, white 18%, var(--accent-journal)) 0%,
+    color-mix(in srgb, white 10%, var(--accent-journal)) 0%,
     var(--accent-journal) 100%
   );
-  border: 1px solid color-mix(in srgb, white 30%, var(--accent-journal));
+  border: 1px solid color-mix(in srgb, white 40%, var(--accent-journal));
   color: var(--accent-journal-text);
   box-shadow:
-    0 2px 12px color-mix(in srgb, var(--accent-journal) 45%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 3px 18px color-mix(in srgb, var(--accent-journal) 65%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
 }
 
 /* Explicitly carry the accent text token down to the span label and the SVG
