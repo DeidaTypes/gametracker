@@ -232,6 +232,12 @@ body[data-larger-text='true'] {
   --color-accent-teal: #4FA899;
   --color-accent-orange: #C4634E;
 
+  /* Review / Journal button accent colors */
+  --accent-review: #5fa28d;
+  --accent-review-text: #8bcab4;
+  --accent-journal: #9b7bb0;
+  --accent-journal-text: #c4a9d6;
+
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);
   --color-surface-hover: rgba(148, 168, 212, 0.09);

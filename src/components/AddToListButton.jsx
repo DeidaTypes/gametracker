@@ -64,13 +64,16 @@ const STATUS_TILES = [
   },
 ]
 
-function AddToListButton({ game, variant, fabStyle }) {
+function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onLogPlay }) {
   const { reduced } = useMotionPreference()
   const dragControls = useDragControls()
   const [isOpen, setIsOpen] = useState(false)
   const [lists, setLists] = useState({})
   const [gameInLists, setGameInLists] = useState({})
   const [currentStatus, setCurrentStatus] = useState(null)
+
+  // Sheet is visible when internally opened OR externally forced open.
+  const sheetVisible = isOpen || !!forceOpen
 
   const refresh = useCallback(() => {
     setLists(getAllLists())
@@ -88,25 +91,26 @@ function AddToListButton({ game, variant, fabStyle }) {
   }, [game, refresh])
 
   useEffect(() => {
-    if (isOpen) {
+    if (sheetVisible) {
       document.body.style.overflow = 'hidden'
       refresh()
     } else {
       document.body.style.overflow = ''
     }
     return () => { document.body.style.overflow = '' }
-  }, [isOpen, refresh])
+  }, [isOpen, forceOpen, refresh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dismiss = useCallback(() => {
     setIsOpen(false)
-  }, [])
+    onForceClose?.()
+  }, [onForceClose])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!sheetVisible) return
     const onKey = (e) => { if (e.key === 'Escape') dismiss() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, dismiss])
+  }, [isOpen, forceOpen, dismiss]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Consistent 300 ms-feel spring shared with the app's other bottom
   // sheets (ReportSheet). Reduced motion → instant swap.
@@ -160,27 +164,31 @@ function AddToListButton({ game, variant, fabStyle }) {
 
   const customListIds = Object.keys(lists).filter((id) => id.startsWith('custom-'))
 
+  const isHidden = variant === 'hidden'
+
   return (
     <div className={`add-to-list-container${isIcon ? ' add-to-list-container--icon' : ''}`}>
-      <button
-        onClick={() => setIsOpen(true)}
-        className={isIcon ? 'gd-action-circle' : 'add-to-list-button'}
-        style={isIcon && fabStyle ? fabStyle : undefined}
-        aria-label="Add to list"
-      >
-        {isIcon ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        ) : (
-          'Add to List'
-        )}
-      </button>
+      {!isHidden && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className={isIcon ? 'gd-action-circle' : 'add-to-list-button'}
+          style={isIcon && fabStyle ? fabStyle : undefined}
+          aria-label="Add to list"
+        >
+          {isIcon ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          ) : (
+            'Add to List'
+          )}
+        </button>
+      )}
 
       {createPortal(
         <AnimatePresence>
-          {isOpen && (
+          {sheetVisible && (
             <motion.div
               className="bs-backdrop"
               onClick={dismiss}
@@ -252,6 +260,19 @@ function AddToListButton({ game, variant, fabStyle }) {
                         </button>
                       )
                     })}
+                    {/* Log play — action row, not a status; no check state */}
+                    <button
+                      className="bs-status-row"
+                      onClick={() => { dismiss(); onLogPlay?.() }}
+                    >
+                      <span className="bs-status-row-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </span>
+                      <span className="bs-status-row-label">Log play</span>
+                    </button>
                   </div>
 
                   {customListIds.length > 0 && (

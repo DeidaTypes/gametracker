@@ -1142,9 +1142,63 @@
   }
 }
 
-/* =====================================================
-   YOUR PROGRESS CARD
-   Sits between gd-action-row and gd-content.
+/* ── Review / Journal quick-action pair ─────────────────────────────────
+   Two side-by-side tinted buttons below the genre pills, above Your Progress.
+   Uses --accent-review / --accent-journal tokens from theme.css.
+   ======================================================================= */
+.gd-action-pair {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px 0;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.gd-action-pair-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.gd-action-pair-btn--review {
+  background: color-mix(in srgb, var(--accent-review) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-review) 55%, transparent);
+  color: var(--accent-review-text);
+}
+
+.gd-action-pair-btn--journal {
+  background: color-mix(in srgb, var(--accent-journal) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
+  color: var(--accent-journal-text);
+}
+
+.gd-action-pair-btn:hover {
+  opacity: 0.85;
+}
+
+.gd-action-pair-btn:active {
+  opacity: 0.7;
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-action-pair-btn { transition: opacity 0.15s ease; }
+  .gd-action-pair-btn:active { transform: none; }
+}
+
+/* ── Progress Card ───────────────────────────────────────────────────────
    Only rendered for games in the user's library.
    ===================================================== */
 
