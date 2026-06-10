@@ -806,11 +806,9 @@ function GameDetail() {
           onClick={openJournalComposer}
           aria-label="Journal entry"
         >
-          {/* Book stack — three horizontal books of decreasing width */}
+          {/* Lucide Book — closed notebook glyph */}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="2" y="16" width="20" height="4" rx="1" />
-            <rect x="4" y="10" width="16" height="4" rx="1" />
-            <rect x="6" y="4"  width="12" height="4" rx="1" />
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
           </svg>
           <span>Journal Entry</span>
         </button>

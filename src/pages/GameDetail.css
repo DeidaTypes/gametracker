@@ -1199,10 +1199,25 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
+/* Explicitly carry the accent text token down to the span label and the SVG
+   so that WebKit / Capacitor WKWebView can't fall back to ButtonText grey. */
+.gd-action-pair-btn--review span,
+.gd-action-pair-btn--review svg {
+  color: var(--accent-review-text);
+}
+
+.gd-action-pair-btn--journal span,
+.gd-action-pair-btn--journal svg {
+  color: var(--accent-journal-text);
+}
+
+/* Force the CSS stroke property so it wins over the SVG presentational
+   attribute stroke="currentColor", which WebKit sometimes fails to resolve
+   through CSS-variable-derived inherited colour. */
 .gd-action-pair-btn--review svg,
 .gd-action-pair-btn--journal svg {
-  color: inherit;
   flex-shrink: 0;
+  stroke: currentColor;
 }
 
 .gd-action-pair-btn:hover {
