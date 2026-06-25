@@ -223,6 +223,37 @@
   border: 1px solid var(--border-subtle);
 }
 
+/* Reviews-this-week pill — community activity indicator */
+.gotw-stat--reviews {
+  color: var(--text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+/* "For You" inline badge — shown next to the eyebrow when a taste link exists */
+.gotw-for-you {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--star);
+  background: rgba(245, 181, 10, 0.12);
+  border: 1px solid rgba(245, 181, 10, 0.28);
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gotw-for-you {
+    transition: none;
+  }
+}
+
 /* ── Loading skeleton ── */
 .gotw-skeleton {
   width: 100%;

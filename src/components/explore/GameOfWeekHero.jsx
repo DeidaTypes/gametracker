@@ -24,6 +24,15 @@ function TtbStat({ normallyHours }) {
   )
 }
 
+function ReviewCountStat({ pickReason }) {
+  if (!pickReason) return null
+  return (
+    <span className="gotw-stat gotw-stat--reviews" aria-label={pickReason}>
+      {pickReason}
+    </span>
+  )
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function GameOfWeekHero() {
@@ -43,7 +52,11 @@ export default function GameOfWeekHero() {
   if (!featured) return null
 
   const hasStats =
-    featured.avgRating != null || featured.ttbNormallyHours != null
+    featured.avgRating != null ||
+    featured.ttbNormallyHours != null ||
+    !!featured.pickReason
+
+  const activeBlurb = featured.personalizedBlurb || featured.blurb
 
   function handleClick() {
     navigate(`/game/${featured.igdbGameId}`, {
@@ -99,7 +112,14 @@ export default function GameOfWeekHero() {
 
           {/* Info stack */}
           <div className="gotw-info">
-            <span className="eyebrow gotw-eyebrow">Game of the Week</span>
+            <span className="eyebrow gotw-eyebrow">
+              Game of the Week
+              {featured.personalizedBlurb && (
+                <span className="gotw-for-you" aria-label="Personalised for your taste">
+                  For You
+                </span>
+              )}
+            </span>
 
             <h2 className="gotw-title">{featured.title}</h2>
 
@@ -107,14 +127,15 @@ export default function GameOfWeekHero() {
               <span className="gotw-year">{featured.year}</span>
             )}
 
-            {featured.blurb && (
-              <p className="gotw-blurb">{featured.blurb}</p>
+            {activeBlurb && (
+              <p className="gotw-blurb">{activeBlurb}</p>
             )}
 
             {hasStats && (
               <div className="gotw-stats" aria-label="Game stats">
                 <RatingStat avgRating={featured.avgRating} />
                 <TtbStat normallyHours={featured.ttbNormallyHours} />
+                <ReviewCountStat pickReason={featured.pickReason} />
               </div>
             )}
           </div>

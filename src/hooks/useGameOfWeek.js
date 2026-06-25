@@ -5,9 +5,12 @@
 //   featured: null when no active row; otherwise:
 //   {
 //     igdbGameId, blurb, title, year, coverUrl,
-//     avgRating,        — null when zero community reviews
-//     reviewCount,      — number of reviews used for avg (≥1)
-//     ttbNormallyHours, — null when IGDB has no TTB entry
+//     avgRating,          — null when zero community reviews
+//     reviewCount,        — number of reviews used for avg (≥1)
+//     weeklyReviewCount,  — reviews posted in the past 7 days
+//     pickReason,         — "N reviews this week" or null on quiet week
+//     personalizedBlurb,  — taste-keyed blurb or null when no link
+//     ttbNormallyHours,   — null when IGDB has no TTB entry
 //   }
 //
 // Only real data is surfaced. No fabrication.
@@ -17,6 +20,7 @@ import { supabase } from '../services/supabase'
 import { igdbRequest } from '../services/igdb'
 import { getReviewsForGame } from '../services/reviewService'
 import { getTimeToBeat } from '../services/timeToBeatService'
+import { computeDNAPortrait } from '../services/dnaService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -56,7 +60,7 @@ async function loadFeaturedGame() {
   const [igdbResult, reviewsResult, ttbResult] = await Promise.allSettled([
     igdbRequest(
       'games',
-      `fields name, cover.image_id, first_release_date;\nwhere id = ${igdbGameId};\nlimit 1;`
+      `fields name, cover.image_id, first_release_date, genres.name;\nwhere id = ${igdbGameId};\nlimit 1;`
     ),
     getReviewsForGame(igdbGameId),
     getTimeToBeat(igdbGameId),
@@ -88,6 +92,38 @@ async function loadFeaturedGame() {
         ratedReviews.length
       : null
 
+  // Weekly review count — reviews posted in the last 7 days
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const weeklyReviewCount = reviews.filter(
+    (r) => r.created_at && new Date(r.created_at).getTime() >= oneWeekAgo
+  ).length
+
+  // Pick reason — surfaced only when there is genuine community activity
+  // this week; null on a quiet week (no fabrication).
+  let pickReason = null
+  if (weeklyReviewCount >= 1) {
+    pickReason =
+      weeklyReviewCount === 1
+        ? '1 review this week'
+        : `${weeklyReviewCount} reviews this week`
+  }
+
+  // Taste link — compare game genres (IGDB) vs user's top genres (DNA portrait).
+  // computeDNAPortrait() is synchronous and reads only from localStorage / library
+  // cache; it degrades to empty arrays when no library data exists.
+  const dna = computeDNAPortrait()
+  const gameGenreNames = Array.isArray(igdbGame.genres)
+    ? igdbGame.genres.map((g) => g.name).filter(Boolean)
+    : []
+  const userTopGenreNames = (dna.topGenres || []).map((g) => g.name)
+  const tasteGenre =
+    gameGenreNames.find((g) => userTopGenreNames.includes(g)) ?? null
+
+  // Personalized blurb — only when a genuine genre overlap exists.
+  const personalizedBlurb = tasteGenre
+    ? `A ${tasteGenre} pick — right in your wheelhouse.`
+    : null
+
   // Time-to-beat "normally" in whole hours — null when IGDB has no entry
   const ttb =
     ttbResult.status === 'fulfilled' ? ttbResult.value : null
@@ -99,12 +135,15 @@ async function loadFeaturedGame() {
   return {
     igdbGameId,
     blurb: row.blurb ?? null,
+    personalizedBlurb,
     title: igdbGame.name,
     year,
     coverUrl,
     bgUrl,
     avgRating,
     reviewCount: ratedReviews.length,
+    weeklyReviewCount,
+    pickReason,
     ttbNormallyHours,
   }
 }
