@@ -740,3 +740,73 @@
     transition: none;
   }
 }
+
+/* ── Collaborator avatar row ── */
+.list-detail-collab-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.list-detail-collab-avatars {
+  display: flex;
+  align-items: center;
+}
+
+/* Each avatar overlaps the previous by 6 px */
+.list-detail-collab-avatars > * + * {
+  margin-left: -6px;
+}
+
+.list-detail-collab-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-primary, #0a0f1e);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.list-detail-collab-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-active, rgba(148, 168, 212, 0.13));
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  user-select: none;
+}
+
+.list-detail-collab-avatar--overflow {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.list-detail-collab-label {
+  font-size: var(--font-size-caption, 12px);
+  color: var(--color-text-secondary);
+  flex: 1;
+}
+
+.list-detail-collab-manage-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  padding: 3px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.list-detail-collab-manage-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+

@@ -189,21 +189,38 @@ export async function searchPublicLists(query, limit = 20) {
 }
 
 /**
- * SELECT one list + all its games by listId (public lists visible to all,
- * private lists restricted to owner via RLS).
+ * SELECT one list + all its games + collaborators by listId.
+ * Public lists are visible to all; private lists are restricted to
+ * the owner and collaborators via RLS.
  */
 export async function getListById(listId) {
   if (!listId) return null
   const { data, error } = await supabase
     .from('lists')
-    .select('*, list_games(igdb_game_id, game_title, game_image, position, added_at), users(username, display_name, avatar_url)')
+    .select(
+      '*, ' +
+      'list_games(igdb_game_id, game_title, game_image, position, added_at), ' +
+      'users(username, display_name, avatar_url), ' +
+      'list_collaborators(user_id, created_at, users(username, display_name, avatar_url))'
+    )
     .eq('id', listId)
     .single()
   if (error) {
     console.error('[lists] getListById failed:', error.message)
     return null
   }
-  return data ? rowToList(data) : null
+  if (!data) return null
+  const list = rowToList(data)
+  list.collaborators = (data.list_collaborators || [])
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .map((row) => ({
+      userId: row.user_id,
+      username: row.users?.username || '',
+      displayName: row.users?.display_name || row.users?.username || '',
+      avatarUrl: row.users?.avatar_url || null,
+      invitedAt: row.created_at,
+    }))
+  return list
 }
 
 /**
@@ -403,6 +420,102 @@ export async function getOwnerRatingsForList(userId, gameIds) {
     return {}
   }
   return Object.fromEntries((data || []).map((r) => [r.igdb_game_id, r.rating]))
+}
+
+// ── Collaboration ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all collaborators for a list, joined with the users table.
+ * Returns an array sorted by invite time (oldest first).
+ *
+ * @param {string} listId
+ * @returns {Promise<Array<{ userId, username, displayName, avatarUrl, invitedAt }>>}
+ */
+export async function getCollaborators(listId) {
+  if (!listId) return []
+  const { data, error } = await supabase
+    .from('list_collaborators')
+    .select('user_id, created_at, users(username, display_name, avatar_url)')
+    .eq('list_id', listId)
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error('[lists] getCollaborators failed:', error.message)
+    return []
+  }
+  return (data || []).map((row) => ({
+    userId: row.user_id,
+    username: row.users?.username || '',
+    displayName: row.users?.display_name || row.users?.username || '',
+    avatarUrl: row.users?.avatar_url || null,
+    invitedAt: row.created_at,
+  }))
+}
+
+/**
+ * Add a collaborator to a list. Only the list owner may call this;
+ * the RLS policy will reject anyone else.
+ *
+ * @param {string} listId
+ * @param {string} targetUserId  UUID of the user to invite
+ */
+export async function addCollaborator(listId, targetUserId) {
+  if (!listId || !targetUserId) throw new Error('listId and targetUserId are required')
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+  if (userErr || !user) throw new Error('You must be signed in.')
+
+  const { error } = await supabase.from('list_collaborators').insert({
+    list_id: listId,
+    user_id: targetUserId,
+    invited_by: user.id,
+  })
+  if (error) {
+    if (error.code === '23505') return // already a collaborator — idempotent
+    console.error('[lists] addCollaborator failed:', error.message)
+    throw new Error(error.message)
+  }
+  notifyChange()
+}
+
+/**
+ * Remove a collaborator from a list. Only the list owner may call this.
+ *
+ * @param {string} listId
+ * @param {string} targetUserId  UUID of the collaborator to remove
+ */
+export async function removeCollaborator(listId, targetUserId) {
+  if (!listId || !targetUserId) throw new Error('listId and targetUserId are required')
+  const { error } = await supabase
+    .from('list_collaborators')
+    .delete()
+    .eq('list_id', listId)
+    .eq('user_id', targetUserId)
+  if (error) {
+    console.error('[lists] removeCollaborator failed:', error.message)
+    throw new Error(error.message)
+  }
+  notifyChange()
+}
+
+/**
+ * Returns true if `userId` is a collaborator on `listId`.
+ * Soft-fails to false on any error so callers never block rendering.
+ *
+ * @param {string} listId
+ * @param {string|null} userId
+ */
+export async function isCollaboratorOnList(listId, userId) {
+  if (!listId || !userId) return false
+  const { data, error } = await supabase
+    .from('list_collaborators')
+    .select('user_id')
+    .eq('list_id', listId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) return false
+  return !!data
 }
 
 // ── List pinning ──────────────────────────────────────────────────────────────

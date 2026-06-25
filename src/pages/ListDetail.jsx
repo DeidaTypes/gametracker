@@ -29,6 +29,7 @@ import {
   unpinList,
   updateList,
 } from '../services/listService'
+import CollaboratorSheet from '../components/CollaboratorSheet'
 import {
   getListSaveState,
   saveList,
@@ -113,6 +114,8 @@ function ListDetail() {
   const [showAddGames, setShowAddGames] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [collaborators, setCollaborators] = useState([])
+  const [showCollaboratorSheet, setShowCollaboratorSheet] = useState(false)
 
   // Save state (public custom lists)
   const [saveCount, setSaveCount] = useState(0)
@@ -152,12 +155,14 @@ function ListDetail() {
       const info = getListInfo(listId)
       setListInfo(info)
       setGames(info ? getGamesFromList(listId) : [])
+      setCollaborators([])
       setIsLoading(false)
     } else {
       try {
         const data = await getListById(listId)
         setListInfo(data)
         setGames(data?.games || [])
+        setCollaborators(data?.collaborators || [])
       } catch (err) {
         console.error('[list-detail] failed to load:', err)
         setLoadError(true)
@@ -180,6 +185,11 @@ function ListDetail() {
     listInfo?.isCustom &&
     currentUserId != null &&
     currentUserId === listInfo?.userId
+
+  const isCollaborator =
+    !isOwner &&
+    currentUserId != null &&
+    collaborators.some((c) => c.userId === currentUserId)
 
   // Load the list owner's ratings for all games in this list (real data only)
   useEffect(() => {
@@ -392,6 +402,10 @@ function ListDetail() {
           onClick: handlePinToggle,
         },
         {
+          label: 'Manage collaborators',
+          onClick: () => setShowCollaboratorSheet(true),
+        },
+        {
           label: 'Duplicate list',
           onClick: handleDuplicate,
         },
@@ -458,8 +472,8 @@ function ListDetail() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }, [descDraft])
 
-  // Viewer can add games only if they own the list or it's a personal tracker list
-  const canEdit = isOwner || isTracker
+  // Viewer can add games only if they own the list, are a collaborator, or it's a personal tracker list
+  const canEdit = isOwner || isCollaborator || isTracker
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -619,6 +633,52 @@ function ListDetail() {
             </div>
           )}
 
+          {/* Collaborator avatars row — only shown when there are co-editors */}
+          {!isTracker && collaborators.length > 0 && (
+            <div className="list-detail-collab-row">
+              <div className="list-detail-collab-avatars">
+                {collaborators.slice(0, 5).map((c) => (
+                  c.avatarUrl ? (
+                    <img
+                      key={c.userId}
+                      src={c.avatarUrl}
+                      alt={c.displayName || c.username}
+                      className="list-detail-collab-avatar"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span
+                      key={c.userId}
+                      className="list-detail-collab-avatar list-detail-collab-avatar--fallback"
+                      aria-hidden="true"
+                    >
+                      {(c.displayName || c.username || '?').charAt(0).toUpperCase()}
+                    </span>
+                  )
+                ))}
+                {collaborators.length > 5 && (
+                  <span className="list-detail-collab-avatar list-detail-collab-avatar--overflow">
+                    +{collaborators.length - 5}
+                  </span>
+                )}
+              </div>
+              <span className="list-detail-collab-label">
+                {collaborators.length === 1
+                  ? '1 co-editor'
+                  : `${collaborators.length} co-editors`}
+              </span>
+              {isOwner && (
+                <button
+                  type="button"
+                  className="list-detail-collab-manage-btn"
+                  onClick={() => setShowCollaboratorSheet(true)}
+                >
+                  Manage
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Description — inline edit for owner, read-only for viewer */}
           {isOwner && editingDesc ? (
             <div className="list-detail-desc-edit-wrap">
@@ -691,12 +751,12 @@ function ListDetail() {
                   key={game.id}
                   ref={(el) => { if (el) itemEls.current[game.id] = el }}
                   className={`list-detail-grid-item${
-                    isOwner && dragOverId === game.id ? ' drag-over' : ''
+                    (isOwner || isCollaborator) && dragOverId === game.id ? ' drag-over' : ''
                   }`}
-                  onDragStart={isOwner ? (e) => handleDragStart(e, game.id) : undefined}
-                  onDragOver={isOwner ? (e) => handleDragOver(e, game.id) : undefined}
-                  onDrop={isOwner ? (e) => handleDrop(e, game.id) : undefined}
-                  onDragEnd={isOwner ? () => handleDragEnd(game.id) : undefined}
+                  onDragStart={(isOwner || isCollaborator) ? (e) => handleDragStart(e, game.id) : undefined}
+                  onDragOver={(isOwner || isCollaborator) ? (e) => handleDragOver(e, game.id) : undefined}
+                  onDrop={(isOwner || isCollaborator) ? (e) => handleDrop(e, game.id) : undefined}
+                  onDragEnd={(isOwner || isCollaborator) ? () => handleDragEnd(game.id) : undefined}
                 >
                   <GameCard game={game} />
 
@@ -708,8 +768,8 @@ function ListDetail() {
                     </div>
                   )}
 
-                  {/* Drag handle — owner only, activates drag on pointer-down */}
-                  {isOwner && (
+                  {/* Drag handle — owner or collaborator, activates drag on pointer-down */}
+                  {(isOwner || isCollaborator) && (
                     <button
                       type="button"
                       className="list-detail-drag-handle"
@@ -723,7 +783,7 @@ function ListDetail() {
                   )}
 
                   {/* Remove button */}
-                  {isOwner && (
+                  {(isOwner || isCollaborator) && (
                     <button
                       type="button"
                       className="list-detail-remove-button"
@@ -790,6 +850,19 @@ function ListDetail() {
         onClose={() => setReportSheetOpen(false)}
         contentType="list"
         contentId={listId}
+      />
+
+      <CollaboratorSheet
+        isOpen={showCollaboratorSheet}
+        onClose={() => setShowCollaboratorSheet(false)}
+        listId={listId}
+        isOwner={isOwner}
+        currentUserId={currentUserId}
+        collaborators={collaborators}
+        onChanged={() => {
+          refresh()
+          setShowCollaboratorSheet(false)
+        }}
       />
     </div>
   )
