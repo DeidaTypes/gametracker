@@ -72,6 +72,12 @@
   background: var(--color-surface);
 }
 
+/* Avatar wrapper holds the avatar + the online-dot badge */
+.dm-thread__avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .dm-thread__avatar {
   width: 32px;
   height: 32px;
@@ -79,7 +85,6 @@
   overflow: hidden;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 
 .dm-thread__avatar img {
@@ -100,6 +105,28 @@
   font-size: 13px;
 }
 
+/* F1: Online presence dot — copper-tinted green anchored to bottom-right of avatar */
+.dm-thread__online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: #22c55e;
+  border: 2px solid var(--color-bg-primary);
+  pointer-events: none;
+}
+
+/* Partner info: name + context line stacked vertically */
+.dm-thread__partner-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 1px;
+}
+
 .dm-thread__partner-name {
   font-family: var(--font-body);
   font-size: 16px;
@@ -110,6 +137,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  max-width: 200px;
+}
+
+/* Shared-game context line */
+.dm-thread__context-line {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-brand-primary);
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  line-height: 1.3;
 }
 
 .dm-thread__header-spacer {
@@ -544,6 +585,54 @@
   cursor: not-allowed;
 }
 
+/* ── F3: Reaction pills ─────────────────────────────────────────── */
+
+.dm-bubble__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+  /* Incoming: align to the left edge of the bubble */
+  align-self: flex-start;
+}
+
+.dm-bubble__reactions--out {
+  /* Outgoing: align to the right edge of the bubble */
+  align-self: flex-end;
+}
+
+.dm-bubble__reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.dm-bubble__reaction-pill--reacted {
+  background: color-mix(in srgb, var(--color-brand-primary) 18%, transparent);
+  border-color: var(--color-brand-primary);
+}
+
+.dm-bubble__reaction-count {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-bubble__reaction-pill--reacted .dm-bubble__reaction-count {
+  color: var(--color-brand-primary);
+}
+
 /* ── Bubble context menu (long-press / right-click on incoming) ──── */
 
 .dm-bubble-row__inner {
@@ -581,6 +670,40 @@
   left: 0;
 }
 
+/* F3: Emoji picker row inside context menu */
+.dm-bubble__emoji-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dm-bubble__emoji-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.dm-bubble__emoji-btn:hover {
+  background: var(--color-surface);
+  transform: scale(1.2);
+}
+
+.dm-bubble__emoji-btn--active {
+  background: color-mix(in srgb, var(--color-brand-primary) 18%, transparent);
+}
+
 .dm-bubble__context-btn {
   display: flex;
   align-items: center;
@@ -610,9 +733,12 @@
   .dm-thread__send,
   .dm-thread__composer,
   .dm-bubble__context-btn,
+  .dm-bubble__emoji-btn,
+  .dm-bubble__reaction-pill,
   .dm-attachment-card,
   .dm-composer-attachment__remove {
     transition: none;
+    transform: none;
   }
 }
 

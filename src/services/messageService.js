@@ -395,6 +395,50 @@ export async function markThreadAsRead(otherUserId) {
 }
 
 /* ============================================================
+   Shared-game context
+   ============================================================ */
+
+/**
+ * Returns the first game that both `uid1` and `uid2` have in their
+ * Supabase-backed tracker (any status except 'want'). Used to show
+ * the "you both played <game>" context line in the DM thread header.
+ *
+ * Soft-fails to null — a failed query never blocks render.
+ *
+ * @param {string} uid1
+ * @param {string} uid2
+ * @returns {Promise<{ gameId: number, gameTitle: string|null, gameImage: string|null }|null>}
+ */
+export async function getSharedGame(uid1, uid2) {
+  if (!uid1 || !uid2 || uid1 === uid2) return null
+
+  const [r1, r2] = await Promise.all([
+    supabase
+      .from('game_trackers')
+      .select('igdb_game_id, game_title, game_image, status')
+      .eq('user_id', uid1)
+      .neq('status', 'want'),
+    supabase
+      .from('game_trackers')
+      .select('igdb_game_id')
+      .eq('user_id', uid2)
+      .neq('status', 'want'),
+  ])
+
+  if (r1.error || r2.error) return null
+
+  const partnerSet = new Set((r2.data || []).map((r) => String(r.igdb_game_id)))
+  const shared = (r1.data || []).find((r) => partnerSet.has(String(r.igdb_game_id)))
+  if (!shared) return null
+
+  return {
+    gameId: shared.igdb_game_id,
+    gameTitle: shared.game_title || null,
+    gameImage: shared.game_image || null,
+  }
+}
+
+/* ============================================================
    Cross-surface change event
    ============================================================ */
 

@@ -14,12 +14,15 @@ import {
   getThread,
   sendMessage,
   markThreadAsRead,
+  getSharedGame,
 } from '../services/messageService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
+import { useReactions } from '../hooks/useReactions'
+import { useDmPresence } from '../hooks/useDmPresence'
 import ReportSheet from '../components/ReportSheet'
 import './MessagesThread.css'
 
@@ -145,6 +148,27 @@ function MessagesThread() {
 
   const partnerId = partner?.id || null
   const currentUserId = user?.id || null
+
+  /* ── F1: DM-thread presence ────────────────────────────────── */
+
+  const { partnerOnline } = useDmPresence(partnerId)
+
+  /* ── Shared-game context ───────────────────────────────────── */
+
+  const [sharedGame, setSharedGame] = useState(null)
+
+  useEffect(() => {
+    if (!currentUserId || !partnerId) return
+    let cancelled = false
+    getSharedGame(currentUserId, partnerId)
+      .then((game) => {
+        if (!cancelled) setSharedGame(game)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [currentUserId, partnerId])
 
   const loadThread = useCallback(async () => {
     if (!partnerId) return
@@ -396,20 +420,32 @@ function MessagesThread() {
           onClick={openPartnerProfile}
           aria-label={`Open ${headerLabel}'s profile`}
         >
-          <div className="dm-thread__avatar">
-            {partnerAvatar ? (
-              <img src={partnerAvatar} alt="" />
-            ) : (
-              <span
-                className="dm-thread__avatar-fallback"
-                style={{ background: fallback.color }}
-                aria-hidden="true"
-              >
-                {fallback.initials}
+          <div className="dm-thread__avatar-wrap">
+            <div className="dm-thread__avatar">
+              {partnerAvatar ? (
+                <img src={partnerAvatar} alt="" />
+              ) : (
+                <span
+                  className="dm-thread__avatar-fallback"
+                  style={{ background: fallback.color }}
+                  aria-hidden="true"
+                >
+                  {fallback.initials}
+                </span>
+              )}
+            </div>
+            {partnerOnline && (
+              <span className="dm-thread__online-dot" aria-label="Online" />
+            )}
+          </div>
+          <div className="dm-thread__partner-info">
+            <span className="dm-thread__partner-name">{headerLabel}</span>
+            {sharedGame?.gameTitle && (
+              <span className="dm-thread__context-line">
+                you both played {sharedGame.gameTitle}
               </span>
             )}
           </div>
-          <span className="dm-thread__partner-name">{headerLabel}</span>
         </button>
         <span className="dm-thread__header-spacer" aria-hidden="true" />
       </header>
@@ -598,7 +634,15 @@ function AttachmentCard({ attachment, isOutgoing }) {
    Single bubble
    ============================================================ */
 
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥']
+
 function Bubble({ message, isOutgoing, onReport }) {
+  const isPending = !!message.__pending
+  // Reactions — skipped for optimistic/pending bubbles that have no
+  // server-side id yet. useReactions handles null gracefully.
+  const messageId = isPending ? null : message.id
+  const { reactions, toggle } = useReactions('dm_message', messageId)
+
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
   const pressTimerRef = useRef(null)
   const bubbleRef = useRef(null)
@@ -619,8 +663,9 @@ function Bubble({ message, isOutgoing, onReport }) {
     }
   }, [contextMenuOpen])
 
+  // Long-press opens the context menu for any non-pending message.
   const startPress = () => {
-    if (!onReport) return
+    if (isPending) return
     pressTimerRef.current = window.setTimeout(() => {
       setContextMenuOpen(true)
     }, 500)
@@ -646,7 +691,7 @@ function Bubble({ message, isOutgoing, onReport }) {
         <div
           className={`dm-bubble${hasAttachment ? ' dm-bubble--card' : ''}${
             isOutgoing ? ' dm-bubble--out' : ' dm-bubble--in'
-          }${message.__pending ? ' dm-bubble--pending' : ''}`}
+          }${isPending ? ' dm-bubble--pending' : ''}`}
           onMouseDown={startPress}
           onMouseUp={cancelPress}
           onMouseLeave={cancelPress}
@@ -654,7 +699,7 @@ function Bubble({ message, isOutgoing, onReport }) {
           onTouchEnd={cancelPress}
           onTouchCancel={cancelPress}
           onContextMenu={(e) => {
-            if (onReport) {
+            if (!isPending) {
               e.preventDefault()
               setContextMenuOpen(true)
             }
@@ -669,24 +714,67 @@ function Bubble({ message, isOutgoing, onReport }) {
           <span className="dm-bubble__time">{bubbleTime(message.created_at)}</span>
         </div>
 
-        {contextMenuOpen && onReport && (
+        {/* F3: reaction pills below the bubble */}
+        {reactions.length > 0 && (
+          <div
+            className={`dm-bubble__reactions${isOutgoing ? ' dm-bubble__reactions--out' : ''}`}
+          >
+            {reactions.map((r) => (
+              <button
+                key={r.emoji}
+                type="button"
+                className={`dm-bubble__reaction-pill${r.reacted ? ' dm-bubble__reaction-pill--reacted' : ''}`}
+                onClick={() => toggle(r.emoji)}
+                aria-label={`${r.emoji} ${r.count}`}
+              >
+                {r.emoji}
+                <span className="dm-bubble__reaction-count">{r.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* F3: context menu (emoji picker + optional Report) */}
+        {contextMenuOpen && (
           <div
             className={`dm-bubble__context-menu${
               isOutgoing ? '' : ' dm-bubble__context-menu--in'
             }`}
             role="menu"
           >
-            <button
-              type="button"
-              role="menuitem"
-              className="dm-bubble__context-btn"
-              onClick={() => {
-                setContextMenuOpen(false)
-                onReport(message)
-              }}
-            >
-              Report
-            </button>
+            <div className="dm-bubble__emoji-picker" role="group" aria-label="React with emoji">
+              {REACTION_EMOJIS.map((emoji) => {
+                const isReacted = reactions.some((r) => r.emoji === emoji && r.reacted)
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className={`dm-bubble__emoji-btn${isReacted ? ' dm-bubble__emoji-btn--active' : ''}`}
+                    onClick={() => {
+                      toggle(emoji)
+                      setContextMenuOpen(false)
+                    }}
+                    aria-label={emoji}
+                    aria-pressed={isReacted}
+                  >
+                    {emoji}
+                  </button>
+                )
+              })}
+            </div>
+            {onReport && (
+              <button
+                type="button"
+                role="menuitem"
+                className="dm-bubble__context-btn"
+                onClick={() => {
+                  setContextMenuOpen(false)
+                  onReport(message)
+                }}
+              >
+                Report
+              </button>
+            )}
           </div>
         )}
       </div>
