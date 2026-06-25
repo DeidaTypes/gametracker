@@ -37,7 +37,7 @@ function firstGenreLabel(genreStr) {
  *   onSwipeRight   (game) => void  called after exit animation completes
  *   onSwipeLeft    (game) => void  called after exit animation completes
  */
-export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap }) {
+export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap, blindDate = false }) {
   const { reduced } = useMotionPreference()
 
   // Drag tracking — ref for latest value (no stale closures in handlers),
@@ -52,10 +52,17 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
   const exitingRef = useRef(null) // 'left' | 'right' | null
   const [exiting, setExiting] = useState(null)
 
+  // Blind date: title is hidden until the swipe threshold is crossed.
+  // Each card is keyed by game.id so this resets naturally per card.
+  const [revealed, setRevealed] = useState(false)
+
   const triggerSwipe = useCallback(
     (dir) => {
       if (exitingRef.current) return // already mid-exit
       exitingRef.current = dir
+
+      // Reveal the title as the card starts its exit animation.
+      if (blindDate) setRevealed(true)
 
       if (reduced) {
         // No animation — callback fires immediately.
@@ -72,7 +79,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
         }, 290)
       }
     },
-    [reduced, onSwipeRight, onSwipeLeft, game]
+    [reduced, onSwipeRight, onSwipeLeft, game, blindDate]
   )
 
   // Allow parent (SwipeDeck action buttons) to trigger a swipe via this prop.
@@ -118,6 +125,9 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
 
   const coverUrl  = game.image || game.coverUrl || null
   const genreTag  = firstGenreLabel(game.genre)
+
+  // Blind mode: info stays hidden until revealed by a swipe.
+  const isBlind = blindDate && !revealed
 
   // Compute transform + transition for this card's position in the stack.
   let transform = ''
@@ -167,7 +177,9 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       role={isTop ? 'img' : undefined}
       aria-label={
         isTop
-          ? `${game.title}${game.year ? `, ${game.year}` : ''}${game.whyLine ? `. ${game.whyLine}` : ''}`
+          ? isBlind
+            ? 'Mystery game — swipe right to add to backlog, left to skip'
+            : `${game.title}${game.year ? `, ${game.year}` : ''}${game.whyLine ? `. ${game.whyLine}` : ''}`
           : undefined
       }
     >
@@ -182,7 +194,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
           />
         ) : (
           <div className="swipe-card__placeholder" aria-hidden="true">
-            {game.title?.charAt(0) ?? '?'}
+            {isBlind ? '?' : (game.title?.charAt(0) ?? '?')}
           </div>
         )}
       </div>
@@ -190,19 +202,28 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       {/* Gradient overlay — fades the bottom so text stays readable */}
       <div className="swipe-card__gradient" aria-hidden="true" />
 
-      {/* Genre tag + title + year + optional 'why' line */}
+      {/* Genre tag (always visible — provides "vibe") + title area */}
       <div className="swipe-card__info" aria-hidden="true">
         {genreTag && (
           <span className="swipe-card__genre">{genreTag}</span>
         )}
-        <p className="swipe-card__title">{game.title}</p>
-        {game.year ? <p className="swipe-card__year">{game.year}</p> : null}
-        {game.whyLine ? (
-          <p className="swipe-card__why" title={game.whyLine}>
-            <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
-            {game.whyLine}
-          </p>
-        ) : null}
+
+        {/* Blind date: show mystery dots instead of title/year/whyLine.
+            On reveal the title group fades in with a brief animation. */}
+        {isBlind ? (
+          <p className="swipe-card__mystery">· · · · ·</p>
+        ) : (
+          <div className={`swipe-card__title-group${blindDate && revealed ? ' swipe-card__title-group--reveal' : ''}`}>
+            <p className="swipe-card__title">{game.title}</p>
+            {game.year ? <p className="swipe-card__year">{game.year}</p> : null}
+            {game.whyLine ? (
+              <p className="swipe-card__why" title={game.whyLine}>
+                <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
+                {game.whyLine}
+              </p>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Direction feedback badges — shown while dragging */}

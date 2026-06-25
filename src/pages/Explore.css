@@ -290,6 +290,25 @@
   margin-bottom: 12px;
 }
 
+/* ---- Blind Date toggle ---- */
+
+.blind-date-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.blind-date-toggle__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .discover-section-title {
   font-family: var(--font-body);
   font-size: var(--font-size-title);

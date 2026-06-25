@@ -21,6 +21,7 @@ import GotAnHourRail, {
 } from '../components/explore/GotAnHourRail'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import { MoodChips } from '../components/explore/MoodChips'
+import IOSSwitch from '../components/IOSSwitch'
 import ReviewCard from '../components/ReviewCard'
 import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
@@ -137,6 +138,9 @@ function Explore() {
   // emptyMoods: chips whose deck returned 0 results — hidden from the row.
   const [activeMood, setActiveMood]   = useState(null)
   const [emptyMoods, setEmptyMoods]   = useState(() => new Set())
+
+  // ── Blind Date mode — hides title/year/whyLine until the user swipes ───────
+  const [blindDate, setBlindDate] = useState(false)
 
   const handleMoodEmpty = useCallback((moodId) => {
     if (!moodId) return
@@ -311,6 +315,15 @@ function Explore() {
         <section className="explore-section explore-section--swipe-deck">
           <div className="explore-section__pad discover-section-header">
             <h2 className="discover-section-title">Swipe to discover</h2>
+            <label className="blind-date-toggle" htmlFor="blind-date-switch">
+              <span className="blind-date-toggle__label">Blind Date</span>
+              <IOSSwitch
+                id="blind-date-switch"
+                checked={blindDate}
+                onChange={setBlindDate}
+                label="Blind Date mode — hide game titles until you swipe"
+              />
+            </label>
           </div>
           <MoodChips
             activeMood={activeMood}
@@ -321,6 +334,7 @@ function Explore() {
             key={activeMood ?? 'default'}
             moodId={activeMood}
             onMoodEmpty={handleMoodEmpty}
+            blindDate={blindDate}
           />
         </section>
 

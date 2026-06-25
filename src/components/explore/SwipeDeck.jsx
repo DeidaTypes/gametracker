@@ -112,7 +112,7 @@ const PICK_AVAILABLE_AFTER_SWIPES = 6
  *   recordSwipe('not_interested') — persistent for 1 year. Heavy negative
  *   (genre weight 4) — soft-filters the same genre from future batches.
  */
-export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
+export function SwipeDeck({ moodId = null, onMoodEmpty, blindDate = false } = {}) {
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -464,6 +464,7 @@ export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
             isTop={false}
             onSwipeRight={handleSwipeRight}
             onSwipeLeft={handleSwipeLeft}
+            blindDate={blindDate}
           />
         )}
         {midGame && (
@@ -474,6 +475,7 @@ export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
             isTop={false}
             onSwipeRight={handleSwipeRight}
             onSwipeLeft={handleSwipeLeft}
+            blindDate={blindDate}
           />
         )}
         {topGame && (
@@ -485,6 +487,7 @@ export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
             onSwipeRight={handleSwipeRight}
             onSwipeLeft={handleSwipeLeft}
             onTap={handleTap}
+            blindDate={blindDate}
           />
         )}
       </div>
@@ -507,7 +510,7 @@ export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
           type="button"
           className="swipe-deck__btn swipe-deck__btn--add"
           onClick={(e) => { e.stopPropagation(); topGame && handleSwipeRight(topGame) }}
-          aria-label={`Add ${topGame?.title ?? 'this game'} to backlog`}
+          aria-label={blindDate ? 'Add to backlog' : `Add ${topGame?.title ?? 'this game'} to backlog`}
         >
           <span className="swipe-deck__btn-icon" aria-hidden="true">♥</span>
           <span className="swipe-deck__btn-label">Backlog</span>
