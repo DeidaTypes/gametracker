@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bookmark, ChevronRight } from 'lucide-react'
+import { Plus, Bookmark, ChevronRight, Shuffle } from 'lucide-react'
 import SharedCover from './SharedCover'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { useBacklogShelves } from '../hooks/useBacklogShelves'
+import BacklogRoulette from './BacklogRoulette'
 import './HomeShelf.css'
 
 /**
@@ -85,6 +86,7 @@ function CoverRail({ games, onAddGame }) {
 function BacklogSection({ games = [], onAddGame }) {
   const navigate = useNavigate()
   const { shelves, loading } = useBacklogShelves(games)
+  const [rouletteOpen, setRouletteOpen] = useState(false)
   const count = games.length
 
   if (count === 0) {
@@ -113,18 +115,29 @@ function BacklogSection({ games = [], onAddGame }) {
     <div className="shelf-box shelf-box--backlog">
       <div className="shelf-head">
         <h2 className="shelf-title">Your Backlog</h2>
-        <button
-          type="button"
-          className="shelf-link"
-          onClick={() =>
-            navigate('/list/want-to-play', {
-              state: { selectedListId: 'want-to-play' },
-            })
-          }
-          aria-label="Open your Want to Play list"
-        >
-          <ChevronRight size={20} aria-hidden="true" />
-        </button>
+        <div className="shelf-head-end">
+          <button
+            type="button"
+            className="shelf-spin-btn"
+            onClick={() => setRouletteOpen(true)}
+            aria-label="Spin Backlog Roulette — pick a random game"
+          >
+            <Shuffle size={13} strokeWidth={2.4} aria-hidden="true" />
+            Spin
+          </button>
+          <button
+            type="button"
+            className="shelf-link"
+            onClick={() =>
+              navigate('/list/want-to-play', {
+                state: { selectedListId: 'want-to-play' },
+              })
+            }
+            aria-label="Open your Want to Play list"
+          >
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {showShelves ? (
@@ -147,6 +160,12 @@ function BacklogSection({ games = [], onAddGame }) {
       ) : (
         <CoverRail games={games} onAddGame={onAddGame} />
       )}
+
+      <BacklogRoulette
+        isOpen={rouletteOpen}
+        onClose={() => setRouletteOpen(false)}
+        games={games}
+      />
     </div>
   )
 }

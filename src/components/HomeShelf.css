@@ -71,6 +71,46 @@
   transform: scale(0.9);
 }
 
+/* Right-side cluster: Spin + Chevron */
+.shelf-head-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Roulette spin pill — only visible when backlog has games */
+.shelf-spin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-status-want, #c4634e) 35%, transparent);
+  background: color-mix(in srgb, var(--color-status-want, #c4634e) 12%, transparent);
+  color: var(--color-status-want, #c4634e);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+@media (hover: hover) {
+  .shelf-spin-btn:hover {
+    background: color-mix(in srgb, var(--color-status-want, #c4634e) 22%, transparent);
+  }
+}
+
+.shelf-spin-btn:active {
+  transform: scale(0.93);
+  transition: transform 80ms ease-out;
+}
+
 /* Small text "Add" action in the header (Backlog) */
 .shelf-action {
   display: inline-flex;
@@ -347,6 +387,8 @@
   .shelf-action,
   .shelf-link,
   .shelf-link:active,
+  .shelf-spin-btn,
+  .shelf-spin-btn:active,
   .shelf-mood-row {
     transform: none;
     transition: none;
