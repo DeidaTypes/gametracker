@@ -4,23 +4,87 @@ import { Plus, Bookmark, ChevronRight } from 'lucide-react'
 import SharedCover from './SharedCover'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { useBacklogShelves } from '../hooks/useBacklogShelves'
 import './HomeShelf.css'
 
 /**
  * BacklogSection — the "what's next" card for Want to Play games.
  *
- * Presented as a boxed card (consistent with RecentActivitySection) so the
- * dashboard reads as a set of tidy panels under the Continue Playing hero.
- * Tapping a cover routes to its game detail. The header "Add" action, the
- * trailing "+" tile, and the empty-state CTA all open the focused tracker
- * search popup (via onAddGame) instead of navigating away to Explore.
+ * When the backlog has games the section flips from a flat cover rail into
+ * mood/length shelves powered by real IGDB attributes:
+ *
+ *   ⚡ Quick Wins      — time_to_beat normally ≤ 8 h
+ *   😢 I want to cry  — IGDB theme 31 (Drama)
+ *   🤝 Co-op Night    — IGDB game_mode 3 (Co-operative)
+ *   👻 Spooky         — IGDB theme 19 (Horror)
+ *   🌅 Just Vibes     — IGDB theme 33 (Sandbox) or 38 (Open world)
+ *   🧩 Puzzle Brain   — IGDB genre 9 (Puzzle)
+ *
+ * Shelves with no matching games are hidden. While IGDB metadata is still
+ * loading the flat rail is shown so there's no jarring layout shift.
  *
  * Props:
  *   games      array of Want-to-Play games
  *   onAddGame  () => void — opens the focused "add to Want to Play" popup
  */
+function CoverRail({ games, onAddGame }) {
+  const navigate = useNavigate()
+  return (
+    <div className="shelf-rail" role="list">
+      {games.map((game) => (
+        <button
+          key={game.id}
+          type="button"
+          role="listitem"
+          className="shelf-cover-card"
+          onClick={() =>
+            navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
+          }
+          aria-label={game.title}
+        >
+          <div className="shelf-cover-wrap">
+            {game.image ? (
+              <SharedCover gameId={game.id} imageSrc={game.image}>
+                <img
+                  src={game.image}
+                  alt=""
+                  className="shelf-cover-img"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.target.src = COVER_FALLBACK
+                  }}
+                />
+              </SharedCover>
+            ) : (
+              <div className="shelf-cover-fallback">
+                {game.title?.charAt(0) || '?'}
+              </div>
+            )}
+          </div>
+          <span className="shelf-cover-title">{game.title}</span>
+        </button>
+      ))}
+
+      {onAddGame && (
+        <button
+          type="button"
+          className="shelf-add-tile"
+          onClick={onAddGame}
+          aria-label="Add a game to Want to Play"
+        >
+          <span className="shelf-add-icon" aria-hidden="true">
+            <Plus size={20} strokeWidth={2.4} />
+          </span>
+          <span className="shelf-add-label">Add</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 function BacklogSection({ games = [], onAddGame }) {
   const navigate = useNavigate()
+  const { shelves, loading } = useBacklogShelves(games)
   const count = games.length
 
   if (count === 0) {
@@ -43,6 +107,8 @@ function BacklogSection({ games = [], onAddGame }) {
     )
   }
 
+  const showShelves = !loading && shelves.length > 0
+
   return (
     <div className="shelf-box shelf-box--backlog">
       <div className="shelf-head">
@@ -61,54 +127,26 @@ function BacklogSection({ games = [], onAddGame }) {
         </button>
       </div>
 
-      <div className="shelf-rail" role="list">
-        {games.map((game) => (
-          <button
-            key={game.id}
-            type="button"
-            role="listitem"
-            className="shelf-cover-card"
-            onClick={() =>
-              navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
-            }
-            aria-label={game.title}
-          >
-            <div className="shelf-cover-wrap">
-              {game.image ? (
-                <SharedCover gameId={game.id} imageSrc={game.image}>
-                  <img
-                    src={game.image}
-                    alt=""
-                    className="shelf-cover-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.src = COVER_FALLBACK
-                    }}
-                  />
-                </SharedCover>
-              ) : (
-                <div className="shelf-cover-fallback">
-                  {game.title?.charAt(0) || '?'}
-                </div>
-              )}
+      {showShelves ? (
+        <div className="shelf-moods" role="list" aria-label="Backlog by mood">
+          {shelves.map((shelf, idx) => (
+            <div
+              key={shelf.id}
+              className="shelf-mood-row"
+              role="listitem"
+              style={{ '--shelf-idx': idx }}
+            >
+              <div className="shelf-mood-label" aria-hidden="true">
+                <span className="shelf-mood-emoji">{shelf.emoji}</span>
+                <span className="shelf-mood-name">{shelf.label}</span>
+              </div>
+              <CoverRail games={shelf.games} onAddGame={null} />
             </div>
-            <span className="shelf-cover-title">{game.title}</span>
-          </button>
-        ))}
-
-        {/* Trailing add tile — reinforces the new add-from-here flow. */}
-        <button
-          type="button"
-          className="shelf-add-tile"
-          onClick={onAddGame}
-          aria-label="Add a game to Want to Play"
-        >
-          <span className="shelf-add-icon" aria-hidden="true">
-            <Plus size={20} strokeWidth={2.4} />
-          </span>
-          <span className="shelf-add-label">Add</span>
-        </button>
-      </div>
+          ))}
+        </div>
+      ) : (
+        <CoverRail games={games} onAddGame={onAddGame} />
+      )}
     </div>
   )
 }

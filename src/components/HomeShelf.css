@@ -280,6 +280,61 @@
   }
 }
 
+/* ── Mood shelves (BacklogSection multi-shelf layout) ── */
+
+/* Stacked container — each child is one mood row */
+.shelf-moods {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* One mood row: label line + horizontal cover rail */
+.shelf-mood-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 6px);
+  /* Staggered fade-up on mount */
+  animation: shelf-mood-in var(--transition-medium, 240ms) ease-out both;
+  animation-delay: calc(var(--shelf-idx, 0) * 60ms);
+}
+
+@keyframes shelf-mood-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Small label row: emoji + text */
+.shelf-mood-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+.shelf-mood-emoji {
+  font-size: 13px;
+  line-height: 1;
+  /* Prevent emoji from reflowing on some platforms */
+  flex-shrink: 0;
+}
+
+.shelf-mood-name {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
 /* ── Reduced motion ── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -291,9 +346,11 @@
   .shelf-add-tile:active,
   .shelf-action,
   .shelf-link,
-  .shelf-link:active {
+  .shelf-link:active,
+  .shelf-mood-row {
     transform: none;
     transition: none;
+    animation: none;
   }
 
   .shelf-cover-card:active {

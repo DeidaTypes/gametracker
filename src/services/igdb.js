@@ -1813,6 +1813,45 @@ function formatGamesWithThemes(games) {
   return normalizeGames(sorted, 'igdb')
 }
 
+/**
+ * Batch-fetch mood-classification metadata for backlog games.
+ *
+ * Only fetches the IDs needed for shelf categorisation — no cover or rating
+ * data is requested, keeping payloads small. Results are returned as a Map
+ * keyed by string game ID.
+ *
+ * IGDB entity IDs used for shelves:
+ *   themes:     19 = Horror, 31 = Drama, 33 = Sandbox, 38 = Open world
+ *   game_modes:  3 = Co-operative
+ *   genres:      9 = Puzzle
+ *
+ * @param {Array<string|number>} ids — up to 50 IGDB game IDs per call
+ * @returns {Promise<Map<string,{themeIds:number[],gameModeIds:number[],genreIds:number[]}>>}
+ */
+export async function batchFetchGameMeta(ids) {
+  if (!ids || ids.length === 0) return new Map()
+  const limited = ids.slice(0, 50)
+  const query =
+    `fields themes.id, game_modes.id, genres.id; ` +
+    `where id = (${limited.join(',')}); ` +
+    `limit ${limited.length};`
+  try {
+    const rows = await igdbRequest('games', query)
+    const meta = new Map()
+    for (const row of rows || []) {
+      meta.set(String(row.id), {
+        themeIds:   (row.themes     || []).map((t) => Number(t.id)).filter(Boolean),
+        gameModeIds:(row.game_modes || []).map((m) => Number(m.id)).filter(Boolean),
+        genreIds:   (row.genres     || []).map((g) => Number(g.id)).filter(Boolean),
+      })
+    }
+    return meta
+  } catch (err) {
+    console.error('[backlog] batchFetchGameMeta failed:', err)
+    return new Map()
+  }
+}
+
 // Test API connection
 export async function testAPIConnection() {
   try {
