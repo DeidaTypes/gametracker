@@ -120,9 +120,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Avatar: 44 × 44 circle ── */
-.ffm-user-row__avatar {
+/* ── Avatar wrapper — lets PulseDot overflow the clipped circle ── */
+.ffm-user-row__avatar-wrap {
+  position: relative;
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.ffm-user-row__avatar {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
@@ -130,6 +136,13 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   display: block;
+}
+
+.ffm-user-row__pulse {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  z-index: 1;
 }
 
 .ffm-user-row__avatar img {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { UserPlus, UserMinus } from 'lucide-react'
@@ -13,10 +13,12 @@ import {
   getFollowing,
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
+import { usePresence } from '../hooks/usePresence'
 import { shareContent } from '../utils/share'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
 import FindFriendsModal from './FindFriendsModal'
+import PulseDot from './PulseDot'
 import '../pages/UserFollows.css'
 
 /**
@@ -61,6 +63,15 @@ function FollowsListPage({ mode }) {
 
   // Find Friends user-search popup (replaces the old "go to Explore" CTA).
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
+
+  // Presence — dots for opted-in followees currently playing something.
+  // usePresence filters to the signed-in user's follow graph, so we only
+  // ever surface dots for people the current user already follows.
+  const { playingNow } = usePresence()
+  const liveSet = useMemo(
+    () => new Set(playingNow.map((p) => p.userId)),
+    [playingNow]
+  )
 
   const decodedUsername = decodeURIComponent(username || '')
 
@@ -382,6 +393,7 @@ function FollowsListPage({ mode }) {
                 row={row}
                 currentUserId={currentUserId}
                 following={!!followingMap[row.id]}
+                live={liveSet.has(row.id)}
                 onToggle={() => toggleFollow(row.id)}
                 onTap={() => {
                   if (row.username) {
@@ -412,32 +424,42 @@ function FollowsListPage({ mode }) {
   )
 }
 
-function FollowRow({ row, currentUserId, following, onToggle, onTap }) {
+function FollowRow({ row, currentUserId, following, live = false, onToggle, onTap }) {
   const isSelf = currentUserId && row.id === currentUserId
   const fallback = generateDefaultAvatar(row.displayName || row.username || 'U')
   return (
     <div className="follow-row">
       <button type="button" className="follow-row__main" onClick={onTap}>
-        <div className="follow-row__avatar">
-          {row.avatarUrl ? (
-            <img src={row.avatarUrl} alt="" loading="lazy" />
-          ) : (
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                background: fallback.color,
-                color: 'white',
-                fontWeight: 700,
-                fontSize: 16,
-              }}
-              aria-hidden="true"
-            >
-              {fallback.initials}
-            </span>
+        <div className="follow-row__avatar-wrap">
+          <div className="follow-row__avatar">
+            {row.avatarUrl ? (
+              <img src={row.avatarUrl} alt="" loading="lazy" />
+            ) : (
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  background: fallback.color,
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: 16,
+                }}
+                aria-hidden="true"
+              >
+                {fallback.initials}
+              </span>
+            )}
+          </div>
+          {live && (
+            <PulseDot
+              size="sm"
+              live
+              label="Playing now"
+              className="follow-row__pulse"
+            />
           )}
         </div>
         <div className="follow-row__text">

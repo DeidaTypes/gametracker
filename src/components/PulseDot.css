@@ -1,0 +1,104 @@
+/* =====================================================================
+   PulseDot — Cobalt Modern live indicator primitive.
+
+   All colors come from theme.css tokens (--accent + alpha overlays).
+   No hard-coded hex.
+
+   Layout: a single inline-flex span that holds an absolutely-positioned
+   ring and a stacked core dot. Sized via three size modifiers so the
+   ring/core ratio stays consistent across variants.
+
+   Motion: the ring pulses outward with a single keyframe animation.
+   Duration is intentionally longer than the 250ms transition budget
+   because this is an ambient infinite indicator, not a UI transition.
+
+   Reduced motion: both the OS-level prefers-reduced-motion query AND
+   the app-level data-attribute (body[data-reduce-motion='true']) hide
+   the ring entirely and freeze the core. The dot stays visible and
+   colored so the live state is still legible — we just stop the
+   animation.
+   ===================================================================== */
+
+.pulse-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  /* Sized below via --pulse-dot-size on the size modifier classes. */
+  inline-size: var(--pulse-dot-size, 8px);
+  block-size: var(--pulse-dot-size, 8px);
+  line-height: 0;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+.pulse-dot--sm { --pulse-dot-size: 6px; }
+.pulse-dot--md { --pulse-dot-size: 8px; }
+.pulse-dot--lg { --pulse-dot-size: 10px; }
+
+/* Core dot — the steady visual anchor. */
+.pulse-dot__core {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: 50%;
+  background: var(--accent);
+  /* Soft outer glow so the dot reads as "lit", not flat. Uses the
+     accent token's RGB through color-mix so it inherits theme swaps
+     (e.g. data-cbm='deutan' cobalt shift) automatically. */
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+/* Idle: still visible, but the glow is muted so static dots don't
+   compete with live ones in the same view. */
+.pulse-dot--idle .pulse-dot__core {
+  background: color-mix(in oklab, var(--accent) 70%, transparent);
+  box-shadow: none;
+}
+
+/* Ring: starts at the core's footprint, scales outward, fades out. */
+.pulse-dot__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 45%, transparent);
+  transform-origin: center;
+  animation: pulse-dot-ring 1600ms cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  /* Keep the ring under the core in stacking order so it appears to
+     emit from beneath the dot. */
+  z-index: 0;
+}
+
+.pulse-dot__core {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes pulse-dot-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion — both OS-level and the app-level setting. */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot__ring {
+    animation: none;
+    display: none;
+  }
+}
+
+body[data-reduce-motion='true'] .pulse-dot__ring {
+  animation: none;
+  display: none;
+}

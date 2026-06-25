@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { searchUsers } from '../services/userService'
 import { generateDefaultAvatar } from '../services/profileService'
@@ -8,7 +8,9 @@ import {
   isFollowing as fetchIsFollowing,
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
+import { usePresence } from '../hooks/usePresence'
 import CenteredModal from './CenteredModal'
+import PulseDot from './PulseDot'
 import { showToast } from './Toast'
 import './FindFriendsModal.css'
 
@@ -48,6 +50,15 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
   // elsewhere via FOLLOW_CHANGED_EVENT.
   const [followingMap, setFollowingMap] = useState({})
   const [pendingMap, setPendingMap] = useState({})
+
+  // Presence — dots for opted-in followees currently playing something.
+  // Only users in the signed-in user's follow graph who have opted in
+  // are returned by usePresence, so privacy is handled by the hook.
+  const { playingNow } = usePresence()
+  const liveSet = useMemo(
+    () => new Set(playingNow.map((p) => p.userId)),
+    [playingNow]
+  )
 
   const inputRef = useRef(null)
   const debounceRef = useRef(null)
@@ -271,17 +282,27 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
                     onClick={() => handleOpenProfile(u)}
                     aria-label={`View ${primary}'s profile`}
                   >
-                    <span className="ffm-user-row__avatar">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" loading="lazy" />
-                      ) : (
-                        <span
-                          className="ffm-user-row__avatar-fallback"
-                          style={{ background: fallback.color }}
-                          aria-hidden="true"
-                        >
-                          {fallback.initials}
-                        </span>
+                    <span className="ffm-user-row__avatar-wrap">
+                      <span className="ffm-user-row__avatar">
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" loading="lazy" />
+                        ) : (
+                          <span
+                            className="ffm-user-row__avatar-fallback"
+                            style={{ background: fallback.color }}
+                            aria-hidden="true"
+                          >
+                            {fallback.initials}
+                          </span>
+                        )}
+                      </span>
+                      {liveSet.has(u.id) && (
+                        <PulseDot
+                          size="sm"
+                          live
+                          label="Playing now"
+                          className="ffm-user-row__pulse"
+                        />
                       )}
                     </span>
                     <span className="ffm-user-row__text">

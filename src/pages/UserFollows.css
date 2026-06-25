@@ -205,14 +205,28 @@
   min-width: 0;
 }
 
-.follow-row__avatar {
+/* Wrapper lets PulseDot overflow the clipped avatar circle. */
+.follow-row__avatar-wrap {
+  position: relative;
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.follow-row__avatar {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
   overflow: hidden;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
+}
+
+.follow-row__pulse {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  z-index: 1;
 }
 
 .follow-row__avatar img {
