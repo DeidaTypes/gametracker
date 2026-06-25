@@ -492,6 +492,42 @@
   border-color: var(--border-strong);
 }
 
+/* DNA share button — cobalt ghost with shimmer on active */
+.profile-ig-btn--dna {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.40);
+  font-weight: 600;
+}
+
+.profile-ig-btn--dna:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--accent);
+}
+
+.profile-ig-btn--dna:active {
+  background: rgba(59, 130, 246, 0.15);
+  transform: scale(0.97);
+}
+
+.profile-ig-btn--dna:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.profile-ig-btn--dna-active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .profile-ig-btn--dna {
+    transition: background var(--transition-fast), border-color var(--transition-fast),
+      color var(--transition-fast), transform var(--transition-fast);
+  }
+}
+
 /* ── IG hero skeleton (loading state) ── */
 .profile-ig-hero--skeleton {
   gap: 0;

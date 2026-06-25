@@ -62,6 +62,8 @@ import {
   PIN_CHANGED_EVENT,
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
+import { shareCard } from '../services/share'
+import { computeDNAPortrait } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
@@ -435,6 +437,9 @@ function Profile() {
   // Header kebab dropdown
   const [kebabOpen, setKebabOpen] = useState(false)
   const kebabRef = useRef(null)
+
+  // DNA share — 'idle' | 'generating' | 'done'
+  const [dnaSharing, setDnaSharing] = useState('idle')
 
   // Sprint 7 — Block confirm sheet (other-user profiles only)
   const [blockSheetOpen, setBlockSheetOpen] = useState(false)
@@ -895,6 +900,34 @@ function Profile() {
     })
   }
 
+  const handleShareDNA = useCallback(async () => {
+    if (dnaSharing === 'generating') return
+    setDnaSharing('generating')
+    try {
+      const portrait = computeDNAPortrait()
+      const username = profile?.username || profile?.displayName || null
+      await shareCard({
+        variant: 'profile-dna',
+        data: {
+          ...portrait,
+          username,
+          displayName: profile?.displayName || username,
+        },
+        target: {
+          type: 'profile',
+          username: username || user?.id || '',
+        },
+        title: `${profile?.displayName || username || 'My'} Gamer DNA — Checkpoint`,
+      })
+      setDnaSharing('done')
+      setTimeout(() => setDnaSharing('idle'), 2500)
+    } catch (err) {
+      console.error('[profile] handleShareDNA failed:', err)
+      showToast('Could not generate DNA card — please try again.', 'error')
+      setDnaSharing('idle')
+    }
+  }, [dnaSharing, profile, user?.id])
+
   const handleFollowToggle = useCallback(async () => {
     if (!targetUserId || isOwnProfile || followPending) return
     const wasFollowing = following
@@ -1313,6 +1346,23 @@ function Profile() {
                   >
                     Share profile
                   </button>
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={dnaSharing === 'generating'}
+                      onClick={() => {
+                        setKebabOpen(false)
+                        handleShareDNA()
+                      }}
+                    >
+                      {dnaSharing === 'generating'
+                        ? 'Generating…'
+                        : dnaSharing === 'done'
+                        ? 'Shared!'
+                        : 'Share DNA'}
+                    </button>
+                  )}
                   {!isOwnProfile && (
                     <>
                       <button
@@ -1522,6 +1572,34 @@ function Profile() {
                 >
                   Share Profile
                 </button>
+                {/* DNA share — signature reveal; reduced-motion collapses animation */}
+                <motion.button
+                  type="button"
+                  className={`profile-ig-btn profile-ig-btn--dna${dnaSharing !== 'idle' ? ' profile-ig-btn--dna-active' : ''}`}
+                  onClick={handleShareDNA}
+                  disabled={dnaSharing === 'generating'}
+                  aria-label={
+                    dnaSharing === 'generating'
+                      ? 'Generating DNA card…'
+                      : dnaSharing === 'done'
+                      ? 'DNA card shared!'
+                      : 'Share your Gamer DNA card'
+                  }
+                  aria-busy={dnaSharing === 'generating'}
+                  initial={reducedMotion ? false : { opacity: 0, scale: 0.88 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={
+                    reducedMotion
+                      ? { duration: 0 }
+                      : { type: 'spring', stiffness: 400, damping: 26, delay: 0.18 }
+                  }
+                >
+                  {dnaSharing === 'generating'
+                    ? 'Generating…'
+                    : dnaSharing === 'done'
+                    ? '✓ Shared!'
+                    : 'Share DNA'}
+                </motion.button>
               </>
             ) : (
               <>
