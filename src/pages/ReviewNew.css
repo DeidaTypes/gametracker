@@ -218,6 +218,100 @@ body[data-reduce-motion='true'] .rnc-stamp-pill {
   transition: none;
 }
 
+/* ── "What stood out?" guided prompt ────────────────────────────────────── */
+
+.rnc-prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px) var(--radius-md, 10px) 0 0;
+  border-bottom: none;
+}
+
+.rnc-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rnc-prompt-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #94a8d4);
+}
+
+.rnc-prompt-dismiss {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-tertiary, #5c6b8a);
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 120ms ease;
+}
+
+.rnc-prompt-dismiss:active {
+  color: var(--text-secondary, #94a8d4);
+}
+
+.rnc-prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rnc-prompt-chip {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary, #94a8d4);
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
+  border-radius: var(--radius-full, 999px);
+  padding: 5px 11px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.rnc-prompt-chip:active {
+  color: var(--color-bg-primary, #0a0f25);
+  background: var(--color-brand-primary, #c9873a);
+  border-color: var(--color-brand-primary, #c9873a);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rnc-prompt-chip,
+  .rnc-prompt-dismiss {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .rnc-prompt-chip,
+body[data-reduce-motion='true'] .rnc-prompt-dismiss {
+  transition: none;
+}
+
+/* When prompt section is present, remove the textarea's top rounding so they
+   visually merge into a single compound field. */
+.rnc-prompt-section + .rnc-textarea {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-color: transparent;
+}
+
 /* ── Review textarea ─────────────────────────────────────────────────────── */
 
 .rnc-textarea-wrap {

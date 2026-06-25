@@ -47,6 +47,7 @@ function ReviewNew() {
   const [vibeStamp, setVibeStamp] = useState(isEditMode ? (editReview.vibeStamp ?? null) : null)
   const [lifeContext, setLifeContext] = useState(isEditMode ? (editReview.lifeContext ?? null) : null)
   const [submitting, setSubmitting] = useState(false)
+  const [promptDismissed, setPromptDismissed] = useState(false)
 
   // Drives the popup enter/exit animation.
   const [open, setOpen] = useState(true)
@@ -203,6 +204,30 @@ function ReviewNew() {
   }
 
   const hoursInputRef = useRef(null)
+  const textareaRef = useRef(null)
+
+  const PROMPT_CHIPS = [
+    { id: 'story',       label: 'Story',       starter: 'The story ' },
+    { id: 'gameplay',    label: 'Gameplay',    starter: 'The gameplay ' },
+    { id: 'visuals',     label: 'Visuals',     starter: 'The visuals ' },
+    { id: 'music',       label: 'Music',       starter: 'The music ' },
+    { id: 'characters',  label: 'Characters',  starter: 'The characters ' },
+    { id: 'atmosphere',  label: 'Atmosphere',  starter: 'The atmosphere ' },
+  ]
+
+  const handlePromptChip = useCallback((starter) => {
+    setText((prev) => {
+      const trimmed = prev.trimEnd()
+      return trimmed ? `${trimmed} ${starter}` : starter
+    })
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current
+      if (!ta) return
+      ta.focus()
+      const len = ta.value.length
+      ta.setSelectionRange(len, len)
+    })
+  }, [])
 
   const VIBE_STAMPS = [
     { id: 'masterpiece', label: 'Masterpiece' },
@@ -408,7 +433,35 @@ function ReviewNew() {
 
         {/* Review text box */}
         <div className="rnc-textarea-wrap">
+          {!promptDismissed && (
+            <div className="rnc-prompt-section">
+              <div className="rnc-prompt-header">
+                <span className="rnc-prompt-label">What stood out?</span>
+                <button
+                  type="button"
+                  className="rnc-prompt-dismiss"
+                  onClick={() => setPromptDismissed(true)}
+                  aria-label="Dismiss writing prompts"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="rnc-prompt-chips" role="group" aria-label="Writing prompt starters">
+                {PROMPT_CHIPS.map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className="rnc-prompt-chip"
+                    onClick={() => handlePromptChip(chip.starter)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <textarea
+            ref={textareaRef}
             className="rnc-textarea"
             value={text}
             onChange={(e) => setText(e.target.value)}
