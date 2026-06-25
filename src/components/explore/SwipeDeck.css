@@ -135,6 +135,50 @@
   animation: swipeSkelPulse 1.6s ease-in-out infinite;
 }
 
+/* ---- Tertiary actions row (Not for me / Pick for tonight) ---- */
+
+.swipe-deck__tertiary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.swipe-deck__link {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.01em;
+  transition: color 0.12s ease, opacity 0.12s ease;
+  border-radius: 6px;
+}
+
+.swipe-deck__link:hover {
+  color: var(--text-secondary);
+}
+
+.swipe-deck__link:active {
+  opacity: 0.7;
+}
+
+.swipe-deck__link--accent {
+  color: var(--accent-copper, #C4634E);
+  font-weight: var(--font-weight-semibold);
+}
+
+.swipe-deck__link--accent:hover {
+  color: var(--accent-copper, #C4634E);
+  filter: brightness(1.15);
+}
+
 /* ---- Hint text ---- */
 
 .swipe-deck__hint {

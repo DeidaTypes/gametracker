@@ -5,6 +5,29 @@
 
 import { normalizeGame, normalizeGames } from './normalizeGame'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
+import { buildWhyLine } from './swipeService'
+
+// IGDB documents a soft cap of ~4 requests/second per Twitch app token with
+// bursts of up to 8 in-flight. We sit well under that with the per-batch
+// `getDiscoveryDeck` pattern (one multiquery + occasional taste-seed lookup),
+// but a lightweight throttle is cheap insurance for refill bursts.
+const RATE_WINDOW_MS = 1000
+const RATE_MAX_REQUESTS = 4
+const rateWindow = []
+async function throttleIgdb() {
+  while (true) {
+    const now = Date.now()
+    while (rateWindow.length && now - rateWindow[0] >= RATE_WINDOW_MS) {
+      rateWindow.shift()
+    }
+    if (rateWindow.length < RATE_MAX_REQUESTS) {
+      rateWindow.push(now)
+      return
+    }
+    const wait = RATE_WINDOW_MS - (now - rateWindow[0]) + 5
+    await new Promise((r) => setTimeout(r, wait))
+  }
+}
 
 /**
  * Run a timeout-wrapped fetch, retrying ONCE on a transient connection
@@ -162,6 +185,7 @@ async function executeIgdbRequest(endpoint, query, cacheKey) {
 
   const token = await getAccessToken()
 
+  await throttleIgdb()
   const response = await fetchIgdbWithRetry(`${API_BASE}/api/igdb/v4/${endpoint}`, {
     method: 'POST',
     headers: {
@@ -193,6 +217,7 @@ async function executeIgdbRequest(endpoint, query, cacheKey) {
 // Edge Function path — POST { endpoint, query } to the deployed igdb-proxy and
 // return the IGDB JSON. Twitch auth happens server-side inside the function.
 async function executeViaEdgeProxy(endpoint, query, cacheKey) {
+  await throttleIgdb()
   const _t0 = Date.now()
   const response = await fetchIgdbWithRetry(PROXY_URL, {
     method: 'POST',
@@ -1190,11 +1215,64 @@ limit ${limit};`
   }
 }
 
+// ─── Multiquery — bundle up to 10 sub-queries into a single IGDB request ─────
+//
+// IGDB's /multiquery endpoint accepts a body of `query <endpoint> "<name>" { ... };`
+// blocks (semicolon-separated, max 10) and returns `[{ name, result }, ...]`.
+// One HTTP request, multiple result sets — keeps us under the 4 req/s ceiling
+// when the discovery deck fans out across 3 randomised axes.
+//
+// Block params:
+//   endpoint — IGDB endpoint name (almost always 'games' for our use)
+//   name     — caller-supplied label; appears verbatim in the response
+//   body     — `fields ...; where ...; sort ...; limit ...;` (apicalypse)
+//
+// `multiquery` was added to the Supabase Edge Function proxy in
+// supabase/functions/igdb-proxy/index.ts; older proxy deployments will
+// reject the endpoint with a 400. We trip a session-scoped flag on the
+// first such rejection so callers can fall back to parallel queries
+// without re-paying the 400 on every refill.
+let multiQueryUnsupported = false
+export function isMultiQuerySupported() {
+  return !multiQueryUnsupported
+}
+
+export async function igdbMultiQuery(blocks) {
+  if (!Array.isArray(blocks) || blocks.length === 0) return []
+  if (multiQueryUnsupported) {
+    throw new Error('multiquery endpoint marked unsupported this session')
+  }
+  const limited = blocks.slice(0, 10)
+  const compose = limited
+    .map(({ endpoint, name, body }) => {
+      const safeName = String(name || `q_${Math.random().toString(36).slice(2, 8)}`)
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+      return `query ${endpoint} "${safeName}" {\n${body.trim()}\n};`
+    })
+    .join('\n')
+
+  try {
+    const data = await igdbRequest('multiquery', compose)
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    // If the proxy rejects multiquery as an unsupported endpoint, stop
+    // retrying it for the rest of the session — callers will fall back to
+    // parallel `games` queries which are always allowed.
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/Unsupported or missing endpoint|multiquery/i.test(msg)) {
+      multiQueryUnsupported = true
+    }
+    throw err
+  }
+}
+
 // ─── Discovery deck — randomized multi-axis discovery engine ─────────────────
 //
-// Every session a fresh mix: 3 parallel IGDB queries with independently
-// randomised genre, era window, and offset. Quality-gated (not popularity-
-// sorted), so a classic 1998 JRPG and a 2023 indie can both surface.
+// Every session a fresh mix: 3 axis queries bundled into a single IGDB
+// multiquery, with independently randomised genre, era window, and offset.
+// Quality-gated (not popularity-sorted), so a classic 1998 JRPG and a 2023
+// indie can both surface. When a taste signal is supplied, one axis pins
+// itself to a top liked genre so the deck feels personally relevant.
 
 const IGDB_GENRES_CACHE_KEY = 'gt:igdb-genres:v1'
 const IGDB_GENRES_CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -1283,7 +1361,7 @@ limit ${tasteIgdbIds.length};`
     if (!seedIds.length) return []
 
     const limited = seedIds.slice(0, 20)
-    const gameQuery = `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name;
+    const gameQuery = `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name;
 where id = (${limited.join(',')}) & cover != null;
 limit ${limited.length};`
 
@@ -1298,29 +1376,40 @@ limit ${limited.length};`
 /**
  * getDiscoveryDeck — randomized, varied discovery pool for "Swipe to Discover".
  *
- * Fires 3 IGDB sub-queries in parallel, each with independently randomised:
- *   • genre  — from the cached /genres list (seeded from IGDB, updated weekly)
+ * Fires ONE IGDB multiquery carrying 3 axis sub-queries, each with
+ * independently randomised:
+ *   • genre  — from the cached /genres list, biased toward the user's top
+ *              liked genres when a tasteSignal is supplied
  *   • era    — pre-2000 / 2000s / 2010s / 2018+ (equal probability per slot)
  *   • offset — 0–99, so repeated calls rarely return the same page
  *
- * Quality gate (tunable dials):
- *   total_rating >= 75        keeps good games only
- *   total_rating_count >= 20  keeps recognisable titles (not junk)
- *   category = 0              main games only (no DLC / ports / expansions)
- *   version_parent = null     no regional variant clutter
- *   cover != null             always has artwork
+ * Quality gate:
+ *   cover != null               always has artwork
+ *   rating ≥ 70 & rating_count ≥ 10   keeps good, recognisable games
  *
- * Results are de-duped, shuffled (Fisher-Yates), and can be seeded with
- * similar_games from the user's top-rated played titles to add relevance.
- * Games already in the user's library or seen this session are excluded.
+ * Explicit fields requested per axis: name, cover.image_id, first_release_date,
+ * rating, rating_count, genres.name, themes.id, themes.name. Themes are
+ * required so we can match against the taste signal and render a "why" line.
+ *
+ * Each returned card is annotated with `whyLine` — a one-line reason it
+ * surfaced based on the taste signal — when one can honestly be generated.
+ *
+ * On any failure (e.g. proxy missing the `multiquery` allow-list entry until
+ * redeploy), falls through to the legacy 3-parallel-`games` path.
  *
  * @param {Object}      opts
  * @param {Set<string>} opts.excludeIds   – IGDB IDs to exclude (library + seen)
  * @param {number[]}    opts.tasteGameIds – IGDB IDs of user's top-rated games
+ * @param {object|null} opts.tasteSignal  – output of swipeService.getTasteSignal
  * @param {number}      opts.limit        – max cards to return (default 30)
- * @returns {Promise<Array>} formatted game objects (same shape as formatGames)
+ * @returns {Promise<Array>} formatted game objects with optional whyLine
  */
-export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = [], limit = 30 } = {}) {
+export async function getDiscoveryDeck({
+  excludeIds = new Set(),
+  tasteGameIds = [],
+  tasteSignal = null,
+  limit = 30,
+} = {}) {
   const now = Math.floor(Date.now() / 1000)
 
   // Resolve genre list — cached; falls back to a hardcoded set if IGDB is down.
@@ -1330,49 +1419,56 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
     if (fetched.length > 0) allGenres = fetched
   } catch { /* use fallback */ }
 
+  // Build the genre pool. When a taste signal exists, pin one axis to a
+  // top-liked genre so the deck actively reflects the user's taste; the
+  // other two stay fully random so we never tunnel-vision.
+  const tastePinned = pickTastePinnedGenre(allGenres, tasteSignal)
   const eras = DISCOVERY_ERAS.map((e) => ({ ...e, end: e.end ?? now }))
 
-  // Build 3 sub-queries with independent randomised axes.
-  // Use `rating` / `rating_count` — these are the fields every proven IGDB
-  // query in this codebase uses. `total_rating` and `total_rating_count` are
-  // sparsely populated (especially for classic/niche games) and cause 0-result
-  // batches. `category` and `version_parent` constraints are intentionally
-  // omitted: they are either sparsely indexed or store no explicit null,
-  // both silently killing results. The cover + rating floor is the quality gate.
-  const axes = Array.from({ length: 3 }, () => {
-    const genre  = randomPick(allGenres)
+  const axes = Array.from({ length: 3 }, (_, i) => {
+    const genre  = (i === 0 && tastePinned) ? tastePinned : randomPick(allGenres)
     const era    = randomPick(eras)
     const offset = Math.floor(Math.random() * 100)
-
-    const query =
-      `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name; ` +
+    const body =
+      `fields name, cover.image_id, first_release_date, rating, rating_count, ` +
+      `genres.name, themes.id, themes.name; ` +
       `where cover != null & rating != null & rating_count != null` +
       ` & rating >= 70 & rating_count >= 10` +
       ` & genres = (${genre.id})` +
       ` & first_release_date >= ${era.start} & first_release_date < ${era.end}; ` +
       `sort rating desc; limit 25; offset ${offset};`
-
-    return { genre, era, offset, query }
+    return { name: `axis_${i}`, endpoint: 'games', body, genre, era, offset }
   })
 
   if (import.meta.env.DEV) {
-    axes.forEach(({ genre, era, offset }) =>
-      console.log(`[discovery] axis → genre="${genre.name}" era="${era.label}" offset=${offset}`)
+    axes.forEach(({ genre, era, offset }, i) =>
+      console.log(
+        `[discovery] axis ${i} → genre="${genre.name}"${tastePinned && i === 0 ? ' (taste-pinned)' : ''}` +
+          ` era="${era.label}" offset=${offset}`
+      )
     )
   }
 
-  // Fire all 3 concurrently; individual failures are tolerated.
-  const settled = await Promise.allSettled(
-    axes.map(({ query }) => igdbRequest('games', query))
-  )
+  // Run one multiquery; fall back to 3 parallel games queries if the proxy
+  // hasn't been redeployed with the multiquery endpoint allow-list entry yet.
+  let axisResults = []
+  try {
+    const multi = await igdbMultiQuery(axes)
+    const byName = new Map(multi.map((r) => [r.name, r.result || []]))
+    axisResults = axes.map((a) => byName.get(a.name) || [])
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[discovery] multiquery failed, falling back to parallel games', err)
+    const settled = await Promise.allSettled(
+      axes.map(({ body }) => igdbRequest('games', body))
+    )
+    axisResults = settled.map((r) => (r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []))
+  }
 
-  // Combine, de-dupe, and exclude library/seen IDs.
+  // Combine, de-dupe, exclude library/seen IDs.
   const seenInBatch = new Set()
   const combined = []
-
-  for (const result of settled) {
-    if (result.status !== 'fulfilled' || !Array.isArray(result.value)) continue
-    for (const g of result.value) {
+  for (const result of axisResults) {
+    for (const g of result) {
       if (!g?.id || !g?.name || !g?.cover?.image_id) continue
       const key = String(g.id)
       if (seenInBatch.has(key) || excludeIds.has(key)) continue
@@ -1382,12 +1478,11 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
   }
 
   // Tier-1 fallback: drop era constraint, keep genre + rating floor.
-  // Fires only when all 3 axes returned nothing (very rare genre + sparse era).
   if (combined.length === 0) {
     try {
-      const safeGenre = randomPick(allGenres)
+      const safeGenre = tastePinned || randomPick(allGenres)
       const safeQuery =
-        `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name; ` +
+        `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name; ` +
         `where cover != null & rating != null & rating_count != null` +
         ` & rating >= 70 & rating_count >= 30 & genres = (${safeGenre.id}); ` +
         `sort rating_count desc; limit 25; offset ${Math.floor(Math.random() * 50)};`
@@ -1403,24 +1498,23 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
     } catch { /* non-fatal */ }
   }
 
-  // Tier-2 fallback: use fetchSwipeDeckPool which is proven to always return
-  // results (it powers the existing deck and is a known-good query path).
+  // Tier-2 fallback: legacy popularity pool — proven to always return.
   if (combined.length === 0) {
     try {
       const pool = await fetchSwipeDeckPool(40)
-      for (const g of pool) {
-        if (!excludeIds.has(String(g.id))) combined.push(g)
-      }
-      // Already formatted — return directly after shuffle.
-      for (let i = combined.length - 1; i > 0; i--) {
+      const filtered = pool.filter((g) => !excludeIds.has(String(g.id)))
+      // Already formatted — shuffle and return, no whyLine (no theme data).
+      for (let i = filtered.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[combined[i], combined[j]] = [combined[j], combined[i]]
+        ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
       }
-      return combined.slice(0, limit)
+      return filtered.slice(0, limit)
     } catch { return [] }
   }
 
-  // Optional taste seed — minority (≤ ¼ of limit) from similar_games.
+  // Optional taste seed — minority (≤ ¼ of limit) from similar_games of the
+  // user's top-rated played titles. Same fields requested so cards from the
+  // seed path also carry themes for the whyLine annotator.
   if (tasteGameIds.length > 0) {
     const seedGames = await fetchDiscoveryTasteSeed(tasteGameIds.slice(0, 3), excludeIds, seenInBatch)
     const seedLimit = Math.ceil(limit / 4)
@@ -1433,13 +1527,136 @@ export async function getDiscoveryDeck({ excludeIds = new Set(), tasteGameIds = 
     }
   }
 
-  // Fisher-Yates shuffle — ensures genre/era mix is interleaved, not grouped.
-  for (let i = combined.length - 1; i > 0; i--) {
+  // Negative bias: drop a candidate when its only genre is one the user has
+  // strongly disliked. We allow at most 1 disliked candidate per refill so
+  // a single bad mood doesn't permanently kill an entire genre.
+  const filtered = applyTasteNegativeBias(combined, tasteSignal)
+
+  // Fisher-Yates shuffle so genre/era mix is interleaved, not grouped.
+  for (let i = filtered.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[combined[i], combined[j]] = [combined[j], combined[i]]
+    ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
   }
 
-  return formatGames(combined.slice(0, limit))
+  // Format → annotate with whyLine. The annotator is pure, side-effect-free,
+  // and returns null when there isn't a real reason to surface — we never
+  // fake one (acceptance criterion: "why lines are real").
+  const formatted = formatGamesWithThemes(filtered.slice(0, limit))
+  if (tasteSignal && tasteSignal.totalSignals > 0) {
+    for (const card of formatted) {
+      const line = buildWhyLine(card, tasteSignal)
+      if (line) card.whyLine = line
+    }
+  }
+  return formatted
+}
+
+// Pick a top-liked genre that exists in the IGDB genre catalog. Returns null
+// when the taste signal hasn't accumulated anything actionable yet.
+function pickTastePinnedGenre(allGenres, taste) {
+  if (!taste || !Array.isArray(taste.topGenres) || taste.topGenres.length === 0) return null
+  const byName = new Map(allGenres.map((g) => [g.name, g]))
+  for (const name of taste.topGenres) {
+    if (byName.has(name)) return byName.get(name)
+  }
+  // Try partial match — "RPG" vs "Role-playing (RPG)".
+  for (const name of taste.topGenres) {
+    for (const g of allGenres) {
+      if (g.name.toLowerCase().includes(String(name).toLowerCase())) return g
+    }
+  }
+  return null
+}
+
+// Soft-filter candidates whose only genre matches a strongly disliked one.
+// Allows at most one such candidate through per batch — full filtering would
+// risk an empty deck for users who skipped a lot early on.
+function applyTasteNegativeBias(games, taste) {
+  if (!taste || !taste.dislikedGenres) return games
+  const heavyDislike = new Set(
+    Object.entries(taste.dislikedGenres)
+      .filter(([, w]) => w >= 4)
+      .map(([name]) => name)
+  )
+  if (heavyDislike.size === 0) return games
+
+  let allowedDisliked = 1
+  const out = []
+  for (const g of games) {
+    const genres = (g.genres || [])
+      .map((x) => (typeof x === 'object' ? x.name : x))
+      .filter(Boolean)
+    const allDisliked = genres.length > 0 && genres.every((n) => heavyDislike.has(n))
+    if (allDisliked) {
+      if (allowedDisliked > 0) {
+        allowedDisliked--
+        out.push(g)
+      }
+    } else {
+      out.push(g)
+    }
+  }
+  return out
+}
+
+// Variant of formatGames that preserves theme IDs/names alongside the card.
+// We need this on the candidate side so the whyLine annotator and the swipe
+// recorder can match cards against the taste signal.
+function formatGamesWithThemes(games) {
+  const sorted = games
+    .filter((game) => game.name)
+    .map((game) => {
+      const coverUrl = extractCoverUrl(game)
+
+      let releaseDate = null
+      let year = null
+      if (game.first_release_date) {
+        releaseDate = new Date(game.first_release_date * 1000)
+        year = releaseDate.getFullYear()
+      }
+
+      const genreNames = game.genres?.map((g) => g.name).filter(Boolean) || []
+      const developer = game.involved_companies?.[0]?.company?.name || 'Unknown'
+      const rating = game.rating ? (game.rating / 20).toFixed(1) : null
+
+      const themeIds = []
+      const themeNames = []
+      for (const t of game.themes || []) {
+        if (t && typeof t === 'object') {
+          if (t.id != null) themeIds.push(Number(t.id))
+          if (t.name) themeNames.push(String(t.name))
+        }
+      }
+
+      return {
+        id: game.id,
+        title: game.name,
+        developer,
+        genre: genreNames.join(', ') || 'Unknown',
+        genres: genreNames,
+        themeIds,
+        themeNames,
+        rating,
+        year,
+        image: coverUrl,
+        description: game.summary || '',
+        releaseDate,
+      }
+    })
+    .sort((a, b) => {
+      if (a.rating && b.rating) {
+        const ratingDiff = parseFloat(b.rating) - parseFloat(a.rating)
+        if (ratingDiff !== 0) return ratingDiff
+      }
+      if (a.releaseDate && b.releaseDate) {
+        return b.releaseDate.getTime() - a.releaseDate.getTime()
+      }
+      if (a.releaseDate && !b.releaseDate) return -1
+      if (!a.releaseDate && b.releaseDate) return 1
+      return 0
+    })
+
+  return normalizeGames(sorted, 'igdb')
 }
 
 // Test API connection

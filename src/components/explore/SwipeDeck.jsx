@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getDiscoveryDeck } from '../../services/igdb'
@@ -6,6 +6,14 @@ import { getAllLists, addGameToList, getGamesFromList } from '../../services/lib
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
 import { SwipeCard } from './SwipeCard'
+import SessionEndPick from './SessionEndPick'
+import {
+  recordSwipe,
+  getTasteSignal,
+  getSwipeExcludeIds,
+  pickTonightsMatch,
+  SWIPE_ACTIONS,
+} from '../../services/swipeService'
 import './SwipeDeck.css'
 
 // sessionStorage key used to preserve deck state when the user taps a card
@@ -49,33 +57,52 @@ function getTopRatedPlayedIds(n = 3) {
 // How many cards from the end of the pool to trigger a background refill.
 const REFILL_THRESHOLD = 5
 
+// After this many swipes in a session AND at least one backlog, the "I'm
+// done — pick for me" action becomes available without waiting for the
+// deck to exhaust. The number is intentionally low so the feature surfaces
+// within a normal session; users with short attention spans get a payoff.
+const PICK_AVAILABLE_AFTER_SWIPES = 6
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 /**
- * SwipeDeck — "Swipe to discover" randomised card stack on the Discover page.
+ * SwipeDeck — "Swipe to discover" learning card stack on the Discover page.
+ *
+ * Sprint 7A — "swipe that learns":
+ *   • Every swipe (skip / backlog / not-interested) is persisted via
+ *     swipeService.recordSwipe so the next batch can bias on it.
+ *   • Each card carries a `whyLine` derived from the taste signal
+ *     (library + swipe history). Annotated client-side in getDiscoveryDeck.
+ *   • The deck calls getDiscoveryDeck with the taste signal so subsequent
+ *     refills pin one axis to a top-liked genre.
+ *   • When the deck exhausts (or the user explicitly hits "I'm done"
+ *     after ≥ 6 swipes and ≥ 1 backlog), SessionEndPick is rendered with
+ *     a concrete recommendation deep-linked to /game/:id.
  *
  * Pool source
- *   getDiscoveryDeck() fires 3 parallel IGDB queries with randomised genre,
- *   era, and offset axes — so every session surfaces a different mix of
- *   classics, indie gems, and genre surprises. Quality-gated on total_rating
- *   and total_rating_count; not sorted by popularity.
+ *   getDiscoveryDeck() fires a single IGDB multiquery (3 axis sub-queries)
+ *   with randomised genre/era/offset axes; quality-gated on rating +
+ *   cover. Falls back to parallel `games` queries when the proxy lacks
+ *   multiquery support.
  *
  * Exclusion
- *   On mount, reads every localStorage list AND queries Supabase game_trackers
- *   for the signed-in user, then removes any matching IGDB game ID from the
- *   candidate pool. seenIds is tracked in a ref across the entire session so
- *   refill batches never repeat earlier cards.
+ *   localStorage library ∪ Supabase game_trackers ∪ session seenIdsRef ∪
+ *   swipeService persistent exclusion list (not-interested 1y / skip 30d /
+ *   already backlogged). seenIdsRef + the persistent set together
+ *   guarantee no resurfacing within a session or for a meaningful TTL
+ *   across sessions.
  *
- * Refill
- *   When the deck reaches REFILL_THRESHOLD cards from the end, a fresh batch
- *   (new randomised axes) is fetched in the background and appended. The deck
- *   only shows "That's all for now" when IGDB truly returns nothing new.
+ * Right swipe / ♥ Backlog
+ *   recordSwipe('backlog') + optimistic addGameToList('want-to-play') +
+ *   async Supabase game_trackers upsert.
  *
- * Right swipe / ♥
- *   Optimistic addGameToList('want-to-play') + async Supabase upsert.
+ * Left swipe / ✕ Skip
+ *   recordSwipe('skip') — persistent for 30 days. Feeds the taste signal
+ *   as a light negative (genre weight 1).
  *
- * Left swipe / ✕
- *   Session-local skip — not persisted.
+ * "Not for me" button (tertiary action)
+ *   recordSwipe('not_interested') — persistent for 1 year. Heavy negative
+ *   (genre weight 4) — soft-filters the same genre from future batches.
  */
 export function SwipeDeck() {
   const { user } = useAuth()
@@ -86,10 +113,30 @@ export function SwipeDeck() {
   const [refilling, setRefilling]   = useState(false)
   const [exhausted, setExhausted]   = useState(false)
 
+  // Counters drive the end-of-session pick gating.
+  const [swipeCount, setSwipeCount]     = useState(0)
+  const [backlogCount, setBacklogCount] = useState(0)
+  const [showEndPick, setShowEndPick]   = useState(false)
+
   // Refs persist across renders / refills without triggering re-renders.
-  const seenIdsRef    = useRef(new Set()) // all IDs shown this session
-  const libraryIdsRef = useRef(new Set()) // all IDs in user's library
-  const cancelRef     = useRef(false)
+  const seenIdsRef     = useRef(new Set()) // all IDs shown this session
+  const libraryIdsRef  = useRef(new Set()) // all IDs in user's library
+  const cancelRef      = useRef(false)
+  const sessionPoolRef = useRef([])         // every game *seen* this session
+  const sessionBacklogRef = useRef(new Set()) // ids backlogged this session
+
+  // Taste signal is recomputed on swipe events; consumers (refill + whyLine
+  // annotator on the next batch) read the latest value via the ref.
+  const tasteRef = useRef(getTasteSignal())
+  useEffect(() => {
+    const refresh = () => { tasteRef.current = getTasteSignal() }
+    window.addEventListener('gt:swipe-recorded', refresh)
+    window.addEventListener('libraryUpdated', refresh)
+    return () => {
+      window.removeEventListener('gt:swipe-recorded', refresh)
+      window.removeEventListener('libraryUpdated', refresh)
+    }
+  }, [])
 
   // ── Initial load ──────────────────────────────────────────────────────────
 
@@ -97,10 +144,8 @@ export function SwipeDeck() {
     cancelRef.current = false
 
     async function load() {
-      // 1. Snapshot localStorage library IDs.
       libraryIdsRef.current = buildLocalLibraryIds()
 
-      // 2. Merge in Supabase game_trackers (cross-device accuracy; best-effort).
       if (user?.id) {
         try {
           const { data } = await supabase
@@ -115,9 +160,7 @@ export function SwipeDeck() {
         } catch { /* non-fatal */ }
       }
 
-      // 3. Restore deck state when returning from a card-tap to GameDetail.
-      //    The tap handler serialises pool + currentIdx to sessionStorage before
-      //    navigating; we pick it up here so the same card is still on top.
+      // Restore deck state when returning from a card-tap to GameDetail.
       try {
         const raw = sessionStorage.getItem(DECK_SESSION_KEY)
         if (raw) {
@@ -125,6 +168,7 @@ export function SwipeDeck() {
           const saved = JSON.parse(raw)
           if (Array.isArray(saved.pool) && saved.pool.length > 0 && !cancelRef.current) {
             for (const g of saved.pool) seenIdsRef.current.add(String(g.id))
+            sessionPoolRef.current = saved.pool.slice()
             setPool(saved.pool)
             setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
             return
@@ -132,19 +176,30 @@ export function SwipeDeck() {
         }
       } catch { /* non-fatal — fall through to fresh fetch */ }
 
-      // 4. Taste seed: top-rated played games drive similar_games suggestions.
       const tasteGameIds = getTopRatedPlayedIds(3)
+      const tasteSignal = tasteRef.current
+      const excludeIds = new Set([
+        ...libraryIdsRef.current,
+        ...seenIdsRef.current,
+        ...getSwipeExcludeIds(),
+      ])
 
-      // 5. Fetch the first randomised batch.
-      const excludeIds = new Set([...libraryIdsRef.current, ...seenIdsRef.current])
       let games = []
       try {
-        games = await getDiscoveryDeck({ excludeIds, tasteGameIds, limit: 30 })
+        games = await getDiscoveryDeck({
+          excludeIds,
+          tasteGameIds,
+          tasteSignal,
+          limit: 30,
+        })
       } catch { games = [] }
 
       if (cancelRef.current) return
 
-      for (const g of games) seenIdsRef.current.add(String(g.id))
+      for (const g of games) {
+        seenIdsRef.current.add(String(g.id))
+        sessionPoolRef.current.push(g)
+      }
       setPool(games)
     }
 
@@ -168,14 +223,18 @@ export function SwipeDeck() {
 
     setRefilling(true)
 
-    const excludeIds   = new Set([...libraryIdsRef.current, ...seenIdsRef.current])
+    const excludeIds = new Set([
+      ...libraryIdsRef.current,
+      ...seenIdsRef.current,
+      ...getSwipeExcludeIds(),
+    ])
     const tasteGameIds = getTopRatedPlayedIds(3)
+    const tasteSignal  = tasteRef.current
 
-    getDiscoveryDeck({ excludeIds, tasteGameIds, limit: 30 })
+    getDiscoveryDeck({ excludeIds, tasteGameIds, tasteSignal, limit: 30 })
       .then((newGames) => {
         if (cancelRef.current) return
 
-        // Only keep games not already seen this session.
         const fresh = newGames.filter((g) => !seenIdsRef.current.has(String(g.id)))
 
         if (fresh.length === 0) {
@@ -183,7 +242,10 @@ export function SwipeDeck() {
           return
         }
 
-        for (const g of fresh) seenIdsRef.current.add(String(g.id))
+        for (const g of fresh) {
+          seenIdsRef.current.add(String(g.id))
+          sessionPoolRef.current.push(g)
+        }
         setPool((prev) => [...prev, ...fresh])
       })
       .catch(() => { if (!cancelRef.current) setExhausted(true) })
@@ -192,9 +254,18 @@ export function SwipeDeck() {
 
   // ── Swipe handlers ─────────────────────────────────────────────────────────
 
+  const advance = useCallback(() => {
+    setSwipeCount((n) => n + 1)
+    setCurrentIdx((i) => i + 1)
+  }, [])
+
   const handleSwipeRight = useCallback(
     (game) => {
-      // Optimistic: write to localStorage immediately.
+      // Persistent swipe record + taste-signal refresh (auto-fires via event).
+      recordSwipe(game, SWIPE_ACTIONS.BACKLOG)
+      sessionBacklogRef.current.add(String(game.id))
+      setBacklogCount((n) => n + 1)
+
       addGameToList('want-to-play', {
         id:        String(game.id),
         title:     game.title,
@@ -205,7 +276,6 @@ export function SwipeDeck() {
         rating:    game.rating   ?? null,
       })
 
-      // Async Supabase upsert — fire-and-forget, never blocks UI.
       if (user?.id) {
         supabase
           .from('game_trackers')
@@ -224,17 +294,33 @@ export function SwipeDeck() {
       }
 
       showToast(`Added "${game.title}" to Backlog`, 'success', 2500)
-      setCurrentIdx((i) => i + 1)
+      advance()
     },
-    [user]
+    [user, advance]
   )
 
-  const handleSwipeLeft = useCallback(() => {
-    setCurrentIdx((i) => i + 1)
-  }, [])
+  const handleSwipeLeft = useCallback(
+    (game) => {
+      if (game) recordSwipe(game, SWIPE_ACTIONS.SKIP)
+      advance()
+    },
+    [advance]
+  )
 
-  // Tap the card body → open game detail. Saves deck state so returning from
-  // GameDetail restores the same card as the top of the deck.
+  // Stronger negative: marked "not for me". Soft-filters the genre from
+  // future batches. Tertiary action — not a swipe direction; the button
+  // sits below the primary action row.
+  const handleNotInterested = useCallback(
+    (game) => {
+      if (!game) return
+      recordSwipe(game, SWIPE_ACTIONS.NOT_INTERESTED)
+      showToast(`We'll show you less like that`, 'info', 1800)
+      advance()
+    },
+    [advance]
+  )
+
+  // Tap the card body → open game detail.
   const handleTap = useCallback(
     (game) => {
       try {
@@ -247,6 +333,20 @@ export function SwipeDeck() {
     },
     [navigate, pool, currentIdx]
   )
+
+  // ── Compute the end-of-session pick on demand ─────────────────────────────
+
+  const tonightsMatch = useMemo(() => {
+    if (!showEndPick && !exhausted) return null
+    return pickTonightsMatch(
+      sessionPoolRef.current,
+      sessionBacklogRef.current,
+      tasteRef.current
+    )
+  }, [showEndPick, exhausted, swipeCount, backlogCount]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canShowPick =
+    swipeCount >= PICK_AVAILABLE_AFTER_SWIPES && backlogCount >= 1 && !showEndPick
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -270,8 +370,33 @@ export function SwipeDeck() {
   // Empty result — hide section (parent controls outer visibility)
   if (pool.length === 0) return null
 
-  // Deck exhausted and no refill coming — show end state
-  if (currentIdx >= pool.length && (exhausted || !refilling)) {
+  // ── End-of-session pick ─────────────────────────────────────────────────
+  // Trigger paths:
+  //   1) Deck exhausted with at least one signal seen → always show pick
+  //      (replaces the generic "That's all for now" message).
+  //   2) User explicitly tapped "I'm done" after ≥ 6 swipes & ≥ 1 backlog.
+  const shouldShowEndPick =
+    (showEndPick || (currentIdx >= pool.length && (exhausted || !refilling))) &&
+    sessionPoolRef.current.length > 0
+
+  if (shouldShowEndPick) {
+    if (tonightsMatch) {
+      return (
+        <div className="swipe-deck">
+          <SessionEndPick
+            game={tonightsMatch}
+            sessionStats={{ swipeCount, backlogCount }}
+            onKeepSwiping={
+              currentIdx < pool.length && !exhausted
+                ? () => setShowEndPick(false)
+                : undefined
+            }
+          />
+        </div>
+      )
+    }
+
+    // Truly nothing to recommend — fall back to the original exhausted state.
     return (
       <div className="swipe-deck">
         <div className="swipe-deck__exhausted" role="status">
@@ -350,7 +475,7 @@ export function SwipeDeck() {
         <button
           type="button"
           className="swipe-deck__btn swipe-deck__btn--skip"
-          onClick={(e) => { e.stopPropagation(); handleSwipeLeft(topGame) }}
+          onClick={(e) => { e.stopPropagation(); topGame && handleSwipeLeft(topGame) }}
           aria-label="Skip this game"
         >
           <span className="swipe-deck__btn-icon" aria-hidden="true">✕</span>
@@ -366,6 +491,27 @@ export function SwipeDeck() {
           <span className="swipe-deck__btn-icon" aria-hidden="true">♥</span>
           <span className="swipe-deck__btn-label">Backlog</span>
         </button>
+      </div>
+
+      {/* Tertiary actions row — "Not for me" + optional "I'm done" pick CTA */}
+      <div className="swipe-deck__tertiary">
+        <button
+          type="button"
+          className="swipe-deck__link"
+          onClick={(e) => { e.stopPropagation(); topGame && handleNotInterested(topGame) }}
+        >
+          Not for me
+        </button>
+
+        {canShowPick && (
+          <button
+            type="button"
+            className="swipe-deck__link swipe-deck__link--accent"
+            onClick={() => setShowEndPick(true)}
+          >
+            Pick for tonight →
+          </button>
+        )}
       </div>
 
       <p className="swipe-deck__hint" aria-hidden="true">

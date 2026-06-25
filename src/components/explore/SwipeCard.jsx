@@ -167,7 +167,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       role={isTop ? 'img' : undefined}
       aria-label={
         isTop
-          ? `${game.title}${game.year ? `, ${game.year}` : ''}`
+          ? `${game.title}${game.year ? `, ${game.year}` : ''}${game.whyLine ? `. ${game.whyLine}` : ''}`
           : undefined
       }
     >
@@ -190,13 +190,19 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       {/* Gradient overlay — fades the bottom so text stays readable */}
       <div className="swipe-card__gradient" aria-hidden="true" />
 
-      {/* Genre tag + title + year */}
+      {/* Genre tag + title + year + optional 'why' line */}
       <div className="swipe-card__info" aria-hidden="true">
         {genreTag && (
           <span className="swipe-card__genre">{genreTag}</span>
         )}
         <p className="swipe-card__title">{game.title}</p>
         {game.year ? <p className="swipe-card__year">{game.year}</p> : null}
+        {game.whyLine ? (
+          <p className="swipe-card__why" title={game.whyLine}>
+            <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
+            {game.whyLine}
+          </p>
+        ) : null}
       </div>
 
       {/* Direction feedback badges — shown while dragging */}

@@ -40,6 +40,11 @@ const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' }
 
 // Only IGDB v4 endpoints the app actually queries are allowed through, so the
 // function can't be turned into an open proxy for arbitrary IGDB endpoints.
+//
+// `multiquery` was added for the Discover deck (Sprint 7A) so a single HTTP
+// request can carry up to 10 sub-queries — reduces fan-out to one IGDB call
+// per refill instead of three parallel `games` calls, keeping us comfortably
+// under the ~4 req/s rate ceiling.
 const ALLOWED_ENDPOINTS = new Set([
   'games',
   'genres',
@@ -50,6 +55,7 @@ const ALLOWED_ENDPOINTS = new Set([
   'companies',
   'involved_companies',
   'game_time_to_beats',
+  'multiquery',
 ])
 
 // ── Twitch OAuth token cache (per warm instance) ────────────────────────────

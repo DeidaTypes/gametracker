@@ -133,6 +133,36 @@
   margin: 0;
 }
 
+/* ---- 'Why this card' line — taste-derived reason ---- */
+
+.swipe-card__why {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 4px 9px 4px 7px;
+  border-radius: 10px;
+  background: rgba(196, 99, 78, 0.14);
+  border: 1px solid rgba(196, 99, 78, 0.32);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--accent-copper, #C4634E);
+  line-height: 1.3;
+  letter-spacing: 0.005em;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.swipe-card__why-spark {
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
 /* ---- Direction badges ---- */
 
 .swipe-card__badge {
