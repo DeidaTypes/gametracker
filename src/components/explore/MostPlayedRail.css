@@ -33,6 +33,15 @@
   border-bottom: none;
 }
 
+/* ---- Rank column wrapper (circle mode stacks rank + movement) ---- */
+.mpr-row__rank-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 28px;
+}
+
 /* ---- Rank number ---- */
 .mpr-row__rank {
   font-family: var(--font-body);
@@ -43,13 +52,121 @@
   text-align: center;
   min-width: 28px;
   flex-shrink: 0;
-  /* Top-3 ranks get a copper tint */
 }
 
 /* highlight top 3 ranks */
 .mpr-row:nth-child(1) .mpr-row__rank { color: var(--accent); }
 .mpr-row:nth-child(2) .mpr-row__rank { color: var(--accent); opacity: 0.75; }
 .mpr-row:nth-child(3) .mpr-row__rank { color: var(--accent); opacity: 0.55; }
+
+/* =============================================
+   MOVEMENT INDICATOR (circle mode)
+   ============================================= */
+
+.mpr-movement {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mpr-movement--up {
+  color: #4ade80; /* green-400 — positive movement */
+}
+
+.mpr-movement--down {
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
+
+.mpr-movement--same {
+  color: var(--color-text-tertiary);
+  opacity: 0.4;
+  font-weight: var(--font-weight-normal);
+}
+
+.mpr-movement--new {
+  color: var(--accent);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 1px 3px;
+  line-height: 1.2;
+}
+
+/* =============================================
+   LIVE CHIP ("N friends playing — jump in")
+   ============================================= */
+
+.mpr-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 3px 7px 3px 5px;
+  background: rgba(var(--accent-rgb, 180, 110, 60), 0.12);
+  border: 1px solid rgba(var(--accent-rgb, 180, 110, 60), 0.35);
+  border-radius: 20px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* respect reduced-motion by using no transform */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mpr-live-chip:active {
+    opacity: 0.75;
+  }
+}
+
+.mpr-live-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mpr-live-chip__dot {
+    animation: mpr-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes mpr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* =============================================
+   FRIEND COUNT badge (circle mode right column)
+   ============================================= */
+
+.mpr-row__friend-count {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mpr-row__friend-icon {
+  font-size: 10px;
+  opacity: 0.7;
+}
 
 /* ---- Cover thumbnail ---- */
 .mpr-row__cover {

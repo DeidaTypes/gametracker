@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   getTrendingThisWeek,
+  getTrendingCircle,
+  getTrendingByGenre,
   getJustFinished,
   getMostPlayedThisWeek,
+  getMostPlayedInCircle,
 } from '../services/communityService'
 import {
   getRecentCommunityReviews,
@@ -19,8 +22,11 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  * real Promise (resolves when the new data arrives, rejects on error).
  * Every loader fails soft (resolves to [] on error) and the loading flag
  * is always cleared in `finally`, so a section can never hang on a spinner.
+ *
+ * Pass an optional `deps` array to re-fetch whenever deps change (e.g. scope).
+ * Omit `deps` (or pass null) for the classic "run once on mount" behaviour.
  */
-function useAsyncSection(loaderFn) {
+function useAsyncSection(loaderFn, deps = null) {
   // Keep a ref so `doFetch` never needs loaderFn in its dep array (the
   // inline arrow passed by callers is a new identity every render).
   const loaderRef = useRef(loaderFn)
@@ -47,21 +53,26 @@ function useAsyncSection(loaderFn) {
     }
   }, []) // intentionally empty — uses ref internally
 
-  // Initial load with cancel-on-unmount safety.
+  // When deps is null → run once on mount (legacy behaviour).
+  // When deps is an array → re-run whenever deps change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const effectDeps = deps === null ? [] : deps
   useEffect(() => {
     let cancelled = false
     const _t0 = Date.now()
+    setLoading(true)
+    setError(null)
     loaderRef.current()
       .then((result) => {
         if (!cancelled) {
           setData(result)
+          setLoading(false)
           if (import.meta.env.DEV) console.log(`[⏱ useExploreData] section resolved in ${Date.now() - _t0}ms`)
         }
       })
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load') })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .catch((err) => { if (!cancelled) { setError(err?.message || 'Failed to load'); setLoading(false) } })
     return () => { cancelled = true }
-  }, []) // runs once on mount
+  }, effectDeps) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resume recovery: the WebView is not remounted when the app returns to
   // the foreground, so the mount-time load above never re-runs on its own.
@@ -77,6 +88,26 @@ function useAsyncSection(loaderFn) {
 
 export function useTrendingThisWeek() {
   return useAsyncSection(() => getTrendingThisWeek(10))
+}
+
+/**
+ * Trending section with scope switching.
+ *
+ * `scope` is one of: 'global' | 'circle' | 'genre'
+ *
+ * Re-fetches whenever scope changes so the carousel immediately reflects the
+ * new data source. The loaderRef pattern means the arrow below is always the
+ * latest scope without needing it in the useCallback dep array.
+ */
+export function useTrendingByScope(scope) {
+  return useAsyncSection(
+    () => {
+      if (scope === 'circle') return getTrendingCircle(10)
+      if (scope === 'genre')  return getTrendingByGenre(10)
+      return getTrendingThisWeek(10)
+    },
+    [scope],
+  )
 }
 
 export function useJustFinished() {
@@ -116,4 +147,14 @@ export function useFollowingReviews() {
  */
 export function useMostPlayedThisWeek() {
   return useAsyncSection(() => getMostPlayedThisWeek(5))
+}
+
+/**
+ * Discover page — "In your circle" most-played rail.
+ * Top 10 games by distinct-friend activity_events in the last 7 days,
+ * filtered to the viewer's follow graph. Includes WoW rank movement.
+ * Returns [] when the viewer has no follows or circle is quiet.
+ */
+export function useCircleMostPlayed() {
+  return useAsyncSection(() => getMostPlayedInCircle(10))
 }

@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { getRecentCommunityReviews } from './reviewService'
+import { getGamesByIds, getGamesByGenre } from './igdb'
 
 /**
  * Community Service — REAL cross-user activity for the Explore/Discover page.
@@ -16,11 +17,147 @@ import { getRecentCommunityReviews } from './reviewService'
  */
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
-// Window for "trending" aggregation. Reviews are the dominant real signal in
-// a small community, so a slightly wider window keeps the section meaningful.
-const TRENDING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 
 const FINISHED_STATUSES = ['played', 'completed', 'finished']
+
+// ─── Followee cache ──────────────────────────────────────────────────────────
+// One TTL-bounded read of the `follows` table so every trending variant can
+// compute social proof without issuing N separate queries.
+
+let _followeeCache = null
+let _followeeCacheUid = null
+let _followeeCacheTime = 0
+const FOLLOWEE_CACHE_TTL = 60_000
+
+async function _getCurrentUserFollowees() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const now = Date.now()
+    if (
+      _followeeCache &&
+      _followeeCacheUid === user.id &&
+      now - _followeeCacheTime < FOLLOWEE_CACHE_TTL
+    ) {
+      return _followeeCache
+    }
+    const { data } = await supabase
+      .from('follows')
+      .select('followee_id')
+      .eq('follower_id', user.id)
+    _followeeCache = (data || []).map((r) => r.followee_id)
+    _followeeCacheUid = user.id
+    _followeeCacheTime = now
+    return _followeeCache
+  } catch {
+    return []
+  }
+}
+
+// ─── Internal query helpers ──────────────────────────────────────────────────
+
+/**
+ * Fetch reviews + tracker rows in a time window, optionally filtered to a
+ * specific set of IGDB game IDs.
+ * `untilIso` is exclusive (< untilIso) — pass null for "up to now".
+ */
+async function _runTrendingQuery(sinceIso, untilIso = null, { gameIdFilter = null } = {}) {
+  const [reviewsRes, trackersRes] = await Promise.all([
+    (async () => {
+      let q = supabase
+        .from('reviews')
+        .select('igdb_game_id, user_id, game_title, game_image, created_at')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (untilIso) q = q.lt('created_at', untilIso)
+      if (gameIdFilter && gameIdFilter.length) q = q.in('igdb_game_id', gameIdFilter)
+      q = await applyBlockFilter(q, 'user_id')
+      return q
+    })(),
+    (async () => {
+      let q = supabase
+        .from('game_trackers')
+        .select('igdb_game_id, user_id, status, game_title, game_image, updated_at')
+        .gte('updated_at', sinceIso)
+        .order('updated_at', { ascending: false })
+        .limit(100)
+      if (untilIso) q = q.lt('updated_at', untilIso)
+      if (gameIdFilter && gameIdFilter.length) q = q.in('igdb_game_id', gameIdFilter)
+      q = await applyBlockFilter(q, 'user_id')
+      return q
+    })(),
+  ])
+  return {
+    reviewRows:  reviewsRes.error  ? [] : (reviewsRes.data  || []),
+    trackerRows: trackersRes.error ? [] : (trackersRes.data || []),
+  }
+}
+
+/** Aggregate review + tracker rows into a Map keyed by igdb_game_id string. */
+function _aggregateToMap(reviewRows, trackerRows) {
+  const byGame = new Map()
+  const bump = (gid, ref, userId, status) => {
+    if (gid == null || !ref.image) return
+    const key = String(gid)
+    let entry = byGame.get(key)
+    if (!entry) {
+      entry = { game: ref, users: new Set(), statusCounts: {} }
+      byGame.set(key, entry)
+    }
+    if (userId) entry.users.add(userId)
+    entry.statusCounts[status] = (entry.statusCounts[status] || 0) + 1
+  }
+  for (const r of reviewRows) {
+    bump(
+      r.igdb_game_id,
+      { id: r.igdb_game_id, title: r.game_title || '', image: r.game_image || null },
+      r.user_id,
+      'reviewed',
+    )
+  }
+  for (const t of trackerRows) {
+    bump(
+      t.igdb_game_id,
+      { id: t.igdb_game_id, title: t.game_title || '', image: t.game_image || null },
+      t.user_id,
+      t.status || 'tracked',
+    )
+  }
+  return byGame
+}
+
+/**
+ * For each game ID, count how many of the given followees logged an
+ * activity_events row in the current window.
+ * Returns Map<gameIdString, distinctFriendCount>.
+ */
+async function _computeFollowFriendCounts(followeeIds, gameIds, sinceIso) {
+  if (!followeeIds.length || !gameIds.length) return new Map()
+  try {
+    const entityIds = gameIds.map((id) => String(id))
+    let q = supabase
+      .from('activity_events')
+      .select('actor_user_id, entity_id')
+      .in('actor_user_id', followeeIds)
+      .in('entity_id', entityIds)
+      .in('type', ['played', 'reviewed', 'started', 'completed', 'dropped', 'favorited'])
+      .gte('created_at', sinceIso)
+      .limit(300)
+    q = await applyBlockFilter(q, 'actor_user_id')
+    const { data, error } = await q
+    if (error || !data) return new Map()
+    const actorsByGame = new Map()
+    for (const row of data) {
+      const key = row.entity_id
+      if (!actorsByGame.has(key)) actorsByGame.set(key, new Set())
+      actorsByGame.get(key).add(row.actor_user_id)
+    }
+    return new Map(Array.from(actorsByGame.entries()).map(([k, s]) => [k, s.size]))
+  } catch {
+    return new Map()
+  }
+}
 
 function reviewerFromJoin(row) {
   const u = row.users || {}
@@ -33,89 +170,243 @@ function reviewerFromJoin(row) {
 }
 
 /**
- * "Trending this week" — games with the most distinct people active on them
- * (real reviews + real tracker updates) in the recent window. Returns:
- *   [{ game: { id, title, image }, peopleCount, mostCommonStatus }]
+ * "Trending this week" — global scope.
  *
- * No fabricated counts: `peopleCount` is the number of DISTINCT real user ids
- * that reviewed or tracked the game in the window.
+ * Computes distinct-user activity on each game over the CURRENT 7-day window
+ * and the PRIOR 7-day window, then annotates each result with:
+ *   - `trend`: 'rising' | 'stable' | 'falling'  (week-over-week delta)
+ *   - `followFriendCount`: how many people the viewer follows were active
+ *
+ * Returns: [{ game, peopleCount, mostCommonStatus, trend, followFriendCount }]
  */
 export async function getTrendingThisWeek(limit = 10) {
   const _t0 = Date.now()
   try {
-    const sinceIso = new Date(Date.now() - TRENDING_WINDOW_MS).toISOString()
+    const now = Date.now()
+    const currentSinceIso = new Date(now - WEEK_MS).toISOString()
+    const prevSinceIso    = new Date(now - 2 * WEEK_MS).toISOString()
 
-    const [reviewsRes, trackersRes] = await Promise.all([
-      (async () => {
-        let q = supabase
-          .from('reviews')
-          .select('igdb_game_id, user_id, game_title, game_image, created_at')
-          .gte('created_at', sinceIso)
-          .order('created_at', { ascending: false })
-          .limit(100)
-        q = await applyBlockFilter(q, 'user_id')
-        return q
-      })(),
-      (async () => {
-        let q = supabase
-          .from('game_trackers')
-          .select('igdb_game_id, user_id, status, game_title, game_image, updated_at')
-          .gte('updated_at', sinceIso)
-          .order('updated_at', { ascending: false })
-          .limit(100)
-        q = await applyBlockFilter(q, 'user_id')
-        return q
-      })(),
+    const [cur, prev, followeeIds] = await Promise.all([
+      _runTrendingQuery(currentSinceIso),
+      _runTrendingQuery(prevSinceIso, currentSinceIso),
+      _getCurrentUserFollowees(),
     ])
 
-    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingThisWeek Promise.all (reviews+trackers): ${Date.now() - _t0}ms`)
-    const reviewRows = reviewsRes.error ? [] : reviewsRes.data || []
-    const trackerRows = trackersRes.error ? [] : trackersRes.data || []
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingThisWeek queries: ${Date.now() - _t0}ms`)
 
-    const byGame = new Map()
-    const bump = (gid, ref, userId, status) => {
-      if (gid == null || !ref.image) return
-      const key = String(gid)
-      let entry = byGame.get(key)
-      if (!entry) {
-        entry = { game: ref, users: new Set(), statusCounts: {} }
-        byGame.set(key, entry)
-      }
-      if (userId) entry.users.add(userId)
-      entry.statusCounts[status] = (entry.statusCounts[status] || 0) + 1
-    }
+    const currentMap = _aggregateToMap(cur.reviewRows, cur.trackerRows)
+    const prevMap    = _aggregateToMap(prev.reviewRows, prev.trackerRows)
+    const gameIds    = Array.from(currentMap.keys())
 
-    for (const r of reviewRows) {
-      bump(
-        r.igdb_game_id,
-        { id: r.igdb_game_id, title: r.game_title || '', image: r.game_image || null },
-        r.user_id,
-        'reviewed'
-      )
-    }
-    for (const t of trackerRows) {
-      bump(
-        t.igdb_game_id,
-        { id: t.igdb_game_id, title: t.game_title || '', image: t.game_image || null },
-        t.user_id,
-        t.status || 'tracked'
-      )
-    }
+    const friendMap = await _computeFollowFriendCounts(followeeIds, gameIds, currentSinceIso)
 
-    const result = Array.from(byGame.values())
-      .map((e) => ({
-        game: e.game,
-        peopleCount: e.users.size,
-        mostCommonStatus: dominantStatus(e.statusCounts),
-      }))
+    const result = Array.from(currentMap.values())
+      .map((e) => {
+        const curCount  = e.users.size
+        const prevEntry = prevMap.get(String(e.game.id))
+        const prevCount = prevEntry ? prevEntry.users.size : 0
+        const delta     = curCount - prevCount
+        const trend     = delta >= 2 ? 'rising' : delta <= -2 ? 'falling' : 'stable'
+        return {
+          game: e.game,
+          peopleCount: curCount,
+          mostCommonStatus: dominantStatus(e.statusCounts),
+          trend,
+          followFriendCount: friendMap.get(String(e.game.id)) || 0,
+        }
+      })
       .filter((e) => e.peopleCount > 0)
       .sort((a, b) => b.peopleCount - a.peopleCount)
       .slice(0, limit)
+
     if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingThisWeek TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
     return result
   } catch (err) {
     console.error('[community] getTrendingThisWeek failed:', err)
     return []
+  }
+}
+
+/**
+ * "Trending in your circle" — activity_events scope.
+ *
+ * Uses the `activity_events` table filtered to people the viewer follows,
+ * so every entry has a `followFriendCount >= 1`. WoW delta still applies.
+ * Returns the same shape as `getTrendingThisWeek` so `TrendingCard` is reused.
+ */
+export async function getTrendingCircle(limit = 10) {
+  const _t0 = Date.now()
+  try {
+    const followeeIds = await _getCurrentUserFollowees()
+    if (followeeIds.length === 0) return []
+
+    const now = Date.now()
+    const currentSinceIso = new Date(now - WEEK_MS).toISOString()
+    const prevSinceIso    = new Date(now - 2 * WEEK_MS).toISOString()
+
+    const fetchCircleRows = async (since, until) => {
+      try {
+        let q = supabase
+          .from('activity_events')
+          .select('actor_user_id, entity_id, type, metadata')
+          .in('actor_user_id', followeeIds)
+          .in('type', ['played', 'reviewed', 'started', 'completed', 'dropped', 'favorited'])
+          .gte('created_at', since)
+          .limit(200)
+        if (until) q = q.lt('created_at', until)
+        q = await applyBlockFilter(q, 'actor_user_id')
+        const { data, error } = await q
+        return error ? [] : (data || [])
+      } catch {
+        return []
+      }
+    }
+
+    const [curRows, prevRows] = await Promise.all([
+      fetchCircleRows(currentSinceIso, null),
+      fetchCircleRows(prevSinceIso, currentSinceIso),
+    ])
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingCircle queries: ${Date.now() - _t0}ms`)
+
+    const aggregateCircle = (rows) => {
+      const byGame = new Map()
+      for (const row of rows) {
+        const gid  = row.entity_id
+        const meta = row.metadata || {}
+        if (!gid || !meta.game_image) continue
+        if (!byGame.has(gid)) {
+          byGame.set(gid, {
+            game: { id: gid, title: meta.game_title || '', image: meta.game_image },
+            users: new Set(),
+            statusCounts: {},
+          })
+        }
+        const entry = byGame.get(gid)
+        entry.users.add(row.actor_user_id)
+        entry.statusCounts[row.type] = (entry.statusCounts[row.type] || 0) + 1
+      }
+      return byGame
+    }
+
+    const currentMap = aggregateCircle(curRows)
+    const prevMap    = aggregateCircle(prevRows)
+
+    const result = Array.from(currentMap.values())
+      .map((e) => {
+        const curCount  = e.users.size
+        const prevEntry = prevMap.get(e.game.id)
+        const prevCount = prevEntry ? prevEntry.users.size : 0
+        const delta     = curCount - prevCount
+        const trend     = delta >= 1 ? 'rising' : delta <= -1 ? 'falling' : 'stable'
+        return {
+          game: e.game,
+          peopleCount: curCount,
+          mostCommonStatus: dominantStatus(e.statusCounts),
+          trend,
+          followFriendCount: curCount, // every entry in circle mode is a friend
+        }
+      })
+      .filter((e) => e.followFriendCount >= 1)
+      .sort((a, b) => b.followFriendCount - a.followFriendCount)
+      .slice(0, limit)
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingCircle TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
+    return result
+  } catch (err) {
+    console.error('[community] getTrendingCircle failed:', err)
+    return []
+  }
+}
+
+/**
+ * "Trending in your genre" — filters the global trending query to games
+ * in the user's top-played IGDB genre (derived from game_trackers + IGDB).
+ * Falls back to `getTrendingThisWeek` when genre cannot be determined or
+ * the filtered set is empty (so the section is never blank unnecessarily).
+ *
+ * Each result includes `genreLabel` (the genre name) so the UI can annotate
+ * the scope toggle label ("Genre → RPG") once the first load completes.
+ */
+export async function getTrendingByGenre(limit = 10) {
+  const _t0 = Date.now()
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return getTrendingThisWeek(limit)
+
+    // 1. User's most-played game IDs
+    const { data: trackerRows } = await supabase
+      .from('game_trackers')
+      .select('igdb_game_id, hours_played')
+      .eq('user_id', user.id)
+      .order('hours_played', { ascending: false })
+      .limit(10)
+
+    const userGameIds = (trackerRows || []).map((r) => r.igdb_game_id).filter(Boolean)
+    if (!userGameIds.length) return getTrendingThisWeek(limit)
+
+    // 2. Derive top genre from IGDB (cached after first call)
+    const igdbGames = await getGamesByIds(userGameIds.slice(0, 10))
+    if (!igdbGames.length) return getTrendingThisWeek(limit)
+
+    const genreFreq = {}
+    for (const g of igdbGames) {
+      for (const name of (g.genre || '').split(',').map((s) => s.trim()).filter(Boolean)) {
+        genreFreq[name] = (genreFreq[name] || 0) + 1
+      }
+    }
+    const topGenre = Object.entries(genreFreq).sort((a, b) => b[1] - a[1])[0]?.[0]
+    if (!topGenre) return getTrendingThisWeek(limit)
+
+    // 3. Fetch all games in that genre from IGDB (cached)
+    const genreGames  = await getGamesByGenre(topGenre, 50)
+    const genreGameIds = genreGames.map((g) => g.id).filter(Boolean)
+    if (!genreGameIds.length) return getTrendingThisWeek(limit)
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingByGenre genre="${topGenre}" ids=${genreGameIds.length}: ${Date.now() - _t0}ms`)
+
+    // 4. Run trending with genre filter + WoW delta + social proof
+    const now = Date.now()
+    const currentSinceIso = new Date(now - WEEK_MS).toISOString()
+    const prevSinceIso    = new Date(now - 2 * WEEK_MS).toISOString()
+
+    const [cur, prev, followeeIds] = await Promise.all([
+      _runTrendingQuery(currentSinceIso, null, { gameIdFilter: genreGameIds }),
+      _runTrendingQuery(prevSinceIso, currentSinceIso, { gameIdFilter: genreGameIds }),
+      _getCurrentUserFollowees(),
+    ])
+
+    const currentMap = _aggregateToMap(cur.reviewRows, cur.trackerRows)
+    const prevMap    = _aggregateToMap(prev.reviewRows, prev.trackerRows)
+    const gameIds    = Array.from(currentMap.keys())
+    const friendMap  = await _computeFollowFriendCounts(followeeIds, gameIds, currentSinceIso)
+
+    const result = Array.from(currentMap.values())
+      .map((e) => {
+        const curCount  = e.users.size
+        const prevEntry = prevMap.get(String(e.game.id))
+        const prevCount = prevEntry ? prevEntry.users.size : 0
+        const delta     = curCount - prevCount
+        const trend     = delta >= 2 ? 'rising' : delta <= -2 ? 'falling' : 'stable'
+        return {
+          game: e.game,
+          peopleCount: curCount,
+          mostCommonStatus: dominantStatus(e.statusCounts),
+          trend,
+          followFriendCount: friendMap.get(String(e.game.id)) || 0,
+          genreLabel: topGenre,
+        }
+      })
+      .filter((e) => e.peopleCount > 0)
+      .sort((a, b) => b.peopleCount - a.peopleCount)
+      .slice(0, limit)
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getTrendingByGenre TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
+    if (result.length === 0) return getTrendingThisWeek(limit)
+    return result
+  } catch (err) {
+    console.error('[community] getTrendingByGenre failed:', err)
+    return getTrendingThisWeek(limit)
   }
 }
 
@@ -302,4 +593,121 @@ export async function getEventWeekLeaderboard(igdbGameIds, limit = 5) {
   }
 }
 
+/**
+ * "Most played in your circle" — top games by distinct-friend activity in
+ * `activity_events` over the last 7 days, restricted to people the viewer
+ * follows. Includes week-over-week rank movement so the UI can show ↑/↓/NEW.
+ *
+ * @param {number} limit  Maximum rows to return (default 10).
+ * @returns {Promise<Array<{
+ *   igdb_game_id: string,
+ *   game_title: string,
+ *   game_image: string|null,
+ *   friend_count: number,
+ *   rank: number,
+ *   movement: 'up'|'down'|'same'|'new',
+ *   movement_delta: number,
+ * }>>}
+ *
+ * Returns [] when the viewer has no follows or the circle had no activity.
+ */
+export async function getMostPlayedInCircle(limit = 10) {
+  const _t0 = Date.now()
+  try {
+    const followeeIds = await _getCurrentUserFollowees()
+    if (followeeIds.length === 0) return []
+
+    const now = Date.now()
+    const currentSince = new Date(now - WEEK_MS).toISOString()
+    const prevSince    = new Date(now - 2 * WEEK_MS).toISOString()
+
+    const fetchRows = async (since, until = null) => {
+      try {
+        let q = supabase
+          .from('activity_events')
+          .select('actor_user_id, entity_id, type, metadata')
+          .in('actor_user_id', followeeIds)
+          .in('type', ['played', 'reviewed', 'started', 'completed', 'dropped', 'favorited'])
+          .gte('created_at', since)
+          .limit(500)
+        if (until) q = q.lt('created_at', until)
+        q = await applyBlockFilter(q, 'actor_user_id')
+        const { data, error } = await q
+        return error ? [] : (data || [])
+      } catch {
+        return []
+      }
+    }
+
+    const [curRows, prevRows] = await Promise.all([
+      fetchRows(currentSince),
+      fetchRows(prevSince, currentSince),
+    ])
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getMostPlayedInCircle queries: ${Date.now() - _t0}ms`)
+
+    // Aggregate rows into { igdb_game_id, users, game_title, game_image }
+    const aggregate = (rows) => {
+      const byGame = new Map()
+      for (const row of rows) {
+        const gid  = row.entity_id
+        const meta = row.metadata || {}
+        if (!gid || !meta.game_image) continue
+        if (!byGame.has(gid)) {
+          byGame.set(gid, {
+            igdb_game_id: gid,
+            game_title: meta.game_title || 'Unknown Game',
+            game_image: meta.game_image,
+            users: new Set(),
+          })
+        }
+        byGame.get(gid).users.add(row.actor_user_id)
+      }
+      return byGame
+    }
+
+    const curMap  = aggregate(curRows)
+    const prevMap = aggregate(prevRows)
+
+    // Build a rank map for the prior week (position → 1-based int)
+    const prevRankMap = new Map(
+      Array.from(prevMap.values())
+        .sort((a, b) => b.users.size - a.users.size)
+        .map((e, i) => [e.igdb_game_id, i + 1])
+    )
+
+    // Rank current week and annotate with movement
+    const result = Array.from(curMap.values())
+      .sort((a, b) => b.users.size - a.users.size)
+      .slice(0, limit)
+      .map((e, idx) => {
+        const curRank  = idx + 1
+        const prevRank = prevRankMap.get(e.igdb_game_id)
+        let movement = 'new'
+        let movement_delta = 0
+        if (prevRank != null) {
+          const delta = prevRank - curRank  // positive = moved up
+          movement       = delta > 0 ? 'up' : delta < 0 ? 'down' : 'same'
+          movement_delta = Math.abs(delta)
+        }
+        return {
+          igdb_game_id:   e.igdb_game_id,
+          game_title:     e.game_title,
+          game_image:     e.game_image,
+          friend_count:   e.users.size,
+          rank:           curRank,
+          movement,
+          movement_delta,
+        }
+      })
+
+    if (import.meta.env.DEV) console.log(`[⏱ explore] getMostPlayedInCircle TOTAL: ${Date.now() - _t0}ms (${result.length} items)`)
+    return result
+  } catch (err) {
+    console.error('[community] getMostPlayedInCircle failed:', err)
+    return []
+  }
+}
+
 export { WEEK_MS }
+export { getTrendingCircle, getTrendingByGenre }

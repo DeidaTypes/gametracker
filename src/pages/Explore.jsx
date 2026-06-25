@@ -8,7 +8,9 @@ import {
   useFollowingReviews,
   usePopularReviews,
   useMostPlayedThisWeek,
+  useCircleMostPlayed,
 } from '../hooks/useExploreData'
+import { usePresence } from '../hooks/usePresence'
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
@@ -164,11 +166,45 @@ function Explore() {
   const newGames         = useDiscoverGamesNew()    // games NEW tab
   const followingReviews = useFollowingReviews()    // reviews FOLLOWING tab
   const popularReviews   = usePopularReviews()      // reviews POPULAR tab
-  const mostPlayed       = useMostPlayedThisWeek()  // most played this week rail
+  const mostPlayed       = useMostPlayedThisWeek()  // most played this week rail (global fallback)
+  const circlePlayed     = useCircleMostPlayed()    // circle-aware most-played rail
+
+  // Presence — realtime follow-graph "playing now" state.
+  // playingNow is [] when presence is disabled or circle has no live members.
+  const { playingNow } = usePresence()
 
   // Unified like + comment counts for cards currently visible.
   const [likeCounts, setLikeCounts]       = useState(() => new Map())
   const [commentCounts, setCommentCounts] = useState(() => new Map())
+
+  // Map game_id → count of friends actively playing right now (from presence).
+  const liveByGame = useMemo(() => {
+    const map = new Map()
+    for (const p of playingNow) {
+      if (!p.gameId) continue
+      const key = String(p.gameId)
+      map.set(key, (map.get(key) || 0) + 1)
+    }
+    return map
+  }, [playingNow])
+
+  // Circle data annotated with live friend counts. Presence is injected here
+  // so MostPlayedRail stays purely presentational.
+  const circleDataWithLive = useMemo(() => {
+    if (!circlePlayed.data) return null
+    return circlePlayed.data.map((item) => ({
+      ...item,
+      liveCount: liveByGame.get(String(item.igdb_game_id)) || 0,
+    }))
+  }, [circlePlayed.data, liveByGame])
+
+  // Show the circle section when loading or when it has results.
+  // Falls back to the global rail only when circle has returned 0 items.
+  const showCircleSection =
+    circlePlayed.loading || (circleDataWithLive && circleDataWithLive.length > 0)
+  const showGlobalSection =
+    !showCircleSection &&
+    (mostPlayed.loading || (mostPlayed.data && mostPlayed.data.length > 0))
 
   // Prefetch like + comment counts for whichever reviews are loaded.
   // Runs whenever either feed's data arrives so switching tabs shows counts
@@ -463,8 +499,22 @@ function Explore() {
           )}
         </section>
 
-        {/* ── Section 3: Most played this week ── */}
-        {(mostPlayed.loading || (mostPlayed.data && mostPlayed.data.length > 0)) && (
+        {/* ── Section 3: Most played — circle (follow-graph) or global fallback ── */}
+        {showCircleSection && (
+          <section className="explore-section explore-section--2">
+            <div className="explore-section__pad discover-section-header">
+              <h2 className="discover-section-title">In your circle</h2>
+            </div>
+            <MostPlayedRail
+              data={circleDataWithLive}
+              loading={circlePlayed.loading}
+              error={circlePlayed.error}
+              mode="circle"
+            />
+          </section>
+        )}
+
+        {showGlobalSection && (
           <section className="explore-section explore-section--2">
             <div className="explore-section__pad discover-section-header">
               <h2 className="discover-section-title">Most played this week</h2>
@@ -473,6 +523,7 @@ function Explore() {
               data={mostPlayed.data}
               loading={mostPlayed.loading}
               error={mostPlayed.error}
+              mode="global"
             />
           </section>
         )}
