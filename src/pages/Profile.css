@@ -302,6 +302,41 @@
   color: var(--text-secondary);
 }
 
+/* ── Live status line ── */
+
+.profile-ig-hero__live-status {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.3;
+  color: var(--accent);
+}
+
+.profile-ig-hero__live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  flex-shrink: 0;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-ig-hero__live-dot {
+    animation: none;
+  }
+}
+
 /* ── Row 4: Bio ── */
 
 .profile-ig-hero__bio-wrap {
@@ -1244,6 +1279,19 @@ img.profile-list-row__author-avatar {
   .profile-action--secondary {
     font-size: 13px;
     padding: 11px 12px;
+  }
+
+  /* 4-stat row: tighten value + label so all 4 fit on narrow screens */
+  .profile-ig-stat__value {
+    font-size: 15px;
+  }
+
+  .profile-ig-stat__label {
+    font-size: 11px;
+  }
+
+  .profile-ig-stat {
+    padding: 6px 2px;
   }
 }
 

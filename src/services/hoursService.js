@@ -83,6 +83,27 @@ export async function setHoursPlayed(igdbGameId, hours, meta = {}) {
 }
 
 /**
+ * Sum hours_played across all game_trackers rows for a given user.
+ * Used by the Profile page to surface the total-hours headline stat.
+ *
+ * @param {string} userId
+ * @returns {Promise<number|null>}  Total hours (≥ 0), or null on error / no rows.
+ */
+export async function getTotalHoursForUser(userId) {
+  if (!userId) return null
+  const { data, error } = await supabase
+    .from('game_trackers')
+    .select('hours_played')
+    .eq('user_id', userId)
+  if (error) {
+    console.error('[hoursService] getTotalHoursForUser failed:', error.message)
+    return null
+  }
+  if (!data || data.length === 0) return 0
+  return data.reduce((sum, row) => sum + (Number(row.hours_played) || 0), 0)
+}
+
+/**
  * Set (or clear) a manual progress override on the user's tracker row.
  * Pass null to clear the override and return to computed progress.
  *

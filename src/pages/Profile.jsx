@@ -30,6 +30,10 @@ import {
   FaTiktok,
 } from 'react-icons/fa6'
 import { useAuth } from '../contexts/AuthContext'
+import { useSession } from '../contexts/SessionContext'
+import { usePresence } from '../hooks/usePresence'
+import { getTotalHoursForUser } from '../services/hoursService'
+import { getSettings } from '../services/userSettingsService'
 import { getReviewsForUser } from '../services/reviewService'
 import {
   getListsForUser,
@@ -124,6 +128,17 @@ function readSortFromStorage() {
 
 function getSort(tab) {
   return readSortFromStorage()[tab] || SORT_DEFAULT[tab]
+}
+
+/**
+ * Format a raw hours number for the header stat.
+ * Keeps the label compact so it fits the 4-stat row on small screens.
+ */
+function formatHours(h) {
+  if (h == null || h < 0) return '—'
+  if (h === 0) return '0h'
+  if (h >= 1000) return `${Math.round(h / 100) / 10}kh`
+  return `${Math.round(h)}h`
 }
 
 function sortReviews(reviews, key, likeCounts) {
@@ -329,6 +344,8 @@ function Profile() {
   const location = useLocation()
   const { username: paramUsername, userId: paramUserId } = useParams()
   const { user } = useAuth()
+  const { session: activeSession } = useSession()
+  const { enabled: presenceEnabled, playingNow } = usePresence()
   const reducedMotion = useReducedMotion()
 
   // ── Username → userId resolution ───────────────────────────────────────
@@ -474,6 +491,8 @@ function Profile() {
   const [customLists, setCustomLists] = useState([])
   const [activities, setActivities] = useState([])
   const [journalEntries, setJournalEntries] = useState([])
+  // Total hours tracked — summed from game_trackers.hours_played for the viewed user.
+  const [totalHours, setTotalHours] = useState(null)
   // Sprint 6 P0 — Map<reviewId, count> fetched once per profile load
   // and re-fetched whenever reviews change. Drives the Most Liked sort
   // and the count rendered on each card. Seeded into useLikeState's
@@ -728,6 +747,34 @@ function Profile() {
       window.removeEventListener(FOLLOW_CHANGED_EVENT, handleFollowChanged)
     }
   }, [targetUserId, loadFollowState])
+
+  /* ── Total hours fetch ─────────────────────────────────────────── */
+
+  useEffect(() => {
+    if (!targetUserId) {
+      setTotalHours(null)
+      return undefined
+    }
+    let cancelled = false
+    getTotalHoursForUser(targetUserId)
+      .then((h) => { if (!cancelled) setTotalHours(h) })
+      .catch(() => { if (!cancelled) setTotalHours(null) })
+    return () => { cancelled = true }
+  }, [targetUserId])
+
+  /* ── Live presence status for this profile ─────────────────────── */
+
+  // Own profile: show if the signed-in user opted in AND has an active session.
+  // Other profile: show if the viewed user appears in the followee presence list
+  // (which already enforces both opt-in and the follow relationship).
+  const liveStatus = useMemo(() => {
+    if (isOwnProfile) {
+      if (!presenceEnabled || !activeSession?.game_title) return null
+      return { gameTitle: activeSession.game_title }
+    }
+    const entry = playingNow.find((p) => p.userId === targetUserId)
+    return entry?.gameTitle ? { gameTitle: entry.gameTitle } : null
+  }, [isOwnProfile, presenceEnabled, activeSession, playingNow, targetUserId])
 
   /* ── Derived data ─────────────────────────────────────────────── */
 
@@ -1508,6 +1555,13 @@ function Profile() {
             <div className="profile-ig-hero__stats" role="group" aria-label="Profile stats">
               <div
                 className="profile-ig-stat"
+                aria-label={`Hours tracked, ${formatHours(totalHours)}`}
+              >
+                <span className="profile-ig-stat__value">{formatHours(totalHours)}</span>
+                <span className="profile-ig-stat__label">Hours</span>
+              </div>
+              <div
+                className="profile-ig-stat"
                 aria-label={`Reviews, ${reviewCount}, not interactive`}
               >
                 <span className="profile-ig-stat__value">{reviewCount}</span>
@@ -1548,6 +1602,14 @@ function Profile() {
           {/* ── Row 3: username (no @ prefix — cleaner look) ── */}
           {(profile.username || '').trim().length > 0 && (
             <p className="profile-ig-hero__handle">{profile.username.trim()}</p>
+          )}
+
+          {/* ── Live status — hidden when not playing or presence not shared ── */}
+          {liveStatus && (
+            <p className="profile-ig-hero__live-status" aria-live="polite">
+              <span className="profile-ig-hero__live-dot" aria-hidden="true" />
+              {`in ${liveStatus.gameTitle} now`}
+            </p>
           )}
 
           {/* ── Row 4: Bio — 3-line clamp + more/less toggle ── */}
