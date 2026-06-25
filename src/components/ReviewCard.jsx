@@ -11,18 +11,39 @@ import {
   HiOutlinePencil,
   HiOutlineFlag,
 } from 'react-icons/hi'
-import { LuPin, LuPinOff } from 'react-icons/lu'
+import { LuPin, LuPinOff, LuQuote } from 'react-icons/lu'
 import StarRating from './StarRating'
 import Pressable from './Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { shareContent } from '../utils/share'
+import { shareCard } from '../services/share'
 import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import './ReviewCard.css'
+
+/**
+ * Pick the punchiest sentence from a review body.
+ * Tries to find a sentence (ends in . ! ?) that is 40–280 chars.
+ * Falls back to the first 200 chars trimmed to a word boundary.
+ * Quote-selection logic (sprint 9A) is out of scope here.
+ */
+function extractQuote(body) {
+  if (!body) return ''
+  const text = body.trim()
+  const sentences = text.split(/(?<=[.!?])\s+/)
+  for (const s of sentences) {
+    const t = s.trim()
+    if (t.length >= 40 && t.length <= 280) return t
+  }
+  if (text.length <= 200) return text
+  const cut = text.slice(0, 200)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut) + '\u2026'
+}
 
 const VIBE_LABELS = {
   masterpiece: 'Masterpiece',
@@ -83,6 +104,7 @@ function ReviewCard({
   const [heartPulse, setHeartPulse] = useState(false)
   const [kebabOpen, setKebabOpen] = useState(false)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [sharingQuote, setSharingQuote] = useState(false)
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
 
@@ -176,6 +198,40 @@ function ReviewCard({
     // if the user dismisses the share sheet) so the counter is a
     // proxy for "share intent" rather than "successful share".
     bumpSharesCount(1)
+  }
+
+  const handleShareQuote = async () => {
+    if (sharingQuote) return
+    setKebabOpen(false)
+    const quote = extractQuote(review.body)
+    if (!quote) {
+      showToast('No quotable text in this review.', 'error')
+      return
+    }
+    setSharingQuote(true)
+    showToast('Building share card\u2026')
+    try {
+      await shareCard({
+        variant: 'quotable-review',
+        data: {
+          quote,
+          game: {
+            title: review.game.name || review.game.title || '',
+            coverUrl: review.game.coverUrl || null,
+          },
+          rating: review.rating,
+          username: review.author.username || review.author.displayName || '',
+        },
+        target: { type: 'review', id: review.id },
+        title: `Review of ${review.game.name || 'a game'} on GameTracker`,
+      })
+      bumpSharesCount(1)
+    } catch (err) {
+      console.error('[ReviewCard] shareQuote error:', err)
+      showToast('Could not create share card.', 'error')
+    } finally {
+      setSharingQuote(false)
+    }
   }
 
   const goToReview = () => {
@@ -376,6 +432,15 @@ function ReviewCard({
             </button>
             {kebabOpen && (
               <div className="review-card__kebab-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={sharingQuote}
+                  onClick={(e) => { e.stopPropagation(); handleShareQuote() }}
+                >
+                  <LuQuote />
+                  {sharingQuote ? 'Creating card\u2026' : 'Share quote'}
+                </button>
                 {isOwn && (
                   <>
                     <button
