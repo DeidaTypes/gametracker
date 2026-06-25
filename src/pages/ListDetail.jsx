@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
-import { HiDotsVertical, HiPlus } from 'react-icons/hi'
+import { HiDotsVertical, HiPlus, HiOutlineShare } from 'react-icons/hi'
 import { PlayCircle, CheckCircle2, Bookmark, BookmarkCheck, List, GripVertical, Star } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
@@ -30,6 +30,7 @@ import {
   updateList,
 } from '../services/listService'
 import CollaboratorSheet from '../components/CollaboratorSheet'
+import DmShareSheet from '../components/DmShareSheet'
 import {
   getListSaveState,
   saveList,
@@ -115,6 +116,7 @@ function ListDetail() {
   const [showAddGames, setShowAddGames] = useState(false)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
+  const [dmShareOpen, setDmShareOpen] = useState(false)
   const [collaborators, setCollaborators] = useState([])
   const [showCollaboratorSheet, setShowCollaboratorSheet] = useState(false)
 
@@ -560,6 +562,16 @@ function ListDetail() {
               <HiPlus size={20} aria-hidden="true" />
             </button>
           )}
+          {listInfo.isCustom && listInfo.isPublic && currentUserId && (
+            <button
+              type="button"
+              className="list-detail-header-icon-btn"
+              onClick={() => setDmShareOpen(true)}
+              aria-label="Share list via DM"
+            >
+              <HiOutlineShare size={20} aria-hidden="true" />
+            </button>
+          )}
           {listInfo.isCustom && listInfo.isPublic && !isOwner && currentUserId && (
             <button
               type="button"
@@ -879,6 +891,19 @@ function ListDetail() {
         onChanged={() => {
           refresh()
           setShowCollaboratorSheet(false)
+        }}
+      />
+
+      <DmShareSheet
+        isOpen={dmShareOpen}
+        onClose={() => setDmShareOpen(false)}
+        attachment={{
+          type: 'list',
+          id: listId,
+          title: listInfo?.name || 'List',
+          cover_url: games[0]?.image || games[0]?.coverUrl || null,
+          subtitle: `${games.length} ${games.length === 1 ? 'game' : 'games'}`,
+          url_path: `/list/${listId}`,
         }}
       />
     </div>

@@ -15,11 +15,23 @@ import { loadBlockedIds, isMutuallyBlocked } from './blockService'
  *     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  *     sender_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  *     recipient_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- *     body          text NOT NULL CHECK (length(body) BETWEEN 1 AND 4000),
+ *     body          text CHECK (length(body) BETWEEN 1 AND 4000),
+ *     attachment    jsonb DEFAULT NULL,
  *     read_at       timestamptz,
  *     created_at    timestamptz NOT NULL DEFAULT now(),
- *     CHECK (sender_id != recipient_id)
+ *     CHECK (sender_id != recipient_id),
+ *     CONSTRAINT dm_body_or_attachment CHECK (body IS NOT NULL OR attachment IS NOT NULL)
  *   );
+ *
+ * Attachment shape (when present):
+ *   {
+ *     type:      'game' | 'review' | 'list',
+ *     id:        string,
+ *     title:     string,
+ *     cover_url: string | null,
+ *     subtitle:  string | null,   // developer / "@user's review" / "N games"
+ *     url_path:  string,          // e.g. /game/123, /reviews/abc, /list/xyz
+ *   }
  *
  *   CREATE INDEX dm_recipient_idx ON direct_messages(recipient_id, created_at DESC);
  *   CREATE INDEX dm_thread_idx ON direct_messages(
@@ -112,6 +124,7 @@ export async function getInbox() {
         sender_id,
         recipient_id,
         body,
+        attachment,
         read_at,
         created_at,
         sender:users!sender_id(id, username, display_name, avatar_url),
@@ -212,6 +225,7 @@ export async function getThread(otherUserId) {
         sender_id,
         recipient_id,
         body,
+        attachment,
         read_at,
         created_at,
         sender:users!sender_id(id, username, display_name, avatar_url)
@@ -257,32 +271,46 @@ export async function getUnreadCount() {
 /**
  * INSERT a new message from the current user to `recipientId`.
  *
- * RLS enforces sender_id = auth.uid(); the table CHECK constraint
- * blocks self-messages and enforces the body length window of 1-4000
- * characters. We trim + length-check client-side too so the user gets
- * a friendlier error than a generic constraint violation.
+ * Accepts either a plain-text `body`, a rich `attachment` object, or
+ * both (body becomes a caption shown above the card). At least one of
+ * the two must be supplied — the table CHECK constraint enforces this
+ * server-side as well.
  *
  * Returns the inserted row joined with the sender's user fields so
  * the caller can append it to its in-memory thread with the avatar +
  * display name already populated.
  *
- * @param {{ recipientId: string, body: string }} args
+ * @param {{
+ *   recipientId: string,
+ *   body?: string,
+ *   attachment?: {
+ *     type: 'game'|'review'|'list',
+ *     id: string,
+ *     title: string,
+ *     cover_url: string|null,
+ *     subtitle: string|null,
+ *     url_path: string,
+ *   }|null,
+ * }} args
  * @returns {Promise<{
  *   id: string,
  *   sender_id: string,
  *   recipient_id: string,
- *   body: string,
- *   read_at: string | null,
+ *   body: string|null,
+ *   attachment: object|null,
+ *   read_at: string|null,
  *   created_at: string,
- *   sender: { id: string, username: string, display_name: string, avatar_url: string } | null,
+ *   sender: { id: string, username: string, display_name: string, avatar_url: string }|null,
  * }>}
  */
-export async function sendMessage({ recipientId, body }) {
+export async function sendMessage({ recipientId, body, attachment = null }) {
   if (!recipientId) throw new Error('recipientId is required')
-  const trimmed = (body || '').trim()
-  if (!trimmed) throw new Error('Message cannot be empty.')
-  if (trimmed.length > 4000) {
+  const trimmed = (body || '').trim() || null
+  if (trimmed && trimmed.length > 4000) {
     throw new Error('Message is too long (max 4000 characters).')
+  }
+  if (!trimmed && !attachment) {
+    throw new Error('Message cannot be empty.')
   }
 
   const userId = await getCurrentUserId()
@@ -304,7 +332,8 @@ export async function sendMessage({ recipientId, body }) {
   const insert = {
     sender_id: userId,
     recipient_id: recipientId,
-    body: trimmed,
+    ...(trimmed ? { body: trimmed } : {}),
+    ...(attachment ? { attachment } : {}),
   }
 
   const { data, error } = await supabase
@@ -316,6 +345,7 @@ export async function sendMessage({ recipientId, body }) {
         sender_id,
         recipient_id,
         body,
+        attachment,
         read_at,
         created_at,
         sender:users!sender_id(id, username, display_name, avatar_url)

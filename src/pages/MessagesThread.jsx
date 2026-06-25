@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
@@ -126,10 +126,17 @@ function MessagesThread() {
 
   /* ── Thread state ─────────────────────────────────────────── */
 
+  const { state: navState } = useLocation()
+
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  // Pending attachment injected by DmShareSheet via navigation state.
+  // Cleared after the first send attempt.
+  const [pendingAttachment, setPendingAttachment] = useState(
+    navState?.dmAttachment || null
+  )
   const composerRef = useRef(null)
   const scrollRef = useRef(null)
 
@@ -293,7 +300,8 @@ function MessagesThread() {
       e?.preventDefault?.()
       if (!partnerId || sending) return
       const trimmed = draft.trim()
-      if (!trimmed) return
+      const attachment = pendingAttachment || null
+      if (!trimmed && !attachment) return
       if (isSelf) {
         showToast("You can't message yourself.", 'error')
         return
@@ -307,7 +315,8 @@ function MessagesThread() {
         id: tempId,
         sender_id: currentUserId,
         recipient_id: partnerId,
-        body: trimmed,
+        body: trimmed || null,
+        attachment,
         read_at: null,
         created_at: new Date().toISOString(),
         sender: {
@@ -320,10 +329,12 @@ function MessagesThread() {
       }
       setMessages((prev) => [...prev, optimistic])
       setDraft('')
+      setPendingAttachment(null)
       try {
         const inserted = await sendMessage({
           recipientId: partnerId,
-          body: trimmed,
+          body: trimmed || undefined,
+          attachment,
         })
         setMessages((prev) => {
           // Replace the optimistic row with the server one. If the
@@ -337,7 +348,8 @@ function MessagesThread() {
       } catch (err) {
         console.error('[MessagesThread] sendMessage failed:', err)
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
-        setDraft(trimmed) // restore so the user can retry
+        setDraft(trimmed)
+        setPendingAttachment(attachment)
         showToast(
           err?.message || "Couldn't send your message. Please try again.",
           'error'
@@ -346,7 +358,7 @@ function MessagesThread() {
         setSending(false)
       }
     },
-    [partnerId, sending, draft, isSelf, currentUserId]
+    [partnerId, sending, draft, pendingAttachment, isSelf, currentUserId]
   )
 
   /* ── Header click → partner profile ───────────────────────── */
@@ -365,7 +377,7 @@ function MessagesThread() {
     [headerLabel]
   )
   const partnerAvatar = partner?.avatar_url || null
-  const sendDisabled = !draft.trim() || sending || isSelf || !partnerId
+  const sendDisabled = (!draft.trim() && !pendingAttachment) || sending || isSelf || !partnerId
 
   return (
     <div className="dm-thread">
@@ -458,35 +470,127 @@ function MessagesThread() {
       />
 
       <form className="dm-thread__composer" onSubmit={handleSend}>
-        <textarea
-          ref={composerRef}
-          className="dm-thread__input"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={
-            isSelf
-              ? "You can't message yourself"
-              : `Message ${headerLabel}`
-          }
-          rows={1}
-          maxLength={4000}
-          disabled={isSelf || !partnerId}
-          aria-label="Message body"
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-              handleSend(e)
+        {pendingAttachment && (
+          <div className="dm-composer-attachment">
+            {pendingAttachment.cover_url && (
+              <img
+                src={pendingAttachment.cover_url}
+                alt=""
+                className="dm-composer-attachment__thumb"
+              />
+            )}
+            <div className="dm-composer-attachment__text">
+              <span className="dm-composer-attachment__type">
+                {pendingAttachment.type}
+              </span>
+              <span className="dm-composer-attachment__title">
+                {pendingAttachment.title}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="dm-composer-attachment__remove"
+              onClick={() => setPendingAttachment(null)}
+              aria-label="Remove attachment"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        <div className="dm-thread__composer-row">
+          <textarea
+            ref={composerRef}
+            className="dm-thread__input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={
+              isSelf
+                ? "You can't message yourself"
+                : pendingAttachment
+                ? 'Add a caption (optional)'
+                : `Message ${headerLabel}`
             }
-          }}
-        />
-        <button
-          type="submit"
-          className="dm-thread__send"
-          disabled={sendDisabled}
-        >
-          {sending ? 'Sending…' : 'Send'}
-        </button>
+            rows={1}
+            maxLength={4000}
+            disabled={isSelf || !partnerId}
+            aria-label="Message body"
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                handleSend(e)
+              }
+            }}
+          />
+          <button
+            type="submit"
+            className="dm-thread__send"
+            disabled={sendDisabled}
+          >
+            {sending ? 'Sending…' : 'Send'}
+          </button>
+        </div>
       </form>
     </div>
+  )
+}
+
+/* ============================================================
+   Attachment card — rendered inside a bubble when message.attachment
+   is present. Tapping navigates to the target within the app.
+   ============================================================ */
+
+const ATTACHMENT_TYPE_LABELS = {
+  game: 'Game',
+  review: 'Review',
+  list: 'List',
+}
+
+function AttachmentCard({ attachment, isOutgoing }) {
+  const navigate = useNavigate()
+
+  const handleTap = () => {
+    if (attachment?.url_path) {
+      navigate(attachment.url_path)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className={`dm-attachment-card${isOutgoing ? ' dm-attachment-card--out' : ' dm-attachment-card--in'}`}
+      onClick={handleTap}
+      aria-label={`Open ${attachment?.title || 'shared item'}`}
+    >
+      {attachment?.cover_url && (
+        <img
+          src={attachment.cover_url}
+          alt=""
+          className="dm-attachment-card__cover"
+        />
+      )}
+      <div className="dm-attachment-card__body">
+        <span className="dm-attachment-card__type">
+          {ATTACHMENT_TYPE_LABELS[attachment?.type] || attachment?.type}
+        </span>
+        <span className="dm-attachment-card__title">{attachment?.title}</span>
+        {attachment?.subtitle && (
+          <span className="dm-attachment-card__subtitle">{attachment.subtitle}</span>
+        )}
+      </div>
+      <svg
+        className="dm-attachment-card__chevron"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
   )
 }
 
@@ -529,6 +633,9 @@ function Bubble({ message, isOutgoing, onReport }) {
     }
   }
 
+  const hasAttachment = !!message.attachment
+  const hasBody = !!(message.body && message.body.trim())
+
   return (
     <li
       className={`dm-bubble-row${
@@ -537,7 +644,7 @@ function Bubble({ message, isOutgoing, onReport }) {
     >
       <div className="dm-bubble-row__inner" ref={bubbleRef}>
         <div
-          className={`dm-bubble${
+          className={`dm-bubble${hasAttachment ? ' dm-bubble--card' : ''}${
             isOutgoing ? ' dm-bubble--out' : ' dm-bubble--in'
           }${message.__pending ? ' dm-bubble--pending' : ''}`}
           onMouseDown={startPress}
@@ -553,7 +660,12 @@ function Bubble({ message, isOutgoing, onReport }) {
             }
           }}
         >
-          <p className="dm-bubble__body">{message.body}</p>
+          {hasBody && (
+            <p className="dm-bubble__body">{message.body}</p>
+          )}
+          {hasAttachment && (
+            <AttachmentCard attachment={message.attachment} isOutgoing={isOutgoing} />
+          )}
           <span className="dm-bubble__time">{bubbleTime(message.created_at)}</span>
         </div>
 

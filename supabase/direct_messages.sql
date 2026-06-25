@@ -1,5 +1,6 @@
 -- =====================================================================
 -- Sprint 6 P2 — Direct messages
+-- Sprint 6 P3 — Share-to-DM cards (attachment column)
 --
 -- Run this in the Supabase SQL editor BEFORE shipping the /messages
 -- inbox + /messages/:username thread page. The messageService relies
@@ -10,17 +11,38 @@
 -- direction of the pair — see the dm_thread_idx ordered tuple below
 -- which uses LEAST/GREATEST so the index can serve both sides of any
 -- conversation with a single ordered scan.
+--
+-- attachment JSONB shape (nullable — plain-text messages have NULL):
+--   {
+--     "type":      "game" | "review" | "list",
+--     "id":        string,
+--     "title":     string,
+--     "cover_url": string | null,
+--     "subtitle":  string | null,
+--     "url_path":  string
+--   }
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS direct_messages (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   recipient_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  body          text NOT NULL CHECK (length(body) BETWEEN 1 AND 4000),
+  body          text CHECK (length(body) BETWEEN 1 AND 4000),
+  attachment    jsonb DEFAULT NULL,
   read_at       timestamptz,
   created_at    timestamptz NOT NULL DEFAULT now(),
-  CHECK (sender_id != recipient_id)
+  CHECK (sender_id != recipient_id),
+  CONSTRAINT dm_body_or_attachment CHECK (body IS NOT NULL OR attachment IS NOT NULL)
 );
+
+-- Sprint 6 P3 migration (run on existing databases that already have
+-- the Sprint 6 P2 table with body NOT NULL and no attachment column):
+--
+--   ALTER TABLE direct_messages ALTER COLUMN body DROP NOT NULL;
+--   ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS attachment jsonb DEFAULT NULL;
+--   ALTER TABLE direct_messages ADD CONSTRAINT dm_body_or_attachment
+--     CHECK (body IS NOT NULL OR attachment IS NOT NULL);
+
 
 -- Inbox-side query: "newest message addressed to me, grouped by partner."
 CREATE INDEX IF NOT EXISTS dm_recipient_idx

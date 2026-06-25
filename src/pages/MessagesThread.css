@@ -258,6 +258,215 @@
   color: var(--color-text-tertiary);
 }
 
+/* ── Attachment card bubble ─────────────────────────────────────────── */
+
+/* When a bubble contains a card, loosen padding so the card can bleed
+   edge-to-edge within the bubble surface. */
+.dm-bubble--card {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.dm-bubble--card .dm-bubble__body {
+  padding: 8px 12px 4px;
+}
+
+.dm-bubble--card .dm-bubble__time {
+  padding: 0 8px 6px;
+}
+
+.dm-attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 10px 10px 10px 10px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.dm-attachment-card--out {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0;
+}
+
+.dm-attachment-card--in {
+  background: var(--color-surface);
+  border-radius: 0;
+}
+
+/* Top corners round when there's no body caption above */
+.dm-bubble--card:not(:has(.dm-bubble__body)) .dm-attachment-card {
+  border-top-left-radius: calc(var(--radius-lg) - 1px);
+  border-top-right-radius: calc(var(--radius-lg) - 1px);
+}
+
+.dm-attachment-card:hover {
+  opacity: 0.85;
+}
+
+.dm-attachment-card__cover {
+  width: 44px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  display: block;
+  box-shadow: var(--shadow-sm);
+}
+
+.dm-attachment-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dm-attachment-card__type {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dm-attachment-card--out .dm-attachment-card__type {
+  color: rgba(12, 19, 34, 0.5);
+}
+
+.dm-attachment-card--in .dm-attachment-card__type {
+  color: var(--color-brand-primary);
+}
+
+.dm-attachment-card__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.dm-attachment-card--out .dm-attachment-card__title {
+  color: var(--color-bg-primary);
+}
+
+.dm-attachment-card--in .dm-attachment-card__title {
+  color: var(--color-text-primary);
+}
+
+.dm-attachment-card__subtitle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-attachment-card--out .dm-attachment-card__subtitle {
+  color: rgba(12, 19, 34, 0.55);
+}
+
+.dm-attachment-card--in .dm-attachment-card__subtitle {
+  color: var(--color-text-tertiary);
+}
+
+.dm-attachment-card__chevron {
+  flex-shrink: 0;
+}
+
+.dm-attachment-card--out .dm-attachment-card__chevron {
+  color: rgba(12, 19, 34, 0.45);
+}
+
+.dm-attachment-card--in .dm-attachment-card__chevron {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Composer attachment preview ──────────────────────────────────────── */
+
+.dm-composer-attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+.dm-composer-attachment__thumb {
+  width: 32px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.dm-composer-attachment__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dm-composer-attachment__type {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-primary);
+}
+
+.dm-composer-attachment__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-composer-attachment__remove {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dm-composer-attachment__remove:hover {
+  color: var(--color-text-primary);
+}
+
+.dm-thread__composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
 /* ── Composer ───────────────────────────────────────────────────────── */
 
 .dm-thread__composer {
@@ -272,8 +481,8 @@
   bottom: max(var(--bottom-nav-safe-area), var(--keyboard-inset, 0px));
   z-index: 6;
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 0;
   padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
@@ -400,7 +609,9 @@
   .dm-thread__input,
   .dm-thread__send,
   .dm-thread__composer,
-  .dm-bubble__context-btn {
+  .dm-bubble__context-btn,
+  .dm-attachment-card,
+  .dm-composer-attachment__remove {
     transition: none;
   }
 }

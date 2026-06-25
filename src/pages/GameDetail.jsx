@@ -25,6 +25,7 @@ import { logManualSession, getManualSessionsForGame, deleteManualSession } from 
 import ActionSheet from '../components/ActionSheet'
 import GameJournalSection from '../components/GameJournalSection'
 import JournalEntryModal from '../components/JournalEntryModal'
+import DmShareSheet from '../components/DmShareSheet'
 import './GameDetail.css'
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────
@@ -391,6 +392,7 @@ function GameDetail() {
   const [composeSheetOpen, setComposeSheetOpen] = useState(false)
   const [journalModalOpen, setJournalModalOpen] = useState(false)
   const [statusSheetOpen, setStatusSheetOpen] = useState(false)
+  const [dmShareOpen, setDmShareOpen] = useState(false)
 
   // ── Session helpers ───────────────────────────────────────────────────────
   function formatDuration(mins) {
@@ -457,14 +459,8 @@ function GameDetail() {
     setJournalModalOpen(true)
   }, [])
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: game.title, url: window.location.href })
-      } catch {}
-    } else {
-      navigator.clipboard?.writeText(window.location.href)
-    }
+  const handleShare = () => {
+    setDmShareOpen(true)
   }
 
   // ── Progress computed values ────────────────────────────────────────────────
@@ -1160,6 +1156,19 @@ function GameDetail() {
         isOpen={journalModalOpen}
         onClose={() => setJournalModalOpen(false)}
         game={game}
+      />
+
+      <DmShareSheet
+        isOpen={dmShareOpen}
+        onClose={() => setDmShareOpen(false)}
+        attachment={{
+          type: 'game',
+          id: gameId,
+          title: game.title,
+          cover_url: game.image || null,
+          subtitle: game.developers?.length ? game.developers[0] : null,
+          url_path: `/game/${gameId}`,
+        }}
       />
 
       {/* ── Screenshot Lightbox ── */}

@@ -16,8 +16,8 @@ import StarRating from './StarRating'
 import Pressable from './Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
-import { shareContent } from '../utils/share'
 import { shareCard } from '../services/share'
+import DmShareSheet from './DmShareSheet'
 import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
 import { useMotionPreference } from '../hooks/useMotionPreference'
@@ -105,6 +105,7 @@ function ReviewCard({
   const [kebabOpen, setKebabOpen] = useState(false)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [sharingQuote, setSharingQuote] = useState(false)
+  const [dmShareOpen, setDmShareOpen] = useState(false)
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
 
@@ -185,19 +186,20 @@ function ReviewCard({
     }
   }
 
-  const handleShare = async () => {
-    await shareContent({
-      title:
-        review.title ||
-        `${review.author.username}'s review of ${review.game.name}`,
-      text: review.body.slice(0, 100),
-      url: `${window.location.origin}/reviews/${review.id}`,
-    })
-    // Sprint 5 P9 — feed the local-only `gt:shares-count` counter the
-    // Shareholder badge scores against. We bump unconditionally (even
-    // if the user dismisses the share sheet) so the counter is a
-    // proxy for "share intent" rather than "successful share".
+  const handleShare = () => {
+    setDmShareOpen(true)
     bumpSharesCount(1)
+  }
+
+  const dmShareAttachment = {
+    type: 'review',
+    id: review.id,
+    title:
+      review.title ||
+      `${review.author?.username || 'Someone'}\u2019s review of ${review.game?.name || 'a game'}`,
+    cover_url: review.game?.coverUrl || null,
+    subtitle: review.game?.name || null,
+    url_path: `/reviews/${review.id}`,
   }
 
   const handleShareQuote = async () => {
@@ -515,6 +517,11 @@ function ReviewCard({
       onClose={() => setReportSheetOpen(false)}
       contentType="review"
       contentId={review.id}
+    />
+    <DmShareSheet
+      isOpen={dmShareOpen}
+      onClose={() => setDmShareOpen(false)}
+      attachment={dmShareAttachment}
     />
     </>
   )
