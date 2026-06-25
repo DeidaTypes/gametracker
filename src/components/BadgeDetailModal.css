@@ -139,6 +139,14 @@
 .badge-detail-modal__status--in-progress { color: var(--color-text-secondary); }
 .badge-detail-modal__status--locked      { color: var(--color-text-tertiary); }
 
+.badge-detail-modal__rarity {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  margin: var(--spacing-xs) 0 0;
+  letter-spacing: 0.01em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .badge-detail-modal__progress-fill {
     transition: none;

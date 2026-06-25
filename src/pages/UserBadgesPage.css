@@ -194,6 +194,15 @@
   overflow: hidden;
 }
 
+.badge-card__rarity {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  margin-top: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .badge-card,
   .badges-page__back {

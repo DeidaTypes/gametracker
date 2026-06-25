@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from './useBadges'
 import { dispatchBadgeEarned } from '../components/BadgeReveal'
+import { syncEarnedBadge, syncAllEarnedBadges } from '../services/badgeService'
 
 const STORAGE_KEY = 'gt:earnedBadges:v1'
 
@@ -94,6 +95,9 @@ export function useBadgeUnlockWatcher() {
         previousIdsRef.current = currentIds
         persistEarnedIds(currentIds)
       }
+      // Seed the server-side holder count for badges earned before
+      // this feature shipped (bulk upsert, ignoreDuplicates = true).
+      syncAllEarnedBadges(userId, Array.from(currentIds))
       return
     }
 
@@ -105,6 +109,8 @@ export function useBadgeUnlockWatcher() {
       // Dispatch to BadgeReveal (full-screen overlay). Reveal handles
       // queueing so multiple same-session unlocks play sequentially.
       dispatchBadgeEarned(badge)
+      // Persist to Supabase so the badge_rarity() count stays accurate.
+      syncEarnedBadge(userId, badge.id)
     }
 
     // Union with previous so a badge can never re-toast even if a

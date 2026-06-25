@@ -77,6 +77,7 @@ import CreateListModal from '../components/CreateListModal'
 import FavoritesPickerSheet from '../components/FavoritesPickerSheet'
 import GamePickerSheet from '../components/GamePickerSheet'
 import BadgesRow from '../components/BadgesRow'
+import BadgeShowcase from '../components/BadgeShowcase'
 import GoalRing from '../components/GoalRing'
 import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
@@ -2281,6 +2282,11 @@ function HomeTab({
         reviews={recentReviews}
         onSeeAll={onReviewsChevron}
       />
+
+      {/* Showcase — up to 3 user-pinned badges with rarity %. Own profile
+          sees empty-slot placeholders and an edit button; visitors see
+          nothing when no badges are pinned. */}
+      <BadgeShowcase user={user} isOwnProfile={isOwnProfile} />
 
       {/* Section 3 — Badges (Sprint 5 P9). BadgesRow owns its own
           section header + chevron so it can disappear entirely when

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { useBadges } from '../hooks/useBadges'
+import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { TIER_STYLES } from '../data/badges'
 import { getProfile } from '../services/profileService'
 import BadgeDetailModal from './BadgeDetailModal'
@@ -98,6 +99,7 @@ function NextBadgeProgress({ inProgress, locked, stats, onSelect }) {
 function BadgesRow({ user, username }) {
   const navigate = useNavigate()
   const { earned, inProgress, locked, stats } = useBadges(user?.id)
+  const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
 
   // Earned first, then in-progress, capped at 5.
@@ -170,6 +172,7 @@ function BadgesRow({ user, username }) {
         stats={stats}
         isOpen={!!selectedBadge}
         onClose={() => setSelectedBadge(null)}
+        rarityPct={selectedBadge ? rarityMap.get(selectedBadge.id)?.rarityPct : undefined}
       />
     </>
   )

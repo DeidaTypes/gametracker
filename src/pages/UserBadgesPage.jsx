@@ -4,6 +4,7 @@ import { LuChevronLeft } from 'react-icons/lu'
 import { Lock } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from '../hooks/useBadges'
+import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { getProfile } from '../services/profileService'
 import { getUserByUsername } from '../services/userService'
 import { TIER_STYLES } from '../data/badges'
@@ -78,6 +79,7 @@ function UserBadgesPage() {
   }, [username, authUser?.id])
 
   const { earned, inProgress, locked, stats } = useBadges(targetUserId)
+  const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
 
   const sections = [
@@ -115,6 +117,7 @@ function UserBadgesPage() {
                       key={badge.id}
                       badge={badge}
                       locked={section.locked}
+                      rarityPct={rarityMap.get(badge.id)?.rarityPct}
                       onClick={() => setSelectedBadge(badge)}
                     />
                   ))}
@@ -130,12 +133,13 @@ function UserBadgesPage() {
         stats={stats}
         isOpen={!!selectedBadge}
         onClose={() => setSelectedBadge(null)}
+        rarityPct={selectedBadge ? rarityMap.get(selectedBadge.id)?.rarityPct : undefined}
       />
     </div>
   )
 }
 
-function BadgeCard({ badge, locked, onClick }) {
+function BadgeCard({ badge, locked, rarityPct, onClick }) {
   const Icon = badge.icon
   const tierStyle = TIER_STYLES[badge.tier] || TIER_STYLES.bronze
   const borderStyle =
@@ -168,6 +172,11 @@ function BadgeCard({ badge, locked, onClick }) {
         )}
       </div>
       <span className="badge-card__name">{badge.name}</span>
+      {rarityPct != null && (
+        <span className="badge-card__rarity" aria-label={`${rarityPct}% of players`}>
+          {rarityPct}%
+        </span>
+      )}
     </button>
   )
 }

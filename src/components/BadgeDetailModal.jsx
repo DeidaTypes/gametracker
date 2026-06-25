@@ -23,7 +23,7 @@ import './BadgeDetailModal.css'
  * The same modal is mounted by BadgesRow (Profile Home tab) and
  * UserBadgesPage (full grid), so any change here flows to both.
  */
-function BadgeDetailModal({ badge, stats, isOpen, onClose }) {
+function BadgeDetailModal({ badge, stats, isOpen, onClose, rarityPct }) {
   useEffect(() => {
     if (!isOpen) return undefined
     const handleKey = (e) => {
@@ -108,6 +108,14 @@ function BadgeDetailModal({ badge, stats, isOpen, onClose }) {
         <p className={`badge-detail-modal__status badge-detail-modal__status--${earned ? 'earned' : progress > 0 ? 'in-progress' : 'locked'}`}>
           {status}
         </p>
+
+        {rarityPct != null && (
+          <p className="badge-detail-modal__rarity">
+            {rarityPct > 0
+              ? `${rarityPct}% of players have this`
+              : 'Be the first to earn this!'}
+          </p>
+        )}
       </div>
     </div>,
     document.body
