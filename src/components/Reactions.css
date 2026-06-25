@@ -1,0 +1,148 @@
+/* ============================================================
+   REACTIONS — cross-surface emoji reaction pills
+   Namespaced to .reactions* so this component can render inside
+   ReviewCard, ReviewDetail, SocialActivityCard, and ListDetail
+   without specificity collisions.
+   ============================================================ */
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  /* Inherit from parent; no forced width */
+}
+
+/* ---- Pill ---- */
+.reactions__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border-subtle, rgba(255,255,255,0.1));
+  background: var(--color-surface-raised, rgba(255,255,255,0.05));
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-secondary, #94a8d4);
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.reactions__pill:active {
+  transform: scale(0.93);
+}
+
+.reactions__pill--active {
+  border-color: rgba(var(--accent-rgb, 59 130 246), 0.45);
+  background: rgba(var(--accent-rgb, 59 130 246), 0.12);
+  color: var(--color-text-primary, #f0f3fa);
+}
+
+/* Burst keyframe — fires on add only (not remove) */
+@keyframes reactions-burst {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  70%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.reactions__pill--burst {
+  animation: reactions-burst 0.38s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reactions__pill--burst {
+    animation: none;
+  }
+}
+
+/* data-reduce-motion attr from app settings */
+[data-reduce-motion='true'] .reactions__pill--burst {
+  animation: none;
+}
+
+.reactions__emoji {
+  font-size: 15px;
+  line-height: 1;
+  /* Prevent emoji from inheriting parent italic / color */
+  font-style: normal;
+}
+
+.reactions__count {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: inherit;
+}
+
+/* ---- Add button ---- */
+.reactions__add-wrap {
+  position: relative;
+}
+
+.reactions__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border-radius: 20px;
+  border: 1px dashed var(--color-border-subtle, rgba(255,255,255,0.15));
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-text-tertiary, #5c6b8a);
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reactions__add-btn:active,
+.reactions__add-btn--open {
+  border-color: var(--accent, #3b82f6);
+  color: var(--accent, #3b82f6);
+}
+
+/* ---- Picker popover ---- */
+.reactions__picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-surface-overlay, #1a2240);
+  border: 1px solid var(--color-border-subtle, rgba(255,255,255,0.1));
+  border-radius: 20px;
+  z-index: 200;
+  white-space: nowrap;
+}
+
+.reactions__picker-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 8px;
+  transition: background 0.1s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reactions__picker-emoji:hover,
+.reactions__picker-emoji:focus-visible {
+  background: rgba(255,255,255,0.08);
+}
+
+.reactions__picker-emoji:active {
+  transform: scale(0.88);
+}
