@@ -1,0 +1,68 @@
+/* =====================================================================
+   MoodChips — horizontal mood-entry chip row for Swipe to Discover.
+   Follows the same scrollable-pill pattern as TimeBucketChips.
+   ===================================================================== */
+
+.mood-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 16px 14px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.mood-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.mood-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  min-height: 36px;
+  min-width: 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.mood-chip--active {
+  color: var(--color-bg-primary, #0c1221);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.mood-chip:active {
+  opacity: 0.7;
+}
+
+.mood-chip__emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mood-chip__label {
+  /* label is already set by .mood-chip font-size */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mood-chip {
+    transition: none;
+  }
+}

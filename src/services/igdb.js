@@ -1551,6 +1551,160 @@ export async function getDiscoveryDeck({
   return formatted
 }
 
+// ─── Mood decks — entry chips that seed the swipe stack ──────────────────────
+//
+// Each mood maps to EXPLICIT IGDB filter criteria. No fabricated groupings —
+// every field/ID below is a real IGDB entity ID.
+//
+// IGDB entity IDs used:
+//   game_modes:  3  = Co-operative
+//   themes:     19  = Horror
+//              31  = Drama
+//              33  = Sandbox
+//              38  = Open world
+//   genres:      9  = Puzzle
+//
+// "30 min" uses a two-step approach (game_time_to_beats endpoint):
+//   1) Query game_time_to_beats for normally ≤ 2 700 s (45 min buffer)
+//   2) Fetch those game IDs with a cover + rating quality gate
+//   Falls back to Puzzle genre if step 1 returns < 5 results.
+
+export const MOOD_CHIPS = [
+  {
+    id: 'quick',
+    label: '30 min',
+    emoji: '⚡',
+    strategy: 'ttb',
+    ttbMaxSecs: 2700,
+    fallbackWhere: 'genres = (9)',
+  },
+  {
+    id: 'emotional',
+    label: 'I want to cry',
+    emoji: '😢',
+    strategy: 'where',
+    where: 'themes = (31)',    // IGDB theme: Drama (id 31)
+    minRating: 72,
+    minRatingCount: 15,
+  },
+  {
+    id: 'coop',
+    label: 'co-op',
+    emoji: '🤝',
+    strategy: 'where',
+    where: 'game_modes = (3)', // IGDB game_mode: Co-operative (id 3)
+    minRating: 70,
+    minRatingCount: 10,
+  },
+  {
+    id: 'spooky',
+    label: 'spooky',
+    emoji: '👻',
+    strategy: 'where',
+    where: 'themes = (19)',    // IGDB theme: Horror (id 19)
+    minRating: 70,
+    minRatingCount: 10,
+  },
+  {
+    id: 'vibes',
+    label: 'just vibes',
+    emoji: '🌅',
+    strategy: 'where',
+    where: 'themes = (33,38)', // IGDB themes: Sandbox (33) OR Open world (38)
+    minRating: 70,
+    minRatingCount: 10,
+  },
+  {
+    id: 'puzzle',
+    label: 'puzzle brain',
+    emoji: '🧩',
+    strategy: 'where',
+    where: 'genres = (9)',     // IGDB genre: Puzzle (id 9)
+    minRating: 68,
+    minRatingCount: 8,
+  },
+]
+
+/**
+ * Fetch a discovery deck seeded by a mood chip.
+ *
+ * Mirrors the getDiscoveryDeck signature so SwipeDeck can call it transparently.
+ *
+ * @param {string}      moodId        – one of MOOD_CHIPS[*].id
+ * @param {Object}      opts
+ * @param {Set<string>} opts.excludeIds – IGDB IDs to skip (library + seen)
+ * @param {number}      opts.limit      – max cards to return (default 30)
+ * @returns {Promise<Array>} formatted game objects (same shape as getDiscoveryDeck)
+ */
+export async function getMoodDeck(moodId, { excludeIds = new Set(), limit = 30 } = {}) {
+  const mood = MOOD_CHIPS.find((m) => m.id === moodId)
+  if (!mood) return []
+  if (mood.strategy === 'ttb') {
+    return _moodDeckViaTtb(mood, { excludeIds, limit })
+  }
+  return _moodDeckViaWhere(mood, { excludeIds, limit })
+}
+
+async function _moodDeckViaWhere(mood, { excludeIds, limit }) {
+  const minRating = mood.minRating ?? 70
+  const minCount  = mood.minRatingCount ?? 10
+  const offset    = Math.floor(Math.random() * 80)
+  const query =
+    `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name; ` +
+    `where ${mood.where} & cover != null & rating != null & rating_count != null ` +
+    `& rating >= ${minRating} & rating_count >= ${minCount}; ` +
+    `sort rating_count desc; limit ${limit}; offset ${offset};`
+  try {
+    const games = await igdbRequest('games', query)
+    const fresh = (games || []).filter(
+      (g) => g.id && g.name && g.cover?.image_id && !excludeIds.has(String(g.id))
+    )
+    return formatGamesWithThemes(fresh.slice(0, limit))
+  } catch (err) {
+    console.error(`[mood] getMoodDeck "${mood.id}" where-strategy failed:`, err)
+    return []
+  }
+}
+
+async function _moodDeckViaTtb(mood, { excludeIds, limit }) {
+  try {
+    // Step 1 — find short games via game_time_to_beats
+    const ttbQuery =
+      `fields game; where normally <= ${mood.ttbMaxSecs} & normally != null; ` +
+      `sort normally asc; limit 200;`
+    const ttbRows = await igdbRequest('game_time_to_beats', ttbQuery)
+    const gameIds = (ttbRows || [])
+      .map((r) => r.game)
+      .filter((id) => id != null && !excludeIds.has(String(id)))
+
+    if (gameIds.length >= 5) {
+      // Shuffle so repeated calls surface different games within the same pool
+      for (let i = gameIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[gameIds[i], gameIds[j]] = [gameIds[j], gameIds[i]]
+      }
+      const batch = gameIds.slice(0, 60)
+      const gameQuery =
+        `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name; ` +
+        `where id = (${batch.join(',')}) & cover != null & rating != null & rating >= 65; ` +
+        `sort rating desc; limit ${limit};`
+      const games = await igdbRequest('games', gameQuery)
+      const fresh = (games || []).filter(
+        (g) => g.id && g.name && g.cover?.image_id && !excludeIds.has(String(g.id))
+      )
+      if (fresh.length >= 3) return formatGamesWithThemes(fresh)
+    }
+  } catch (err) {
+    console.warn('[mood] TTB step failed, using fallback genre:', err)
+  }
+
+  // Fallback — Puzzle genre covers most short-form games when TTB data is sparse
+  return _moodDeckViaWhere(
+    { ...mood, strategy: 'where', where: mood.fallbackWhere, minRating: 65, minRatingCount: 5 },
+    { excludeIds, limit }
+  )
+}
+
 // Pick a top-liked genre that exists in the IGDB genre catalog. Returns null
 // when the taste signal hasn't accumulated anything actionable yet.
 function pickTastePinnedGenre(allGenres, taste) {

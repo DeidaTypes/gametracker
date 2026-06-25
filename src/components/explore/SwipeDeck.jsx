@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { getDiscoveryDeck } from '../../services/igdb'
+import { getDiscoveryDeck, getMoodDeck } from '../../services/igdb'
 import { getAllLists, addGameToList, getGamesFromList } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
@@ -68,6 +68,14 @@ const PICK_AVAILABLE_AFTER_SWIPES = 6
 /**
  * SwipeDeck — "Swipe to discover" learning card stack on the Discover page.
  *
+ * Props:
+ *   moodId      — optional mood chip ID (e.g. 'spooky', 'coop'). When set,
+ *                 the deck is seeded via getMoodDeck() instead of the default
+ *                 multi-axis getDiscoveryDeck(). The parent uses React key to
+ *                 remount when mood changes, so moodId is stable per mount.
+ *   onMoodEmpty — called with moodId when a mood deck returns zero results so
+ *                 the parent can hide the chip and reset to the default deck.
+ *
  * Sprint 7A — "swipe that learns":
  *   • Every swipe (skip / backlog / not-interested) is persisted via
  *     swipeService.recordSwipe so the next batch can bias on it.
@@ -104,7 +112,7 @@ const PICK_AVAILABLE_AFTER_SWIPES = 6
  *   recordSwipe('not_interested') — persistent for 1 year. Heavy negative
  *   (genre weight 4) — soft-filters the same genre from future batches.
  */
-export function SwipeDeck() {
+export function SwipeDeck({ moodId = null, onMoodEmpty } = {}) {
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -186,15 +194,24 @@ export function SwipeDeck() {
 
       let games = []
       try {
-        games = await getDiscoveryDeck({
-          excludeIds,
-          tasteGameIds,
-          tasteSignal,
-          limit: 30,
-        })
+        if (moodId) {
+          games = await getMoodDeck(moodId, { excludeIds, limit: 30 })
+        } else {
+          games = await getDiscoveryDeck({
+            excludeIds,
+            tasteGameIds,
+            tasteSignal,
+            limit: 30,
+          })
+        }
       } catch { games = [] }
 
       if (cancelRef.current) return
+
+      // Notify parent when a mood deck returns nothing so the chip can be hidden
+      if (moodId && games.length === 0 && onMoodEmpty) {
+        onMoodEmpty(moodId)
+      }
 
       for (const g of games) {
         seenIdsRef.current.add(String(g.id))
@@ -231,7 +248,11 @@ export function SwipeDeck() {
     const tasteGameIds = getTopRatedPlayedIds(3)
     const tasteSignal  = tasteRef.current
 
-    getDiscoveryDeck({ excludeIds, tasteGameIds, tasteSignal, limit: 30 })
+    const refillPromise = moodId
+      ? getMoodDeck(moodId, { excludeIds, limit: 30 })
+      : getDiscoveryDeck({ excludeIds, tasteGameIds, tasteSignal, limit: 30 })
+
+    refillPromise
       .then((newGames) => {
         if (cancelRef.current) return
 

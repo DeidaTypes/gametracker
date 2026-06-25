@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
@@ -20,6 +20,7 @@ import GotAnHourRail, {
   inBucket,
 } from '../components/explore/GotAnHourRail'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
+import { MoodChips } from '../components/explore/MoodChips'
 import ReviewCard from '../components/ReviewCard'
 import FindFriendsModal from '../components/FindFriendsModal'
 import { GameCardSkeletonRow } from '../components/skeletons/GameCardSkeleton'
@@ -130,6 +131,19 @@ function Explore() {
   const [gamesTab, setGamesTab]     = useState('popular')
   const [reviewsTab, setReviewsTab] = useState('popular')
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
+
+  // ── Mood deck state ────────────────────────────────────────────────────────
+  // activeMood: the currently selected mood chip ID, or null for default deck.
+  // emptyMoods: chips whose deck returned 0 results — hidden from the row.
+  const [activeMood, setActiveMood]   = useState(null)
+  const [emptyMoods, setEmptyMoods]   = useState(() => new Set())
+
+  const handleMoodEmpty = useCallback((moodId) => {
+    if (!moodId) return
+    setEmptyMoods((prev) => new Set([...prev, moodId]))
+    // Reset to default deck when the selected mood comes up empty
+    setActiveMood((prev) => (prev === moodId ? null : prev))
+  }, [])
 
   // ── "Got an hour?" state ──────────────────────────────────────────────────
   const [ttbBucket, setTtbBucket]       = useState('short') // default "Short"
@@ -298,7 +312,16 @@ function Explore() {
           <div className="explore-section__pad discover-section-header">
             <h2 className="discover-section-title">Swipe to discover</h2>
           </div>
-          <SwipeDeck />
+          <MoodChips
+            activeMood={activeMood}
+            onSelect={setActiveMood}
+            emptyMoods={emptyMoods}
+          />
+          <SwipeDeck
+            key={activeMood ?? 'default'}
+            moodId={activeMood}
+            onMoodEmpty={handleMoodEmpty}
+          />
         </section>
 
         {/* ── Section 1: Games carousel ── */}
