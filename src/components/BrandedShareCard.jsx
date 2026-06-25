@@ -1,541 +1,317 @@
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { CARD_WIDTH, CARD_HEIGHT } from '../services/share'
+import './BrandedShareCard.css'
+
 /**
- * BrandedShareCard — offscreen card rendered by share.js / captureCard().
+ * BrandedShareCard — multi-variant offscreen share card.
  *
  * Variants:
- *   profile-dna       Gamer DNA card (F2, 1080×1350, Cobalt Modern)
- *   game-score        (future)
- *   favorites-shelf   (future)
- *   quotable-review   (future)
+ *   game-score       Game cover + title + user rating + deep link
+ *   profile-dna      Username + play/review/follow stats + deep link
+ *   favorites-shelf  Up to 5 game covers in a shelf row + deep link
+ *   quotable-review  Review excerpt + game title + rating + deep link
  *
- * Contract:
- *   - All styles are INLINE so html-to-image captures them correctly.
- *   - Props: { variant, data, deepLinkUrl, qrDataUrl, onReady }
- *   - onReady() is called after the component mounts and images resolve.
+ * All variants share:
+ *   - 1080×1350px fixed canvas (4:5, Instagram-safe)
+ *   - Deep navy background
+ *   - GameTracker watermark (bottom-left)
+ *   - QR code + short URL (bottom-right)
+ *
+ * Props:
+ *   variant     one of the four keys above
+ *   data        variant-specific data object (real data only)
+ *   deepLinkUrl string  canonical URL embedded in QR + text
+ *   qrDataUrl   string|null  pre-generated QR base64 image
+ *   onReady     () => void   called after first render so the capturer
+ *               knows images have had a chance to load
  */
 
-import React, { useEffect, useRef, useState } from 'react'
-import { CARD_WIDTH, CARD_HEIGHT } from '../services/share'
+const BrandedShareCard = forwardRef(function BrandedShareCard(
+  { variant, data = {}, deepLinkUrl = '', qrDataUrl = null, onReady },
+  ref
+) {
+  const rootRef = useRef(null)
+  useImperativeHandle(ref, () => rootRef.current)
 
-// ── Cobalt Modern palette (inlined — no CSS variable resolution in raster) ───
-const C = {
-  bgBase:     '#0a0f1f',
-  bgSurface:  '#131a35',
-  bgSurface2: '#1a2240',
-  accent:     '#3b82f6',
-  accentMid:  '#60a5fa',
-  textPrimary:'#f0f3fa',
-  textSecond: '#94a8d4',
-  textTert:   '#5c6b8a',
-  borderSub:  'rgba(148,168,212,0.12)',
-  borderStr:  'rgba(148,168,212,0.24)',
-  success:    '#34d399',
-  warning:    '#fbbf24',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function barWidth(pct) {
-  return Math.max(6, Math.min(100, pct)) + '%'
-}
-
-function fmtHours(h) {
-  if (!h) return '0h'
-  if (h >= 1000) return `${(h / 1000).toFixed(1)}k h`
-  return `${h}h`
-}
-
-function starStr(avg) {
-  if (avg === null || avg === undefined) return '—'
-  return avg.toFixed(1) + '★'
-}
-
-// ── Checkpoint wordmark SVG (inline, no external assets) ─────────────────────
-function CheckpointMark({ size = 24 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect width="24" height="24" rx="6" fill={C.accent} />
-      <path
-        d="M6 12 L10 16 L18 8"
-        stroke={C.textPrimary}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-// ── Bar chart row ─────────────────────────────────────────────────────────────
-function GenreBar({ name, pct, accent, surface, textPrimary, textSecond }) {
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-        alignItems: 'baseline',
-      }}>
-        <span style={{
-          fontSize: 26,
-          fontWeight: 600,
-          color: textPrimary,
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          letterSpacing: '-0.01em',
-        }}>
-          {name}
-        </span>
-        <span style={{
-          fontSize: 24,
-          fontWeight: 500,
-          color: textSecond,
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-        }}>
-          {pct}%
-        </span>
-      </div>
-      <div style={{
-        height: 10,
-        backgroundColor: surface,
-        borderRadius: 5,
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%',
-          width: barWidth(pct),
-          backgroundColor: accent,
-          borderRadius: 5,
-        }} />
-      </div>
-    </div>
-  )
-}
-
-// ── Stat pill ─────────────────────────────────────────────────────────────────
-function StatPill({ label, value, accent, surface, textPrimary, textSecond }) {
-  return (
-    <div style={{
-      flex: 1,
-      backgroundColor: surface,
-      borderRadius: 20,
-      padding: '36px 24px',
-      textAlign: 'center',
-      border: `1px solid rgba(148,168,212,0.14)`,
-    }}>
-      <div style={{
-        fontSize: 56,
-        fontWeight: 700,
-        color: textPrimary,
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-        letterSpacing: '-0.02em',
-        lineHeight: 1,
-        marginBottom: 12,
-      }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: 22,
-        fontWeight: 500,
-        color: textSecond,
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-      }}>
-        {label}
-      </div>
-    </div>
-  )
-}
-
-// ── Section label ──────────────────────────────────────────────────────────────
-function SectionLabel({ children, color }) {
-  return (
-    <div style={{
-      fontSize: 20,
-      fontWeight: 600,
-      color: color,
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-      textTransform: 'uppercase',
-      letterSpacing: '0.12em',
-      marginBottom: 20,
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// ── DNA Card (profile-dna variant) ────────────────────────────────────────────
-function DNACard({ data, deepLinkUrl, qrDataUrl, onReady }) {
-  const {
-    topGenres = [],
-    vibe = null,
-    era = null,
-    totalGames = 0,
-    totalHours = 0,
-    reviewCount = 0,
-    avgRating = null,
-    username = null,
-    displayName = null,
-  } = data || {}
-
-  const hasMeaningfulData = totalGames > 0 || topGenres.length > 0
-
-  // Signal ready after one rAF
+  // Signal readiness after mount + one paint cycle
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        onReady?.()
-      })
-    })
-    return () => cancelAnimationFrame(frame)
+    if (typeof onReady === 'function') {
+      const t = window.setTimeout(onReady, 120)
+      return () => window.clearTimeout(t)
+    }
   }, [onReady])
 
-  const userLabel = displayName || username || 'Your'
-  const possessive = userLabel.toLowerCase().endsWith('s')
-    ? `${userLabel}'`
-    : `${userLabel}'s`
+  // Short URL label — strip protocol for display
+  const shortUrl = deepLinkUrl.replace(/^https?:\/\//, '')
 
   return (
-    <div style={{
-      width: CARD_WIDTH,
-      height: CARD_HEIGHT,
-      backgroundColor: C.bgBase,
-      position: 'relative',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif",
-    }}>
+    <div ref={rootRef} className="bsc" aria-hidden="true">
+      <div className="bsc__bg" />
 
-      {/* Subtle radial glow behind the heading */}
-      <div style={{
-        position: 'absolute',
-        top: -200,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 900,
-        height: 600,
-        background: `radial-gradient(ellipse at 50% 40%, rgba(59,130,246,0.18) 0%, transparent 70%)`,
-        pointerEvents: 'none',
-      }} />
-
-      {/* Top strip */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '48px 72px 0',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <CheckpointMark size={44} />
-          <span style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: C.textPrimary,
-            letterSpacing: '-0.01em',
-          }}>
-            Checkpoint
-          </span>
-        </div>
-        <span style={{
-          fontSize: 22,
-          fontWeight: 500,
-          color: C.textSecond,
-          letterSpacing: '0.05em',
-        }}>
-          checkpoint.app
-        </span>
+      {/* Variant body */}
+      <div className="bsc__body">
+        {variant === 'game-score' && <GameScoreVariant data={data} />}
+        {variant === 'profile-dna' && <ProfileDnaVariant data={data} />}
+        {variant === 'favorites-shelf' && <FavoritesShelfVariant data={data} />}
+        {variant === 'quotable-review' && <QuotableReviewVariant data={data} />}
       </div>
 
-      {/* Heading */}
-      <div style={{ padding: '60px 72px 0' }}>
-        <div style={{
-          fontSize: 34,
-          fontWeight: 500,
-          color: C.textSecond,
-          marginBottom: 12,
-          letterSpacing: '-0.01em',
-        }}>
-          {possessive}
-        </div>
-        <div style={{
-          fontSize: 96,
-          fontWeight: 800,
-          color: C.textPrimary,
-          lineHeight: 0.9,
-          letterSpacing: '-0.03em',
-          marginBottom: 16,
-        }}>
-          GAMER
-        </div>
-        <div style={{
-          fontSize: 96,
-          fontWeight: 800,
-          background: `linear-gradient(90deg, ${C.accent} 0%, ${C.accentMid} 100%)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          lineHeight: 0.9,
-          letterSpacing: '-0.03em',
-        }}>
-          DNA
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{
-        margin: '48px 72px 0',
-        height: 1,
-        backgroundColor: C.borderStr,
-      }} />
-
-      {/* Stat pills */}
-      <div style={{
-        display: 'flex',
-        gap: 20,
-        padding: '48px 72px 0',
-      }}>
-        <StatPill
-          label="Games"
-          value={hasMeaningfulData ? String(totalGames) : '—'}
-          accent={C.accent}
-          surface={C.bgSurface}
-          textPrimary={C.textPrimary}
-          textSecond={C.textSecond}
-        />
-        <StatPill
-          label="Hours"
-          value={hasMeaningfulData ? fmtHours(totalHours) : '—'}
-          accent={C.accent}
-          surface={C.bgSurface}
-          textPrimary={C.textPrimary}
-          textSecond={C.textSecond}
-        />
-        <StatPill
-          label="Rating"
-          value={starStr(avgRating)}
-          accent={C.accent}
-          surface={C.bgSurface}
-          textPrimary={C.textPrimary}
-          textSecond={C.textSecond}
-        />
-      </div>
-
-      {/* Genres section */}
-      {topGenres.length > 0 ? (
-        <div style={{ padding: '56px 72px 0' }}>
-          <SectionLabel color={C.textSecond}>Top Genres</SectionLabel>
-          {topGenres.slice(0, 4).map((g) => (
-            <GenreBar
-              key={g.name}
-              name={g.name}
-              pct={g.pct}
-              accent={C.accent}
-              surface={C.bgSurface}
-              textPrimary={C.textPrimary}
-              textSecond={C.textSecond}
+      {/* Footer: watermark left, QR + URL right */}
+      <div className="bsc__footer">
+        <span className="bsc__watermark">GameTracker</span>
+        <div className="bsc__qr-wrap">
+          {qrDataUrl && (
+            <img
+              src={qrDataUrl}
+              alt=""
+              crossOrigin="anonymous"
+              className="bsc__qr"
             />
-          ))}
+          )}
+          <span className="bsc__url">{shortUrl}</span>
         </div>
-      ) : (
-        <div style={{ padding: '56px 72px 0' }}>
-          <SectionLabel color={C.textSecond}>Top Genres</SectionLabel>
-          <div style={{
-            fontSize: 26,
-            color: C.textTert,
-            fontStyle: 'italic',
-          }}>
-            Add games to your library to reveal genres
+      </div>
+    </div>
+  )
+})
+
+export default BrandedShareCard
+
+/* ============================================================
+   Variant: Game Score
+   data: { game: { title, coverUrl, year, developer }, rating, username }
+   ============================================================ */
+function GameScoreVariant({ data }) {
+  const { game = {}, rating = 0, username = '' } = data
+  const safeRating = Math.max(0, Math.min(5, Number(rating) || 0))
+  const fillPct = (safeRating / 5) * 100
+
+  return (
+    <div className="bsc-game">
+      <div className="bsc-game__cover-wrap">
+        {game.coverUrl ? (
+          <img
+            src={game.coverUrl}
+            alt=""
+            crossOrigin="anonymous"
+            className="bsc-game__cover"
+          />
+        ) : (
+          <div className="bsc-game__cover bsc-game__cover--fallback" />
+        )}
+      </div>
+
+      <h1 className="bsc-game__title">{game.title || 'Untitled'}</h1>
+
+      {(game.developer || game.year) && (
+        <p className="bsc-game__meta">
+          {[game.developer, game.year].filter(Boolean).join(' · ')}
+        </p>
+      )}
+
+      {safeRating > 0 && (
+        <div className="bsc__stars-wrap">
+          <div className="bsc__stars-base">
+            {[0,1,2,3,4].map((i) => (
+              <svg key={i} width="40" height="40" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                  fill="none" stroke="rgba(148,168,212,0.25)" strokeWidth="1.5"
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
+            ))}
+          </div>
+          <div className="bsc__stars-fill" style={{ width: `${fillPct}%` }}>
+            {[0,1,2,3,4].map((i) => (
+              <svg key={i} width="40" height="40" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                  fill="#f5b50a" stroke="#f5b50a" strokeWidth="1"
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Vibe + Era row */}
-      <div style={{
-        display: 'flex',
-        gap: 20,
-        padding: '44px 72px 0',
-        flex: 1,
-      }}>
-        {/* Vibe */}
-        <div style={{
-          flex: 1,
-          backgroundColor: C.bgSurface,
-          borderRadius: 20,
-          padding: '32px 32px',
-          border: `1px solid ${C.borderSub}`,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{
-            fontSize: 18,
-            fontWeight: 600,
-            color: C.textSecond,
-            textTransform: 'uppercase',
-            letterSpacing: '0.10em',
-            marginBottom: 16,
-          }}>
-            Vibe
-          </div>
-          <div style={{
-            fontSize: vibe ? 38 : 28,
-            fontWeight: 700,
-            color: vibe ? C.textPrimary : C.textTert,
-            letterSpacing: '-0.01em',
-            lineHeight: 1.1,
-            fontStyle: vibe ? 'normal' : 'italic',
-          }}>
-            {vibe || 'Keep playing to reveal'}
-          </div>
-        </div>
+      {safeRating > 0 && (
+        <p className="bsc-game__score">{safeRating}<span className="bsc-game__score-denom">/5</span></p>
+      )}
 
-        {/* Era */}
-        <div style={{
-          flex: 1,
-          backgroundColor: C.bgSurface,
-          borderRadius: 20,
-          padding: '32px 32px',
-          border: `1px solid ${C.borderSub}`,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{
-            fontSize: 18,
-            fontWeight: 600,
-            color: C.textSecond,
-            textTransform: 'uppercase',
-            letterSpacing: '0.10em',
-            marginBottom: 16,
-          }}>
-            Peak Era
+      {username && (
+        <p className="bsc-game__byline">Reviewed by {username}</p>
+      )}
+    </div>
+  )
+}
+
+/* ============================================================
+   Variant: Profile DNA
+   data: { username, displayName, avatarUrl, gamesPlayed, reviews, following, genres }
+   genres: Array<{ name, count }>  (top genres, real data only)
+   ============================================================ */
+function ProfileDnaVariant({ data }) {
+  const {
+    username = '',
+    displayName = '',
+    avatarUrl = null,
+    gamesPlayed = 0,
+    reviews = 0,
+    following = 0,
+    genres = [],
+  } = data
+
+  return (
+    <div className="bsc-profile">
+      <div className="bsc-profile__avatar-wrap">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            crossOrigin="anonymous"
+            className="bsc-profile__avatar"
+          />
+        ) : (
+          <div className="bsc-profile__avatar bsc-profile__avatar--fallback">
+            {(displayName || username || '?').charAt(0).toUpperCase()}
           </div>
-          <div style={{
-            fontSize: era ? 54 : 28,
-            fontWeight: 800,
-            color: era ? C.accent : C.textTert,
-            letterSpacing: '-0.02em',
-            fontStyle: era ? 'normal' : 'italic',
-          }}>
-            {era ? era.label : '—'}
-          </div>
+        )}
+      </div>
+
+      <h1 className="bsc-profile__name">{displayName || username}</h1>
+      {displayName && username && (
+        <p className="bsc-profile__handle">@{username}</p>
+      )}
+
+      <div className="bsc-profile__stats">
+        <div className="bsc-profile__stat">
+          <span className="bsc-profile__stat-num">{gamesPlayed}</span>
+          <span className="bsc-profile__stat-label">Played</span>
+        </div>
+        <div className="bsc-profile__stat-divider" />
+        <div className="bsc-profile__stat">
+          <span className="bsc-profile__stat-num">{reviews}</span>
+          <span className="bsc-profile__stat-label">Reviews</span>
+        </div>
+        <div className="bsc-profile__stat-divider" />
+        <div className="bsc-profile__stat">
+          <span className="bsc-profile__stat-num">{following}</span>
+          <span className="bsc-profile__stat-label">Following</span>
         </div>
       </div>
 
-      {/* Bottom strip — QR + deep link */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '40px 72px 56px',
-      }}>
-        {qrDataUrl ? (
-          <div style={{
-            backgroundColor: C.bgSurface,
-            borderRadius: 16,
-            padding: 12,
-            border: `1px solid ${C.borderStr}`,
-          }}>
-            <img
-              src={qrDataUrl}
-              alt="QR code"
-              width={88}
-              height={88}
-              style={{ display: 'block', borderRadius: 8 }}
-            />
+      {genres.length > 0 && (
+        <div className="bsc-profile__genres">
+          <p className="bsc-profile__genres-label">Top Genres</p>
+          <div className="bsc-profile__genre-pills">
+            {genres.slice(0, 5).map(({ name }) => (
+              <span key={name} className="bsc-profile__genre-pill">{name}</span>
+            ))}
           </div>
-        ) : (
-          <div style={{ width: 112 }} />
-        )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{
-            fontSize: 22,
-            fontWeight: 500,
-            color: C.textSecond,
-            marginBottom: 8,
-          }}>
-            Scan to view profile
+/* ============================================================
+   Variant: Favorites Shelf
+   data: { username, games: Array<{ title, coverUrl }> }  (max 5)
+   ============================================================ */
+function FavoritesShelfVariant({ data }) {
+  const { username = '', games = [] } = data
+  const shelf = games.slice(0, 5)
+
+  return (
+    <div className="bsc-shelf">
+      <p className="bsc-shelf__eyebrow">Favorites</p>
+      <h1 className="bsc-shelf__name">{username}</h1>
+
+      <div className="bsc-shelf__row">
+        {shelf.map((game, i) => (
+          <div key={i} className="bsc-shelf__item">
+            {game.coverUrl ? (
+              <img
+                src={game.coverUrl}
+                alt=""
+                crossOrigin="anonymous"
+                className="bsc-shelf__cover"
+              />
+            ) : (
+              <div className="bsc-shelf__cover bsc-shelf__cover--fallback" />
+            )}
+            <p className="bsc-shelf__game-title">{game.title}</p>
           </div>
-          {username && (
-            <div style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: C.textPrimary,
-              letterSpacing: '-0.01em',
-            }}>
-              @{username}
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   Variant: Quotable Review
+   data: { quote, game: { title, coverUrl }, rating, username }
+   ============================================================ */
+function QuotableReviewVariant({ data }) {
+  const { quote = '', game = {}, rating = 0, username = '' } = data
+  const safeRating = Math.max(0, Math.min(5, Number(rating) || 0))
+  const fillPct = (safeRating / 5) * 100
+  // Trim quote to ~280 chars so it fits the card
+  const displayQuote = quote.length > 280 ? quote.slice(0, 277) + '…' : quote
+
+  return (
+    <div className="bsc-quote">
+      <div className="bsc-quote__header">
+        {game.coverUrl && (
+          <img
+            src={game.coverUrl}
+            alt=""
+            crossOrigin="anonymous"
+            className="bsc-quote__cover"
+          />
+        )}
+        <div className="bsc-quote__game-info">
+          <h2 className="bsc-quote__game-title">{game.title || ''}</h2>
+          {safeRating > 0 && (
+            <div className="bsc__stars-wrap bsc__stars-wrap--sm">
+              <div className="bsc__stars-base">
+                {[0,1,2,3,4].map((i) => (
+                  <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                      fill="none" stroke="rgba(148,168,212,0.25)" strokeWidth="1.5"
+                      strokeLinecap="round" strokeLinejoin="round"
+                    />
+                  </svg>
+                ))}
+              </div>
+              <div className="bsc__stars-fill" style={{ width: `${fillPct}%` }}>
+                {[0,1,2,3,4].map((i) => (
+                  <svg key={i} width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                      fill="#f5b50a" stroke="#f5b50a" strokeWidth="1"
+                      strokeLinecap="round" strokeLinejoin="round"
+                    />
+                  </svg>
+                ))}
+              </div>
             </div>
           )}
-          <div style={{
-            fontSize: 22,
-            color: C.accent,
-            marginTop: 6,
-          }}>
-            checkpoint.app
-          </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-// ── Router — dispatch to the right variant ────────────────────────────────────
+      <div className="bsc-quote__body">
+        <span className="bsc-quote__mark" aria-hidden="true">"</span>
+        <p className="bsc-quote__text">{displayQuote}</p>
+        <span className="bsc-quote__mark bsc-quote__mark--close" aria-hidden="true">"</span>
+      </div>
 
-export default function BrandedShareCard({ variant, data, deepLinkUrl, qrDataUrl, onReady }) {
-  if (variant === 'profile-dna') {
-    return (
-      <DNACard
-        data={data}
-        deepLinkUrl={deepLinkUrl}
-        qrDataUrl={qrDataUrl}
-        onReady={onReady}
-      />
-    )
-  }
-
-  // Unsupported variant — render a minimal placeholder so the pipeline
-  // doesn't hang waiting for onReady.
-  return (
-    <div
-      style={{
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        backgroundColor: '#0a0f1f',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <PlaceholderCard
-        variant={variant}
-        data={data}
-        deepLinkUrl={deepLinkUrl}
-        qrDataUrl={qrDataUrl}
-        onReady={onReady}
-      />
-    </div>
-  )
-}
-
-function PlaceholderCard({ variant, onReady }) {
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()))
-    return () => cancelAnimationFrame(frame)
-  }, [onReady])
-
-  return (
-    <div style={{
-      color: '#94a8d4',
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-      fontSize: 32,
-    }}>
-      {variant}
+      {username && (
+        <p className="bsc-quote__byline">— {username}</p>
+      )}
     </div>
   )
 }

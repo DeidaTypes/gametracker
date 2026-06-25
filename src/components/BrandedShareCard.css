@@ -1,0 +1,495 @@
+/* ============================================================
+   BRANDED SHARE CARD — 1080x1350 offscreen capture target
+   All measurements are absolute px. CSS variables are used where
+   html-to-image can resolve them (they're defined on :root in
+   theme.css which the host document loads). Inline fallbacks
+   cover the rare case where the offscreen host doesn't inherit.
+   ============================================================ */
+
+/* ---- Root container ---- */
+.bsc {
+  position: relative;
+  width: 1080px;
+  height: 1350px;
+  overflow: hidden;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  color: #f0f3fa;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
+  background: #0a0f1f;
+  /* Freeze any inherited transitions so the capture is a static frame */
+  transition: none !important;
+  animation: none !important;
+}
+
+.bsc__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.18) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bsc__body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 96px 40px;
+  box-sizing: border-box;
+}
+
+/* ---- Footer ---- */
+.bsc__footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 80px 72px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.bsc__watermark {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #3b82f6;
+}
+
+.bsc__qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.bsc__qr {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.bsc__url {
+  font-size: 22px;
+  font-weight: 500;
+  color: #5c6b8a;
+  letter-spacing: 0.01em;
+  max-width: 360px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Shared star layers (all variants) ---- */
+.bsc__stars-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bsc__stars-base,
+.bsc__stars-fill {
+  display: flex;
+  align-items: center;
+}
+
+.bsc__stars-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   VARIANT: game-score
+   ============================================================ */
+.bsc-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.bsc-game__cover-wrap {
+  width: 480px;
+  height: 640px;
+  border-radius: 24px;
+  overflow: hidden;
+  margin-bottom: 80px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+
+.bsc-game__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bsc-game__cover--fallback {
+  background: linear-gradient(135deg, #1a2240 0%, #0a0f1f 100%);
+}
+
+.bsc-game__title {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 80px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: #f0f3fa;
+  margin: 0 0 28px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bsc-game__meta {
+  font-size: 30px;
+  font-weight: 500;
+  color: #5c6b8a;
+  margin: 0 0 56px;
+  text-align: center;
+}
+
+.bsc-game__score {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 96px;
+  font-weight: 700;
+  line-height: 1;
+  color: #f5b50a;
+  margin: 20px 0 0;
+  letter-spacing: -0.02em;
+}
+
+.bsc-game__score-denom {
+  font-size: 48px;
+  color: #5c6b8a;
+  font-weight: 500;
+}
+
+.bsc-game__byline {
+  font-size: 30px;
+  color: #94a8d4;
+  margin: 28px 0 0;
+  font-weight: 500;
+}
+
+/* ============================================================
+   VARIANT: profile-dna
+   ============================================================ */
+.bsc-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.bsc-profile__avatar-wrap {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 56px;
+  border: 3px solid rgba(59,130,246,0.35);
+  flex-shrink: 0;
+}
+
+.bsc-profile__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bsc-profile__avatar--fallback {
+  width: 100%;
+  height: 100%;
+  background: #1a2240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 96px;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.bsc-profile__name {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 88px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #f0f3fa;
+  margin: 0 0 16px;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bsc-profile__handle {
+  font-size: 32px;
+  font-weight: 500;
+  color: #5c6b8a;
+  margin: 0 0 80px;
+}
+
+.bsc-profile__stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 80px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.bsc-profile__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 72px;
+  gap: 12px;
+}
+
+.bsc-profile__stat-divider {
+  width: 1px;
+  height: 80px;
+  background: rgba(255,255,255,0.08);
+}
+
+.bsc-profile__stat-num {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 80px;
+  font-weight: 700;
+  line-height: 1;
+  color: #f0f3fa;
+  letter-spacing: -0.02em;
+}
+
+.bsc-profile__stat-label {
+  font-size: 28px;
+  font-weight: 500;
+  color: #5c6b8a;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bsc-profile__genres {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.bsc-profile__genres-label {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5c6b8a;
+  margin: 0;
+}
+
+.bsc-profile__genre-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.bsc-profile__genre-pill {
+  padding: 14px 32px;
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 40px;
+  font-size: 28px;
+  font-weight: 500;
+  color: #94a8d4;
+  background: rgba(59,130,246,0.08);
+}
+
+/* ============================================================
+   VARIANT: favorites-shelf
+   ============================================================ */
+.bsc-shelf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.bsc-shelf__eyebrow {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #3b82f6;
+  margin: 0 0 24px;
+}
+
+.bsc-shelf__name {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 88px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #f0f3fa;
+  margin: 0 0 96px;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bsc-shelf__row {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.bsc-shelf__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  /* width adapts based on count; max 5 covers */
+  flex: 0 0 auto;
+  width: 172px;
+}
+
+.bsc-shelf__cover {
+  width: 172px;
+  height: 229px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+}
+
+.bsc-shelf__cover--fallback {
+  background: linear-gradient(135deg, #1a2240 0%, #0a0f1f 100%);
+}
+
+.bsc-shelf__game-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: #94a8d4;
+  text-align: center;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+/* ============================================================
+   VARIANT: quotable-review
+   ============================================================ */
+.bsc-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0;
+}
+
+.bsc-quote__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  margin-bottom: 80px;
+  width: 100%;
+}
+
+.bsc-quote__cover {
+  width: 160px;
+  height: 213px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+.bsc-quote__game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 16px;
+}
+
+.bsc-quote__game-title {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #f0f3fa;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bsc-quote__body {
+  position: relative;
+  padding: 0 0 0 40px;
+  flex: 1;
+  margin-bottom: 56px;
+}
+
+.bsc-quote__mark {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 160px;
+  line-height: 0.7;
+  color: rgba(59,130,246,0.35);
+  display: block;
+  margin-bottom: 24px;
+  font-weight: 700;
+}
+
+.bsc-quote__mark--close {
+  display: none;
+}
+
+.bsc-quote__text {
+  font-size: 44px;
+  line-height: 1.5;
+  color: #f0f3fa;
+  margin: 0;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.bsc-quote__byline {
+  font-size: 32px;
+  font-weight: 500;
+  color: #5c6b8a;
+  margin: 0;
+  align-self: flex-end;
+}
+
+/* Small star variant for quotable-review */
+.bsc__stars-wrap--sm {
+  /* stars are 28px each, set above */
+}
