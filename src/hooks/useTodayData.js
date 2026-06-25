@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getContinuePlayingGames } from '../services/libraryService'
-import { getCachedActivityCalendar, computeStreaks, toLocalDateKey, invalidateActivityCache } from '../services/statsService'
+import { getCachedActivityCalendar, computeStreaks, toLocalDateKey, invalidateActivityCache, getCircleStreaks } from '../services/statsService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeProgress } from '../services/progressHelper'
-import { getGoalProgress } from '../services/goalService'
+import { getGoalProgress, computePace } from '../services/goalService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -72,6 +72,9 @@ export function useTodayData() {
   const [daysLogged, setDaysLogged] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Social streaks — followed users who have an active streak and have opted in.
+  const [circleStreaks, setCircleStreaks] = useState([])
+
   // Yearly goal progress.
   const thisYear = new Date().getFullYear()
   const [goalProgress, setGoalProgress] = useState({
@@ -123,16 +126,18 @@ export function useTodayData() {
     }
 
     try {
-      // Run activity calendar + goal progress in parallel.
-      const [counts, gp] = await Promise.all([
+      // Run activity calendar + goal progress + circle streaks in parallel.
+      const [counts, gp, circle] = await Promise.all([
         getCachedActivityCalendar(user.id, 60),
         getGoalProgress(user.id, new Date().getFullYear()),
+        getCircleStreaks(user.id),
       ])
       const cells = buildWeekCells(counts)
       setWeekCells(cells)
       setStreak(computeStreaks(counts))
       setDaysLogged(countActiveDays(cells))
       setGoalProgress(gp)
+      setCircleStreaks(circle)
     } catch (err) {
       console.error('[useTodayData] activity fetch failed:', err)
       const cells = buildWeekCells(new Map())
@@ -175,6 +180,8 @@ export function useTodayData() {
     }
   }, [refreshNowPlaying, refreshActivity])
 
+  const paceInfo = computePace(goalProgress)
+
   return {
     nowPlaying,
     ttb,
@@ -184,5 +191,7 @@ export function useTodayData() {
     daysLogged,
     isLoading,
     goalProgress,
+    paceInfo,
+    circleStreaks,
   }
 }

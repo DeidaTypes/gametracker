@@ -404,3 +404,31 @@ export function parseLocalDateKey(key) {
   const [y, m, d] = key.split('-').map((s) => parseInt(s, 10))
   return new Date(y, m - 1, d)
 }
+
+/**
+ * Fetch current streaks for users that `userId` follows, using the
+ * `get_circle_streaks` Postgres function.
+ *
+ * Only users with `streak_share_opt_in = true` (default) are included.
+ * Only followers who have an active streak (≥ 1) are returned, sorted
+ * highest-streak first.
+ *
+ * @param {string} userId  The viewer's auth UUID.
+ * @returns {Promise<Array<{ user_id: string, username: string, avatar_url: string, current_streak: number }>>}
+ */
+export async function getCircleStreaks(userId) {
+  if (!userId) return []
+  try {
+    const { data, error } = await supabase.rpc('get_circle_streaks', {
+      viewer_id: userId,
+    })
+    if (error) {
+      console.error('[stats] getCircleStreaks failed:', error.message)
+      return []
+    }
+    return data ?? []
+  } catch (err) {
+    console.error('[stats] getCircleStreaks crashed:', err)
+    return []
+  }
+}

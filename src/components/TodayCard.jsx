@@ -234,7 +234,7 @@ function WeekRow({ cells, onDayTap }) {
 export default function TodayCard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading, goalProgress } =
+  const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading, goalProgress, paceInfo, circleStreaks } =
     useTodayData()
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
   const [dayLogDate,    setDayLogDate]    = useState(null)
@@ -312,6 +312,23 @@ export default function TodayCard() {
         </div>
       </div>
 
+      {/* Social streaks — circle members with active streaks who opted in */}
+      {!isLoading && circleStreaks.length > 0 && (
+        <div className="tc-social-streaks" aria-label="Your circle's streaks">
+          <span className="tc-social-streak-you">
+            you&nbsp;{streak.current}
+          </span>
+          {circleStreaks.slice(0, 4).map((cs) => (
+            <React.Fragment key={cs.user_id}>
+              <span className="tc-social-streak-sep" aria-hidden="true">·</span>
+              <span className="tc-social-streak-peer">
+                {cs.username}&nbsp;{cs.current_streak}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+
       {/* Now Playing — hidden when no game is Playing */}
       {nowPlaying && (
         <NowPlayingRow
@@ -353,6 +370,31 @@ export default function TodayCard() {
             Calendar <ChevronRight size={12} aria-hidden="true" />
           </button>
         </div>
+      )}
+
+      {/* Challenge nudge — hidden when no goal is set */}
+      {!isLoading && goalProgress.hasGoal && (
+        <button
+          type="button"
+          className="tc-challenge-nudge"
+          onClick={() => navigate('/profile')}
+          aria-label={`${goalProgress.year} Challenge: ${goalProgress.current} of ${goalProgress.target} games${paceInfo ? ` — ${paceInfo.label}` : ''}`}
+        >
+          <span className="tc-challenge-nudge__label">
+            {goalProgress.year} Challenge
+          </span>
+          <span className="tc-challenge-nudge__count">
+            {goalProgress.current}/{goalProgress.target}
+          </span>
+          {paceInfo && (
+            <span
+              className={`tc-challenge-nudge__pace tc-challenge-nudge__pace--${paceInfo.status}`}
+            >
+              {paceInfo.label}
+            </span>
+          )}
+          <ChevronRight size={11} className="tc-challenge-nudge__arrow" aria-hidden="true" />
+        </button>
       )}
     </div>
 

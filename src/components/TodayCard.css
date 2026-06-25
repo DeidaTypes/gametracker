@@ -61,6 +61,43 @@
 /* Kept so any direct import of the class elsewhere doesn't break */
 .tc-streak-chip { display: none; }
 
+/* ── Social streaks row ──────────────────────── */
+
+.tc-social-streaks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.tc-social-streak-you {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tc-social-streak-sep {
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.tc-social-streak-peer {
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tc-social-streaks {
+    animation: tc-fade-in 0.25s ease both;
+  }
+}
+
+@keyframes tc-fade-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Now Playing row ─────────────────────────── */
 
 .tc-now-playing {
@@ -449,4 +486,74 @@
 
 .tc-session-stop-btn:active {
   background: rgba(239, 68, 68, 0.16);
+}
+
+/* ── Challenge nudge ────────────────────────────────────────────── */
+
+.tc-challenge-nudge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(var(--accent-rgb, 180, 120, 60), 0.07);
+  border: 1px solid rgba(var(--accent-rgb, 180, 120, 60), 0.18);
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.tc-challenge-nudge:active {
+  background: rgba(var(--accent-rgb, 180, 120, 60), 0.14);
+}
+
+.tc-challenge-nudge__label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.tc-challenge-nudge__count {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.tc-challenge-nudge__pace {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-challenge-nudge__pace--ahead {
+  color: #4ade80;
+}
+
+.tc-challenge-nudge__pace--on-track {
+  color: var(--color-text-tertiary);
+}
+
+.tc-challenge-nudge__pace--behind {
+  color: #fb923c;
+}
+
+.tc-challenge-nudge__arrow {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-challenge-nudge {
+    transition: none;
+  }
 }
