@@ -1,0 +1,149 @@
+/* =============================================
+   BADGE REVEAL OVERLAY
+   Full-screen celebration when a badge is earned.
+   Mirrors MilestoneCelebration's structure/tokens.
+   ============================================= */
+
+.br-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  padding: var(--spacing-lg);
+}
+
+.br-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  max-width: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Tier-keyed radial glow at the top of the card ── */
+.br-halo {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  height: 120px;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    color-mix(in srgb, var(--badge-reveal-glow, var(--accent)) 28%, transparent) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ── "Badge Unlocked" eyebrow label ── */
+.br-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Tier-bordered icon wrapper (88px circle) ── */
+.br-icon-wrap {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-full);
+  border: 3px solid transparent;
+  background: var(--bg-elevated, var(--bg-surface));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--badge-reveal-glow, var(--accent)) 15%, transparent),
+    var(--shadow-md);
+}
+
+/* Tier-specific icon colors */
+.br-icon-wrap--bronze  { color: #CD7F32; }
+.br-icon-wrap--silver  { color: #C0C0C0; }
+.br-icon-wrap--gold    { color: #FFD700; }
+.br-icon-wrap--platinum { color: #E5E4E2; }
+
+/* ── Badge name ── */
+.br-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+}
+
+/* ── Tier pill ── */
+.br-tier {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.br-tier--bronze   { color: #CD7F32; }
+.br-tier--silver   { color: #C0C0C0; }
+.br-tier--gold     { color: #FFD700; }
+.br-tier--platinum { color: #E5E4E2; }
+
+/* ── Description ── */
+.br-desc {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-body);
+}
+
+/* ── Dismiss CTA ── */
+.br-dismiss {
+  margin-top: var(--spacing-xs);
+  padding: 12px var(--spacing-xl);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 140px;
+}
+
+.br-dismiss:active {
+  opacity: 0.82;
+}
+
+/* ── Reduced-motion: strip all transitions ── */
+@media (prefers-reduced-motion: reduce) {
+  .br-dismiss { transition: none; }
+  .br-icon-wrap { box-shadow: var(--shadow-md); }
+}
+
+[data-reduce-motion='true'] .br-dismiss { transition: none; }

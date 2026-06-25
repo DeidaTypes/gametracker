@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag, HiHeart, HiOutlineHeart } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
+import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
@@ -23,6 +24,7 @@ import {
   getCommentLikeStates,
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
+import { bumpCommentsCount } from '../hooks/useUserStats'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -117,18 +119,81 @@ function toReviewCardShape(row, commentCount) {
   }
 }
 
+/* ── Spoiler parsing ─────────────────────────────────────────────────── */
+
 /**
- * Render comment text with the leading @mention highlighted in cobalt.
- * Only the first token of the form `@word` is styled; the rest is plain text.
+ * Split comment text into plain-text and [spoiler]…[/spoiler] segments.
+ * Unmatched brackets are returned as literal text.
+ */
+function parseForSpoilers(text) {
+  const parts = []
+  const re = /\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi
+  let lastIdx = 0
+  let m
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push({ type: 'text', content: text.slice(lastIdx, m.index) })
+    parts.push({ type: 'spoiler', content: m[1] })
+    lastIdx = m.index + m[0].length
+  }
+  if (lastIdx < text.length) parts.push({ type: 'text', content: text.slice(lastIdx) })
+  return parts
+}
+
+/** Inline spoiler segment — hidden until tapped. */
+function SpoilerSegment({ text }) {
+  const [revealed, setRevealed] = useState(false)
+  return (
+    <button
+      type="button"
+      className={`rd-comment__spoiler${revealed ? ' rd-comment__spoiler--revealed' : ''}`}
+      onClick={() => !revealed && setRevealed(true)}
+      aria-label={revealed ? undefined : 'Tap to reveal spoiler'}
+    >
+      {text}
+    </button>
+  )
+}
+
+/**
+ * Render comment text with:
+ *   - [spoiler]…[/spoiler] tags rendered as tap-to-reveal blobs
+ *   - The leading @mention (if present) highlighted in brand color
  */
 function CommentBody({ text }) {
-  const match = text.match(/^(@\S+)(\s[\s\S]*|$)/)
-  if (!match) return <p className="rd-comment__text">{text}</p>
-  const [, mention, rest] = match
+  const segments = parseForSpoilers(text)
+  const hasSpoilers = segments.some((s) => s.type === 'spoiler')
+
+  if (!hasSpoilers) {
+    const match = text.match(/^(@\S+)(\s[\s\S]*|$)/)
+    if (!match) return <p className="rd-comment__text">{text}</p>
+    const [, mention, rest] = match
+    return (
+      <p className="rd-comment__text">
+        <span className="rd-comment__mention">{mention}</span>
+        {rest}
+      </p>
+    )
+  }
+
   return (
     <p className="rd-comment__text">
-      <span className="rd-comment__mention">{mention}</span>
-      {rest}
+      {segments.map((seg, i) => {
+        if (seg.type === 'spoiler') {
+          return <SpoilerSegment key={i} text={seg.content} />
+        }
+        if (i === 0) {
+          const m = seg.content.match(/^(@\S+)(\s[\s\S]*|$)/)
+          if (m) {
+            return (
+              <React.Fragment key={i}>
+                <span className="rd-comment__mention">{m[1]}</span>
+                {m[2]}
+              </React.Fragment>
+            )
+          }
+        }
+        return <React.Fragment key={i}>{seg.content}</React.Fragment>
+      })}
     </p>
   )
 }
@@ -314,7 +379,13 @@ function CommentRow({
         )}
 
         {!editing && (
-          <div className="rd-comment__meta">
+          <>
+            <Reactions
+              targetType="comment"
+              targetId={comment.id}
+              className="rd-comment__reactions"
+            />
+            <div className="rd-comment__meta">
             <button
               type="button"
               className={`rd-comment__like-btn${localLike.liked ? ' rd-comment__like-btn--liked' : ''}`}
@@ -386,6 +457,7 @@ function CommentRow({
               )}
             </div>
           </div>
+          </>
         )}
       </div>
     </article>
@@ -478,6 +550,10 @@ function ReviewDetail() {
 
   // ── Comment likes ───────────────────────────────────────────
   const [likeStates, setLikeStates] = useState(new Map())
+
+  // ── Sort mode ────────────────────────────────────────────────
+  // 'new' = chronological (default); 'top' = most-liked first
+  const [sortMode, setSortMode] = useState('new')
 
   // ── Composer state ──────────────────────────────────────────
   const [replyTo, setReplyTo] = useState(null)
@@ -705,6 +781,8 @@ function ReviewDetail() {
         return next
       })
       scrollToBottom()
+      // Increment local Conversationalist badge counter on successful post.
+      bumpCommentsCount(1)
     } catch (err) {
       console.error('[ReviewDetail] postComment failed:', err)
       // Roll back optimistic row

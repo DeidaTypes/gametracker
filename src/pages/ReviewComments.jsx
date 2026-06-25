@@ -20,6 +20,7 @@ import {
   deleteComment,
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
+import { bumpCommentsCount } from '../hooks/useUserStats'
 import './ReviewComments.css'
 
 /* ============================================================
@@ -556,6 +557,8 @@ function ReviewComments() {
       })
       setDraft('')
       setReplyTo(null)
+      // Increment local Conversationalist badge counter on successful post.
+      bumpCommentsCount(1)
     } catch (err) {
       console.error('[ReviewComments] postComment failed:', err)
       showToast(

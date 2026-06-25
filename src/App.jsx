@@ -58,6 +58,7 @@ import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import ToastHost from './components/Toast'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import MilestoneCelebration from './components/MilestoneCelebration'
+import BadgeReveal from './components/BadgeReveal'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
@@ -800,6 +801,10 @@ function App() {
                   shows the 7 / 30 / 100-day milestone celebration once per
                   milestone per user (localStorage-gated). Never guilt, only joy. */}
               <MilestoneCelebration />
+              {/* Mounted once at root — listens to 'badgeEarned' events
+                  dispatched by useBadgeUnlockWatcher and shows a full-screen
+                  reveal overlay for each newly-earned achievement badge. */}
+              <BadgeReveal />
               </SessionProvider>
               </SearchOverlayProvider>
             </GameColorProvider>

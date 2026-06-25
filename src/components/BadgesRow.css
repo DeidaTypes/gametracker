@@ -128,3 +128,123 @@
     transform: none;
   }
 }
+
+/* ============================================================
+   NextBadgeProgress — "Up next" progress strip
+   ============================================================ */
+
+.nbp {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  background: var(--bg-elevated, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 10px var(--spacing-md);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.nbp:hover {
+  background: var(--color-surface);
+  border-color: var(--border-strong);
+}
+
+/* Tier-bordered icon (40px) */
+.nbp__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nbp__icon--bronze  { color: #CD7F32; }
+.nbp__icon--silver  { color: #C0C0C0; }
+.nbp__icon--gold    { color: #FFD700; }
+.nbp__icon--platinum { color: #E5E4E2; }
+
+/* Right-hand body */
+.nbp__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nbp__top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nbp__label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary, var(--color-text-secondary));
+  flex-shrink: 0;
+}
+
+.nbp__name {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.nbp__count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Progress track */
+.nbp__track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  overflow: hidden;
+  position: relative;
+}
+
+.nbp__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.nbp__fill--bronze   { background: #CD7F32; }
+.nbp__fill--silver   { background: #C0C0C0; }
+.nbp__fill--gold     { background: #FFD700; }
+.nbp__fill--platinum { background: linear-gradient(90deg, #E5E4E2, #B7C4CF, #E5E4E2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nbp,
+  .nbp__fill {
+    transition: none;
+  }
+}
+
+[data-reduce-motion='true'] .nbp,
+[data-reduce-motion='true'] .nbp__fill {
+  transition: none;
+}

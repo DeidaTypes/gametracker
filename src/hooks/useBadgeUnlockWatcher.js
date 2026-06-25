@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from './useBadges'
-import { showToast } from '../components/Toast'
+import { dispatchBadgeEarned } from '../components/BadgeReveal'
 
 const STORAGE_KEY = 'gt:earnedBadges:v1'
 
@@ -28,7 +28,7 @@ function persistEarnedIds(set) {
 }
 
 /**
- * Sprint 5 P9 — Earn-toast watcher.
+ * Sprint 5 P9 — Badge unlock watcher (reveal overlay edition).
  *
  * Mounted once at the top of the app (see App.jsx). Subscribes to the
  * current user's badge state and fires a celebratory toast whenever a
@@ -102,10 +102,9 @@ export function useBadgeUnlockWatcher() {
     if (newlyEarned.length === 0) return
 
     for (const badge of newlyEarned) {
-      // Toast.css already collapses the slide+scale animation to
-      // instant when prefers-reduced-motion is set, so passing the
-      // badge icon here is the only customization needed.
-      showToast(`Badge earned: ${badge.name}`, 'badge', 4500, null, badge.icon)
+      // Dispatch to BadgeReveal (full-screen overlay). Reveal handles
+      // queueing so multiple same-session unlocks play sequentially.
+      dispatchBadgeEarned(badge)
     }
 
     // Union with previous so a badge can never re-toast even if a
