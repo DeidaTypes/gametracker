@@ -1651,6 +1651,131 @@ img.profile-list-row__author-avatar {
   white-space: nowrap;
 }
 
+/* ── Pace indicator chip ──────────────────────────────────── */
+
+.profile-challenge-pace {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}
+
+.profile-challenge-pace--ahead {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+}
+
+.profile-challenge-pace--on-track {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--color-text-secondary);
+}
+
+.profile-challenge-pace--behind {
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+}
+
+/* ── Milestone beat chip ──────────────────────────────────── */
+
+.profile-challenge-milestone {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-amber, #f59e0b);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}
+
+/* ── Rivalry mini-leaderboard ─────────────────────────────── */
+
+.profile-rivalry {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.profile-rivalry__heading {
+  margin: 0 0 8px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.profile-rivalry__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-rivalry__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.profile-rivalry__row--self {
+  border-radius: var(--radius-sm);
+}
+
+.profile-rivalry__rank {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.profile-rivalry__name {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-rivalry__row--self .profile-rivalry__name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.profile-rivalry__count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.profile-rivalry__row--self .profile-rivalry__count {
+  color: var(--accent);
+}
+
 /* ============================================================
    DIARY TAB
    Journal entries across all games, reverse-chronological.

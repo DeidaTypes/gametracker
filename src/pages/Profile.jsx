@@ -43,7 +43,7 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
-import { getGoalProgress, setGoal } from '../services/goalService'
+import { getGoalProgress, setGoal, computePace, computeMilestoneBeat, getRivalryData } from '../services/goalService'
 import { getStreakData, MILESTONES, isMilestoneSeen } from '../services/streakMilestoneService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
@@ -477,6 +477,7 @@ function Profile() {
   })
   const [streakData, setStreakData] = useState(null)
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
+  const [rivalryData, setRivalryData] = useState([])
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
@@ -576,7 +577,7 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData, gp, sd, journalRows] = await Promise.all([
+        const [rows, lists, acts, pins, pinnedListData, gp, sd, journalRows, rd] = await Promise.all([
           safeWithTimeout(getReviewsForUser(targetUserId), []),
           safeWithTimeout(getListsForUser(targetUserId), []),
           safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
@@ -585,9 +586,11 @@ function Profile() {
           isOwnProfile ? safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null) : Promise.resolve(null),
           isOwnProfile ? safeWithTimeout(getStreakData(targetUserId), null) : Promise.resolve(null),
           safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
+          isOwnProfile ? safeWithTimeout(getRivalryData(targetUserId, new Date().getFullYear()), []) : Promise.resolve([]),
         ])
         if (gp) setGoalProgress(gp)
         if (sd) setStreakData(sd)
+        if (rd) setRivalryData(rd)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
@@ -1877,6 +1880,7 @@ function Profile() {
                   onReviewTap={(id) => navigate(`/review/${id}`)}
                   goalProgress={goalProgress}
                   streakData={streakData}
+                  rivalryData={rivalryData}
                   onSetGoal={() => setGoalSheetOpen(true)}
                 />
               )}
@@ -2068,6 +2072,7 @@ function HomeTab({
   onReviewTap,
   goalProgress,
   streakData,
+  rivalryData,
   onSetGoal,
 }) {
   // Earned milestone badges: milestones where isMilestoneSeen = true AND longest_streak >= milestone
@@ -2076,6 +2081,25 @@ function HomeTab({
         (m) => (streakData.longest_streak ?? 0) >= m && isMilestoneSeen(user.id, m)
       )
     : []
+
+  const paceInfo = goalProgress ? computePace(goalProgress) : null
+  const milestoneBeat = goalProgress?.hasGoal
+    ? computeMilestoneBeat(goalProgress.current, goalProgress.target)
+    : null
+
+  // Build rivalry rows: insert "you" at the right position, show closest rivals
+  const rivalryRows = (() => {
+    if (!goalProgress?.hasGoal || !rivalryData?.length) return []
+    const withSelf = [
+      { userId: 'self', username: 'you', current: goalProgress.current, isSelf: true },
+      ...rivalryData.map((r) => ({ ...r, isSelf: false })),
+    ].sort((a, b) => b.current - a.current || (a.isSelf ? -1 : 1))
+    // Keep 3 rows centred around the "you" row
+    const selfIdx = withSelf.findIndex((r) => r.isSelf)
+    const start = Math.max(0, selfIdx - 1)
+    const end = Math.min(withSelf.length, start + 4)
+    return withSelf.slice(start, end)
+  })()
 
   return (
     <div className="profile-home">
@@ -2106,6 +2130,21 @@ function HomeTab({
                   <p className="profile-challenge-sub">
                     {goalProgress.current} of {goalProgress.target} games finished
                   </p>
+                  {/* Pace indicator */}
+                  {paceInfo && (
+                    <span
+                      className={`profile-challenge-pace profile-challenge-pace--${paceInfo.status}`}
+                      aria-label={`Pace: ${paceInfo.label}`}
+                    >
+                      {paceInfo.label}
+                    </span>
+                  )}
+                  {/* Milestone beat */}
+                  {milestoneBeat != null && (
+                    <span className="profile-challenge-milestone" aria-label={`Milestone: ${milestoneBeat} games`}>
+                      🎯 {milestoneBeat} game{milestoneBeat === 1 ? '' : 's'}
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="profile-challenge-edit"
@@ -2148,6 +2187,29 @@ function HomeTab({
               )}
             </div>
           </div>
+
+          {/* Rivalry mini-leaderboard — only when following someone with games this year */}
+          {goalProgress.hasGoal && rivalryRows.length > 1 && (
+            <div className="profile-rivalry" aria-label="Circle rivalry">
+              <p className="profile-rivalry__heading">Circle</p>
+              <ol className="profile-rivalry__list">
+                {rivalryRows.map((r, i) => (
+                  <li
+                    key={r.userId}
+                    className={`profile-rivalry__row${r.isSelf ? ' profile-rivalry__row--self' : ''}`}
+                  >
+                    <span className="profile-rivalry__rank" aria-hidden="true">{i + 1}</span>
+                    <span className="profile-rivalry__name">
+                      {r.isSelf ? 'you' : `@${r.username}`}
+                    </span>
+                    <span className="profile-rivalry__count">
+                      {r.current} {r.current === 1 ? 'game' : 'games'}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </section>
       )}
 

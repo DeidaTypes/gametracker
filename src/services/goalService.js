@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getFollowing } from './followService'
 
 /**
  * Goal Service — yearly game-count challenge.
@@ -172,4 +173,109 @@ export async function getGoalProgress(userId, year = new Date().getFullYear()) {
 
   const percent = Math.min(100, Math.round((current / goal.target) * 100))
   return { hasGoal: true, target: goal.target, current, year, percent }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   computePace
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Compare how many games the user has finished against how many they
+ * "should" have finished by today, given a uniform distribution across
+ * the year.
+ *
+ * @param {{ hasGoal: boolean, target: number|null, current: number, year: number }} goalProgress
+ * @returns {{ status: 'ahead'|'on-track'|'behind', games: number, label: string } | null}
+ *          null when no goal is set.
+ */
+export function computePace({ hasGoal, target, current, year }) {
+  if (!hasGoal || !target) return null
+
+  const now = new Date()
+  const yearStart = new Date(year, 0, 1, 0, 0, 0, 0)
+  const msPerDay = 24 * 60 * 60 * 1000
+  // daysElapsed: at least 1 so Jan 1 itself isn't 0/365
+  const daysElapsed = Math.max(1, Math.floor((now - yearStart) / msPerDay) + 1)
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+  const totalDays = isLeap ? 366 : 365
+
+  const expectedByNow = (target * daysElapsed) / totalDays
+  const delta = current - expectedByNow
+  const roundedDelta = Math.round(delta)
+
+  if (roundedDelta > 0) {
+    const g = roundedDelta
+    return { status: 'ahead', games: g, label: `${g} ${g === 1 ? 'game' : 'games'} ahead of schedule` }
+  }
+  if (roundedDelta < 0) {
+    const g = Math.abs(roundedDelta)
+    return { status: 'behind', games: g, label: `${g} ${g === 1 ? 'game' : 'games'} behind schedule` }
+  }
+  return { status: 'on-track', games: 0, label: 'On track' }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   computeMilestoneBeat
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Returns the highest milestone number the user has already crossed,
+ * or null if they haven't hit any yet. Milestone step is derived from
+ * the target so it's proportional to the goal size.
+ *
+ * @param {number} current
+ * @param {number|null} target
+ * @returns {number|null}
+ */
+export function computeMilestoneBeat(current, target) {
+  if (!current || current <= 0) return null
+  const n = milestoneStep(target)
+  const beat = Math.floor(current / n) * n
+  return beat > 0 ? beat : null
+}
+
+function milestoneStep(target) {
+  if (!target || target <= 10) return 1
+  if (target <= 25) return 5
+  if (target <= 100) return 10
+  return 25
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   getRivalryData
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Return game-count progress (this calendar year) for the people the
+ * current user follows, so we can render a "friendly rivalry" leaderboard.
+ *
+ * Each entry: { userId, username, current }
+ * Sorted descending by current. Entries with 0 games are included only
+ * if they would otherwise produce an empty list; the caller can filter
+ * further.
+ *
+ * @param {string} userId     — signed-in user's id
+ * @param {number} [year]
+ * @returns {Promise<Array<{ userId: string, username: string, current: number }>>}
+ */
+export async function getRivalryData(userId, year = new Date().getFullYear()) {
+  if (!userId) return []
+
+  const followRows = await getFollowing(userId, 20, 0)
+  if (!followRows.length) return []
+
+  const results = await Promise.all(
+    followRows.map(async (row) => {
+      const fid = row.followee_id
+      const u = row.followee
+      const count = await countFinishedThisYear(fid, year)
+      return {
+        userId: fid,
+        username: u?.username || u?.display_name || 'user',
+        current: count,
+      }
+    })
+  )
+
+  return results.sort((a, b) => b.current - a.current)
 }
