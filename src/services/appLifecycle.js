@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
+import { capturePendingReferral } from './inviteService'
 
 /**
  * Module-level Capacitor app-lifecycle wiring.
@@ -91,6 +92,34 @@ function handleBackground() {
 }
 
 /**
+ * Parse an incoming URL for a ?ref= invite param and a navigable path,
+ * then broadcast both to the React layer via custom events.
+ *
+ * Called by both the cold-start getLaunchUrl() check and the warm-start
+ * appUrlOpen listener so the same logic handles both entry points.
+ */
+function handleAppUrl(url) {
+  if (!url) return
+  try {
+    const parsed = new URL(url)
+
+    // Capture invite referral before the user navigates anywhere.
+    const ref = parsed.searchParams.get('ref')
+    if (ref) capturePendingReferral(ref)
+
+    // Broadcast deep-link path so App.jsx can navigate the SPA router.
+    const path = parsed.pathname + parsed.search + parsed.hash
+    if (path && path !== '/' && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('app:deeplink', { detail: { path } })
+      )
+    }
+  } catch {
+    // Malformed URL — ignore.
+  }
+}
+
+/**
  * Call once at app startup (from main.jsx).
  * No-op on web — native only.
  */
@@ -103,6 +132,8 @@ export function initAppLifecycle() {
   ;(async () => {
     try {
       const { App } = await import('@capacitor/app')
+
+      // 1. App state (foreground/background) — auth + realtime recovery.
       await App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
           handleForeground()
@@ -110,6 +141,17 @@ export function initAppLifecycle() {
           handleBackground()
         }
       })
+
+      // 2. Cold-start URL — app was launched by tapping a link while not running.
+      try {
+        const launchUrl = await App.getLaunchUrl()
+        if (launchUrl?.url) handleAppUrl(launchUrl.url)
+      } catch {
+        // getLaunchUrl() may not be available in all plugin versions — ignore.
+      }
+
+      // 3. Warm-start URL — app was already running and a link was opened.
+      await App.addListener('appUrlOpen', ({ url }) => handleAppUrl(url))
     } catch (err) {
       console.warn('[appLifecycle] @capacitor/app listener failed:', err)
     }

@@ -8,6 +8,11 @@ import { Capacitor } from '@capacitor/core'
 import App from './App'
 import './index.css'
 import { initAppLifecycle } from './services/appLifecycle'
+import { captureWebReferral } from './services/inviteService'
+
+// Capture ?ref= invite param from the URL before React mounts so it
+// survives the /login → /signup redirect chain.
+captureWebReferral()
 
 // Service worker must not run inside the Capacitor native app — it caches
 // the bundle and only yields to a new worker after a full quit/relaunch,

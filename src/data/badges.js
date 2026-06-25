@@ -14,6 +14,8 @@ import {
   Heart,
   MessageCircle,
   Share2,
+  UserPlus,
+  Users,
 } from 'lucide-react'
 
 /**
@@ -210,6 +212,28 @@ export const BADGES = [
     statKey: 'sharesCount',
     target: 1,
   }),
+
+  // ── Invite ──────────────────────────────────────────────────────────────
+  countBadge({
+    id: 'invite-1',
+    category: 'social',
+    tier: 'silver',
+    name: 'Connector',
+    description: 'Successfully invite 1 friend to GameTracker.',
+    icon: UserPlus,
+    statKey: 'invitesCount',
+    target: 1,
+  }),
+  countBadge({
+    id: 'invite-3',
+    category: 'social',
+    tier: 'gold',
+    name: 'Ambassador',
+    description: 'Successfully invite 3 friends to GameTracker.',
+    icon: Users,
+    statKey: 'invitesCount',
+    target: 3,
+  }),
 ]
 
 /**
@@ -245,4 +269,5 @@ export const EMPTY_STATS = {
   indiePlayedCount: 0,
   commentsCount: 0,
   sharesCount: 0,
+  invitesCount: 0,
 }

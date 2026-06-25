@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getReviewsForUser } from '../services/reviewService'
 import { getListsForUser } from '../services/listService'
 import { getGamesFromList, getLibrary } from '../services/libraryService'
+import { getInviteStats } from '../services/inviteService'
 import { EMPTY_STATS } from '../data/badges'
 
 /**
@@ -136,15 +137,17 @@ export function useUserStats(userId) {
       }
 
       try {
-        const [reviews, lists] = await Promise.all([
+        const [reviews, lists, invitesCount] = await Promise.all([
           getReviewsForUser(userId),
           getListsForUser(userId),
+          getInviteStats(userId),
         ])
         if (cancelled || myRequest !== requestRef.current) return
         setStats({
           ...local,
           reviewsCount: reviews.length,
           listsCount: lists.length,
+          invitesCount,
         })
       } catch (err) {
         console.error('[useUserStats] load failed:', err)

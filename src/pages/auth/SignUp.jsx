@@ -5,6 +5,7 @@ import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
 import { AUTH_ERRORS, USERNAME_PATTERN, normalizeUsername } from '../../services/auth'
 import { syncProfileFromSupabase } from '../../services/profileService'
+import { convertReferral } from '../../services/inviteService'
 import './Auth.css'
 
 const DISPLAY_NAME_MAX = 50
@@ -60,7 +61,7 @@ function SignUp() {
     setFormError(null)
     setSubmitting(true)
     try {
-      const { profile } = await signUp({
+      const { user, profile } = await signUp({
         email: email.trim(),
         password,
         displayName: trimmedName,
@@ -70,6 +71,9 @@ function SignUp() {
       // the own-profile UI reads, so the entered name + username show up
       // immediately instead of a stock default.
       syncProfileFromSupabase(profile)
+      // Fire-and-forget: record referral conversion if the user arrived via
+      // an invite link. Errors are logged but never surface to the user.
+      if (user?.id) convertReferral(user.id)
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const code = err?.code

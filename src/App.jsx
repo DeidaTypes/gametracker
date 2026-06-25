@@ -206,6 +206,18 @@ function AppContent() {
   // without a force-quit. (See useAppResume for the full rationale.)
   useAppResume()
 
+  // Native deep-link navigation — appLifecycle.js dispatches 'app:deeplink'
+  // after parsing an appUrlOpen / getLaunchUrl URL. We handle it here
+  // inside the Router context so we have access to navigate().
+  useEffect(() => {
+    const handler = (e) => {
+      const path = e.detail?.path
+      if (path) navigate(path, { replace: true })
+    }
+    window.addEventListener('app:deeplink', handler)
+    return () => window.removeEventListener('app:deeplink', handler)
+  }, [navigate])
+
   const isPublicRoute = PUBLIC_PATHS.has(location.pathname)
 
   useEffect(() => {

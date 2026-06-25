@@ -31,6 +31,14 @@ const DEFAULT_SETTINGS = Object.freeze({
   largerText: false,
   messagePrivacy: 'everyone',
   activityPrivacy: 'everyone',
+  // Pulse — realtime presence ("playing now") is opt-in and defaults
+  // off. The presence channel is only joined when this is true, and the
+  // usePresence() hook is a no-op otherwise. The Supabase column is
+  // `users.presence_opt_in` (see supabase/activity_events.sql).
+  presenceOptIn: false,
+  // Invite reward: users who earn the Ambassador badge unlock the
+  // 'copper' accent. Stored locally; no Supabase sync needed.
+  accentColor: 'default',
 })
 
 /* ============================================================
@@ -113,6 +121,12 @@ export function applySettingsToDom(settings) {
   } else {
     body.removeAttribute('data-larger-text')
   }
+
+  if (settings.accentColor && settings.accentColor !== 'default') {
+    body.setAttribute('data-accent', settings.accentColor)
+  } else {
+    body.removeAttribute('data-accent')
+  }
 }
 
 /**
@@ -136,7 +150,7 @@ export async function initSettings() {
 
     const { data, error } = await supabase
       .from('users')
-      .select('color_blind_mode, message_privacy, activity_privacy')
+      .select('color_blind_mode, message_privacy, activity_privacy, presence_opt_in')
       .eq('id', user.id)
       .maybeSingle()
     if (error || !data) return local
@@ -150,6 +164,9 @@ export async function initSettings() {
     }
     if (ACTIVITY_PRIVACY.includes(data.activity_privacy)) {
       merged.activityPrivacy = data.activity_privacy
+    }
+    if (typeof data.presence_opt_in === 'boolean') {
+      merged.presenceOptIn = data.presence_opt_in
     }
     writeRaw(merged)
     applySettingsToDom(merged)
@@ -252,6 +269,39 @@ export function setActivityPrivacy(value) {
   return next
 }
 
+/**
+ * Toggle realtime presence ("playing now") opt-in. When false, the
+ * usePresence() hook never joins a Realtime presence channel for this
+ * user — guaranteeing that not opting in literally cannot leak presence
+ * data. Mirrored to `users.presence_opt_in` so the same account on a
+ * different device honors the choice immediately on next initSettings().
+ */
+export function setPresenceOptIn(value) {
+  const current = getSettings()
+  const next = { ...current, presenceOptIn: !!value }
+  writeRaw(next)
+  softSyncToSupabase({ presence_opt_in: !!value })
+  emitChange(next)
+  return next
+}
+
+const ACCENT_COLORS = Object.freeze(['default', 'copper'])
+
+/**
+ * Set the accent color unlock earned via the Ambassador invite badge.
+ * Stored in localStorage only — no cross-device sync required since it's
+ * a cosmetic preference tied to a local badge state.
+ */
+export function setAccentColor(color) {
+  if (!ACCENT_COLORS.includes(color)) return
+  const current = getSettings()
+  const next = { ...current, accentColor: color }
+  writeRaw(next)
+  applySettingsToDom(next)
+  emitChange(next)
+  return next
+}
+
 /* ============================================================
    Public option lists for UI sub-sheets
    ============================================================ */
@@ -273,4 +323,10 @@ export const ACTIVITY_PRIVACY_OPTIONS = [
   { value: 'everyone', label: 'Everyone' },
   { value: 'followers', label: 'Followers only' },
   { value: 'me', label: 'Only me' },
+]
+
+/** Accent color options — 'copper' is gated behind the Ambassador invite badge. */
+export const ACCENT_COLOR_OPTIONS = [
+  { value: 'default', label: 'Default', description: 'Cobalt blue — the classic look' },
+  { value: 'copper', label: 'Ambassador', description: 'Warm copper — unlocked by inviting friends', locked: true },
 ]
