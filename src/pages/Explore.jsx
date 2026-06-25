@@ -9,11 +9,14 @@ import {
   usePopularReviews,
   useMostPlayedThisWeek,
   useCircleMostPlayed,
+  useHotTakes,
+  useReviewOfWeek,
 } from '../hooks/useExploreData'
 import { usePresence } from '../hooks/usePresence'
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
+import ReviewOfWeekHero from '../components/explore/ReviewOfWeekHero'
 import EventWeekBanner from '../components/explore/EventWeekBanner'
 import MostPlayedRail from '../components/explore/MostPlayedRail'
 import GotAnHourRail, {
@@ -168,6 +171,8 @@ function Explore() {
   const popularReviews   = usePopularReviews()      // reviews POPULAR tab
   const mostPlayed       = useMostPlayedThisWeek()  // most played this week rail (global fallback)
   const circlePlayed     = useCircleMostPlayed()    // circle-aware most-played rail
+  const hotTakes         = useHotTakes()            // contrarian reviews by engagement×deviation
+  const reviewOfWeek     = useReviewOfWeek()        // most-liked review in 7-day window
 
   // Presence — realtime follow-graph "playing now" state.
   // playingNow is [] when presence is disabled or circle has no live members.
@@ -213,6 +218,7 @@ function Explore() {
     const allRows = [
       ...(followingReviews.data || []),
       ...(popularReviews.data  || []),
+      ...(hotTakes.data        || []),
     ]
     if (!allRows.length) return
     const ids = [...new Set(allRows.map((r) => r.id))]
@@ -223,7 +229,7 @@ function Explore() {
       setCommentCounts(cCounts)
     }).catch(() => {})
     getLikeCountsForReviews(ids).then(setLikeCounts).catch(() => {})
-  }, [followingReviews.data, popularReviews.data])
+  }, [followingReviews.data, popularReviews.data, hotTakes.data])
 
   // ── "Got an hour?" — enrich candidate pool with real IGDB TTB data ────────
   // Pool = trending games ∪ new-release games (both already fetched, no new
@@ -305,9 +311,10 @@ function Explore() {
     const reviewGames   = [
       ...(followingReviews.data || []),
       ...(popularReviews.data   || []),
+      ...(hotTakes.data         || []),
     ].map((r) => ({ id: r.igdb_game_id, image: r.game_image }))
     return findDuplicateGameIds(trendingGames, newGamesArr, reviewGames)
-  }, [trending.data, newGames.data, followingReviews.data, popularReviews.data])
+  }, [trending.data, newGames.data, followingReviews.data, popularReviews.data, hotTakes.data])
 
   // ── Reviews section helpers ─────────────────────────────────────────────
 
@@ -349,6 +356,12 @@ function Explore() {
 
         {/* ── Game of the Week hero — editorial featured slot ── */}
         <GameOfWeekHero />
+
+        {/* ── Review of the Week — most-liked review in 7-day window ── */}
+        {/* Hidden automatically when reviewOfWeek.data is null (no qualifying review) */}
+        {!reviewOfWeek.loading && reviewOfWeek.data && (
+          <ReviewOfWeekHero review={reviewOfWeek.data} />
+        )}
 
         {/* ── Event Week — themed game set + activity leaderboard ── */}
         <section className="explore-section explore-section--event-week">
@@ -498,6 +511,30 @@ function Explore() {
             </div>
           )}
         </section>
+
+        {/* ── Hot Takes — contrarian reviews with community engagement ── */}
+        {(hotTakes.loading || (hotTakes.data && hotTakes.data.length > 0)) && (
+          <section className="explore-section explore-section--hot-takes">
+            <div className="explore-section__pad discover-section-header">
+              <h2 className="discover-section-title">Hot Takes</h2>
+            </div>
+
+            {hotTakes.loading ? (
+              <ReviewRowSkeletonList count={3} />
+            ) : hotTakes.error ? (
+              <ErrorBanner message="Could not load hot takes." />
+            ) : (
+              <div className="explore-review-feed">
+                {(hotTakes.data || []).slice(0, 3).map((r) => (
+                  <ReviewCard
+                    key={r.id}
+                    review={toReviewCardShape(r, likeCounts, commentCounts)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Section 3: Most played — circle (follow-graph) or global fallback ── */}
         {showCircleSection && (

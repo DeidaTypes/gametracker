@@ -11,6 +11,8 @@ import {
   getRecentCommunityReviews,
   getPopularReviews,
   getReviewsFromFollowing,
+  getHotTakeReviews,
+  getReviewOfWeek,
 } from '../services/reviewService'
 import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
 import { APP_RESUMED_EVENT } from './useAppResume'
@@ -138,6 +140,22 @@ export function useFollowingReviews() {
     const result = await getReviewsFromFollowing({ page: 1, limit: 20 })
     return result.items || []
   })
+}
+
+/**
+ * Discover page — "Hot Takes": contrarian reviews sorted by engagement×deviation.
+ * 60-day window, up to 10 results. Returns [] when no game has ≥ 3 reviews.
+ */
+export function useHotTakes() {
+  return useAsyncSection(() => getHotTakeReviews({ days: 60, limit: 10 }))
+}
+
+/**
+ * Discover page — "Review of the Week": most-liked review in the last 7 days.
+ * Returns null when no review in the window has ≥ 1 like (hides the spotlight).
+ */
+export function useReviewOfWeek() {
+  return useAsyncSection(() => getReviewOfWeek())
 }
 
 /**

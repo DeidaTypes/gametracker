@@ -86,6 +86,8 @@
 .explore-section--event-week { animation-delay: 0ms; }
 /* Swipe deck appears just after the hero — no stagger delay */
 .explore-section--swipe-deck { animation-delay: 0ms; }
+/* Hot Takes section — appears after the Reviews section */
+.explore-section--hot-takes { animation-delay: 75ms; }
 
 @keyframes exploreSectionIn {
   to {

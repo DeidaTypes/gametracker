@@ -430,6 +430,145 @@ export async function getReviewsFromFollowing({ page = 1, limit = 10 } = {}) {
 }
 
 /**
+ * Hot Takes — contrarian reviews that earned community engagement.
+ *
+ * A "hot take" is a review whose rating deviates significantly from the
+ * community average for that game AND that received likes, signalling that
+ * others found the contrarian position compelling.
+ *
+ * Algorithm:
+ *   1. Fetch up to 300 reviews from the past `days` days (block + flag filtered).
+ *   2. Per game: compute average rating and review count.
+ *   3. Require ≥ MIN_GAME_REVIEWS reviews per game for a meaningful average.
+ *   4. Per review: deviation = |rating − game_avg|. Keep deviation ≥ 1.5.
+ *   5. Batch-fetch like counts; score = likes × deviation + deviation × 0.1
+ *      (the 0.1 term keeps unliked contrarian reviews ranked above zero so
+ *      the section shows something while the community is still small).
+ *   6. Sort score desc, tiebreak recency desc. Slice to `limit`.
+ *
+ * Returned rows carry two extra fields (internal, for callers):
+ *   _likeCount — number of likes (avoids a second round-trip)
+ *   _gameAvg   — community average rating for the game
+ */
+export async function getHotTakeReviews({ days = 60, limit = 10 } = {}) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let q = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(300)
+      q = await applyBlockFilter(q, 'user_id')
+      return q
+    })(),
+  ])
+
+  const { data, error } = await queryResult
+  if (error) {
+    console.error('[reviews] getHotTakeReviews failed:', error.message)
+    return []
+  }
+
+  const rows = (data || []).filter((r) => !flaggedIds.has(r.id))
+  if (rows.length === 0) return []
+
+  // Per-game average rating + review count
+  const MIN_GAME_REVIEWS = 3
+  const MIN_DEVIATION = 1.5
+  const gameStats = new Map()
+  for (const r of rows) {
+    if (!r.igdb_game_id) continue
+    const s = gameStats.get(r.igdb_game_id) || { sum: 0, count: 0 }
+    s.sum += Number(r.rating) || 0
+    s.count += 1
+    gameStats.set(r.igdb_game_id, s)
+  }
+
+  // Keep only reviews on games with enough reviews and a large enough deviation
+  const candidates = rows.filter((r) => {
+    const s = gameStats.get(r.igdb_game_id)
+    if (!s || s.count < MIN_GAME_REVIEWS) return false
+    const avg = s.sum / s.count
+    return Math.abs(Number(r.rating) - avg) >= MIN_DEVIATION
+  })
+  if (candidates.length === 0) return []
+
+  const ids = candidates.map((r) => r.id)
+  const likeCounts = await getLikeCountsForReviews(ids)
+
+  return candidates
+    .map((r) => {
+      const s = gameStats.get(r.igdb_game_id)
+      const avg = s.sum / s.count
+      const deviation = Math.abs(Number(r.rating) - avg)
+      const likes = likeCounts.get(r.id) || 0
+      const score = likes * deviation + deviation * 0.1
+      return { ...r, _likeCount: likes, _gameAvg: avg, _score: score }
+    })
+    .sort(
+      (a, b) => b._score - a._score || new Date(b.created_at) - new Date(a.created_at)
+    )
+    .slice(0, limit)
+}
+
+/**
+ * Review of the Week — the most-liked review posted in the last 7 days.
+ *
+ * Returns null when no reviews in the window have at least 1 like so the
+ * spotlight section can hide itself rather than showing an empty card.
+ * Ties are broken by recency (newest first).
+ *
+ * The returned row carries `_likeCount` so the hero component can display
+ * the count without an extra round-trip.
+ */
+export async function getReviewOfWeek() {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('review'),
+    (async () => {
+      let q = supabase
+        .from('reviews')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url)')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      q = await applyBlockFilter(q, 'user_id')
+      return q
+    })(),
+  ])
+
+  const { data, error } = await queryResult
+  if (error) {
+    console.error('[reviews] getReviewOfWeek failed:', error.message)
+    return null
+  }
+
+  const candidates = (data || []).filter((r) => !flaggedIds.has(r.id))
+  if (candidates.length === 0) return null
+
+  const ids = candidates.map((r) => r.id)
+  const likeCounts = await getLikeCountsForReviews(ids)
+
+  // Must have ≥ 1 like — no-like window hides the spotlight entirely
+  const qualified = candidates.filter((r) => (likeCounts.get(r.id) || 0) > 0)
+  if (qualified.length === 0) return null
+
+  const top = [...qualified].sort((a, b) => {
+    const la = likeCounts.get(a.id) || 0
+    const lb = likeCounts.get(b.id) || 0
+    if (lb !== la) return lb - la
+    return new Date(b.created_at) - new Date(a.created_at)
+  })[0]
+
+  return { ...top, _likeCount: likeCounts.get(top.id) || 0 }
+}
+
+/**
  * Sprint 5 P3: Search community reviews by review body (case-insensitive
  * substring match). Joined with users so the Search Reviews tab can render
  * a full ReviewCard without a second round-trip.

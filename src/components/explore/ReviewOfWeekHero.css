@@ -1,0 +1,242 @@
+/* =============================================
+   REVIEW OF THE WEEK HERO
+   Spotlight for the most-liked review in the last 7 days.
+   Visual language mirrors GameOfWeekHero — same card shell,
+   copper accent instead of cobalt, reviewer-focused layout.
+   ============================================= */
+
+.rotw-outer {
+  padding: 0 var(--page-padding);
+  margin-bottom: var(--spacing-lg);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: exploreSectionIn 0.45s ease forwards;
+  animation-delay: 30ms;
+}
+
+@media (min-width: 769px) {
+  .rotw-outer {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotw-outer {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ── Hero card ── */
+.rotw-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  min-height: 152px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: var(--bg-surface);
+  box-shadow:
+    var(--surface-2-shadow),
+    0 0 0 1px var(--border-subtle);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rotw-hero:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rotw-hero:active {
+  transform: scale(0.985);
+  transition: transform 80ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotw-hero:active { transform: none; }
+}
+
+/* ── Copper accent bar at top ── */
+.rotw-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  /* Warm copper gradient to distinguish from the cobalt Game of the Week bar */
+  background: linear-gradient(90deg, var(--color-accent-copper, #c87941) 0%, var(--color-accent-amber, #e8a83e) 100%);
+  z-index: 2;
+}
+
+/* ── Blurred background art ── */
+.rotw-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.rotw-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(22px) brightness(0.25) saturate(1.3);
+  transform: scale(1.08);
+}
+
+.rotw-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(10, 15, 31, 0.55) 0%,
+    rgba(19, 26, 53, 0.75) 100%
+  );
+}
+
+/* ── Foreground layout row ── */
+.rotw-fg {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  padding-top: calc(var(--spacing-md) + 2px);
+}
+
+/* ── Cover image ── */
+.rotw-cover-wrap {
+  flex-shrink: 0;
+  width: 80px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-cover);
+}
+
+.rotw-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Info stack ── */
+.rotw-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+/* "REVIEW OF THE WEEK" eyebrow — copper tint */
+.rotw-eyebrow {
+  margin-bottom: 1px;
+  color: var(--color-accent-copper, #c87941);
+}
+
+/* Game title */
+.rotw-game-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Star rating row */
+.rotw-stars {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: var(--font-size-caption);
+  color: var(--star);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+
+.rotw-rating-num {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--star);
+  letter-spacing: 0;
+}
+
+/* Review body excerpt — max 2 lines */
+.rotw-body {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Author row ── */
+.rotw-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rotw-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+.rotw-author {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Like count badge */
+.rotw-like-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: var(--radius-full);
+  color: var(--color-accent-copper, #c87941);
+  background: rgba(200, 121, 65, 0.12);
+  border: 1px solid rgba(200, 121, 65, 0.24);
+  white-space: nowrap;
+}
+
+.rotw-like-icon {
+  fill: currentColor;
+  flex-shrink: 0;
+}
