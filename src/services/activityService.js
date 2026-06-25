@@ -312,6 +312,79 @@ export function formatActivityMessage(activity) {
 }
 
 /**
+ * Fetch all activities for `userId` that fall on the given local-calendar
+ * day (`dateKey` = 'YYYY-MM-DD'), enriched with list/review metadata the
+ * same way `getActivitiesForUser` is.
+ *
+ * @param {string} userId
+ * @param {string} dateKey  'YYYY-MM-DD'
+ * @returns {Promise<Array>}  same shape as getActivitiesForUser rows
+ */
+export async function fetchActivitiesForDay(userId, dateKey) {
+  if (!userId || !dateKey) return []
+
+  const [y, mo, da] = dateKey.split('-').map(Number)
+  const dayStart = new Date(y, mo - 1, da)
+  const dayEnd   = new Date(y, mo - 1, da + 1)
+
+  const { data: rows, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', dayStart.toISOString())
+    .lt('created_at', dayEnd.toISOString())
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[activity] fetchActivitiesForDay failed:', error.message)
+    return []
+  }
+  if (!rows || rows.length === 0) return []
+
+  // Enrich with list / review details (same 2-pass batched lookup).
+  const listTargetIds  = new Set()
+  const reviewTargetIds = new Set()
+  for (const r of rows) {
+    if (!r.target_id) continue
+    if (r.activity_type === 'list_created' || r.activity_type === 'game_added_to_list') {
+      listTargetIds.add(r.target_id)
+    } else if (r.activity_type === 'review_posted') {
+      reviewTargetIds.add(r.target_id)
+    }
+  }
+
+  const [listResult, reviewResult] = await Promise.all([
+    listTargetIds.size > 0
+      ? supabase.from('lists').select('id, name').in('id', [...listTargetIds])
+      : Promise.resolve({ data: [], error: null }),
+    reviewTargetIds.size > 0
+      ? supabase.from('reviews').select('id, rating, game_title, igdb_game_id').in('id', [...reviewTargetIds])
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  const listMap   = new Map((listResult.data   || []).map((l) => [l.id, l]))
+  const reviewMap = new Map((reviewResult.data || []).map((r) => [r.id, r]))
+
+  return rows.map((r) => {
+    const meta      = r.metadata || {}
+    const listRow   = r.target_id ? listMap.get(r.target_id)   : null
+    const reviewRow = r.target_id ? reviewMap.get(r.target_id) : null
+    return {
+      id:               r.id,
+      activityType:     r.activity_type,
+      igdbGameId:       r.igdb_game_id != null ? Number(r.igdb_game_id) : null,
+      targetId:         r.target_id || null,
+      metadata:         meta,
+      createdAt:        r.created_at,
+      listName:         listRow?.name || null,
+      reviewRating:     reviewRow?.rating != null ? Number(reviewRow.rating) : null,
+      reviewGameTitle:  reviewRow?.game_title || null,
+      gameTitle:        meta.game_title || reviewRow?.game_title || null,
+    }
+  })
+}
+
+/**
  * Suggested route for tapping an activity row. Reviews and status
  * changes go to the relevant Game Detail page; list events go to the
  * list page.

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Flame, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useTodayData } from '../hooks/useTodayData'
 import { usePresence } from '../hooks/usePresence'
 import SharedCover from './SharedCover'
@@ -8,7 +8,9 @@ import PulseDot from './PulseDot'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { useSession } from '../contexts/SessionContext'
 import GoalRing from './GoalRing'
+import EmberRing from './EmberRing'
 import SetGoalSheet from './SetGoalSheet'
+import DayLogSheet from './DayLogSheet'
 import { useAuth } from '../contexts/AuthContext'
 import { setGoal } from '../services/goalService'
 import './TodayCard.css'
@@ -58,16 +60,6 @@ function coverSrc(url) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function StreakChip({ count }) {
-  if (count === 0) return null
-  return (
-    <div className="tc-streak-chip" aria-label={`${count}-day streak`}>
-      <Flame className="tc-streak-flame" size={14} aria-hidden="true" />
-      <span className="tc-streak-count">{count}</span>
-    </div>
-  )
-}
 
 function NowPlayingRow({
   game,
@@ -210,26 +202,28 @@ function NowPlayingRow({
   )
 }
 
-function WeekRow({ cells }) {
+function WeekRow({ cells, onDayTap }) {
   return (
     <div className="tc-week-row" role="group" aria-label="Last 7 days of activity">
       {cells.map((cell) => (
-        <div
+        <button
           key={cell.key}
+          type="button"
           className={[
             'tc-week-cell',
-            cell.active ? 'tc-week-cell--active' : '',
-            cell.isToday ? 'tc-week-cell--today' : '',
+            cell.active  ? 'tc-week-cell--active'  : '',
+            cell.isToday ? 'tc-week-cell--today'   : '',
           ]
             .filter(Boolean)
             .join(' ')}
-          aria-label={`${cell.key}${cell.active ? ' — active' : ''}${cell.isToday ? ' (today)' : ''}`}
+          onClick={() => onDayTap(cell.key)}
+          aria-label={`${cell.key}${cell.active ? ' — active' : ''}${cell.isToday ? ' (today)' : ''}, tap to see log`}
           aria-current={cell.isToday ? 'date' : undefined}
         >
           <span className="tc-week-cell-label" aria-hidden="true">
             {cell.dayLabel}
           </span>
-        </div>
+        </button>
       ))}
     </div>
   )
@@ -243,6 +237,7 @@ export default function TodayCard() {
   const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading, goalProgress } =
     useTodayData()
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
+  const [dayLogDate,    setDayLogDate]    = useState(null)
 
   const {
     session: activeSession,
@@ -296,15 +291,23 @@ export default function TodayCard() {
       <div className="tc-header">
         <h2 className="tc-title">{timeCopy.headline}</h2>
         <div className="tc-header-right">
-          <StreakChip count={streak.current} />
+          {/* Streak ember ring — intensity scales with streak length */}
+          <div className="tc-ring-wrap">
+            <EmberRing streak={streak.current} />
+            <span className="tc-ring-label">Streak</span>
+          </div>
+          {/* Yearly games challenge ring */}
           {!isLoading && (
-            <GoalRing
-              current={goalProgress.current}
-              target={goalProgress.target}
-              year={goalProgress.year}
-              variant="compact"
-              onSet={() => setGoalSheetOpen(true)}
-            />
+            <div className="tc-ring-wrap">
+              <GoalRing
+                current={goalProgress.current}
+                target={goalProgress.target}
+                year={goalProgress.year}
+                variant="compact"
+                onSet={() => setGoalSheetOpen(true)}
+              />
+              <span className="tc-ring-label">Games</span>
+            </div>
           )}
         </div>
       </div>
@@ -330,8 +333,10 @@ export default function TodayCard() {
       {/* Divider between now-playing and week row */}
       {nowPlaying && <div className="tc-divider" aria-hidden="true" />}
 
-      {/* 7-day activity week */}
-      {!isLoading && <WeekRow cells={weekCells} />}
+      {/* 7-day activity week — tap a circle to see that day's log */}
+      {!isLoading && (
+        <WeekRow cells={weekCells} onDayTap={(key) => setDayLogDate(key)} />
+      )}
 
       {/* Caption + Calendar link */}
       {!isLoading && (
@@ -357,6 +362,10 @@ export default function TodayCard() {
       onSave={handleGoalSave}
       year={goalProgress.year}
       current={goalProgress.target ?? 0}
+    />
+    <DayLogSheet
+      dateKey={dayLogDate}
+      onClose={() => setDayLogDate(null)}
     />
     </>
   )

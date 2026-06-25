@@ -1,0 +1,158 @@
+/* =============================================
+   EMBER RING — streak visualisation ring
+   Matches GoalRing compact footprint (52 × 52).
+   Cobalt Modern · CSS variables only.
+   ============================================= */
+
+/* ── Base ──────────────────────────────────── */
+
+.ember-ring {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ember-ring__svg {
+  position: absolute;
+  inset: 0;
+}
+
+/* Track (always visible, very subtle) */
+.ember-ring__track {
+  stroke: var(--border-subtle);
+  opacity: 0.5;
+}
+
+/* Ember arc — amber/copper accent */
+.ember-ring__fill {
+  stroke: var(--accent);
+  transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.4s ease;
+}
+
+/* ── Inner label ──────────────────────────── */
+
+.ember-ring__label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ember-ring__icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.ember-ring__icon--dim {
+  color: var(--color-text-tertiary);
+}
+
+.ember-ring__count {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+/* ── Empty state (streak = 0) ─────────────── */
+
+.ember-ring--empty {
+  opacity: 0.4;
+}
+
+/* ── Intensity glow levels ────────────────── */
+
+/* l1: 1–3 days — faint */
+.ember-ring--l1 .ember-ring__fill {
+  opacity: 0.55;
+}
+
+/* l2: 4–6 days — soft glow */
+.ember-ring--l2 .ember-ring__fill {
+  opacity: 0.75;
+  filter: drop-shadow(0 0 2px var(--accent));
+}
+
+/* l3: 7–13 days — warm glow */
+.ember-ring--l3 .ember-ring__fill {
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+/* l4: 14–29 days — hot */
+.ember-ring--l4 .ember-ring__fill {
+  filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 2px var(--accent));
+}
+
+/* l5: 30+ days — blazing */
+.ember-ring--l5 .ember-ring__fill {
+  filter: drop-shadow(0 0 8px var(--accent)) drop-shadow(0 0 16px var(--accent));
+  animation: ember-blaze 2.4s ease-in-out infinite;
+}
+
+@keyframes ember-blaze {
+  0%, 100% { filter: drop-shadow(0 0 8px var(--accent)) drop-shadow(0 0 12px var(--accent)); }
+  50%      { filter: drop-shadow(0 0 14px var(--accent)) drop-shadow(0 0 24px var(--accent)); }
+}
+
+/* ── Tick-over celebration ────────────────── */
+
+.ember-ring--celebrating .ember-ring__fill {
+  animation: ember-burst 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* l5 + celebrating: override the blaze loop */
+.ember-ring--l5.ember-ring--celebrating .ember-ring__fill {
+  animation: ember-burst 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes ember-burst {
+  0%   {
+    filter: drop-shadow(0 0 4px var(--accent));
+    transform: scale(1);
+  }
+  35%  {
+    filter: drop-shadow(0 0 14px var(--accent)) drop-shadow(0 0 28px var(--accent));
+    transform: scale(1.06);
+  }
+  100% {
+    filter: drop-shadow(0 0 6px var(--accent));
+    transform: scale(1);
+  }
+}
+
+/* ── Reduced-motion overrides ─────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-ring__fill {
+    transition: none;
+    animation: none !important;
+  }
+  .ember-ring--l5 .ember-ring__fill {
+    animation: none !important;
+  }
+  .ember-ring--celebrating .ember-ring__fill {
+    animation: none !important;
+    /* Instant glow instead of burst */
+    filter: drop-shadow(0 0 6px var(--accent));
+  }
+}
+
+[data-reduce-motion='true'] .ember-ring__fill,
+[data-reduce-motion='true'] .ember-ring--l5 .ember-ring__fill,
+[data-reduce-motion='true'] .ember-ring--celebrating .ember-ring__fill {
+  transition: none;
+  animation: none !important;
+}
+[data-reduce-motion='true'] .ember-ring--celebrating .ember-ring__fill {
+  filter: drop-shadow(0 0 6px var(--accent));
+}
