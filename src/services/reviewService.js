@@ -851,3 +851,26 @@ export function getUserReviewCount() {
 export function getReviewCount() {
   return _cachedUserReviews.length
 }
+
+/**
+ * Fetch rating values for all platform reviews (newest `limit` rows).
+ * Used by the profile histogram compare overlay to build a community
+ * distribution without a heavyweight round-trip or per-game aggregation.
+ *
+ * Returns a plain array of numbers in [0.5, 5.0].
+ *
+ * @param {{ limit?: number }} opts
+ * @returns {Promise<number[]>}
+ */
+export async function getCommunityRatings({ limit = 2000 } = {}) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('rating')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) {
+    console.error('[reviews] getCommunityRatings failed:', error.message)
+    return []
+  }
+  return (data || []).map((r) => Number(r.rating)).filter((n) => Number.isFinite(n) && n > 0)
+}

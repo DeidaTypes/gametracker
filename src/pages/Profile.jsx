@@ -1883,6 +1883,7 @@ function Profile() {
                   streakData={streakData}
                   rivalryData={rivalryData}
                   onSetGoal={() => setGoalSheetOpen(true)}
+                  currentUserId={user?.id}
                 />
               )}
 
@@ -2075,6 +2076,7 @@ function HomeTab({
   streakData,
   rivalryData,
   onSetGoal,
+  currentUserId,
 }) {
   // Earned milestone badges: milestones where isMilestoneSeen = true AND longest_streak >= milestone
   const earnedMilestones = isOwnProfile && user?.id && streakData
@@ -2307,6 +2309,7 @@ function HomeTab({
       <ProfileRatingsChart
         reviews={allReviews}
         onReviewTap={onReviewTap}
+        currentUserId={currentUserId}
       />
 
       {/* Living Activity Timeline — grouped by day, reactions, milestones */}

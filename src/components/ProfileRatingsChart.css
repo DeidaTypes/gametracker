@@ -2,10 +2,32 @@
    ProfileRatingsChart
    Vertical bar histogram for a user's own review ratings.
    Sits on the Profile Home tab between Badges and Recent Reviews.
+
+   Features:
+   - Personality label (generous rater / tough critic / …)
+   - Tap a bar → modal listing those games
+   - Compare overlay: community or a followed user
    ============================================================ */
 
 .prc-section {
   padding: 0 16px 28px;
+}
+
+/* ---- Header row: title + personality badge + compare button ---- */
+.prc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.prc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
 .prc-section-title {
@@ -13,8 +35,74 @@
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 12px 0;
+  margin: 0;
   line-height: 1.2;
+  flex-shrink: 0;
+}
+
+/* Personality pill — copper accent on a subtle surface */
+.prc-personality-badge {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--bg-surface-2, #1a2240);
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+/* "Compare" trigger button */
+.prc-compare-btn {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.12));
+  border-radius: 20px;
+  padding: 4px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.4;
+}
+
+.prc-compare-btn:active {
+  background: var(--bg-surface-2, #1a2240);
+}
+
+/* Active comparison badge — shows what we're overlaying + dismiss X */
+.prc-compare-active-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent-sage, #7BA68C);
+  background: var(--bg-surface-2, #1a2240);
+  border: none;
+  border-radius: 20px;
+  padding: 4px 8px 4px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.4;
+}
+
+.prc-compare-active-btn:active {
+  opacity: 0.7;
+}
+
+.prc-compare-active-label {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- Chart area ---- */
@@ -22,47 +110,74 @@
   display: flex;
   align-items: flex-end;
   gap: 3px;
-  height: 52px; /* MAX_BAR_PX + a little breathing room */
+  height: 52px; /* MAX_BAR_PX (48) + breathing room */
+}
+
+.prc-chart--loading {
+  opacity: 0.5;
 }
 
 .prc-bar-btn {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  justify-content: center;
   height: 100%;
   background: none;
   border: none;
   padding: 0;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
-  /* Expand tap target slightly without affecting layout */
-  margin: 0 -1px;
+  margin: 0 -1px; /* widen tap target slightly */
 }
 
 .prc-bar-btn--active {
   cursor: pointer;
 }
 
-.prc-bar-fill {
+/* Stacking wrapper — both fills positioned relative to this */
+.prc-bar-stack {
+  position: relative;
   width: 100%;
-  background: var(--accent);
-  border-radius: 3px 3px 0 0;
-  opacity: 0.2;
-  /* No entrance animation — just static heights for simplicity */
+  height: 100%;
 }
 
-.prc-bar-btn--active .prc-bar-fill {
+/* ---- User bar (primary) ---- */
+.prc-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+  opacity: 0.2; /* inactive / empty */
+  z-index: 1;
+}
+
+.prc-bar-btn--active .prc-bar-fill:not(.prc-bar-fill--compare) {
   opacity: 1;
 }
 
-.prc-bar-btn--active:active .prc-bar-fill {
+.prc-bar-btn--active:active .prc-bar-fill:not(.prc-bar-fill--compare) {
+  opacity: 0.65;
+}
+
+/* ---- Compare overlay bar ---- */
+.prc-bar-fill--compare {
+  background: var(--color-accent-sage, #7BA68C);
+  opacity: 0.6;
+  z-index: 0; /* behind user bar */
+}
+
+/* When user bar is shorter, the compare bar peeks out above it.
+   Slightly more opaque where it's the dominant element. */
+.prc-bar-btn--active .prc-bar-fill--compare {
   opacity: 0.65;
 }
 
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  .prc-bar-fill {
+  .prc-bar-fill,
+  .prc-bar-fill--compare {
     transition: none;
   }
 }
@@ -82,8 +197,55 @@
   line-height: 1;
 }
 
+/* ---- Compare legend ---- */
+.prc-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.prc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.prc-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.prc-legend-dot--you {
+  background: var(--accent);
+}
+
+.prc-legend-dot--compare {
+  background: var(--color-accent-sage, #7BA68C);
+}
+
+/* ---- Personality insight line ---- */
+.prc-personality-desc {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.prc-personality-desc strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* ============================================================
-   Bucket modal (inside CenteredModal)
+   Bucket modal + Compare picker modal (share the same shell)
+   Both live inside CenteredModal.
    ============================================================ */
 
 .prc-modal-header {
@@ -171,6 +333,14 @@
   color: var(--text-tertiary);
 }
 
+/* Round avatar for user rows in the compare picker */
+.prc-modal-avatar {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
 .prc-modal-info {
   flex: 1;
   display: flex;
@@ -204,4 +374,51 @@
 .prc-modal-chevron {
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+
+/* ---- Compare picker extras ---- */
+
+/* Globe icon container — matches game-cover width for alignment */
+.prc-compare-icon-wrap {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* "Following" section divider */
+.prc-compare-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 10px 16px 4px;
+}
+
+/* Inline loading text when following list is being fetched */
+.prc-compare-loading {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 16px;
+  text-align: center;
+}
+
+/* Empty-following hint */
+.prc-compare-empty {
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 16px;
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
 }
