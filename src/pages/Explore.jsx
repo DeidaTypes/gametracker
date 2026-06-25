@@ -12,6 +12,7 @@ import {
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
+import EventWeekBanner from '../components/explore/EventWeekBanner'
 import MostPlayedRail from '../components/explore/MostPlayedRail'
 import GotAnHourRail, {
   TimeBucketChips,
@@ -310,6 +311,11 @@ function Explore() {
 
         {/* ── Game of the Week hero — editorial featured slot ── */}
         <GameOfWeekHero />
+
+        {/* ── Event Week — themed game set + activity leaderboard ── */}
+        <section className="explore-section explore-section--event-week">
+          <EventWeekBanner />
+        </section>
 
         {/* ── Section: Swipe to discover ── */}
         <section className="explore-section explore-section--swipe-deck">

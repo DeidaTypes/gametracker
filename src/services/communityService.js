@@ -220,4 +220,86 @@ export async function getMostPlayedThisWeek(limit = 5) {
   }
 }
 
+/**
+ * Event week leaderboard — the users most active on a specific set of IGDB
+ * games in the last 7 days, sourced from `activity_events`.
+ *
+ * @param {Array<string|number>} igdbGameIds  IGDB game IDs to filter on.
+ * @param {number} limit  Maximum rows to return (default 5).
+ * @returns {Promise<Array<{
+ *   userId: string,
+ *   username: string|null,
+ *   displayName: string,
+ *   avatarUrl: string|null,
+ *   eventCount: number,
+ * }>>}
+ *
+ * Returns [] when no qualifying activity exists — the caller hides the section.
+ */
+export async function getEventWeekLeaderboard(igdbGameIds, limit = 5) {
+  if (!igdbGameIds || igdbGameIds.length === 0) return []
+  try {
+    const sinceIso = new Date(Date.now() - WEEK_MS).toISOString()
+    const entityIds = igdbGameIds.map((id) => String(id))
+
+    let q = supabase
+      .from('activity_events')
+      .select('actor_user_id')
+      .in('entity_id', entityIds)
+      .in('type', ['played', 'started', 'completed', 'reviewed', 'rated'])
+      .gte('created_at', sinceIso)
+      .limit(500)
+    q = await applyBlockFilter(q, 'actor_user_id')
+    const { data, error } = await q
+    if (error) {
+      console.error('[community] getEventWeekLeaderboard query failed:', error.message)
+      return []
+    }
+
+    const rows = data || []
+    if (rows.length === 0) return []
+
+    // Aggregate event count per user in JS to avoid needing an RPC.
+    const countByUser = new Map()
+    for (const row of rows) {
+      countByUser.set(row.actor_user_id, (countByUser.get(row.actor_user_id) || 0) + 1)
+    }
+
+    const topActors = Array.from(countByUser.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([userId, count]) => ({ userId, count }))
+
+    if (topActors.length === 0) return []
+
+    const actorIds = topActors.map((a) => a.userId)
+    const { data: users, error: usersErr } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url')
+      .in('id', actorIds)
+    if (usersErr) {
+      console.error('[community] getEventWeekLeaderboard users query failed:', usersErr.message)
+      return []
+    }
+
+    const userMap = new Map((users || []).map((u) => [u.id, u]))
+    return topActors
+      .map(({ userId, count }) => {
+        const u = userMap.get(userId)
+        if (!u) return null
+        return {
+          userId,
+          username: u.username || null,
+          displayName: u.display_name || u.username || 'Player',
+          avatarUrl: u.avatar_url || null,
+          eventCount: count,
+        }
+      })
+      .filter(Boolean)
+  } catch (err) {
+    console.error('[community] getEventWeekLeaderboard crashed:', err)
+    return []
+  }
+}
+
 export { WEEK_MS }

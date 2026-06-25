@@ -1,0 +1,292 @@
+/* =============================================
+   EVENT WEEK BANNER — themed discovery section
+   Header · game covers strip · mini-leaderboard
+   ============================================= */
+
+/* ---- Outer wrapper ---- */
+.ewb {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ---- Header ---- */
+.ewb__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ewb__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ewb__emoji {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ewb__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-s, 20px);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ewb__date-badge {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: var(--radius-full, 999px);
+  padding: 3px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.ewb__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.5));
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ---- Covers strip — horizontal scroll ---- */
+.ewb__covers-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px 16px 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.ewb__covers-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Single game tile ---- */
+.ewb-game-tile {
+  position: relative;
+  flex-shrink: 0;
+  width: 76px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+}
+
+.ewb-game-tile__cover {
+  display: block;
+  width: 76px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
+}
+
+.ewb-game-tile__rating {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  color: #fff;
+  background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%);
+  padding: 12px 4px 4px;
+  line-height: 1;
+  pointer-events: none;
+  border-bottom-left-radius: var(--radius-sm, 8px);
+  border-bottom-right-radius: var(--radius-sm, 8px);
+}
+
+.ewb-game-tile:active {
+  opacity: 0.75;
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ewb-game-tile {
+    transition: opacity 0.15s, transform 0.15s;
+  }
+}
+
+/* ---- Mini-leaderboard ---- */
+.ewb__leaderboard {
+  margin-top: 16px;
+}
+
+.ewb__lb-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary, rgba(255, 255, 255, 0.35));
+  margin: 0 0 8px;
+}
+
+.ewb__lb-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Leaderboard row ---- */
+.ewb-lb-row {
+  display: grid;
+  grid-template-columns: 22px 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.06));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-radius: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.ewb-lb-row:last-child {
+  border-bottom: none;
+}
+
+.ewb-lb-row:active {
+  opacity: 0.65;
+}
+
+/* Top-3 rank accent (matches MostPlayedRail pattern) */
+.ewb-lb-row__rank {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ewb-lb-row:nth-child(1) .ewb-lb-row__rank { color: var(--accent); }
+.ewb-lb-row:nth-child(2) .ewb-lb-row__rank { color: var(--accent); opacity: 0.75; }
+.ewb-lb-row:nth-child(3) .ewb-lb-row__rank { color: var(--accent); opacity: 0.55; }
+
+/* Avatar */
+.ewb-lb-row__avatar-wrap {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.ewb-lb-row__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full, 999px);
+  object-fit: cover;
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.08));
+}
+
+.ewb-lb-row__avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 20%, var(--color-surface-raised, rgba(255,255,255,0.08)));
+}
+
+/* Name */
+.ewb-lb-row__name {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body, 14px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Session count */
+.ewb-lb-row__sessions {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption, 11px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   SKELETON
+   ============================================= */
+
+.ewb-skeleton {
+  padding: 0 16px;
+}
+
+.ewb-skeleton__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ewb-skeleton__title {
+  height: 20px;
+  width: 140px;
+  border-radius: var(--radius-xs, 4px);
+}
+
+.ewb-skeleton__badge {
+  height: 18px;
+  width: 80px;
+  border-radius: var(--radius-full, 999px);
+  margin-left: auto;
+}
+
+.ewb-skeleton__strip {
+  display: flex;
+  gap: 10px;
+}
+
+.ewb-skeleton__cover {
+  width: 76px;
+  height: 104px;
+  border-radius: var(--radius-sm, 8px);
+  flex-shrink: 0;
+}
+
+/* =============================================
+   DESKTOP (769px+)
+   ============================================= */
+@media (min-width: 769px) {
+  .ewb__covers-row {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  .ewb__leaderboard {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
