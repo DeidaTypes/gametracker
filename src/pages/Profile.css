@@ -971,6 +971,242 @@
 }
 
 /* ============================================================
+   ACTIVITY TIMELINE  (at- prefix)
+   Vertical timeline grouped by calendar day. Each entry has a
+   dot on a vertical track, a cover thumbnail, a sentence, and
+   a F3 reaction bar. Milestone entries get a subtle badge strip.
+   ============================================================ */
+
+.at-timeline {
+  padding: 0 var(--page-padding);
+}
+
+/* ── Day group ──────────────────────────────────────────────── */
+
+.at-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.at-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.at-day-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 10px 28px;
+}
+
+.at-entries {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Single entry ───────────────────────────────────────────── */
+
+.at-entry {
+  display: flex;
+  gap: 10px;
+  position: relative;
+}
+
+.at-entry--milestone .at-entry__body {
+  border-left: 2px solid var(--status-warning);
+  padding-left: 8px;
+  margin-left: -2px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Track (dot + vertical line) ───────────────────────────── */
+
+.at-entry__track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 18px;
+  padding-top: 4px;
+}
+
+.at-entry__dot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-2, #1a2240);
+  border: 1px solid var(--border-strong, rgba(148,168,212,0.24));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.at-entry__dot--milestone {
+  background: var(--status-warning);
+  border-color: var(--status-warning);
+  color: #000;
+}
+
+.at-entry__line {
+  flex: 1;
+  width: 1px;
+  background: var(--border-subtle, rgba(148,168,212,0.12));
+  min-height: 8px;
+  margin-top: 2px;
+}
+
+/* Hide the line after the last entry in a group */
+.at-entries > .at-entry:last-child .at-entry__line {
+  display: none;
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+
+.at-entry__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 14px;
+  min-width: 0;
+}
+
+/* ── Milestone badge ────────────────────────────────────────── */
+
+.at-milestone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--status-warning);
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  width: fit-content;
+}
+
+.at-milestone-badge__text {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+
+/* ── Cover + message row ────────────────────────────────────── */
+
+.at-entry__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  min-width: 0;
+  width: 100%;
+}
+
+.at-entry__cover {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--border-subtle);
+}
+
+.at-entry__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.at-entry__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.at-entry__message {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.at-entry__time {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ── Reaction bar ───────────────────────────────────────────── */
+
+.at-reaction-bar {
+  display: flex;
+  gap: 4px;
+}
+
+.at-reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.at-reaction-btn:active {
+  transform: scale(0.9);
+}
+
+.at-reaction-btn--active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .at-reaction-btn {
+    transition: none;
+  }
+  .at-reaction-btn:active {
+    transform: none;
+  }
+}
+
+/* ── data-reduce-motion override ────────────────────────────── */
+[data-reduce-motion='true'] .at-reaction-btn,
+[data-reduce-motion='true'] .at-reaction-btn:active {
+  transition: none;
+  transform: none;
+}
+
+/* ============================================================
    REVIEWS TAB
    ============================================================ */
 

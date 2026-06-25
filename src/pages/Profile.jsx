@@ -90,6 +90,7 @@ import { showToast } from '../components/Toast'
 import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
 import PinnedListsSection from '../components/PinnedListsSection'
 import ProfileRatingsChart from '../components/ProfileRatingsChart'
+import ActivityTimeline from '../components/ActivityTimeline'
 import { getJournalEntriesForUser } from '../services/journalService'
 import './Profile.css'
 
@@ -219,6 +220,8 @@ function rowToReviewCard(row, likeCounts, commentCounts) {
     hoursPlayed: Number(row.hours_played) || 0,
     liked: !!row.liked,
     hasSpoilers: !!row.has_spoilers,
+    vibeStamp: row.vibe_stamp || null,
+    lifeContext: row.life_context || null,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,
@@ -1333,8 +1336,6 @@ function Profile() {
   )
 
   const favoriteGames = profile.favoriteGames || []
-  const homeRecentActivity = activities.slice(0, 8)
-
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
@@ -1853,7 +1854,7 @@ function Profile() {
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
-                  activities={homeRecentActivity}
+                  activities={activities}
                   gameImageMap={gameImageMap}
                   userIdentifier={profile.username || profile.displayName || 'user'}
                   onGameClick={(id, image) =>
@@ -2238,65 +2239,13 @@ function HomeTab({
         onReviewTap={onReviewTap}
       />
 
-      {/* Legacy activity thumbs — kept for now but deprioritised; can be
-          surfaced in a dedicated Activity page in a later sprint. */}
-      {activities.length > 0 && false && (
-        <section className="profile-home__section">
-          <div className="profile-home__section-header">
-            <h3 className="profile-home__section-title">Activity</h3>
-            <button
-              type="button"
-              className="profile-home__chevron-btn"
-              onClick={onActivityChevron}
-              aria-label="See full activity log"
-            >
-              <LuChevronRight size={20} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="profile-activity-row" role="list">
-            {activities.map((a) => {
-              const ActivityIcon = getActivityIcon(a)
-              const image = a.igdbGameId
-                ? gameImageMap.get(String(a.igdbGameId))
-                : null
-              const targetHref = a.igdbGameId
-                ? `/game/${a.igdbGameId}`
-                : a.targetId
-                ? `/list/${a.targetId}`
-                : null
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  role="listitem"
-                  className="profile-activity-thumb"
-                  onClick={() => {
-                    if (a.igdbGameId) {
-                      onGameClick(a.igdbGameId, image)
-                    } else if (targetHref) {
-                      window.location.assign(targetHref)
-                    }
-                  }}
-                  aria-label={a.gameTitle || 'Activity'}
-                >
-                  <div className="profile-activity-thumb__cover">
-                    {image ? (
-                      <img src={image} alt="" loading="lazy" />
-                    ) : (
-                      <span className="profile-activity-thumb__fallback">
-                        {(a.gameTitle || '?').charAt(0)}
-                      </span>
-                    )}
-                    <span className="profile-activity-thumb__icon" aria-hidden="true">
-                      <ActivityIcon size={12} />
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      {/* Living Activity Timeline — grouped by day, reactions, milestones */}
+      <ActivityTimeline
+        activities={activities}
+        gameImageMap={gameImageMap}
+        isOwnProfile={isOwnProfile}
+        onSeeAll={onActivityChevron}
+      />
     </div>
   )
 }

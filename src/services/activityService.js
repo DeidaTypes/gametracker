@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
 import { applyBlockFilter, isMutuallyBlocked, loadBlockedIds } from './blockService'
+import { updateStreak } from './streakMilestoneService'
+import { dispatchStreakUpdated } from '../components/MilestoneCelebration'
 
 /**
  * Activity Service — Supabase-backed activity feed.
@@ -124,6 +126,14 @@ export async function logActivity({
     } catch {
       // SSR / no-window — best effort
     }
+
+    // Update the streak for every logged activity. Fire-and-forget so a
+    // streak failure never blocks the primary activity write. Dispatches
+    // 'streakUpdated' so MilestoneCelebration can check thresholds.
+    updateStreak(user.id)
+      .then((row) => { if (row) dispatchStreakUpdated(row.current_streak) })
+      .catch(() => {})
+
     return data
   } catch (err) {
     console.error('[activity] logActivity crashed:', err)

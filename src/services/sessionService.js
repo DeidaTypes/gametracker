@@ -12,6 +12,12 @@
 
 import { supabase } from './supabase'
 import { getTracker, setHoursPlayed } from './hoursService'
+import {
+  ACTIVITY_EVENT_TYPES,
+  logActivityEvent,
+} from './activityEventsService'
+import { updateStreak } from './streakMilestoneService'
+import { dispatchStreakUpdated } from '../components/MilestoneCelebration'
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
@@ -133,8 +139,29 @@ export async function stopSession(sessionId, igdbGameId, opts = {}) {
         if (error) console.error('[session] activity log failed:', error.message)
         else {
           try { window.dispatchEvent(new Event('activityUpdated')) } catch {}
+          // Session logged — advance the streak and fire milestone check.
+          updateStreak(user.id)
+            .then((row) => { if (row) dispatchStreakUpdated(row.current_streak) })
+            .catch(() => {})
         }
       })
+
+    // Pulse — emit a 'played' activity_event so the follow-graph feed
+    // surfaces this session. Only fires for sessions with non-trivial
+    // duration so a quickly-cancelled timer doesn't pollute the feed.
+    if (seconds >= 60) {
+      logActivityEvent({
+        type: ACTIVITY_EVENT_TYPES.PLAYED,
+        entityId: String(igdbGameId),
+        metadata: {
+          seconds,
+          added_hours: addedHours,
+          game_title: opts.gameTitle ?? null,
+          game_image: opts.gameImage ?? null,
+          source: 'session',
+        },
+      })
+    }
 
     // 4. Journal note (fire-and-forget, only if note was provided)
     if (opts.note && opts.note.trim()) {
@@ -253,6 +280,25 @@ export async function logManualSession(igdbGameId, minutes, playedOn, meta = {})
 
     // 3. Ensure one activity for this date (fire-and-forget; never throws)
     ensureActivityForDay(user.id, igdbGameId, playedOn, addedHours, meta).catch(() => {})
+
+    // Pulse — emit a 'played' activity_event for the follow-graph feed.
+    // Unlike the streak calendar (one row per calendar day), the Pulse
+    // feed surfaces every manual log so a long backfill of past
+    // sessions reads naturally in the timeline.
+    if (minutes > 0) {
+      logActivityEvent({
+        type: ACTIVITY_EVENT_TYPES.PLAYED,
+        entityId: String(igdbGameId),
+        metadata: {
+          seconds,
+          added_hours: addedHours,
+          played_on: playedOn,
+          game_title: meta.gameTitle ?? null,
+          game_image: meta.gameImage ?? null,
+          source: 'manual',
+        },
+      })
+    }
 
     return { sessionRow, addedHours, newHours, prevHours }
   } catch (err) {

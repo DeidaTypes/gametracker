@@ -53,6 +53,13 @@ export default function MilestoneCelebration() {
     setMilestone(top)
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(dismiss, AUTO_DISMISS_MS)
+    // Haptic beat on milestone threshold — heavy notification pulse.
+    // Dynamic import keeps the web build a no-op when the plugin is absent.
+    import('@capacitor/haptics')
+      .then(({ Haptics, NotificationType }) =>
+        Haptics.notification({ type: NotificationType.Success })
+      )
+      .catch(() => {})
   }
 
   useEffect(() => {
