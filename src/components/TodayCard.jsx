@@ -1,8 +1,10 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Flame, ChevronRight } from 'lucide-react'
 import { useTodayData } from '../hooks/useTodayData'
+import { usePresence } from '../hooks/usePresence'
 import SharedCover from './SharedCover'
+import PulseDot from './PulseDot'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { useSession } from '../contexts/SessionContext'
 import GoalRing from './GoalRing'
@@ -11,20 +13,51 @@ import { useAuth } from '../contexts/AuthContext'
 import { setGoal } from '../services/goalService'
 import './TodayCard.css'
 
+// ── Time-of-day copy ──────────────────────────────────────────────────────────
+
+function getTimePhrase() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12)  return 'morning'
+  if (h >= 12 && h < 17) return 'afternoon'
+  if (h >= 17 && h < 21) return 'evening'
+  return 'night'
+}
+
+const TIME_COPY = {
+  morning:   { headline: 'Good morning',   play: 'Resume',  nav: 'Resume'   },
+  afternoon: { headline: 'Today',          play: 'Play',    nav: 'Continue' },
+  evening:   { headline: 'One more?',      play: 'Play',    nav: 'Continue' },
+  night:     { headline: 'Late night?',    play: 'Play',    nav: 'Continue' },
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function formatSessionTime(seconds) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-// ── Cover URL helper ─────────────────────────────────────────────────────────
+function formatRelativeTime(ts) {
+  if (!ts) return null
+  const d = new Date(ts)
+  if (isNaN(d.getTime())) return null
+  const diffMs = Date.now() - d.getTime()
+  const diffHrs = diffMs / (1000 * 60 * 60)
+  if (diffHrs < 1)    return 'just now'
+  if (diffHrs < 24)   return `${Math.floor(diffHrs)}h ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7)   return `${diffDays}d ago`
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 function coverSrc(url) {
   if (!url) return null
   return url.replace(/t_[a-z0-9_]+/, 't_cover_big')
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function StreakChip({ count }) {
   if (count === 0) return null
@@ -46,10 +79,14 @@ function NowPlayingRow({
   onStopSession,
   sessionStarting,
   isStopping,
+  playCta,
+  navCta,
+  showPulse,
 }) {
   if (!game) return null
 
   const src = coverSrc(game.image)
+  const relTime = !isActiveSession ? formatRelativeTime(game.lastPlayedAt) : null
 
   function goToGame(e) {
     e.stopPropagation()
@@ -58,23 +95,33 @@ function NowPlayingRow({
 
   return (
     <div className="tc-now-playing">
-      {/* Cover */}
-      <button
-        className="tc-cover-btn"
-        onClick={goToGame}
-        aria-label={`Open ${game.title}`}
-        type="button"
-      >
-        <SharedCover gameId={game.id} imageSrc={src || game.image}>
-          <img
-            src={src || game.image || COVER_FALLBACK}
-            alt={game.title}
-            className="tc-cover"
-            loading="lazy"
-            onError={(e) => { e.target.src = COVER_FALLBACK }}
+      {/* Cover + live pulse overlay */}
+      <div className="tc-cover-wrap">
+        <button
+          className="tc-cover-btn"
+          onClick={goToGame}
+          aria-label={`Open ${game.title}`}
+          type="button"
+        >
+          <SharedCover gameId={game.id} imageSrc={src || game.image}>
+            <img
+              src={src || game.image || COVER_FALLBACK}
+              alt={game.title}
+              className="tc-cover"
+              loading="lazy"
+              onError={(e) => { e.target.src = COVER_FALLBACK }}
+            />
+          </SharedCover>
+        </button>
+        {showPulse && (
+          <PulseDot
+            live
+            size="sm"
+            label="Live"
+            className="tc-pulse-badge"
           />
-        </SharedCover>
-      </button>
+        )}
+      </div>
 
       {/* Info */}
       <div className="tc-game-info">
@@ -102,6 +149,13 @@ function NowPlayingRow({
         ) : progress?.hoursPlayed > 0 ? (
           <span className="tc-progress-label">{progress.label}</span>
         ) : null}
+
+        {/* Last left off — relative time of last play; hidden during active session */}
+        {relTime && (progress?.hoursPlayed > 0 || progress?.showBar) && (
+          <span className="tc-last-session" aria-label={`Last played ${relTime}`}>
+            Last played {relTime}
+          </span>
+        )}
 
         {/* Session controls */}
         {isActiveSession ? (
@@ -131,14 +185,14 @@ function NowPlayingRow({
               type="button"
               onClick={onStartSession}
               disabled={sessionStarting}
-              aria-label={`Start playing ${game.title}`}
+              aria-label={`${playCta} ${game.title}`}
             >
               {sessionStarting ? '…' : (
                 <>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
-                  Play
+                  {playCta}
                 </>
               )}
             </button>
@@ -147,7 +201,7 @@ function NowPlayingRow({
               type="button"
               onClick={goToGame}
             >
-              Continue <ChevronRight size={13} aria-hidden="true" />
+              {navCta} <ChevronRight size={13} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -181,7 +235,7 @@ function WeekRow({ cells }) {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function TodayCard() {
   const navigate = useNavigate()
@@ -199,10 +253,23 @@ export default function TodayCard() {
     stopGameSession,
   } = useSession()
 
+  const { playingNow } = usePresence()
+
+  // Time-of-day copy — recomputed per render so it shifts at midnight
+  const timeCopy = TIME_COPY[getTimePhrase()]
+
   const isActiveSession =
     nowPlaying != null &&
     activeSession?.igdb_game_id != null &&
     String(activeSession.igdb_game_id) === String(nowPlaying.id)
+
+  // Show PulseDot when the local user is in an active session on this game,
+  // or when any followed user is playing this same game right now.
+  const showPulse = useMemo(() => {
+    if (!nowPlaying) return false
+    if (isActiveSession) return true
+    return playingNow.some((p) => String(p.gameId) === String(nowPlaying.id))
+  }, [nowPlaying, isActiveSession, playingNow])
 
   const handleStartSession = useCallback(() => {
     if (!nowPlaying) return
@@ -219,16 +286,15 @@ export default function TodayCard() {
   const handleGoalSave = useCallback(async (target) => {
     if (!user?.id) return
     await setGoal(user.id, goalProgress.year, target)
-    // Re-fetch goal on next activity update — dispatch libraryUpdated to wake the hook
     window.dispatchEvent(new Event('activityUpdated'))
   }, [user?.id, goalProgress.year])
 
   return (
     <>
     <div className="tc-card">
-      {/* Header */}
+      {/* Header — headline shifts by time of day */}
       <div className="tc-header">
-        <h2 className="tc-title">Today</h2>
+        <h2 className="tc-title">{timeCopy.headline}</h2>
         <div className="tc-header-right">
           <StreakChip count={streak.current} />
           {!isLoading && (
@@ -255,6 +321,9 @@ export default function TodayCard() {
           onStopSession={handleStopSession}
           sessionStarting={sessionStarting}
           isStopping={isStopping}
+          playCta={timeCopy.play}
+          navCta={timeCopy.nav}
+          showPulse={showPulse}
         />
       )}
 

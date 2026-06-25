@@ -70,6 +70,23 @@
   align-items: flex-start;
 }
 
+/* Wrapper so PulseDot can sit outside the overflow:hidden cover button */
+.tc-cover-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 64px;
+}
+
+/* Live presence dot — top-right corner of the cover */
+.tc-pulse-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .tc-cover-btn {
   flex-shrink: 0;
   position: relative;
@@ -168,6 +185,16 @@
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+/* ── Last left off ───────────────────────────── */
+
+.tc-last-session {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
   line-height: var(--line-height-caption);
 }
 
