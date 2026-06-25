@@ -5,6 +5,7 @@ import HomeSearchBar from '../components/HomeSearchBar'
 import TodayCard from '../components/TodayCard'
 import BacklogSection from '../components/BacklogSection'
 import SocialActivityCard from '../components/SocialActivityCard'
+import CoopSignalCard from '../components/CoopSignalCard'
 import HomeFAB from '../components/HomeFAB'
 import TrackerSearchModal from '../components/TrackerSearchModal'
 import { getGamesFromList } from '../services/libraryService'
@@ -124,6 +125,11 @@ function Home() {
               games={wantToPlayGames}
               onAddGame={() => openAdd('want')}
             />
+          </section>
+
+          {/* ── Co-op Signal — live card when you + a followed user are in the same game now ── */}
+          <section className="home-section home-section-padded">
+            <CoopSignalCard />
           </section>
 
           {/* ── Social Activity — Activity / Lists / Favorites swipeable card (from Following) ── */}

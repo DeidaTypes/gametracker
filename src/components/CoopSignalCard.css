@@ -1,0 +1,152 @@
+/* ============================================================
+   CoopSignalCard — live co-op presence signal on the Home screen.
+   Namespace: coop-signal-*
+
+   Shares the shelf-box surface pattern with SocialActivityCard
+   but uses a copper/amber accent top-border to signal "live"
+   status. Only renders when co-presence is actually detected,
+   so no skeleton or empty-state styles are needed here.
+   ============================================================ */
+
+.coop-signal-card {
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  /* Accent top-border is the one visual hook that marks this card as
+     "live" — distinct from the neutral border on SocialActivityCard. */
+  border-top: 2px solid var(--accent, #b8904a);
+  border-radius: var(--radius-lg, 14px);
+  overflow: hidden;
+  padding: 12px 14px;
+}
+
+/* ── Header row: PulseDot + "Playing together now" label ── */
+.coop-signal-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.coop-signal-card__header-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #b8904a);
+}
+
+/* ── Body: cover thumbnail + info column ── */
+.coop-signal-card__body {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.coop-signal-card__cover {
+  width: 44px;
+  height: 60px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-surface, #131a35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.coop-signal-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coop-signal-card__cover-fallback {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-secondary, #94a8d4);
+}
+
+/* ── Info column ── */
+.coop-signal-card__info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.coop-signal-card__game-title {
+  margin: 0;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary, #f0f3fa);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coop-signal-card__names {
+  margin: 0;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary, #94a8d4);
+  /* Allow wrapping so long display names don't truncate the sentence. */
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ── DM action pills ── */
+.coop-signal-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.coop-signal-card__dm-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--accent, #b8904a);
+  border-radius: 999px;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #b8904a);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coop-signal-card__dm-btn:not(:disabled):active {
+  background: color-mix(in oklab, var(--accent) 15%, transparent);
+}
+
+.coop-signal-card__dm-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .coop-signal-card__dm-btn {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .coop-signal-card__dm-btn {
+  transition: none;
+}
