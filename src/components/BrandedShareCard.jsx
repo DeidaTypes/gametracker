@@ -54,6 +54,7 @@ const BrandedShareCard = forwardRef(function BrandedShareCard(
         {variant === 'profile-dna' && <ProfileDnaVariant data={data} />}
         {variant === 'favorites-shelf' && <FavoritesShelfVariant data={data} />}
         {variant === 'quotable-review' && <QuotableReviewVariant data={data} />}
+        {variant === 'wrapped-summary' && <WrappedSummaryVariant data={data} />}
       </div>
 
       {/* Footer: watermark left, QR + URL right */}
@@ -245,6 +246,83 @@ function FavoritesShelfVariant({ data }) {
             <p className="bsc-shelf__game-title">{game.title}</p>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   Variant: Wrapped Summary
+   data: { periodLabel, playedCount, hoursPlayed, reviewCount,
+           topGenre, topGame: { title, coverUrl } | null, avgRating }
+   ============================================================ */
+function WrappedSummaryVariant({ data }) {
+  const {
+    periodLabel = '',
+    playedCount = 0,
+    hoursPlayed = 0,
+    reviewCount = 0,
+    topGenre = null,
+    topGame = null,
+    avgRating = null,
+  } = data
+
+  return (
+    <div className="bsc-wrapped">
+      <p className="bsc-wrapped__eyebrow">Year in Games</p>
+      <h1 className="bsc-wrapped__period">{periodLabel}</h1>
+
+      <div className="bsc-wrapped__stats">
+        <div className="bsc-wrapped__stat">
+          <span className="bsc-wrapped__stat-num">{playedCount}</span>
+          <span className="bsc-wrapped__stat-label">Played</span>
+        </div>
+        {hoursPlayed > 0 && (
+          <div className="bsc-wrapped__stat">
+            <span className="bsc-wrapped__stat-num">{hoursPlayed}</span>
+            <span className="bsc-wrapped__stat-label">Hours</span>
+          </div>
+        )}
+        {reviewCount > 0 && (
+          <div className="bsc-wrapped__stat">
+            <span className="bsc-wrapped__stat-num">{reviewCount}</span>
+            <span className="bsc-wrapped__stat-label">Reviews</span>
+          </div>
+        )}
+      </div>
+
+      {topGame && (
+        <div className="bsc-wrapped__top-game">
+          <p className="bsc-wrapped__top-game-eyebrow">Most Played</p>
+          <div className="bsc-wrapped__top-game-inner">
+            {topGame.coverUrl ? (
+              <img
+                src={topGame.coverUrl}
+                alt=""
+                crossOrigin="anonymous"
+                className="bsc-wrapped__top-game-cover"
+              />
+            ) : (
+              <div className="bsc-wrapped__top-game-cover bsc-wrapped__top-game-cover--fallback" />
+            )}
+            <p className="bsc-wrapped__top-game-title">{topGame.title}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="bsc-wrapped__badges">
+        {topGenre && (
+          <div className="bsc-wrapped__badge">
+            <span className="bsc-wrapped__badge-label">Top Genre</span>
+            <span className="bsc-wrapped__badge-value">{topGenre}</span>
+          </div>
+        )}
+        {avgRating !== null && (
+          <div className="bsc-wrapped__badge">
+            <span className="bsc-wrapped__badge-label">Avg Rating</span>
+            <span className="bsc-wrapped__badge-value">{avgRating}<span className="bsc-wrapped__badge-denom">/5</span></span>
+          </div>
+        )}
       </div>
     </div>
   )

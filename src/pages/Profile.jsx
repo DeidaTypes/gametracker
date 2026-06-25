@@ -63,7 +63,7 @@ import {
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
 import { shareCard } from '../services/share'
-import { computeDNAPortrait } from '../services/dnaService'
+import { computeDNAPortrait, compileWrappedSummary } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
@@ -440,6 +440,8 @@ function Profile() {
 
   // DNA share — 'idle' | 'generating' | 'done'
   const [dnaSharing, setDnaSharing] = useState('idle')
+  // Wrapped share — 'idle' | 'generating' | 'done'
+  const [wrappedSharing, setWrappedSharing] = useState('idle')
 
   // Sprint 7 — Block confirm sheet (other-user profiles only)
   const [blockSheetOpen, setBlockSheetOpen] = useState(false)
@@ -906,18 +908,26 @@ function Profile() {
     try {
       const portrait = computeDNAPortrait()
       const username = profile?.username || profile?.displayName || null
+      const displayName = profile?.displayName || username
+      const avatarUrl = profile?.avatarUrl || profile?.avatar_url || null
       await shareCard({
         variant: 'profile-dna',
         data: {
           ...portrait,
           username,
-          displayName: profile?.displayName || username,
+          displayName,
+          avatarUrl,
+          // Map portrait field names to what ProfileDnaVariant expects
+          gamesPlayed: portrait.totalGames,
+          reviews: portrait.reviewCount,
+          following: followingCount,
+          genres: portrait.topGenres,
         },
         target: {
           type: 'profile',
           username: username || user?.id || '',
         },
-        title: `${profile?.displayName || username || 'My'} Gamer DNA — Checkpoint`,
+        title: `${displayName || 'My'} Gamer DNA — GameTracker`,
       })
       setDnaSharing('done')
       setTimeout(() => setDnaSharing('idle'), 2500)
@@ -926,7 +936,31 @@ function Profile() {
       showToast('Could not generate DNA card — please try again.', 'error')
       setDnaSharing('idle')
     }
-  }, [dnaSharing, profile, user?.id])
+  }, [dnaSharing, profile, user?.id, followingCount])
+
+  const handleShareWrapped = useCallback(async (period = 'year') => {
+    if (wrappedSharing === 'generating') return
+    setWrappedSharing('generating')
+    try {
+      const summary = compileWrappedSummary(period)
+      const username = profile?.username || profile?.displayName || null
+      await shareCard({
+        variant: 'wrapped-summary',
+        data: summary,
+        target: {
+          type: 'profile',
+          username: username || user?.id || '',
+        },
+        title: `My ${summary.periodLabel} in Games — GameTracker`,
+      })
+      setWrappedSharing('done')
+      setTimeout(() => setWrappedSharing('idle'), 2500)
+    } catch (err) {
+      console.error('[profile] handleShareWrapped failed:', err)
+      showToast('Could not generate Wrapped card — please try again.', 'error')
+      setWrappedSharing('idle')
+    }
+  }, [wrappedSharing, profile, user?.id])
 
   const handleFollowToggle = useCallback(async () => {
     if (!targetUserId || isOwnProfile || followPending) return
@@ -1363,6 +1397,40 @@ function Profile() {
                         : 'Share DNA'}
                     </button>
                   )}
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={wrappedSharing === 'generating'}
+                      onClick={() => {
+                        setKebabOpen(false)
+                        handleShareWrapped('year')
+                      }}
+                    >
+                      {wrappedSharing === 'generating'
+                        ? 'Generating…'
+                        : wrappedSharing === 'done'
+                        ? 'Shared!'
+                        : 'Share Year Wrapped'}
+                    </button>
+                  )}
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={wrappedSharing === 'generating'}
+                      onClick={() => {
+                        setKebabOpen(false)
+                        handleShareWrapped('month')
+                      }}
+                    >
+                      {wrappedSharing === 'generating'
+                        ? 'Generating…'
+                        : wrappedSharing === 'done'
+                        ? 'Shared!'
+                        : 'Share Month Wrapped'}
+                    </button>
+                  )}
                   {!isOwnProfile && (
                     <>
                       <button
@@ -1599,6 +1667,33 @@ function Profile() {
                     : dnaSharing === 'done'
                     ? '✓ Shared!'
                     : 'Share DNA'}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className={`profile-ig-btn profile-ig-btn--dna${wrappedSharing !== 'idle' ? ' profile-ig-btn--dna-active' : ''}`}
+                  onClick={() => handleShareWrapped('year')}
+                  disabled={wrappedSharing === 'generating'}
+                  aria-label={
+                    wrappedSharing === 'generating'
+                      ? 'Generating Wrapped card…'
+                      : wrappedSharing === 'done'
+                      ? 'Wrapped card shared!'
+                      : 'Share your Year Wrapped card'
+                  }
+                  aria-busy={wrappedSharing === 'generating'}
+                  initial={reducedMotion ? false : { opacity: 0, scale: 0.88 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={
+                    reducedMotion
+                      ? { duration: 0 }
+                      : { type: 'spring', stiffness: 400, damping: 26, delay: 0.26 }
+                  }
+                >
+                  {wrappedSharing === 'generating'
+                    ? 'Generating…'
+                    : wrappedSharing === 'done'
+                    ? '✓ Shared!'
+                    : 'Wrapped'}
                 </motion.button>
               </>
             ) : (
