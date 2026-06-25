@@ -1918,7 +1918,9 @@ function Profile() {
               {activeTab === 'diary' && (
                 <DiaryTab
                   entries={journalEntries}
+                  lifeReviews={allReviews.filter((r) => !!r.life_context)}
                   onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
+                  onReviewClick={(reviewId) => navigate(`/reviews/${reviewId}/comments`)}
                 />
               )}
             </motion.div>
@@ -2551,14 +2553,58 @@ function ListRow({
    Hides cleanly (empty state) when there are no entries.
    ============================================================ */
 
-function DiaryTab({ entries, onEntryClick }) {
-  if (!entries || entries.length === 0) {
+const DIARY_VIBE_LABELS = {
+  masterpiece: 'Masterpiece',
+  underrated:  'Underrated',
+  mid:         'Mid',
+  rage_quit:   'Rage Quit',
+  comfort:     'Comfort',
+}
+
+const DIARY_LIFE_LABELS = {
+  childhood:   'Childhood',
+  teen_years:  'Teen Years',
+  college:     'College',
+  burnout:     'Burnout',
+  healing:     'Healing',
+  traveling:   'Traveling',
+  new_chapter: 'New Chapter',
+}
+
+const DiaryChevron = () => (
+  <svg
+    className="profile-diary__chevron"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+)
+
+function DiaryTab({ entries, lifeReviews = [], onEntryClick, onReviewClick }) {
+  // Merge journal entries and life-tagged reviews, sorted newest-first.
+  const merged = React.useMemo(() => {
+    const journalItems = (entries || []).map((e) => ({ ...e, _type: 'journal' }))
+    const reviewItems = (lifeReviews || []).map((r) => ({ ...r, _type: 'review' }))
+    return [...journalItems, ...reviewItems].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    )
+  }, [entries, lifeReviews])
+
+  if (merged.length === 0) {
     return (
       <div className="profile-diary">
         <div className="profile-diary__empty">
-          <p className="profile-diary__empty-text">No journal entries yet.</p>
+          <p className="profile-diary__empty-text">No diary entries yet.</p>
           <p className="profile-diary__empty-sub">
-            Add dated notes from a game's page as you play.
+            Add journal notes while playing, or tag a review with a life moment.
           </p>
         </div>
       </div>
@@ -2568,64 +2614,107 @@ function DiaryTab({ entries, onEntryClick }) {
   return (
     <div className="profile-diary">
       <ul className="profile-diary__list" aria-label="Diary">
-        {entries.map((entry) => (
-          <li key={entry.id} className="profile-diary__row">
-            <button
-              type="button"
-              className="profile-diary__row-btn"
-              onClick={() => onEntryClick(entry.id)}
-              aria-label={`Open journal entry: ${entry.title || entry.game_title || 'entry'}`}
-            >
-              {entry.game_image ? (
-                <img
-                  src={entry.game_image}
-                  alt={entry.game_title || ''}
-                  className="profile-diary__cover"
-                />
-              ) : (
-                <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
-              )}
-              <div className="profile-diary__meta">
-                <p className="profile-diary__game-title">
-                  {entry.game_title || 'Unknown game'}
-                </p>
-                {entry.title && (
-                  <p className="profile-diary__entry-title">{entry.title}</p>
-                )}
-                <time
-                  className="profile-diary__date"
-                  dateTime={entry.created_at}
-                  title={new Date(entry.created_at).toLocaleString()}
+        {merged.map((item) => {
+          if (item._type === 'review') {
+            const lifeLabel = DIARY_LIFE_LABELS[item.life_context] || item.life_context
+            const vibeLabel = item.vibe_stamp ? DIARY_VIBE_LABELS[item.vibe_stamp] : null
+            return (
+              <li key={`review-${item.id}`} className="profile-diary__row profile-diary__row--review">
+                <button
+                  type="button"
+                  className="profile-diary__row-btn"
+                  onClick={() => onReviewClick?.(item.id)}
+                  aria-label={`Review of ${item.game_title || 'game'} — ${lifeLabel}`}
                 >
-                  {formatDiaryDate(entry.created_at)}
-                </time>
-                {entry.is_spoiler ? (
-                  <p className="profile-diary__snippet profile-diary__snippet--spoiler">
-                    [spoiler]
-                  </p>
-                ) : entry.body ? (
-                  <p className="profile-diary__snippet">
-                    {entry.body.slice(0, 100)}{entry.body.length > 100 ? '…' : ''}
-                  </p>
-                ) : null}
-              </div>
-              <svg
-                className="profile-diary__chevron"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+                  {item.game_image ? (
+                    <img
+                      src={item.game_image}
+                      alt={item.game_title || ''}
+                      className="profile-diary__cover"
+                    />
+                  ) : (
+                    <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
+                  )}
+                  <div className="profile-diary__meta">
+                    <p className="profile-diary__game-title">
+                      {item.game_title || 'Unknown game'}
+                    </p>
+                    <div className="profile-diary__life-row">
+                      <span className="profile-diary__life-pill">{lifeLabel}</span>
+                      {vibeLabel && (
+                        <span
+                          className="profile-diary__vibe-pill"
+                          data-vibe={item.vibe_stamp}
+                        >
+                          {vibeLabel}
+                        </span>
+                      )}
+                    </div>
+                    <time
+                      className="profile-diary__date"
+                      dateTime={item.created_at}
+                      title={new Date(item.created_at).toLocaleString()}
+                    >
+                      {formatDiaryDate(item.created_at)}
+                    </time>
+                    {item.body ? (
+                      <p className="profile-diary__snippet">
+                        {item.body.slice(0, 100)}{item.body.length > 100 ? '…' : ''}
+                      </p>
+                    ) : null}
+                  </div>
+                  <DiaryChevron />
+                </button>
+              </li>
+            )
+          }
+
+          return (
+            <li key={`journal-${item.id}`} className="profile-diary__row">
+              <button
+                type="button"
+                className="profile-diary__row-btn"
+                onClick={() => onEntryClick(item.id)}
+                aria-label={`Open journal entry: ${item.title || item.game_title || 'entry'}`}
               >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </li>
-        ))}
+                {item.game_image ? (
+                  <img
+                    src={item.game_image}
+                    alt={item.game_title || ''}
+                    className="profile-diary__cover"
+                  />
+                ) : (
+                  <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
+                )}
+                <div className="profile-diary__meta">
+                  <p className="profile-diary__game-title">
+                    {item.game_title || 'Unknown game'}
+                  </p>
+                  {item.title && (
+                    <p className="profile-diary__entry-title">{item.title}</p>
+                  )}
+                  <time
+                    className="profile-diary__date"
+                    dateTime={item.created_at}
+                    title={new Date(item.created_at).toLocaleString()}
+                  >
+                    {formatDiaryDate(item.created_at)}
+                  </time>
+                  {item.is_spoiler ? (
+                    <p className="profile-diary__snippet profile-diary__snippet--spoiler">
+                      [spoiler]
+                    </p>
+                  ) : item.body ? (
+                    <p className="profile-diary__snippet">
+                      {item.body.slice(0, 100)}{item.body.length > 100 ? '…' : ''}
+                    </p>
+                  ) : null}
+                </div>
+                <DiaryChevron />
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

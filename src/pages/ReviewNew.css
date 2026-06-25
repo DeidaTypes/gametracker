@@ -159,6 +159,65 @@
   margin: 0;
 }
 
+/* ── Vibe stamps + life context pickers ─────────────────────────────────── */
+
+.rnc-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rnc-picker-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #94a8d4);
+}
+
+.rnc-stamp-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rnc-stamp-pill {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary, #94a8d4);
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
+  border-radius: var(--radius-full, 999px);
+  padding: 7px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.rnc-stamp-pill--active {
+  color: var(--color-bg-primary, #0a0f25);
+  background: var(--color-brand-primary, #c9873a);
+  border-color: var(--color-brand-primary, #c9873a);
+}
+
+.rnc-stamp-pill:active:not(.rnc-stamp-pill--active) {
+  background: rgba(148, 168, 212, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rnc-stamp-pill {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .rnc-stamp-pill {
+  transition: none;
+}
+
 /* ── Review textarea ─────────────────────────────────────────────────────── */
 
 .rnc-textarea-wrap {

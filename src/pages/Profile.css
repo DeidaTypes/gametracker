@@ -1793,3 +1793,49 @@ img.profile-list-row__author-avatar {
   color: var(--text-tertiary);
   opacity: 0.5;
 }
+
+/* Life-context review rows — subtle left accent */
+.profile-diary__row--review {
+  border-left: 2px solid var(--color-brand-primary, #c9873a);
+}
+
+/* Life + vibe pill row */
+.profile-diary__life-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.profile-diary__life-pill {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(148, 168, 212, 0.10);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
+  color: var(--text-secondary, #94a8d4);
+}
+
+.profile-diary__vibe-pill {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--color-bg-primary, #0a0f25);
+  background: var(--color-brand-primary, #c9873a);
+}
+
+.profile-diary__vibe-pill[data-vibe='masterpiece'] { background: #d4a544; }
+.profile-diary__vibe-pill[data-vibe='underrated']  { background: #5b8cf7; color: #fff; }
+.profile-diary__vibe-pill[data-vibe='mid']         { background: var(--color-text-secondary, #94a8d4); }
+.profile-diary__vibe-pill[data-vibe='rage_quit']   { background: #e05a5a; color: #fff; }
+.profile-diary__vibe-pill[data-vibe='comfort']     { background: #5bb88c; color: #fff; }

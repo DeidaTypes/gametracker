@@ -24,6 +24,24 @@ import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import './ReviewCard.css'
 
+const VIBE_LABELS = {
+  masterpiece: 'Masterpiece',
+  underrated:  'Underrated',
+  mid:         'Mid',
+  rage_quit:   'Rage Quit',
+  comfort:     'Comfort',
+}
+
+const LIFE_LABELS = {
+  childhood:   'Childhood',
+  teen_years:  'Teen Years',
+  college:     'College',
+  burnout:     'Burnout',
+  healing:     'Healing',
+  traveling:   'Traveling',
+  new_chapter: 'New Chapter',
+}
+
 /**
  * Canonical review card used across Sprint 5 surfaces:
  *   - Home timeline
@@ -260,6 +278,21 @@ function ReviewCard({
           </span>
         )}
       </div>
+
+      {(review.vibeStamp || review.lifeContext) && (
+        <div className="review-card__stamps">
+          {review.vibeStamp && (
+            <span className="review-card__vibe-pill" data-vibe={review.vibeStamp}>
+              {VIBE_LABELS[review.vibeStamp] || review.vibeStamp}
+            </span>
+          )}
+          {review.lifeContext && (
+            <span className="review-card__life-pill">
+              {LIFE_LABELS[review.lifeContext] || review.lifeContext}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="review-card__body">
         <p ref={bodyRef} className={expanded ? '' : clampClass}>

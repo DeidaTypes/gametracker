@@ -103,6 +103,8 @@ function toReviewCardShape(row, commentCount) {
     body: row.body || '',
     rating: Number(row.rating) || 0,
     hoursPlayed: Number(row.hours_played) || 0,
+    vibeStamp: row.vibe_stamp || null,
+    lifeContext: row.life_context || null,
     likeCount: 0,
     commentCount,
     createdAt: row.created_at,

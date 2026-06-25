@@ -148,6 +148,8 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
     hoursPlayed: Number(row.hours_played) || 0,
     liked: !!row.liked,
     hasSpoilers: !!row.has_spoilers,
+    vibeStamp: row.vibe_stamp || null,
+    lifeContext: row.life_context || null,
     likeCount: likeCounts?.get(row.id) || 0,
     commentCount: commentCounts?.get(row.id) || 0,
     createdAt: row.created_at,

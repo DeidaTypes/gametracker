@@ -44,6 +44,8 @@ function ReviewNew() {
   // markCompleted is a create-only action — irrelevant when editing an
   // existing review, so we hide the toggle entirely in edit mode.
   const [markCompleted, setMarkCompleted] = useState(false)
+  const [vibeStamp, setVibeStamp] = useState(isEditMode ? (editReview.vibeStamp ?? null) : null)
+  const [lifeContext, setLifeContext] = useState(isEditMode ? (editReview.lifeContext ?? null) : null)
   const [submitting, setSubmitting] = useState(false)
 
   // Drives the popup enter/exit animation.
@@ -98,7 +100,9 @@ function ReviewNew() {
       text.trim() !== (editReview.body ?? '').trim() ||
       (parseFloat(hoursRaw) || 0) !== (editReview.hoursPlayed ?? 0) ||
       loved !== (editReview.liked ?? false) ||
-      containsSpoilers !== (editReview.hasSpoilers ?? false)
+      containsSpoilers !== (editReview.hasSpoilers ?? false) ||
+      vibeStamp !== (editReview.vibeStamp ?? null) ||
+      lifeContext !== (editReview.lifeContext ?? null)
     : hasInput
 
   const handleCancel = useCallback(() => {
@@ -126,6 +130,8 @@ function ReviewNew() {
             liked: !!loved,
             hasSpoilers: !!containsSpoilers,
             hoursPlayed: Math.min(parseFloat(hoursRaw) || 0, 9999),
+            vibeStamp: vibeStamp || null,
+            lifeContext: lifeContext || null,
           }),
           deadline,
         ])
@@ -140,6 +146,8 @@ function ReviewNew() {
             gameTitle: game.title,
             gameImage: game.image,
             hoursPlayed: Math.min(parseFloat(hoursRaw) || 0, 9999),
+            vibeStamp: vibeStamp || null,
+            lifeContext: lifeContext || null,
           }),
           deadline,
         ])
@@ -160,6 +168,7 @@ function ReviewNew() {
   }, [
     canSave, isEditMode, editReview, game,
     text, rating, loved, containsSpoilers, hoursRaw, markCompleted,
+    vibeStamp, lifeContext,
     navigate, closeWith,
   ])
 
@@ -194,6 +203,24 @@ function ReviewNew() {
   }
 
   const hoursInputRef = useRef(null)
+
+  const VIBE_STAMPS = [
+    { id: 'masterpiece', label: 'Masterpiece' },
+    { id: 'underrated',  label: 'Underrated'  },
+    { id: 'mid',         label: 'Mid'         },
+    { id: 'rage_quit',   label: 'Rage Quit'   },
+    { id: 'comfort',     label: 'Comfort'     },
+  ]
+
+  const LIFE_CONTEXTS = [
+    { id: 'childhood',   label: 'Childhood'   },
+    { id: 'teen_years',  label: 'Teen Years'  },
+    { id: 'college',     label: 'College'     },
+    { id: 'burnout',     label: 'Burnout'     },
+    { id: 'healing',     label: 'Healing'     },
+    { id: 'traveling',   label: 'Traveling'   },
+    { id: 'new_chapter', label: 'New Chapter' },
+  ]
 
   const coverSrc = game?.image ?? null
   const developer = game?.developers?.[0] ?? game?.developer ?? null
@@ -340,6 +367,42 @@ function ReviewNew() {
               onClick={() => adjustHours(0.5)}
               aria-label="Increase hours played"
             >+</button>
+          </div>
+        </div>
+
+        {/* Vibe stamps */}
+        <div className="rnc-picker-section">
+          <span className="rnc-picker-label">Vibe</span>
+          <div className="rnc-stamp-row" role="group" aria-label="Vibe stamp">
+            {VIBE_STAMPS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`rnc-stamp-pill${vibeStamp === s.id ? ' rnc-stamp-pill--active' : ''}`}
+                onClick={() => setVibeStamp((prev) => (prev === s.id ? null : s.id))}
+                aria-pressed={vibeStamp === s.id}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Life context */}
+        <div className="rnc-picker-section">
+          <span className="rnc-picker-label">When in your life?</span>
+          <div className="rnc-stamp-row" role="group" aria-label="Life context">
+            {LIFE_CONTEXTS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`rnc-stamp-pill${lifeContext === c.id ? ' rnc-stamp-pill--active' : ''}`}
+                onClick={() => setLifeContext((prev) => (prev === c.id ? null : c.id))}
+                aria-pressed={lifeContext === c.id}
+              >
+                {c.label}
+              </button>
+            ))}
           </div>
         </div>
 

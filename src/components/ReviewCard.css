@@ -118,6 +118,61 @@
   line-height: 1;
 }
 
+/* ---------------- Vibe stamps + life context pills ---------------- */
+
+.review-card__stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review-card__vibe-pill,
+.review-card__life-pill {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+/* Vibe pill — copper accent by default, nudged per vibe */
+.review-card__vibe-pill {
+  color: var(--color-bg-primary);
+  background: var(--color-brand-primary);
+}
+
+/* Per-vibe color overrides using data attribute */
+.review-card__vibe-pill[data-vibe='masterpiece'] {
+  background: #d4a544;
+}
+.review-card__vibe-pill[data-vibe='underrated'] {
+  background: #5b8cf7;
+  color: #ffffff;
+}
+.review-card__vibe-pill[data-vibe='mid'] {
+  background: var(--color-text-secondary, #94a8d4);
+  color: var(--color-bg-primary);
+}
+.review-card__vibe-pill[data-vibe='rage_quit'] {
+  background: #e05a5a;
+  color: #ffffff;
+}
+.review-card__vibe-pill[data-vibe='comfort'] {
+  background: #5bb88c;
+  color: #ffffff;
+}
+
+/* Life context pill — subtle, secondary surface */
+.review-card__life-pill {
+  color: var(--color-text-secondary);
+  background: var(--bg-surface-2, rgba(148, 168, 212, 0.10));
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
+}
+
 /* ---------------- Title ---------------- */
 
 .review-card__title {

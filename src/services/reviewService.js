@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 import { logActivity } from './activityService'
+import {
+  ACTIVITY_EVENT_TYPES,
+  logActivityEvent,
+} from './activityEventsService'
 import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
 import { getLikeCountsForReviews } from './likeService'
@@ -20,6 +24,8 @@ import { getLikeCountsForReviews } from './likeService'
  *     game_title      text,
  *     game_image      text,
  *     hours_played    numeric(6,1) NOT NULL DEFAULT 0,
+ *     vibe_stamp      text CHECK (vibe_stamp IN ('masterpiece','underrated','mid','rage_quit','comfort')),
+ *     life_context    text CHECK (life_context IN ('childhood','teen_years','college','burnout','healing','traveling','new_chapter')),
  *     created_at      timestamptz NOT NULL DEFAULT now(),
  *     updated_at      timestamptz NOT NULL DEFAULT now()
  *   )
@@ -64,6 +70,8 @@ function toLegacyShape(row) {
     hoursPlayed: row.hours_played != null ? Number(row.hours_played) : 0,
     liked: !!row.liked,
     containsSpoilers: !!row.has_spoilers,
+    vibeStamp: row.vibe_stamp || null,
+    lifeContext: row.life_context || null,
     date: row.created_at,
   }
 }
@@ -117,7 +125,7 @@ export async function getReviewsForUser(userId) {
   const { data, error } = await supabase
     .from('reviews')
     .select(
-      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, created_at, updated_at'
+      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at'
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -478,6 +486,8 @@ export async function postReview({
   gameTitle = null,
   gameImage = null,
   hoursPlayed = 0,
+  vibeStamp = null,
+  lifeContext = null,
 }) {
   const {
     data: { user },
@@ -497,6 +507,8 @@ export async function postReview({
     game_title: gameTitle || null,
     game_image: gameImage || null,
     hours_played: Number(hoursPlayed) || 0,
+    vibe_stamp: vibeStamp || null,
+    life_context: lifeContext || null,
   }
 
   const { data, error } = await supabase
@@ -525,6 +537,23 @@ export async function postReview({
     },
   })
 
+  // Pulse — one event per user-visible action. postReview always
+  // includes a rating (rating column is NOT NULL) so we collapse
+  // "rated + reviewed" into a single 'reviewed' event with the rating
+  // in metadata. The 'rated' enum value is reserved for a future
+  // rate-without-review feature.
+  logActivityEvent({
+    type: ACTIVITY_EVENT_TYPES.REVIEWED,
+    entityId: data.igdb_game_id != null ? String(data.igdb_game_id) : null,
+    metadata: {
+      review_id: data.id,
+      rating: data.rating != null ? Number(data.rating) : null,
+      game_title: data.game_title || null,
+      game_image: data.game_image || null,
+      has_spoilers: !!data.has_spoilers,
+    },
+  })
+
   return data
 }
 
@@ -542,6 +571,8 @@ export async function updateReview(reviewId, fields) {
   if ('gameTitle' in fields) allowed.game_title = fields.gameTitle || null
   if ('gameImage' in fields) allowed.game_image = fields.gameImage || null
   if ('hoursPlayed' in fields) allowed.hours_played = Number(fields.hoursPlayed) || 0
+  if ('vibeStamp' in fields) allowed.vibe_stamp = fields.vibeStamp || null
+  if ('lifeContext' in fields) allowed.life_context = fields.lifeContext || null
   allowed.updated_at = new Date().toISOString()
 
   const { data, error } = await supabase
