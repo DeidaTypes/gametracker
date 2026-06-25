@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
 import { HiDotsVertical, HiPlus } from 'react-icons/hi'
-import { PlayCircle, CheckCircle2, Bookmark, BookmarkCheck, List } from 'lucide-react'
+import { PlayCircle, CheckCircle2, Bookmark, BookmarkCheck, List, GripVertical, Star } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
 import ActionSheet from '../components/ActionSheet'
@@ -23,6 +23,7 @@ import {
   deleteList,
   removeGameFromList,
   reorderListGames,
+  getOwnerRatingsForList,
   isTrackerList,
   pinList,
   unpinList,
@@ -117,9 +118,16 @@ function ListDetail() {
   const [saveCount, setSaveCount] = useState(0)
   const [isSaved, setIsSaved] = useState(false)
 
-  // Drag-to-reorder state (custom lists only)
+  // Drag-to-reorder state (custom lists, owner only)
   const dragGameIdRef = useRef(null)
   const [dragOverId, setDragOverId] = useState(null)
+  // Refs to each grid-item DOM node so we can set draggable imperatively from the handle
+  const itemEls = useRef({})
+  // Tracks which handle triggered the current drag; prevents whole-card drags
+  const handleActiveRef = useRef(null)
+
+  // Owner ratings: { [igdbGameId]: rating }
+  const [ownerRatings, setOwnerRatings] = useState({})
 
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
@@ -172,6 +180,22 @@ function ListDetail() {
     listInfo?.isCustom &&
     currentUserId != null &&
     currentUserId === listInfo?.userId
+
+  // Load the list owner's ratings for all games in this list (real data only)
+  useEffect(() => {
+    if (!listInfo?.userId || !games.length || isTracker) {
+      setOwnerRatings({})
+      return
+    }
+    let cancelled = false
+    getOwnerRatingsForList(
+      listInfo.userId,
+      games.map((g) => g.id)
+    ).then((ratings) => {
+      if (!cancelled) setOwnerRatings(ratings)
+    })
+    return () => { cancelled = true }
+  }, [listInfo?.userId, games, isTracker])
 
   // ── Save state (public custom lists) ─────────────────────────────────────
 
@@ -291,9 +315,28 @@ function ListDetail() {
     }
   }
 
-  // ── Drag-to-reorder (custom lists only) ──────────────────────────────────
+  // ── Drag-to-reorder (custom lists, owner only) ───────────────────────────
+  // Drag is initiated ONLY from the handle button. We imperatively toggle
+  // the `draggable` attribute on the grid-item DOM node so that clicking
+  // anywhere else on the card never starts a drag.
+
+  const activateDragHandle = (gameId) => {
+    handleActiveRef.current = gameId
+    const el = itemEls.current[gameId]
+    if (el) el.draggable = true
+  }
+
+  const deactivateDragHandle = (gameId) => {
+    handleActiveRef.current = null
+    const el = itemEls.current[gameId]
+    if (el) el.draggable = false
+  }
 
   const handleDragStart = (e, gameId) => {
+    if (handleActiveRef.current !== gameId) {
+      e.preventDefault()
+      return
+    }
     dragGameIdRef.current = gameId
     e.dataTransfer.effectAllowed = 'move'
   }
@@ -320,20 +363,19 @@ function ListDetail() {
     const [moved] = arr.splice(fromIdx, 1)
     arr.splice(toIdx, 0, moved)
 
+    // Optimistic update
     setGames(arr)
 
     try {
-      await reorderListGames(
-        listId,
-        arr.map((g) => g.id)
-      )
+      await reorderListGames(listId, arr.map((g) => g.id))
     } catch {
       refresh()
       showToast('Failed to save new order. Please try again.', 'error')
     }
   }
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (gameId) => {
+    deactivateDragHandle(gameId)
     setDragOverId(null)
     dragGameIdRef.current = null
   }
@@ -642,35 +684,62 @@ function ListDetail() {
         </p>
         {games.length > 0 ? (
           <div className="list-detail-grid" ref={gridRef}>
-            {games.map((game) => (
-              <div
-                key={game.id}
-                className={`list-detail-grid-item${
-                  isOwner && dragOverId === game.id ? ' drag-over' : ''
-                }`}
-                draggable={isOwner}
-                onDragStart={isOwner ? (e) => handleDragStart(e, game.id) : undefined}
-                onDragOver={isOwner ? (e) => handleDragOver(e, game.id) : undefined}
-                onDrop={isOwner ? (e) => handleDrop(e, game.id) : undefined}
-                onDragEnd={isOwner ? handleDragEnd : undefined}
-              >
-                <GameCard game={game} />
-                {isOwner && (
-                  <button
-                    type="button"
-                    className="list-detail-remove-button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleRemoveGame(game.id, game.title)
-                    }}
-                    aria-label={`Remove ${game.title}`}
-                    title="Remove from list"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
+            {games.map((game) => {
+              const rating = ownerRatings[game.id]
+              return (
+                <div
+                  key={game.id}
+                  ref={(el) => { if (el) itemEls.current[game.id] = el }}
+                  className={`list-detail-grid-item${
+                    isOwner && dragOverId === game.id ? ' drag-over' : ''
+                  }`}
+                  onDragStart={isOwner ? (e) => handleDragStart(e, game.id) : undefined}
+                  onDragOver={isOwner ? (e) => handleDragOver(e, game.id) : undefined}
+                  onDrop={isOwner ? (e) => handleDrop(e, game.id) : undefined}
+                  onDragEnd={isOwner ? () => handleDragEnd(game.id) : undefined}
+                >
+                  <GameCard game={game} />
+
+                  {/* Rating badge — owner's real rating only */}
+                  {rating != null && (
+                    <div className="list-detail-rating-badge" aria-label={`Your rating: ${rating}`}>
+                      <Star size={9} aria-hidden="true" />
+                      {rating}
+                    </div>
+                  )}
+
+                  {/* Drag handle — owner only, activates drag on pointer-down */}
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="list-detail-drag-handle"
+                      aria-label={`Drag to reorder ${game.title}`}
+                      onPointerDown={() => activateDragHandle(game.id)}
+                      onPointerUp={() => deactivateDragHandle(game.id)}
+                      onPointerCancel={() => deactivateDragHandle(game.id)}
+                    >
+                      <GripVertical size={14} aria-hidden="true" />
+                    </button>
+                  )}
+
+                  {/* Remove button */}
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="list-detail-remove-button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveGame(game.id, game.title)
+                      }}
+                      aria-label={`Remove ${game.title}`}
+                      title="Remove from list"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ) : (
           <ListDetailEmpty

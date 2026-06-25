@@ -661,14 +661,82 @@
 
 /* ── Drag-to-reorder ── */
 .list-detail-grid-item[draggable="true"] {
-  cursor: grab;
-}
-.list-detail-grid-item[draggable="true"]:active {
-  cursor: grabbing;
+  cursor: default;
 }
 .list-detail-grid-item.drag-over {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
   opacity: 0.7;
+}
+
+/* ── Drag handle (owner only, bottom-right of card) ── */
+.list-detail-drag-handle {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.92);
+}
+
+/* Show handle on hover (desktop) and always on touch devices */
+.list-detail-grid-item:hover .list-detail-drag-handle,
+.list-detail-grid-item:focus-within .list-detail-drag-handle {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .list-detail-drag-handle {
+    opacity: 0.75;
+  }
+}
+
+/* ── Owner rating badge (bottom-left of card) ── */
+.list-detail-rating-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.72);
+  color: var(--color-brand-primary);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-drag-handle,
+  .list-detail-grid-item.drag-over {
+    transition: none;
+  }
 }

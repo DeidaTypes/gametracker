@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 import { logActivity } from './activityService'
+import {
+  ACTIVITY_EVENT_TYPES,
+  logActivityEvent,
+} from './activityEventsService'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -236,6 +240,18 @@ export async function createList({ name, description = '', isPublic = true }) {
     metadata: { list_name: data.name || null },
   })
 
+  // Pulse — 'listed' covers both "made a list" and "added a game to a
+  // list" with `kind` in metadata so the feed can render distinct
+  // sentences without a second enum value.
+  logActivityEvent({
+    type: ACTIVITY_EVENT_TYPES.LISTED,
+    entityId: data.id,
+    metadata: {
+      kind: 'list_created',
+      list_name: data.name || null,
+    },
+  })
+
   return data.id
 }
 
@@ -314,6 +330,21 @@ export async function addGameToList(
     targetId: listId,
     metadata: { game_title: gameData.title || null },
   })
+
+  // Pulse — same 'listed' type as createList, differentiated by `kind`
+  // and by the presence of `game_*` metadata. entity_id points at the
+  // game (the more user-meaningful target), with list_id alongside in
+  // metadata so deep-links can route to either side.
+  logActivityEvent({
+    type: ACTIVITY_EVENT_TYPES.LISTED,
+    entityId: String(igdbGameId),
+    metadata: {
+      kind: 'game_added_to_list',
+      list_id: listId,
+      game_title: gameData.title || null,
+      game_image: gameData.image || null,
+    },
+  })
 }
 
 /**
@@ -350,6 +381,28 @@ export async function reorderListGames(listId, orderedGameIds) {
     )
   )
   notifyChange()
+}
+
+/**
+ * Fetch the given user's rating (from `reviews`) for each game in a list.
+ * Returns a plain object keyed by igdb_game_id (number) → rating (number).
+ * Only games that have a review from this user are included.
+ *
+ * @param {string} userId         UUID of the list owner
+ * @param {Array<number>} gameIds IGDB game IDs to look up
+ */
+export async function getOwnerRatingsForList(userId, gameIds) {
+  if (!userId || !gameIds?.length) return {}
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('igdb_game_id, rating')
+    .eq('user_id', userId)
+    .in('igdb_game_id', gameIds.map(Number))
+  if (error) {
+    console.error('[lists] getOwnerRatingsForList failed:', error.message)
+    return {}
+  }
+  return Object.fromEntries((data || []).map((r) => [r.igdb_game_id, r.rating]))
 }
 
 // ── List pinning ──────────────────────────────────────────────────────────────
