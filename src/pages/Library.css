@@ -642,6 +642,188 @@
 }
 
 /* =============================================
+   COLLECTION IDENTITY STAT LINE
+   One-line summary: "RPG person · 312h total · longest: …"
+   Shown in the hero below the backlog hint.
+   ============================================= */
+
+.lib-hero-identity {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  margin: 5px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =============================================
+   SMART SECTIONS — On a roll / Almost done / Untouched
+   Horizontal scroll strips of small game cards.
+   ============================================= */
+
+.lib-section--smart {
+  margin-top: 16px;
+  /* The scroll strips break out of the section padding; each group
+     handles its own horizontal-scroll padding so covers bleed edge-to-edge. */
+  padding: 0;
+}
+
+.lib-smart-group {
+  margin-bottom: 16px;
+}
+
+.lib-smart-group:last-child {
+  margin-bottom: 0;
+}
+
+.lib-smart-group-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+  padding: 0 var(--page-padding);
+}
+
+/* Horizontal scroll container — no scrollbar, overflows naturally */
+.lib-smart-scroll {
+  display: flex;
+  gap: 10px;
+  padding: 0 var(--page-padding) 6px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Extra bottom padding so progress bar / dot shadow isn't clipped */
+}
+
+.lib-smart-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual game card in a smart section */
+.lib-smart-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+  width: 60px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .lib-smart-card:hover .lib-smart-cover-wrap {
+    transform: translateY(-2px);
+  }
+}
+
+.lib-smart-card:active .lib-smart-cover-wrap {
+  transform: scale(0.97);
+}
+
+/* Cover area — portrait 3:4 ratio */
+.lib-smart-cover-wrap {
+  position: relative;
+  width: 60px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-surface-2);
+  box-shadow: var(--shadow-cover);
+  transition: transform var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+/* Muted state for "untouched" games */
+.lib-smart-cover-wrap--muted {
+  opacity: 0.55;
+}
+
+.lib-smart-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lib-smart-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* Progress bar — thin strip along the bottom of the cover */
+.lib-smart-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lib-smart-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.4s ease;
+}
+
+/* "On a roll" pulse dot — top-right corner of the cover */
+.lib-smart-roll-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-base);
+}
+
+/* Game title below cover */
+.lib-smart-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+  margin: 0;
+}
+
+/* Hours / percent hint below title */
+.lib-smart-hint {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* =============================================
    REDUCED MOTION
    ============================================= */
 
@@ -651,13 +833,16 @@
   .lib-tracker-card,
   .lib-tracker-fan-card,
   .lib-list-card,
-  .lib-lists-empty-link {
+  .lib-lists-empty-link,
+  .lib-smart-cover-wrap,
+  .lib-smart-progress-fill {
     transition: none;
   }
 
   .lib-tracker-card:active,
   .lib-list-card:active,
-  .lib-hero-recent:active {
+  .lib-hero-recent:active,
+  .lib-smart-card:active .lib-smart-cover-wrap {
     transform: none;
   }
 
@@ -666,6 +851,10 @@
     .lib-list-card:hover,
     .lib-hero-recent:hover {
       transform: translateX(var(--fan-x, 0)) rotate(var(--fan-r, 0));
+    }
+
+    .lib-smart-card:hover .lib-smart-cover-wrap {
+      transform: none;
     }
   }
 }

@@ -19,6 +19,7 @@ import {
   addGameToList,
 } from '../services/listService'
 import { getTimeToBeat } from '../services/timeToBeatService'
+import { useCollectionStats } from '../hooks/useCollectionStats'
 import './Library.css'
 
 // Mandatory tracker lists that live in localStorage (not Supabase). The
@@ -64,6 +65,10 @@ function Library() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   // Backlog hours: sum of main-story times for Want-to-Play games that have TTB data
   const [backlogHours, setBacklogHours] = useState({ totalHours: null, withoutEstimates: 0 })
+
+  // Collection-level stats: total hours, favorite genre, longest beaten,
+  // per-game CP progress, and on-a-roll IDs from the F1 activity_events feed.
+  const collectionStats = useCollectionStats(user?.id)
 
   const [trackersRef] = useAutoAnimateMotion()
   const [customGridRef] = useAutoAnimateMotion()
@@ -195,6 +200,50 @@ function Library() {
     return result
   }, [trackerLists])
 
+  // ── Smart sections (currently-playing games grouped by signal) ──────────
+  //
+  // "On a roll"   — had a F1 'played' activity_event in the last 7 days
+  // "Almost done" — progress ≥ 70 % (progress_override or hours/TTB)
+  // "Untouched"   — 0 hours logged and not in on-a-roll set
+  //
+  // A game can appear in multiple sections (e.g., 90 % AND on a roll).
+  // Sections with 0 games are hidden via conditional rendering.
+  const cpGames = trackerLists['currently-playing']?.games || []
+
+  const smartSections = useMemo(() => {
+    const { cpProgress, onARollIds } = collectionStats
+    const onARoll = []
+    const almostDone = []
+    const untouched = []
+
+    for (const g of cpGames) {
+      if (!g?.id) continue
+      const key = String(g.id)
+      const prog = cpProgress[key] || { hours: 0, percent: null }
+
+      if (onARollIds.has(key)) {
+        onARoll.push({ ...g, _hours: prog.hours, _percent: prog.percent })
+      }
+      if (prog.percent !== null && prog.percent >= 70) {
+        almostDone.push({ ...g, _hours: prog.hours, _percent: prog.percent })
+      }
+      if (prog.hours === 0 && !onARollIds.has(key)) {
+        untouched.push({ ...g, _hours: 0, _percent: null })
+      }
+    }
+
+    return { onARoll, almostDone, untouched }
+  }, [cpGames, collectionStats])
+
+  // Total hours logged across all CP games (for the tracker card subtitle)
+  const cpTotalHours = useMemo(() => {
+    const { trackerRows } = collectionStats
+    return cpGames.reduce((sum, g) => {
+      if (!g?.id) return sum
+      return sum + (trackerRows[String(g.id)]?.hours || 0)
+    }, 0)
+  }, [cpGames, collectionStats])
+
   // Dedupe set for SharedCover so the same game appearing in multiple
   // visible mosaics / fans doesn't trigger a conflicting layoutId match.
   const duplicateIds = useMemo(() => {
@@ -239,6 +288,12 @@ function Library() {
     const { count, previews } = trackerPreviews[id] || { count: 0, previews: [] }
     const isEmpty = previews.length === 0
 
+    // For "Currently Playing" — show total hours logged across all CP games
+    const cpHoursHint =
+      id === 'currently-playing' && cpTotalHours > 0
+        ? `${cpTotalHours % 1 === 0 ? cpTotalHours : cpTotalHours.toFixed(1)}h logged`
+        : null
+
     return (
       <button
         key={id}
@@ -252,6 +307,9 @@ function Library() {
           <p className="lib-tracker-count">
             {count} {count === 1 ? 'game' : 'games'}
           </p>
+          {cpHoursHint && (
+            <p className="lib-tracker-backlog-hint">{cpHoursHint}</p>
+          )}
           {id === 'want-to-play' && backlogHours.totalHours !== null && (
             <p className="lib-tracker-backlog-hint">
               ~{backlogHours.totalHours.toLocaleString()} hrs
@@ -370,6 +428,79 @@ function Library() {
     )
   }
 
+  // ── Smart section render helper ───────────────────────────────────────────
+
+  const renderSmartGroup = (label, games, variant) => {
+    if (games.length === 0) return null
+    return (
+      <div className="lib-smart-group" key={label}>
+        <p className="lib-smart-group-label">{label}</p>
+        <div className="lib-smart-scroll" role="list">
+          {games.map((g) => {
+            const percent = g._percent
+            const hours = g._hours
+            const hintParts = [
+              hours > 0
+                ? `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`
+                : null,
+              percent !== null ? `${percent}%` : null,
+            ].filter(Boolean)
+
+            return (
+              <button
+                key={g.id}
+                type="button"
+                role="listitem"
+                className="lib-smart-card"
+                onClick={() => navigate(`/game/${g.id}`)}
+                aria-label={
+                  g.title
+                    ? `${g.title}${hintParts.length ? ` — ${hintParts.join(', ')}` : ''}`
+                    : 'Open game'
+                }
+              >
+                <div
+                  className={`lib-smart-cover-wrap${variant === 'untouched' ? ' lib-smart-cover-wrap--muted' : ''}`}
+                >
+                  {g.image ? (
+                    <img
+                      src={g.image}
+                      alt=""
+                      className="lib-smart-cover-img"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="lib-smart-cover-fallback">
+                      {g.title?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  {/* Progress bar at cover bottom for "almost done" */}
+                  {percent !== null && (
+                    <div className="lib-smart-progress" aria-hidden="true">
+                      <div
+                        className="lib-smart-progress-fill"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  )}
+                  {/* "On a roll" pulse dot */}
+                  {variant === 'on-a-roll' && (
+                    <span className="lib-smart-roll-dot" aria-hidden="true" />
+                  )}
+                </div>
+                <p className="lib-smart-title">{g.title || '—'}</p>
+                {hintParts.length > 0 && (
+                  <p className="lib-smart-hint">{hintParts.join(' · ')}</p>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -391,6 +522,28 @@ function Library() {
                       {' '}· +{backlogHours.withoutEstimates} without estimates
                     </span>
                   )}
+                </p>
+              )}
+              {/* Collection identity stat line — shown once real data loads */}
+              {!collectionStats.loading && (
+                collectionStats.favoriteGenre ||
+                collectionStats.totalHours > 0 ||
+                collectionStats.longestBeaten
+              ) && (
+                <p className="lib-hero-identity">
+                  {[
+                    collectionStats.favoriteGenre
+                      ? `${collectionStats.favoriteGenre} person`
+                      : null,
+                    collectionStats.totalHours > 0
+                      ? `${collectionStats.totalHours.toLocaleString()}h total`
+                      : null,
+                    collectionStats.longestBeaten
+                      ? `longest: ${collectionStats.longestBeaten.title} (${Math.round(collectionStats.longestBeaten.hours)}h)`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </p>
               )}
             </div>
@@ -434,6 +587,21 @@ function Library() {
             </div>
           )}
         </header>
+
+        {/* ── Smart sections (on a roll / almost done / untouched) ───── */}
+        {cpGames.length > 0 &&
+          (smartSections.onARoll.length > 0 ||
+            smartSections.almostDone.length > 0 ||
+            smartSections.untouched.length > 0) && (
+            <section
+              className="lib-section lib-section--smart"
+              aria-label="Currently playing signals"
+            >
+              {renderSmartGroup('On a roll', smartSections.onARoll, 'on-a-roll')}
+              {renderSmartGroup('Almost done', smartSections.almostDone, 'almost-done')}
+              {renderSmartGroup('Untouched', smartSections.untouched, 'untouched')}
+            </section>
+          )}
 
         {/* ── Trackers ───────────────────────────────────────────────── */}
         <section className="lib-section lib-section--trackers" aria-labelledby="lib-trackers-label">
