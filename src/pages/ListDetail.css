@@ -532,7 +532,9 @@
   margin: 0 auto;
 }
 
-/* Compact game count — single muted line above the grid */
+/* Compact game count — single muted line above the grid.
+   Tracker content uses edge-to-edge rows, so we only side-pad
+   the count chip, not the full content block. */
 .list-detail-game-count {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
@@ -541,6 +543,18 @@
   margin: 0 0 var(--spacing-md) 0;
   padding: 0;
   line-height: 1.4;
+}
+
+/* When the content block is hosting TrackerGameList, remove side padding
+   so the full-bleed rows can own their own page-padding. */
+.list-detail-content--tracker {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.list-detail-content--tracker .list-detail-game-count {
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
 }
 
 .list-detail-grid {

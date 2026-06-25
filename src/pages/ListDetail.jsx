@@ -36,6 +36,7 @@ import {
   unsaveList,
 } from '../services/listInteractionService'
 import ListComments from '../components/ListComments'
+import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
 import './ListDetail.css'
 
@@ -737,77 +738,93 @@ function ListDetail() {
         </div>
       )}
 
-      {/* 5. Games grid */}
-      <div className="list-detail-content">
+      {/* 5. Games — tracker gets rich row list; custom lists keep the grid */}
+      <div className={`list-detail-content${isTracker ? ' list-detail-content--tracker' : ''}`}>
         <p className="list-detail-game-count">
           {games.length} {games.length === 1 ? 'game' : 'games'}
         </p>
-        {games.length > 0 ? (
-          <div className="list-detail-grid" ref={gridRef}>
-            {games.map((game) => {
-              const rating = ownerRatings[game.id]
-              return (
-                <div
-                  key={game.id}
-                  ref={(el) => { if (el) itemEls.current[game.id] = el }}
-                  className={`list-detail-grid-item${
-                    (isOwner || isCollaborator) && dragOverId === game.id ? ' drag-over' : ''
-                  }`}
-                  onDragStart={(isOwner || isCollaborator) ? (e) => handleDragStart(e, game.id) : undefined}
-                  onDragOver={(isOwner || isCollaborator) ? (e) => handleDragOver(e, game.id) : undefined}
-                  onDrop={(isOwner || isCollaborator) ? (e) => handleDrop(e, game.id) : undefined}
-                  onDragEnd={(isOwner || isCollaborator) ? () => handleDragEnd(game.id) : undefined}
-                >
-                  <GameCard game={game} />
 
-                  {/* Rating badge — owner's real rating only */}
-                  {rating != null && (
-                    <div className="list-detail-rating-badge" aria-label={`Your rating: ${rating}`}>
-                      <Star size={9} aria-hidden="true" />
-                      {rating}
-                    </div>
-                  )}
-
-                  {/* Drag handle — owner or collaborator, activates drag on pointer-down */}
-                  {(isOwner || isCollaborator) && (
-                    <button
-                      type="button"
-                      className="list-detail-drag-handle"
-                      aria-label={`Drag to reorder ${game.title}`}
-                      onPointerDown={() => activateDragHandle(game.id)}
-                      onPointerUp={() => deactivateDragHandle(game.id)}
-                      onPointerCancel={() => deactivateDragHandle(game.id)}
-                    >
-                      <GripVertical size={14} aria-hidden="true" />
-                    </button>
-                  )}
-
-                  {/* Remove button */}
-                  {(isOwner || isCollaborator) && (
-                    <button
-                      type="button"
-                      className="list-detail-remove-button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleRemoveGame(game.id, game.title)
-                      }}
-                      aria-label={`Remove ${game.title}`}
-                      title="Remove from list"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+        {isTracker ? (
+          /* Rich tracker view: row cards with progress, hours, sort/filter, bulk select */
+          games.length > 0 ? (
+            <TrackerGameList listId={listId} games={games} />
+          ) : (
+            <ListDetailEmpty
+              listId={listId}
+              isTracker={isTracker}
+              onAddGames={() => setShowAddGames(true)}
+              onFindGames={() => navigate('/search')}
+            />
+          )
         ) : (
-          <ListDetailEmpty
-            listId={listId}
-            isTracker={isTracker}
-            onAddGames={() => setShowAddGames(true)}
-            onFindGames={() => navigate('/search')}
-          />
+          /* Custom list: cover grid with drag reorder */
+          games.length > 0 ? (
+            <div className="list-detail-grid" ref={gridRef}>
+              {games.map((game) => {
+                const rating = ownerRatings[game.id]
+                return (
+                  <div
+                    key={game.id}
+                    ref={(el) => { if (el) itemEls.current[game.id] = el }}
+                    className={`list-detail-grid-item${
+                      (isOwner || isCollaborator) && dragOverId === game.id ? ' drag-over' : ''
+                    }`}
+                    onDragStart={(isOwner || isCollaborator) ? (e) => handleDragStart(e, game.id) : undefined}
+                    onDragOver={(isOwner || isCollaborator) ? (e) => handleDragOver(e, game.id) : undefined}
+                    onDrop={(isOwner || isCollaborator) ? (e) => handleDrop(e, game.id) : undefined}
+                    onDragEnd={(isOwner || isCollaborator) ? () => handleDragEnd(game.id) : undefined}
+                  >
+                    <GameCard game={game} />
+
+                    {/* Rating badge — owner's real rating only */}
+                    {rating != null && (
+                      <div className="list-detail-rating-badge" aria-label={`Your rating: ${rating}`}>
+                        <Star size={9} aria-hidden="true" />
+                        {rating}
+                      </div>
+                    )}
+
+                    {/* Drag handle */}
+                    {(isOwner || isCollaborator) && (
+                      <button
+                        type="button"
+                        className="list-detail-drag-handle"
+                        aria-label={`Drag to reorder ${game.title}`}
+                        onPointerDown={() => activateDragHandle(game.id)}
+                        onPointerUp={() => deactivateDragHandle(game.id)}
+                        onPointerCancel={() => deactivateDragHandle(game.id)}
+                      >
+                        <GripVertical size={14} aria-hidden="true" />
+                      </button>
+                    )}
+
+                    {/* Remove button */}
+                    {(isOwner || isCollaborator) && (
+                      <button
+                        type="button"
+                        className="list-detail-remove-button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveGame(game.id, game.title)
+                        }}
+                        aria-label={`Remove ${game.title}`}
+                        title="Remove from list"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <ListDetailEmpty
+              listId={listId}
+              isTracker={isTracker}
+              onAddGames={() => setShowAddGames(true)}
+              onFindGames={() => navigate('/search')}
+            />
+          )
         )}
       </div>
 
