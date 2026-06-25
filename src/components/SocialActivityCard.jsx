@@ -8,6 +8,7 @@ import {
   getActivityEventHref,
 } from '../services/activityEventsService'
 import { useCircleActivity } from '../hooks/useCircleActivity'
+import { useForYouBlend } from '../hooks/useForYouBlend'
 import Reactions from './Reactions'
 import FindFriendsModal from './FindFriendsModal'
 import './SocialActivityCard.css'
@@ -131,6 +132,93 @@ function EventRow({ event, navigate }) {
   )
 }
 
+/* ── For-you blend helpers ────────────────────────────────────────────────── */
+
+/**
+ * Blend follow-activity rows with "for you" items at a 1:4 ratio, so follow
+ * activity always stays primary. blend items appear after every 4th follow
+ * event. We never inject more than MAX_BLEND_ITEMS total.
+ *
+ * Returns an array of tagged objects:
+ *   { event, _blend: false }   — regular follow-activity row
+ *   { event, _blend: true  }   — for-you discovery row
+ */
+function weaveForYouItems(followEvents, blendItems) {
+  if (!blendItems.length) return followEvents.map((e) => ({ event: e, _blend: false }))
+
+  const result = []
+  let blendIdx = 0
+
+  for (let i = 0; i < followEvents.length; i++) {
+    result.push({ event: followEvents[i], _blend: false })
+    // Inject one blend item after every 4th follow event.
+    if ((i + 1) % 4 === 0 && blendIdx < blendItems.length) {
+      result.push({ event: blendItems[blendIdx], _blend: true })
+      blendIdx++
+    }
+  }
+
+  return result
+}
+
+/**
+ * ForYouRow — a visually distinct variant of EventRow used for for-you blend
+ * items. Same layout as EventRow (cover + sentence + time) but preceded by a
+ * subtle "people like you loved this" label that signals the item is a taste-
+ * matched discovery suggestion, not a follow-graph event.
+ */
+function ForYouRow({ event, navigate }) {
+  const href = getActivityEventHref(event)
+  const sentence = formatActivityEventMessage(event)
+  const meta = event.metadata || {}
+  const cover = meta.game_image || null
+  const title = meta.game_title || ''
+  const when = relativeTime(event.created_at)
+
+  const onActivate = () => {
+    if (!href) return
+    navigate(href, cover ? { state: { coverImage: cover } } : undefined)
+  }
+
+  const onKeyDown = (e) => {
+    if (!href) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onActivate()
+    }
+  }
+
+  return (
+    <div className="sac-foryou-wrapper">
+      <p className="sac-foryou-label" aria-label="Recommended for you">
+        ✦ people like you loved this
+      </p>
+      <div
+        className={`sac-event-row sac-event-row--foryou${href ? '' : ' sac-event-row--static'}`}
+        onClick={href ? onActivate : undefined}
+        onKeyDown={href ? onKeyDown : undefined}
+        role={href ? 'button' : undefined}
+        tabIndex={href ? 0 : undefined}
+        aria-label={sentence}
+      >
+        <div className="sac-event-row__cover">
+          {cover ? (
+            <img src={cover} alt="" loading="lazy" />
+          ) : (
+            <span className="sac-event-row__cover-fallback">
+              {(title || event.type || '?').charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="sac-event-row__body">
+          <p className="sac-event-row__sentence">{sentence}</p>
+        </div>
+        <span className="sac-event-row__time" aria-hidden="true">{when}</span>
+      </div>
+    </div>
+  )
+}
+
 /* ── Compact list tile ────────────────────────────────────────────────────── */
 
 function ListTile({ list, navigate }) {
@@ -205,6 +293,7 @@ function SacEmpty({ message, ctaLabel, onCta }) {
 function ActivityContent({
   status,
   events,
+  blendItems,
   navigate,
   onFindPeople,
   hasMore,
@@ -233,11 +322,20 @@ function ActivityContent({
     )
   }
 
+  // Weave for-you items into the follow-event stream at 1:4 density.
+  // Blend items only appear when there are real follow events to anchor them,
+  // so follow activity always dominates the feed.
+  const woven = weaveForYouItems(events, blendItems)
+
   return (
     <div className="sac-event-list">
-      {events.map((event) => (
-        <EventRow key={event.id} event={event} navigate={navigate} />
-      ))}
+      {woven.map(({ event, _blend }) =>
+        _blend ? (
+          <ForYouRow key={`fy-${event.id}`} event={event} navigate={navigate} />
+        ) : (
+          <EventRow key={event.id} event={event} navigate={navigate} />
+        )
+      )}
       {hasMore && (
         <button
           type="button"
@@ -381,6 +479,10 @@ function SocialActivityCard() {
     hasMore: activityHasMore,
     loadMore: loadMoreActivity,
   } = useCircleActivity({ pageSize: ACTIVITY_PAGE_SIZE })
+
+  // For-you blend: taste-matched community items on untracked games.
+  // Items are hidden when taste signals are thin or no good matches exist.
+  const { items: forYouItems } = useForYouBlend()
 
   // 'no-follows' is a distinct UI state from 'empty' — followers count
   // is cheap and we want the CTA copy to differ. Fetched once per
@@ -530,6 +632,7 @@ function SocialActivityCard() {
             <ActivityContent
               status={activityStatus}
               events={activityEvents}
+              blendItems={forYouItems}
               navigate={navigate}
               onFindPeople={openFindFriends}
               hasMore={activityHasMore}

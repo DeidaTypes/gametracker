@@ -493,6 +493,46 @@
   text-align: center;
 }
 
+/* ── For-you blend items ────────────────────────────────────────────────────
+   Visually distinct from follow-activity rows: a subtle left accent border
+   and a small copper label above the row signal the discovery origin.
+   The row itself reuses .sac-event-row so layout stays identical.
+   ── */
+
+.sac-foryou-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Thin left border in accent color at low opacity marks the blend zone. */
+  border-left: 2px solid var(--accent, #b8904a);
+  padding-left: 8px;
+  margin-left: -4px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.sac-foryou-label {
+  margin: 0;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--accent, #b8904a);
+  opacity: 0.75;
+  line-height: 1;
+}
+
+/* The for-you row itself has a very faint warm tint to complement the label. */
+.sac-event-row--foryou {
+  background: rgba(184, 144, 74, 0.04);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.sac-event-row--foryou:not(.sac-event-row--static):active {
+  background: rgba(184, 144, 74, 0.1);
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .sac-tab {
