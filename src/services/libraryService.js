@@ -1,6 +1,20 @@
 // Library Service - manages game lists and trackers
 import { logActivity } from './activityService'
+import {
+  ACTIVITY_EVENT_TYPES,
+  logActivityEvent,
+} from './activityEventsService'
+import { getTracker } from './hoursService'
 import { queueCelebration } from './celebrationService'
+
+// Map tracker status → Pulse activity_event type. 'want' has no
+// corresponding event type — adding a game to the wishlist is a
+// browsing signal, not Pulse-worthy activity.
+const STATUS_TO_EVENT_TYPE = {
+  currently: ACTIVITY_EVENT_TYPES.STARTED,
+  played: ACTIVITY_EVENT_TYPES.COMPLETED,
+  dropped: ACTIVITY_EVENT_TYPES.DROPPED,
+}
 
 const LIBRARY_STORAGE_KEY = 'gameLibrary'
 const PROGRESS_STORAGE_KEY = 'gameProgress'
@@ -342,6 +356,49 @@ export function setGameStatus(gameId, newStatus, game = null) {
         game_title: gameObj.title || null,
       },
     })
+
+    // Pulse — emit a uniform activity_events row so the follow-graph
+    // feed picks the status change up. 'currently' → started, 'played'
+    // → completed, 'dropped' → dropped. Wishlist adds are not surfaced.
+    const eventType = STATUS_TO_EVENT_TYPE[newStatus]
+    if (eventType) {
+      const baseMeta = {
+        from_status: currentStatus || null,
+        game_title: gameObj.title || null,
+        game_image: gameObj.image || null,
+      }
+      // 'dropped' is the only type the feed renders with an "after Xh"
+      // qualifier ("elvis dropped FIFA after 2h"). Look up the tracker's
+      // hours_played at drop time so the sentence can read naturally
+      // without the feed re-fetching the tracker on every render.
+      // Best-effort: a missing/zero value just collapses the qualifier.
+      if (eventType === ACTIVITY_EVENT_TYPES.DROPPED) {
+        getTracker(gameId)
+          .then((tracker) => {
+            logActivityEvent({
+              type: eventType,
+              entityId: String(gameId),
+              metadata: {
+                ...baseMeta,
+                hours_played: tracker?.hours_played ?? null,
+              },
+            })
+          })
+          .catch(() => {
+            logActivityEvent({
+              type: eventType,
+              entityId: String(gameId),
+              metadata: baseMeta,
+            })
+          })
+      } else {
+        logActivityEvent({
+          type: eventType,
+          entityId: String(gameId),
+          metadata: baseMeta,
+        })
+      }
+    }
 
     return true
   } catch (err) {

@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { getReviewsFromFollowing } from '../services/reviewService'
 import { getFollowingCount } from '../services/followService'
 import { getListsFromFollowing, getFollowingFavorites } from '../services/userService'
-import { getSessionsFromFollowing } from '../services/sessionService'
+import {
+  formatActivityEventMessage,
+  getActivityEventHref,
+} from '../services/activityEventsService'
+import { useCircleActivity } from '../hooks/useCircleActivity'
+import Reactions from './Reactions'
 import FindFriendsModal from './FindFriendsModal'
 import './SocialActivityCard.css'
 
@@ -12,12 +16,40 @@ const TABS = ['activity', 'lists', 'favorites']
 const TAB_LABELS = { activity: 'Activity', lists: 'Lists', favorites: 'Favorites' }
 const TIMEOUT_MS = 10_000
 
+// Activity feed pagination — first page small so the card stays
+// scannable; "Show more" loads additional pages of the same size via
+// the cursor-based useCircleActivity hook.
+const ACTIVITY_PAGE_SIZE = 12
+
 /** Resolves to `fallback` after `ms` ms — never hangs forever. */
 function safeWithTimeout(promise, fallback, ms = TIMEOUT_MS) {
   return Promise.race([
     promise,
     new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
   ])
+}
+
+/**
+ * Compact "just now / 5m / 2h / 1d / Jun 12" formatter for the activity
+ * feed row's right-aligned timestamp. Kept local (vs reusing
+ * ActivityFeed.relativeTime) so this card can ship without taking a
+ * dependency on the Profile timeline component.
+ */
+function relativeTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return '1d'
+  if (days < 7) return `${days}d`
+  if (days < 30) return `${Math.floor(days / 7)}w`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 async function triggerLightHaptic() {
@@ -29,113 +61,73 @@ async function triggerLightHaptic() {
   }
 }
 
-/* ── Duration + relative-day helpers ─────────────────────────────────────── */
+/* ── Activity event row ───────────────────────────────────────────────────── */
 
-/** Formats seconds into "45m", "2h", or "2h 30m". */
-function formatDuration(seconds) {
-  if (!seconds || seconds < 60) return '<1m'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h === 0) return `${m}m`
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}m`
-}
+/**
+ * EventRow — one worded activity_events row in the Followers' picks
+ * Activity tab.
+ *
+ *   [cover] <actor> <verb> <game> <qualifier>          <relative time>
+ *           <reactions row (inline F3 pills + add button)>
+ *
+ * Tapping the row navigates to the per-type deep-link from
+ * getActivityEventHref. Tapping inside the reactions row never bubbles
+ * up to the row-level navigation — handled by stopPropagation on the
+ * reactions container.
+ */
+function EventRow({ event, navigate }) {
+  const href = getActivityEventHref(event)
+  const sentence = formatActivityEventMessage(event)
+  const meta = event.metadata || {}
+  const cover = meta.game_image || null
+  const title = meta.game_title || ''
+  const when = relativeTime(event.created_at)
 
-/** Returns "today", "yesterday", "3 days ago", or a short date like "Jun 3". */
-function formatRelativeDay(dateStr) {
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().slice(0, 10)
+  const onActivate = () => {
+    if (!href) return
+    navigate(href, cover ? { state: { coverImage: cover } } : undefined)
+  }
 
-  if (dateStr === todayStr) return 'today'
-  if (dateStr === yesterdayStr) return 'yesterday'
+  const onKeyDown = (e) => {
+    if (!href) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onActivate()
+    }
+  }
 
-  // Compare calendar dates as strings (both YYYY-MM-DD, same TZ context)
-  const diffMs = new Date(todayStr + 'T00:00:00').getTime() - new Date(dateStr + 'T00:00:00').getTime()
-  const diffDays = Math.round(diffMs / 86_400_000)
-  if (diffDays > 0 && diffDays <= 6) return `${diffDays} days ago`
-
-  // Older than a week — show short date
-  return new Date(dateStr + 'T12:00:00Z').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-/* ── Session tile ─────────────────────────────────────────────────────────── */
-
-function SessionTile({ item, navigate }) {
-  const duration = formatDuration(item.totalSeconds)
-  const when = formatRelativeDay(item.playedOn)
-  const gameTitle = item.gameTitle || 'Unknown game'
   return (
-    <button
-      type="button"
-      className="sac-friend-tile"
-      onClick={() =>
-        navigate(`/game/${item.igdbGameId}`, {
-          state: item.gameImage ? { coverImage: item.gameImage } : undefined,
-        })
-      }
-      aria-label={`${item.username} played ${gameTitle} for ${duration} ${when}`}
+    <div
+      className={`sac-event-row${href ? '' : ' sac-event-row--static'}`}
+      onClick={href ? onActivate : undefined}
+      onKeyDown={href ? onKeyDown : undefined}
+      role={href ? 'button' : undefined}
+      tabIndex={href ? 0 : undefined}
+      aria-label={sentence}
     >
-      <div className="sac-friend-tile__cover">
-        {item.gameImage ? (
-          <img src={item.gameImage} alt="" loading="lazy" />
+      <div className="sac-event-row__cover">
+        {cover ? (
+          <img src={cover} alt="" loading="lazy" />
         ) : (
-          <span className="sac-friend-tile__cover-fallback">
-            {gameTitle.charAt(0)}
+          <span className="sac-event-row__cover-fallback">
+            {(title || event.type || '?').charAt(0).toUpperCase()}
           </span>
         )}
       </div>
-      <div className="sac-friend-tile__meta">
-        <p className="sac-friend-tile__title">{gameTitle}</p>
-        <p className="sac-friend-tile__author">
-          @{item.username}
-        </p>
-        <p className="sac-session-line">played {duration} {when}</p>
+      <div className="sac-event-row__body">
+        <p className="sac-event-row__sentence">{sentence}</p>
+        {/* Reactions sit inside the row but swallow clicks so the
+            picker / pill toggles don't trigger deep-link navigation. */}
+        <div
+          className="sac-event-row__reactions"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Reactions targetType="activity" targetId={event.id} />
+        </div>
       </div>
-    </button>
-  )
-}
-
-/* ── Compact review tile ──────────────────────────────────────────────────── */
-
-function ActivityTile({ row, navigate }) {
-  const username = row.users?.username || row.users?.display_name || 'someone'
-  const rating = Number(row.rating) || 0
-  return (
-    <button
-      type="button"
-      className="sac-friend-tile"
-      onClick={() =>
-        navigate(`/game/${row.igdb_game_id}`, {
-          state: row.game_image ? { coverImage: row.game_image } : undefined,
-        })
-      }
-      aria-label={`${row.game_title || 'Game'} reviewed by ${username}`}
-    >
-      <div className="sac-friend-tile__cover">
-        {row.game_image ? (
-          <img src={row.game_image} alt="" loading="lazy" />
-        ) : (
-          <span className="sac-friend-tile__cover-fallback">
-            {(row.game_title || '?').charAt(0)}
-          </span>
-        )}
-      </div>
-      <div className="sac-friend-tile__meta">
-        <p className="sac-friend-tile__title">{row.game_title || 'Unknown game'}</p>
-        <p className="sac-friend-tile__author">@{username}</p>
-        {rating > 0 && (
-          <p className="sac-friend-tile__rating" aria-label={`${rating} stars`}>
-            {'★'.repeat(Math.floor(rating))}
-            {rating % 1 >= 0.5 ? '½' : ''}
-          </p>
-        )}
-      </div>
-    </button>
+      <span className="sac-event-row__time" aria-hidden="true">{when}</span>
+    </div>
   )
 }
 
@@ -210,7 +202,15 @@ function SacEmpty({ message, ctaLabel, onCta }) {
 
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 
-function ActivityContent({ status, items, navigate, onFindPeople }) {
+function ActivityContent({
+  status,
+  events,
+  navigate,
+  onFindPeople,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}) {
   if (status === 'idle' || status === 'loading') return <SacSkeleton rows={3} />
 
   if (status === 'no-follows') {
@@ -223,7 +223,7 @@ function ActivityContent({ status, items, navigate, onFindPeople }) {
     )
   }
 
-  if (status === 'empty' || items.length === 0) {
+  if (status === 'empty' || events.length === 0) {
     return (
       <SacEmpty
         message="The people you follow haven't been active yet."
@@ -234,17 +234,19 @@ function ActivityContent({ status, items, navigate, onFindPeople }) {
   }
 
   return (
-    <div className="sac-friends-list">
-      {items.map((item) =>
-        item._type === 'session' ? (
-          <SessionTile
-            key={`s-${item.userId}-${item.igdbGameId}-${item.playedOn}`}
-            item={item}
-            navigate={navigate}
-          />
-        ) : (
-          <ActivityTile key={item.id} row={item} navigate={navigate} />
-        )
+    <div className="sac-event-list">
+      {events.map((event) => (
+        <EventRow key={event.id} event={event} navigate={navigate} />
+      ))}
+      {hasMore && (
+        <button
+          type="button"
+          className="sac-event-more"
+          onClick={onLoadMore}
+          disabled={loadingMore}
+        >
+          {loadingMore ? 'Loading\u2026' : 'Show more'}
+        </button>
       )}
     </div>
   )
@@ -343,13 +345,18 @@ function FavoritesContent({ status, items, navigate, onFindPeople }) {
  *
  * All three tabs source data from people the current user FOLLOWS:
  *
- * Activity   Recent reviews from people you follow. Lazy-fetched on first view.
+ * Activity   Worded `activity_events` rows authored by followees (played /
+ *            started / completed / dropped / reviewed / favorited / listed
+ *            / goal_hit). Cursor-paginated newest-first via
+ *            useCircleActivity; each row is deep-linked + carries inline
+ *            emoji reactions (F3).
  * Lists      Public lists created by people you follow. Lazy-fetched on first view.
  * Favorites  Favorited games of people you follow. Lazy-fetched on first view.
  *
  * Swipe left/right or tap the tabs to switch modes. Each tab has an empty
  * state with a "Find people to follow" CTA that opens the FindFriendsModal.
- * No fabricated data is shown anywhere.
+ * No fabricated data is shown anywhere — every row corresponds to a real
+ * `activity_events` row authored by a followee.
  */
 function SocialActivityCard() {
   const navigate = useNavigate()
@@ -361,9 +368,43 @@ function SocialActivityCard() {
   // every render or tab switch.
   const loadedRef = useRef(new Set())
 
-  // ── Activity tab state ───────────────────────────────────────────────────
-  const [activityStatus, setActivityStatus] = useState('idle')
-  const [activityItems, setActivityItems] = useState([])
+  // ── Activity tab — sourced from the F1 activity_events feed ──────────────
+  //
+  // We delegate to useCircleActivity which already handles cursor-based
+  // pagination, realtime inserts, app-resumed refresh, and FK-disambiguated
+  // joins. The hook fetches eagerly on mount, which is what we want here
+  // since Activity is the default-visible tab.
+  const {
+    events: activityEvents,
+    loading: activityLoading,
+    loadingMore: activityLoadingMore,
+    hasMore: activityHasMore,
+    loadMore: loadMoreActivity,
+  } = useCircleActivity({ pageSize: ACTIVITY_PAGE_SIZE })
+
+  // 'no-follows' is a distinct UI state from 'empty' — followers count
+  // is cheap and we want the CTA copy to differ. Fetched once per
+  // session, cached in a ref so tab switches don't re-query.
+  const [followCount, setFollowCount] = useState(null)
+  useEffect(() => {
+    if (!user) return undefined
+    let cancelled = false
+    safeWithTimeout(getFollowingCount(user.id), 0).then((count) => {
+      if (!cancelled) setFollowCount(Number(count) || 0)
+    })
+    return () => { cancelled = true }
+  }, [user])
+
+  // Derive the renderer status from raw hook state. The hook never
+  // exposes a 'no-follows' bit (it's a feed-level concern), so we
+  // combine it with followCount here.
+  const activityStatus = useMemo(() => {
+    if (!user) return 'idle'
+    if (activityLoading && activityEvents.length === 0) return 'loading'
+    if (followCount === 0) return 'no-follows'
+    if (activityEvents.length === 0) return 'empty'
+    return 'loaded'
+  }, [user, activityLoading, activityEvents.length, followCount])
 
   // ── Lists tab state ──────────────────────────────────────────────────────
   const [listsStatus, setListsStatus] = useState('idle')
@@ -374,47 +415,6 @@ function SocialActivityCard() {
   const [favoritesItems, setFavoritesItems] = useState([])
 
   // ── Data loaders ─────────────────────────────────────────────────────────
-
-  const loadActivity = useCallback(async () => {
-    if (!user || loadedRef.current.has('activity')) return
-    loadedRef.current.add('activity')
-    setActivityStatus('loading')
-    try {
-      const followCount = await safeWithTimeout(getFollowingCount(user.id), 0)
-      if (followCount === 0) {
-        setActivityStatus('no-follows')
-        return
-      }
-
-      // Fetch reviews and play sessions in parallel
-      const [{ items: reviews }, sessions] = await Promise.all([
-        safeWithTimeout(
-          getReviewsFromFollowing({ page: 1, limit: 6 }),
-          { items: [], hasMore: false }
-        ),
-        safeWithTimeout(getSessionsFromFollowing({ limit: 60 }), []),
-      ])
-
-      // Tag reviews with type + sort date for interleaving
-      const reviewItems = (reviews || []).map(r => ({
-        ...r,
-        _type: 'review',
-        _sortDate: r.created_at?.slice(0, 10) || '',
-      }))
-
-      // Sessions from getSessionsFromFollowing already carry _type + _sortDate
-      const merged = [...reviewItems, ...sessions]
-        .sort((a, b) => b._sortDate.localeCompare(a._sortDate))
-        .slice(0, 8)
-
-      setActivityItems(merged)
-      setActivityStatus(merged.length === 0 ? 'empty' : 'loaded')
-    } catch (err) {
-      console.error('[SocialActivityCard] loadActivity failed:', err)
-      loadedRef.current.delete('activity')
-      setActivityStatus('empty')
-    }
-  }, [user])
 
   const loadLists = useCallback(async () => {
     if (!user || loadedRef.current.has('lists')) return
@@ -456,11 +456,8 @@ function SocialActivityCard() {
     }
   }, [user])
 
-  // Load Activity tab on mount; other tabs load lazily on first activation.
-  useEffect(() => {
-    loadActivity()
-  }, [loadActivity])
-
+  // Activity tab is driven by useCircleActivity (mounts once); other
+  // tabs load lazily on first activation.
   useEffect(() => {
     if (activeTab === 'lists') loadLists()
     if (activeTab === 'favorites') loadFavorites()
@@ -532,9 +529,12 @@ function SocialActivityCard() {
           {activeTab === 'activity' && (
             <ActivityContent
               status={activityStatus}
-              items={activityItems}
+              events={activityEvents}
               navigate={navigate}
               onFindPeople={openFindFriends}
+              hasMore={activityHasMore}
+              loadingMore={activityLoadingMore}
+              onLoadMore={loadMoreActivity}
             />
           )}
           {activeTab === 'lists' && (
