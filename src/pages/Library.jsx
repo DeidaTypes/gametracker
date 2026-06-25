@@ -13,6 +13,8 @@ import {
   getGamesFromList,
   getGameProgress,
 } from '../services/libraryService'
+
+const STALE_MS = 180 * 24 * 60 * 60 * 1000
 import {
   getListsForUser,
   createList,
@@ -235,6 +237,14 @@ function Library() {
     return { onARoll, almostDone, untouched }
   }, [cpGames, collectionStats])
 
+  // Count of Want-to-Play games whose addedAt is > 6 months ago.
+  const staleWantCount = useMemo(() => {
+    const now = Date.now()
+    return (trackerLists['want-to-play']?.games || []).filter(
+      (g) => g.addedAt && now - new Date(g.addedAt).getTime() > STALE_MS,
+    ).length
+  }, [trackerLists])
+
   // Total hours logged across all CP games (for the tracker card subtitle)
   const cpTotalHours = useMemo(() => {
     const { trackerRows } = collectionStats
@@ -313,6 +323,11 @@ function Library() {
           {id === 'want-to-play' && backlogHours.totalHours !== null && (
             <p className="lib-tracker-backlog-hint">
               ~{backlogHours.totalHours.toLocaleString()} hrs
+            </p>
+          )}
+          {id === 'want-to-play' && staleWantCount > 0 && (
+            <p className="lib-tracker-stale-hint">
+              {staleWantCount} waiting 6+ mo
             </p>
           )}
         </div>

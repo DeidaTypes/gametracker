@@ -18,6 +18,7 @@ const STATUS_TO_EVENT_TYPE = {
 
 const LIBRARY_STORAGE_KEY = 'gameLibrary'
 const PROGRESS_STORAGE_KEY = 'gameProgress'
+const BACKLOG_CLEARS_KEY = 'backlogClears_v1'
 
 const DEFAULT_LISTS = {
   'currently-playing': { name: 'Currently Playing', games: [] },
@@ -38,6 +39,29 @@ const LIST_STATUS_MAP = {
   'currently-playing': 'currently',
   'played': 'played',
   'dropped': 'dropped',
+}
+
+/**
+ * Record that a game was cleared out of the Want-to-Play backlog.
+ * Called by setGameStatus whenever a game moves away from 'want'.
+ */
+export function recordBacklogClear(gameId) {
+  const stored = localStorage.getItem(BACKLOG_CLEARS_KEY)
+  const clears = stored ? JSON.parse(stored) : []
+  clears.push({ gameId: String(gameId), clearedAt: new Date().toISOString() })
+  localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(clears))
+}
+
+/**
+ * How many backlog games have been cleared since Jan 1 of the current year.
+ */
+export function getBacklogClearsThisYear() {
+  const stored = localStorage.getItem(BACKLOG_CLEARS_KEY)
+  if (!stored) return 0
+  const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
+  return JSON.parse(stored).filter(
+    (c) => new Date(c.clearedAt).getTime() >= yearStart,
+  ).length
 }
 
 // Initialize library with default lists
@@ -309,6 +333,11 @@ export function setGameStatus(gameId, newStatus, game = null) {
       ...gameObj,
       addedAt: gameObj.addedAt || new Date().toISOString(),
     })
+
+    // Track clearance for the "clear-it" progress meter.
+    if (currentStatus === 'want') {
+      recordBacklogClear(id)
+    }
 
     saveLibrary(library)
 

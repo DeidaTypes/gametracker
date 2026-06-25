@@ -1,12 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bookmark, ChevronRight, Shuffle } from 'lucide-react'
+import { Plus, Bookmark, ChevronRight, Shuffle, Clock, X } from 'lucide-react'
 import SharedCover from './SharedCover'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { useBacklogShelves } from '../hooks/useBacklogShelves'
 import BacklogRoulette from './BacklogRoulette'
+import { getBacklogClearsThisYear } from '../services/libraryService'
 import './HomeShelf.css'
+
+const STALE_MS = 180 * 24 * 60 * 60 * 1000 // 6 months
 
 /**
  * BacklogSection — the "what's next" card for Want to Play games.
@@ -87,7 +90,32 @@ function BacklogSection({ games = [], onAddGame }) {
   const navigate = useNavigate()
   const { shelves, loading } = useBacklogShelves(games)
   const [rouletteOpen, setRouletteOpen] = useState(false)
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => sessionStorage.getItem('bkg:nudge:v1') === '1',
+  )
   const count = games.length
+
+  const staleCount = useMemo(() => {
+    const now = Date.now()
+    return games.filter(
+      (g) => g.addedAt && now - new Date(g.addedAt).getTime() > STALE_MS,
+    ).length
+  }, [games])
+
+  // Sync read — cheap localStorage access, re-derived each render when
+  // games array changes (count change means a game was added or removed).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const clearedThisYear = useMemo(() => getBacklogClearsThisYear(), [count])
+
+  const showNudge = staleCount > 0 && !nudgeDismissed
+  const showMeter = staleCount > 0 || clearedThisYear > 0
+  const meterTotal = clearedThisYear + staleCount
+  const meterPct = meterTotal > 0 ? Math.round((clearedThisYear / meterTotal) * 100) : 0
+
+  const handleDismissNudge = () => {
+    setNudgeDismissed(true)
+    sessionStorage.setItem('bkg:nudge:v1', '1')
+  }
 
   if (count === 0) {
     return (
@@ -139,6 +167,45 @@ function BacklogSection({ games = [], onAddGame }) {
           </button>
         </div>
       </div>
+
+      {/* Gentle stale nudge — shown when ≥1 game has sat 6+ months */}
+      {showNudge && (
+        <div className="shelf-stale-nudge" role="note" aria-label="Stale backlog notice">
+          <Clock size={13} strokeWidth={2} className="shelf-stale-nudge-icon" aria-hidden="true" />
+          <span className="shelf-stale-nudge-text">
+            {staleCount === 1
+              ? '1 game has been sitting here 6+ months'
+              : `${staleCount} games have been sitting here 6+ months`}
+          </span>
+          <button
+            type="button"
+            className="shelf-stale-nudge-dismiss"
+            onClick={handleDismissNudge}
+            aria-label="Dismiss"
+          >
+            <X size={11} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {/* Clear-it progress meter */}
+      {showMeter && (
+        <div className="shelf-clear-meter" aria-label="Backlog progress">
+          <div className="shelf-clear-meter-bar" role="progressbar" aria-valuenow={meterPct} aria-valuemin={0} aria-valuemax={100}>
+            <div
+              className="shelf-clear-meter-fill"
+              style={{ width: `${meterPct}%` }}
+            />
+          </div>
+          <p className="shelf-clear-meter-label">
+            {clearedThisYear > 0 && staleCount === 0
+              ? `All clear — ${clearedThisYear} cleared this year`
+              : clearedThisYear > 0
+              ? `${clearedThisYear} cleared this year · ${staleCount} still waiting`
+              : `${staleCount} waiting 6+ months — pick one?`}
+          </p>
+        </div>
+      )}
 
       {showShelves ? (
         <div className="shelf-moods" role="list" aria-label="Backlog by mood">
