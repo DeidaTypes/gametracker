@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LuCheck, LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
+import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
@@ -112,6 +113,75 @@ function toReviewCardShape(row, commentCount) {
   }
 }
 
+/* ── Spoiler parsing ────────────────────────────────────────────────── */
+
+function parseForSpoilers(text) {
+  const parts = []
+  const re = /\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi
+  let lastIdx = 0
+  let m
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push({ type: 'text', content: text.slice(lastIdx, m.index) })
+    parts.push({ type: 'spoiler', content: m[1] })
+    lastIdx = m.index + m[0].length
+  }
+  if (lastIdx < text.length) parts.push({ type: 'text', content: text.slice(lastIdx) })
+  return parts
+}
+
+function SpoilerSegment({ text }) {
+  const [revealed, setRevealed] = useState(false)
+  return (
+    <button
+      type="button"
+      className={`rc-comment__spoiler${revealed ? ' rc-comment__spoiler--revealed' : ''}`}
+      onClick={() => !revealed && setRevealed(true)}
+      aria-label={revealed ? undefined : 'Tap to reveal spoiler'}
+    >
+      {text}
+    </button>
+  )
+}
+
+function CommentBody({ text }) {
+  const segments = parseForSpoilers(text)
+  const hasSpoilers = segments.some((s) => s.type === 'spoiler')
+
+  if (!hasSpoilers) {
+    const match = text.match(/^(@\S+)(\s[\s\S]*|$)/)
+    if (!match) return <p className="rc-comment__text">{text}</p>
+    const [, mention, rest] = match
+    return (
+      <p className="rc-comment__text">
+        <span className="rc-comment__mention">{mention}</span>
+        {rest}
+      </p>
+    )
+  }
+
+  return (
+    <p className="rc-comment__text">
+      {segments.map((seg, i) => {
+        if (seg.type === 'spoiler') {
+          return <SpoilerSegment key={i} text={seg.content} />
+        }
+        if (i === 0) {
+          const mm = seg.content.match(/^(@\S+)(\s[\s\S]*|$)/)
+          if (mm) {
+            return (
+              <React.Fragment key={i}>
+                <span className="rc-comment__mention">{mm[1]}</span>
+                {mm[2]}
+              </React.Fragment>
+            )
+          }
+        }
+        return <React.Fragment key={i}>{seg.content}</React.Fragment>
+      })}
+    </p>
+  )
+}
+
 /* ============================================================
    Comment row
    ============================================================ */
@@ -211,7 +281,13 @@ function CommentRow({
           )}
         </header>
 
-        <p className="rc-comment__text">{comment.body}</p>
+        <CommentBody text={comment.body} />
+
+        <Reactions
+          targetType="comment"
+          targetId={comment.id}
+          className="rc-comment__reactions"
+        />
 
         <div className="rc-comment__actions">
           {/* Only top-level comments get a Reply button — replies

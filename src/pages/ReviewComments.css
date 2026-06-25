@@ -280,6 +280,46 @@ body.keyboard-open .rc-scroll {
   overflow-wrap: anywhere;
 }
 
+/* @mention highlight (matches rd-comment__mention pattern) */
+.rc-comment__mention {
+  color: var(--color-brand-primary, var(--accent));
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Reactions row ───────────────────────────────────────────────────── */
+
+.rc-comment__reactions {
+  margin-top: 4px;
+}
+
+/* ── Spoiler tag ─────────────────────────────────────────────────────── */
+
+.rc-comment__spoiler {
+  display: inline;
+  padding: 0 3px;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-text-primary);
+  color: transparent;
+  font: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rc-comment__spoiler--revealed {
+  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.15);
+  color: var(--color-text-primary);
+  cursor: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-comment__spoiler {
+    transition: none;
+  }
+}
+
 .rc-comment__actions {
   display: flex;
   align-items: center;

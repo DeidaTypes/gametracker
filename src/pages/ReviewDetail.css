@@ -229,6 +229,44 @@ body.keyboard-open .rd-scroll {
   gap: var(--spacing-md);
 }
 
+/* ── Sort toggle (New / Top) ─────────────────────────────────────────── */
+
+.rd-thread__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.rd-thread__sort-pill {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rd-thread__sort-pill:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+
+.rd-thread__sort-pill--active {
+  background: var(--color-brand-primary, var(--accent));
+  border-color: var(--color-brand-primary, var(--accent));
+  color: #ffffff;
+}
+
+.rd-thread__sort-pill--active:hover {
+  filter: brightness(1.1);
+}
+
 /* ── "Show N earlier replies" toggle ─────────────────────────────────── */
 
 .rd-thread__replies-toggle {
@@ -359,6 +397,47 @@ body.keyboard-open .rd-scroll {
 .rd-comment__mention {
   color: var(--color-brand-primary, var(--accent));
   font-weight: var(--font-weight-semibold);
+}
+
+/* ── Comment reactions row (F3 emoji pills) ──────────────────────────── */
+
+.rd-comment__reactions {
+  margin-top: 4px;
+  /* Ensure the inline add-reaction picker opens upward (inherited from
+     Reactions.css .reactions__picker position:absolute bottom:calc(100%+6px)) */
+}
+
+/* ── Comment spoiler tag ─────────────────────────────────────────────── */
+
+/*
+ * Hidden state: text color == background so content is invisible.
+ * The user sees a highlighted block and knows to tap it.
+ * Revealed state: transparent background, normal text color.
+ */
+.rd-comment__spoiler {
+  display: inline;
+  padding: 0 3px;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-text-primary);
+  color: transparent;
+  font: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rd-comment__spoiler--revealed {
+  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.15);
+  color: var(--color-text-primary);
+  cursor: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-comment__spoiler {
+    transition: none;
+  }
 }
 
 /* ── Comment meta row (like + reply + kebab) ─────────────────────────── */

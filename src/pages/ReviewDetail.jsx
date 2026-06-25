@@ -683,7 +683,17 @@ function ReviewDetail() {
 
   /* ── Derived ──────────────────────────────────────────────── */
 
-  const threaded = useMemo(() => threadComments(comments), [comments])
+  const threaded = useMemo(() => {
+    const groups = threadComments(comments)
+    if (sortMode === 'top') {
+      return [...groups].sort((a, b) => {
+        const la = likeStates.get(a.id)?.count ?? 0
+        const lb = likeStates.get(b.id)?.count ?? 0
+        return lb !== la ? lb - la : new Date(a.created_at) - new Date(b.created_at)
+      })
+    }
+    return groups
+  }, [comments, sortMode, likeStates])
   const commentCount = comments.length
 
   const reviewCardShape = useMemo(
@@ -945,6 +955,22 @@ function ReviewDetail() {
               </span>
             )}
             <div className="rd-thread__divider-line" aria-hidden="true" />
+            <div className="rd-thread__sort" role="group" aria-label="Sort comments">
+              <button
+                type="button"
+                className={`rd-thread__sort-pill${sortMode === 'new' ? ' rd-thread__sort-pill--active' : ''}`}
+                onClick={() => setSortMode('new')}
+              >
+                New
+              </button>
+              <button
+                type="button"
+                className={`rd-thread__sort-pill${sortMode === 'top' ? ' rd-thread__sort-pill--active' : ''}`}
+                onClick={() => setSortMode('top')}
+              >
+                Top
+              </button>
+            </div>
           </div>
 
           {commentsLoading ? (
