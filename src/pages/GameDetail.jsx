@@ -10,6 +10,7 @@ import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import RatingsHistogram from '../components/RatingsHistogram'
 import SimilarGamesRow from '../components/SimilarGamesRow'
 import { getReviewsForGame } from '../services/reviewService'
+import { getCirclePulseForGame } from '../services/communityService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
@@ -190,6 +191,7 @@ function GameDetail() {
   const { setSwatches: setGlobalSwatches } = useGameColor()
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
+  const [circlePulse, setCirclePulse] = useState(null)
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
 
@@ -281,6 +283,10 @@ function GameDetail() {
           // will be a cache hit when status becomes truthy.
           getTimeToBeat(gameId)
             .then(b => setTtb(b))
+            .catch(() => {}),
+          // Community Pulse — circle-scoped signals; hides when empty.
+          getCirclePulseForGame(gameId)
+            .then(p => setCirclePulse(p))
             .catch(() => {}),
         ])
       } catch (err) {
@@ -945,6 +951,87 @@ function GameDetail() {
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Community Pulse — circle-scoped signals ──
+           Three sub-rows rendered only when they have real data.
+           The entire block is suppressed when all three are empty,
+           so non-social or low-activity games stay clean.           */}
+      {circlePulse && (
+        circlePulse.circleRatingCount > 0 ||
+        circlePulse.activePresence.length > 0 ||
+        circlePulse.circleRank != null
+      ) && (
+        <div className="gd-pulse-block">
+          <p className="gd-pulse-heading">Your Circle</p>
+
+          {/* Sub-row 1: Circle avg rating */}
+          {circlePulse.circleRatingCount > 0 && (
+            <div className="gd-pulse-row">
+              <div className="gd-pulse-icon" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </div>
+              <p className="gd-pulse-label">
+                <span className="gd-pulse-rating-val">★ {circlePulse.circleAvgRating.toFixed(1)}</span>
+                {' '}avg rating
+              </p>
+              <span className="gd-pulse-sub">
+                {circlePulse.circleRatingCount === 1
+                  ? '1 person'
+                  : `${circlePulse.circleRatingCount} people`}
+              </span>
+            </div>
+          )}
+
+          {/* Sub-row 2: Active presence — who's playing now */}
+          {circlePulse.activePresence.length > 0 && (
+            <div className="gd-pulse-row">
+              <div className="gd-pulse-live-dot" aria-hidden="true" />
+              <div className="gd-pulse-avatars" aria-hidden="true">
+                {circlePulse.activePresence.slice(0, 5).map((p) =>
+                  p.avatarUrl ? (
+                    <img
+                      key={p.userId}
+                      src={p.avatarUrl}
+                      alt=""
+                      className="gd-pulse-avatar"
+                    />
+                  ) : (
+                    <div key={p.userId} className="gd-pulse-avatar" />
+                  )
+                )}
+                {circlePulse.activePresence.length > 5 && (
+                  <div className="gd-pulse-avatar-overflow">
+                    +{circlePulse.activePresence.length - 5}
+                  </div>
+                )}
+              </div>
+              <p className="gd-pulse-label">
+                {circlePulse.activePresence.length === 1
+                  ? `${circlePulse.activePresence[0].displayName} is playing`
+                  : `${circlePulse.activePresence.length} friends playing now`}
+              </p>
+            </div>
+          )}
+
+          {/* Sub-row 3: Circle rank */}
+          {circlePulse.circleRank != null && (
+            <div className="gd-pulse-row">
+              <div className="gd-pulse-icon" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              </div>
+              <p className="gd-pulse-label">
+                <span className="gd-pulse-rank-num">#{circlePulse.circleRank}</span>
+                {' '}in your circle
+              </p>
+              <span className="gd-pulse-sub">of {circlePulse.circleTotalGames}</span>
+            </div>
+          )}
         </div>
       )}
 

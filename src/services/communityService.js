@@ -709,5 +709,111 @@ export async function getMostPlayedInCircle(limit = 10) {
   }
 }
 
+/**
+ * Community Pulse for a single game — all three circle-scoped signals
+ * needed by GameDetail's "Community Pulse" section.
+ *
+ * Returns:
+ *   circleAvgRating   — mean rating from followed users' reviews, or null
+ *   circleRatingCount — number of circle members who rated this game
+ *   activePresence    — followed users currently status='playing'
+ *   circleRank        — 1-based rank of this game by circle member count,
+ *                       null when < 3 games tracked (rank would be meaningless)
+ *   circleTotalGames  — distinct games tracked by circle (rank denominator)
+ *
+ * All three sub-sections hide when their slice is empty, so the whole
+ * block disappears for games the circle hasn't touched.
+ *
+ * FK hints used explicitly:
+ *   game_trackers → users : game_trackers_user_id_fkey
+ */
+export async function getCirclePulseForGame(igdbGameId) {
+  const EMPTY = {
+    circleAvgRating: null,
+    circleRatingCount: 0,
+    activePresence: [],
+    circleRank: null,
+    circleTotalGames: 0,
+  }
+  try {
+    const followeeIds = await _getCurrentUserFollowees()
+    if (followeeIds.length === 0) return EMPTY
+
+    const gameIdNum = Number(igdbGameId)
+
+    const [reviewsRes, presenceRes, allTrackersRes] = await Promise.all([
+      // Circle reviews for this game — rating column only
+      supabase
+        .from('reviews')
+        .select('rating')
+        .in('user_id', followeeIds)
+        .eq('igdb_game_id', gameIdNum),
+
+      // Followed users actively playing this game right now
+      supabase
+        .from('game_trackers')
+        .select(
+          'user_id, users!game_trackers_user_id_fkey(username, display_name, avatar_url)'
+        )
+        .in('user_id', followeeIds)
+        .eq('igdb_game_id', gameIdNum)
+        .eq('status', 'playing'),
+
+      // All (game_id, user_id) pairs tracked by circle — for rank computation
+      supabase
+        .from('game_trackers')
+        .select('igdb_game_id, user_id')
+        .in('user_id', followeeIds),
+    ])
+
+    // ── Circle avg rating ───────────────────────────────────────────────────
+    const circleReviews = reviewsRes.data || []
+    const circleRatingCount = circleReviews.length
+    let circleAvgRating = null
+    if (circleRatingCount > 0) {
+      const sum = circleReviews.reduce((acc, r) => acc + Number(r.rating), 0)
+      circleAvgRating = Math.round((sum / circleRatingCount) * 10) / 10
+    }
+
+    // ── Active presence ─────────────────────────────────────────────────────
+    const presenceRows = presenceRes.data || []
+    const activePresence = presenceRows
+      .map((row) => ({
+        userId: row.user_id,
+        username: row.users?.username || null,
+        displayName: row.users?.display_name || row.users?.username || 'Player',
+        avatarUrl: row.users?.avatar_url || null,
+      }))
+      .slice(0, 7)
+
+    // ── Circle rank ─────────────────────────────────────────────────────────
+    // Count distinct circle members per game, then rank by that count.
+    const allTrackers = allTrackersRes.data || []
+    const membersByGame = new Map()
+    for (const t of allTrackers) {
+      const key = String(t.igdb_game_id)
+      if (!membersByGame.has(key)) membersByGame.set(key, new Set())
+      membersByGame.get(key).add(t.user_id)
+    }
+
+    const circleTotalGames = membersByGame.size
+    let circleRank = null
+    const thisKey = String(gameIdNum)
+    if (membersByGame.has(thisKey) && circleTotalGames >= 3) {
+      const thisCount = membersByGame.get(thisKey).size
+      let rank = 1
+      for (const [key, members] of membersByGame) {
+        if (key !== thisKey && members.size > thisCount) rank++
+      }
+      circleRank = rank
+    }
+
+    return { circleAvgRating, circleRatingCount, activePresence, circleRank, circleTotalGames }
+  } catch (err) {
+    console.error('[community] getCirclePulseForGame failed:', err)
+    return EMPTY
+  }
+}
+
 export { WEEK_MS }
 export { getTrendingCircle, getTrendingByGenre }
