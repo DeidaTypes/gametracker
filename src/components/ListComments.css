@@ -1,0 +1,182 @@
+/* ── List Comments thread ─────────────────────────────────────── */
+
+.lc-section {
+  padding: var(--spacing-xl) var(--page-padding) var(--spacing-2xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.lc-heading {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--spacing-md);
+}
+
+/* ── Comment row ── */
+
+.lc-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.lc-comment {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  transition: opacity var(--transition-smooth);
+}
+
+.lc-comment--deleting {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Avatar ── */
+
+.lc-avatar {
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.lc-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-full);
+}
+
+/* ── Comment body ── */
+
+.lc-comment-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.lc-comment-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+
+.lc-comment-author {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.lc-comment-time {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-tertiary);
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.lc-comment-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--transition-smooth);
+  line-height: 1.3;
+}
+
+.lc-comment-delete:hover {
+  color: var(--color-accent-pink, #e5537a);
+}
+
+.lc-comment-body {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  margin: 0;
+  word-break: break-word;
+}
+
+/* ── Compose area ── */
+
+.lc-compose {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+  margin-top: var(--spacing-md);
+}
+
+.lc-compose-input {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-body);
+  transition: border-color var(--transition-smooth);
+  -webkit-appearance: none;
+}
+
+.lc-compose-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.lc-compose-input:focus {
+  outline: none;
+  border-color: var(--color-brand-primary);
+}
+
+.lc-compose-submit {
+  flex-shrink: 0;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-brand-primary);
+  color: var(--color-text-on-brand, #fff);
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  white-space: nowrap;
+}
+
+.lc-compose-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lc-compose-submit:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+@media (min-width: 769px) {
+  .lc-section {
+    padding-inline: var(--page-padding-desktop);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-comment,
+  .lc-compose-input,
+  .lc-compose-submit,
+  .lc-comment-delete {
+    transition: none;
+  }
+}

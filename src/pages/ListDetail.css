@@ -654,6 +654,11 @@
   }
 }
 
+/* ── Save button — "saved" accent state ── */
+.list-detail-save-btn--saved {
+  color: var(--color-brand-primary);
+}
+
 /* ── Drag-to-reorder ── */
 .list-detail-grid-item[draggable="true"] {
   cursor: grab;

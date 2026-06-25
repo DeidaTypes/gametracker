@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
 import { HiDotsVertical, HiPlus } from 'react-icons/hi'
-import { PlayCircle, CheckCircle2, Bookmark, List } from 'lucide-react'
+import { PlayCircle, CheckCircle2, Bookmark, BookmarkCheck, List } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import AddGamesModal from '../components/AddGamesModal'
 import ActionSheet from '../components/ActionSheet'
@@ -28,6 +28,12 @@ import {
   unpinList,
   updateList,
 } from '../services/listService'
+import {
+  getListSaveState,
+  saveList,
+  unsaveList,
+} from '../services/listInteractionService'
+import ListComments from '../components/ListComments'
 import { supabase } from '../services/supabase'
 import './ListDetail.css'
 
@@ -107,6 +113,10 @@ function ListDetail() {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
 
+  // Save state (public custom lists)
+  const [saveCount, setSaveCount] = useState(0)
+  const [isSaved, setIsSaved] = useState(false)
+
   // Drag-to-reorder state (custom lists only)
   const dragGameIdRef = useRef(null)
   const [dragOverId, setDragOverId] = useState(null)
@@ -162,6 +172,36 @@ function ListDetail() {
     listInfo?.isCustom &&
     currentUserId != null &&
     currentUserId === listInfo?.userId
+
+  // ── Save state (public custom lists) ─────────────────────────────────────
+
+  useEffect(() => {
+    if (isTracker || !listInfo?.isCustom || !listInfo?.isPublic) return
+    getListSaveState(listId, currentUserId).then(({ count, saved }) => {
+      setSaveCount(count)
+      setIsSaved(saved)
+    })
+  }, [listId, listInfo?.isCustom, listInfo?.isPublic, currentUserId, isTracker])
+
+  const handleSaveToggle = async () => {
+    if (!currentUserId) return
+    const wasSaved = isSaved
+    setIsSaved(!wasSaved)
+    setSaveCount((c) => (wasSaved ? c - 1 : c + 1))
+    try {
+      if (wasSaved) {
+        await unsaveList(listId)
+        showToast('Removed from saved lists', 'success')
+      } else {
+        await saveList(listId)
+        showToast('List saved', 'success')
+      }
+    } catch {
+      setIsSaved(wasSaved)
+      setSaveCount((c) => (wasSaved ? c + 1 : c - 1))
+      showToast("Couldn't save — please try again.", 'error')
+    }
+  }
 
   // ── Pin state (own custom lists only) ────────────────────────────────────
 
@@ -463,6 +503,20 @@ function ListDetail() {
               <HiPlus size={20} aria-hidden="true" />
             </button>
           )}
+          {listInfo.isCustom && listInfo.isPublic && !isOwner && currentUserId && (
+            <button
+              type="button"
+              className={`list-detail-header-icon-btn${isSaved ? ' list-detail-save-btn--saved' : ''}`}
+              onClick={handleSaveToggle}
+              aria-label={isSaved ? 'Remove from saved lists' : 'Save list'}
+              aria-pressed={isSaved}
+            >
+              {isSaved
+                ? <BookmarkCheck size={20} aria-hidden="true" />
+                : <Bookmark size={20} aria-hidden="true" />
+              }
+            </button>
+          )}
           {listInfo.isCustom && (
             <button
               type="button"
@@ -511,6 +565,14 @@ function ListDetail() {
               )}
               {listInfo.createdAt && (
                 <span className="list-detail-meta-item">{fmtDate(listInfo.createdAt)}</span>
+              )}
+              {listInfo.isCustom && listInfo.isPublic && saveCount > 0 && (
+                <>
+                  <span className="list-detail-meta-dot" aria-hidden="true">·</span>
+                  <span className="list-detail-meta-item">
+                    saved by {saveCount} {saveCount === 1 ? 'person' : 'people'}
+                  </span>
+                </>
               )}
             </div>
           )}
@@ -619,6 +681,14 @@ function ListDetail() {
           />
         )}
       </div>
+
+      {listInfo.isCustom && (
+        <ListComments
+          listId={listId}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+        />
+      )}
 
       <AddGamesModal
         isOpen={showAddGames}
