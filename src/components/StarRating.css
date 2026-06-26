@@ -27,13 +27,19 @@
   position: absolute;
   top: 0;
   left: 0;
-  /* flex-shrink:0 keeps the gold stars the same size as the base layer
-     even though the container is narrower than the star row. */
-  flex-shrink: 0;
   overflow: hidden;
   /* Prevent the absolutely-positioned layer from interfering with
      pointer events on surrounding UI. */
   pointer-events: none;
+}
+
+/* The fill layer is narrower than the full 5-star row (width = fillPct%).
+   Without flex-shrink:0 the SVGs compress to fit, pushing all 5 gold stars
+   into the clipped space and making them overlap. With flex-shrink:0 the
+   SVGs stay at their natural size and overflow:hidden clips at the correct
+   fractional-fill boundary. */
+.star-rating__layer--fill > svg {
+  flex-shrink: 0;
 }
 
 /* prefers-reduced-motion — no transitions on this component currently,

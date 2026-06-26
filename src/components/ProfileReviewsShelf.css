@@ -7,6 +7,9 @@
   margin-top: -1px;
 }
 
-.prs-stars .star-rating-display {
-  gap: 1px;
+/* Target both star layers (base + fill) so they share the same reduced gap.
+   The old selector targeted .star-rating-display, which is the outer wrapper —
+   a no-op because the wrapper has only one in-flow flex child. */
+.prs-stars .star-rating__layer {
+  gap: 2px;
 }

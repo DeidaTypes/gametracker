@@ -131,6 +131,8 @@
 .share-card__stars-base {
   display: flex;
   align-items: center;
+  /* Gap keeps the 32 px stars from packing flush against each other. */
+  gap: 6px;
 }
 
 .share-card__stars-fill {
@@ -141,6 +143,17 @@
   align-items: center;
   overflow: hidden;
   white-space: nowrap;
+  /* Must match stars-base gap exactly so the gold overlay aligns with
+     the outline layer beneath it. */
+  gap: 6px;
+}
+
+/* Prevent the gold SVGs from compressing when the clipping container is
+   narrower than the full 5-star row width.  Same fix as StarRating.css —
+   overflow:hidden clips at fillPct%; flex-shrink:0 ensures stars stay at
+   their natural 32 px width rather than squishing together. */
+.share-card__stars-fill > svg {
+  flex-shrink: 0;
 }
 
 .share-card__rating-value {
