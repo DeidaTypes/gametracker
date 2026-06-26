@@ -17,7 +17,6 @@ import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
 import ReviewOfWeekHero from '../components/explore/ReviewOfWeekHero'
-import EventWeekBanner from '../components/explore/EventWeekBanner'
 import MostPlayedRail from '../components/explore/MostPlayedRail'
 import GotAnHourRail, {
   TimeBucketChips,
@@ -362,11 +361,6 @@ function Explore() {
         {!reviewOfWeek.loading && reviewOfWeek.data && (
           <ReviewOfWeekHero review={reviewOfWeek.data} />
         )}
-
-        {/* ── Event Week — themed game set + activity leaderboard ── */}
-        <section className="explore-section explore-section--event-week">
-          <EventWeekBanner />
-        </section>
 
         {/* ── Section: Swipe to discover ── */}
         <section className="explore-section explore-section--swipe-deck">
