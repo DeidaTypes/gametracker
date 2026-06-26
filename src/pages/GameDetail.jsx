@@ -1199,17 +1199,17 @@ function GameDetail() {
           themeIds={game.themeIds || []}
         />
 
-        {/* Your Journal — per-game dated notes; only shown for library games */}
-        {status && user && (
-          <>
-            <div className="gd-divider" />
-            <GameJournalSection
-              game={game}
-              user={user}
-              status={status}
-              onAddEntry={openJournalComposer}
-            />
-          </>
+        {/* Your Journal — per-game dated notes. Shown for any logged-in
+             user who has entries OR has the game tracked. GameJournalSection
+             self-manages its divider and hides entirely when there is
+             nothing to display. */}
+        {user && (
+          <GameJournalSection
+            game={game}
+            user={user}
+            status={status}
+            onAddEntry={openJournalComposer}
+          />
         )}
 
       </div>

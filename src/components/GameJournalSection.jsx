@@ -14,6 +14,17 @@ import './GameJournalSection.css'
  * Spoiler entries are blurred until tapped. The user can delete their
  * own entries via a long-press / delete button.
  *
+ * Visibility rules:
+ *   - Always hidden when user is not signed in.
+ *   - Hidden (returns null) when loading is done, entries are empty, AND
+ *     the game is not in the user's library. This keeps game pages clean
+ *     for games the user has never interacted with.
+ *   - Shows (with empty-state + add button) when the game IS in the
+ *     library but no entries have been written yet.
+ *   - Always shows real entries regardless of current library status —
+ *     entries written before a game was removed from the library are
+ *     still surfaced here.
+ *
  * Props:
  *   game        — the game object (id, title, image, year, developers)
  *   user        — the authenticated user (or null)
@@ -79,12 +90,18 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
     }
   }, [])
 
-  // Only show for library games.
-  if (!status) return null
   if (!user) return null
 
+  // After the initial load resolves: hide entirely when there are no
+  // entries AND the game isn't tracked. This keeps unvisited game pages
+  // clean while still surfacing orphaned entries (game removed from
+  // library after writing).
+  if (!loading && entries.length === 0 && !status) return null
+
   return (
-    <div className="gjs-section">
+    <>
+      <div className="gd-divider" />
+      <div className="gjs-section">
       <div className="gjs-header-row">
         <h2 className="gjs-heading">Your Journal</h2>
         <button
@@ -176,6 +193,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
         </ul>
       )}
     </div>
+    </>
   )
 }
 
