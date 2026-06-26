@@ -1648,6 +1648,89 @@
   }
 }
 
+/* ── Vibe tags row (IGDB themes + genres) ───────────────────────────────── */
+
+.gd-vibe-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.gd-vibe-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Weekend read badge ─────────────────────────────────────────────────── */
+
+.gd-weekend-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 20px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  border: 1px solid transparent;
+  width: fit-content;
+}
+
+.gd-weekend-read span {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.gd-weekend-read strong {
+  color: inherit;
+  font-weight: var(--font-weight-semibold);
+}
+
+.gd-weekend-icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Yes — fits a weekend: soft green tint */
+.gd-weekend-read--yes {
+  background: rgba(74, 168, 110, 0.12);
+  border-color: rgba(74, 168, 110, 0.25);
+  color: rgba(120, 210, 150, 0.9);
+}
+
+/* Maybe — tight push: amber tint */
+.gd-weekend-read--maybe {
+  background: rgba(200, 150, 60, 0.12);
+  border-color: rgba(200, 150, 60, 0.25);
+  color: rgba(230, 185, 100, 0.9);
+}
+
+/* Long — needs more time: muted copper tint */
+.gd-weekend-read--long {
+  background: rgba(180, 100, 80, 0.10);
+  border-color: rgba(180, 100, 80, 0.22);
+  color: rgba(220, 145, 120, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-weekend-read {
+    transition: none;
+  }
+}
+
 
 /* ── Play Session Control ───────────────────────────────────────────────────── */
 

@@ -79,6 +79,16 @@ function genreToSlug(genre) {
   return genre.toLowerCase().replace(/\s*\(.*?\)/g, '').trim().replace(/\s+/g, '-')
 }
 
+// Weekend read — derived from IGDB `normally` (main-story) seconds.
+// Returns null when there is no TTB data so the badge is silently omitted.
+function weekendReadBadge(ttb) {
+  if (!ttb?.normallySeconds) return null
+  const h = ttb.normallySeconds / 3600
+  if (h <= 15) return { text: 'Fits a weekend', variant: 'yes' }
+  if (h <= 25) return { text: 'Tight — push it', variant: 'maybe' }
+  return { text: 'Needs more time', variant: 'long' }
+}
+
 // Inline partial-fill star row for the hero rating display
 function PartialStarRow({ rating, size = 16 }) {
   const uid = `psr-${Math.round(rating * 100)}`
@@ -642,6 +652,21 @@ function GameDetail() {
   const fallbackCover = COVER_FALLBACK
   const ratingNum = game.rating ? parseFloat(game.rating) : null
 
+  // Decision helper — vibe tags: themes first (atmospheric), then genres,
+  // deduped and capped at 6. Both arrays come from IGDB via getGameById.
+  const _vibeSet = new Set()
+  const vibeTags = [...(game.themes || []), ...(game.genres || [])]
+    .filter(t => {
+      const k = t.toLowerCase()
+      if (_vibeSet.has(k)) return false
+      _vibeSet.add(k)
+      return true
+    })
+    .slice(0, 6)
+
+  // Weekend read badge — null when normallySeconds is absent (omit, don't guess)
+  const weekendBadge = weekendReadBadge(ttb)
+
   const effectiveColor = getEffectiveColor(dominantColor)
 
   // Action-circle (FAB) tint: full vibrant → vibrantDark gradient fill
@@ -925,32 +950,81 @@ function GameDetail() {
         </div>
       )}
 
-      {/* ── Time to Beat ── visible for any game that has IGDB TTB data,
-           regardless of library status. At least one field must be non-null;
-           if IGDB has no entry the whole section is hidden. ── */}
-      {ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) && (
+      {/* ── At a Glance ── decision helper card.
+           Shows up when any of the three sub-rows has real IGDB data.
+           Each sub-row is individually hidden when its data is absent —
+           nothing is guessed or fabricated. ── */}
+      {(ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) || vibeTags.length > 0) && (
         <div className="gd-ttb-block">
-          <p className="gd-ttb-heading">Time to beat</p>
-          <div className="gd-ttb-row">
-            {ttb.hastilySeconds != null && (
-              <span className="gd-ttb-item">
-                Rushed{' '}
-                <span className="gd-ttb-val">~{Math.round(ttb.hastilySeconds / 3600)}h</span>
-              </span>
-            )}
-            {ttb.normallySeconds != null && (
-              <span className="gd-ttb-item gd-ttb-item--main">
-                Main{' '}
-                <span className="gd-ttb-val">~{Math.round(ttb.normallySeconds / 3600)}h</span>
-              </span>
-            )}
-            {ttb.completelySeconds != null && (
-              <span className="gd-ttb-item">
-                Completionist{' '}
-                <span className="gd-ttb-val">~{Math.round(ttb.completelySeconds / 3600)}h</span>
-              </span>
-            )}
-          </div>
+          <p className="gd-ttb-heading">At a glance</p>
+
+          {/* Length to beat — from IGDB game_time_to_beats */}
+          {ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) && (
+            <div className="gd-ttb-row">
+              {ttb.hastilySeconds != null && (
+                <span className="gd-ttb-item">
+                  Rushed{' '}
+                  <span className="gd-ttb-val">~{Math.round(ttb.hastilySeconds / 3600)}h</span>
+                </span>
+              )}
+              {ttb.normallySeconds != null && (
+                <span className="gd-ttb-item gd-ttb-item--main">
+                  Main{' '}
+                  <span className="gd-ttb-val">~{Math.round(ttb.normallySeconds / 3600)}h</span>
+                </span>
+              )}
+              {ttb.completelySeconds != null && (
+                <span className="gd-ttb-item">
+                  Completionist{' '}
+                  <span className="gd-ttb-val">~{Math.round(ttb.completelySeconds / 3600)}h</span>
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Vibe tags — IGDB themes (atmospheric) + genres, deduped, max 6 */}
+          {vibeTags.length > 0 && (
+            <div className="gd-vibe-row" aria-label="Vibe tags">
+              {vibeTags.map(tag => (
+                <span key={tag} className="gd-vibe-pill">{tag}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Weekend read — derived from main-story hours; omitted when missing */}
+          {weekendBadge && (
+            <div className={`gd-weekend-read gd-weekend-read--${weekendBadge.variant}`}>
+              <svg
+                className="gd-weekend-icon"
+                width="12" height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                {weekendBadge.variant === 'yes' && (
+                  <polyline points="20 6 9 17 4 12" />
+                )}
+                {weekendBadge.variant === 'maybe' && (
+                  <>
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <polyline points="19 12 12 19 5 12" />
+                  </>
+                )}
+                {weekendBadge.variant === 'long' && (
+                  <>
+                    <line x1="12" y1="19" x2="12" y2="5" />
+                    <polyline points="5 12 12 5 19 12" />
+                  </>
+                )}
+              </svg>
+              <span>Good for a weekend? </span>
+              <strong>{weekendBadge.text}</strong>
+            </div>
+          )}
         </div>
       )}
 
