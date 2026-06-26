@@ -92,7 +92,8 @@ import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
 import PinnedListsSection from '../components/PinnedListsSection'
 import ProfileRatingsChart from '../components/ProfileRatingsChart'
 import ActivityTimeline from '../components/ActivityTimeline'
-import { getJournalEntriesForUser } from '../services/journalService'
+import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
+import OnThisDaySection from '../components/OnThisDaySection'
 import './Profile.css'
 
 /* ============================================================
@@ -1972,6 +1973,7 @@ function Profile() {
 
               {activeTab === 'diary' && (
                 <DiaryTab
+                  userId={targetUserId}
                   entries={journalEntries}
                   lifeReviews={allReviews.filter((r) => !!r.life_context)}
                   onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
@@ -2809,7 +2811,7 @@ const DiaryChevron = () => (
   </svg>
 )
 
-function DiaryTab({ entries, lifeReviews = [], onEntryClick, onReviewClick }) {
+function DiaryTab({ userId, entries, lifeReviews = [], onEntryClick, onReviewClick }) {
   // Merge journal entries and life-tagged reviews, sorted newest-first.
   const merged = React.useMemo(() => {
     const journalItems = (entries || []).map((e) => ({ ...e, _type: 'journal' }))
@@ -2834,6 +2836,9 @@ function DiaryTab({ entries, lifeReviews = [], onEntryClick, onReviewClick }) {
 
   return (
     <div className="profile-diary">
+      {/* On This Day — hides itself when there are no prior-year matches */}
+      {userId && <OnThisDaySection userId={userId} />}
+
       <ul className="profile-diary__list" aria-label="Diary">
         {merged.map((item) => {
           if (item._type === 'review') {
@@ -2890,6 +2895,12 @@ function DiaryTab({ entries, lifeReviews = [], onEntryClick, onReviewClick }) {
             )
           }
 
+          // Journal entry row
+          const moodMeta = item.mood ? getMoodMeta(item.mood) : null
+          const hoursLabel = item.hours_played != null
+            ? `${item.hours_played} hr${item.hours_played !== 1 ? 's' : ''}`
+            : null
+
           return (
             <li key={`journal-${item.id}`} className="profile-diary__row">
               <button
@@ -2913,6 +2924,19 @@ function DiaryTab({ entries, lifeReviews = [], onEntryClick, onReviewClick }) {
                   </p>
                   {item.title && (
                     <p className="profile-diary__entry-title">{item.title}</p>
+                  )}
+                  {/* Mood + hours inline pills */}
+                  {(moodMeta || hoursLabel) && (
+                    <div className="profile-diary__pills-row">
+                      {moodMeta && (
+                        <span className="profile-diary__mood-pill">
+                          {moodMeta.emoji} {moodMeta.label}
+                        </span>
+                      )}
+                      {hoursLabel && (
+                        <span className="profile-diary__hours-pill">⏱ {hoursLabel}</span>
+                      )}
+                    </div>
                   )}
                   <time
                     className="profile-diary__date"

@@ -1,7 +1,7 @@
 /* =====================================================================
    JournalEntry page — /journal/:entryId
-   Full-screen entry detail. Shares the header / back-chevron pattern
-   with ReviewComments (rc-*) but uses the je-* prefix here.
+   Cinematic layout: full-width cover hero → floating header → content.
+   Uses je-* prefix throughout.
    ===================================================================== */
 
 .je-page {
@@ -11,12 +11,90 @@
   background: transparent;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────── */
+/* ── Cover hero ─────────────────────────────────────────────────────── */
+
+.je-hero {
+  position: relative;
+  width: 100%;
+  /* Taller on phones, constrained on desktop */
+  height: clamp(220px, 42vw, 360px);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.je-hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.je-hero__placeholder {
+  position: absolute;
+  inset: 0;
+  background: var(--color-surface, #1a2240);
+}
+
+/* Two-stop gradient: opaque navy at bottom, transparent at 40% */
+.je-hero__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.35) 0%,
+    transparent 38%,
+    rgba(10, 14, 36, 0.72) 75%,
+    var(--color-bg, #0a0e24) 100%
+  );
+}
+
+/* Game title + date caption at bottom of hero */
+.je-hero__caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px var(--page-padding, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.je-hero__game {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.je-hero__date {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.je-hero-skel {
+  width: 100%;
+  height: clamp(220px, 42vw, 360px);
+  background: var(--color-surface, #1a2240);
+  flex-shrink: 0;
+}
+
+/* ── Header overlay (floats over hero) ──────────────────────────────── */
 
 .je-header {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 10;
   display: grid;
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
@@ -26,6 +104,19 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-bottom: 1px solid var(--color-border);
+}
+
+/* Overlay variant — absolute, no background, lives inside .je-hero */
+.je-header--overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
 }
 
 .je-back {
@@ -43,8 +134,20 @@
   transition: background var(--transition-fast);
 }
 
+.je-back--glass {
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
 .je-back:hover {
   background: var(--color-surface);
+}
+
+.je-back--glass:hover {
+  background: rgba(0, 0, 0, 0.48);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -93,6 +196,16 @@ body[data-reduce-motion='true'] .je-back {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 120ms ease;
+}
+
+.je-edit-btn--glass {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: env(safe-area-inset-top, 0px);
 }
 
 .je-edit-btn:active {
@@ -146,6 +259,49 @@ body[data-reduce-motion='true'] .je-edit-btn {
   font-size: 13px;
   font-weight: 400;
   color: var(--color-text-tertiary);
+}
+
+/* ── Badges row: mood + hours + spoiler ─────────────────────────────── */
+
+.je-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.je-mood-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-copper, #d4955a);
+  background: color-mix(in srgb, var(--accent-copper, #d4955a) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-copper, #d4955a) 30%, transparent);
+  border-radius: 20px;
+  padding: 3px 10px 3px 8px;
+  line-height: 1.4;
+}
+
+.je-mood-badge__emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.je-hours-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: rgba(148, 168, 212, 0.08);
+  border: 1px solid rgba(148, 168, 212, 0.15);
+  border-radius: 20px;
+  padding: 3px 10px;
+  line-height: 1.4;
 }
 
 .je-spoiler-badge {

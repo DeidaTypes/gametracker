@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import CenteredModal from './CenteredModal'
 import IOSSwitch from './IOSSwitch'
-import { saveJournalEntry, updateJournalEntry } from '../services/journalService'
+import { saveJournalEntry, updateJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { showToast } from './Toast'
 import '../pages/JournalNew.css'
 
@@ -16,13 +16,15 @@ const MAX_BODY = 2000
  *             Calls updateJournalEntry, dispatches journalEntryUpdated.
  *
  * Props:
- *   isOpen           boolean
- *   onClose          () => void
- *   game             { id, title, image, year, developers }
- *   entryId?         string  — UUID of entry to edit (omit for new)
- *   initialTitle?    string  — pre-fill for edit mode
- *   initialBody?     string  — pre-fill for edit mode
- *   initialIsSpoiler? boolean — pre-fill for edit mode
+ *   isOpen             boolean
+ *   onClose            () => void
+ *   game               { id, title, image, year, developers }
+ *   entryId?           string  — UUID of entry to edit (omit for new)
+ *   initialTitle?      string  — pre-fill for edit mode
+ *   initialBody?       string  — pre-fill for edit mode
+ *   initialIsSpoiler?  boolean — pre-fill for edit mode
+ *   initialMood?       string  — pre-fill for edit mode
+ *   initialHours?      number  — pre-fill for edit mode
  */
 function JournalEntryModal({
   isOpen,
@@ -32,11 +34,15 @@ function JournalEntryModal({
   initialTitle = '',
   initialBody = '',
   initialIsSpoiler = false,
+  initialMood = null,
+  initialHours = null,
 }) {
   const isEditing = !!entryId
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [isSpoiler, setIsSpoiler] = useState(false)
+  const [mood, setMood] = useState(null)
+  const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const titleRef = useRef(null)
 
@@ -46,6 +52,8 @@ function JournalEntryModal({
       setTitle(isEditing ? initialTitle : '')
       setBody(isEditing ? initialBody : '')
       setIsSpoiler(isEditing ? initialIsSpoiler : false)
+      setMood(isEditing ? (initialMood ?? null) : null)
+      setHours(isEditing && initialHours != null ? String(initialHours) : '')
       setSubmitting(false)
       const t = setTimeout(() => titleRef.current?.focus(), 150)
       return () => clearTimeout(t)
@@ -57,21 +65,24 @@ function JournalEntryModal({
 
   const handleClose = useCallback(() => {
     const isDirty = isEditing
-      ? title.trim() !== initialTitle.trim() || body.trim() !== initialBody.trim() || isSpoiler !== initialIsSpoiler
+      ? title.trim() !== initialTitle.trim() || body.trim() !== initialBody.trim() || isSpoiler !== initialIsSpoiler || mood !== initialMood || String(hours) !== String(initialHours ?? '')
       : title.trim().length > 0 || body.trim().length > 0
     if (isDirty && !window.confirm(isEditing ? 'Discard changes?' : 'Discard this entry?')) return
     onClose()
-  }, [isEditing, title, body, isSpoiler, initialTitle, initialBody, initialIsSpoiler, onClose])
+  }, [isEditing, title, body, isSpoiler, mood, hours, initialTitle, initialBody, initialIsSpoiler, initialMood, initialHours, onClose])
 
   const handleSave = useCallback(async () => {
     if (!canSave) return
     setSubmitting(true)
     try {
+      const parsedHours = hours !== '' && hours != null ? parseFloat(hours) : null
       if (isEditing) {
         await updateJournalEntry(entryId, {
           title: title.trim(),
           body: body.trim(),
           isSpoiler,
+          mood,
+          hoursPlayed: parsedHours,
         })
         showToast('Entry updated!', 'success')
       } else {
@@ -83,6 +94,8 @@ function JournalEntryModal({
           isSpoiler,
           gameTitle: game.title,
           gameImage: game.image,
+          mood,
+          hoursPlayed: parsedHours,
         })
         showToast('Entry saved!', 'success')
       }
@@ -92,7 +105,7 @@ function JournalEntryModal({
       showToast('Could not save your entry. Please try again.', 'error')
       setSubmitting(false)
     }
-  }, [canSave, isEditing, entryId, game, title, body, isSpoiler, onClose])
+  }, [canSave, isEditing, entryId, game, title, body, isSpoiler, mood, hours, onClose])
 
   const coverSrc = game?.image ?? null
   const developer = game?.developers?.[0] ?? null
@@ -181,6 +194,46 @@ function JournalEntryModal({
               {body.length}/{MAX_BODY}
             </p>
           )}
+        </div>
+
+        {/* Mood picker */}
+        <div className="jnc-section-label">How are you feeling?</div>
+        <div className="jnc-mood-grid" role="group" aria-label="Mood">
+          {MOOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`jnc-mood-btn${mood === opt.value ? ' jnc-mood-btn--active' : ''}`}
+              onClick={() => setMood(mood === opt.value ? null : opt.value)}
+              aria-pressed={mood === opt.value}
+              aria-label={opt.label}
+            >
+              <span className="jnc-mood-emoji" aria-hidden="true">{opt.emoji}</span>
+              <span className="jnc-mood-label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Hours played */}
+        <div className="jnc-hours-row">
+          <label className="jnc-hours-label" htmlFor="jnc-hours-input">
+            Hours played
+          </label>
+          <div className="jnc-hours-input-wrap">
+            <input
+              id="jnc-hours-input"
+              className="jnc-hours-input"
+              type="number"
+              min="0"
+              max="999"
+              step="0.5"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              placeholder="0"
+              aria-label="Hours played in this session"
+            />
+            <span className="jnc-hours-unit">hrs</span>
+          </div>
         </div>
 
         {/* Contains spoilers toggle */}

@@ -323,3 +323,133 @@ body[data-reduce-motion='true'] .jnc-inline-spinner,
 body[data-reduce-motion='true'] .jnc-save-spinner {
   animation-duration: 1400ms;
 }
+
+/* ── Mood picker ─────────────────────────────────────────────────────────── */
+
+.jnc-section-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #5c6b8a);
+  margin: 0;
+}
+
+.jnc-mood-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.jnc-mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--bg-surface, #131a35);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+
+.jnc-mood-btn:active {
+  transform: scale(0.94);
+}
+
+.jnc-mood-btn--active {
+  background: color-mix(in srgb, var(--accent-copper, #d4955a) 15%, var(--bg-surface, #131a35));
+  border-color: var(--accent-copper, #d4955a);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jnc-mood-btn {
+    transition: none;
+  }
+  .jnc-mood-btn:active {
+    transform: none;
+  }
+}
+
+body[data-reduce-motion='true'] .jnc-mood-btn {
+  transition: none;
+}
+
+.jnc-mood-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.jnc-mood-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary, #94a8d4);
+  white-space: nowrap;
+}
+
+.jnc-mood-btn--active .jnc-mood-label {
+  color: var(--accent-copper, #d4955a);
+}
+
+/* ── Hours played ────────────────────────────────────────────────────────── */
+
+.jnc-hours-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  padding: 0 14px;
+  min-height: 48px;
+}
+
+.jnc-hours-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+}
+
+.jnc-hours-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jnc-hours-input {
+  width: 60px;
+  padding: 6px 8px;
+  background: var(--bg-surface, #131a35);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: 8px;
+  color: var(--text-primary, #f0f3fa);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.jnc-hours-input::-webkit-inner-spin-button,
+.jnc-hours-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.jnc-hours-input:focus {
+  border-color: color-mix(in srgb, var(--accent, #3b82f6) 50%, transparent);
+}
+
+.jnc-hours-unit {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary, #5c6b8a);
+}

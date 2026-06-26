@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
-import { getJournalEntryById, deleteJournalEntry } from '../services/journalService'
+import { getJournalEntryById, deleteJournalEntry, getMoodMeta } from '../services/journalService'
 import { useAuth } from '../contexts/AuthContext'
 import JournalEntryModal from '../components/JournalEntryModal'
 import { showToast } from '../components/Toast'
 import './JournalEntry.css'
 
 /**
- * JournalEntry — full-screen view for a single journal_entries row.
+ * JournalEntry — cinematic full-screen view for a single journal_entries row.
  *
  * Route: /journal/:entryId
  *
- * Shows: title, date, full body (spoiler-gated), game context block.
- * Owner actions: Edit (opens JournalEntryModal pre-filled) and Delete.
- * The ONLY way to reach the game detail page from here is the game block.
+ * Layout:
+ *  - Cover hero: full-width game cover with gradient overlay.
+ *  - Floating game title + date on the cover.
+ *  - Mood badge + hours pill in a meta row below the hero.
+ *  - Entry body (spoiler-gated).
+ *  - Owner actions: Edit / Delete.
  */
 function JournalEntry() {
   const { entryId } = useParams()
@@ -75,10 +78,10 @@ function JournalEntry() {
   const isOwner = !!(user && entry && user.id === entry.user_id)
   const isSpoilerBlocked = !!(entry?.is_spoiler && !revealed)
 
-  // ── Header (shared across loading / not-found / main) ──────────────
+  // ── Header overlay (shared across states) ────────────────────────────
 
-  const BackHeader = () => (
-    <header className="je-header">
+  const BackHeader = ({ transparent = false }) => (
+    <header className={`je-header${transparent ? ' je-header--transparent' : ''}`}>
       <button
         type="button"
         className="je-back"
@@ -87,18 +90,32 @@ function JournalEntry() {
       >
         <LuChevronLeft size={22} aria-hidden="true" />
       </button>
-      <h1 className="je-header__title">Journal Entry</h1>
-      <span className="je-header__spacer" aria-hidden="true" />
+      {!transparent && <h1 className="je-header__title">Journal Entry</h1>}
+      <div className="je-header__right">
+        {isOwner && !transparent ? (
+          <button
+            type="button"
+            className="je-edit-btn"
+            onClick={() => setShowEdit(true)}
+            aria-label="Edit entry"
+          >
+            Edit
+          </button>
+        ) : (
+          <span className="je-header__spacer" aria-hidden="true" />
+        )}
+      </div>
     </header>
   )
 
-  // ── Loading ─────────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <div className="je-page">
         <BackHeader />
-        <div className="je-loading" aria-hidden="true">
+        <div className="je-hero-skel" aria-hidden="true" />
+        <div className="je-loading">
           <div className="skeleton je-skel-title" />
           <div className="skeleton je-skel-meta" />
           <div className="skeleton je-skel-body" />
@@ -109,7 +126,7 @@ function JournalEntry() {
     )
   }
 
-  // ── Not found ───────────────────────────────────────────────────────
+  // ── Not found ────────────────────────────────────────────────────────
 
   if (notFound || !entry) {
     return (
@@ -129,7 +146,7 @@ function JournalEntry() {
     )
   }
 
-  // ── Format date ─────────────────────────────────────────────────────
+  // ── Derived display values ───────────────────────────────────────────
 
   const formattedDate = new Date(entry.created_at).toLocaleDateString(undefined, {
     month: 'long',
@@ -137,60 +154,94 @@ function JournalEntry() {
     year: 'numeric',
   })
 
-  // Partial game shape for passing to JournalEntryModal (display only in edit mode).
+  const moodMeta = entry.mood ? getMoodMeta(entry.mood) : null
+
+  const hoursLabel = entry.hours_played != null
+    ? `${entry.hours_played % 1 === 0 ? entry.hours_played : entry.hours_played} hr${entry.hours_played !== 1 ? 's' : ''}`
+    : null
+
   const gameForModal = {
     id: entry.igdb_game_id,
     title: entry.game_title || '',
     image: entry.game_image || null,
   }
 
-  // ── Main render ─────────────────────────────────────────────────────
+  // ── Main render ──────────────────────────────────────────────────────
 
   return (
     <div className="je-page">
-      <header className="je-header">
-        <button
-          type="button"
-          className="je-back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
-          <LuChevronLeft size={22} aria-hidden="true" />
-        </button>
+      {/* ── Cover hero ─────────────────────────────────────────────── */}
+      <div className="je-hero" aria-hidden="true">
+        {entry.game_image ? (
+          <img
+            src={entry.game_image}
+            alt=""
+            className="je-hero__img"
+          />
+        ) : (
+          <div className="je-hero__placeholder" />
+        )}
+        <div className="je-hero__gradient" />
 
-        <h1 className="je-header__title">Journal Entry</h1>
-
-        <div className="je-header__right">
-          {isOwner ? (
+        {/* Back button floats over the hero */}
+        <header className="je-header je-header--overlay">
+          <button
+            type="button"
+            className="je-back je-back--glass"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            <LuChevronLeft size={22} aria-hidden="true" />
+          </button>
+          <span aria-hidden="true" />
+          {isOwner && (
             <button
               type="button"
-              className="je-edit-btn"
+              className="je-edit-btn je-edit-btn--glass"
               onClick={() => setShowEdit(true)}
               aria-label="Edit entry"
             >
               Edit
             </button>
-          ) : (
-            <span className="je-header__spacer" aria-hidden="true" />
           )}
-        </div>
-      </header>
+        </header>
 
+        {/* Game title + date float at hero bottom */}
+        <div className="je-hero__caption">
+          <p className="je-hero__game">{entry.game_title || 'Unknown game'}</p>
+          <time className="je-hero__date" dateTime={entry.created_at}>
+            {formattedDate}
+          </time>
+        </div>
+      </div>
+
+      {/* ── Content ────────────────────────────────────────────────── */}
       <div className="je-scroll">
-        {/* Title */}
+
+        {/* Entry title */}
         {entry.title ? (
           <h2 className="je-title">{entry.title}</h2>
         ) : null}
 
-        {/* Date + spoiler badge */}
-        <div className="je-meta-row">
-          <time className="je-date" dateTime={entry.created_at}>
-            {formattedDate}
-          </time>
-          {entry.is_spoiler && (
-            <span className="je-spoiler-badge">spoiler</span>
-          )}
-        </div>
+        {/* Mood + hours + spoiler badges */}
+        {(moodMeta || hoursLabel || entry.is_spoiler) && (
+          <div className="je-badges-row">
+            {moodMeta && (
+              <span className="je-mood-badge" data-mood={entry.mood}>
+                <span className="je-mood-badge__emoji" aria-hidden="true">{moodMeta.emoji}</span>
+                {moodMeta.label}
+              </span>
+            )}
+            {hoursLabel && (
+              <span className="je-hours-badge">
+                ⏱ {hoursLabel}
+              </span>
+            )}
+            {entry.is_spoiler && (
+              <span className="je-spoiler-badge">spoiler</span>
+            )}
+          </div>
+        )}
 
         {/* Body */}
         {entry.body ? (
@@ -209,7 +260,7 @@ function JournalEntry() {
           </div>
         ) : null}
 
-        {/* Game context block — the ONLY route to the game detail page */}
+        {/* Game context block — the ONLY route to game detail */}
         {entry.igdb_game_id && (
           <button
             type="button"
@@ -281,6 +332,8 @@ function JournalEntry() {
           initialTitle={entry.title || ''}
           initialBody={entry.body || ''}
           initialIsSpoiler={entry.is_spoiler || false}
+          initialMood={entry.mood || null}
+          initialHours={entry.hours_played ?? null}
         />
       )}
     </div>

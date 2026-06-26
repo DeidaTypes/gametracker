@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import CenteredModal from '../components/CenteredModal'
 import IOSSwitch from '../components/IOSSwitch'
 import { getGameById } from '../services/igdb'
-import { saveJournalEntry } from '../services/journalService'
+import { saveJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import './JournalNew.css'
@@ -24,6 +24,8 @@ function JournalNew() {
 
   const [text, setText] = useState('')
   const [containsSpoilers, setContainsSpoilers] = useState(false)
+  const [mood, setMood] = useState(null)
+  const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   // Drives the popup enter/exit animation. We keep the route mounted until
@@ -91,6 +93,8 @@ function JournalNew() {
           isSpoiler: !!containsSpoilers,
           gameTitle: game.title,
           gameImage: game.image,
+          mood,
+          hoursPlayed: hours !== '' ? parseFloat(hours) : null,
         }),
         deadline,
       ])
@@ -230,6 +234,46 @@ function JournalNew() {
         <p className="jnc-tip">
           Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.
         </p>
+
+        {/* Mood picker */}
+        <div className="jnc-section-label">How are you feeling?</div>
+        <div className="jnc-mood-grid" role="group" aria-label="Mood">
+          {MOOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`jnc-mood-btn${mood === opt.value ? ' jnc-mood-btn--active' : ''}`}
+              onClick={() => setMood(mood === opt.value ? null : opt.value)}
+              aria-pressed={mood === opt.value}
+              aria-label={opt.label}
+            >
+              <span className="jnc-mood-emoji" aria-hidden="true">{opt.emoji}</span>
+              <span className="jnc-mood-label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Hours played */}
+        <div className="jnc-hours-row">
+          <label className="jnc-hours-label" htmlFor="jnc-hours-input-new">
+            Hours played
+          </label>
+          <div className="jnc-hours-input-wrap">
+            <input
+              id="jnc-hours-input-new"
+              className="jnc-hours-input"
+              type="number"
+              min="0"
+              max="999"
+              step="0.5"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              placeholder="0"
+              aria-label="Hours played in this session"
+            />
+            <span className="jnc-hours-unit">hrs</span>
+          </div>
+        </div>
 
         {/* Toggles: Contains spoilers */}
         <div className="jnc-group" role="group" aria-label="Journal entry options">
