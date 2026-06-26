@@ -45,7 +45,7 @@ import {
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
 import { getGoalProgress, setGoal, computePace, computeMilestoneBeat, getRivalryData } from '../services/goalService'
 import { getStreakData, MILESTONES, isMilestoneSeen } from '../services/streakMilestoneService'
-import { getUserByUsername, getUserById } from '../services/userService'
+import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
   followUser,
@@ -453,7 +453,10 @@ function Profile() {
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showCreateListModal, setShowCreateListModal] = useState(false)
   const [showFavPickerSheet, setShowFavPickerSheet] = useState(false)
+  const [showObsessionPickerSheet, setShowObsessionPickerSheet] = useState(false)
   const [showGamePickerSheet, setShowGamePickerSheet] = useState(false)
+  // 'idle' | 'generating' — favorites shelf share card
+  const [favSharing, setFavSharing] = useState('idle')
 
   // Header kebab dropdown
   const [kebabOpen, setKebabOpen] = useState(false)
@@ -933,7 +936,48 @@ function Profile() {
     const updated = updateProfile({ favoriteGames: newFavorites })
     setProfile(updated)
     window.dispatchEvent(new Event('profileUpdated'))
+    // Sync to Supabase — best-effort, never blocks the UI update
+    if (user?.id) {
+      updateUserProfile(user.id, { favoriteGames: newFavorites }).catch((err) =>
+        console.warn('[Profile] favorites Supabase sync failed:', err)
+      )
+    }
   }
+
+  const handleSaveObsessions = (newObsessions) => {
+    const updated = updateProfile({ currentObsessions: newObsessions })
+    setProfile(updated)
+    window.dispatchEvent(new Event('profileUpdated'))
+    if (user?.id) {
+      updateUserProfile(user.id, { currentObsessions: newObsessions }).catch((err) =>
+        console.warn('[Profile] obsessions Supabase sync failed:', err)
+      )
+    }
+  }
+
+  const handleShareFavorites = useCallback(async () => {
+    if (favSharing === 'generating') return
+    setFavSharing('generating')
+    try {
+      const favs = profile?.favoriteGames || []
+      const username =
+        profile?.username || profile?.displayName || 'gamer'
+      await shareCard({
+        variant: 'favorites-shelf',
+        data: {
+          username,
+          games: favs.map((g) => ({ title: g.title, coverUrl: g.image })),
+        },
+        target: { type: 'profile', username },
+        title: `${username}'s Favorite Games`,
+      })
+    } catch (err) {
+      console.warn('[Profile] favorites share failed:', err)
+      showToast('Could not generate share card', 'error')
+    } finally {
+      setFavSharing('idle')
+    }
+  }, [favSharing, profile])
 
   const handleSortApply = (sortValue) => {
     const tabKey = activeTab === 'lists' ? 'lists' : 'reviews'
@@ -1340,6 +1384,7 @@ function Profile() {
   )
 
   const favoriteGames = profile.favoriteGames || []
+  const currentObsessions = profile.currentObsessions || []
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
@@ -1858,6 +1903,7 @@ function Profile() {
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
+                  currentObsessions={currentObsessions}
                   activities={activities}
                   gameImageMap={gameImageMap}
                   userIdentifier={profile.username || profile.displayName || 'user'}
@@ -1872,6 +1918,9 @@ function Profile() {
                   user={user}
                   isOwnProfile={isOwnProfile}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
+                  onEditObsessions={() => setShowObsessionPickerSheet(true)}
+                  onShareFavorites={handleShareFavorites}
+                  favSharing={favSharing}
                   recentReviews={recentReviews}
                   pinnedLists={pinnedLists}
                   onReviewsChevron={() => setActiveTab('reviews')}
@@ -1980,6 +2029,18 @@ function Profile() {
           initialFavorites={profile?.favoriteGames || []}
           onSave={handleSaveFavorites}
           onClose={() => setShowFavPickerSheet(false)}
+          label="Favorite Games"
+          maxItems={4}
+          showWhy
+        />
+
+        <FavoritesPickerSheet
+          isOpen={showObsessionPickerSheet}
+          initialFavorites={profile?.currentObsessions || []}
+          onSave={handleSaveObsessions}
+          onClose={() => setShowObsessionPickerSheet(false)}
+          label="Current Obsessions"
+          maxItems={3}
         />
 
         <GamePickerSheet
@@ -2058,6 +2119,7 @@ function Profile() {
 
 function HomeTab({
   favoriteGames,
+  currentObsessions,
   activities,
   gameImageMap,
   userIdentifier,
@@ -2066,6 +2128,9 @@ function HomeTab({
   user,
   isOwnProfile,
   onEditFavorites,
+  onEditObsessions,
+  onShareFavorites,
+  favSharing,
   recentReviews,
   pinnedLists,
   onReviewsChevron,
@@ -2222,16 +2287,33 @@ function HomeTab({
         <section className="profile-home__section">
           <div className="profile-home__section-header">
             <h3 className="profile-home__section-title">Favorite Games</h3>
-            {isOwnProfile && (
-              <button
-                type="button"
-                className="profile-home__edit-btn"
-                onClick={onEditFavorites}
-                aria-label="Edit favorite games"
-              >
-                Edit
-              </button>
-            )}
+            <div className="profile-home__section-actions">
+              {favoriteGames.length > 0 && (
+                <button
+                  type="button"
+                  className="profile-home__share-btn"
+                  onClick={onShareFavorites}
+                  disabled={favSharing === 'generating'}
+                  aria-label="Share favorite games card"
+                >
+                  {favSharing === 'generating' ? (
+                    <span className="profile-home__share-spinner" aria-hidden="true" />
+                  ) : (
+                    <LuShare2 size={15} aria-hidden="true" />
+                  )}
+                </button>
+              )}
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  className="profile-home__edit-btn"
+                  onClick={onEditFavorites}
+                  aria-label="Edit favorite games"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
           {favoriteGames.length === 0 ? (
             <button
@@ -2266,6 +2348,74 @@ function HomeTab({
                   <span className="profile-favorite-card__name">{g.title}</span>
                   {g.developer && (
                     <span className="profile-favorite-card__dev">
+                      {g.developer}
+                    </span>
+                  )}
+                  {g.why && (
+                    <span className="profile-favorite-card__why">
+                      {g.why}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Section 1b — Current Obsessions (rotating picks, distinct from
+          all-time favorites; own profile always shows, others see only
+          when non-empty) */}
+      {(currentObsessions.length > 0 || isOwnProfile) && (
+        <section className="profile-home__section">
+          <div className="profile-home__section-header">
+            <h3 className="profile-home__section-title profile-home__section-title--obsessions">
+              Current Obsessions
+            </h3>
+            {isOwnProfile && (
+              <button
+                type="button"
+                className="profile-home__edit-btn"
+                onClick={onEditObsessions}
+                aria-label="Edit current obsessions"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          {currentObsessions.length === 0 ? (
+            <button
+              type="button"
+              className="profile-home__fav-empty-cta profile-home__fav-empty-cta--obsessions"
+              onClick={onEditObsessions}
+              aria-label="Add current obsessions"
+            >
+              + What are you obsessed with right now?
+            </button>
+          ) : (
+            <div className="profile-obsessions-row" role="list">
+              {currentObsessions.slice(0, 3).map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="listitem"
+                  className="profile-obsession-card"
+                  onClick={() => onGameClick(g.id, g.image)}
+                >
+                  <div className="profile-obsession-card__cover">
+                    {g.image ? (
+                      <SharedCover gameId={g.id} imageSrc={g.image}>
+                        <img src={g.image} alt={g.title} loading="lazy" />
+                      </SharedCover>
+                    ) : (
+                      <span className="profile-obsession-card__fallback">
+                        {g.title?.charAt(0) || '?'}
+                      </span>
+                    )}
+                  </div>
+                  <span className="profile-obsession-card__name">{g.title}</span>
+                  {g.developer && (
+                    <span className="profile-obsession-card__dev">
                       {g.developer}
                     </span>
                   )}

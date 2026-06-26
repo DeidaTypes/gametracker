@@ -19,11 +19,14 @@ const DEFAULT_PROFILE = {
   xHandle: '',
   youtubeHandle: '',
   tiktokHandle: '',
-  // Up-to-4 favorite-game cards rendered in the Home tab. Each entry is
-  // a slim copy of the IGDB game shape used elsewhere on the profile
-  // ({ id, title, image, developer }) so the picker can hand them in
-  // without forcing Profile.jsx to round-trip IGDB on render.
+  // Up-to-4 all-time favorite-game cards rendered in the Home tab. Each
+  // entry is a slim copy of the IGDB game shape with an optional one-line
+  // personal note: { id, title, image, developer, why? }.
   favoriteGames: [],
+  // Up-to-3 rotating "current obsessions" — separate from all-time
+  // favorites so the user can swap them out freely without touching their
+  // canonical picks. Same shape as favoriteGames (why is not stored here).
+  currentObsessions: [],
   // Sprint 7 — banner image stored in Supabase Storage; only the public
   // URL lives here so the Profile screen renders without a round-trip.
   bannerUrl: null,

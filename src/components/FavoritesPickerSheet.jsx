@@ -17,31 +17,47 @@ import './FavoritesPickerSheet.css'
 const MAX_FAVORITES = 4
 
 /**
- * Centered popup (CenteredModal) for editing Favorite Games on the Profile.
+ * Centered popup (CenteredModal) for editing Favorite Games or Current
+ * Obsessions on the Profile.
  *
  * Layout (top → bottom):
  *   Header row: title + Done button
- *   Current favorites strip — horizontal, drag-to-reorder via Framer
+ *   Current selection strip — horizontal, drag-to-reorder via Framer
  *     Motion Reorder.Group. Each card has an X remove button.
+ *   Why-editor — compact per-pick text inputs for an optional one-line note.
+ *     Only rendered for the favorites mode (showWhy=true).
  *   Search input (IGDB search, identical pattern to GamePickerSheet)
  *   Scrollable body: 2-column cover grid of results (or library games
  *     when no query is typed).
  *
  * Behaviour:
- *   - Tapping a result toggles it. Already in favorites → removes.
+ *   - Tapping a result toggles it. Already selected → removes.
  *   - If at cap and tapping a new game → shake animation + toast.
- *   - Done saves the current `favorites` order and closes.
+ *   - Done saves the current order (with why notes if showWhy) and closes.
  *   - Reorder.Group persists the dragged order in state; Done flushes it.
  *
  * @param {{
  *   isOpen: boolean,
- *   initialFavorites: Array<{id, title, image, developer}>,
+ *   initialFavorites: Array<{id, title, image, developer, why?}>,
  *   onSave: (favorites) => void,
- *   onClose: () => void
+ *   onClose: () => void,
+ *   label?: string,
+ *   maxItems?: number,
+ *   showWhy?: boolean,
  * }} props
  */
-function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }) {
+function FavoritesPickerSheet({
+  isOpen,
+  initialFavorites = [],
+  onSave,
+  onClose,
+  label = 'Favorite Games',
+  maxItems = MAX_FAVORITES,
+  showWhy = false,
+}) {
   const [favorites, setFavorites] = useState([])
+  // Map<stringId, whyText> — persists why notes across reorders
+  const [whyMap, setWhyMap] = useState({})
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -57,6 +73,12 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
   useEffect(() => {
     if (isOpen) {
       setFavorites(initialFavorites.slice())
+      // Seed whyMap from existing why values
+      const seed = {}
+      for (const g of initialFavorites) {
+        if (g.why) seed[String(g.id)] = g.why
+      }
+      setWhyMap(seed)
       setQuery('')
       setResults([])
       setError(null)
@@ -110,11 +132,11 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
         removeFromFavorites(game.id)
         return
       }
-      if (favorites.length >= MAX_FAVORITES) {
+      if (favorites.length >= maxItems) {
         const key = String(game.id)
         setShakingId(key)
         setTimeout(() => setShakingId(null), 600)
-        showToast('Favorites full — remove one first', 'error', 2500)
+        showToast(`${label} full — remove one first`, 'error', 2500)
         return
       }
       setFavorites((prev) => [
@@ -130,7 +152,7 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
         },
       ])
     },
-    [favorites, isPicked, removeFromFavorites]
+    [favorites, maxItems, label, isPicked, removeFromFavorites]
   )
 
   const handleQueryChange = useCallback((e) => {
@@ -163,9 +185,13 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
   }, [])
 
   const handleDone = useCallback(() => {
-    onSave(favorites)
+    const withWhy = favorites.map((g) => ({
+      ...g,
+      why: (whyMap[String(g.id)] || '').trim() || undefined,
+    }))
+    onSave(withWhy)
     onClose()
-  }, [favorites, onSave, onClose])
+  }, [favorites, whyMap, onSave, onClose])
 
   // Grid source: IGDB results when searching, library otherwise
   const displayGames = query.trim() ? results : libraryGames
@@ -180,7 +206,7 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
     >
       {/* Header: title + Done */}
       <div className="fps-header">
-        <h2 className="fps-title">Favorite Games</h2>
+        <h2 className="fps-title">{label}</h2>
         <button
           type="button"
           className="fps-done-btn"
@@ -190,10 +216,10 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
         </button>
       </div>
 
-      {/* Current favorites — horizontal drag-to-reorder strip */}
+      {/* Current selection — horizontal drag-to-reorder strip */}
       <div className="fps-favorites-section">
         <p className="fps-favorites-label">
-          {favorites.length} / {MAX_FAVORITES} selected
+          {favorites.length} / {maxItems} selected
           {favorites.length > 0 && (
             <span className="fps-favorites-label__hint">
               {' '}· drag to reorder
@@ -252,6 +278,41 @@ function FavoritesPickerSheet({ isOpen, initialFavorites = [], onSave, onClose }
           </p>
         )}
       </div>
+
+      {/* Why-notes editor — optional one-line annotations per pick */}
+      {showWhy && favorites.length > 0 && (
+        <div className="fps-why-section">
+          <p className="fps-why-label">Why these? <span className="fps-why-label__hint">(optional)</span></p>
+          {favorites.map((fav) => (
+            <div key={fav.id} className="fps-why-row">
+              <div className="fps-why-thumb">
+                {fav.image ? (
+                  <img src={fav.image} alt="" loading="lazy" />
+                ) : (
+                  <span className="fps-why-thumb__fallback">
+                    {fav.title?.charAt(0) || '?'}
+                  </span>
+                )}
+              </div>
+              <div className="fps-why-input-wrap">
+                <span className="fps-why-game-name">{fav.title}</span>
+                <input
+                  type="text"
+                  className="fps-why-input"
+                  placeholder="One line about why…"
+                  maxLength={120}
+                  value={whyMap[String(fav.id)] || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setWhyMap((prev) => ({ ...prev, [String(fav.id)]: val }))
+                  }}
+                  aria-label={`Why ${fav.title} is a favorite`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Search input */}
       <div className="fps-search-wrap">

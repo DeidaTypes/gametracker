@@ -188,6 +188,110 @@
   padding: 10px 0;
 }
 
+/* ── Why-notes editor ───────────────────────────────────── */
+
+.fps-why-section {
+  flex-shrink: 0;
+  padding: 10px 20px 12px;
+  border-bottom: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fps-why-label {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: var(--font-size-label, 11px);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: var(--letter-spacing-label, 0.08em);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary, #5c6b8a);
+  margin: 0 0 4px;
+}
+
+.fps-why-label__hint {
+  font-weight: var(--font-weight-normal, 400);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.fps-why-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fps-why-thumb {
+  flex-shrink: 0;
+  width: 36px;
+  height: 48px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-surface, #131a35);
+}
+
+.fps-why-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fps-why-thumb__fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-tertiary, #5c6b8a);
+}
+
+.fps-why-input-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fps-why-game-name {
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-secondary, #94a8d4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fps-why-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: 8px;
+  color: var(--color-text-primary, #f0f3fa);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms ease, background 160ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fps-why-input::placeholder {
+  color: var(--color-text-tertiary, #5c6b8a);
+  font-style: italic;
+}
+
+.fps-why-input:focus {
+  border-color: var(--color-brand-warm, #c9813a);
+  background: rgba(201, 129, 58, 0.06);
+}
+
 /* ── Search input ───────────────────────────────────────── */
 
 .fps-search-wrap {

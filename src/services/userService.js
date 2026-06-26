@@ -1,6 +1,10 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import {
+  ACTIVITY_EVENT_TYPES,
+  logActivityEvent,
+} from './activityEventsService'
+import {
   AUTH_ERRORS,
   AuthError,
   USERNAME_PATTERN,
@@ -93,9 +97,9 @@ export async function getUserById(userId) {
  * another account so the caller can show a clean inline error.
  *
  * @param {string} userId
- * @param {{ displayName?: string, username?: string|null, bio?: string, avatarUrl?: string|null, favoriteGames?: Array }} fields
+ * @param {{ displayName?: string, username?: string|null, bio?: string, avatarUrl?: string|null, favoriteGames?: Array, currentObsessions?: Array }} fields
  */
-export async function updateUserProfile(userId, { displayName, username, bio, avatarUrl, favoriteGames } = {}) {
+export async function updateUserProfile(userId, { displayName, username, bio, avatarUrl, favoriteGames, currentObsessions } = {}) {
   if (!userId) throw new Error('updateUserProfile requires a userId')
 
   const patch = {}
@@ -119,12 +123,40 @@ export async function updateUserProfile(userId, { displayName, username, bio, av
   if (avatarUrl !== undefined) {
     patch.avatar_url = avatarUrl || null
   }
+  // Capture the pre-update favorites so we can emit one 'favorited'
+  // activity_event per *newly added* game (covers existing ones are not
+  // re-broadcast on every Save). Skipped when the caller isn't touching
+  // favorites to keep the common write path round-trip-free.
+  let previousFavoriteIds = null
+  if (currentObsessions !== undefined) {
+    patch.current_obsessions = (Array.isArray(currentObsessions) ? currentObsessions : [])
+      .slice(0, 3)
+      .map((g) => ({ id: g.id, title: g.title || '', image: g.image || null }))
+  }
   if (favoriteGames !== undefined) {
-    // Store a slim shape: { id, title, image } per game — enough for the
-    // SocialActivityCard to render covers without a follow-up IGDB round-trip.
     patch.favorite_games = (Array.isArray(favoriteGames) ? favoriteGames : [])
       .slice(0, 4)
-      .map((g) => ({ id: g.id, title: g.title || '', image: g.image || null }))
+      .map((g) => ({
+        id: g.id,
+        title: g.title || '',
+        image: g.image || null,
+        why: (g.why || '').trim() || null,
+      }))
+    try {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('favorite_games')
+        .eq('id', userId)
+        .maybeSingle()
+      const prev = Array.isArray(existing?.favorite_games)
+        ? existing.favorite_games
+        : []
+      previousFavoriteIds = new Set(prev.map((g) => String(g?.id)))
+    } catch {
+      // If the diff lookup fails, fall back to emitting events for the
+      // full new list — best effort, never blocks the write.
+      previousFavoriteIds = new Set()
+    }
   }
 
   if (Object.keys(patch).length === 0) return
@@ -143,6 +175,25 @@ export async function updateUserProfile(userId, { displayName, username, bio, av
       )
     }
     throw new AuthError(AUTH_ERRORS.UNKNOWN, error.message, error)
+  }
+
+  // Pulse — one 'favorited' event per *newly added* favorite. Diffing
+  // by id means re-saving the same favorites (e.g. user reorders or
+  // edits an unrelated field) does not emit duplicate events.
+  if (favoriteGames !== undefined && patch.favorite_games) {
+    const prev = previousFavoriteIds || new Set()
+    for (const g of patch.favorite_games) {
+      if (g?.id == null) continue
+      if (prev.has(String(g.id))) continue
+      logActivityEvent({
+        type: ACTIVITY_EVENT_TYPES.FAVORITED,
+        entityId: String(g.id),
+        metadata: {
+          game_title: g.title || null,
+          game_image: g.image || null,
+        },
+      })
+    }
   }
 }
 
