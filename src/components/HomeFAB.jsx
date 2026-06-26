@@ -21,38 +21,41 @@ import { showToast } from './Toast'
 import './HomeFAB.css'
 
 // ── Radial item positions (from FAB center) ────────────────────────────────
-// Quarter-circle arc: 90° (straight up) → 180° (straight left), radius 78px.
-// Each entry: { id, Icon, label, tx (px), ty (px), ariaLabel }
+// Quarter-circle arc: 0° (straight up) → 90° (straight left), radius 100px.
+// tx = -r·sin(θ),  ty = -r·cos(θ)  where θ=0 is straight up, increasing CCW.
+// Items are evenly spaced at 30° so chord ≈ 52px > 44px button — no overlap.
+// The icon CENTER lands at (tx, ty); labels are rendered to the left of the
+// icon (always inward from the screen right edge).
 const RADIAL_ITEMS = [
   {
     id: 'log',
     Icon: LuClock,
     label: 'Log',
     tx: 0,
-    ty: -78,
+    ty: -100,
     ariaLabel: 'Log a session',
   },
   {
     id: 'review',
     Icon: LuPencilLine,
     label: 'Review',
-    tx: -39,
-    ty: -67,
+    tx: -50,
+    ty: -87,
     ariaLabel: 'Write a review',
   },
   {
     id: 'list',
     Icon: LuListPlus,
     label: 'List',
-    tx: -67,
-    ty: -39,
+    tx: -87,
+    ty: -50,
     ariaLabel: 'Create a list',
   },
   {
     id: 'quest',
     Icon: LuSwords,
     label: 'Quest',
-    tx: -78,
+    tx: -100,
     ty: 0,
     ariaLabel: 'Start a quest',
   },
@@ -60,9 +63,12 @@ const RADIAL_ITEMS = [
 
 // ── Motion variants ────────────────────────────────────────────────────────
 
+// Stagger: 25ms × 3 intervals = 75ms offset for last item.
+// Spring stiffness:500, damping:36 settles visually in ~165ms.
+// Total perceived open time: 75 + 165 ≈ 240ms — within the 250ms target.
 const containerVariants = {
-  open: { transition: { staggerChildren: 0.04, delayChildren: 0 } },
-  closed: { transition: { staggerChildren: 0.03, staggerDirection: -1 } },
+  open: { transition: { staggerChildren: 0.025, delayChildren: 0 } },
+  closed: { transition: { staggerChildren: 0.02, staggerDirection: -1 } },
 }
 
 function makeItemVariants(reduced) {
@@ -74,14 +80,14 @@ function makeItemVariants(reduced) {
       opacity: 1,
       transition: reduced
         ? { duration: 0 }
-        : { type: 'spring', stiffness: 420, damping: 32, mass: 0.8 },
+        : { type: 'spring', stiffness: 500, damping: 36, mass: 0.8 },
     }),
     closed: {
       x: 0,
       y: 0,
       scale: 0.3,
       opacity: 0,
-      transition: reduced ? { duration: 0 } : { duration: 0.12, ease: 'easeIn' },
+      transition: reduced ? { duration: 0 } : { duration: 0.1, ease: 'easeIn' },
     },
   }
 }
