@@ -1,0 +1,80 @@
+/* ============================================================
+   HomeTrendingShelf — horizontal trending games shelf on Home.
+   Namespace: hts-*
+   Reuses TrendingCard (trending-card-*) from Explore — no fork.
+   ============================================================ */
+
+.hts-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+}
+
+/* ── Header ── */
+.hts-header {
+  padding: 0 var(--container-padding);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hts-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* ── Horizontal scroll rail ── */
+.hts-rail {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px var(--container-padding) 8px;
+}
+
+.hts-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Skeleton ── */
+.hts-sk-title {
+  height: 22px;
+  width: 160px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.hts-sk-card {
+  flex: 0 0 144px;
+  width: 144px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hts-sk-cover {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio, 3/4);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.hts-sk-label {
+  height: 13px;
+  width: 80%;
+  border-radius: var(--radius-sm, 4px);
+}
+
+@media (min-width: 769px) {
+  .hts-sk-card {
+    flex: 0 0 190px;
+    width: 190px;
+  }
+}

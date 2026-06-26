@@ -231,7 +231,7 @@ function WeekRow({ cells, onDayTap }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TodayCard() {
+export default function TodayCard({ hideNowPlaying = false }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { nowPlaying, progress, weekCells, streak, daysLogged, isLoading, goalProgress, paceInfo, circleStreaks } =
@@ -329,8 +329,8 @@ export default function TodayCard() {
         </div>
       )}
 
-      {/* Now Playing — hidden when no game is Playing */}
-      {nowPlaying && (
+      {/* Now Playing — hidden when no game is Playing or when hero owns this section */}
+      {nowPlaying && !hideNowPlaying && (
         <NowPlayingRow
           game={nowPlaying}
           progress={progress}
@@ -348,7 +348,7 @@ export default function TodayCard() {
       )}
 
       {/* Divider between now-playing and week row */}
-      {nowPlaying && <div className="tc-divider" aria-hidden="true" />}
+      {nowPlaying && !hideNowPlaying && <div className="tc-divider" aria-hidden="true" />}
 
       {/* 7-day activity week — tap a circle to see that day's log */}
       {!isLoading && (

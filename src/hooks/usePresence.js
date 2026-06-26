@@ -67,7 +67,7 @@ import { APP_RESUMED_EVENT } from './useAppResume'
 const CHANNEL = 'pulse:presence:v1'
 
 export function usePresence() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { session } = useSession()
   const [enabled, setEnabled] = useState(() => !!getSettings().presenceOptIn)
   const [followeeIds, setFolloweeIds] = useState(/** @type {Set<string>} */ (new Set()))
@@ -138,6 +138,7 @@ export function usePresence() {
       const active = sessionRef.current
       return {
         user_id: user.id,
+        display_name: profile?.display_name || profile?.username || null,
         game_id: active?.igdb_game_id != null ? Number(active.igdb_game_id) : null,
         game_title: active?.game_title ?? null,
         game_image: active?.game_image ?? null,
@@ -195,7 +196,7 @@ export function usePresence() {
     // separate `reTrack on session change` effect below.
   }, [enabled, user?.id])
 
-  // ── Re-track when the active session changes ────────────────────────
+  // ── Re-track when the active session or profile changes ─────────────
   useEffect(() => {
     if (!enabled || !user?.id) return undefined
     // Find the live channel by name. Cheaper than rebuilding the
@@ -206,6 +207,7 @@ export function usePresence() {
     if (!channel) return undefined
     const payload = {
       user_id: user.id,
+      display_name: profile?.display_name || profile?.username || null,
       game_id: session?.igdb_game_id != null ? Number(session.igdb_game_id) : null,
       game_title: session?.game_title ?? null,
       game_image: session?.game_image ?? null,
@@ -214,7 +216,7 @@ export function usePresence() {
     }
     channel.track(payload).catch(() => {})
     return undefined
-  }, [enabled, user?.id, session?.id, session?.igdb_game_id])
+  }, [enabled, user?.id, profile?.display_name, session?.id, session?.igdb_game_id])
 
   // ── Derive the surfaced list ────────────────────────────────────────
   const playingNow = useMemo(() => {
@@ -225,6 +227,7 @@ export function usePresence() {
       if (!meta || meta.game_id == null) continue
       out.push({
         userId: key,
+        displayName: meta.display_name || null,
         gameId: Number(meta.game_id),
         gameTitle: meta.game_title || null,
         gameImage: meta.game_image || null,
