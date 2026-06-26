@@ -14,9 +14,11 @@
   justify-content: center;
   padding: 24px 24px calc(env(safe-area-inset-bottom, 0) + 24px);
   overflow-y: auto;
-  /* Background is set inline (vertical gradient using extracted color
-     fading to navy). Fallback color in case JS hasn't applied it yet. */
-  background-color: var(--color-bg-primary);
+  /* Solid dark base — the inline backgroundImage (semi-transparent gradient
+     tinted with the game's dominant color) sits on top. Because we use
+     backgroundImage rather than the background shorthand, this color is never
+     reset and fully blocks the underlying page content. */
+  background-color: #0a0f1f;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -202,15 +204,21 @@
 
 /* ---- CTAs ---- */
 .completion-celebration__ctas {
-  width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
 }
 
-.completion-celebration__cta-primary,
+.completion-celebration__cta-primary {
+  min-width: 120px;
+  /* background, padding, and border-radius come from .form-button--primary */
+}
+
 .completion-celebration__cta-secondary {
-  width: 100%;
+  min-width: 96px;
 }
 
 /* ---- Offscreen share-card host ---- */

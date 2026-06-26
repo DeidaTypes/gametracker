@@ -227,7 +227,7 @@ export default function CompletionCelebration() {
   return createPortal(
     <div
       className="completion-celebration"
-      style={{ background: backdropGradient }}
+      style={{ backgroundImage: backdropGradient }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="completion-celebration-title"
