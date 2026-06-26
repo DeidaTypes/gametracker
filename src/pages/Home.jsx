@@ -8,7 +8,6 @@ import TodayCard from '../components/TodayCard'
 import BacklogSection from '../components/BacklogSection'
 import HomeFAB from '../components/HomeFAB'
 import HomeFeed from '../components/HomeFeed'
-import HomeTrendingShelf from '../components/HomeTrendingShelf'
 import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
 import TrackerSearchModal from '../components/TrackerSearchModal'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -167,9 +166,8 @@ function HomeSkeleton() {
  *   b. CONTINUE PLAYING hero (active game cover, last-played, progress, Resume CTA)
  *      → rotation: if no active game → backlog nudge; if neither → community highlight
  *   c. Streak + calendar (compact TodayCard with now-playing hidden)
- *   d. Trending this week — horizontal poster shelf
- *   e. Your Backlog — horizontal shelf
- *   f. THE FEED — full-width activity feed (people you follow + cold-start community fallback)
+ *   d. Your Backlog — compact horizontal peek row (Explore owns Trending)
+ *   e. THE FEED — full-width activity feed (people you follow + cold-start community fallback)
  */
 function Home() {
   const navigate = useNavigate()
@@ -300,15 +298,9 @@ function Home() {
             <TodayCard hideNowPlaying />
           </section>
 
-          {/* ── d. Trending this week ────────────────────────────────────
-              Horizontal poster shelf, same data source as Discover's trending tab.
-          ──────────────────────────────────────────────────────────────── */}
-          <section className="home-section">
-            <HomeTrendingShelf />
-          </section>
-
-          {/* ── e. Your Backlog ──────────────────────────────────────────
-              Horizontal shelf with mood shelves / roulette.
+          {/* ── d. Your Backlog ──────────────────────────────────────────
+              Compact horizontal peek row — small cover tiles, scroll sideways.
+              Trending lives on Explore; mood shelves live on Discover's SwipeDeck.
           ──────────────────────────────────────────────────────────────── */}
           <section className="home-section home-section-padded">
             <BacklogSection
@@ -317,7 +309,7 @@ function Home() {
             />
           </section>
 
-          {/* ── f. The Feed ───────────────────────────────────────────────
+          {/* ── e. The Feed ───────────────────────────────────────────────
               Full-width vertical activity feed.
               Leads with live presence rows, then follow activity.
               Cold-start fallback: broader community activity rows.
