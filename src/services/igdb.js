@@ -1635,72 +1635,109 @@ export async function getDiscoveryDeck({
 // Each mood maps to EXPLICIT IGDB filter criteria. No fabricated groupings —
 // every field/ID below is a real IGDB entity ID.
 //
-// IGDB entity IDs used:
+// Reliable IGDB attributes used (all densely populated):
 //   game_modes:  3  = Co-operative
 //   themes:     19  = Horror
-//              31  = Drama
-//              33  = Sandbox
 //              38  = Open world
 //   genres:      9  = Puzzle
+//             12  = Role-playing (RPG)
+//             31  = Adventure  ← broadest "story-driven" proxy
 //
-// "30 min" uses a two-step approach (game_time_to_beats endpoint):
-//   1) Query game_time_to_beats for normally ≤ 2 700 s (45 min buffer)
-//   2) Fetch those game IDs with a cover + rating quality gate
-//   Falls back to Puzzle genre if step 1 returns < 5 results.
+// DROPPED chips and why:
+//   "30 min" (ttb strategy) — game_time_to_beats is crowd-sourced and
+//      extremely sparse; virtually always fell through to the Puzzle fallback,
+//      producing off-theme results. Replaced by Story-driven.
+//
+//   "I want to cry" (themes = 31, Drama) — Drama is an editorial IGDB tag
+//      applied to very few games; reliably returned < 5 results before the
+//      rating gate. Replaced by Highly rated.
+//
+//   "just vibes" (themes = 33,38) — BUG: Apicalypse `= (33,38)` means the
+//      game must carry BOTH Sandbox AND Open World simultaneously. Almost no
+//      game has both. Replaced by single Open world theme (38 only).
+//
+// Chip shape:
+//   where         – Apicalypse filter fragment prepended to the quality gates;
+//                   null means no extra filter (quality gates do all the work).
+//   minRating     – minimum IGDB community rating (default 70)
+//   minRatingCount – minimum number of IGDB ratings (default 10)
+//   maxRatingCount – optional upper-bound on rating_count (Hidden gems only)
+//   sortBy        – Apicalypse sort clause (default "rating_count desc")
 
 export const MOOD_CHIPS = [
   {
-    id: 'quick',
-    label: '30 min',
-    emoji: '⚡',
-    strategy: 'ttb',
-    ttbMaxSecs: 2700,
-    fallbackWhere: 'genres = (9)',
-  },
-  {
-    id: 'emotional',
-    label: 'I want to cry',
-    emoji: '😢',
-    strategy: 'where',
-    where: 'themes = (31)',    // IGDB theme: Drama (id 31)
-    minRating: 72,
-    minRatingCount: 15,
-  },
-  {
     id: 'coop',
-    label: 'co-op',
+    label: 'Co-op',
     emoji: '🤝',
     strategy: 'where',
-    where: 'game_modes = (3)', // IGDB game_mode: Co-operative (id 3)
+    where: 'game_modes = (3)', // game_mode: Co-operative — densely tagged
     minRating: 70,
     minRatingCount: 10,
   },
   {
     id: 'spooky',
-    label: 'spooky',
+    label: 'Spooky',
     emoji: '👻',
     strategy: 'where',
-    where: 'themes = (19)',    // IGDB theme: Horror (id 19)
+    where: 'themes = (19)',    // theme: Horror — one of the most-tagged IGDB themes
     minRating: 70,
     minRatingCount: 10,
   },
   {
-    id: 'vibes',
-    label: 'just vibes',
-    emoji: '🌅',
+    id: 'story',
+    label: 'Story-driven',
+    emoji: '📖',
     strategy: 'where',
-    where: 'themes = (33,38)', // IGDB themes: Sandbox (33) OR Open world (38)
+    where: 'genres = (31)',    // genre: Adventure — broadest narrative proxy, densely tagged
+    minRating: 72,
+    minRatingCount: 20,
+  },
+  {
+    id: 'rated',
+    label: 'Highly rated',
+    emoji: '⭐',
+    strategy: 'where',
+    where: null,               // no theme/genre filter — quality gates do all the work
+    minRating: 85,
+    minRatingCount: 50,
+  },
+  {
+    id: 'openworld',
+    label: 'Open world',
+    emoji: '🌍',
+    strategy: 'where',
+    where: 'themes = (38)',    // theme: Open world — single reliable theme (not AND'd with Sandbox)
     minRating: 70,
     minRatingCount: 10,
   },
   {
     id: 'puzzle',
-    label: 'puzzle brain',
+    label: 'Puzzle',
     emoji: '🧩',
     strategy: 'where',
-    where: 'genres = (9)',     // IGDB genre: Puzzle (id 9)
+    where: 'genres = (9)',     // genre: Puzzle
     minRating: 68,
     minRatingCount: 8,
+  },
+  {
+    id: 'hidden',
+    label: 'Hidden gems',
+    emoji: '💎',
+    strategy: 'where',
+    where: null,               // no theme/genre gate — niche pool via rating_count ceiling
+    minRating: 78,
+    minRatingCount: 10,
+    maxRatingCount: 500,
+    sortBy: 'rating desc',     // surface best-rated obscure games, not most-reviewed
+  },
+  {
+    id: 'rpg',
+    label: 'RPG',
+    emoji: '🎭',
+    strategy: 'where',
+    where: 'genres = (12)',    // genre: Role-playing (RPG) — one of IGDB's largest genre pools
+    minRating: 70,
+    minRatingCount: 15,
   },
 ]
 
@@ -1718,21 +1755,27 @@ export const MOOD_CHIPS = [
 export async function getMoodDeck(moodId, { excludeIds = new Set(), limit = 30 } = {}) {
   const mood = MOOD_CHIPS.find((m) => m.id === moodId)
   if (!mood) return []
-  if (mood.strategy === 'ttb') {
-    return _moodDeckViaTtb(mood, { excludeIds, limit })
-  }
   return _moodDeckViaWhere(mood, { excludeIds, limit })
 }
 
 async function _moodDeckViaWhere(mood, { excludeIds, limit }) {
-  const minRating = mood.minRating ?? 70
-  const minCount  = mood.minRatingCount ?? 10
-  const offset    = Math.floor(Math.random() * 80)
+  const minRating  = mood.minRating ?? 70
+  const minCount   = mood.minRatingCount ?? 10
+  const sortBy     = mood.sortBy ?? 'rating_count desc'
+  const offset     = Math.floor(Math.random() * 80)
+
+  // Build the WHERE clause — mood.where is optional (null = quality gates only)
+  const themeGenreFilter = mood.where ? `${mood.where} & ` : ''
+  const maxCountFilter   = mood.maxRatingCount != null
+    ? `& rating_count <= ${mood.maxRatingCount} `
+    : ''
+
   const query =
     `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name; ` +
-    `where ${mood.where} & cover != null & rating != null & rating_count != null ` +
-    `& rating >= ${minRating} & rating_count >= ${minCount}; ` +
-    `sort rating_count desc; limit ${limit}; offset ${offset};`
+    `where ${themeGenreFilter}cover != null & rating != null & rating_count != null ` +
+    `& rating >= ${minRating} & rating_count >= ${minCount} ${maxCountFilter}; ` +
+    `sort ${sortBy}; limit ${limit}; offset ${offset};`
+
   try {
     const games = await igdbRequest('games', query)
     const fresh = (games || []).filter(
@@ -1743,45 +1786,6 @@ async function _moodDeckViaWhere(mood, { excludeIds, limit }) {
     console.error(`[mood] getMoodDeck "${mood.id}" where-strategy failed:`, err)
     return []
   }
-}
-
-async function _moodDeckViaTtb(mood, { excludeIds, limit }) {
-  try {
-    // Step 1 — find short games via game_time_to_beats
-    const ttbQuery =
-      `fields game; where normally <= ${mood.ttbMaxSecs} & normally != null; ` +
-      `sort normally asc; limit 200;`
-    const ttbRows = await igdbRequest('game_time_to_beats', ttbQuery)
-    const gameIds = (ttbRows || [])
-      .map((r) => r.game)
-      .filter((id) => id != null && !excludeIds.has(String(id)))
-
-    if (gameIds.length >= 5) {
-      // Shuffle so repeated calls surface different games within the same pool
-      for (let i = gameIds.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[gameIds[i], gameIds[j]] = [gameIds[j], gameIds[i]]
-      }
-      const batch = gameIds.slice(0, 60)
-      const gameQuery =
-        `fields name, cover.image_id, first_release_date, rating, rating_count, genres.name, themes.id, themes.name; ` +
-        `where id = (${batch.join(',')}) & cover != null & rating != null & rating >= 65; ` +
-        `sort rating desc; limit ${limit};`
-      const games = await igdbRequest('games', gameQuery)
-      const fresh = (games || []).filter(
-        (g) => g.id && g.name && g.cover?.image_id && !excludeIds.has(String(g.id))
-      )
-      if (fresh.length >= 3) return formatGamesWithThemes(fresh)
-    }
-  } catch (err) {
-    console.warn('[mood] TTB step failed, using fallback genre:', err)
-  }
-
-  // Fallback — Puzzle genre covers most short-form games when TTB data is sparse
-  return _moodDeckViaWhere(
-    { ...mood, strategy: 'where', where: mood.fallbackWhere, minRating: 65, minRatingCount: 5 },
-    { excludeIds, limit }
-  )
 }
 
 // Pick a top-liked genre that exists in the IGDB genre catalog. Returns null
