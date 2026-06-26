@@ -4,6 +4,7 @@ import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
 } from './activityEventsService'
+import { applyBlockFilter } from './blockService'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -153,7 +154,7 @@ export async function searchPublicLists(query, limit = 20) {
   const trimmed = (query || '').trim()
   if (!trimmed) return []
   const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
-  const { data, error } = await supabase
+  let q = supabase
     .from('lists')
     .select(
       'id, name, description, user_id, is_public, cover_image_url, created_at, updated_at,' +
@@ -164,6 +165,8 @@ export async function searchPublicLists(query, limit = 20) {
     .or(`name.ilike.%${escaped}%,description.ilike.%${escaped}%`)
     .order('updated_at', { ascending: false })
     .limit(limit)
+  q = await applyBlockFilter(q, 'user_id')
+  const { data, error } = await q
   if (error) {
     console.error('[lists] searchPublicLists failed:', error.message)
     return []

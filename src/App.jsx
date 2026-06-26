@@ -387,9 +387,19 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-            {/* /search is now a redirect to /discover. The overlay provides
-                search behaviour; deep links and bookmarks still resolve. */}
-            <Route path="/search" element={<Navigate to="/discover" replace />} />
+            {/* /search renders the full Search page (4 tabs: Games, Reviews,
+                Users, Lists). The overlay on /discover remains untouched;
+                this route activates the already-complete Search.jsx. */}
+            <Route
+              path="/search"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition><Search /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/browse/:categoryKey"
               element={
