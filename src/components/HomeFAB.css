@@ -1,14 +1,116 @@
 /* =============================================
-   Home Floating Action Button
+   Home Floating Action Button — Radial Quick Menu
    ============================================= */
 
-.home-fab {
+/* ── Root: fixed anchor at FAB position ──────────────────────────────────── */
+.home-fab-root {
   position: fixed;
   right: 24px;
-  /* 8px above the tab bar (58px) + safe area */
   bottom: calc(var(--bottom-nav-height, 58px) + 8px + env(safe-area-inset-bottom, 0px));
   width: 56px;
   height: 56px;
+  /* Stacking context for radial items; above page and tab bar, below modals */
+  z-index: 1005;
+  /* Only show on mobile where the bottom nav appears */
+}
+
+@media (min-width: 769px) {
+  .home-fab-root {
+    display: none;
+  }
+}
+
+/* ── Full-screen backdrop (tap to close) ─────────────────────────────────── */
+.home-fab-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  /* Backdrop is behind the radial items but in front of the page */
+  z-index: -1;
+  cursor: default;
+}
+
+/* ── Radial items container ───────────────────────────────────────────────── */
+.home-fab-radial {
+  /* Items are positioned relative to the FAB root center */
+  position: absolute;
+  /* Center of the 56×56 root */
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  /* Overflow must be visible so items can spill outside the root bounds */
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* ── Individual radial item ───────────────────────────────────────────────── */
+.home-fab-item {
+  position: absolute;
+  /* Items originate from FAB center (top:50%, left:50% of root) */
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Translate items so their icon center aligns with FAB center at rest */
+  transform-origin: center center;
+  pointer-events: auto;
+  /* No CSS transition here — Framer Motion drives all transforms */
+  will-change: transform, opacity;
+}
+
+/* ── Label pill ───────────────────────────────────────────────────────────── */
+.home-fab-item__label {
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold, 600);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  line-height: 1.2;
+  /* Sits to the left of the icon button; pointer events pass through */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Icon button ─────────────────────────────────────────────────────────── */
+.home-fab-item__btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-elevated, #1e2a3a);
+  border: 1.5px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  color: var(--color-brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.home-fab-item__btn:active {
+  transform: scale(0.9);
+  background: var(--color-brand-primary);
+  color: #fff;
+}
+
+/* Per-item accent colours (keep copper brand across all) */
+.home-fab-item__btn--log    { color: var(--color-brand-primary); }
+.home-fab-item__btn--review { color: var(--color-brand-primary); }
+.home-fab-item__btn--list   { color: var(--color-brand-primary); }
+.home-fab-item__btn--quest  { color: var(--color-brand-primary); }
+
+/* ── Main FAB button ─────────────────────────────────────────────────────── */
+.home-fab {
+  position: absolute;
+  inset: 0;
   border-radius: var(--radius-full);
   background: var(--color-brand-primary);
   color: #ffffff;
@@ -17,14 +119,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  /* Above page content and tab bar (z-index: 1000), below modals (1010+) */
-  z-index: 1005;
   box-shadow:
     0 4px 16px rgba(59, 130, 246, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  /* Only show on mobile where the bottom nav appears */
+  transition: box-shadow 150ms ease;
+  /* z-index above the radial items (which are positioned absolutely in the root) */
+  z-index: 1;
 }
 
 .home-fab:hover {
@@ -34,59 +135,30 @@
 }
 
 .home-fab:active {
-  transform: scale(0.95);
   box-shadow:
     0 2px 8px rgba(59, 130, 246, 0.3),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
+/* Icon wrapper — Framer Motion rotates this to morph + → × */
+.home-fab__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .home-fab {
+  .home-fab-item__btn {
     transition: none;
   }
 
-  .home-fab:active {
+  .home-fab-item__btn:active {
     transform: none;
   }
-}
 
-/* Only render the FAB on mobile (same breakpoint as the bottom nav) */
-@media (min-width: 769px) {
   .home-fab {
-    display: none;
+    transition: none;
   }
-}
-
-/* =============================================
-   FAB sheet action row
-   ============================================= */
-
-.home-fab-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  min-width: 0;
-}
-
-.home-fab-row__icon {
-  flex-shrink: 0;
-  color: var(--color-brand-primary);
-}
-
-.home-fab-row__label {
-  flex: 1;
-  font-size: 16px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  text-align: left;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-fab-row__chevron {
-  flex-shrink: 0;
-  color: var(--color-text-tertiary);
 }

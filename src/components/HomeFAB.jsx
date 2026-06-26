@@ -1,59 +1,164 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { LuPlus, LuPencilLine, LuListPlus, LuCircleCheck, LuChevronRight } from 'react-icons/lu'
-import ActionSheet from './ActionSheet'
+import { motion, AnimatePresence } from 'motion/react'
+import {
+  LuPlus,
+  LuPencilLine,
+  LuListPlus,
+  LuClock,
+  LuSwords,
+} from 'react-icons/lu'
 import CreateListModal from './CreateListModal'
 import GamePickerSheet from './GamePickerSheet'
+import QuickLogSheet from './QuickLogSheet'
 import Pressable from './Pressable'
 import { createList, addGameToList } from '../services/listService'
+import { getGamesFromList } from '../services/libraryService'
+import { useSession } from '../contexts/SessionContext'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import './HomeFAB.css'
 
-function FabRow({ Icon, label }) {
-  return (
-    <span className="home-fab-row">
-      <Icon size={24} className="home-fab-row__icon" aria-hidden="true" />
-      <span className="home-fab-row__label">{label}</span>
-      <LuChevronRight size={16} className="home-fab-row__chevron" aria-hidden="true" />
-    </span>
-  )
+// ── Radial item positions (from FAB center) ────────────────────────────────
+// Quarter-circle arc: 90° (straight up) → 180° (straight left), radius 78px.
+// Each entry: { id, Icon, label, tx (px), ty (px), ariaLabel }
+const RADIAL_ITEMS = [
+  {
+    id: 'log',
+    Icon: LuClock,
+    label: 'Log',
+    tx: 0,
+    ty: -78,
+    ariaLabel: 'Log a session',
+  },
+  {
+    id: 'review',
+    Icon: LuPencilLine,
+    label: 'Review',
+    tx: -39,
+    ty: -67,
+    ariaLabel: 'Write a review',
+  },
+  {
+    id: 'list',
+    Icon: LuListPlus,
+    label: 'List',
+    tx: -67,
+    ty: -39,
+    ariaLabel: 'Create a list',
+  },
+  {
+    id: 'quest',
+    Icon: LuSwords,
+    label: 'Quest',
+    tx: -78,
+    ty: 0,
+    ariaLabel: 'Start a quest',
+  },
+]
+
+// ── Motion variants ────────────────────────────────────────────────────────
+
+const containerVariants = {
+  open: { transition: { staggerChildren: 0.04, delayChildren: 0 } },
+  closed: { transition: { staggerChildren: 0.03, staggerDirection: -1 } },
 }
 
+function makeItemVariants(reduced) {
+  return {
+    open: (custom) => ({
+      x: custom.tx,
+      y: custom.ty,
+      scale: 1,
+      opacity: 1,
+      transition: reduced
+        ? { duration: 0 }
+        : { type: 'spring', stiffness: 420, damping: 32, mass: 0.8 },
+    }),
+    closed: {
+      x: 0,
+      y: 0,
+      scale: 0.3,
+      opacity: 0,
+      transition: reduced ? { duration: 0 } : { duration: 0.12, ease: 'easeIn' },
+    },
+  }
+}
+
+// ── Smart-default game ────────────────────────────────────────────────────
+// Priority: active timed session → first "currently playing" game → null.
+function useSmartDefaultGame(session) {
+  if (session) {
+    return {
+      id: session.igdb_game_id,
+      title: session.game_title,
+      image: session.game_image,
+    }
+  }
+  const playing = getGamesFromList('currently-playing')
+  return playing.length > 0 ? playing[0] : null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function HomeFAB() {
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
   const [createListOpen, setCreateListOpen] = useState(false)
   const [gamePickerOpen, setGamePickerOpen] = useState(false)
   const fabRef = useRef(null)
   const navigate = useNavigate()
+  const { session } = useSession()
+  const { reduced } = useMotionPreference()
+  const itemVariants = makeItemVariants(reduced)
 
-  // pendingFocusRef is set true when the sheet closes via Cancel/ESC/backdrop.
-  // item.onClick handlers that open another view cancel it before the effect runs.
-  const pendingFocusRef = useRef(false)
+  const defaultGame = useSmartDefaultGame(session)
 
-  const handleSheetOpen = () => setSheetOpen(true)
+  // Close radial when Escape pressed
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e) => { if (e.key === 'Escape') closeRadial() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSheetClose = () => {
-    pendingFocusRef.current = true
-    setSheetOpen(false)
+  const openRadial = () => setIsOpen(true)
+
+  const closeRadial = (returnFocus = true) => {
+    setIsOpen(false)
+    if (returnFocus) {
+      // Small delay so the closing animation can start before focus shifts
+      setTimeout(() => fabRef.current?.focus(), 60)
+    }
   }
 
-  // Return focus to FAB when sheet dismisses without opening another view.
-  useEffect(() => {
-    if (!sheetOpen && pendingFocusRef.current) {
-      pendingFocusRef.current = false
-      fabRef.current?.focus()
-    }
-  }, [sheetOpen])
+  // ── Item handlers ────────────────────────────────────────────────────────
 
-  // Return focus to FAB when Create List modal closes.
-  const prevCreateListOpenRef = useRef(false)
-  useEffect(() => {
-    if (prevCreateListOpenRef.current && !createListOpen) {
-      fabRef.current?.focus()
-    }
-    prevCreateListOpenRef.current = createListOpen
-  }, [createListOpen])
+  const handleLog = () => {
+    closeRadial(false)
+    setQuickLogOpen(true)
+  }
+
+  const handleReview = () => {
+    closeRadial(false)
+    setGamePickerOpen(true)
+  }
+
+  const handleList = () => {
+    closeRadial(false)
+    setCreateListOpen(true)
+  }
+
+  const handleQuest = () => {
+    closeRadial(false)
+    showToast('Quests coming soon', 'info')
+    fabRef.current?.focus()
+  }
+
+  const ITEM_HANDLERS = { log: handleLog, review: handleReview, list: handleList, quest: handleQuest }
+
+  // ── List creation ────────────────────────────────────────────────────────
 
   const handleCreateList = async (listName, description, initialGames) => {
     const listId = await createList({ name: listName, description, isPublic: true })
@@ -65,69 +170,115 @@ function HomeFAB() {
     navigate(`/list/${listId}`)
   }
 
-  const handleWriteReview = () => {
-    // Cancel focus-return because the picker sheet is opening instead
-    pendingFocusRef.current = false
-    setGamePickerOpen(true)
-  }
+  // ── Game picker (for Write Review) ──────────────────────────────────────
 
   const handleGamePicked = (game) => {
     setGamePickerOpen(false)
     navigate(`/review/new?gameId=${game.id}`, { state: { game } })
   }
 
-  const handleGamePickerCancel = () => {
-    setGamePickerOpen(false)
-    fabRef.current?.focus()
-  }
-
-  const sheetItems = [
-    {
-      label: <FabRow Icon={LuPencilLine} label="Write a review" />,
-      onClick: handleWriteReview,
-    },
-    {
-      label: <FabRow Icon={LuListPlus} label="Create a list" />,
-      onClick: () => {
-        // Cancel focus-return because a modal is opening instead
-        pendingFocusRef.current = false
-        setCreateListOpen(true)
-      },
-    },
-    {
-      label: <FabRow Icon={LuCircleCheck} label="Log a played game" />,
-      onClick: () => navigate('/library?action=add'),
-    },
-  ]
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return createPortal(
     <>
-      <Pressable
-        ref={fabRef}
-        className="home-fab"
-        aria-label="Quick actions"
-        onClick={handleSheetOpen}
-      >
-        <LuPlus size={24} strokeWidth={2.5} aria-hidden="true" />
-      </Pressable>
+      {/* ── Radial root — fixed at FAB position ── */}
+      <div className="home-fab-root">
 
-      <ActionSheet
-        isOpen={sheetOpen}
-        onClose={handleSheetClose}
-        title="What do you want to do?"
-        items={sheetItems}
+        {/* Backdrop: full-screen tap-to-close */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              className="home-fab-backdrop"
+              onClick={() => closeRadial()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={reduced ? { duration: 0 } : { duration: 0.18 }}
+              aria-hidden="true"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Radial items */}
+        <motion.div
+          className="home-fab-radial"
+          animate={isOpen ? 'open' : 'closed'}
+          variants={containerVariants}
+          aria-hidden={!isOpen}
+        >
+          {RADIAL_ITEMS.map(({ id, Icon, label, tx, ty, ariaLabel }) => (
+            <motion.div
+              key={id}
+              className="home-fab-item"
+              variants={itemVariants}
+              custom={{ tx, ty }}
+            >
+              {/* Label pill — always to the left of the icon button */}
+              <span className="home-fab-item__label" aria-hidden="true">
+                {label}
+              </span>
+
+              {/* Icon button */}
+              <button
+                type="button"
+                className={`home-fab-item__btn home-fab-item__btn--${id}`}
+                onClick={ITEM_HANDLERS[id]}
+                aria-label={ariaLabel}
+                tabIndex={isOpen ? 0 : -1}
+              >
+                <Icon size={20} aria-hidden="true" />
+              </button>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Main FAB button */}
+        <Pressable
+          ref={fabRef}
+          className="home-fab"
+          aria-label={isOpen ? 'Close quick actions' : 'Quick actions'}
+          aria-expanded={isOpen}
+          onClick={isOpen ? () => closeRadial() : openRadial}
+        >
+          <motion.span
+            className="home-fab__icon-wrap"
+            animate={{ rotate: isOpen ? 45 : 0 }}
+            transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
+            aria-hidden="true"
+          >
+            <LuPlus size={24} strokeWidth={2.5} />
+          </motion.span>
+        </Pressable>
+      </div>
+
+      {/* ── Sheets & Modals (outside radial root so z-index is independent) ── */}
+
+      <QuickLogSheet
+        isOpen={quickLogOpen}
+        onClose={() => {
+          setQuickLogOpen(false)
+          setTimeout(() => fabRef.current?.focus(), 60)
+        }}
+        defaultGame={defaultGame}
+        returnFocusRef={fabRef}
       />
 
       <CreateListModal
         isOpen={createListOpen}
-        onClose={() => setCreateListOpen(false)}
+        onClose={() => {
+          setCreateListOpen(false)
+          setTimeout(() => fabRef.current?.focus(), 60)
+        }}
         onCreate={handleCreateList}
       />
 
       <GamePickerSheet
         isOpen={gamePickerOpen}
         onSelect={handleGamePicked}
-        onCancel={handleGamePickerCancel}
+        onCancel={() => {
+          setGamePickerOpen(false)
+          fabRef.current?.focus()
+        }}
       />
     </>,
     document.body,
