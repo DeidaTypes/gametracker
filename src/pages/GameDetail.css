@@ -84,10 +84,10 @@
   z-index: 0;
   /* Decorative only — must not intercept taps on buttons below the hero. */
   pointer-events: none;
-  /* Fade the lower portion of the extension to transparent so the glow
-     dissolves smoothly into the app background. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
-          mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
+  /* Continuous fade: solid through the hero area, then a wide smooth transition
+     to transparent — no hard stop that would leave a visible band. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
 }
 
 .gd-hero-overlay {
@@ -101,8 +101,8 @@
   z-index: 1;
   /* Decorative only — must not intercept taps on buttons below the hero. */
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
-          mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 95%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
 }
 
 /* Second gradient layer: a soft radial vignette around the poster + a

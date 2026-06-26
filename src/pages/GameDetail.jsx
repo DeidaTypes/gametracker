@@ -686,13 +686,13 @@ function GameDetail() {
     : {}
 
   // Full-bleed backdrop: two gradient layers stacked.
-  //   Layer A (color, on top): dominant color opaque 0–240px → transparent 640px
-  //   Layer B (radial vignette): soft bloom centered on the poster at 30% opacity
-  // Both fade to transparent so the body's fixed navy gradient shows through.
+  //   Layer A (color, on top): continuous linear fade 0 → 100% of the 640px height
+  //   Layer B (radial vignette): soft bloom centered on the poster at 28% opacity
+  // Both fade to transparent so the body's fixed navy gradient shows through with no seam.
   const backdropStyle = effectiveColor ? {
     background: [
       `radial-gradient(ellipse at 50% 200px, rgba(${effectiveColor.r},${effectiveColor.g},${effectiveColor.b},0.28) 0%, transparent 60%)`,
-      `linear-gradient(180deg, rgba(${effectiveColor.r},${effectiveColor.g},${effectiveColor.b},0.55) 0%, rgba(${effectiveColor.r},${effectiveColor.g},${effectiveColor.b},0.55) 240px, transparent 640px)`,
+      `linear-gradient(180deg, rgba(${effectiveColor.r},${effectiveColor.g},${effectiveColor.b},0.55) 0%, transparent 100%)`,
     ].join(', '),
   } : {}
 
@@ -843,85 +843,6 @@ function GameDetail() {
         </button>
       </div>
 
-      {/* ── Your Progress — no surrounding box, content floats ── */}
-      <div className="gd-progress-card-wrap">
-        <p className="gd-progress-eyebrow">Your Progress</p>
-
-        {/* Stat row: hours left · optional percent pill · Set % right */}
-        <div className="gd-progress-stat-row">
-          <span className="gd-progress-hrs-big">
-            {effectiveHours % 1 === 0
-              ? `${effectiveHours} hrs played`
-              : `${effectiveHours.toFixed(1)} hrs played`}
-          </span>
-          <div className="gd-progress-stat-row-right">
-            {progress?.percent != null && (
-              <span className="gd-progress-pct-pill">~{Math.round(progress.percent)}%</span>
-            )}
-            {tracker?.progress_override != null && (
-              <span className="gd-override-badge">Manual %</span>
-            )}
-            <button
-              className="gd-override-toggle-btn"
-              onClick={() => setOverrideOpen(v => !v)}
-            >
-              {overrideOpen ? 'Hide' : 'Set %'}
-            </button>
-          </div>
-        </div>
-
-        {/* Bar — cobalt fill, muted track; only when percent is not null */}
-        {progress?.showBar && progress?.percent != null && (
-          <div
-            className="gd-progress-bar-track"
-            aria-label={`${Math.round(progress.percent)}% complete`}
-          >
-            <div
-              className="gd-progress-bar-fill"
-              style={{ width: `${Math.round(progress.percent)}%` }}
-            />
-          </div>
-        )}
-
-        {/* Caption — only when TTB main-story data exists */}
-        {progress?.mainHours != null && (
-          <p className="gd-progress-caption">
-            {effectiveHours % 1 === 0 ? effectiveHours : effectiveHours.toFixed(1)} of ~{progress.mainHours} hrs to beat · main story
-          </p>
-        )}
-
-        {/* Override panel — collapsed by default */}
-        {overrideOpen && (
-          <div className="gd-override-panel">
-            <div className="gd-override-slider-row">
-              <input
-                type="range"
-                className="gd-override-slider"
-                min={0}
-                max={100}
-                step={1}
-                value={
-                  effectiveOverride != null
-                    ? Math.round(effectiveOverride)
-                    : Math.round(progress?.percent ?? 0)
-                }
-                onChange={e => handleOverrideChange(e.target.value)}
-                aria-label="Manual progress percentage"
-              />
-              <span className="gd-override-val">
-                {effectiveOverride != null
-                  ? `${Math.round(effectiveOverride)}%`
-                  : `${Math.round(progress?.percent ?? 0)}%`}
-              </span>
-            </div>
-            {effectiveOverride != null && (
-              <button className="gd-override-clear-btn" onClick={handleClearOverride}>
-                Clear manual override
-              </button>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Logged Sessions — tidy list below the card; hidden when empty */}
       {sessions.length > 0 && (
