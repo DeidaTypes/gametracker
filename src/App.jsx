@@ -29,6 +29,7 @@ import UserFollowers from './pages/UserFollowers'
 import UserFollowing from './pages/UserFollowing'
 import MessagesInbox from './pages/MessagesInbox'
 import MessagesThread from './pages/MessagesThread'
+import NotificationsInbox from './pages/NotificationsInbox'
 import ReviewComments from './pages/ReviewComments'
 import ReviewDetail from './pages/ReviewDetail'
 import ReviewNew from './pages/ReviewNew'
@@ -62,6 +63,7 @@ import BadgeReveal from './components/BadgeReveal'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
+import { NotificationsProvider } from './contexts/NotificationsContext'
 import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
 import { SessionProvider } from './contexts/SessionContext'
 import SearchOverlay from './components/SearchOverlay'
@@ -712,6 +714,16 @@ function AppContent() {
                 redirects to the real inbox so any deep links saved
                 during the stub period still resolve to a useful place. */}
             <Route
+              path="/notifications"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><NotificationsInbox /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/messages"
               element={
                 <RequireAuth>
@@ -791,6 +803,7 @@ function App() {
               BottomNav (and any future chrome) can subscribe to the
               unread DM count from a single source. */}
           <UnreadMessagesProvider>
+          <NotificationsProvider>
             {/* GameColorProvider wraps everything so BottomNav, GameDetail, and
                 any future chrome consumers can all read/write the current game's
                 extracted swatch palette. */}
@@ -818,6 +831,7 @@ function App() {
               </SessionProvider>
               </SearchOverlayProvider>
             </GameColorProvider>
+          </NotificationsProvider>
           </UnreadMessagesProvider>
         </AuthProvider>
       </Router>

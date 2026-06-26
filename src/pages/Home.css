@@ -54,6 +54,66 @@
   gap: var(--spacing-md);
 }
 
+/* Greeting row: text left, bell right */
+.home-greeting-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+/* Notification bell button */
+.home-notif-btn {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, var(--text-secondary));
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  margin-top: 2px;
+}
+
+.home-notif-btn:hover {
+  background: rgba(148, 168, 212, 0.1);
+  color: var(--color-text-primary, var(--text-primary));
+}
+
+.home-notif-btn:active {
+  background: rgba(148, 168, 212, 0.18);
+}
+
+/* Numeric badge on the bell */
+.home-notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--color-bg-primary, var(--bg-base));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-notif-btn {
+    transition: none;
+  }
+}
+
 .home-greeting {
   margin: 0;
   font-family: var(--font-display);

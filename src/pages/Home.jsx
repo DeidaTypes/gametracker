@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LuBell } from 'react-icons/lu'
 import AppShell from '../components/AppShell'
 import HomeSearchBar from '../components/HomeSearchBar'
 import TodayCard from '../components/TodayCard'
@@ -11,6 +12,7 @@ import TrackerSearchModal from '../components/TrackerSearchModal'
 import { getGamesFromList } from '../services/libraryService'
 import { getProfile } from '../services/profileService'
 import { useAuth } from '../contexts/AuthContext'
+import { useNotifications } from '../contexts/NotificationsContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Home.css'
 import '../components/HomeShelf.css'
@@ -52,6 +54,8 @@ function Home() {
     setAddStatus(status)
     setAddOpen(true)
   }, [])
+
+  const { unreadCount: notifUnread } = useNotifications()
 
   const displayName =
     profile?.display_name?.trim() ||
@@ -110,7 +114,26 @@ function Home() {
               full-screen SearchOverlay.
           ─────────────────────────────────────────────────────── */}
           <header className="home-section home-section-padded home-greeting-block">
-            <h1 className="home-greeting">Welcome back, {displayName}</h1>
+            <div className="home-greeting-row">
+              <h1 className="home-greeting">Welcome back, {displayName}</h1>
+              <button
+                type="button"
+                className="home-notif-btn"
+                onClick={() => navigate('/notifications')}
+                aria-label={
+                  notifUnread > 0
+                    ? `${notifUnread} unread notification${notifUnread !== 1 ? 's' : ''}`
+                    : 'Notifications'
+                }
+              >
+                <LuBell size={22} />
+                {notifUnread > 0 && (
+                  <span className="home-notif-badge" aria-hidden="true">
+                    {notifUnread > 99 ? '99+' : notifUnread}
+                  </span>
+                )}
+              </button>
+            </div>
             <HomeSearchBar />
           </header>
 
