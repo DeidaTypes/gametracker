@@ -142,6 +142,11 @@ function Home() {
             <TodayCard />
           </section>
 
+          {/* ── Social Activity — Activity / Lists / Favorites swipeable card (from Following) ── */}
+          <section className="home-section home-section-padded">
+            <SocialActivityCard />
+          </section>
+
           {/* ── Your Backlog — boxed "what's next" card ── */}
           <section className="home-section home-section-padded">
             <BacklogSection
@@ -153,11 +158,6 @@ function Home() {
           {/* ── Co-op Signal — live card when you + a followed user are in the same game now ── */}
           <section className="home-section home-section-padded">
             <CoopSignalCard />
-          </section>
-
-          {/* ── Social Activity — Activity / Lists / Favorites swipeable card (from Following) ── */}
-          <section className="home-section home-section-padded">
-            <SocialActivityCard />
           </section>
 
 

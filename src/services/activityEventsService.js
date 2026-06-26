@@ -228,6 +228,63 @@ export async function getCircleActivityEvents({ limit = 50, before = null } = {}
 }
 
 /* ============================================================
+   getRecentGlobalActivityEvents
+   ============================================================ */
+
+/**
+ * Fetch a page of recent activity_events from ANY user (global scope).
+ * Used as a community-activity fallback when the current user follows
+ * people who have no recent events, so "Followers' Picks" is never a
+ * blank island.
+ *
+ * Exclusions applied:
+ *   - Block filter on actor_user_id (same as circle feed)
+ *   - Excludes the current user's own events (self-events belong on
+ *     the Profile timeline, not the social card)
+ *
+ * RLS on `activity_events` allows authenticated reads of public-privacy
+ * rows cross-user, which is the same permission used by trending/explore.
+ *
+ * @param {{ limit?: number, before?: string|null }} opts
+ * @returns {Promise<Array>}  Same shape as getCircleActivityEvents rows.
+ */
+export async function getRecentGlobalActivityEvents({ limit = 10, before = null } = {}) {
+  try {
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser()
+    if (userErr || !user) return []
+
+    let query = supabase
+      .from(TABLE)
+      .select(
+        'id, actor_user_id, type, entity_id, metadata, created_at,' +
+          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url)'
+      )
+      .neq('actor_user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(Math.max(1, Math.min(50, limit)))
+
+    if (before) {
+      query = query.lt('created_at', before)
+    }
+
+    query = await applyBlockFilter(query, 'actor_user_id')
+
+    const { data, error } = await query
+    if (error) {
+      console.error('[pulse] getRecentGlobalActivityEvents query failed:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[pulse] getRecentGlobalActivityEvents crashed:', err)
+    return []
+  }
+}
+
+/* ============================================================
    Worded sentence + deep-link helpers
    ============================================================ */
 

@@ -539,3 +539,53 @@
     transition: none;
   }
 }
+
+/* ── Community fallback label + nudge ───────────────────────────────────────
+   Shown when circle is quiet; label heads the broad-community rows and nudge
+   acts as a secondary "follow more people" prompt below the content.
+   ── */
+
+.sac-community-label {
+  margin: 0 0 6px;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #94a8d4);
+  opacity: 0.7;
+}
+
+.sac-find-more-nudge {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(184, 144, 74, 0.25);
+  border-radius: var(--radius-sm, 6px);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent, #b8904a);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sac-find-more-nudge:hover,
+.sac-find-more-nudge:focus-visible {
+  background: rgba(184, 144, 74, 0.08);
+  border-color: rgba(184, 144, 74, 0.5);
+  outline: none;
+}
+
+.sac-find-more-nudge:active {
+  background: rgba(184, 144, 74, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sac-find-more-nudge {
+    transition: none;
+  }
+}

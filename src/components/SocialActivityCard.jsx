@@ -6,6 +6,7 @@ import { getListsFromFollowing, getFollowingFavorites } from '../services/userSe
 import {
   formatActivityEventMessage,
   getActivityEventHref,
+  getRecentGlobalActivityEvents,
 } from '../services/activityEventsService'
 import { useCircleActivity } from '../hooks/useCircleActivity'
 import { useForYouBlend } from '../hooks/useForYouBlend'
@@ -294,6 +295,8 @@ function ActivityContent({
   status,
   events,
   blendItems,
+  broadEvents,
+  broadLoading,
   navigate,
   onFindPeople,
   hasMore,
@@ -312,11 +315,35 @@ function ActivityContent({
     )
   }
 
+  // Follows exist but circle is quiet: show real community activity
+  // instead of a dead-end empty island. A secondary nudge sits below
+  // the rows so users know they can follow more people.
   if (status === 'empty' || events.length === 0) {
+    if (broadLoading) return <SacSkeleton rows={3} />
+    if (broadEvents.length > 0) {
+      return (
+        <div className="sac-event-list">
+          <p className="sac-community-label" aria-label="Recent activity from the community">
+            Recent community activity
+          </p>
+          {broadEvents.map((event) => (
+            <EventRow key={event.id} event={event} navigate={navigate} />
+          ))}
+          <button
+            type="button"
+            className="sac-find-more-nudge"
+            onClick={onFindPeople}
+          >
+            Find people to follow
+          </button>
+        </div>
+      )
+    }
+    // Broad community is also empty (very new instance) — minimal fallback.
     return (
       <SacEmpty
-        message="The people you follow haven't been active yet."
-        ctaLabel="Find more people to follow"
+        message="No recent community activity yet."
+        ctaLabel="Find people to follow"
         onCta={onFindPeople}
       />
     )
@@ -484,6 +511,13 @@ function SocialActivityCard() {
   // Items are hidden when taste signals are thin or no good matches exist.
   const { items: forYouItems } = useForYouBlend()
 
+  // Broad community fallback — fires once when the circle resolves to
+  // 'empty' (user follows people but none have recent activity). Keeps
+  // the card alive with real rows instead of a dead-end message.
+  const [broadEvents, setBroadEvents] = useState([])
+  const [broadLoading, setBroadLoading] = useState(false)
+  const broadFetchedRef = useRef(false)
+
   // 'no-follows' is a distinct UI state from 'empty' — followers count
   // is cheap and we want the CTA copy to differ. Fetched once per
   // session, cached in a ref so tab switches don't re-query.
@@ -507,6 +541,21 @@ function SocialActivityCard() {
     if (activityEvents.length === 0) return 'empty'
     return 'loaded'
   }, [user, activityLoading, activityEvents.length, followCount])
+
+  // ── Broad community fallback ─────────────────────────────────────────
+  // When the circle resolves to 'empty', fetch a page of recent global
+  // activity_events so the card shows real content, not a blank island.
+  // Fetch is one-shot per mount; re-fetches don't add value here.
+  useEffect(() => {
+    if (activityStatus !== 'empty') return
+    if (broadFetchedRef.current) return
+    broadFetchedRef.current = true
+    setBroadLoading(true)
+    getRecentGlobalActivityEvents({ limit: 10 })
+      .then((rows) => setBroadEvents(rows || []))
+      .catch(() => setBroadEvents([]))
+      .finally(() => setBroadLoading(false))
+  }, [activityStatus])
 
   // ── Lists tab state ──────────────────────────────────────────────────────
   const [listsStatus, setListsStatus] = useState('idle')
@@ -633,6 +682,8 @@ function SocialActivityCard() {
               status={activityStatus}
               events={activityEvents}
               blendItems={forYouItems}
+              broadEvents={broadEvents}
+              broadLoading={broadLoading}
               navigate={navigate}
               onFindPeople={openFindFriends}
               hasMore={activityHasMore}
