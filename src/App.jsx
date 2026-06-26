@@ -64,6 +64,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
 import { NotificationsProvider } from './contexts/NotificationsContext'
+import { NudgesProvider } from './contexts/NudgesContext'
 import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
 import { SessionProvider } from './contexts/SessionContext'
 import SearchOverlay from './components/SearchOverlay'
@@ -812,6 +813,12 @@ function App() {
               {/* SessionProvider sits inside AuthProvider (needs user) and
                   outside AppContent so the pill/sheet render outside routes. */}
               <SessionProvider>
+              {/* NudgesProvider must be inside SessionProvider (usePresence
+                  reads SessionContext for the currently-active game) and
+                  inside AuthProvider (useProgressNudges reads user id).
+                  It supplies transient presence pings + progress nudges
+                  without touching the DB notifications inbox. */}
+              <NudgesProvider>
               <AppContent />
               <ToastHost />
               {/* Mounted once at the root so first-time-Played transitions from
@@ -828,6 +835,7 @@ function App() {
                   dispatched by useBadgeUnlockWatcher and shows a full-screen
                   reveal overlay for each newly-earned achievement badge. */}
               <BadgeReveal />
+              </NudgesProvider>
               </SessionProvider>
               </SearchOverlayProvider>
             </GameColorProvider>

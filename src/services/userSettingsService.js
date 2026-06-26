@@ -36,6 +36,11 @@ const DEFAULT_SETTINGS = Object.freeze({
   // usePresence() hook is a no-op otherwise. The Supabase column is
   // `users.presence_opt_in` (see supabase/activity_events.sql).
   presenceOptIn: false,
+  // Presence pings — grouped "X and N others just hopped into <game>"
+  // banners. Only fires when presenceOptIn is also true. Local-only
+  // (no DB sync needed since it controls what YOU see, not what you
+  // broadcast). Defaults true so opted-in users get pings out of the box.
+  presencePingsOptIn: true,
   // Invite reward: users who earn the Ambassador badge unlock the
   // 'copper' accent. Stored locally; no Supabase sync needed.
   accentColor: 'default',
@@ -281,6 +286,19 @@ export function setPresenceOptIn(value) {
   const next = { ...current, presenceOptIn: !!value }
   writeRaw(next)
   softSyncToSupabase({ presence_opt_in: !!value })
+  emitChange(next)
+  return next
+}
+
+/**
+ * Toggle grouped presence-ping banners. Independent of presenceOptIn so
+ * a user can share their own presence without receiving banner nudges.
+ * Stored locally only — controls display on this device, not broadcast.
+ */
+export function setPresencePingsOptIn(value) {
+  const current = getSettings()
+  const next = { ...current, presencePingsOptIn: !!value }
+  writeRaw(next)
   emitChange(next)
   return next
 }
