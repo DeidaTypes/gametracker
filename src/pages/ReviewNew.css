@@ -84,8 +84,8 @@
 .rnc-scroll {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px 16px 20px;
 }
 
 /* ── Game header ─────────────────────────────────────────────────────────── */
@@ -218,23 +218,92 @@ body[data-reduce-motion='true'] .rnc-stamp-pill {
   transition: none;
 }
 
-/* ── "What stood out?" guided prompt ────────────────────────────────────── */
+/* ── "Add details" expander ──────────────────────────────────────────────── */
+
+.rnc-details-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.rnc-details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  min-height: 44px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary, #f0f3fa);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease;
+  width: 100%;
+  text-align: left;
+}
+
+.rnc-details-toggle--open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+
+.rnc-details-toggle:active {
+  background: rgba(148, 168, 212, 0.08);
+}
+
+.rnc-details-chevron {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--text-secondary, #94a8d4);
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+
+.rnc-details-toggle--open .rnc-details-chevron {
+  transform: rotate(180deg);
+}
+
+.rnc-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-top: none;
+  border-bottom-left-radius: var(--radius-md, 10px);
+  border-bottom-right-radius: var(--radius-md, 10px);
+}
+
+/* Hours row sits inside the expander body — override its standalone border */
+.rnc-details-body .rnc-hours-row {
+  background: var(--bg-surface, #131a35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rnc-details-toggle,
+  .rnc-details-chevron {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .rnc-details-toggle,
+body[data-reduce-motion='true'] .rnc-details-chevron {
+  transition: none;
+}
+
+/* ── "What stood out?" guided prompts (inside the expander) ──────────────── */
 
 .rnc-prompt-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px;
-  background: var(--bg-surface-2, #1a2240);
-  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: var(--radius-md, 10px) var(--radius-md, 10px) 0 0;
-  border-bottom: none;
-}
-
-.rnc-prompt-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .rnc-prompt-label {
@@ -243,24 +312,6 @@ body[data-reduce-motion='true'] .rnc-stamp-pill {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-secondary, #94a8d4);
-}
-
-.rnc-prompt-dismiss {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text-tertiary, #5c6b8a);
-  background: none;
-  border: none;
-  padding: 2px 4px;
-  cursor: pointer;
-  line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 120ms ease;
-}
-
-.rnc-prompt-dismiss:active {
   color: var(--text-secondary, #94a8d4);
 }
 
@@ -293,23 +344,13 @@ body[data-reduce-motion='true'] .rnc-stamp-pill {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rnc-prompt-chip,
-  .rnc-prompt-dismiss {
+  .rnc-prompt-chip {
     transition: none;
   }
 }
 
-body[data-reduce-motion='true'] .rnc-prompt-chip,
-body[data-reduce-motion='true'] .rnc-prompt-dismiss {
+body[data-reduce-motion='true'] .rnc-prompt-chip {
   transition: none;
-}
-
-/* When prompt section is present, remove the textarea's top rounding so they
-   visually merge into a single compound field. */
-.rnc-prompt-section + .rnc-textarea {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  border-top-color: transparent;
 }
 
 /* ── Review textarea ─────────────────────────────────────────────────────── */
@@ -416,10 +457,8 @@ body[data-reduce-motion='true'] .rnc-prompt-dismiss {
   margin-left: 14px;
 }
 
-/* ── Hours played row (upper zone, above the textarea) ──────────────────── */
+/* ── Hours played row (inside the "Add details" expander) ───────────────── */
 
-/* Sits between the star rating and the textarea so it's always visible above
-   the decimal keypad when focused — no scroll-into-view needed. */
 .rnc-hours-row {
   display: flex;
   align-items: center;

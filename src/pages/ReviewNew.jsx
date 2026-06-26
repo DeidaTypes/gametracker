@@ -47,7 +47,7 @@ function ReviewNew() {
   const [vibeStamp, setVibeStamp] = useState(isEditMode ? (editReview.vibeStamp ?? null) : null)
   const [lifeContext, setLifeContext] = useState(isEditMode ? (editReview.lifeContext ?? null) : null)
   const [submitting, setSubmitting] = useState(false)
-  const [promptDismissed, setPromptDismissed] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Drives the popup enter/exit animation.
   const [open, setOpen] = useState(true)
@@ -351,7 +351,7 @@ function ReviewNew() {
           </div>
         </div>
 
-        {/* Star rating */}
+        {/* ── PRIMARY: Star rating ─────────────────────────────────────── */}
         <div className="rnc-rating-block">
           <StarRating
             value={rating}
@@ -365,101 +365,8 @@ function ReviewNew() {
           </p>
         </div>
 
-        {/* Hours played */}
-        <div className="rnc-hours-row">
-          <span className="rnc-group-label">Hours played</span>
-          <div className="rnc-stepper">
-            <button
-              type="button"
-              className="rnc-stepper-btn"
-              onClick={() => adjustHours(-0.5)}
-              aria-label="Decrease hours played"
-            >−</button>
-            <input
-              ref={hoursInputRef}
-              type="text"
-              inputMode="decimal"
-              className="rnc-stepper-input"
-              value={hoursRaw}
-              onChange={handleHoursChange}
-              onBlur={handleHoursBlur}
-              aria-label="Hours played"
-              maxLength={6}
-            />
-            <button
-              type="button"
-              className="rnc-stepper-btn"
-              onClick={() => adjustHours(0.5)}
-              aria-label="Increase hours played"
-            >+</button>
-          </div>
-        </div>
-
-        {/* Vibe stamps */}
-        <div className="rnc-picker-section">
-          <span className="rnc-picker-label">Vibe</span>
-          <div className="rnc-stamp-row" role="group" aria-label="Vibe stamp">
-            {VIBE_STAMPS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`rnc-stamp-pill${vibeStamp === s.id ? ' rnc-stamp-pill--active' : ''}`}
-                onClick={() => setVibeStamp((prev) => (prev === s.id ? null : s.id))}
-                aria-pressed={vibeStamp === s.id}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Life context */}
-        <div className="rnc-picker-section">
-          <span className="rnc-picker-label">When in your life?</span>
-          <div className="rnc-stamp-row" role="group" aria-label="Life context">
-            {LIFE_CONTEXTS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`rnc-stamp-pill${lifeContext === c.id ? ' rnc-stamp-pill--active' : ''}`}
-                onClick={() => setLifeContext((prev) => (prev === c.id ? null : c.id))}
-                aria-pressed={lifeContext === c.id}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Review text box */}
+        {/* ── PRIMARY: Review text box ─────────────────────────────────── */}
         <div className="rnc-textarea-wrap">
-          {!promptDismissed && (
-            <div className="rnc-prompt-section">
-              <div className="rnc-prompt-header">
-                <span className="rnc-prompt-label">What stood out?</span>
-                <button
-                  type="button"
-                  className="rnc-prompt-dismiss"
-                  onClick={() => setPromptDismissed(true)}
-                  aria-label="Dismiss writing prompts"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="rnc-prompt-chips" role="group" aria-label="Writing prompt starters">
-                {PROMPT_CHIPS.map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className="rnc-prompt-chip"
-                    onClick={() => handlePromptChip(chip.starter)}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
           <textarea
             ref={textareaRef}
             className="rnc-textarea"
@@ -472,12 +379,111 @@ function ReviewNew() {
           <p className="rnc-char-count" aria-live="polite">{text.length}/5000</p>
         </div>
 
-        {/* Tips line */}
         <p className="rnc-tip">
           Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.
         </p>
 
-        {/* Toggles */}
+        {/* ── Optional metadata — collapsed by default ─────────────────── */}
+        <div className="rnc-details-section">
+          <button
+            type="button"
+            className={`rnc-details-toggle${detailsOpen ? ' rnc-details-toggle--open' : ''}`}
+            onClick={() => setDetailsOpen((v) => !v)}
+            aria-expanded={detailsOpen}
+          >
+            <span>Add details</span>
+            <span className="rnc-details-chevron" aria-hidden="true" />
+          </button>
+
+          {detailsOpen && (
+            <div className="rnc-details-body">
+              {/* Vibe stamps */}
+              <div className="rnc-picker-section">
+                <span className="rnc-picker-label">Vibe</span>
+                <div className="rnc-stamp-row" role="group" aria-label="Vibe stamp">
+                  {VIBE_STAMPS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`rnc-stamp-pill${vibeStamp === s.id ? ' rnc-stamp-pill--active' : ''}`}
+                      onClick={() => setVibeStamp((prev) => (prev === s.id ? null : s.id))}
+                      aria-pressed={vibeStamp === s.id}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Life context */}
+              <div className="rnc-picker-section">
+                <span className="rnc-picker-label">When in your life?</span>
+                <div className="rnc-stamp-row" role="group" aria-label="Life context">
+                  {LIFE_CONTEXTS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`rnc-stamp-pill${lifeContext === c.id ? ' rnc-stamp-pill--active' : ''}`}
+                      onClick={() => setLifeContext((prev) => (prev === c.id ? null : c.id))}
+                      aria-pressed={lifeContext === c.id}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hours played */}
+              <div className="rnc-hours-row">
+                <span className="rnc-group-label">Hours played</span>
+                <div className="rnc-stepper">
+                  <button
+                    type="button"
+                    className="rnc-stepper-btn"
+                    onClick={() => adjustHours(-0.5)}
+                    aria-label="Decrease hours played"
+                  >−</button>
+                  <input
+                    ref={hoursInputRef}
+                    type="text"
+                    inputMode="decimal"
+                    className="rnc-stepper-input"
+                    value={hoursRaw}
+                    onChange={handleHoursChange}
+                    onBlur={handleHoursBlur}
+                    aria-label="Hours played"
+                    maxLength={6}
+                  />
+                  <button
+                    type="button"
+                    className="rnc-stepper-btn"
+                    onClick={() => adjustHours(0.5)}
+                    aria-label="Increase hours played"
+                  >+</button>
+                </div>
+              </div>
+
+              {/* Writing prompts */}
+              <div className="rnc-prompt-section">
+                <span className="rnc-prompt-label">What stood out?</span>
+                <div className="rnc-prompt-chips" role="group" aria-label="Writing prompt starters">
+                  {PROMPT_CHIPS.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className="rnc-prompt-chip"
+                      onClick={() => handlePromptChip(chip.starter)}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Toggles ──────────────────────────────────────────────────── */}
         <div className="rnc-group" role="group" aria-label="Review options">
           <div className="rnc-group-row">
             <span className="rnc-group-label">Liked</span>
@@ -499,7 +505,6 @@ function ReviewNew() {
             />
           </div>
 
-          {/* Mark as completed is create-only: irrelevant when editing. */}
           {!isEditMode && (
             <>
               <div className="rnc-group-divider" aria-hidden="true" />
