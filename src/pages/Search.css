@@ -828,6 +828,76 @@
   display: block;
 }
 
+/* Cover with a title label underneath (trending / continue) */
+.sp-recent-cover--labeled {
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.sp-recent-cover--labeled .sp-recent-cover__img {
+  height: 110px;
+  border-radius: var(--radius-sm);
+}
+
+.sp-recent-cover__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  max-width: 72px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Skeleton placeholder for trending covers while loading */
+.sp-recent-cover--skeleton {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  animation: sp-skeleton-pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sp-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-recent-cover--skeleton {
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
+/* Active filter chips shown above search results */
+.sp-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px 2px;
+}
+
+.sp-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
 /* =============================================
    REVIEWS tab — query chips
    ============================================= */

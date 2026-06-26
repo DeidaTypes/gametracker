@@ -623,6 +623,85 @@ limit ${fetchLimit};`
   }
 }
 
+/**
+ * Search games combining an optional free-text term with IGDB where-clause
+ * fragments produced by parseNaturalQuery.
+ *
+ * When `term` is non-empty the IGDB `search "…"` endpoint is used; the
+ * extra where fragments narrow results (cover required is always added).
+ * When `term` is empty the query becomes a pure filter with
+ * `sort rating_count desc` so you get popular matching games.
+ *
+ * Falls back to plain searchGames(term) on any API error so the caller
+ * never has to handle a structured-search failure itself.
+ *
+ * @param {string}   term            Free-text portion (may be empty string)
+ * @param {string[]} whereFragments  IGDB where conditions to AND together
+ * @param {number}   limit
+ * @returns {Promise<Array>}
+ */
+export async function searchGamesWithFilters(term, whereFragments, limit = 30) {
+  const hasTerm = Boolean(term && term.trim())
+  const hasWhere = whereFragments && whereFragments.length > 0
+
+  if (!hasTerm && !hasWhere) return []
+
+  const combinedWhere = [
+    ...(hasWhere ? whereFragments : []),
+    'cover != null',
+    'rating != null',
+    'rating_count > 3',
+  ].join(' & ')
+
+  const fields =
+    'fields name, cover.image_id, genres.name, rating, rating_count, summary, involved_companies.company.name, first_release_date;'
+
+  const fetchLimit = Math.min(limit * 4, 200)
+
+  let query
+  if (hasTerm) {
+    const escaped = term.trim()
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+    query = `${fields}\nsearch "${escaped}";\nwhere ${combinedWhere};\nlimit ${fetchLimit};`
+  } else {
+    query = `${fields}\nwhere ${combinedWhere};\nsort rating_count desc;\nlimit ${fetchLimit};`
+  }
+
+  try {
+    const games = await igdbRequest('games', query)
+    const filtered = filterOutDLC(
+      games.filter((g) => g.cover && (g.cover.image_id || g.cover.url))
+    )
+    return formatGamesRaw(filtered.slice(0, limit * 2))
+  } catch (err) {
+    console.warn('[igdb] searchGamesWithFilters failed, falling back to plain search:', err)
+    if (hasTerm) return searchGames(term, limit)
+    return []
+  }
+}
+
+/**
+ * Fetch IDs of short games via the game_time_to_beats endpoint.
+ * Used by the natural-query "short"/"quick" filter path in useSearch.
+ *
+ * @param {number} maxSecs  Upper bound for "normally" completion time (default 2700 = 45 min)
+ * @param {number} maxIds   How many IDs to return (default 200)
+ * @returns {Promise<number[]>}
+ */
+export async function fetchShortGameIds(maxSecs = 2700, maxIds = 200) {
+  const ttbQuery =
+    `fields game; where normally <= ${maxSecs} & normally != null; ` +
+    `sort normally asc; limit ${maxIds};`
+  try {
+    const rows = await igdbRequest('game_time_to_beats', ttbQuery)
+    return (rows || []).map((r) => Number(r.game)).filter(Boolean)
+  } catch (err) {
+    console.warn('[igdb] fetchShortGameIds failed:', err)
+    return []
+  }
+}
+
 // Get similar games by style (themes, player perspectives, game modes, keywords)
 export async function getSimilarGamesByStyle(gameData, excludeGameId, limit = 20) {
   if (!gameData) {

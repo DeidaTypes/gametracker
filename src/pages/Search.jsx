@@ -11,6 +11,8 @@ import {
   useRecents,
 } from '../utils/recentSearches'
 import { fetchBrowseCategories } from '../services/browseService'
+import { fetchPopularThisWeek } from '../services/igdb'
+import { getContinuePlayingGames } from '../services/libraryService'
 import { searchReviewsByText } from '../services/reviewService'
 import { searchUsers } from '../services/userService'
 import { searchPublicLists } from '../services/listService'
@@ -181,39 +183,122 @@ function RemoveButton({ onClick, label }) {
    GAMES TAB
    ============================================= */
 
-function GamesTabEmpty({ recents, onClearAll, onTapGame }) {
-  if (!recents || recents.length === 0) return null
+function GamesTabEmpty({ recents, onClearAll, onTapGame, continuePlaying, trendingGames, trendingLoading }) {
+  const hasContinue = continuePlaying && continuePlaying.length > 0
+  const hasTrending = trendingGames && trendingGames.length > 0
+  const hasRecents  = recents && recents.length > 0
+
+  if (!hasContinue && !hasTrending && !hasRecents) return null
+
   return (
-    <section className="sp-section sp-section--carousel">
-      <RecentsHeader onClear={onClearAll} />
-      <div className="sp-recent-cover-row">
-        {recents.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="sp-recent-cover"
-            onClick={() => onTapGame(item)}
-            aria-label={item.name || 'Recent game'}
-          >
-            {item.coverUrl ? (
-              <SharedCover gameId={item.id} imageSrc={item.coverUrl}>
-                <img
-                  src={item.coverUrl}
-                  alt=""
-                  className="sp-recent-cover__img"
-                  loading="lazy"
-                />
-              </SharedCover>
-            ) : (
-              <CoverPlaceholder
-                title={item.name}
-                className="sp-recent-cover__img"
-              />
-            )}
-          </button>
-        ))}
-      </div>
-    </section>
+    <>
+      {hasContinue && (
+        <section className="sp-section sp-section--carousel">
+          <h2 className="sp-section-header">Continue where you left off</h2>
+          <div className="sp-recent-cover-row">
+            {continuePlaying.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="sp-recent-cover sp-recent-cover--labeled"
+                onClick={() => onTapGame({ id: item.id, title: item.title ?? item.name, image: item.image ?? item.coverUrl ?? null })}
+                aria-label={item.title ?? item.name ?? 'Game'}
+              >
+                {(item.image || item.coverUrl) ? (
+                  <img
+                    src={item.image ?? item.coverUrl}
+                    alt=""
+                    className="sp-recent-cover__img"
+                    loading="lazy"
+                  />
+                ) : (
+                  <CoverPlaceholder
+                    title={item.title ?? item.name}
+                    className="sp-recent-cover__img"
+                  />
+                )}
+                <span className="sp-recent-cover__title">{item.title ?? item.name}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(hasTrending || trendingLoading) && (
+        <section className="sp-section sp-section--carousel">
+          <h2 className="sp-section-header">Trending this week</h2>
+          {trendingLoading ? (
+            <div className="sp-recent-cover-row">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="sp-recent-cover sp-recent-cover--skeleton" aria-hidden="true" />
+              ))}
+            </div>
+          ) : (
+            <div className="sp-recent-cover-row">
+              {trendingGames.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="sp-recent-cover sp-recent-cover--labeled"
+                  onClick={() => onTapGame(item)}
+                  aria-label={item.title ?? item.name ?? 'Trending game'}
+                >
+                  {(item.image || item.coverUrl) ? (
+                    <SharedCover gameId={item.id} imageSrc={item.image ?? item.coverUrl}>
+                      <img
+                        src={item.image ?? item.coverUrl}
+                        alt=""
+                        className="sp-recent-cover__img"
+                        loading="lazy"
+                      />
+                    </SharedCover>
+                  ) : (
+                    <CoverPlaceholder
+                      title={item.title ?? item.name}
+                      className="sp-recent-cover__img"
+                    />
+                  )}
+                  <span className="sp-recent-cover__title">{item.title ?? item.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {hasRecents && (
+        <section className="sp-section sp-section--carousel">
+          <RecentsHeader onClear={onClearAll} />
+          <div className="sp-recent-cover-row">
+            {recents.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="sp-recent-cover"
+                onClick={() => onTapGame(item)}
+                aria-label={item.name || 'Recent game'}
+              >
+                {item.coverUrl ? (
+                  <SharedCover gameId={item.id} imageSrc={item.coverUrl}>
+                    <img
+                      src={item.coverUrl}
+                      alt=""
+                      className="sp-recent-cover__img"
+                      loading="lazy"
+                    />
+                  </SharedCover>
+                ) : (
+                  <CoverPlaceholder
+                    title={item.name}
+                    className="sp-recent-cover__img"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
   )
 }
 
@@ -231,6 +316,7 @@ function GamesTabResults({
   onClearQuery,
   genres,
   gamesResultsRef,
+  parsedFilters,
 }) {
   if (isLoading) return <SearchResultSkeletonList count={8} />
   if (error) {
@@ -266,6 +352,14 @@ function GamesTabResults({
 
   return (
     <div className="sp-results" role="listbox" aria-label="Search results">
+      {parsedFilters && parsedFilters.length > 0 && (
+        <div className="sp-active-filters" aria-label="Active filters">
+          {parsedFilters.map((label) => (
+            <span key={label} className="sp-filter-chip">{label}</span>
+          ))}
+        </div>
+      )}
+
       {results.genres.length > 0 && (
         <div className="sp-result-category">
           <h3 className="sp-result-category__header">Genres</h3>
@@ -837,8 +931,32 @@ function Search() {
 
   // Games tab still uses the existing useSearch hook (preserves the
   // Sprint 1 P4 developer routing — devs only flow through here).
-  const { results: gameResults, isLoading: gamesLoading, error: gamesError } =
+  const { results: gameResults, isLoading: gamesLoading, error: gamesError, parsedFilters } =
     useSearch(activeTab === 'games' ? query : '')
+
+  // Pre-type suggestions: "continue" from local library + trending from IGDB.
+  const [continuePlaying, setContinuePlaying] = useState([])
+  const [trendingGames, setTrendingGames] = useState([])
+  const [trendingLoading, setTrendingLoading] = useState(true)
+
+  // Load once on mount — both are cheap (library = sync, trending = single IGDB call).
+  useEffect(() => {
+    setContinuePlaying(getContinuePlayingGames(5))
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setTrendingLoading(true)
+    fetchPopularThisWeek()
+      .then((games) => {
+        if (!cancelled) setTrendingGames(games)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTrendingLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   const totalGameResultCount =
     gameResults.games.length +
@@ -1269,9 +1387,12 @@ function Search() {
                     onTapGame={(item) => {
                       addRecent('games', item)
                       navigate(`/game/${item.id}`, {
-                        state: { coverImage: item.coverUrl },
+                        state: { coverImage: item.image ?? item.coverUrl },
                       })
                     }}
+                    continuePlaying={continuePlaying}
+                    trendingGames={trendingGames}
+                    trendingLoading={trendingLoading}
                   />
                   {/* Browse by Genre — kept unchanged from prior build. */}
                   <section className="sp-section">
@@ -1307,6 +1428,7 @@ function Search() {
                   onClearQuery={handleCancel}
                   genres={genres}
                   gamesResultsRef={gamesResultsRef}
+                  parsedFilters={parsedFilters}
                 />
               )}
             </>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { searchGames } from '../services/searchService'
+import { searchGamesWithFilters, fetchShortGameIds } from '../services/igdb'
 import { getCategoryDefinitions } from '../services/browseService'
+import { parseNaturalQuery } from '../utils/parseNaturalQuery'
 
 const DEBOUNCE_MS = 200
 
@@ -9,13 +11,23 @@ const DEBOUNCE_MS = 200
  * Also matches the query against the real browse-category taxonomy for genres,
  * and extracts unique developer names from returned game objects.
  *
+ * Natural-language queries like "short co-op games" are parsed into IGDB
+ * filter clauses before the API call.  If the structured search fails the
+ * hook falls back to a plain full-text search automatically.
+ *
  * @param {string} query — raw user input (trimming handled internally)
- * @returns {{ results: { games: Array, genres: Array, developers: Array }, isLoading: boolean, error: string|null }}
+ * @returns {{
+ *   results:    { games: Array, genres: Array, developers: Array },
+ *   isLoading:  boolean,
+ *   error:      string|null,
+ *   parsedFilters: string[]   human-readable labels of active filters ([] when none)
+ * }}
  */
 export function useSearch(query) {
   const [results, setResults] = useState({ games: [], genres: [], developers: [] })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [parsedFilters, setParsedFilters] = useState([])
   const timerRef = useRef(null)
   const abortRef = useRef(0)
 
@@ -27,6 +39,7 @@ export function useSearch(query) {
       setResults({ games: [], genres: [], developers: [] })
       setIsLoading(false)
       setError(null)
+      setParsedFilters([])
       return
     }
 
@@ -37,8 +50,38 @@ export function useSearch(query) {
 
     timerRef.current = setTimeout(async () => {
       try {
-        const games = await searchGames(trimmed, 30)
-        if (callId !== abortRef.current) return
+        const parsed = parseNaturalQuery(trimmed)
+        let games
+
+        if (parsed.hasFilters) {
+          let { whereFragments, remainder, hasTtb } = parsed
+
+          // TTB ("short"/"quick") → fetch short-game IDs and add as where fragment
+          if (hasTtb) {
+            const shortIds = await fetchShortGameIds(2700, 200)
+            if (callId !== abortRef.current) return
+            if (shortIds.length >= 5) {
+              whereFragments = [`id = (${shortIds.slice(0, 150).join(',')})`, ...whereFragments]
+            }
+            // If TTB lookup returned < 5 results, fall back to Puzzle genre as proxy
+            else {
+              whereFragments = ['genres = (9)', ...whereFragments]
+            }
+          }
+
+          games = await searchGamesWithFilters(remainder, whereFragments, 30)
+          if (callId !== abortRef.current) return
+
+          // If structured search returned nothing, fall back to plain search with
+          // the original query so the user always sees something useful.
+          if (games.length === 0 && remainder) {
+            games = await searchGames(trimmed, 30)
+            if (callId !== abortRef.current) return
+          }
+        } else {
+          games = await searchGames(trimmed, 30)
+          if (callId !== abortRef.current) return
+        }
 
         const lowerQuery = trimmed.toLowerCase()
 
@@ -67,10 +110,12 @@ export function useSearch(query) {
           genres: matchingGenres,
           developers,
         })
+        setParsedFilters(parsed.hasFilters ? parsed.labels : [])
       } catch (err) {
         if (callId !== abortRef.current) return
         setError(err.message || 'Search failed')
         setResults({ games: [], genres: [], developers: [] })
+        setParsedFilters([])
       } finally {
         if (callId === abortRef.current) setIsLoading(false)
       }
@@ -81,5 +126,5 @@ export function useSearch(query) {
     }
   }, [query])
 
-  return { results, isLoading, error }
+  return { results, isLoading, error, parsedFilters }
 }
