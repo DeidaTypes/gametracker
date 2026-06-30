@@ -1739,6 +1739,24 @@ export const MOOD_CHIPS = [
     minRating: 70,
     minRatingCount: 15,
   },
+  {
+    id: 'under2h',
+    label: 'Under 2h',
+    emoji: '⚡',
+    strategy: 'where',
+    where: 'genres = (33)',    // genre: Arcade — densely tagged; nearly all entries are sub-2h
+    minRating: 65,
+    minRatingCount: 8,
+  },
+  {
+    id: 'weekend',
+    label: 'Weekend',
+    emoji: '🛋️',
+    strategy: 'where',
+    where: 'genres = (25)',    // genre: Hack and slash/Beat 'em up — reliably 8–15 h campaigns
+    minRating: 70,
+    minRatingCount: 15,
+  },
 ]
 
 /**

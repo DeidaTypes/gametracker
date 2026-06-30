@@ -21,9 +21,19 @@ const STATUS_VERB = {
 
 function TrendingCard({ entry }) {
   const navigate = useNavigate()
-  const { game, peopleCount, mostCommonStatus } = entry
+  const { game, peopleCount, mostCommonStatus, followFriendCount = 0 } = entry
+
+  // Hide cards with no meaningful social signal.
+  // "1 person reviewed" is noise; a single friend playing it IS signal.
+  if (peopleCount <= 1 && followFriendCount === 0) return null
+
   const verb = STATUS_VERB[mostCommonStatus] || 'logged'
   const img = getBestImageUrl(game, 600) || game.image
+
+  // Prefer follow-graph proof — "N you follow played this" — over raw counts.
+  const badge = followFriendCount > 0
+    ? `${followFriendCount} you follow ${followFriendCount === 1 ? 'played' : 'played'} this`
+    : `${peopleCount} people ${verb}`
 
   return (
     <Pressable
@@ -44,9 +54,7 @@ function TrendingCard({ entry }) {
       </div>
       <div className="trending-card__meta">
         <h3 className="trending-card__title">{game.title}</h3>
-        <span className="trending-card__badge">
-          {peopleCount} {peopleCount === 1 ? 'person' : 'people'} {verb}
-        </span>
+        <span className="trending-card__badge">{badge}</span>
       </div>
     </Pressable>
   )

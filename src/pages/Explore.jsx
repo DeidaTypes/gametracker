@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
@@ -7,23 +7,10 @@ import {
   useDiscoverGamesNew,
   useFollowingReviews,
   usePopularReviews,
-  useMostPlayedThisWeek,
-  useCircleMostPlayed,
-  useHotTakes,
-  useReviewOfWeek,
 } from '../hooks/useExploreData'
-import { usePresence } from '../hooks/usePresence'
 import TrendingCard from '../components/explore/TrendingCard'
 import NewReleaseCard from '../components/explore/NewReleaseCard'
 import GameOfWeekHero from '../components/explore/GameOfWeekHero'
-import ReviewOfWeekHero from '../components/explore/ReviewOfWeekHero'
-import MostPlayedRail from '../components/explore/MostPlayedRail'
-import GotAnHourRail, {
-  TimeBucketChips,
-  TTB_BUCKETS,
-  mainStoryHours,
-  inBucket,
-} from '../components/explore/GotAnHourRail'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import { MoodChips } from '../components/explore/MoodChips'
 import IOSSwitch from '../components/IOSSwitch'
@@ -37,7 +24,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { getLikeCountsForReviews } from '../services/likeService'
-import { getTimeToBeat } from '../services/timeToBeatService'
 import './Explore.css'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -156,59 +142,15 @@ function Explore() {
     setActiveMood((prev) => (prev === moodId ? null : prev))
   }, [])
 
-  // ── "Got an hour?" state ──────────────────────────────────────────────────
-  const [ttbBucket, setTtbBucket]       = useState('short') // default "Short"
-  const [gamesWithTtb, setGamesWithTtb] = useState([])      // enriched candidate pool
-  const [ttbLoading, setTtbLoading]     = useState(false)
-  // Ref prevents cancelled effects from updating state after unmount.
-  const ttbCancelRef = useRef(false)
-
   // All data sources fire at mount in parallel (no sequential waterfall).
   const trending         = useTrendingThisWeek()   // games POPULAR tab
   const newGames         = useDiscoverGamesNew()    // games NEW tab
   const followingReviews = useFollowingReviews()    // reviews FOLLOWING tab
   const popularReviews   = usePopularReviews()      // reviews POPULAR tab
-  const mostPlayed       = useMostPlayedThisWeek()  // most played this week rail (global fallback)
-  const circlePlayed     = useCircleMostPlayed()    // circle-aware most-played rail
-  const hotTakes         = useHotTakes()            // contrarian reviews by engagement×deviation
-  const reviewOfWeek     = useReviewOfWeek()        // most-liked review in 7-day window
-
-  // Presence — realtime follow-graph "playing now" state.
-  // playingNow is [] when presence is disabled or circle has no live members.
-  const { playingNow } = usePresence()
 
   // Unified like + comment counts for cards currently visible.
   const [likeCounts, setLikeCounts]       = useState(() => new Map())
   const [commentCounts, setCommentCounts] = useState(() => new Map())
-
-  // Map game_id → count of friends actively playing right now (from presence).
-  const liveByGame = useMemo(() => {
-    const map = new Map()
-    for (const p of playingNow) {
-      if (!p.gameId) continue
-      const key = String(p.gameId)
-      map.set(key, (map.get(key) || 0) + 1)
-    }
-    return map
-  }, [playingNow])
-
-  // Circle data annotated with live friend counts. Presence is injected here
-  // so MostPlayedRail stays purely presentational.
-  const circleDataWithLive = useMemo(() => {
-    if (!circlePlayed.data) return null
-    return circlePlayed.data.map((item) => ({
-      ...item,
-      liveCount: liveByGame.get(String(item.igdb_game_id)) || 0,
-    }))
-  }, [circlePlayed.data, liveByGame])
-
-  // Show the circle section when loading or when it has results.
-  // Falls back to the global rail only when circle has returned 0 items.
-  const showCircleSection =
-    circlePlayed.loading || (circleDataWithLive && circleDataWithLive.length > 0)
-  const showGlobalSection =
-    !showCircleSection &&
-    (mostPlayed.loading || (mostPlayed.data && mostPlayed.data.length > 0))
 
   // Prefetch like + comment counts for whichever reviews are loaded.
   // Runs whenever either feed's data arrives so switching tabs shows counts
@@ -217,7 +159,6 @@ function Explore() {
     const allRows = [
       ...(followingReviews.data || []),
       ...(popularReviews.data  || []),
-      ...(hotTakes.data        || []),
     ]
     if (!allRows.length) return
     const ids = [...new Set(allRows.map((r) => r.id))]
@@ -228,79 +169,11 @@ function Explore() {
       setCommentCounts(cCounts)
     }).catch(() => {})
     getLikeCountsForReviews(ids).then(setLikeCounts).catch(() => {})
-  }, [followingReviews.data, popularReviews.data, hotTakes.data])
-
-  // ── "Got an hour?" — enrich candidate pool with real IGDB TTB data ────────
-  // Pool = trending games ∪ new-release games (both already fetched, no new
-  // broad IGDB query). TTB results are cached (mem 5 min + localStorage 24 h)
-  // so re-running this effect on tab return is essentially free.
-  useEffect(() => {
-    // Wait until at least one pool is loaded (undefined = still loading).
-    const hasTrending = Array.isArray(trending.data)
-    const hasNew      = Array.isArray(newGames.data)
-    if (!hasTrending && !hasNew) return
-
-    // Merge both pools, dedup by IGDB game ID.
-    const seen = new Set()
-    const pool = []
-
-    for (const entry of (trending.data || [])) {
-      const g = entry.game
-      if (!g?.id) continue
-      const key = String(g.id)
-      if (seen.has(key)) continue
-      seen.add(key)
-      pool.push({ id: key, title: g.title, image: g.image })
-    }
-    for (const g of (newGames.data || [])) {
-      if (!g?.id) continue
-      const key = String(g.id)
-      if (seen.has(key)) continue
-      seen.add(key)
-      pool.push({ id: key, title: g.title, image: g.image })
-    }
-
-    if (!pool.length) return
-
-    ttbCancelRef.current = false
-    setTtbLoading(true)
-
-    Promise.all(
-      pool.map(async (g) => {
-        const ttb = await getTimeToBeat(g.id)
-        const hrs = mainStoryHours(ttb) // null when IGDB has no data
-        if (hrs === null) return null    // exclude — never fake a time
-        return { ...g, mainStoryHours: hrs }
-      })
-    )
-      .then((results) => {
-        if (ttbCancelRef.current) return
-        setGamesWithTtb(results.filter(Boolean))
-      })
-      .catch(() => {
-        if (!ttbCancelRef.current) setGamesWithTtb([])
-      })
-      .finally(() => {
-        if (!ttbCancelRef.current) setTtbLoading(false)
-      })
-
-    return () => {
-      ttbCancelRef.current = true
-    }
-  }, [trending.data, newGames.data]) // re-run only when pool data changes
+  }, [followingReviews.data, popularReviews.data])
 
   // Active data for each section.
   const activeGamesState   = gamesTab   === 'popular' ? trending        : newGames
   const activeReviewsState = reviewsTab === 'popular'  ? popularReviews  : followingReviews
-
-  // "Got an hour?" — bucket filtering (pure derivation, no extra fetch).
-  const activeTtbBucket  = TTB_BUCKETS.find((b) => b.id === ttbBucket) || TTB_BUCKETS[1]
-  const filteredTtbGames = useMemo(
-    () => gamesWithTtb.filter((g) => inBucket(g.mainStoryHours, activeTtbBucket)),
-    [gamesWithTtb, activeTtbBucket]
-  )
-  // Only show the section once we know there's at least one game with TTB data.
-  const showGotAnHour = ttbLoading || gamesWithTtb.length > 0
 
   // Gather all game ids across both carousel options so SharedCover
   // has exactly one layoutId source per game.
@@ -310,10 +183,9 @@ function Explore() {
     const reviewGames   = [
       ...(followingReviews.data || []),
       ...(popularReviews.data   || []),
-      ...(hotTakes.data         || []),
     ].map((r) => ({ id: r.igdb_game_id, image: r.game_image }))
     return findDuplicateGameIds(trendingGames, newGamesArr, reviewGames)
-  }, [trending.data, newGames.data, followingReviews.data, popularReviews.data, hotTakes.data])
+  }, [trending.data, newGames.data, followingReviews.data, popularReviews.data])
 
   // ── Reviews section helpers ─────────────────────────────────────────────
 
@@ -355,12 +227,6 @@ function Explore() {
 
         {/* ── Game of the Week hero — editorial featured slot ── */}
         <GameOfWeekHero />
-
-        {/* ── Review of the Week — most-liked review in 7-day window ── */}
-        {/* Hidden automatically when reviewOfWeek.data is null (no qualifying review) */}
-        {!reviewOfWeek.loading && reviewOfWeek.data && (
-          <ReviewOfWeekHero review={reviewOfWeek.data} />
-        )}
 
         {/* ── Section: Swipe to discover ── */}
         <section className="explore-section explore-section--swipe-deck">
@@ -505,70 +371,6 @@ function Explore() {
             </div>
           )}
         </section>
-
-        {/* ── Hot Takes — contrarian reviews with community engagement ── */}
-        {(hotTakes.loading || (hotTakes.data && hotTakes.data.length > 0)) && (
-          <section className="explore-section explore-section--hot-takes">
-            <div className="explore-section__pad discover-section-header">
-              <h2 className="discover-section-title">Hot Takes</h2>
-            </div>
-
-            {hotTakes.loading ? (
-              <ReviewRowSkeletonList count={3} />
-            ) : hotTakes.error ? (
-              <ErrorBanner message="Could not load hot takes." />
-            ) : (
-              <div className="explore-review-feed">
-                {(hotTakes.data || []).slice(0, 3).map((r) => (
-                  <ReviewCard
-                    key={r.id}
-                    review={toReviewCardShape(r, likeCounts, commentCounts)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* ── Section 3: Most played — circle (follow-graph) or global fallback ── */}
-        {showCircleSection && (
-          <section className="explore-section explore-section--2">
-            <div className="explore-section__pad discover-section-header">
-              <h2 className="discover-section-title">In your circle</h2>
-            </div>
-            <MostPlayedRail
-              data={circleDataWithLive}
-              loading={circlePlayed.loading}
-              error={circlePlayed.error}
-              mode="circle"
-            />
-          </section>
-        )}
-
-        {showGlobalSection && (
-          <section className="explore-section explore-section--2">
-            <div className="explore-section__pad discover-section-header">
-              <h2 className="discover-section-title">Most played this week</h2>
-            </div>
-            <MostPlayedRail
-              data={mostPlayed.data}
-              loading={mostPlayed.loading}
-              error={mostPlayed.error}
-              mode="global"
-            />
-          </section>
-        )}
-
-        {/* ── Section 4: Got an hour? — time-to-beat discovery rail ── */}
-        {showGotAnHour && (
-          <section className="explore-section explore-section--3">
-            <div className="explore-section__pad discover-section-header">
-              <h2 className="discover-section-title">Got an hour?</h2>
-            </div>
-            <TimeBucketChips activeBucket={ttbBucket} onChange={setTtbBucket} />
-            <GotAnHourRail games={filteredTtbGames} loading={ttbLoading} />
-          </section>
-        )}
 
       </div>
 
