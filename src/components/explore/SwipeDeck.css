@@ -108,6 +108,23 @@
   line-height: var(--line-height-body);
 }
 
+.swipe-deck__retry-btn {
+  margin-top: 6px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.swipe-deck__retry-btn:active {
+  background: rgba(59, 130, 246, 0.12);
+}
+
 /* ---- prefers-reduced-motion ---- */
 
 @media (prefers-reduced-motion: reduce) {

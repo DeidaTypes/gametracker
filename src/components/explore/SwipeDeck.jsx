@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { getRecommendations, getTasteVector } from '../../services/tasteEngineService'
+import { getTasteVector } from '../../services/tasteEngineService'
+import { fetchBroadDiscoveryBatch } from '../../services/igdb'
 import { getAllLists, addGameToList } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
@@ -16,6 +17,17 @@ import './SwipeDeck.css'
 // sessionStorage key used to preserve deck state when the user taps a card
 // to view its detail page and then navigates back.
 const DECK_SESSION_KEY = 'gt:swipe-deck-state:v1'
+
+// How many un-swiped cards must remain before we background-fetch the next
+// page of the broad discovery pool. Large enough that the fetch (a couple of
+// batched /multiquery requests) has time to land before the user runs dry.
+const REFILL_THRESHOLD = 8
+
+// After this many consecutive failed/empty refill attempts, stop auto-retrying
+// and show an honest "couldn't load more" state with a manual retry button —
+// the catalog-backed pool should never legitimately run dry, so repeated
+// failures mean a real connectivity problem, not "no more games".
+const MAX_REFILL_RETRIES = 3
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -34,9 +46,9 @@ function buildLocalLibraryIds() {
 }
 
 /**
- * Top N genre names from a taste vector, highest weight first. Used to
- * find which of a candidate's genres actually overlap with what the user
- * likes across their WHOLE library — not just one seed game.
+ * Top N genre names from a taste vector, highest weight first. Used only to
+ * decide which of a candidate's genres are worth citing as the on-card
+ * reason — never to decide which candidates are eligible in the first place.
  */
 function topGenreNames(vector, n = 6) {
   if (!vector?.genreWeights) return []
@@ -47,28 +59,27 @@ function topGenreNames(vector, n = 6) {
 }
 
 /**
- * Map an E0 recommendation row → the card shape SwipeCard consumes.
+ * Map a broad-discovery-pool game → the card shape SwipeCard consumes.
  *
  * `matchGenres` is the overlap between this candidate's own genres and the
- * user's top taste-vector genres (broad, whole-library signal) — this is
- * what SwipeCard shows as the reason, NOT a single seed game. That framing
- * is reserved for the "Because You Played" rail so the two surfaces never
- * say the same thing about the same card.
+ * user's top taste-vector genres (broad, whole-library signal) — purely
+ * cosmetic copy, NOT a filter. A card with zero overlap is exactly as
+ * eligible as one with full overlap; it just renders without a reason line
+ * (SwipeCard already handles that honestly — no fabricated reason).
  */
-function recToCard(rec, topGenres) {
-  const genres = Array.isArray(rec.game.genres) ? rec.game.genres : []
+function gameToCard(game, topGenres) {
+  const genres = Array.isArray(game.genres) ? game.genres : []
   const matchGenres = topGenres.length
     ? genres.filter((g) => topGenres.includes(g)).slice(0, 2)
     : []
   return {
-    id: rec.game.id,
-    title: rec.game.title,
-    image: rec.game.image,
-    year: rec.game.year ?? null,
+    id: game.id,
+    title: game.title,
+    image: game.image,
+    year: game.year ?? null,
     genre: genres.join(', ') || null,
-    rating: rec.game.totalRating != null ? rec.game.totalRating / 20 : null,
+    rating: game.totalRating != null ? game.totalRating / 20 : null,
     matchGenres,
-    matchScore: rec.matchScore,
   }
 }
 
@@ -77,29 +88,37 @@ function recToCard(rec, topGenres) {
 /**
  * SwipeDeck — the "Swipe to discover" card stack on the Discover page.
  *
- * Source of truth: the E0 taste engine. Cards are pulled from
- * getRecommendations (precomputed, taste-ranked) — NEVER random IGDB games.
+ * Source of truth: fetchBroadDiscoveryBatch (src/services/igdb.js) — the
+ * FULL real IGDB catalog across EVERY major genre (Sports, Puzzle, Strategy,
+ * Simulation, Racing, Fighting, RPG, Shooter, everything), gated only by a
+ * quality bar (total_rating + total_rating_count). Deliberately NOT sourced
+ * from the E0 taste engine's user_recommendations table — that pool only
+ * ever contains candidates from the user's own top genres + similar_games of
+ * played titles, which structurally starves out every genre the user hasn't
+ * already engaged with. That's the right behavior for the page's "Because
+ * you played {seed}" closer (intentionally narrow) but the wrong one here.
+ *
+ * The user's taste vector (getTasteVector) is read ONLY to lightly bias
+ * on-card copy (matchGenres) and result ORDER (see applyTasteOrderBias in
+ * igdb.js) — it can move a liked-genre card a little earlier in the batch,
+ * but it can never exclude a genre or narrow the pool. Coverage across every
+ * genre comes first; personalization is secondary polish on top.
+ *
  * Already-tracked games and previously-swiped games are excluded client-side
- * as a belt-and-suspenders on top of the engine's own exclusions.
+ * and also passed to fetchBroadDiscoveryBatch so they're never re-fetched.
  *
- * BROAD exploration by design (the deliberate contrast with the page's
- * "Because you played {seed}" closer, which is narrow/single-seed): each
- * card's on-card reason is the overlap between ITS genres and the user's
- * top genres across their WHOLE taste vector (getTasteVector), not a
- * "like {one game}" attribution. Two cards in the same deck can — and
- * should — cite different genres, since the deck spans the user's full
- * taste, not one anchor title.
- *
- * Every swipe is persisted via swipeService.recordSwipe:
+ * Infinite supply: because the pool is the whole catalog rather than a small
+ * precomputed list, we background-fetch the next page (advancing a
+ * per-genre offset cursor) once the user gets within REFILL_THRESHOLD cards
+ * of the end of the current batch — the deck should never dead-end in a
+ * normal session. Every swipe is persisted via swipeService.recordSwipe:
  *   • ✕ Skip     → negative signal (recorded locally).
  *   • ♥ Backlog  → positive signal (recorded locally) AND written to the
- *                  cross-device library + game_trackers. The taste engine
- *                  reads game_trackers on its next run, so the like feeds
- *                  back into E0 wherever the engine supports it.
+ *                  cross-device library + game_trackers.
  *
- * When the finite recommendation list is exhausted (or the engine has none
- * yet) we show an honest empty/end state — we do not backfill with random
- * games.
+ * We only ever show a "that's all for now" state if a page fetch genuinely
+ * failed (e.g. IGDB/network unreachable) — never as a "ran out" state, since
+ * the catalog-backed pool is effectively inexhaustible.
  */
 export function SwipeDeck() {
   const { user } = useAuth()
@@ -107,76 +126,172 @@ export function SwipeDeck() {
 
   const [pool, setPool]             = useState(null) // null = initial loading
   const [currentIdx, setCurrentIdx] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [refillFailCount, setRefillFailCount] = useState(0)
 
-  const libraryIdsRef = useRef(new Set())
-  const cancelRef     = useRef(false)
+  const libraryIdsRef      = useRef(new Set())
+  const cancelRef          = useRef(false)
+  const tasteVectorRef     = useRef(null)
+  const genreCursorsRef    = useRef({})
+  const seenIdsRef         = useRef(new Set())
+  const fetchingMoreRef    = useRef(false)
+  const reloadTokenRef     = useRef(0)
+
+  // ── Persist / restore deck state across a card-tap → GameDetail → back ────
+
+  const persistSessionState = useCallback((poolArg, idxArg) => {
+    try {
+      sessionStorage.setItem(
+        DECK_SESSION_KEY,
+        JSON.stringify({
+          pool: poolArg,
+          currentIdx: idxArg,
+          cursors: genreCursorsRef.current,
+          seenIds: Array.from(seenIdsRef.current),
+        })
+      )
+    } catch { /* storage full — non-fatal */ }
+  }, [])
+
+  // ── Background refill ─────────────────────────────────────────────────────
+
+  const loadMore = useCallback(async () => {
+    if (fetchingMoreRef.current || cancelRef.current) return
+    fetchingMoreRef.current = true
+    try {
+      const excludeIds = new Set([
+        ...libraryIdsRef.current,
+        ...getSwipeExcludeIds(),
+        ...seenIdsRef.current,
+      ])
+      const { cards, cursors } = await fetchBroadDiscoveryBatch({
+        excludeIds,
+        cursors: genreCursorsRef.current,
+        genreWeights: tasteVectorRef.current?.genreWeights || null,
+      })
+      genreCursorsRef.current = cursors
+      if (cancelRef.current) return
+
+      if (cards.length === 0) {
+        setRefillFailCount((n) => n + 1)
+        return
+      }
+
+      const topGenres = topGenreNames(tasteVectorRef.current)
+      const newCards = cards.map((g) => gameToCard(g, topGenres))
+      for (const c of newCards) seenIdsRef.current.add(String(c.id))
+
+      setPool((prev) => (Array.isArray(prev) ? [...prev, ...newCards] : newCards))
+      setRefillFailCount(0)
+    } catch {
+      if (!cancelRef.current) setRefillFailCount((n) => n + 1)
+    } finally {
+      fetchingMoreRef.current = false
+    }
+  }, [])
 
   // ── Initial load ──────────────────────────────────────────────────────────
+
+  const load = useCallback(async () => {
+    const myToken = ++reloadTokenRef.current
+    setLoadFailed(false)
+    libraryIdsRef.current = buildLocalLibraryIds()
+
+    if (user?.id) {
+      try {
+        const { data } = await supabase
+          .from('game_trackers')
+          .select('igdb_game_id')
+          .eq('user_id', user.id)
+        for (const row of data ?? []) {
+          if (row.igdb_game_id) {
+            libraryIdsRef.current.add(String(row.igdb_game_id))
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    // Restore deck state when returning from a card-tap to GameDetail.
+    try {
+      const raw = sessionStorage.getItem(DECK_SESSION_KEY)
+      if (raw) {
+        sessionStorage.removeItem(DECK_SESSION_KEY)
+        const saved = JSON.parse(raw)
+        if (Array.isArray(saved.pool) && saved.pool.length > 0 && !cancelRef.current) {
+          genreCursorsRef.current = saved.cursors && typeof saved.cursors === 'object' ? saved.cursors : {}
+          seenIdsRef.current = new Set(Array.isArray(saved.seenIds) ? saved.seenIds : [])
+          setPool(saved.pool)
+          setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
+          // Taste vector still needed for future refills' order bias.
+          try { tasteVectorRef.current = await getTasteVector(user?.id) } catch { tasteVectorRef.current = null }
+          return
+        }
+      }
+    } catch { /* non-fatal — fall through to fresh fetch */ }
+
+    let vector = null
+    try { vector = await getTasteVector(user?.id) } catch { vector = null }
+    if (cancelRef.current || myToken !== reloadTokenRef.current) return
+    tasteVectorRef.current = vector
+
+    const excludeIds = new Set([
+      ...libraryIdsRef.current,
+      ...getSwipeExcludeIds(),
+    ])
+
+    genreCursorsRef.current = {}
+    seenIdsRef.current = new Set()
+
+    const { cards, cursors } = await fetchBroadDiscoveryBatch({
+      excludeIds,
+      cursors: {},
+      genreWeights: vector?.genreWeights || null,
+    })
+    if (cancelRef.current || myToken !== reloadTokenRef.current) return
+
+    genreCursorsRef.current = cursors
+    const topGenres = topGenreNames(vector)
+    const cardList = cards.map((g) => gameToCard(g, topGenres))
+    for (const c of cardList) seenIdsRef.current.add(String(c.id))
+
+    setPool(cardList)
+  }, [user?.id])
 
   useEffect(() => {
     cancelRef.current = false
 
-    async function load() {
-      libraryIdsRef.current = buildLocalLibraryIds()
-
-      if (user?.id) {
-        try {
-          const { data } = await supabase
-            .from('game_trackers')
-            .select('igdb_game_id')
-            .eq('user_id', user.id)
-          for (const row of data ?? []) {
-            if (row.igdb_game_id) {
-              libraryIdsRef.current.add(String(row.igdb_game_id))
-            }
-          }
-        } catch { /* non-fatal */ }
-      }
-
-      // Restore deck state when returning from a card-tap to GameDetail.
-      try {
-        const raw = sessionStorage.getItem(DECK_SESSION_KEY)
-        if (raw) {
-          sessionStorage.removeItem(DECK_SESSION_KEY)
-          const saved = JSON.parse(raw)
-          if (Array.isArray(saved.pool) && saved.pool.length > 0 && !cancelRef.current) {
-            setPool(saved.pool)
-            setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
-            return
-          }
-        }
-      } catch { /* non-fatal — fall through to fresh fetch */ }
-
-      let recs = []
-      let vector = null
-      try {
-        ;[recs, vector] = await Promise.all([
-          getRecommendations(user?.id, 40),
-          getTasteVector(user?.id),
-        ])
-      } catch { recs = []; vector = null }
-
-      if (cancelRef.current) return
-
-      const excludeIds = new Set([
-        ...libraryIdsRef.current,
-        ...getSwipeExcludeIds(),
-      ])
-
-      const topGenres = topGenreNames(vector)
-      const cards = recs
-        .map((rec) => recToCard(rec, topGenres))
-        .filter((c) => c.id != null && !excludeIds.has(String(c.id)))
-
-      setPool(cards)
-    }
-
     load().catch(() => {
-      if (!cancelRef.current) setPool([])
+      if (!cancelRef.current) {
+        setPool([])
+        setLoadFailed(true)
+      }
     })
 
     return () => { cancelRef.current = true }
-  }, [user?.id])
+  }, [load])
+
+  // Background-fetch the next page once the user is close to the end of the
+  // current batch, so the deck never dead-ends in a normal session.
+  useEffect(() => {
+    if (pool === null || pool.length === 0) return
+    if (refillFailCount >= MAX_REFILL_RETRIES) return
+    if (pool.length - currentIdx <= REFILL_THRESHOLD) {
+      loadMore()
+    }
+  }, [pool, currentIdx, loadMore, refillFailCount])
+
+  const handleRetryRefill = useCallback(() => {
+    setRefillFailCount(0)
+  }, [])
+
+  const handleRetryLoad = useCallback(() => {
+    load().catch(() => {
+      if (!cancelRef.current) {
+        setPool([])
+        setLoadFailed(true)
+      }
+    })
+  }, [load])
 
   // ── Swipe handlers ─────────────────────────────────────────────────────────
 
@@ -233,15 +348,10 @@ export function SwipeDeck() {
   // Tap the card body → open game detail (preserve deck to restore on back).
   const handleTap = useCallback(
     (game) => {
-      try {
-        sessionStorage.setItem(
-          DECK_SESSION_KEY,
-          JSON.stringify({ pool, currentIdx })
-        )
-      } catch { /* storage full — non-fatal */ }
+      persistSessionState(pool, currentIdx)
       navigate(`/game/${game.id}`)
     },
-    [navigate, pool, currentIdx]
+    [navigate, pool, currentIdx, persistSessionState]
   )
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -259,31 +369,56 @@ export function SwipeDeck() {
     )
   }
 
-  // No recommendations from the engine yet — honest empty state (never random).
+  // The broad catalog pool should always return *something* — an empty pool
+  // here means the initial fetch genuinely failed (network/IGDB down), not
+  // "nothing left to show". Honest error state with a manual retry.
   if (pool.length === 0) {
     return (
       <div className="swipe-deck">
         <div className="swipe-deck__empty" role="status">
           <div className="swipe-deck__empty-icon" aria-hidden="true">✦</div>
-          <p className="swipe-deck__empty-title">Personalized picks are warming up</p>
-          <p className="swipe-deck__empty-body">
-            Rate a few games you've played and we'll tune this deck to your taste.
+          <p className="swipe-deck__empty-title">
+            {loadFailed ? "Couldn't load games right now" : 'Loading is taking a while'}
           </p>
+          <p className="swipe-deck__empty-body">
+            Check your connection and try again.
+          </p>
+          <button type="button" className="swipe-deck__retry-btn" onClick={handleRetryLoad}>
+            Try again
+          </button>
         </div>
       </div>
     )
   }
 
-  // Reached the end of the finite recommendation list.
+  // Caught up with the currently-loaded page — a background refill is either
+  // already in flight (useEffect above) or about to fire. This is a brief
+  // loading beat, not a real "end of deck" state, since the pool is backed
+  // by the full catalog. Only surface a manual-retry state after several
+  // consecutive refill failures (a real connectivity problem).
   if (currentIdx >= pool.length) {
+    if (refillFailCount >= MAX_REFILL_RETRIES) {
+      return (
+        <div className="swipe-deck">
+          <div className="swipe-deck__empty" role="status">
+            <div className="swipe-deck__empty-icon" aria-hidden="true">✦</div>
+            <p className="swipe-deck__empty-title">Couldn't load more games</p>
+            <p className="swipe-deck__empty-body">
+              Check your connection and try again.
+            </p>
+            <button type="button" className="swipe-deck__retry-btn" onClick={handleRetryRefill}>
+              Try again
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="swipe-deck">
-        <div className="swipe-deck__empty" role="status">
-          <div className="swipe-deck__empty-icon swipe-deck__empty-icon--done" aria-hidden="true">✓</div>
-          <p className="swipe-deck__empty-title">That's all for now</p>
-          <p className="swipe-deck__empty-body">
-            You've been through today's picks — check back soon for more.
-          </p>
+        <div className="swipe-deck__scene" aria-busy="true" aria-label="Loading more games">
+          <div className="swipe-deck__skel swipe-deck__skel--2" />
+          <div className="swipe-deck__skel swipe-deck__skel--1" />
+          <div className="swipe-deck__skel swipe-deck__skel--0" />
         </div>
       </div>
     )

@@ -1630,6 +1630,224 @@ export async function getDiscoveryDeck({
   return formatted
 }
 
+// ─── Broad discovery pool — full-catalog swipe deck (ALL genres, always) ─────
+//
+// The E0 taste engine's `user_recommendations` table (see tasteEngineService)
+// only ever contains candidates pulled from the user's own top genres +
+// similar_games of already-played titles. That's correct for "Because You
+// Played" (intentionally narrow), but it means an entire genre the user has
+// never engaged with — Sports, Puzzle, Simulation, Racing, Fighting, etc. —
+// can NEVER appear in that pool, no matter how good the game is.
+//
+// This is the fix: query IGDB directly across EVERY major genre, gated only
+// by quality (total_rating + total_rating_count), never by genre affinity.
+// A taste vector may be supplied to nudge ORDER only (see applyTasteOrderBias)
+// — it must never exclude a genre. Coverage first, personalization second.
+
+// Every major IGDB genre — deliberately NOT curated down to "genres this app
+// cares about". Sports/Puzzle/Simulation/Racing/Fighting are exactly the
+// genres a taste-restricted pool would starve out, so they're included here
+// on equal footing with RPG/Adventure/Shooter.
+export const BROAD_DISCOVERY_GENRES = [
+  { id: 2,  name: 'Point-and-click' },
+  { id: 4,  name: 'Fighting' },
+  { id: 5,  name: 'Shooter' },
+  { id: 7,  name: 'Music' },
+  { id: 8,  name: 'Platform' },
+  { id: 9,  name: 'Puzzle' },
+  { id: 10, name: 'Racing' },
+  { id: 11, name: 'Real Time Strategy (RTS)' },
+  { id: 12, name: 'Role-playing (RPG)' },
+  { id: 13, name: 'Simulator' },
+  { id: 14, name: 'Sport' },
+  { id: 15, name: 'Strategy' },
+  { id: 16, name: 'Turn-based strategy (TBS)' },
+  { id: 24, name: 'Tactical' },
+  { id: 25, name: 'Hack and slash/Beat \'em up' },
+  { id: 26, name: 'Quiz/Trivia' },
+  { id: 30, name: 'Pinball' },
+  { id: 31, name: 'Adventure' },
+  { id: 32, name: 'Indie' },
+  { id: 33, name: 'Arcade' },
+  { id: 34, name: 'Visual Novel' },
+  { id: 35, name: 'Card & Board Game' },
+  { id: 36, name: 'MOBA' },
+]
+
+// Quality bar — the ONLY filter besides "not already excluded". Deliberately
+// symmetric across every genre above: no genre gets a stricter or looser
+// bar than any other.
+const BROAD_MIN_RATING = 68
+const BROAD_MIN_RATING_COUNT = 12
+const BROAD_FIELDS =
+  'fields name, cover.image_id, first_release_date, total_rating, total_rating_count, genres.name'
+const BROAD_QUALITY_WHERE =
+  `total_rating != null & total_rating_count != null & total_rating >= ${BROAD_MIN_RATING}` +
+  ` & total_rating_count >= ${BROAD_MIN_RATING_COUNT} & cover != null & version_parent = null`
+
+function buildBroadGenreBlock(genre, offset, perGenreLimit) {
+  const body =
+    `${BROAD_FIELDS}; ` +
+    `where ${BROAD_QUALITY_WHERE} & genres = (${genre.id}); ` +
+    `sort total_rating_count desc; limit ${perGenreLimit}; offset ${offset};`
+  return { genre, offset, endpoint: 'games', name: `genre_${genre.id}`, body }
+}
+
+function formatBroadGame(g) {
+  if (!g?.id || !g?.name || !g?.cover?.image_id) return null
+  const year = g.first_release_date
+    ? new Date(g.first_release_date * 1000).getFullYear()
+    : null
+  const genres = (g.genres || []).map((x) => x.name).filter(Boolean)
+  return {
+    id: g.id,
+    title: g.name,
+    image: coverUrlFromImageId(g.cover.image_id),
+    year,
+    genres,
+    genre: genres.join(', ') || null,
+    totalRating: g.total_rating != null ? Number(g.total_rating) : null,
+    totalRatingCount: g.total_rating_count != null ? Number(g.total_rating_count) : null,
+  }
+}
+
+/**
+ * Light, SECONDARY personalization: nudges cards whose genres the user tends
+ * to like slightly earlier in the batch. The random jitter is intentionally
+ * large relative to the taste boost so it can never collapse the batch back
+ * into a narrow, taste-only feed — the round-robin genre interleave always
+ * dominates the overall mix. Never removes a card, never re-groups by genre.
+ */
+function applyTasteOrderBias(cards, genreWeights) {
+  if (!genreWeights) return cards
+  return cards
+    .map((card) => {
+      const boost = (card.genres || []).reduce(
+        (max, g) => Math.max(max, genreWeights[g] || 0),
+        0
+      )
+      return { card, key: Math.random() - boost * 0.35 }
+    })
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.card)
+}
+
+/**
+ * fetchBroadDiscoveryBatch — one page of the full-genre-catalog swipe pool.
+ *
+ * Queries EVERY genre in BROAD_DISCOVERY_GENRES (chunked into ≤10-block
+ * /multiquery requests — 3 HTTP calls total for 23 genres, well under the
+ * 4 req/s ceiling since this only runs on initial load / background
+ * refill, never per-card), quality-gated by total_rating/total_rating_count
+ * only. No genre is ever skipped because the user hasn't shown affinity
+ * for it.
+ *
+ * Results are interleaved round-robin across genres before returning, so a
+ * single batch is never accidentally dominated by whichever genre happens
+ * to have the deepest catalog (e.g. RPG/Adventure) — every genre that
+ * returned results gets a fair turn in the mix.
+ *
+ * Pagination: pass the returned `cursors` back in on the next call to page
+ * further into each genre's catalog (a genre's offset only advances when it
+ * returned a full page, so a thin genre never gets skipped past). This is
+ * what gives the deck infinite supply — the candidate pool is the whole
+ * real IGDB catalog, not a small precomputed list, so background-fetching
+ * the next page as the user nears the end of the current batch means the
+ * deck never dead-ends.
+ *
+ * @param {Object}                 opts
+ * @param {Set<string>}            [opts.excludeIds]    already-tracked/seen IGDB ids
+ * @param {Record<string,number>}  [opts.cursors]       per-genre-id offset from a previous call
+ * @param {number}                 [opts.perGenreLimit] rows requested per genre per page
+ * @param {Record<string,number>|null} [opts.genreWeights] taste vector genre
+ *        weights (0–1), used ONLY to nudge order — never to exclude a genre.
+ * @returns {Promise<{ cards: Array, cursors: Record<string,number> }>}
+ */
+export async function fetchBroadDiscoveryBatch({
+  excludeIds = new Set(),
+  cursors = {},
+  perGenreLimit = 5,
+  genreWeights = null,
+} = {}) {
+  const nextCursors = { ...cursors }
+  const genres = BROAD_DISCOVERY_GENRES
+
+  const blocks = genres.map((genre) =>
+    buildBroadGenreBlock(genre, nextCursors[genre.id] || 0, perGenreLimit)
+  )
+
+  // /multiquery caps at 10 sub-queries per request — chunk so every genre
+  // still gets queried this batch, just across a couple of HTTP calls.
+  const chunks = []
+  for (let i = 0; i < blocks.length; i += 10) chunks.push(blocks.slice(i, i + 10))
+
+  const genreBuckets = new Map(genres.map((g) => [g.id, []]))
+
+  const applyChunkResult = (block, rows) => {
+    genreBuckets.get(block.genre.id).push(...(rows || []))
+    // Only advance the cursor when the genre returned a full page — a short
+    // page means we've hit the end of that genre's quality-gated catalog,
+    // so re-querying the same offset next time is harmless (dedup handles
+    // any repeats via excludeIds).
+    if (Array.isArray(rows) && rows.length >= perGenreLimit) {
+      nextCursors[block.genre.id] = block.offset + perGenreLimit
+    }
+  }
+
+  for (const chunk of chunks) {
+    try {
+      const multi = await igdbMultiQuery(chunk)
+      const byName = new Map(multi.map((r) => [r.name, r.result || []]))
+      for (const block of chunk) applyChunkResult(block, byName.get(block.name))
+    } catch (err) {
+      // Multiquery unsupported/failed — fall back to parallel per-genre
+      // calls for just this chunk so one bad chunk doesn't sink the batch.
+      if (import.meta.env.DEV) console.warn('[broadDiscovery] multiquery chunk failed, falling back', err)
+      const settled = await Promise.allSettled(chunk.map((b) => igdbRequest('games', b.body)))
+      settled.forEach((r, i) => {
+        applyChunkResult(chunk[i], r.status === 'fulfilled' ? r.value : [])
+      })
+    }
+  }
+
+  // Format + de-dupe + exclude, per genre bucket — kept separate so the
+  // interleave step below still gets a fair per-genre supply to draw from.
+  const seen = new Set()
+  for (const [genreId, rows] of genreBuckets) {
+    const formatted = []
+    for (const row of rows) {
+      const card = formatBroadGame(row)
+      if (!card) continue
+      const key = String(card.id)
+      if (seen.has(key) || excludeIds.has(key)) continue
+      seen.add(key)
+      formatted.push(card)
+    }
+    genreBuckets.set(genreId, formatted)
+  }
+
+  // Round-robin interleave: one pass per "slot" takes one card from every
+  // genre bucket that still has one left, so genre order in the final list
+  // is mixed, not grouped by catalog depth.
+  const interleaved = []
+  let more = true
+  while (more) {
+    more = false
+    for (const rows of genreBuckets.values()) {
+      const card = rows.shift()
+      if (card) {
+        interleaved.push(card)
+        more = true
+      }
+    }
+  }
+
+  return {
+    cards: applyTasteOrderBias(interleaved, genreWeights),
+    cursors: nextCursors,
+  }
+}
+
 // ─── Mood decks — entry chips that seed the swipe stack ──────────────────────
 //
 // Each mood maps to EXPLICIT IGDB filter criteria. No fabricated groupings —

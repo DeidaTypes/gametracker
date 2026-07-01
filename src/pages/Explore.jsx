@@ -14,9 +14,12 @@ import './Explore.css'
  * Explore (Discover) — editorial discovery surface.
  *
  * Section spine, top to bottom:
- *   1. Swipe to discover  — E0 taste-ranked Tinder deck. BROAD exploration:
- *      draws from the user's whole taste vector across genres/themes, for
- *      active browsing/decision-making (skip/backlog).
+ *   1. Swipe to discover  — full-catalog Tinder deck. Sources from EVERY
+ *      major IGDB genre (quality-gated, not taste-restricted) so genres the
+ *      user has never engaged with still surface; the taste vector only
+ *      lightly nudges card order, never which genres are eligible. Backed
+ *      by the real IGDB catalog + background pagination, so it never runs
+ *      out mid-session — for active browsing/decision-making (skip/backlog).
  *   2. Collections        — curated ("by Checkpoint") + popular community
  *                            lists as mosaic cards (hidden if none qualify)
  *   3. From people you follow — "Recently": followed users' real ratings
@@ -56,7 +59,7 @@ function Explore() {
         </button>
       </div>
 
-      {/* ── 1. Swipe to discover — E0 taste-ranked deck ── */}
+      {/* ── 1. Swipe to discover — full-catalog, all-genres deck ── */}
       <section className="explore-section explore-section--swipe-deck">
         <div className="explore-section__pad discover-section-header">
           <h2 className="discover-section-title">Swipe to discover</h2>
