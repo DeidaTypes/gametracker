@@ -249,6 +249,28 @@ body[data-larger-text='true'] {
   --color-accent-teal: #4FA899;
   --color-accent-orange: #C4634E;
 
+  /* ---- Data-viz: genre tokens ----
+     Categorical palette for genre-overlap visualizations (Discover →
+     Recently taste-match bars, Because You Played). Deliberately separate
+     from --color-accent-* (used for general UI accents) so a future accent
+     or theme change never desaturates these — see src/utils/genreColors.js
+     for the IGDB genre-name → token mapping. */
+  --genre-action:     #E2654A;
+  --genre-rpg:        #E8A33D;
+  --genre-adventure:  #5FBF7B;
+  --genre-strategy:   #4FA8D8;
+  --genre-shooter:    #C0574F;
+  --genre-sports:     #3DBFB0;
+  --genre-racing:     #E0567E;
+  --genre-puzzle:     #8B7BE0;
+  --genre-simulation: #6FA8DC;
+  --genre-fighting:   #D9736F;
+  --genre-platformer: #52B788;
+  --genre-horror:     #A6414F;
+  --genre-indie:      #C77DD2;
+  --genre-arcade:     #E0B84F;
+  --genre-default:    #7C89A8;
+
   /* Review / Journal button accent colors — vivid fills, bright text */
   --accent-review: #0a9e6a;
   --accent-review-text: #b6fde0;

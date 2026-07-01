@@ -2,6 +2,8 @@ import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { getRecentCommunityReviews } from './reviewService'
 import { getGamesByIds, getGamesByGenre } from './igdb'
+import { getCircleActivityEvents, getRecentGlobalActivityEvents } from './activityEventsService'
+import { getTasteMatch } from './tasteEngineService'
 
 /**
  * Community Service — REAL cross-user activity for the Explore/Discover page.
@@ -709,6 +711,110 @@ export async function getMostPlayedInCircle(limit = 10) {
   }
 }
 
+const RATING_REVIEW_EVENT_TYPES = ['reviewed', 'rated']
+
+/**
+ * Map one `activity_events` row into a Discover "Recently" activity card.
+ * Returns null for rows missing the minimum fields a card needs to render
+ * (no fabricated placeholders for a missing game title/id).
+ */
+function _activityCardFromEvent(event) {
+  const meta = event.metadata || {}
+  const gameId = event.entity_id
+  if (gameId == null || !meta.game_title) return null
+  const actor = event.actor || {}
+  return {
+    id: event.id,
+    type: event.type, // 'reviewed' | 'rated'
+    actor: {
+      id: actor.id || event.actor_user_id || null,
+      username: actor.username || null,
+      displayName: actor.display_name || actor.username || 'Someone',
+      avatarUrl: actor.avatar_url || null,
+    },
+    game: {
+      id: gameId,
+      title: meta.game_title,
+      image: meta.game_image || null,
+    },
+    rating: meta.rating != null ? Number(meta.rating) : null,
+    reviewId: meta.review_id || null,
+    hasSpoilers: !!meta.has_spoilers,
+    timestamp: event.created_at ? new Date(event.created_at).getTime() : 0,
+  }
+}
+
+/**
+ * "Recently" — Discover's "From people you follow" activity feed.
+ *
+ * RATINGS + REVIEWS only (`activity_events.type IN ('reviewed','rated')`).
+ * List-adds (`type = 'listed'`) are deliberately excluded — Collections
+ * owns that surface.
+ *
+ * Never empty when the platform has ANY qualifying activity: if the
+ * viewer follows no one, or their circle hasn't rated/reviewed anything
+ * recently, this falls back to the broader community window so the shelf
+ * always has something real to show (`scope: 'community'` in the result
+ * lets the caller adjust the subtitle copy).
+ *
+ * Each item is annotated with `tasteMatch` — the real E0
+ * `getTasteMatch(viewer, actor)` result (overall score + per-genre
+ * breakdown), or `null` when the engine doesn't have enough signal for
+ * that pair yet. Callers must hide the taste-match UI on `null` rather
+ * than inventing a percentage. Lookups are de-duplicated per actor so a
+ * followee with several recent rows only costs one RPC call.
+ *
+ * Both `getCircleActivityEvents` and `getRecentGlobalActivityEvents`
+ * already exclude blocked users (`applyBlockFilter`) and use the explicit
+ * `users!activity_events_actor_user_id_fkey` FK hint — see
+ * activityEventsService.js.
+ *
+ * @param {number} limit
+ * @returns {Promise<{ scope: 'following'|'community', items: Array }>}
+ */
+export async function getRecentFollowingActivity(limit = 10) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const viewerId = user?.id || null
+
+    let scope = 'following'
+    const circleRows = await getCircleActivityEvents({ limit: Math.min(100, limit * 4) })
+    let rows = circleRows.filter((e) => RATING_REVIEW_EVENT_TYPES.includes(e.type))
+
+    if (rows.length === 0) {
+      scope = 'community'
+      const globalRows = await getRecentGlobalActivityEvents({ limit: Math.min(50, limit * 4) })
+      rows = globalRows.filter((e) => RATING_REVIEW_EVENT_TYPES.includes(e.type))
+    }
+
+    const items = rows.map(_activityCardFromEvent).filter(Boolean).slice(0, limit)
+    if (items.length === 0 || !viewerId) {
+      return { scope, items: items.map((it) => ({ ...it, tasteMatch: null })) }
+    }
+
+    const uniqueActorIds = Array.from(
+      new Set(items.map((it) => it.actor.id).filter(Boolean))
+    )
+    const matchPairs = await Promise.all(
+      uniqueActorIds.map(async (actorId) => [actorId, await getTasteMatch(viewerId, actorId)])
+    )
+    const matchByActor = new Map(matchPairs)
+
+    return {
+      scope,
+      items: items.map((it) => ({
+        ...it,
+        tasteMatch: it.actor.id ? matchByActor.get(it.actor.id) || null : null,
+      })),
+    }
+  } catch (err) {
+    console.error('[community] getRecentFollowingActivity failed:', err)
+    return { scope: 'following', items: [] }
+  }
+}
+
 /**
  * Community Pulse for a single game — all three circle-scoped signals
  * needed by GameDetail's "Community Pulse" section.
@@ -816,4 +922,4 @@ export async function getCirclePulseForGame(igdbGameId) {
 }
 
 export { WEEK_MS }
-export { getTrendingCircle, getTrendingByGenre }
+

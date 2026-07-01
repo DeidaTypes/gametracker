@@ -6,6 +6,8 @@ import {
 } from './activityEventsService'
 import { getTracker } from './hoursService'
 import { queueCelebration } from './celebrationService'
+import { supabase } from './supabase'
+import { showToast } from '../components/Toast'
 
 // Map tracker status → Pulse activity_event type. 'want' has no
 // corresponding event type — adding a game to the wishlist is a
@@ -139,6 +141,65 @@ export function addGameToList(listId, game) {
   
   saveLibrary(library)
   return true
+}
+
+/**
+ * Add a game to the Want to Play backlog from a passive discovery surface
+ * (Discover → Recently activity cards, Because You Played rail). Mirrors
+ * SwipeDeck's swipe-right contract:
+ *   1. Optimistic local want-to-play list write (always).
+ *   2. Best-effort cross-device sync — upserts a 'want' game_trackers row
+ *      for the signed-in user. A Supabase failure never rolls back the
+ *      local add; it's logged and swallowed.
+ *
+ * Shows its own success/duplicate toast so every call site gets the same
+ * feedback without repeating the copy.
+ *
+ * @param {{ id: string|number, title: string, image?: string|null,
+ *           year?: number|null, genre?: string|null, rating?: number|null }} game
+ * @returns {Promise<boolean>}  true if newly added, false if already backlogged.
+ */
+export async function addGameToBacklog(game) {
+  if (!game?.id) return false
+
+  const added = addGameToList('want-to-play', {
+    id: String(game.id),
+    title: game.title,
+    image: game.image || null,
+    year: game.year ?? null,
+    genre: game.genre ?? null,
+    rating: game.rating ?? null,
+  })
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user?.id) {
+      const { error } = await supabase.from('game_trackers').upsert(
+        {
+          user_id: user.id,
+          igdb_game_id: String(game.id),
+          status: 'want',
+          game_title: game.title,
+          game_image: game.image || null,
+        },
+        { onConflict: 'user_id,igdb_game_id' }
+      )
+      if (error) {
+        console.error('[library] addGameToBacklog tracker sync failed:', error.message)
+      }
+    }
+  } catch (err) {
+    console.error('[library] addGameToBacklog crashed:', err)
+  }
+
+  showToast(
+    added ? `Added "${game.title}" to Backlog` : `"${game.title}" is already in your backlog`,
+    added ? 'success' : 'error',
+    2500
+  )
+  return added
 }
 
 // Remove game from a list

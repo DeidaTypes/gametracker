@@ -9,8 +9,11 @@ const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
  * SwipeCard — one Tinder-style game card in the "Swipe to discover" deck.
  *
  * The card is slim: cover art fills the frame; a single frosted bottom overlay
- * carries the title, year, and a one-line "like {seed}" recommendation reason,
- * plus the ✕ (skip) and ♥ (backlog) actions. No genre pill.
+ * carries the title, year, and a one-line reason built from the overlap
+ * between this game's genres and the user's WHOLE taste vector (matchGenres),
+ * plus the ✕ (skip) and ♥ (backlog) actions. Deliberately NOT a single-seed
+ * "like {game}" attribution — that framing belongs to the page's "Because
+ * You Played" closer rail, not the broad-exploration swipe deck.
  *
  * Top card (isTop=true): responds to pointer drag gestures and shows the
  * action buttons. Swiping past SWIPE_THRESHOLD left/right calls the respective
@@ -21,7 +24,7 @@ const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
  * not interactive.
  *
  * Props
- *   game           { id, title, image, year, seed }
+ *   game           { id, title, image, year, matchGenres, matchScore }
  *   stackIndex     0 = top, 1 = mid, 2 = back
  *   isTop          true only for the interactive top card
  *   onSwipeRight   (game) => void  called after exit animation completes (♥)
@@ -106,6 +109,16 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
 
   const coverUrl = game.image || game.coverUrl || null
 
+  // Broad taste-vector reason (never a single-seed "like {game}" line —
+  // that framing is reserved for the Because You Played rail). Prefer the
+  // genre overlap; fall back to the match score when no genre overlap was
+  // found so the card still shows *some* honest signal.
+  const reasonText = game.matchGenres?.length
+    ? game.matchGenres.join(' & ')
+    : game.matchScore
+    ? `${Math.round(game.matchScore)}% taste match`
+    : null
+
   // Compute transform + transition for this card's position in the stack.
   let transform = ''
   let transition = ''
@@ -157,7 +170,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       role={isTop ? 'img' : undefined}
       aria-label={
         isTop
-          ? `${game.title}${game.year ? `, ${game.year}` : ''}${game.seed ? `. Recommended because you like ${game.seed}` : ''}`
+          ? `${game.title}${game.year ? `, ${game.year}` : ''}${reasonText ? `. Matches your taste: ${reasonText}` : ''}`
           : undefined
       }
     >
@@ -186,13 +199,13 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
 
         <p className="swipe-card__meta">
           {game.year ? <span className="swipe-card__year">{game.year}</span> : null}
-          {game.year && game.seed ? (
+          {game.year && reasonText ? (
             <span className="swipe-card__dot" aria-hidden="true">·</span>
           ) : null}
-          {game.seed ? (
+          {reasonText ? (
             <span className="swipe-card__why">
               <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
-              like {game.seed}
+              {reasonText}
             </span>
           ) : null}
         </p>

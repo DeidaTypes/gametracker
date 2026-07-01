@@ -4,6 +4,7 @@ import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
+import BecauseYouPlayedRail from '../components/explore/BecauseYouPlayedRail'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import './Explore.css'
 
@@ -13,10 +14,17 @@ import './Explore.css'
  * Explore (Discover) — editorial discovery surface.
  *
  * Section spine, top to bottom:
- *   1. Swipe to discover  — E0 taste-ranked Tinder deck
+ *   1. Swipe to discover  — E0 taste-ranked Tinder deck. BROAD exploration:
+ *      draws from the user's whole taste vector across genres/themes, for
+ *      active browsing/decision-making (skip/backlog).
  *   2. Collections        — curated ("by Checkpoint") + popular community
  *                            lists as mosaic cards (hidden if none qualify)
- *   3. From people you follow — scaffold slot (E3 owns internals)
+ *   3. From people you follow — "Recently": followed users' real ratings
+ *      + reviews, each with an algorithmic taste-match strip. Falls back
+ *      to broader community activity so it's never empty.
+ *   4. Because you played {seed} — closer rail. NARROW + precise: E0 recs
+ *      anchored to exactly ONE named seed game, passive/scannable. Never
+ *      overlaps with the Swipe deck's broad variety.
  */
 function Explore() {
   const { isOpen, open } = useSearchOverlay()
@@ -59,8 +67,11 @@ function Explore() {
       {/* ── 2. Collections — curated + community lists ── */}
       <CollectionsShelf />
 
-      {/* ── 3. From people you follow — E3 slot ── */}
+      {/* ── 3. From people you follow — "Recently" ratings & reviews ── */}
       <FollowingShelf />
+
+      {/* ── 4. Because you played {seed} — single-seed closer rail ── */}
+      <BecauseYouPlayedRail />
 
     </div>
   )

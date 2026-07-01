@@ -1,0 +1,226 @@
+/* =============================================
+   RecentActivityCard — Discover "Recently" shelf.
+   Followed users' recent ratings + reviews (no list-adds), each with a
+   real algorithmic taste-match strip and contextual actions.
+   ============================================= */
+
+.recent-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-activity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* ---- Head: actor + action + game sentence ---- */
+.recent-activity-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.recent-activity-card__avatar-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-activity-card__head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.recent-activity-card__sentence {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--text-secondary);
+}
+
+.recent-activity-card__actor-name,
+.recent-activity-card__game-name {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-activity-card__actor-name {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.recent-activity-card__game-name {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.recent-activity-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.recent-activity-card__time {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+/* ---- Tappable game cover ---- */
+.recent-activity-card__cover-row {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-activity-card__cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  object-position: center 25%;
+}
+
+.recent-activity-card__game-title-overlay {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  right: 10px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Taste-match strip ---- */
+.recent-activity-card__taste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+}
+
+.recent-activity-card__taste-score {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.recent-activity-card__taste-bar {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.recent-activity-card__taste-seg {
+  height: 100%;
+  min-width: 3px;
+}
+
+.recent-activity-card__taste-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.recent-activity-card__taste-genre {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.recent-activity-card__taste-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---- Actions row ---- */
+.recent-activity-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recent-activity-card__backlog-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  border-radius: var(--radius-full);
+  padding: 7px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.recent-activity-card__backlog-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.recent-activity-card__icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.recent-activity-card__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 6px;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-activity-card__heart-icon--liked {
+  color: var(--color-accent-rust, #c4634e);
+}

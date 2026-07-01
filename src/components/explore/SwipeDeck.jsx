@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { getRecommendations } from '../../services/tasteEngineService'
+import { getRecommendations, getTasteVector } from '../../services/tasteEngineService'
 import { getAllLists, addGameToList } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
@@ -34,19 +34,40 @@ function buildLocalLibraryIds() {
 }
 
 /**
- * Map an E0 recommendation row → the card shape SwipeCard consumes.
- * genre is joined so swipeService can record a coherent negative/positive
- * signal; `seed` powers the on-card "like {seed}" reason.
+ * Top N genre names from a taste vector, highest weight first. Used to
+ * find which of a candidate's genres actually overlap with what the user
+ * likes across their WHOLE library — not just one seed game.
  */
-function recToCard(rec) {
+function topGenreNames(vector, n = 6) {
+  if (!vector?.genreWeights) return []
+  return Object.entries(vector.genreWeights)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([name]) => name)
+}
+
+/**
+ * Map an E0 recommendation row → the card shape SwipeCard consumes.
+ *
+ * `matchGenres` is the overlap between this candidate's own genres and the
+ * user's top taste-vector genres (broad, whole-library signal) — this is
+ * what SwipeCard shows as the reason, NOT a single seed game. That framing
+ * is reserved for the "Because You Played" rail so the two surfaces never
+ * say the same thing about the same card.
+ */
+function recToCard(rec, topGenres) {
+  const genres = Array.isArray(rec.game.genres) ? rec.game.genres : []
+  const matchGenres = topGenres.length
+    ? genres.filter((g) => topGenres.includes(g)).slice(0, 2)
+    : []
   return {
     id: rec.game.id,
     title: rec.game.title,
     image: rec.game.image,
     year: rec.game.year ?? null,
-    genre: Array.isArray(rec.game.genres) ? rec.game.genres.join(', ') : null,
+    genre: genres.join(', ') || null,
     rating: rec.game.totalRating != null ? rec.game.totalRating / 20 : null,
-    seed: rec.becauseOf?.title || null,
+    matchGenres,
     matchScore: rec.matchScore,
   }
 }
@@ -60,6 +81,14 @@ function recToCard(rec) {
  * getRecommendations (precomputed, taste-ranked) — NEVER random IGDB games.
  * Already-tracked games and previously-swiped games are excluded client-side
  * as a belt-and-suspenders on top of the engine's own exclusions.
+ *
+ * BROAD exploration by design (the deliberate contrast with the page's
+ * "Because you played {seed}" closer, which is narrow/single-seed): each
+ * card's on-card reason is the overlap between ITS genres and the user's
+ * top genres across their WHOLE taste vector (getTasteVector), not a
+ * "like {one game}" attribution. Two cards in the same deck can — and
+ * should — cite different genres, since the deck spans the user's full
+ * taste, not one anchor title.
  *
  * Every swipe is persisted via swipeService.recordSwipe:
  *   • ✕ Skip     → negative signal (recorded locally).
@@ -119,9 +148,13 @@ export function SwipeDeck() {
       } catch { /* non-fatal — fall through to fresh fetch */ }
 
       let recs = []
+      let vector = null
       try {
-        recs = await getRecommendations(user?.id, 40)
-      } catch { recs = [] }
+        ;[recs, vector] = await Promise.all([
+          getRecommendations(user?.id, 40),
+          getTasteVector(user?.id),
+        ])
+      } catch { recs = []; vector = null }
 
       if (cancelRef.current) return
 
@@ -130,8 +163,9 @@ export function SwipeDeck() {
         ...getSwipeExcludeIds(),
       ])
 
+      const topGenres = topGenreNames(vector)
       const cards = recs
-        .map(recToCard)
+        .map((rec) => recToCard(rec, topGenres))
         .filter((c) => c.id != null && !excludeIds.has(String(c.id)))
 
       setPool(cards)

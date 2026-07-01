@@ -163,3 +163,123 @@ export async function getRecommendations(userId, limit = 20) {
     return []
   }
 }
+
+const BECAUSE_YOU_PLAYED_MIN_RAIL = 4
+const BECAUSE_YOU_PLAYED_ROTATION_KEY = 'gt:because-you-played:seed-rotation:v1'
+
+/** Owned/tracked IGDB ids for `userId`, as a Set<string> — client-side
+ * belt-and-suspenders on top of the engine's own owned-game exclusion. */
+async function _getOwnedGameIds(userId) {
+  const ids = new Set()
+  try {
+    const { data } = await supabase
+      .from('game_trackers')
+      .select('igdb_game_id')
+      .eq('user_id', userId)
+    for (const row of data ?? []) {
+      if (row.igdb_game_id != null) ids.add(String(row.igdb_game_id))
+    }
+  } catch {
+    // soft-fail — no exclusions rather than blocking the rail
+  }
+  return ids
+}
+
+/** Advances (and persists) the per-user rotation cursor into [0, seedCount). */
+function _nextRotationIndex(userId, seedCount) {
+  if (seedCount <= 0) return 0
+  try {
+    const raw = localStorage.getItem(BECAUSE_YOU_PLAYED_ROTATION_KEY)
+    const state = raw ? JSON.parse(raw) : {}
+    const current = Number.isInteger(state[userId]) ? state[userId] : -1
+    const next = (current + 1) % seedCount
+    state[userId] = next
+    localStorage.setItem(BECAUSE_YOU_PLAYED_ROTATION_KEY, JSON.stringify(state))
+    return next
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * getBecauseYouPlayed(userId) — the Discover page's "Because you played X"
+ * closer rail.
+ *
+ * NARROW + precise by design, unlike SwipeDeck (which now draws broadly
+ * across the whole taste vector — see SwipeDeck.jsx): every row returned
+ * here was recommended *because of* the exact same single seed game, named
+ * in the returned `seed.title`. Rotates which top-rated seed it anchors to
+ * on every call (persisted per-user in localStorage) so the closer doesn't
+ * spotlight the same title every visit.
+ *
+ * Composition only — reads getTasteVector + getRecommendations (both
+ * already precomputed by the engine) and groups/filters client-side.
+ * Never calls IGDB directly; never invents a seed or a pick.
+ *
+ * @param {string} [userId]  Defaults to the current user.
+ * @param {{ limit?: number }} [opts]
+ * @returns {Promise<null | {
+ *   seed: { id: number, title: string },
+ *   items: Array<{ game: object, matchScore: number }>,
+ * }>}  null when the engine has no recommendations yet for this user, or
+ *      every recommended game is already owned.
+ */
+export async function getBecauseYouPlayed(userId, { limit = 10 } = {}) {
+  try {
+    const target = userId || (await currentUserId())
+    if (!target) return null
+
+    const [vector, recs, ownedIds] = await Promise.all([
+      getTasteVector(target),
+      getRecommendations(target, 60),
+      _getOwnedGameIds(target),
+    ])
+
+    if (!recs.length) return null
+
+    const available = recs.filter(
+      (r) => r.game.id != null && !ownedIds.has(String(r.game.id))
+    )
+    if (!available.length) return null
+
+    // Group by seed game so we can anchor the whole rail to exactly one.
+    const bySeed = new Map()
+    for (const r of available) {
+      const seedId = r.becauseOf?.id
+      if (seedId == null) continue
+      if (!bySeed.has(seedId)) bySeed.set(seedId, { title: r.becauseOf.title, recs: [] })
+      bySeed.get(seedId).recs.push(r)
+    }
+    if (bySeed.size === 0) return null
+
+    // Rotation order: the engine's own top-rated list first (highest
+    // affinity), then any remaining seeds not represented there.
+    const preferredOrder = (vector?.topRatedGameIds || []).filter((id) => bySeed.has(id))
+    for (const seedId of bySeed.keys()) {
+      if (!preferredOrder.includes(seedId)) preferredOrder.push(seedId)
+    }
+
+    const minRail = Math.min(BECAUSE_YOU_PLAYED_MIN_RAIL, available.length)
+    const eligible = preferredOrder.filter((id) => bySeed.get(id).recs.length >= minRail)
+    const rotationPool = eligible.length > 0 ? eligible : preferredOrder
+    if (rotationPool.length === 0) return null
+
+    const idx = _nextRotationIndex(target, rotationPool.length)
+    const seedId = rotationPool[idx]
+    const seedGroup = bySeed.get(seedId)
+
+    const items = seedGroup.recs
+      .slice()
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, limit)
+      .map((r) => ({ game: r.game, matchScore: r.matchScore }))
+
+    return {
+      seed: { id: seedId, title: seedGroup.title || 'a game you loved' },
+      items,
+    }
+  } catch (err) {
+    console.error('[tasteEngine] getBecauseYouPlayed crashed:', err)
+    return null
+  }
+}
