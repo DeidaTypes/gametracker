@@ -15,6 +15,7 @@ import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 import Explore from './pages/Explore'
 import DiscoverReviewsAll from './pages/DiscoverReviewsAll'
+import DiscoverCollectionsAll from './pages/DiscoverCollectionsAll'
 import Search from './pages/Search'
 import CategoryResults from './pages/CategoryResults'
 import Library from './pages/Library'
@@ -386,6 +387,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><DiscoverReviewsAll /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/discover/collections"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><DiscoverCollectionsAll /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

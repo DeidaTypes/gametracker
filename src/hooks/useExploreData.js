@@ -15,6 +15,7 @@ import {
   getReviewOfWeek,
 } from '../services/reviewService'
 import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
+import { getCollections } from '../services/listService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -142,6 +143,16 @@ export function usePopularReviews() {
  */
 export function useNotesWorthReading() {
   return useAsyncSection(() => getPopularReviews({ days: 120, limit: 40 }))
+}
+
+/**
+ * Discover page — "Collections" shelf: curated ("by Checkpoint") lists mixed
+ * with popular public community lists, ranked by real save counts. Returns
+ * { curated: [], community: [] } — the consuming component hides the whole
+ * section when both arrays are empty.
+ */
+export function useCollections() {
+  return useAsyncSection(() => getCollections({ curatedLimit: 8, communityLimit: 12 }))
 }
 
 /** Discover page — "FOLLOWING" reviews feed: newest-first from followed users. */

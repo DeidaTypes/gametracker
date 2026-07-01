@@ -1,0 +1,134 @@
+/* =====================================================
+   DISCOVER COLLECTIONS — full browse screen
+   Route: /discover/collections
+   ===================================================== */
+
+.dca-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: var(--bottom-nav-safe-area, 80px);
+}
+
+/* ── Sticky header (back chevron + title) ── */
+
+.dca-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-sm, 8px) var(--page-padding, 16px);
+  padding-top: calc(var(--spacing-sm, 8px) + env(safe-area-inset-top, 0px));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dca-header-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dca-header-btn:hover,
+.dca-header-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dca-header-btn:active {
+  opacity: 0.6;
+}
+
+.dca-header-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+.dca-header-spacer {
+  width: 44px;
+}
+
+/* ── Content ── */
+
+.dca-content {
+  padding: 16px var(--page-padding, 16px) 0;
+}
+
+.dca-section + .dca-section {
+  margin-top: 32px;
+}
+
+.dca-section-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+
+.collections-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px 14px;
+}
+
+.dca-empty-text {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin: 24px auto 0;
+  text-align: center;
+  max-width: 280px;
+}
+
+/* ── Skeleton ── */
+
+.dca-skeleton-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dca-sk-mosaic {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg, 16px);
+}
+
+.dca-sk-line {
+  height: 11px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Desktop ── */
+
+@media (min-width: 769px) {
+  .dca-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+
+  .collections-browse-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .dca-header-btn {
+    transition: none;
+  }
+}

@@ -1,0 +1,129 @@
+/* =============================================
+   CollectionCard — 2×2 mosaic collection tile.
+   Shared by the Collections shelf (horizontal rail)
+   and the /discover/collections browse-all grid.
+   ============================================= */
+
+.collection-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.collection-card:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.collection-card__mosaic {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+}
+
+.collection-card__cell {
+  background: var(--bg-surface-2);
+  overflow: hidden;
+}
+
+.collection-card__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.collection-card__cell--empty {
+  background: var(--bg-surface-2);
+}
+
+.collection-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(12, 18, 33, 0.72);
+  backdrop-filter: blur(4px);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.collection-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.collection-card__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collection-card__curator {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collection-card__meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+.collection-card__dot {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collection-card {
+    transition: none;
+  }
+}
+
+/* ---- Shelf context: fixed-width card in a horizontal scroll rail ---- */
+.explore-scroll-row .collection-card {
+  flex: 0 0 148px;
+  width: 148px;
+  scroll-snap-align: start;
+}
+
+/* ---- Browse-all context: grid of two columns ---- */
+.collections-browse-grid .collection-card {
+  width: 100%;
+}

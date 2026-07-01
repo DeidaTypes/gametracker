@@ -17,7 +17,8 @@ import './Explore.css'
  * Section spine, top to bottom:
  *   1. Game of the Day    — daily-rotating hero (community pick / curated)
  *   2. Swipe to discover  — E0 taste-ranked Tinder deck
- *   3. Collections        — scaffold slot (E2 owns internals)
+ *   3. Collections        — curated ("by Checkpoint") + popular community
+ *                            lists as mosaic cards (hidden if none qualify)
  *   4. From people you follow — scaffold slot (E3 owns internals)
  *   5. Notes worth reading — real community pull-quotes (hidden if none)
  */
@@ -62,7 +63,7 @@ function Explore() {
         <SwipeDeck />
       </section>
 
-      {/* ── 3. Collections — E2 slot ── */}
+      {/* ── 3. Collections — curated + community lists ── */}
       <CollectionsShelf />
 
       {/* ── 4. From people you follow — E3 slot ── */}

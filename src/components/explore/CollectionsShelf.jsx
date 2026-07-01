@@ -1,18 +1,36 @@
-import React from 'react'
+import React, { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
+import { useCollections } from '../../hooks/useExploreData'
+import CollectionCard from './CollectionCard'
 import './SectionScaffold.css'
+import './CollectionCard.css'
 
 /**
- * CollectionsShelf — Discover "Collections" slot.
+ * CollectionsShelf — Discover "Collections" shelf.
  *
- * SCAFFOLD ONLY. This reserves the section's position in the Discover order
- * (between "Swipe to discover" and "From people you follow"). The internals —
- * real curated lists, cover mosaics, "saved by" counts, and the See-all
- * navigation — are owned by E2 and land there. Keep the markup/order stable
- * so E2 only has to fill the body.
+ * Renders curated ("by Checkpoint") lists mixed with popular public
+ * community lists — each a 2×2 cover mosaic + title + curator + game
+ * count + real save count. Tap a card to open the list; "See all" opens
+ * the full browse page at /discover/collections.
+ *
+ * Hides entirely (no header, no placeholder) when neither pool has a
+ * qualifying list — same pattern as NotesWorthReading.
  */
 export default function CollectionsShelf() {
+  const navigate = useNavigate()
+  const { data, loading } = useCollections()
+
+  const collections = useMemo(() => {
+    const curated = data?.curated || []
+    const community = data?.community || []
+    return [...curated, ...community]
+  }, [data])
+
+  if (loading || collections.length === 0) return null
+
   return (
-    <section className="explore-section shelf-scaffold" aria-label="Collections">
+    <section className="explore-section" aria-label="Collections">
       <div className="explore-section__pad shelf-scaffold__head">
         <div>
           <h2 className="discover-section-title">Collections</h2>
@@ -20,13 +38,20 @@ export default function CollectionsShelf() {
         </div>
       </div>
 
-      {/* E2 fills this slot with real collection cards. */}
-      <div className="explore-section__pad">
-        <div className="shelf-scaffold__slot" aria-hidden="true">
-          <div className="shelf-scaffold__placeholder" />
-          <div className="shelf-scaffold__placeholder" />
-        </div>
+      <div className="explore-scroll-row">
+        {collections.map((collection) => (
+          <CollectionCard key={collection.id} collection={collection} />
+        ))}
       </div>
+
+      <button
+        type="button"
+        className="discover-see-all-btn"
+        onClick={() => navigate('/discover/collections')}
+      >
+        See all collections
+        <ChevronRight size={16} className="discover-see-all-btn__chevron" aria-hidden="true" />
+      </button>
     </section>
   )
 }

@@ -4,7 +4,7 @@ import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
 } from './activityEventsService'
-import { applyBlockFilter } from './blockService'
+import { applyBlockFilter, filterBlockedRows } from './blockService'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -19,6 +19,8 @@ import { applyBlockFilter } from './blockService'
  *     cover_image_url  text,
  *     is_pinned        boolean NOT NULL DEFAULT false,
  *     pinned_at        timestamptz,
+ *     is_curated       boolean NOT NULL DEFAULT false,  -- admin-seeded "by Checkpoint" (see 20260701104500_curated_collections.sql)
+ *     curator_label    text,                            -- curator display name for curated lists only
  *     created_at       timestamptz NOT NULL DEFAULT now(),
  *     updated_at       timestamptz NOT NULL DEFAULT now()
  *   )
@@ -204,7 +206,7 @@ export async function getListById(listId) {
       '*, ' +
       'list_games(igdb_game_id, game_title, game_image, position, added_at), ' +
       'users(username, display_name, avatar_url), ' +
-      'list_collaborators(user_id, created_at, users(username, display_name, avatar_url))'
+      'list_collaborators(user_id, created_at, users!list_collaborators_user_id_fkey(username, display_name, avatar_url))'
     )
     .eq('id', listId)
     .single()
@@ -224,6 +226,128 @@ export async function getListById(listId) {
       invitedAt: row.created_at,
     }))
   return list
+}
+
+/**
+ * Discover — Collections shape helper. Distinct from rowToList (which
+ * targets the "my lists" / list-detail shape); this keeps only what the
+ * Collections shelf/browse page renders.
+ */
+function rowToCollection(row) {
+  const games = (row.list_games || [])
+    .slice()
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map(rowToGame)
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    isCurated: !!row.is_curated,
+    curatorLabel: row.is_curated ? (row.curator_label || 'Checkpoint') : null,
+    owner: row.users
+      ? {
+          userId: row.user_id,
+          username: row.users.username || '',
+          displayName: row.users.display_name || '',
+          avatarUrl: row.users.avatar_url || null,
+        }
+      : null,
+    previewGames: games.slice(0, 4),
+    gameCount: games.length,
+    saveCount: 0, // filled in by attachSaveCounts() — never fabricated
+    createdAt: row.created_at,
+  }
+}
+
+/**
+ * Attach REAL save counts from list_saves for a batch of collections.
+ * Lists with no save rows simply show 0 — counts are never fabricated.
+ */
+async function attachSaveCounts(collections) {
+  if (!collections.length) return collections
+  const ids = collections.map((c) => c.id)
+  const { data, error } = await supabase
+    .from('list_saves')
+    .select('list_id')
+    .in('list_id', ids)
+  if (error) {
+    console.error('[lists] attachSaveCounts failed:', error.message)
+    return collections
+  }
+  const counts = new Map()
+  for (const row of data || []) {
+    counts.set(row.list_id, (counts.get(row.list_id) || 0) + 1)
+  }
+  return collections.map((c) => ({ ...c, saveCount: counts.get(c.id) || 0 }))
+}
+
+const COLLECTIONS_SELECT =
+  'id, name, description, user_id, is_public, is_curated, curator_label, created_at,' +
+  ' users(username, display_name, avatar_url),' +
+  ' list_games(igdb_game_id, game_title, game_image, position)'
+
+/**
+ * Discover "Collections" — curated ("by Checkpoint") lists mixed with
+ * popular public community lists.
+ *
+ * - Curated: is_curated = true rows, admin-seeded (see
+ *   supabase/migrations/20260701104500_curated_collections.sql). Newest
+ *   first; the flag can't be set through the app, so this pool is fully
+ *   editorial.
+ * - Community: is_curated = false, public, non-empty lists ranked by
+ *   REAL list_saves counts (ties broken by newest). No fabricated numbers.
+ * - Both pools exclude private lists, empty lists (0 games), and lists
+ *   owned by a blocked user.
+ *
+ * @param {{ curatedLimit?: number, communityLimit?: number }} opts
+ * @returns {Promise<{ curated: Array, community: Array }>}
+ */
+export async function getCollections({ curatedLimit = 8, communityLimit = 12 } = {}) {
+  let curatedQuery = supabase
+    .from('lists')
+    .select(COLLECTIONS_SELECT)
+    .eq('is_public', true)
+    .eq('is_curated', true)
+    .order('created_at', { ascending: false })
+    .limit(curatedLimit * 2)
+  curatedQuery = await applyBlockFilter(curatedQuery, 'user_id')
+
+  // Overfetch community candidates — they get re-ranked by real save
+  // count client-side and empty lists get dropped before the cap applies.
+  let communityQuery = supabase
+    .from('lists')
+    .select(COLLECTIONS_SELECT)
+    .eq('is_public', true)
+    .eq('is_curated', false)
+    .order('created_at', { ascending: false })
+    .limit(Math.max(communityLimit * 5, 50))
+  communityQuery = await applyBlockFilter(communityQuery, 'user_id')
+
+  const [curatedRes, communityRes] = await Promise.all([curatedQuery, communityQuery])
+  if (curatedRes.error) {
+    console.error('[lists] getCollections (curated) failed:', curatedRes.error.message)
+  }
+  if (communityRes.error) {
+    console.error('[lists] getCollections (community) failed:', communityRes.error.message)
+  }
+
+  const curatedRows = filterBlockedRows(curatedRes.data || [], 'user_id')
+  const communityRows = filterBlockedRows(communityRes.data || [], 'user_id')
+
+  const curatedNonEmpty = curatedRows.map(rowToCollection).filter((c) => c.gameCount > 0)
+  const communityNonEmpty = communityRows.map(rowToCollection).filter((c) => c.gameCount > 0)
+
+  const [curatedWithSaves, communityWithSaves] = await Promise.all([
+    attachSaveCounts(curatedNonEmpty),
+    attachSaveCounts(communityNonEmpty),
+  ])
+
+  const curated = curatedWithSaves.slice(0, curatedLimit)
+  const community = communityWithSaves
+    .sort((a, b) => b.saveCount - a.saveCount || new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, communityLimit)
+
+  return { curated, community }
 }
 
 /**
