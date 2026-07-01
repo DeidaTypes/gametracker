@@ -136,16 +136,6 @@ export function usePopularReviews() {
 }
 
 /**
- * Discover page — "Notes worth reading": a wide pool of real, like-ranked
- * community reviews. The consuming component filters to reviews with enough
- * body text to make a punchy pull-quote and keeps the top 2–3. Returns [] when
- * the community has posted nothing → the section hides itself.
- */
-export function useNotesWorthReading() {
-  return useAsyncSection(() => getPopularReviews({ days: 120, limit: 40 }))
-}
-
-/**
  * Discover page — "Collections" shelf: curated ("by Checkpoint") lists mixed
  * with popular public community lists, ranked by real save counts. Returns
  * { curated: [], community: [] } — the consuming component hides the whole

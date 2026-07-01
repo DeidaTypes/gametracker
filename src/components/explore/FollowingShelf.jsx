@@ -5,7 +5,7 @@ import './SectionScaffold.css'
  * FollowingShelf — Discover "From people you follow" slot.
  *
  * SCAFFOLD ONLY. This reserves the section's position in the Discover order
- * (between "Collections" and "Notes worth reading"). The internals — real
+ * (after "Collections", last on the page). The internals — real
  * follow-graph activity (rated / reviewed cards, taste-match, add-to-backlog,
  * like/comment counts) — are owned by E3 and land there. Keep the markup/order
  * stable so E3 only has to fill the body.

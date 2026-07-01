@@ -456,22 +456,6 @@
 }
 
 /* =============================================
-   GAME OF THE DAY HERO — section spacing
-   When the hero is present the first explore-section (Swipe to discover) is no
-   longer :first-child, so we restore the inter-section gap and keep an even
-   rhythm through the following sections (Collections, Following, Notes).
-   ============================================= */
-
-/* First explore-section after hero (Swipe to discover) needs no extra top
-   margin — the hero's own margin-bottom already provides the gap. */
-.gotw-outer + .explore-section {
-  margin-top: 0;
-}
-
-/* Remaining sections keep the standard 40px rhythm handled by the generic
-   .explore-section + .explore-section rule above. */
-
-/* =============================================
    DESKTOP (769px+)
    ============================================= */
 @media (min-width: 769px) {

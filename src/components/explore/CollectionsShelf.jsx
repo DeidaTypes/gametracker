@@ -15,7 +15,7 @@ import './CollectionCard.css'
  * the full browse page at /discover/collections.
  *
  * Hides entirely (no header, no placeholder) when neither pool has a
- * qualifying list — same pattern as NotesWorthReading.
+ * qualifying list.
  */
 export default function CollectionsShelf() {
   const navigate = useNavigate()
