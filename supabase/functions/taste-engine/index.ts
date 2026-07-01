@@ -11,15 +11,23 @@
 // For every user with rating/tracking activity it:
 //   1. Builds a NORMALIZED genre/theme affinity vector from their rated
 //      games (weighted by rating) + tracked library → user_taste_vectors.
-//   2. Generates "Because you played X" recommendations: IGDB
-//      similar_games of top-rated titles + genre matches, filtered to
-//      exclude owned titles + a quality bar, re-ranked by taste affinity,
-//      each attributed to its seed → user_recommendations.
+//   2. Selects the user's SEED SET: their top 10-15 highest-weighted
+//      rated/tracked games (dynamic — fewer if they've rated fewer;
+//      empty if none qualify) → user_recommendation_seeds.
+//   3. For EACH seed independently: IGDB similar_games of that seed +
+//      genre/theme matches sharing that seed's genres, filtered to
+//      exclude owned titles + a quality bar, re-ranked by taste affinity
+//      → that seed's own ~10-20-game list in user_recommendations, keyed
+//      by (user, seed, game) so every seed's picks are cached and
+//      retrievable independently.
 //
-// IGDB is reached through the existing `igdb-proxy` function so we REUSE
-// its warm-instance Twitch token cache and /multiquery support. All IGDB
-// traffic is throttled to ≤4 req/s with ≤8 concurrent, batched via id
-// lists (≤ CHUNK per request).
+// IGDB is reached through the existing `igdb-proxy` function's
+// /multiquery endpoint so a user's whole batch of lookups (tag
+// resolution across every seed + genre-candidate queries) rides in a
+// small, bounded number of POSTs (~2-3/user) instead of one round trip
+// per seed — see igdbMulti() below. All IGDB traffic is throttled to
+// ≤4 req/s with ≤8 concurrent, batched via id lists (≤ ID_CHUNK per
+// sub-query) and ≤ MULTIQUERY_MAX_SUBQUERIES sub-queries per POST.
 //
 // Auth: this function is deployed with verify_jwt=false and instead
 // requires a shared `x-engine-secret` header matching the ENGINE_SECRET
@@ -28,7 +36,7 @@
 // Request  : POST { trigger?, userId?, limit? }
 //   userId — optional: refresh a single user only (smoke tests).
 //   limit  — optional cap on users processed (default: all).
-// Response : 200 { ok, users_processed, vectors_written, recs_written }
+// Response : 200 { ok, users_processed, vectors_written, seeds_written, recs_written }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -43,7 +51,8 @@ const PROXY_URL = `${SUPABASE_URL}/functions/v1/igdb-proxy`
 const RATE_WINDOW_MS = 1000
 const RATE_MAX = 4
 const MAX_CONCURRENCY = 8
-const ID_CHUNK = 100 // ids per IGDB `where id = (...)` request
+const ID_CHUNK = 100 // ids per IGDB `where id = (...)` sub-query
+const MULTIQUERY_MAX_SUBQUERIES = 10 // IGDB's own /multiquery cap per POST
 
 // Metadata cache freshness — skip re-fetching game_tags newer than this.
 const TAG_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -58,11 +67,12 @@ const STATUS_WEIGHT: Record<string, number> = {
 const CONFIDENCE_FULL = 8 // signal games → confidence 1.0
 const MIN_REC_SIGNAL = 2  // fewer tag-resolved signal games → no recs (empty)
 const SEED_MIN_WEIGHT = 2.5 // "you played/loved" — honest attribution floor
+const SEED_MAX = 15         // top 10-15 seeds — dynamic, scales down to however many qualify
 
 // Recommendation quality bar + shaping.
 const REC_MIN_RATING = 70
 const REC_MIN_RATING_COUNT = 15
-const REC_TOP_N = 20
+const REC_PER_SEED_MAX = 20 // each seed's OWN cached list, not a global merged top-N
 const GENRE_CANDIDATE_LIMIT = 40
 
 const corsHeaders = {
@@ -113,6 +123,52 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>
     }
   })
   await Promise.all(workers)
+  return out
+}
+
+// ── IGDB /multiquery batching ────────────────────────────────────────────────
+// Selecting 10-15 seeds per user (up from a single seed) means a naive
+// implementation would fire one IGDB round trip per seed/genre lookup —
+// 10-15+ requests per user, per day, across the whole user base. Instead
+// every independent lookup (a tag-resolution chunk, a genre-candidate
+// query, ...) becomes a named sub-query and gets packed, up to
+// MULTIQUERY_MAX_SUBQUERIES at a time, into a single POST to IGDB's
+// /multiquery endpoint — collapsing what would be N round trips into a
+// small constant number (~2-3 per user for the full seed set).
+interface SubQuery { name: string; endpoint: string; body: string }
+
+function subQueryBlock(sq: SubQuery): string {
+  return `query ${sq.endpoint} "${sq.name}" {\n  ${sq.body}\n};`
+}
+
+/** Runs `subQueries` through IGDB /multiquery, batched ≤10 per POST, and
+ * returns a Map<subQuery.name, result rows>. A failed batch degrades to
+ * empty results for just that batch's sub-queries (never throws) so one
+ * bad chunk can't blank out an entire user's recommendations. */
+async function igdbMulti(subQueries: SubQuery[]): Promise<Map<string, any[]>> {
+  const out = new Map<string, any[]>()
+  if (subQueries.length === 0) return out
+
+  const batches: SubQuery[][] = []
+  for (let i = 0; i < subQueries.length; i += MULTIQUERY_MAX_SUBQUERIES) {
+    batches.push(subQueries.slice(i, i + MULTIQUERY_MAX_SUBQUERIES))
+  }
+
+  const batchResults = await mapPool(batches, MAX_CONCURRENCY, async (batch) => {
+    try {
+      const body = batch.map(subQueryBlock).join('\n\n')
+      return await igdb('multiquery', body)
+    } catch (err) {
+      console.error('[taste-engine] multiquery batch failed:', String(err))
+      return []
+    }
+  })
+
+  for (const rows of batchResults) {
+    for (const entry of rows) {
+      if (entry?.name) out.set(entry.name, Array.isArray(entry.result) ? entry.result : [])
+    }
+  }
   return out
 }
 
@@ -175,22 +231,21 @@ async function resolveTags(db: any, ids: number[]): Promise<Map<number, GameTag>
   const missing = unique.filter((id) => !result.has(id))
   if (missing.length === 0) return result
 
-  // 2. IGDB fetch for the misses, chunked + throttled.
+  // 2. IGDB fetch for the misses, chunked + batched via /multiquery so
+  // however many chunks this pass needs still costs a small bounded
+  // number of round trips (≤10 chunks per POST) rather than one per chunk.
   const chunks: number[][] = []
   for (let i = 0; i < missing.length; i += ID_CHUNK) chunks.push(missing.slice(i, i + ID_CHUNK))
 
-  const fetchedChunks = await mapPool(chunks, MAX_CONCURRENCY, async (chunk) => {
-    try {
-      const q = `${TAG_FIELDS}; where id = (${chunk.join(',')}); limit ${chunk.length};`
-      return await igdb('games', q)
-    } catch (err) {
-      console.error('[taste-engine] tag fetch failed:', String(err))
-      return []
-    }
-  })
+  const subQueries: SubQuery[] = chunks.map((chunk, i) => ({
+    name: `tags_${i}`,
+    endpoint: 'games',
+    body: `${TAG_FIELDS}; where id = (${chunk.join(',')}); limit ${chunk.length};`,
+  }))
+  const resultsByName = await igdbMulti(subQueries)
 
   const toUpsert: GameTag[] = []
-  for (const games of fetchedChunks) {
+  for (const games of resultsByName.values()) {
     for (const g of games) {
       if (!g?.id) continue
       const tag = shapeIgdbGame(g)
@@ -291,6 +346,7 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
   const genreTopCache = new Map<number, GameTag[]>()
 
   let vectorsWritten = 0
+  let seedsWritten = 0
   let recsWritten = 0
 
   for (const u of userList) {
@@ -338,111 +394,179 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
     if (vErr) { console.error('[taste-engine] vector upsert error:', vErr.message); continue }
     vectorsWritten++
 
-    // 4. Recommendations — only with enough signal (else leave empty).
+    // 4. Recommendations — only with enough signal (else leave both caches empty).
     if (signalCount < MIN_REC_SIGNAL) {
       await db.from('user_recommendations').delete().eq('user_id', u.userId)
+      await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
       continue
     }
 
-    // Seeds: highest-weight games the user genuinely played/loved.
-    const seeds = weightedGames.filter((g) => g.tag && g.weight >= SEED_MIN_WEIGHT).slice(0, 6)
+    // Seed set: the user's top 10-15 highest-weighted games they genuinely
+    // played/loved — dynamic, not a fixed count. Scales down to however
+    // many qualify (min 1); empty when none clear the honesty floor.
+    const seeds = weightedGames.filter((g) => g.tag && g.weight >= SEED_MIN_WEIGHT).slice(0, SEED_MAX)
     if (seeds.length === 0) {
       await db.from('user_recommendations').delete().eq('user_id', u.userId)
+      await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
       continue
     }
 
-    // Candidate map: gameId -> { seedId, seedTitle, fromSimilar }.
-    const candidates = new Map<number, { seedId: number; seedTitle: string | null; fromSimilar: boolean }>()
-    const addCandidate = (gid: number, seedId: number, seedTitle: string | null, fromSimilar: boolean) => {
-      if (u.trackedIds.has(gid)) return
-      if (!candidates.has(gid)) candidates.set(gid, { seedId, seedTitle, fromSimilar })
-    }
-
-    // 4a. IGDB similar_games of the seed titles (curated similarity).
-    for (const seed of seeds) {
-      const seedTitle = seed.tag?.name || seed.title
-      for (const simId of seed.tag?.similar_game_ids || []) addCandidate(simId, seed.gid, seedTitle, true)
-    }
-
-    // 4b. Genre matches for the user's top genres (quality-gated).
+    // 4a. Genre/theme candidate pool — the user's top 3 genres overall
+    // (shared across seeds so this stays a handful of queries regardless
+    // of seed count), fetched via ONE /multiquery POST for whichever
+    // genres this run hasn't already cached.
     const topGenreIds = Array.from(genreIdWeight.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id)
-    for (const genreId of topGenreIds) {
-      let list = genreTopCache.get(genreId)
-      if (!list) {
-        try {
-          const q =
-            `${TAG_FIELDS}; where genres = (${genreId}) & total_rating >= 75 & ` +
-            `total_rating_count >= 25 & cover != null & version_parent = null; ` +
-            `sort total_rating_count desc; limit ${GENRE_CANDIDATE_LIMIT};`
-          list = (await igdb('games', q)).map(shapeIgdbGame)
+    const missingGenreIds = topGenreIds.filter((id) => !genreTopCache.has(id))
+    if (missingGenreIds.length > 0) {
+      const genreSubQueries: SubQuery[] = missingGenreIds.map((genreId) => ({
+        name: `genre_${genreId}`,
+        endpoint: 'games',
+        body:
+          `${TAG_FIELDS}; where genres = (${genreId}) & total_rating >= 75 & ` +
+          `total_rating_count >= 25 & cover != null & version_parent = null; ` +
+          `sort total_rating_count desc; limit ${GENRE_CANDIDATE_LIMIT};`,
+      }))
+      try {
+        const resultsByName = await igdbMulti(genreSubQueries)
+        const warmRows: GameTag[] = []
+        for (const genreId of missingGenreIds) {
+          const list = (resultsByName.get(`genre_${genreId}`) || []).map(shapeIgdbGame)
           genreTopCache.set(genreId, list)
-          // Opportunistically warm the tag cache with these rows.
-          if (list.length) {
-            await db.from('game_tags').upsert(
-              list.map((t) => ({ ...t, fetched_at: new Date().toISOString() })),
-              { onConflict: 'igdb_game_id' },
-            )
-          }
-        } catch (err) {
-          console.error('[taste-engine] genre candidate fetch failed:', String(err))
-          list = []
-          genreTopCache.set(genreId, list)
+          warmRows.push(...list)
+        }
+        // Opportunistically warm the tag cache with these rows.
+        if (warmRows.length) {
+          await db.from('game_tags').upsert(
+            warmRows.map((t) => ({ ...t, fetched_at: new Date().toISOString() })),
+            { onConflict: 'igdb_game_id' },
+          )
+        }
+      } catch (err) {
+        console.error('[taste-engine] genre candidate fetch failed:', String(err))
+        for (const genreId of missingGenreIds) genreTopCache.set(genreId, [])
+      }
+    }
+
+    // 4b. Build EACH seed's own candidate set independently: that seed's
+    // similar_games (curated similarity) + genre candidates sharing one
+    // of that seed's genres. The same candidate game can legitimately
+    // appear under multiple seeds — every seed gets its own list.
+    const seedCandidates = new Map<number, Map<number, boolean>>() // seedGid -> (candGid -> fromSimilar)
+    for (const seed of seeds) {
+      const m = new Map<number, boolean>()
+      for (const simId of seed.tag?.similar_game_ids || []) {
+        if (!u.trackedIds.has(simId)) m.set(simId, true)
+      }
+      for (const genreId of topGenreIds) {
+        if (!seed.tag?.genre_ids.includes(genreId)) continue
+        for (const cand of genreTopCache.get(genreId) || []) {
+          if (u.trackedIds.has(cand.igdb_game_id)) continue
+          if (!m.has(cand.igdb_game_id)) m.set(cand.igdb_game_id, false)
         }
       }
-      // Attribute genre candidates to the user's strongest seed sharing this genre.
-      const seedForGenre = seeds.find((s) => s.tag?.genre_ids.includes(genreId)) || seeds[0]
-      for (const cand of list) addCandidate(cand.igdb_game_id, seedForGenre.gid, seedForGenre.tag?.name || seedForGenre.title, false)
+      seedCandidates.set(seed.gid, m)
     }
 
-    // 5. Resolve candidate tags + score.
-    const candIds = Array.from(candidates.keys())
-    const candTags = await resolveTags(db, candIds)
+    // 5. Resolve tags for the UNION of every seed's candidates in one
+    // batched pass (still just one /multiquery POST for the whole user,
+    // regardless of how many seeds contributed candidates).
+    const allCandidateIds = new Set<number>()
+    for (const m of seedCandidates.values()) for (const gid of m.keys()) allCandidateIds.add(gid)
+    const candTags = await resolveTags(db, Array.from(allCandidateIds))
 
-    const scored: any[] = []
-    for (const [gid, attrib] of candidates) {
-      const tag = candTags.get(gid)
-      if (!tag) continue
-      // Quality bar + display requirements.
-      if (tag.total_rating == null || tag.total_rating < REC_MIN_RATING) continue
-      if (tag.total_rating_count == null || tag.total_rating_count < REC_MIN_RATING_COUNT) continue
-      if (!tag.cover_image_id) continue
+    // 6. Score + rank each seed's candidates independently, then cache
+    // that seed's own top ~10-20 list.
+    const nowIso = new Date().toISOString()
+    const recRows: any[] = []
+    const seedRows: any[] = []
 
-      const genreOverlap = tagCosine(tag.genre_names, genreWeights)
-      const themeOverlap = tagCosine(tag.theme_names, themeWeights)
-      const tasteBlend = 0.7 * genreOverlap + 0.3 * themeOverlap
-      const qualityNorm = Math.max(0, Math.min(1, (tag.total_rating - REC_MIN_RATING) / 30))
-      const base = 0.70 * tasteBlend + 0.15 * qualityNorm + (attrib.fromSimilar ? 0.15 : 0)
-      const matchScore = Math.round(Math.max(0, Math.min(1, base)) * 100)
+    seeds.forEach((seed, seedIdx) => {
+      const seedTitle = seed.tag?.name || seed.title
+      const candidates = seedCandidates.get(seed.gid) || new Map()
 
-      scored.push({
-        user_id: u.userId,
-        igdb_game_id: gid,
-        match_score: matchScore,
-        because_of_game_id: attrib.seedId,
-        because_of_title: attrib.seedTitle,
-        game_title: tag.name,
-        game_image: tag.cover_image_id
-          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${tag.cover_image_id}.jpg`
-          : null,
-        genre_names: tag.genre_names,
-        total_rating: tag.total_rating,
-        total_rating_count: tag.total_rating_count,
-      })
-    }
+      const scored: any[] = []
+      for (const [gid, fromSimilar] of candidates) {
+        const tag = candTags.get(gid)
+        if (!tag) continue
+        // Quality bar + display requirements.
+        if (tag.total_rating == null || tag.total_rating < REC_MIN_RATING) continue
+        if (tag.total_rating_count == null || tag.total_rating_count < REC_MIN_RATING_COUNT) continue
+        if (!tag.cover_image_id) continue
 
-    scored.sort((a, b) => b.match_score - a.match_score)
-    const top = scored.slice(0, REC_TOP_N).map((row, i) => ({ ...row, rank: i + 1, generated_at: new Date().toISOString() }))
+        const genreOverlap = tagCosine(tag.genre_names, genreWeights)
+        const themeOverlap = tagCosine(tag.theme_names, themeWeights)
+        const tasteBlend = 0.7 * genreOverlap + 0.3 * themeOverlap
+        const qualityNorm = Math.max(0, Math.min(1, (tag.total_rating - REC_MIN_RATING) / 30))
+        const base = 0.70 * tasteBlend + 0.15 * qualityNorm + (fromSimilar ? 0.15 : 0)
+        const matchScore = Math.round(Math.max(0, Math.min(1, base)) * 100)
 
-    // Replace this user's recommendations atomically-ish (delete then insert).
+        scored.push({ gid, matchScore, tag })
+      }
+
+      scored.sort((a, b) => b.matchScore - a.matchScore)
+      const top = scored.slice(0, REC_PER_SEED_MAX)
+
+      for (const [i, s] of top.entries()) {
+        recRows.push({
+          user_id: u.userId,
+          seed_game_id: seed.gid,
+          seed_title: seedTitle,
+          igdb_game_id: s.gid,
+          match_score: s.matchScore,
+          game_title: s.tag.name,
+          game_image: s.tag.cover_image_id
+            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${s.tag.cover_image_id}.jpg`
+            : null,
+          genre_names: s.tag.genre_names,
+          total_rating: s.tag.total_rating,
+          total_rating_count: s.tag.total_rating_count,
+          rank: i + 1,
+          generated_at: nowIso,
+        })
+      }
+
+      // Only keep the seed itself if it actually produced recommendations —
+      // an empty seed shouldn't occupy a rotation slot client-side.
+      if (top.length > 0) {
+        seedRows.push({
+          user_id: u.userId,
+          seed_game_id: seed.gid,
+          seed_title: seedTitle,
+          seed_image: seed.tag?.cover_image_id
+            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${seed.tag.cover_image_id}.jpg`
+            : null,
+          seed_weight: seed.weight,
+          seed_rank: seedIdx + 1,
+          rec_count: top.length,
+          generated_at: nowIso,
+        })
+      }
+    })
+
+    // Replace this user's seed set + recommendations atomically-ish
+    // (delete then insert) so a shrinking seed set (fewer qualifying
+    // games than yesterday) doesn't leave stale seeds/picks behind.
     await db.from('user_recommendations').delete().eq('user_id', u.userId)
-    if (top.length > 0) {
-      const { error: rErr } = await db.from('user_recommendations').insert(top)
+    await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
+
+    if (seedRows.length > 0) {
+      const { error: sErr } = await db.from('user_recommendation_seeds').insert(seedRows)
+      if (sErr) console.error('[taste-engine] seeds insert error:', sErr.message)
+      else seedsWritten += seedRows.length
+    }
+    if (recRows.length > 0) {
+      const { error: rErr } = await db.from('user_recommendations').insert(recRows)
       if (rErr) console.error('[taste-engine] recs insert error:', rErr.message)
-      else recsWritten += top.length
+      else recsWritten += recRows.length
     }
   }
 
-  return { users_processed: userList.length, vectors_written: vectorsWritten, recs_written: recsWritten }
+  return {
+    users_processed: userList.length,
+    vectors_written: vectorsWritten,
+    seeds_written: seedsWritten,
+    recs_written: recsWritten,
+  }
 }
 
 // ── HTTP entrypoint ─────────────────────────────────────────────────────────────

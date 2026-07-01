@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
 import { useBecauseYouPlayed } from '../../hooks/useExploreData'
 import SharedCover from '../SharedCover'
 import Pressable from '../Pressable'
@@ -39,24 +40,56 @@ function BecauseYouPlayedCard({ game, matchScore }) {
  * no swipe gestures or skip/backlog decision loop. Works from the user's
  * own library regardless of the follow graph.
  *
- * Hides entirely when the engine has no recommendations for this user yet
+ * The seed shown here is one of the user's cached multi-seed set (up to
+ * 10-15, precomputed by the daily job — see tasteEngineService). Every
+ * mount/re-entry already rotates forward through that cached set; the
+ * refresh control lets the user manually step to the NEXT cached seed on
+ * demand, same forward sequence, so repeated taps walk through different
+ * seeds rather than reshuffling randomly. Both paths read purely from
+ * cache — neither ever triggers an IGDB call.
+ *
+ * Hides entirely when the engine has no qualifying seed for this user yet
  * (honest empty state, matching SwipeDeck's philosophy — never a
  * fabricated pick or seed).
  */
 export default function BecauseYouPlayedRail() {
-  const { data, loading } = useBecauseYouPlayed()
+  const { data, loading, refetch } = useBecauseYouPlayed()
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    try {
+      await refetch()
+    } catch {
+      // soft-fail — rail just keeps showing whatever it already had
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refreshing, refetch])
 
   if (!loading && !data) return null
 
   return (
     <section className="explore-section shelf-scaffold" aria-label="Because you played">
-      <div className="explore-section__pad shelf-scaffold__head">
+      <div className="explore-section__pad shelf-scaffold__head byp-head">
         <div>
           <h2 className="discover-section-title">
             {loading ? 'Because you played\u2026' : `Because you played ${data.seed.title}`}
           </h2>
           <p className="shelf-scaffold__subtitle">If you loved it, try these next</p>
         </div>
+        {!loading && data && (
+          <button
+            type="button"
+            className={`byp-refresh-btn${refreshing ? ' byp-refresh-btn--spinning' : ''}`}
+            onClick={handleRefresh}
+            aria-label="Show a different seed's recommendations"
+            disabled={refreshing}
+          >
+            <RefreshCw size={18} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div className="explore-scroll-row">

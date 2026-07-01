@@ -1,31 +1,42 @@
 -- =====================================================================
 -- Taste Engine — server-side taste vectors + recommendations
--- Sprint: recommendation engine (24B)
+-- Sprint: recommendation engine (24B); multi-seed cache (24C)
 -- =====================================================================
 -- Run this once in the Supabase SQL editor OR via
 --   supabase db query --linked -f supabase/taste_engine.sql
 -- Idempotent: every statement is guarded (IF NOT EXISTS /
--- CREATE OR REPLACE) so re-running is safe.
+-- CREATE OR REPLACE) so re-running is safe. Includes a one-time DO block
+-- that migrates the original single-seed `user_recommendations` shape
+-- (24B: one merged top-20 list per user) to the multi-seed shape (24C:
+-- each of the user's top 10-15 seeds keeps its own independently-cached
+-- rec list) for any environment that already has the old columns.
 --
--- This migration owns three cache tables + two read RPCs. NOTHING here
--- is fabricated — every row is derived from real `reviews` /
--- `game_trackers` data mapped to real IGDB genre/theme metadata by the
--- `taste-engine` Edge Function. When a user has too little data the
--- engine writes nothing, so the read APIs return empty / null rather
--- than an invented guess.
+-- This file owns four cache tables + two read RPCs. NOTHING here is
+-- fabricated — every row is derived from real `reviews` / `game_trackers`
+-- data mapped to real IGDB genre/theme metadata by the `taste-engine`
+-- Edge Function. When a user has too little data the engine writes
+-- nothing, so the read APIs return empty / null rather than an invented
+-- guess.
 --
---   1. `game_tags`             — IGDB metadata cache (genres, themes,
---                                similar_games, quality) keyed by IGDB id.
---                                Populated server-side so the UI never
---                                queries IGDB per page load.
---   2. `user_taste_vectors`    — normalized genre/theme affinity vector
---                                per user + a confidence score.
---   3. `user_recommendations`  — precomputed "Because you played X" picks
---                                per user, each attributed to its seed.
---   4. RPC get_taste_match(a,b)      — 0–100 score + per-genre breakdown
+--   1. `game_tags`                 — IGDB metadata cache (genres, themes,
+--                                    similar_games, quality) keyed by IGDB
+--                                    id. Populated server-side so the UI
+--                                    never queries IGDB per page load.
+--   2. `user_taste_vectors`        — normalized genre/theme affinity
+--                                    vector per user + a confidence score.
+--   3. `user_recommendation_seeds` — the user's top 10-15 rated/played
+--                                    games currently qualifying as seeds,
+--                                    ordered by weight (seed_rank 1 =
+--                                    strongest), one row per seed.
+--   4. `user_recommendations`      — precomputed "Because you played X"
+--                                    picks, keyed by (user, seed, game) so
+--                                    EVERY seed keeps its own independent
+--                                    ~10-20-game rec list, not one merged
+--                                    list per user.
+--   5. RPC get_taste_match(a,b)      — 0–100 score + per-genre breakdown
 --                                       from two vectors; null below the
 --                                       confidence threshold.
---   5. RPC get_user_taste_vector(u)  — read one user's vector.
+--   6. RPC get_user_taste_vector(u)  — read one user's vector.
 -- =====================================================================
 
 
@@ -80,17 +91,51 @@ COMMENT ON TABLE public.user_taste_vectors IS
 
 
 -- ----------------------------------------------------------------------
--- 3. user_recommendations — precomputed picks per user
+-- 3. user_recommendation_seeds — the user's current seed set
 -- ----------------------------------------------------------------------
--- One row per (user, recommended game). `because_of_game_id/title` cites
--- the seed the pick was derived from (a top-rated title's similar_games
--- entry, or the strongest genre/theme seed). `match_score` is 0–100.
+-- One row per (user, seed game) the daily job selected as a "Because you
+-- played X" anchor — the user's top 10-15 highest-weighted rated/tracked
+-- games that resolved to IGDB tags (fewer if the user has rated fewer
+-- games; table is empty when zero qualify). `seed_rank` orders seeds by
+-- weight (1 = strongest) so the client can round-robin/weight the
+-- rotation without re-deriving it from user_recommendations. `rec_count`
+-- lets the client skip a seed whose rec list came back too thin.
+CREATE TABLE IF NOT EXISTS public.user_recommendation_seeds (
+  user_id      uuid   NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  seed_game_id bigint NOT NULL,
+  seed_title   text,
+  seed_image   text,
+  seed_weight  numeric NOT NULL DEFAULT 0,
+  seed_rank    integer NOT NULL DEFAULT 0,
+  rec_count    integer NOT NULL DEFAULT 0,
+  generated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, seed_game_id)
+);
+
+CREATE INDEX IF NOT EXISTS user_recommendation_seeds_user_rank_idx
+  ON public.user_recommendation_seeds (user_id, seed_rank);
+
+COMMENT ON TABLE public.user_recommendation_seeds IS
+  'The user''s current "Because you played X" seed set (up to 10-15 top-rated games), ordered by seed_rank. Written only by the taste-engine Edge Function. UI rotates through these — never queries IGDB per load.';
+
+
+-- ----------------------------------------------------------------------
+-- 4. user_recommendations — precomputed picks, keyed by (user, seed, game)
+-- ----------------------------------------------------------------------
+-- One row per (user, seed, recommended game) — every seed in
+-- user_recommendation_seeds keeps its OWN independently-cached ~10-20-game
+-- rec list, so the same candidate game can legitimately appear under
+-- multiple seeds with different match scores. `seed_game_id/seed_title`
+-- cite which seed this pick was derived from (that seed's similar_games
+-- entry, or a genre/theme match sharing that seed's genre). `match_score`
+-- is 0–100. `rank` is the pick's position within ITS seed's list (not
+-- global), so each seed independently sorts best-first.
 CREATE TABLE IF NOT EXISTS public.user_recommendations (
   user_id            uuid   NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  seed_game_id       bigint NOT NULL,
+  seed_title         text,
   igdb_game_id       bigint NOT NULL,
   match_score        numeric NOT NULL,
-  because_of_game_id bigint,
-  because_of_title   text,
   game_title         text,
   game_image         text,
   genre_names        text[]  NOT NULL DEFAULT '{}',
@@ -98,34 +143,62 @@ CREATE TABLE IF NOT EXISTS public.user_recommendations (
   total_rating_count integer,
   rank               integer NOT NULL DEFAULT 0,
   generated_at       timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, igdb_game_id)
+  PRIMARY KEY (user_id, seed_game_id, igdb_game_id)
 );
 
-CREATE INDEX IF NOT EXISTS user_recommendations_user_rank_idx
-  ON public.user_recommendations (user_id, rank);
+-- One-time migration from the 24B single-seed shape (PK on (user_id,
+-- igdb_game_id); columns because_of_game_id/because_of_title) to the 24C
+-- multi-seed shape, for any environment that already ran the old version
+-- of this file. No-op on a fresh install (columns won't exist yet).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_recommendations'
+      AND column_name = 'because_of_game_id'
+  ) THEN
+    -- Rows with no seed attribution can't survive the new NOT NULL column
+    -- — the daily job fully replaces this table anyway, so it's safe to
+    -- drop them rather than fabricate a seed.
+    DELETE FROM public.user_recommendations WHERE because_of_game_id IS NULL;
+
+    ALTER TABLE public.user_recommendations RENAME COLUMN because_of_game_id TO seed_game_id;
+    ALTER TABLE public.user_recommendations RENAME COLUMN because_of_title TO seed_title;
+    ALTER TABLE public.user_recommendations ALTER COLUMN seed_game_id SET NOT NULL;
+    ALTER TABLE public.user_recommendations DROP CONSTRAINT IF EXISTS user_recommendations_pkey;
+    ALTER TABLE public.user_recommendations ADD PRIMARY KEY (user_id, seed_game_id, igdb_game_id);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS user_recommendations_user_seed_rank_idx
+  ON public.user_recommendations (user_id, seed_game_id, rank);
 
 COMMENT ON TABLE public.user_recommendations IS
-  'Precomputed per-user recommendations ("Because you played X"). Written only by the taste-engine Edge Function. UI reads from here — never queries IGDB per load.';
+  'Precomputed per-user, per-seed recommendations ("Because you played X"), keyed by (user_id, seed_game_id, igdb_game_id) so every seed keeps its own independent rec list. Written only by the taste-engine Edge Function. UI reads from here — never queries IGDB per load.';
 
 
 -- ----------------------------------------------------------------------
--- 4. Row Level Security
+-- 5. Row Level Security
 -- ----------------------------------------------------------------------
--- Writes to all three tables come exclusively from the Edge Function
+-- Writes to all four tables come exclusively from the Edge Function
 -- using the service_role key, which bypasses RLS. So we add NO write
 -- policies — every authenticated/anon client is read-only by omission.
 --
---   game_tags            → readable by anyone (public IGDB metadata).
---   user_taste_vectors   → readable by any authenticated user. The
---                          vectors are derived from PUBLIC reviews and
---                          contain only genre/theme affinities (not
---                          sensitive), and profile UIs surface another
---                          user's taste + the taste-match breakdown.
---   user_recommendations → private: a user reads only their own picks.
+--   game_tags                 → readable by anyone (public IGDB metadata).
+--   user_taste_vectors        → readable by any authenticated user. The
+--                               vectors are derived from PUBLIC reviews
+--                               and contain only genre/theme affinities
+--                               (not sensitive), and profile UIs surface
+--                               another user's taste + taste-match.
+--   user_recommendation_seeds → private: a user reads only their own
+--                               seed set.
+--   user_recommendations      → private: a user reads only their own
+--                               per-seed picks.
 
-ALTER TABLE public.game_tags            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_taste_vectors   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_recommendations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_tags                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_taste_vectors        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_recommendation_seeds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_recommendations      ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS game_tags_select_all ON public.game_tags;
 CREATE POLICY game_tags_select_all ON public.game_tags
@@ -135,13 +208,17 @@ DROP POLICY IF EXISTS user_taste_vectors_select_auth ON public.user_taste_vector
 CREATE POLICY user_taste_vectors_select_auth ON public.user_taste_vectors
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS user_recommendation_seeds_select_own ON public.user_recommendation_seeds;
+CREATE POLICY user_recommendation_seeds_select_own ON public.user_recommendation_seeds
+  FOR SELECT USING (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS user_recommendations_select_own ON public.user_recommendations;
 CREATE POLICY user_recommendations_select_own ON public.user_recommendations
   FOR SELECT USING (auth.uid() = user_id);
 
 
 -- ----------------------------------------------------------------------
--- 5. RPC get_user_taste_vector(target uuid)
+-- 6. RPC get_user_taste_vector(target uuid)
 -- ----------------------------------------------------------------------
 -- Thin read helper so the client has a single, stable read surface.
 -- SECURITY INVOKER (default) — respects the SELECT policy above.
@@ -170,7 +247,7 @@ $$;
 
 
 -- ----------------------------------------------------------------------
--- 6. RPC get_taste_match(user_a uuid, user_b uuid)
+-- 7. RPC get_taste_match(user_a uuid, user_b uuid)
 -- ----------------------------------------------------------------------
 -- Returns a JSON object:
 --   { "score": 0-100, "confidence": 0-1, "enough_data": true,

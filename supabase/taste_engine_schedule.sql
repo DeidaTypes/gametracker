@@ -1,11 +1,14 @@
 -- =====================================================================
 -- Taste Engine — daily refresh schedule (pg_cron + pg_net)
 -- =====================================================================
--- PRECOMPUTE + CACHE server-side. The UI reads ONLY from the cache
--- tables (game_tags / user_taste_vectors / user_recommendations) — it
--- NEVER queries IGDB per page load. This job refreshes those caches once
--- a day by invoking the `taste-engine` Edge Function, which is the only
--- place IGDB is touched (batched via /multiquery, ≤4 req/s, ≤8 concurrent).
+-- PRECOMPUTE + CACHE server-side. The UI reads ONLY from the cache tables
+-- (game_tags / user_taste_vectors / user_recommendation_seeds /
+-- user_recommendations) — it NEVER queries IGDB per page load. This job
+-- refreshes those caches once a day by invoking the `taste-engine` Edge
+-- Function, which is the only place IGDB is touched: each user's top
+-- 10-15 seeds are resolved + scored via a small bounded number of
+-- /multiquery POSTs (~2-3/user, ≤4 req/s, ≤8 concurrent) rather than one
+-- round trip per seed — see igdbMulti() in supabase/functions/taste-engine.
 --
 -- Prerequisites (done at deploy time, NOT committed with real values):
 --   1. Deploy the Edge Function:  supabase functions deploy taste-engine

@@ -3,6 +3,55 @@
    Horizontal rail of E0 recommendations anchored to a single named seed.
    ============================================= */
 
+.byp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.byp-refresh-btn {
+  background: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 8px;
+  margin-top: -8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast);
+}
+
+.byp-refresh-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.byp-refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@keyframes bypRefreshSpin {
+  to { transform: rotate(360deg); }
+}
+
+.byp-refresh-btn--spinning svg {
+  animation: bypRefreshSpin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .byp-refresh-btn {
+    transition: none;
+  }
+  .byp-refresh-btn--spinning svg {
+    animation: none;
+  }
+}
+
 .byp-card {
   display: flex;
   flex-direction: column;

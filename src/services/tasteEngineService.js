@@ -110,35 +110,84 @@ export async function getTasteMatch(userA, userB) {
 }
 
 /**
- * getRecommendations(userId) — precomputed "Because you played X" picks.
+ * getRecommendationSeeds(userId) — the user's cached seed set, ordered by
+ * weight (strongest first).
  *
- * Reads the user_recommendations cache (RLS: own rows only). Returns [] when
- * the engine had too little data — never invented picks.
+ * Reads the user_recommendation_seeds cache (RLS: own rows only) — the
+ * daily job's top 10-15 highest-rated/played games that currently
+ * qualify (fewer if the user has rated fewer; empty if none qualify).
+ * Never invented — an empty array means the engine genuinely has nothing
+ * for this user yet.
  *
  * @param {string} [userId]  Defaults to the current user.
- * @param {number} [limit=20]
  * @returns {Promise<Array<{
- *   game: { id: number, title: string, image: string|null, genres: string[],
- *           totalRating: number|null, totalRatingCount: number|null },
- *   matchScore: number,                                  // 0–100
- *   becauseOf: { id: number|null, title: string|null },  // the seed game
- *   rank: number,
+ *   seedGameId: number, seedTitle: string, seedImage: string|null,
+ *   seedWeight: number, seedRank: number, recCount: number,
  * }>>}
  */
-export async function getRecommendations(userId, limit = 20) {
+export async function getRecommendationSeeds(userId) {
   try {
     const target = userId || (await currentUserId())
     if (!target) return []
 
     const { data, error } = await supabase
-      .from('user_recommendations')
+      .from('user_recommendation_seeds')
       .select('*')
       .eq('user_id', target)
+      .order('seed_rank', { ascending: true })
+
+    if (error) {
+      console.error('[tasteEngine] getRecommendationSeeds query error:', error.message)
+      return []
+    }
+
+    return (data || []).map((row) => ({
+      seedGameId: Number(row.seed_game_id),
+      seedTitle: row.seed_title || 'a game you loved',
+      seedImage: row.seed_image || null,
+      seedWeight: Number(row.seed_weight) || 0,
+      seedRank: Number(row.seed_rank) || 0,
+      recCount: Number(row.rec_count) || 0,
+    }))
+  } catch (err) {
+    console.error('[tasteEngine] getRecommendationSeeds crashed:', err)
+    return []
+  }
+}
+
+/**
+ * getSeedRecommendations(userId, seedGameId) — one seed's own cached
+ * rec list ("Because you played {seed}").
+ *
+ * Reads the user_recommendations cache filtered to a single seed, so
+ * displaying a seed never touches (or re-derives from) any other seed's
+ * picks. Returns [] when the engine has nothing cached for this
+ * (user, seed) pair.
+ *
+ * @param {string} userId
+ * @param {number} seedGameId
+ * @param {number} [limit=20]
+ * @returns {Promise<Array<{
+ *   game: { id: number, title: string, image: string|null, genres: string[],
+ *           totalRating: number|null, totalRatingCount: number|null },
+ *   matchScore: number,  // 0–100
+ *   rank: number,
+ * }>>}
+ */
+export async function getSeedRecommendations(userId, seedGameId, limit = 20) {
+  try {
+    if (!userId || seedGameId == null) return []
+
+    const { data, error } = await supabase
+      .from('user_recommendations')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('seed_game_id', seedGameId)
       .order('rank', { ascending: true })
       .limit(limit)
 
     if (error) {
-      console.error('[tasteEngine] getRecommendations query error:', error.message)
+      console.error('[tasteEngine] getSeedRecommendations query error:', error.message)
       return []
     }
 
@@ -152,20 +201,18 @@ export async function getRecommendations(userId, limit = 20) {
         totalRatingCount: row.total_rating_count != null ? Number(row.total_rating_count) : null,
       },
       matchScore: Number(row.match_score) || 0,
-      becauseOf: {
-        id: row.because_of_game_id != null ? Number(row.because_of_game_id) : null,
-        title: row.because_of_title || null,
-      },
       rank: Number(row.rank) || 0,
     }))
   } catch (err) {
-    console.error('[tasteEngine] getRecommendations crashed:', err)
+    console.error('[tasteEngine] getSeedRecommendations crashed:', err)
     return []
   }
 }
 
-const BECAUSE_YOU_PLAYED_MIN_RAIL = 4
-const BECAUSE_YOU_PLAYED_ROTATION_KEY = 'gt:because-you-played:seed-rotation:v1'
+const BECAUSE_YOU_PLAYED_ROTATION_KEY = 'gt:because-you-played:seed-rotation:v2'
+// How many of the strongest seeds get a second slot in each lap of the
+// rotation — see _buildRotationPool.
+const ROTATION_BOOST_FRACTION = 3
 
 /** Owned/tracked IGDB ids for `userId`, as a Set<string> — client-side
  * belt-and-suspenders on top of the engine's own owned-game exclusion. */
@@ -185,14 +232,36 @@ async function _getOwnedGameIds(userId) {
   return ids
 }
 
-/** Advances (and persists) the per-user rotation cursor into [0, seedCount). */
-function _nextRotationIndex(userId, seedCount) {
-  if (seedCount <= 0) return 0
+/**
+ * Builds a deterministic rotation sequence over the user's cached seeds,
+ * weighted so the strongest (top third, min 1) seeds reappear sooner —
+ * a full lap visits every seed once in weight order, then revisits the
+ * top third for a second pass, before looping back to seed #1. Cycling
+ * forward through this pool (round-robin) is what both "re-entering
+ * Explore" and "pull to refresh → next seed" walk through — it never
+ * reshuffles randomly, so repeated pulls visit different seeds in a
+ * stable sequence.
+ *
+ * @param {Array<{ seedGameId: number }>} orderedSeeds  Sorted by seedRank asc.
+ * @returns {number[]}  seedGameId sequence (may repeat top seeds).
+ */
+function _buildRotationPool(orderedSeeds) {
+  const n = orderedSeeds.length
+  if (n === 0) return []
+  const pool = orderedSeeds.map((s) => s.seedGameId)
+  const boostCount = Math.max(1, Math.ceil(n / ROTATION_BOOST_FRACTION))
+  for (let i = 0; i < boostCount; i++) pool.push(orderedSeeds[i].seedGameId)
+  return pool
+}
+
+/** Advances (and persists) the per-user rotation cursor into [0, poolSize). */
+function _nextRotationIndex(userId, poolSize) {
+  if (poolSize <= 0) return 0
   try {
     const raw = localStorage.getItem(BECAUSE_YOU_PLAYED_ROTATION_KEY)
     const state = raw ? JSON.parse(raw) : {}
     const current = Number.isInteger(state[userId]) ? state[userId] : -1
-    const next = (current + 1) % seedCount
+    const next = (current + 1) % poolSize
     state[userId] = next
     localStorage.setItem(BECAUSE_YOU_PLAYED_ROTATION_KEY, JSON.stringify(state))
     return next
@@ -205,79 +274,62 @@ function _nextRotationIndex(userId, seedCount) {
  * getBecauseYouPlayed(userId) — the Discover page's "Because you played X"
  * closer rail.
  *
- * NARROW + precise by design, unlike SwipeDeck (which now draws broadly
- * across the whole taste vector — see SwipeDeck.jsx): every row returned
- * here was recommended *because of* the exact same single seed game, named
- * in the returned `seed.title`. Rotates which top-rated seed it anchors to
- * on every call (persisted per-user in localStorage) so the closer doesn't
- * spotlight the same title every visit.
+ * NARROW + precise by design, unlike SwipeDeck (which draws broadly across
+ * the whole taste vector — see SwipeDeck.jsx): every row returned here was
+ * recommended *because of* the exact same single seed game, named in the
+ * returned `seed.title`. Every call (mount, app resume, or an explicit
+ * "show me another" refresh) advances a persisted per-user rotation
+ * cursor through the user's cached seed set (see _buildRotationPool) —
+ * so re-entering Explore or refreshing always surfaces a DIFFERENT real
+ * cached seed, cycling through the set rather than reshuffling randomly
+ * or recomputing anything.
  *
- * Composition only — reads getTasteVector + getRecommendations (both
- * already precomputed by the engine) and groups/filters client-side.
- * Never calls IGDB directly; never invents a seed or a pick.
+ * Composition only — reads getRecommendationSeeds + getSeedRecommendations
+ * (both already precomputed by the daily job) and filters client-side.
+ * NEVER calls IGDB directly; NEVER invents a seed or a pick. Hides
+ * (returns null) when the engine has no qualifying seed for this user.
  *
  * @param {string} [userId]  Defaults to the current user.
  * @param {{ limit?: number }} [opts]
  * @returns {Promise<null | {
  *   seed: { id: number, title: string },
  *   items: Array<{ game: object, matchScore: number }>,
- * }>}  null when the engine has no recommendations yet for this user, or
- *      every recommended game is already owned.
+ * }>}
  */
 export async function getBecauseYouPlayed(userId, { limit = 10 } = {}) {
   try {
     const target = userId || (await currentUserId())
     if (!target) return null
 
-    const [vector, recs, ownedIds] = await Promise.all([
-      getTasteVector(target),
-      getRecommendations(target, 60),
+    const [seeds, ownedIds] = await Promise.all([
+      getRecommendationSeeds(target),
       _getOwnedGameIds(target),
     ])
+    if (!seeds.length) return null // no qualifying seeds — hide gracefully, never fabricate one
 
-    if (!recs.length) return null
+    const pool = _buildRotationPool(seeds)
+    const seedByGameId = new Map(seeds.map((s) => [s.seedGameId, s]))
 
-    const available = recs.filter(
-      (r) => r.game.id != null && !ownedIds.has(String(r.game.id))
-    )
-    if (!available.length) return null
+    // Walk forward from the rotation cursor (bounded by pool size) so a
+    // seed whose every pick happens to already be owned doesn't blank the
+    // rail — it just steps to the next seed in the same forward sequence.
+    for (let attempt = 0; attempt < pool.length; attempt++) {
+      const idx = _nextRotationIndex(target, pool.length)
+      const seedGameId = pool[idx]
+      const seedMeta = seedByGameId.get(seedGameId)
+      if (!seedMeta) continue
 
-    // Group by seed game so we can anchor the whole rail to exactly one.
-    const bySeed = new Map()
-    for (const r of available) {
-      const seedId = r.becauseOf?.id
-      if (seedId == null) continue
-      if (!bySeed.has(seedId)) bySeed.set(seedId, { title: r.becauseOf.title, recs: [] })
-      bySeed.get(seedId).recs.push(r)
+      const recs = await getSeedRecommendations(target, seedGameId, limit + ownedIds.size)
+      const available = recs.filter((r) => r.game.id != null && !ownedIds.has(String(r.game.id)))
+      if (!available.length) continue
+
+      return {
+        seed: { id: seedGameId, title: seedMeta.seedTitle },
+        items: available.slice(0, limit).map((r) => ({ game: r.game, matchScore: r.matchScore })),
+      }
     }
-    if (bySeed.size === 0) return null
 
-    // Rotation order: the engine's own top-rated list first (highest
-    // affinity), then any remaining seeds not represented there.
-    const preferredOrder = (vector?.topRatedGameIds || []).filter((id) => bySeed.has(id))
-    for (const seedId of bySeed.keys()) {
-      if (!preferredOrder.includes(seedId)) preferredOrder.push(seedId)
-    }
-
-    const minRail = Math.min(BECAUSE_YOU_PLAYED_MIN_RAIL, available.length)
-    const eligible = preferredOrder.filter((id) => bySeed.get(id).recs.length >= minRail)
-    const rotationPool = eligible.length > 0 ? eligible : preferredOrder
-    if (rotationPool.length === 0) return null
-
-    const idx = _nextRotationIndex(target, rotationPool.length)
-    const seedId = rotationPool[idx]
-    const seedGroup = bySeed.get(seedId)
-
-    const items = seedGroup.recs
-      .slice()
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, limit)
-      .map((r) => ({ game: r.game, matchScore: r.matchScore }))
-
-    return {
-      seed: { id: seedId, title: seedGroup.title || 'a game you loved' },
-      items,
-    }
+    return null
   } catch (err) {
     console.error('[tasteEngine] getBecauseYouPlayed crashed:', err)
     return null
