@@ -1,0 +1,39 @@
+/* =============================================
+   Section scaffolds — reserved Discover slots for
+   E2 (Collections) and E3 (From people you follow).
+   Placeholder chrome only; internals land later.
+   ============================================= */
+
+.shelf-scaffold__head {
+  margin-bottom: 12px;
+}
+
+.shelf-scaffold__subtitle {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+.shelf-scaffold__slot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shelf-scaffold__placeholder {
+  height: 78px;
+  border-radius: var(--radius-lg, 16px);
+  border: 1px dashed var(--color-border);
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-surface-2) 50%,
+    var(--bg-surface) 100%
+  );
+  opacity: 0.5;
+}
+
+.shelf-scaffold__placeholder--tall {
+  height: 132px;
+}

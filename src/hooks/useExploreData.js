@@ -134,6 +134,16 @@ export function usePopularReviews() {
   return useAsyncSection(() => getPopularReviews({ days: 30, limit: 25 }))
 }
 
+/**
+ * Discover page — "Notes worth reading": a wide pool of real, like-ranked
+ * community reviews. The consuming component filters to reviews with enough
+ * body text to make a punchy pull-quote and keeps the top 2–3. Returns [] when
+ * the community has posted nothing → the section hides itself.
+ */
+export function useNotesWorthReading() {
+  return useAsyncSection(() => getPopularReviews({ days: 120, limit: 40 }))
+}
+
 /** Discover page — "FOLLOWING" reviews feed: newest-first from followed users. */
 export function useFollowingReviews() {
   return useAsyncSection(async () => {

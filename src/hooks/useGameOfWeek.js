@@ -50,7 +50,7 @@ const CURATED_POOL = [
     7346, // The Legend of Zelda: Breath of the Wild (Nintendo, 2017)
 ]
 
-// ── ISO week seed ─────────────────────────────────────────────────────────────
+// ── Rotation seeds ────────────────────────────────────────────────────────────
 
 /**
  * Returns a numeric seed that is unique per ISO year×week (e.g. 202626).
@@ -65,6 +65,23 @@ function getISOWeekSeed() {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
   const weekNum = Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
   return d.getUTCFullYear() * 100 + weekNum
+}
+
+/**
+ * Returns a numeric seed that is unique per UTC calendar day (days since
+ * epoch). Advances at UTC midnight; stays constant for the rest of the day.
+ * Used by the "day" cadence so the featured pick rotates once per day and is
+ * stable within it.
+ */
+function getDailySeed() {
+  const now = new Date()
+  const d = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.floor(d / 86400000)
+}
+
+/** Pick the rotation seed for the requested cadence. */
+function getSeed(cadence) {
+  return cadence === 'day' ? getDailySeed() : getISOWeekSeed()
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -168,7 +185,7 @@ async function enrichGame(igdbGameId) {
 
 // ── Core data loader ─────────────────────────────────────────────────────────
 
-async function loadFeaturedGame() {
+async function loadFeaturedGame(cadence = 'week') {
   // ── 1. Community signal ──────────────────────────────────────────────────
   // Query all rated reviews from the past 7 days, aggregate per game, and
   // pick the highest avg-rated game that clears the minimum-ratings threshold.
@@ -197,17 +214,26 @@ async function loadFeaturedGame() {
       .sort((a, b) => (b[1].sum / b[1].count) - (a[1].sum / a[1].count))
 
     if (qualified.length > 0) {
-      const [topGameId] = qualified[0]
-      const enriched = await enrichGame(topGameId)
-      if (enriched) return enriched
+      // Rotate through the qualified community picks by the cadence seed so
+      // the highlight changes each day/week while still being a REAL,
+      // community-rated game (never fabricated). Iterate from the seeded
+      // index so an unresolvable ID degrades to the next qualified game.
+      const seed = getSeed(cadence)
+      const startIdx = qualified.length > 1 ? seed % qualified.length : 0
+      for (let i = 0; i < qualified.length; i++) {
+        const [gameId] = qualified[(startIdx + i) % qualified.length]
+        const enriched = await enrichGame(gameId)
+        if (enriched) return enriched
+      }
     }
   }
 
-  // ── 2. Curated fallback — ISO-week-seeded rotation ───────────────────────
-  // The seed advances each Monday so the featured game changes weekly.
-  // We iterate from the seed position so a bad ID never silently blocks
-  // the hero — the next valid game in the pool is shown instead.
-  const seed = getISOWeekSeed()
+  // ── 2. Curated fallback — date-seeded rotation ───────────────────────────
+  // The seed advances each day (or week) so the featured game changes on
+  // schedule and is deterministic within the period. We iterate from the
+  // seed position so a bad ID never silently blocks the hero — the next
+  // valid game in the pool is shown instead.
+  const seed = getSeed(cadence)
   const startIdx = seed % CURATED_POOL.length
   for (let i = 0; i < CURATED_POOL.length; i++) {
     const igdbGameId = CURATED_POOL[(startIdx + i) % CURATED_POOL.length]
@@ -220,7 +246,12 @@ async function loadFeaturedGame() {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export default function useGameOfWeek() {
+/**
+ * @param {'week'|'day'} [cadence='week']  Rotation cadence for the curated
+ *        fallback (and tie-break among qualified community picks). Home uses
+ *        the default weekly cadence; Discover passes 'day'.
+ */
+export default function useGameOfWeek(cadence = 'week') {
   const [featured, setFeatured] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -229,7 +260,7 @@ export default function useGameOfWeek() {
     setLoading(true)
     setError(null)
     try {
-      const data = await loadFeaturedGame()
+      const data = await loadFeaturedGame(cadence)
       setFeatured(data)
     } catch (err) {
       console.error('[useGameOfWeek] error:', err)
@@ -238,11 +269,11 @@ export default function useGameOfWeek() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [cadence])
 
   useEffect(() => {
     let cancelled = false
-    loadFeaturedGame()
+    loadFeaturedGame(cadence)
       .then((data) => { if (!cancelled) setFeatured(data) })
       .catch((err) => {
         if (!cancelled) {
@@ -253,7 +284,7 @@ export default function useGameOfWeek() {
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cadence]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refetch on Capacitor foreground return
   useEffect(() => {

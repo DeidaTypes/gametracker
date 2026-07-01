@@ -6,38 +6,29 @@ const SWIPE_THRESHOLD = 80 // px horizontal drag to trigger swipe action
 const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
 
 /**
- * Derive a short display label from a comma-separated genre string.
- * "Role-playing (RPG), Adventure" → "RPG"
- * "Real Time Strategy (RTS)"      → "RTS"
- * "Adventure"                     → "Adventure"
- */
-function firstGenreLabel(genreStr) {
-  if (!genreStr) return null
-  const first = genreStr.split(',')[0].trim()
-  const parens = first.match(/\(([^)]+)\)/)
-  if (parens) return parens[1]
-  return first.length > 20 ? first.slice(0, 18) + '…' : first
-}
-
-/**
- * SwipeCard — one game card in the "Swipe to discover" deck.
+ * SwipeCard — one Tinder-style game card in the "Swipe to discover" deck.
  *
- * Top card (isTop=true): responds to pointer drag gestures. Swiping past
- * SWIPE_THRESHOLD left/right calls the respective callback after a brief
- * exit animation (skipped when prefers-reduced-motion is active).
+ * The card is slim: cover art fills the frame; a single frosted bottom overlay
+ * carries the title, year, and a one-line "like {seed}" recommendation reason,
+ * plus the ✕ (skip) and ♥ (backlog) actions. No genre pill.
  *
- * Stack cards (stackIndex 1-2): visually scaled and offset behind the top
- * card. Not interactive. Transition smoothly to a new position when the top
- * card is removed.
+ * Top card (isTop=true): responds to pointer drag gestures and shows the
+ * action buttons. Swiping past SWIPE_THRESHOLD left/right calls the respective
+ * callback after a brief exit animation (skipped when prefers-reduced-motion
+ * is active). With reduced motion the on-card buttons are the primary path.
+ *
+ * Stack cards (stackIndex 1-2): visually scaled/offset behind the top card,
+ * not interactive.
  *
  * Props
- *   game           { id, title, image, year, genre, developer }
+ *   game           { id, title, image, year, seed }
  *   stackIndex     0 = top, 1 = mid, 2 = back
  *   isTop          true only for the interactive top card
- *   onSwipeRight   (game) => void  called after exit animation completes
- *   onSwipeLeft    (game) => void  called after exit animation completes
+ *   onSwipeRight   (game) => void  called after exit animation completes (♥)
+ *   onSwipeLeft    (game) => void  called after exit animation completes (✕)
+ *   onTap          (game) => void  card body tapped → open detail
  */
-export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap, blindDate = false }) {
+export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap }) {
   const { reduced } = useMotionPreference()
 
   // Drag tracking — ref for latest value (no stale closures in handlers),
@@ -52,17 +43,10 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
   const exitingRef = useRef(null) // 'left' | 'right' | null
   const [exiting, setExiting] = useState(null)
 
-  // Blind date: title is hidden until the swipe threshold is crossed.
-  // Each card is keyed by game.id so this resets naturally per card.
-  const [revealed, setRevealed] = useState(false)
-
   const triggerSwipe = useCallback(
     (dir) => {
       if (exitingRef.current) return // already mid-exit
       exitingRef.current = dir
-
-      // Reveal the title as the card starts its exit animation.
-      if (blindDate) setRevealed(true)
 
       if (reduced) {
         // No animation — callback fires immediately.
@@ -79,12 +63,9 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
         }, 290)
       }
     },
-    [reduced, onSwipeRight, onSwipeLeft, game, blindDate]
+    [reduced, onSwipeRight, onSwipeLeft, game]
   )
 
-  // Allow parent (SwipeDeck action buttons) to trigger a swipe via this prop.
-  // When the prop changes from null to a direction, we run the same exit path.
-  // Prop is reset to null by the parent after the callback fires.
   const onPointerDown = (e) => {
     if (!isTop || exitingRef.current) return
     e.preventDefault()
@@ -115,19 +96,15 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       // Pure tap — reset drag state then navigate; card stays in deck
       dragRef.current = { x: 0, y: 0 }
       setDragDisplay({ x: 0, y: 0 })
-      onTap?.()
+      onTap?.(game)
     } else {
       // Partial drag — snap card back
       dragRef.current = { x: 0, y: 0 }
       setDragDisplay({ x: 0, y: 0 })
     }
-  }, [triggerSwipe, onTap])
+  }, [triggerSwipe, onTap, game])
 
-  const coverUrl  = game.image || game.coverUrl || null
-  const genreTag  = firstGenreLabel(game.genre)
-
-  // Blind mode: info stays hidden until revealed by a swipe.
-  const isBlind = blindDate && !revealed
+  const coverUrl = game.image || game.coverUrl || null
 
   // Compute transform + transition for this card's position in the stack.
   let transform = ''
@@ -160,6 +137,9 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
   const rightOpa = isTop ? Math.min(1, Math.max(0, dragDisplay.x / SWIPE_THRESHOLD)) : 0
   const leftOpa  = isTop ? Math.min(1, Math.max(0, -dragDisplay.x / SWIPE_THRESHOLD)) : 0
 
+  // Buttons must not start a drag or bubble to the card-tap handler.
+  const stop = (e) => e.stopPropagation()
+
   return (
     <div
       className={[
@@ -177,9 +157,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       role={isTop ? 'img' : undefined}
       aria-label={
         isTop
-          ? isBlind
-            ? 'Mystery game — swipe right to add to backlog, left to skip'
-            : `${game.title}${game.year ? `, ${game.year}` : ''}${game.whyLine ? `. ${game.whyLine}` : ''}`
+          ? `${game.title}${game.year ? `, ${game.year}` : ''}${game.seed ? `. Recommended because you like ${game.seed}` : ''}`
           : undefined
       }
     >
@@ -194,7 +172,7 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
           />
         ) : (
           <div className="swipe-card__placeholder" aria-hidden="true">
-            {isBlind ? '?' : (game.title?.charAt(0) ?? '?')}
+            {game.title?.charAt(0) ?? '?'}
           </div>
         )}
       </div>
@@ -202,26 +180,43 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       {/* Gradient overlay — fades the bottom so text stays readable */}
       <div className="swipe-card__gradient" aria-hidden="true" />
 
-      {/* Genre tag (always visible — provides "vibe") + title area */}
-      <div className="swipe-card__info" aria-hidden="true">
-        {genreTag && (
-          <span className="swipe-card__genre">{genreTag}</span>
-        )}
+      {/* Bottom overlay — title + year + reason + on-card actions */}
+      <div className="swipe-card__overlay">
+        <p className="swipe-card__title">{game.title}</p>
 
-        {/* Blind date: show mystery dots instead of title/year/whyLine.
-            On reveal the title group fades in with a brief animation. */}
-        {isBlind ? (
-          <p className="swipe-card__mystery">· · · · ·</p>
-        ) : (
-          <div className={`swipe-card__title-group${blindDate && revealed ? ' swipe-card__title-group--reveal' : ''}`}>
-            <p className="swipe-card__title">{game.title}</p>
-            {game.year ? <p className="swipe-card__year">{game.year}</p> : null}
-            {game.whyLine ? (
-              <p className="swipe-card__why" title={game.whyLine}>
-                <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
-                {game.whyLine}
-              </p>
-            ) : null}
+        <p className="swipe-card__meta">
+          {game.year ? <span className="swipe-card__year">{game.year}</span> : null}
+          {game.year && game.seed ? (
+            <span className="swipe-card__dot" aria-hidden="true">·</span>
+          ) : null}
+          {game.seed ? (
+            <span className="swipe-card__why">
+              <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
+              like {game.seed}
+            </span>
+          ) : null}
+        </p>
+
+        {isTop && (
+          <div className="swipe-card__actions">
+            <button
+              type="button"
+              className="swipe-card__act swipe-card__act--skip"
+              onPointerDown={stop}
+              onClick={(e) => { stop(e); triggerSwipe('left') }}
+              aria-label={`Skip ${game.title}`}
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+            <button
+              type="button"
+              className="swipe-card__act swipe-card__act--add"
+              onPointerDown={stop}
+              onClick={(e) => { stop(e); triggerSwipe('right') }}
+              aria-label={`Add ${game.title} to backlog`}
+            >
+              <span aria-hidden="true">♥</span>
+            </button>
           </div>
         )}
       </div>

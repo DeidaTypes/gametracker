@@ -1,20 +1,21 @@
 /* =============================================
-   SwipeCard — individual game card in the
-   "Swipe to discover" deck.
+   SwipeCard — Tinder-style game card in the
+   "Swipe to discover" deck. Cover fills the frame;
+   a frosted bottom overlay holds title + year +
+   reason and the ✕ / ♥ actions.
    ============================================= */
 
 .swipe-card {
   position: absolute;
-  /* Portrait cover ratio — matches IGDB t_cover_big (264×374) */
-  width: 220px;
-  height: 330px;
-  border-radius: 18px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
   overflow: hidden;
   background: var(--bg-surface);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.35),
-    0 1px 4px rgba(0, 0, 0, 0.25);
-  /* z-index layering: top card above stack cards */
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.3);
   z-index: 1;
   will-change: transform;
 }
@@ -57,7 +58,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56px;
+  font-size: 72px;
   font-weight: var(--font-weight-bold);
   color: var(--text-tertiary);
   pointer-events: none;
@@ -70,59 +71,53 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 55%;
+  height: 62%;
   background: linear-gradient(
     to top,
-    rgba(10, 15, 31, 0.95) 0%,
-    rgba(10, 15, 31, 0.6) 50%,
+    rgba(10, 15, 31, 0.96) 0%,
+    rgba(10, 15, 31, 0.78) 32%,
+    rgba(10, 15, 31, 0.35) 66%,
     transparent 100%
   );
   pointer-events: none;
 }
 
-/* ---- Text overlay ---- */
+/* ---- Bottom overlay ---- */
 
-.swipe-card__info {
+.swipe-card__overlay {
   position: absolute;
-  bottom: 18px;
-  left: 16px;
-  right: 16px;
-  pointer-events: none;
-}
-
-/* ---- Genre tag ---- */
-
-.swipe-card__genre {
-  display: inline-block;
-  padding: 3px 9px;
-  border-radius: 20px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 6px;
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 18px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .swipe-card__title {
   font-family: var(--font-body);
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   line-height: var(--line-height-title);
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0;
   /* Max 2 lines, ellipsis on overflow */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  pointer-events: none;
+}
+
+.swipe-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  min-height: 18px;
+  pointer-events: none;
 }
 
 .swipe-card__year {
@@ -130,27 +125,24 @@
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
-  margin: 0;
 }
 
-/* ---- 'Why this card' line — taste-derived reason ---- */
+.swipe-card__dot {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+/* ---- 'like {seed}' recommendation reason ---- */
 
 .swipe-card__why {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin: 8px 0 0;
-  padding: 4px 9px 4px 7px;
-  border-radius: 10px;
-  background: rgba(196, 99, 78, 0.14);
-  border: 1px solid rgba(196, 99, 78, 0.32);
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
-  color: var(--accent-copper, #C4634E);
+  color: var(--accent);
   line-height: 1.3;
-  letter-spacing: 0.005em;
-  width: fit-content;
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
@@ -163,46 +155,61 @@
   opacity: 0.9;
 }
 
-/* ---- Blind date — mystery placeholder + reveal animation ---- */
+/* ---- On-card action buttons (frosted over the art) ---- */
 
-/* Dots shown where the title would be in blind mode */
-.swipe-card__mystery {
-  font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-tertiary);
-  letter-spacing: 0.3em;
-  margin: 0 0 4px;
-  opacity: 0.55;
+.swipe-card__actions {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 12px;
 }
 
-/* Title/year/whyLine wrapper — animates in when revealed from blind mode */
-.swipe-card__title-group--reveal {
-  animation: swipeReveal 0.2s ease forwards;
+.swipe-card__act {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-@keyframes swipeReveal {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.swipe-card__act:active {
+  transform: scale(0.9);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .swipe-card__title-group--reveal {
-    animation: none;
-  }
+.swipe-card__act--skip {
+  background: rgba(20, 26, 44, 0.55);
+  border: 1.5px solid rgba(248, 113, 113, 0.55);
+  color: var(--status-danger);
+}
+
+.swipe-card__act--skip:hover {
+  background: rgba(248, 113, 113, 0.22);
+}
+
+.swipe-card__act--add {
+  background: rgba(59, 130, 246, 0.32);
+  border: 1.5px solid rgba(59, 130, 246, 0.7);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+.swipe-card__act--add:hover {
+  background: rgba(59, 130, 246, 0.5);
 }
 
 /* ---- Direction badges ---- */
 
 .swipe-card__badge {
   position: absolute;
-  top: 22px;
+  top: 24px;
   padding: 6px 14px;
   border-radius: 8px;
   border: 2.5px solid;
@@ -214,10 +221,11 @@
   pointer-events: none;
   /* opacity controlled inline via drag delta */
   transition: opacity 0.08s linear;
+  z-index: 2;
 }
 
 .swipe-card__badge--right {
-  left: 16px;
+  left: 18px;
   border-color: var(--status-success);
   color: var(--status-success);
   background: rgba(52, 211, 153, 0.14);
@@ -225,7 +233,7 @@
 }
 
 .swipe-card__badge--left {
-  right: 16px;
+  right: 18px;
   border-color: var(--status-danger);
   color: var(--status-danger);
   background: rgba(248, 113, 113, 0.14);
@@ -237,5 +245,9 @@
 @media (prefers-reduced-motion: reduce) {
   .swipe-card {
     transition: none !important;
+  }
+
+  .swipe-card__act {
+    transition: none;
   }
 }

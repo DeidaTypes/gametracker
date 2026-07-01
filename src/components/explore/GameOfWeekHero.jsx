@@ -35,9 +35,10 @@ function ReviewCountStat({ pickReason }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function GameOfWeekHero() {
+export default function GameOfWeekHero({ cadence = 'week' } = {}) {
   const navigate = useNavigate()
-  const { featured, loading } = useGameOfWeek()
+  const { featured, loading } = useGameOfWeek(cadence)
+  const label = cadence === 'day' ? 'Game of the Day' : 'Game of the Week'
 
   // Skeleton while the first load is in-flight
   if (loading) {
@@ -77,7 +78,7 @@ export default function GameOfWeekHero() {
         className="gotw-hero"
         role="button"
         tabIndex={0}
-        aria-label={`Game of the Week: ${featured.title}. Tap to view game detail.`}
+        aria-label={`${label}: ${featured.title}. Tap to view game detail.`}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
       >
@@ -113,7 +114,7 @@ export default function GameOfWeekHero() {
           {/* Info stack */}
           <div className="gotw-info">
             <span className="eyebrow gotw-eyebrow">
-              Game of the Week
+              {label}
               {featured.personalizedBlurb && (
                 <span className="gotw-for-you" aria-label="Personalised for your taste">
                   For You
