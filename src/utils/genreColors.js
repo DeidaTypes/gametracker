@@ -36,3 +36,19 @@ export function genreToken(genreName) {
 export function genreColorVar(genreName) {
   return `var(${genreToken(genreName)})`
 }
+
+/**
+ * Shortens a raw IGDB genre name for compact UI (persona tags, DNA legend,
+ * taste-match readouts) — e.g. "Role-playing (RPG)" → "RPG",
+ * "Real Time Strategy (RTS)" → "RTS". Falls back to the text before a
+ * "/" for compound names ("Hack and slash/Beat 'em up" → "Hack and slash"),
+ * else returns the name unchanged. Never invents a label.
+ */
+export function genreShortLabel(genreName) {
+  if (!genreName) return ''
+  const parenMatch = genreName.match(/\(([^)]+)\)\s*$/)
+  if (parenMatch) return parenMatch[1]
+  const slashIdx = genreName.indexOf('/')
+  if (slashIdx > -1) return genreName.slice(0, slashIdx).trim()
+  return genreName
+}

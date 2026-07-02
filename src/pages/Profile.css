@@ -14,12 +14,12 @@
 }
 
 /* ============================================================
-   HEADER STRIP — back / centered title / more
+   HEADER STRIP — name (left) / overflow ⋯ (right)
    ============================================================ */
 
 .profile-header-strip {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 12px var(--page-padding);
@@ -28,34 +28,18 @@
   min-height: 56px;
 }
 
-.profile-header-strip__slot {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 40px;
-}
-
-.profile-header-strip__slot--left {
-  justify-self: start;
-}
-
-.profile-header-strip__slot--right {
-  justify-self: end;
-  position: relative;
-}
-
 .profile-header-strip__title {
-  justify-self: center;
+  justify-self: start;
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   letter-spacing: var(--letter-spacing-display);
   color: var(--text-primary);
-  text-align: center;
+  text-align: left;
   margin: 0;
-  /* Cap so a very long display name can't push into either side slot. */
-  max-width: 60vw;
+  /* Cap so a very long display name can't crowd the overflow button. */
+  max-width: 75vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -84,54 +68,9 @@
   background: var(--color-surface-active);
 }
 
-.profile-header-strip__kebab-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.profile-header-strip__kebab-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 180px;
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 6px;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-header-strip__kebab-menu button {
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  cursor: pointer;
-}
-
-.profile-header-strip__kebab-menu button:hover {
-  background: var(--color-surface);
-}
-
-.profile-header-strip__kebab-menu-item--destructive {
-  color: var(--status-danger) !important;
-  font-weight: var(--font-weight-semibold);
-}
-
-.profile-header-strip__kebab-menu-item--destructive:hover {
-  background: rgba(248, 113, 113, 0.1) !important;
-}
-
 /* Skeleton placeholders for the header strip */
 .profile-header-strip__title-sk {
-  justify-self: center;
+  justify-self: start;
   width: 140px;
   height: 18px;
   border-radius: var(--radius-xs);
@@ -155,9 +94,9 @@
 }
 
 /* ============================================================
-   IG-STYLE PROFILE HERO — Instagram compact left-aligned layout
-   avatar (left) + stats (right), then name/handle/bio/actions
-   stacked below, all left-aligned with 16px page padding.
+   IG-STYLE PROFILE HERO — left-aligned stack: avatar / name /
+   handle / bio / inline stats line / socials / action(s), all
+   left-aligned with 16px page padding.
    ============================================================ */
 
 .profile-ig-hero {
@@ -170,19 +109,14 @@
   padding-top: 16px;
 }
 
-/* ── Row 1: Avatar + Stats ── */
-
-.profile-ig-hero__top-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
+/* ── Row 1: Avatar ── */
 
 /* Avatar — 84px circle with 2px cobalt ring */
 .profile-ig-hero__avatar {
   width: 84px;
   height: 84px;
   flex-shrink: 0;
+  display: block;
   border-radius: var(--radius-full);
   overflow: hidden;
   padding: 0;
@@ -219,65 +153,6 @@
   font-size: 28px;
   font-weight: var(--font-weight-bold);
   line-height: 1;
-}
-
-/* Stats group — takes remaining width, evenly distributed */
-.profile-ig-hero__stats {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-}
-
-/* Individual stat — stacked count + label, centered */
-.profile-ig-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  background: none;
-  border: none;
-  padding: 6px 4px;
-  font-family: var(--font-body);
-  cursor: default;
-  -webkit-tap-highlight-color: transparent;
-  border-radius: var(--radius-sm);
-  transition: opacity var(--transition-fast);
-  min-width: 0;
-}
-
-.profile-ig-stat--clickable {
-  cursor: pointer;
-}
-
-.profile-ig-stat--clickable:active {
-  opacity: 0.65;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-ig-stat--clickable:active {
-    opacity: 1;
-  }
-}
-
-.profile-ig-stat__value {
-  font-family: var(--font-body);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--text-primary);
-}
-
-/* Instagram style: sentence-case, no uppercase, no letter-spacing */
-.profile-ig-stat__label {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: var(--font-weight-normal);
-  line-height: 1.2;
-  color: var(--text-secondary);
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 /* ── Row 2: Display name ── */
@@ -415,6 +290,56 @@
   color: var(--accent);
 }
 
+/* ── Row 5: Stats — one quiet inline line under the bio ── */
+
+.profile-ig-hero__stats-line {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.profile-ig-hero__stat-segment {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-ig-hero__stat-segment--tappable {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.profile-ig-hero__stat-segment--tappable:hover,
+.profile-ig-hero__stat-segment--tappable:active {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-ig-hero__stat-segment--tappable:active {
+    opacity: 1;
+  }
+}
+
+.profile-ig-hero__stat-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profile-ig-hero__stat-dot {
+  color: var(--text-tertiary);
+}
+
 /* Social handles — left-aligned row of pill chips */
 .profile-ig-hero__socials {
   margin-top: 8px;
@@ -465,18 +390,19 @@
   margin-top: 16px;
 }
 
-/* Each button takes exactly half the row */
+/* flex: 1 makes a lone button fill the row; two buttons split it evenly */
 .profile-ig-btn {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: var(--radius-md);
+  gap: 6px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast),
@@ -522,49 +448,15 @@
   border-color: var(--border-strong);
 }
 
-/* Following state — secondary style with border-strong */
+/* Following state — quiet toggle, secondary style with border-strong */
 .profile-ig-btn--following {
   border-color: var(--border-strong);
 }
 
-/* DNA share button — cobalt ghost with shimmer on active */
-.profile-ig-btn--dna {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid rgba(59, 130, 246, 0.40);
-  font-weight: 600;
-}
-
-.profile-ig-btn--dna:hover {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: var(--accent);
-}
-
-.profile-ig-btn--dna:active {
-  background: rgba(59, 130, 246, 0.15);
-  transform: scale(0.97);
-}
-
-.profile-ig-btn--dna:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.profile-ig-btn--dna-active {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: var(--accent);
-  color: var(--accent-hover);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .profile-ig-btn--dna {
-    transition: background var(--transition-fast), border-color var(--transition-fast),
-      color var(--transition-fast), transform var(--transition-fast);
-  }
-}
-
 /* ── IG hero skeleton (loading state) ── */
 .profile-ig-hero--skeleton {
+  display: flex;
+  flex-direction: column;
   gap: 0;
 }
 
@@ -573,12 +465,6 @@
   height: 84px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
-}
-
-.profile-ig-stat-sk {
-  width: 52px;
-  height: 40px;
-  border-radius: var(--radius-sm);
 }
 
 .profile-ig-hero__name-sk {
@@ -591,6 +477,13 @@
 .profile-ig-hero__handle-sk {
   margin-top: 6px;
   width: 90px;
+  height: 13px;
+  border-radius: var(--radius-xs);
+}
+
+.profile-ig-hero__stats-line-sk {
+  margin-top: 14px;
+  width: 220px;
   height: 13px;
   border-radius: var(--radius-xs);
 }
@@ -721,6 +614,18 @@
   gap: var(--spacing-md);
 }
 
+/* Bento card surface — used by cells with no pre-existing internal
+   edge-to-edge padding assumptions (Favorite Games, Now Playing, the
+   two-cell row). ProfileRatingsChart/ActivityTimeline keep their own
+   flat layout since their internal spacing already bleeds to the
+   page edge. */
+.profile-home__section--card {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-md);
+}
+
 .profile-home__section-header {
   display: flex;
   align-items: center;
@@ -813,28 +718,16 @@
   color: var(--accent);
 }
 
-/* ── Favorite Games row ────────────────────────────────────── */
+/* ── Favorite Games grid (3-up bento cell) ───────────────────── */
 
 .profile-favorites-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  /* Bleed past the section padding so cards can scroll edge-to-edge */
-  margin: 0 calc(var(--page-padding) * -1);
-  padding: 4px var(--page-padding) 8px;
-}
-
-.profile-favorites-row::-webkit-scrollbar {
-  display: none;
 }
 
 .profile-favorite-card {
-  flex: 0 0 auto;
-  width: 160px;
+  width: 100%;
   background: none;
   border: none;
   padding: 0;
@@ -843,13 +736,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  scroll-snap-align: start;
   -webkit-tap-highlight-color: transparent;
 }
 
 .profile-favorite-card__cover {
   position: relative;
-  width: 160px;
+  width: 100%;
   aspect-ratio: var(--cover-ratio);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -861,6 +753,20 @@
   color: var(--color-text-muted);
   font-weight: var(--font-weight-bold);
   font-size: 28px;
+}
+
+/* Empty "+" slot — self view only, fills a remaining grid cell */
+.profile-favorite-card__cover--add {
+  color: var(--color-text-tertiary);
+  border-style: dashed;
+  border-color: var(--border-strong);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.profile-favorite-card--add:hover .profile-favorite-card__cover--add,
+.profile-favorite-card--add:focus-visible .profile-favorite-card__cover--add {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .profile-favorite-card__cover img {
@@ -903,7 +809,7 @@
   font-family: var(--font-body);
   font-size: 11px;
   font-style: italic;
-  color: var(--color-brand-warm, #c9813a);
+  color: var(--accent);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -937,9 +843,9 @@
 }
 
 .profile-home__share-btn:not(:disabled):hover {
-  background: rgba(201, 129, 58, 0.1);
-  color: var(--color-brand-warm, #c9813a);
-  border-color: var(--color-brand-warm, #c9813a);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .profile-home__share-btn:disabled {
@@ -952,7 +858,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--color-brand-warm, #c9813a);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: profileShareSpin 700ms linear infinite;
 }
@@ -965,184 +871,119 @@
   .profile-home__share-spinner { animation: none; }
 }
 
-/* ── Obsessions section title variant ──────────────────────── */
+/* ── Now Playing hero (bento cell 1) ─────────────────────────── */
 
-.profile-home__section-title--obsessions {
-  font-size: 18px;
-  color: var(--color-brand-warm, #c9813a);
-}
-
-/* ── Current Obsessions row (3-card, wider than favorites) ─── */
-
-.profile-obsessions-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  margin: 0 calc(var(--page-padding) * -1);
-  padding: 4px var(--page-padding) 8px;
-}
-
-.profile-obsessions-row::-webkit-scrollbar {
-  display: none;
-}
-
-.profile-obsession-card {
-  flex: 0 0 auto;
-  width: 190px;
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  scroll-snap-align: start;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-obsession-card__cover {
-  position: relative;
-  width: 190px;
-  aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-  border: 2px solid rgba(201, 129, 58, 0.3);
-  display: flex;
+.profile-now-playing {
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-weight: var(--font-weight-bold);
-  font-size: 32px;
-  transition: border-color var(--transition-fast);
+  gap: var(--spacing-md);
 }
 
-.profile-obsession-card:hover .profile-obsession-card__cover {
-  border-color: var(--color-brand-warm, #c9813a);
-}
-
-.profile-obsession-card__cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.profile-obsession-card__fallback {
-  display: inline-block;
-}
-
-.profile-obsession-card__name {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.profile-obsession-card__dev {
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  letter-spacing: var(--letter-spacing-label);
-  color: var(--color-text-tertiary);
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Obsession empty-state CTA (warm-toned) */
-.profile-home__fav-empty-cta--obsessions {
-  border-color: rgba(201, 129, 58, 0.25);
-  color: var(--color-brand-warm, #c9813a);
-}
-
-.profile-home__fav-empty-cta--obsessions:hover {
-  background: rgba(201, 129, 58, 0.07);
-  border-color: rgba(201, 129, 58, 0.45);
-}
-
-/* ── Recent Activity row ───────────────────────────────────── */
-
-.profile-activity-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  margin: 0 calc(var(--page-padding) * -1);
-  padding: 4px var(--page-padding) 8px;
-}
-
-.profile-activity-row::-webkit-scrollbar {
-  display: none;
-}
-
-.profile-activity-thumb {
+.profile-now-playing__cover {
   flex: 0 0 auto;
-  width: 80px;
-  aspect-ratio: var(--cover-ratio);
-  background: none;
-  border: none;
+  width: 56px;
+  height: 74px;
   padding: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-activity-thumb__cover {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.profile-activity-thumb__cover img {
+.profile-now-playing__cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.profile-activity-thumb__fallback {
-  position: absolute;
-  inset: 0;
+.profile-now-playing__fallback {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   font-family: var(--font-body);
-  font-size: 22px;
   font-weight: var(--font-weight-bold);
+  font-size: 22px;
   color: var(--color-text-muted);
 }
 
-.profile-activity-thumb__icon {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-full);
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
+.profile-now-playing__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-now-playing__eyebrow {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--accent-review);
 }
+
+.profile-now-playing__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-review);
+}
+
+.profile-now-playing__title {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-now-playing__started {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.profile-now-playing__update {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-now-playing__update:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent);
+}
+
+/* ── Taste cell (bento cell 2) ────────────────────────────────
+   Genre DNA bar + persona pills are rendered by ProfileTasteDNA
+   (src/components/ProfileTasteDNA.jsx + .css), sourced from the
+   cached E0 taste vector. That component returns null when it has
+   nothing real to show, so no placeholder rule is needed here. */
 
 /* ============================================================
    ACTIVITY TIMELINE  (at- prefix)
@@ -1193,7 +1034,7 @@
 }
 
 .at-entry--milestone .at-entry__body {
-  border-left: 2px solid var(--status-warning);
+  border-left: 2px solid var(--accent);
   padding-left: 8px;
   margin-left: -2px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -1224,9 +1065,9 @@
 }
 
 .at-entry__dot--milestone {
-  background: var(--status-warning);
-  border-color: var(--status-warning);
-  color: #000;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--color-bg-primary);
 }
 
 .at-entry__line {
@@ -1261,8 +1102,8 @@
   gap: 4px;
   font-size: 11px;
   font-weight: var(--font-weight-semibold);
-  color: var(--status-warning);
-  background: rgba(251, 191, 36, 0.1);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
   border-radius: var(--radius-full);
   padding: 2px 8px;
   width: fit-content;
@@ -1691,17 +1532,10 @@ img.profile-list-row__author-avatar {
     padding: 11px 12px;
   }
 
-  /* 4-stat row: tighten value + label so all 4 fit on narrow screens */
-  .profile-ig-stat__value {
-    font-size: 15px;
-  }
-
-  .profile-ig-stat__label {
-    font-size: 11px;
-  }
-
-  .profile-ig-stat {
-    padding: 6px 2px;
+  /* Inline stats line: tighten slightly so 4 segments still fit one
+     comfortable wrap on narrow screens. */
+  .profile-ig-hero__stats-line {
+    font-size: 12px;
   }
 }
 
@@ -1740,214 +1574,163 @@ img.profile-list-row__author-avatar {
 }
 
 /* =============================================
-   PROFILE — Yearly Challenge section
+   PROFILE — Two-cell bento row: Challenge | Next milestone
    ============================================= */
 
-.profile-challenge-section {
-  /* inherits .profile-home__section padding */
+.profile-bento-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
 }
 
-.profile-challenge-row {
+.profile-bento-row .profile-home__section {
+  gap: var(--spacing-sm);
+}
+
+/* Compact section titles inside the two-cell row — smaller than the
+   full-width section titles above them so both cells stay tidy. */
+.profile-home__section-title--compact {
+  font-size: 15px;
+}
+
+/* ── Challenge cell (green — --accent-review) ────────────────── */
+
+.profile-challenge-compact {
   display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-lg);
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
-.profile-challenge-info {
-  flex: 1;
+.profile-challenge-compact__info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
-.profile-challenge-headline {
+.profile-challenge-compact__headline {
   margin: 0;
   font-family: var(--font-body);
-  font-size: var(--font-size-title);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  line-height: var(--line-height-title);
 }
 
-.profile-challenge-sub {
+.profile-challenge-compact__sub {
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
-  line-height: var(--line-height-caption);
 }
 
-.profile-challenge-edit {
-  margin-top: 4px;
+.profile-challenge-compact__set-goal {
   padding: 0;
-  background: transparent;
+  background: none;
   border: none;
   cursor: pointer;
+  text-align: left;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
-  color: var(--accent);
-  line-height: var(--line-height-caption);
-  text-align: left;
+  color: var(--accent-review);
   -webkit-tap-highlight-color: transparent;
 }
 
-.profile-challenge-edit:hover,
-.profile-challenge-edit:focus-visible {
-  color: var(--accent-hover);
-  text-decoration: underline;
-  outline: none;
-}
-
-/* Milestone badge strip */
-.profile-milestone-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.profile-milestone-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-amber, #f59e0b);
-  letter-spacing: var(--letter-spacing-label);
-  white-space: nowrap;
-}
-
-/* ── Pace indicator chip ──────────────────────────────────── */
-
-.profile-challenge-pace {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  white-space: nowrap;
-}
-
-.profile-challenge-pace--ahead {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ade80;
-}
-
-.profile-challenge-pace--on-track {
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--color-text-secondary);
-}
-
-.profile-challenge-pace--behind {
-  background: rgba(251, 146, 60, 0.12);
-  color: #fb923c;
-}
-
-/* ── Milestone beat chip ──────────────────────────────────── */
-
-.profile-challenge-milestone {
-  display: inline-block;
-  margin-top: 2px;
-  padding: 2px 8px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: var(--radius-full);
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-amber, #f59e0b);
-  letter-spacing: var(--letter-spacing-label);
-  white-space: nowrap;
-}
-
-/* ── Rivalry mini-leaderboard ─────────────────────────────── */
-
-.profile-rivalry {
-  margin-top: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-}
-
-.profile-rivalry__heading {
-  margin: 0 0 8px;
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.profile-rivalry__list {
-  list-style: none;
+.profile-challenge-compact__circle {
   margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-review);
+}
+
+/* ── Next milestone cell (cobalt — --accent) ─────────────────── */
+
+.profile-next-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-next-badge__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent);
+}
+
+.profile-next-badge__body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.profile-rivalry__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.profile-rivalry__row--self {
-  border-radius: var(--radius-sm);
-}
-
-.profile-rivalry__rank {
+.profile-next-badge__name {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-tertiary);
-  width: 14px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.profile-rivalry__name {
-  flex: 1;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text-secondary);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-rivalry__row--self .profile-rivalry__name {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-}
-
-.profile-rivalry__count {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.profile-rivalry__row--self .profile-rivalry__count {
+.profile-next-badge__track {
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.profile-next-badge__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-smooth);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-next-badge__fill { transition: none; }
+}
+
+.profile-next-badge__count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  color: var(--color-text-tertiary);
+}
+
+.profile-next-badge__earned-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
   color: var(--accent);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-next-badge__earned-link:hover {
+  text-decoration: underline;
 }
 
 /* ============================================================

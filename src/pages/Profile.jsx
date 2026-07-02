@@ -10,19 +10,14 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import {
   LuChevronLeft,
-  LuChevronRight,
-  LuPlay,
   LuCheck,
-  LuStar,
-  LuPlus,
   LuShare2,
   LuPin,
   LuArrowUpDown,
-  LuSettings,
-  LuMail,
+  LuPlus,
 } from 'react-icons/lu'
 import { HiDotsVertical } from 'react-icons/hi'
-import { SlidersHorizontal, PenLine, List } from 'lucide-react'
+import { PenLine, List } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -32,7 +27,6 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { useSession } from '../contexts/SessionContext'
 import { usePresence } from '../hooks/usePresence'
-import { getTotalHoursForUser } from '../services/hoursService'
 import { getSettings } from '../services/userSettingsService'
 import { getReviewsForUser } from '../services/reviewService'
 import {
@@ -43,8 +37,9 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
-import { getGoalProgress, setGoal, computePace, computeMilestoneBeat, getRivalryData } from '../services/goalService'
-import { getStreakData, MILESTONES, isMilestoneSeen } from '../services/streakMilestoneService'
+import { getProfileStats } from '../services/profileStatsService'
+import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
+import { useBadges } from '../hooks/useBadges'
 import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
@@ -67,7 +62,7 @@ import {
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
 import { shareCard } from '../services/share'
-import { computeDNAPortrait, compileWrappedSummary } from '../services/dnaService'
+import { compileWrappedSummary } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
@@ -76,8 +71,6 @@ import EditProfileModal from '../components/EditProfileModal'
 import CreateListModal from '../components/CreateListModal'
 import FavoritesPickerSheet from '../components/FavoritesPickerSheet'
 import GamePickerSheet from '../components/GamePickerSheet'
-import BadgesRow from '../components/BadgesRow'
-import BadgeShowcase from '../components/BadgeShowcase'
 import GoalRing from '../components/GoalRing'
 import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
@@ -88,9 +81,10 @@ import BioEditModal from '../components/BioEditModal'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
-import ProfileReviewsShelf from '../components/ProfileReviewsShelf'
 import PinnedListsSection from '../components/PinnedListsSection'
 import ProfileRatingsChart from '../components/ProfileRatingsChart'
+import ProfileTasteDNA from '../components/ProfileTasteDNA'
+import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
 import ActivityTimeline from '../components/ActivityTimeline'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
@@ -131,17 +125,6 @@ function readSortFromStorage() {
 
 function getSort(tab) {
   return readSortFromStorage()[tab] || SORT_DEFAULT[tab]
-}
-
-/**
- * Format a raw hours number for the header stat.
- * Keeps the label compact so it fits the 4-stat row on small screens.
- */
-function formatHours(h) {
-  if (h == null || h < 0) return '—'
-  if (h === 0) return '0h'
-  if (h >= 1000) return `${Math.round(h / 100) / 10}kh`
-  return `${Math.round(h)}h`
 }
 
 function sortReviews(reviews, key, likeCounts) {
@@ -292,27 +275,6 @@ const SOCIAL_PLATFORMS = [
 ]
 
 /* ============================================================
-   Activity → "recent activity" thumbnail metadata
-   ============================================================ */
-
-const ACTIVITY_ICON = {
-  status_changed: LuPlay,
-  review_posted: LuStar,
-  list_created: LuPlus,
-  game_added_to_list: LuPlus,
-}
-
-function getActivityIcon(activity) {
-  if (activity.activityType === 'status_changed') {
-    const to = activity.metadata?.to_status
-    if (to === 'played') return LuCheck
-    if (to === 'currently') return LuPlay
-    if (to === 'want') return LuPlus
-  }
-  return ACTIVITY_ICON[activity.activityType] || LuPlay
-}
-
-/* ============================================================
    Recent-activity thumbnail enrichment
    The activities table only stores igdb_game_id + game_title in
    metadata. We need the cover image to render the thumbnail row.
@@ -338,6 +300,33 @@ function buildGameImageMap(reviews, lists, favorites) {
     if (g.id != null && g.image) map.set(String(g.id), g.image)
   }
   return map
+}
+
+/* ============================================================
+   Now Playing hero — derived from the same `activities` array the
+   timeline already uses (no new data source). Scans newest-first and,
+   per game, keeps only the FIRST (i.e. most recent) status_changed
+   row encountered. If that row's to_status is 'currently', the game
+   is still Playing (nothing later superseded it) and becomes the
+   hero. Works identically for self and visitor profiles since
+   `activities` is already fetched for both.
+   ============================================================ */
+
+function findNowPlaying(activities) {
+  const seenGameIds = new Set()
+  for (const a of activities) {
+    if (a.activityType !== 'status_changed' || a.igdbGameId == null) continue
+    const key = String(a.igdbGameId)
+    if (seenGameIds.has(key)) continue
+    seenGameIds.add(key)
+    if (a.metadata?.to_status === 'currently') return a
+  }
+  return null
+}
+
+function formatShortDate(isoString) {
+  if (!isoString) return ''
+  return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 /* ============================================================
@@ -454,17 +443,13 @@ function Profile() {
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showCreateListModal, setShowCreateListModal] = useState(false)
   const [showFavPickerSheet, setShowFavPickerSheet] = useState(false)
-  const [showObsessionPickerSheet, setShowObsessionPickerSheet] = useState(false)
   const [showGamePickerSheet, setShowGamePickerSheet] = useState(false)
   // 'idle' | 'generating' — favorites shelf share card
   const [favSharing, setFavSharing] = useState('idle')
 
-  // Header kebab dropdown
-  const [kebabOpen, setKebabOpen] = useState(false)
-  const kebabRef = useRef(null)
+  // Header overflow (⋯) bottom sheet — replaces the old inline kebab dropdown
+  const [overflowSheetOpen, setOverflowSheetOpen] = useState(false)
 
-  // DNA share — 'idle' | 'generating' | 'done'
-  const [dnaSharing, setDnaSharing] = useState('idle')
   // Wrapped share — 'idle' | 'generating' | 'done'
   const [wrappedSharing, setWrappedSharing] = useState('idle')
 
@@ -480,7 +465,6 @@ function Profile() {
   const [goalProgress, setGoalProgress] = useState({
     hasGoal: false, target: null, current: 0, year: thisYear, percent: 0,
   })
-  const [streakData, setStreakData] = useState(null)
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
   const [rivalryData, setRivalryData] = useState([])
 
@@ -500,8 +484,6 @@ function Profile() {
   const [customLists, setCustomLists] = useState([])
   const [activities, setActivities] = useState([])
   const [journalEntries, setJournalEntries] = useState([])
-  // Total hours tracked — summed from game_trackers.hours_played for the viewed user.
-  const [totalHours, setTotalHours] = useState(null)
   // Sprint 6 P0 — Map<reviewId, count> fetched once per profile load
   // and re-fetched whenever reviews change. Drives the Most Liked sort
   // and the count rendered on each card. Seeded into useLikeState's
@@ -545,11 +527,6 @@ function Profile() {
   const [reviewsPage, setReviewsPage] = useState(1)
   const reviewsSentinelRef = useRef(null)
 
-  // ── Filter icon visibility (Prompt 4 rule) ───────────────────────────
-  // Only renders for own profile, only on the Reviews/Lists tabs.
-  const showFilterIcon =
-    isOwnProfile && (activeTab === 'reviews' || activeTab === 'lists')
-
   /* ── Data loading ──────────────────────────────────────────────── */
 
   const loadProfileData = useCallback(async () => {
@@ -582,19 +559,17 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData, gp, sd, journalRows, rd] = await Promise.all([
+        const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd] = await Promise.all([
           safeWithTimeout(getReviewsForUser(targetUserId), []),
           safeWithTimeout(getListsForUser(targetUserId), []),
           safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
           safeWithTimeout(getPinsForUser(targetUserId), []),
           safeWithTimeout(getPinnedListsForUser(targetUserId), []),
           isOwnProfile ? safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null) : Promise.resolve(null),
-          isOwnProfile ? safeWithTimeout(getStreakData(targetUserId), null) : Promise.resolve(null),
           safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
           isOwnProfile ? safeWithTimeout(getRivalryData(targetUserId, new Date().getFullYear()), []) : Promise.resolve([]),
         ])
         if (gp) setGoalProgress(gp)
-        if (sd) setStreakData(sd)
         if (rd) setRivalryData(rd)
         setAllReviews(rows)
         setPinnedRows(pins)
@@ -759,20 +734,6 @@ function Profile() {
     }
   }, [targetUserId, loadFollowState])
 
-  /* ── Total hours fetch ─────────────────────────────────────────── */
-
-  useEffect(() => {
-    if (!targetUserId) {
-      setTotalHours(null)
-      return undefined
-    }
-    let cancelled = false
-    getTotalHoursForUser(targetUserId)
-      .then((h) => { if (!cancelled) setTotalHours(h) })
-      .catch(() => { if (!cancelled) setTotalHours(null) })
-    return () => { cancelled = true }
-  }, [targetUserId])
-
   /* ── Live presence status for this profile ─────────────────────── */
 
   // Own profile: show if the signed-in user opted in AND has an active session.
@@ -822,20 +783,6 @@ function Profile() {
   const gameImageMap = useMemo(
     () => buildGameImageMap(allReviews, customLists, profile?.favoriteGames || []),
     [allReviews, customLists, profile?.favoriteGames]
-  )
-
-  // Section A: most recent 10 reviews/ratings by created_at for the
-  // Home tab reviews shelf. Sorted independently of the Reviews tab
-  // sort so the shelf always shows newest-first regardless of the user's
-  // chosen sort preference on that tab.
-  const recentReviews = useMemo(
-    () =>
-      allReviews
-        .slice()
-        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-        .slice(0, 10)
-        .map((row) => rowToReviewCard(row, reviewLikeCounts, reviewCommentCounts)),
-    [allReviews, reviewLikeCounts, reviewCommentCounts]
   )
 
   // Avoid SharedCover layoutId collisions across all the cover surfaces
@@ -889,23 +836,6 @@ function Profile() {
     setBioExpanded(false)
   }, [targetUserId])
 
-  /* ── Kebab outside-click close ────────────────────────────────── */
-
-  useEffect(() => {
-    if (!kebabOpen) return undefined
-    function handleOutside(e) {
-      if (kebabRef.current && !kebabRef.current.contains(e.target)) {
-        setKebabOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    document.addEventListener('touchstart', handleOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleOutside)
-      document.removeEventListener('touchstart', handleOutside)
-    }
-  }, [kebabOpen])
-
   /* ── Bio overflow measurement ─────────────────────────────────── */
 
   // Measure scrollHeight vs clientHeight on the collapsed paragraph to
@@ -941,17 +871,6 @@ function Profile() {
     if (user?.id) {
       updateUserProfile(user.id, { favoriteGames: newFavorites }).catch((err) =>
         console.warn('[Profile] favorites Supabase sync failed:', err)
-      )
-    }
-  }
-
-  const handleSaveObsessions = (newObsessions) => {
-    const updated = updateProfile({ currentObsessions: newObsessions })
-    setProfile(updated)
-    window.dispatchEvent(new Event('profileUpdated'))
-    if (user?.id) {
-      updateUserProfile(user.id, { currentObsessions: newObsessions }).catch((err) =>
-        console.warn('[Profile] obsessions Supabase sync failed:', err)
       )
     }
   }
@@ -1001,41 +920,28 @@ function Profile() {
     })
   }
 
-  const handleShareDNA = useCallback(async () => {
-    if (dnaSharing === 'generating') return
-    setDnaSharing('generating')
+  // Copies the profile URL directly to the clipboard — distinct from
+  // handleShareProfile, which opens the native/web share sheet. Lives in
+  // the overflow sheet as its own "Copy link" row.
+  const handleCopyProfileLink = useCallback(async () => {
+    const username = profile?.username || profile?.displayName || 'profile'
+    const url = `${window.location.origin}/user/${encodeURIComponent(username)}`
     try {
-      const portrait = computeDNAPortrait()
-      const username = profile?.username || profile?.displayName || null
-      const displayName = profile?.displayName || username
-      const avatarUrl = profile?.avatarUrl || profile?.avatar_url || null
-      await shareCard({
-        variant: 'profile-dna',
-        data: {
-          ...portrait,
-          username,
-          displayName,
-          avatarUrl,
-          // Map portrait field names to what ProfileDnaVariant expects
-          gamesPlayed: portrait.totalGames,
-          reviews: portrait.reviewCount,
-          following: followingCount,
-          genres: portrait.topGenres,
-        },
-        target: {
-          type: 'profile',
-          username: username || user?.id || '',
-        },
-        title: `${displayName || 'My'} Gamer DNA — GameTracker`,
-      })
-      setDnaSharing('done')
-      setTimeout(() => setDnaSharing('idle'), 2500)
+      await navigator.clipboard.writeText(url)
+      showToast('Link copied', 'success')
     } catch (err) {
-      console.error('[profile] handleShareDNA failed:', err)
-      showToast('Could not generate DNA card — please try again.', 'error')
-      setDnaSharing('idle')
+      console.error('[profile] copy link failed:', err)
+      showToast('Could not copy link', 'error')
     }
-  }, [dnaSharing, profile, user?.id, followingCount])
+  }, [profile])
+
+  // Shared by the hero "Message" button (visitor, following) and the
+  // visitor overflow sheet's "Message" row.
+  const handleMessageUser = useCallback(() => {
+    const handle = profile?.username || profile?.id || targetUserId || ''
+    if (!handle) return
+    navigate(`/messages/${encodeURIComponent(handle)}`)
+  }, [profile, targetUserId, navigate])
 
   const handleShareWrapped = useCallback(async (period = 'year') => {
     if (wrappedSharing === 'generating') return
@@ -1300,21 +1206,13 @@ function Profile() {
     return (
       <div className="profile-page" aria-hidden="true">
         <div className="profile-header-strip">
-          <span className="profile-header-strip__slot" />
           <span className="profile-header-strip__title-sk skeleton" />
-          <span className="profile-header-strip__slot" />
         </div>
         <div className="profile-ig-hero profile-ig-hero--skeleton">
-          <div className="profile-ig-hero__top-row">
-            <div className="skeleton profile-ig-hero__avatar-sk" />
-            <div className="profile-ig-hero__stats">
-              <div className="skeleton profile-ig-stat-sk" />
-              <div className="skeleton profile-ig-stat-sk" />
-              <div className="skeleton profile-ig-stat-sk" />
-            </div>
-          </div>
+          <div className="skeleton profile-ig-hero__avatar-sk" />
           <span className="skeleton profile-ig-hero__name-sk" />
           <span className="skeleton profile-ig-hero__handle-sk" />
+          <span className="skeleton profile-ig-hero__stats-line-sk" />
         </div>
       </div>
     )
@@ -1366,198 +1264,34 @@ function Profile() {
     'Profile'
 
   const reviewCount = allReviews.length
-  const playedCount = (() => {
-    // Reuse the localStorage tracker count without round-tripping the
-    // heavier profileStats helper. The gameLibrary blob is the source of
-    // truth for the Played list.
-    try {
-      const raw = localStorage.getItem('gameLibrary')
-      if (!raw) return 0
-      const lib = JSON.parse(raw)
-      return lib?.lists?.played?.games?.length || 0
-    } catch {
-      return 0
-    }
-  })()
+  // Games stat — total tracked games across every list (Want to Play /
+  // Playing / Played / Dropped). Only computable on the signed-in device's
+  // own localStorage library; other users' libraries aren't synced to
+  // Supabase anywhere in this codebase, so we deliberately show `null`
+  // (hidden) rather than a fabricated/zero count on visitor profiles.
+  const gamesCount = isOwnProfile ? getProfileStats().totalGames : null
 
   const setSocials = SOCIAL_PLATFORMS.filter(
     (p) => (profile[p.profileField] || '').trim().length > 0
   )
 
   const favoriteGames = profile.favoriteGames || []
-  const currentObsessions = profile.currentObsessions || []
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
         {/* ═════════════════════════════════════════════════════════
-            HEADER STRIP — back / centered title / more
+            HEADER STRIP — name (left) / overflow ⋯ (right) only
             ═════════════════════════════════════════════════════════ */}
         <header className="profile-header-strip">
-          <div className="profile-header-strip__slot profile-header-strip__slot--left">
-            {!isOwnProfile && (
-              <button
-                type="button"
-                className="profile-header-strip__icon-btn"
-                onClick={() => navigate(-1)}
-                aria-label="Go back"
-              >
-                <LuChevronLeft size={22} aria-hidden="true" />
-              </button>
-            )}
-          </div>
           <h1 className="profile-header-strip__title">{headerTitle}</h1>
-          <div className="profile-header-strip__slot profile-header-strip__slot--right">
-            {showFilterIcon && (
-              <button
-                type="button"
-                className="profile-header-strip__icon-btn"
-                aria-label="Sort options"
-                onClick={() => setShowSortSheet(true)}
-              >
-                <SlidersHorizontal size={20} aria-hidden="true" />
-              </button>
-            )}
-            {/* Envelope — opens the DM inbox. Shown on own profile only;
-                other-user profiles have the "Message" action button in
-                the hero, so a header icon there would be redundant. */}
-            {isOwnProfile && (
-              <button
-                type="button"
-                className="profile-header-strip__icon-btn"
-                aria-label="Messages"
-                onClick={() => navigate('/messages')}
-              >
-                <LuMail size={22} aria-hidden="true" />
-              </button>
-            )}
-            {/* Sprint 7 — gear sits to the LEFT of the ellipsis on the
-                signed-in user's own profile and opens the Settings page.
-                Hidden on other-user profiles since they have no settings
-                to manage from there. */}
-            {isOwnProfile && (
-              <button
-                type="button"
-                className="profile-header-strip__icon-btn"
-                aria-label="Settings"
-                onClick={() => navigate('/settings')}
-              >
-                <LuSettings size={22} aria-hidden="true" />
-              </button>
-            )}
-            <div className="profile-header-strip__kebab-wrap" ref={kebabRef}>
-              <button
-                type="button"
-                className="profile-header-strip__icon-btn"
-                aria-label="More options"
-                aria-expanded={kebabOpen}
-                onClick={() => setKebabOpen((v) => !v)}
-              >
-                <HiDotsVertical size={20} aria-hidden="true" />
-              </button>
-              {kebabOpen && (
-                <div className="profile-header-strip__kebab-menu" role="menu">
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setKebabOpen(false)
-                        setShowEditModal(true)
-                      }}
-                    >
-                      Edit profile
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setKebabOpen(false)
-                      handleShareProfile()
-                    }}
-                  >
-                    Share profile
-                  </button>
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={dnaSharing === 'generating'}
-                      onClick={() => {
-                        setKebabOpen(false)
-                        handleShareDNA()
-                      }}
-                    >
-                      {dnaSharing === 'generating'
-                        ? 'Generating…'
-                        : dnaSharing === 'done'
-                        ? 'Shared!'
-                        : 'Share DNA'}
-                    </button>
-                  )}
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={wrappedSharing === 'generating'}
-                      onClick={() => {
-                        setKebabOpen(false)
-                        handleShareWrapped('year')
-                      }}
-                    >
-                      {wrappedSharing === 'generating'
-                        ? 'Generating…'
-                        : wrappedSharing === 'done'
-                        ? 'Shared!'
-                        : 'Share Year Wrapped'}
-                    </button>
-                  )}
-                  {isOwnProfile && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={wrappedSharing === 'generating'}
-                      onClick={() => {
-                        setKebabOpen(false)
-                        handleShareWrapped('month')
-                      }}
-                    >
-                      {wrappedSharing === 'generating'
-                        ? 'Generating…'
-                        : wrappedSharing === 'done'
-                        ? 'Shared!'
-                        : 'Share Month Wrapped'}
-                    </button>
-                  )}
-                  {!isOwnProfile && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          setReportProfileOpen(true)
-                        }}
-                      >
-                        Report profile
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="profile-header-strip__kebab-menu-item--destructive"
-                        onClick={() => {
-                          setKebabOpen(false)
-                          setBlockSheetOpen(true)
-                        }}
-                      >
-                        Block {profile.username || profile.displayName || 'user'}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <button
+            type="button"
+            className="profile-header-strip__icon-btn"
+            aria-label="More options"
+            onClick={() => setOverflowSheetOpen(true)}
+          >
+            <HiDotsVertical size={20} aria-hidden="true" />
+          </button>
         </header>
 
         {/* Banner — full-bleed strip between the header strip and the
@@ -1574,76 +1308,33 @@ function Profile() {
         )}
 
         {/* ═════════════════════════════════════════════════════════
-            IG-STYLE PROFILE HEADER — avatar+stats / name / handle /
-            bio / action buttons (Instagram compact left-aligned layout)
+            IG-STYLE PROFILE HEADER — avatar / name / handle / bio /
+            inline stats line / action button(s)
             ═════════════════════════════════════════════════════════ */}
         <section className={`profile-ig-hero${displayBannerUrl ? ' profile-ig-hero--has-banner' : ''}`}>
 
-          {/* ── Row 1: Avatar (left) + Stats (right) ── */}
-          <div className="profile-ig-hero__top-row">
-            <button
-              type="button"
-              className={`profile-ig-hero__avatar${isOwnProfile ? ' profile-ig-hero__avatar--editable' : ''}`}
-              onClick={() => isOwnProfile && setShowEditModal(true)}
-              aria-label={isOwnProfile ? 'Edit profile photo' : `${profile.displayName || 'User'} profile photo`}
-            >
-              {avatarDisplay ? (
-                <img
-                  src={avatarDisplay}
-                  alt={`${profile.displayName || 'User'} profile photo`}
-                  className="profile-ig-hero__avatar-img"
-                />
-              ) : (
-                <div
-                  className="profile-ig-hero__avatar-fallback"
-                  style={{ backgroundColor: defaultAvatar.color }}
-                >
-                  {defaultAvatar.initials}
-                </div>
-              )}
-            </button>
-
-            <div className="profile-ig-hero__stats" role="group" aria-label="Profile stats">
+          {/* ── Row 1: Avatar ── */}
+          <button
+            type="button"
+            className={`profile-ig-hero__avatar${isOwnProfile ? ' profile-ig-hero__avatar--editable' : ''}`}
+            onClick={() => isOwnProfile && setShowEditModal(true)}
+            aria-label={isOwnProfile ? 'Edit profile photo' : `${profile.displayName || 'User'} profile photo`}
+          >
+            {avatarDisplay ? (
+              <img
+                src={avatarDisplay}
+                alt={`${profile.displayName || 'User'} profile photo`}
+                className="profile-ig-hero__avatar-img"
+              />
+            ) : (
               <div
-                className="profile-ig-stat"
-                aria-label={`Hours tracked, ${formatHours(totalHours)}`}
+                className="profile-ig-hero__avatar-fallback"
+                style={{ backgroundColor: defaultAvatar.color }}
               >
-                <span className="profile-ig-stat__value">{formatHours(totalHours)}</span>
-                <span className="profile-ig-stat__label">Hours</span>
+                {defaultAvatar.initials}
               </div>
-              <div
-                className="profile-ig-stat"
-                aria-label={`Reviews, ${reviewCount}, not interactive`}
-              >
-                <span className="profile-ig-stat__value">{reviewCount}</span>
-                <span className="profile-ig-stat__label">Reviews</span>
-              </div>
-              <button
-                type="button"
-                className="profile-ig-stat profile-ig-stat--clickable"
-                onClick={() => {
-                  const handle = profile.username || profile.displayName || 'user'
-                  navigate(`/user/${encodeURIComponent(handle)}/followers`)
-                }}
-                aria-label={`Followers, ${followersCount}, view list`}
-              >
-                <span className="profile-ig-stat__value">{followersCount}</span>
-                <span className="profile-ig-stat__label">Followers</span>
-              </button>
-              <button
-                type="button"
-                className="profile-ig-stat profile-ig-stat--clickable"
-                onClick={() => {
-                  const handle = profile.username || profile.displayName || 'user'
-                  navigate(`/user/${encodeURIComponent(handle)}/following`)
-                }}
-                aria-label={`Following, ${followingCount}, view list`}
-              >
-                <span className="profile-ig-stat__value">{followingCount}</span>
-                <span className="profile-ig-stat__label">Following</span>
-              </button>
-            </div>
-          </div>
+            )}
+          </button>
 
           {/* ── Row 2: Display name ── */}
           <h2 className="profile-ig-hero__name">
@@ -1709,6 +1400,47 @@ function Profile() {
             )
           )}
 
+          {/* ── Row 5: Stats — one quiet inline line under the bio.
+              Games is own-profile only (no Supabase source exists yet
+              for another user's library size — see STEP 1 diagnosis). ── */}
+          <p className="profile-ig-hero__stats-line" role="group" aria-label="Profile stats">
+            {gamesCount !== null && (
+              <>
+                <span className="profile-ig-hero__stat-segment">
+                  <span className="profile-ig-hero__stat-value">{gamesCount}</span> games
+                </span>
+                <span className="profile-ig-hero__stat-dot" aria-hidden="true">·</span>
+              </>
+            )}
+            <span className="profile-ig-hero__stat-segment">
+              <span className="profile-ig-hero__stat-value">{reviewCount}</span> reviews
+            </span>
+            <span className="profile-ig-hero__stat-dot" aria-hidden="true">·</span>
+            <button
+              type="button"
+              className="profile-ig-hero__stat-segment profile-ig-hero__stat-segment--tappable"
+              onClick={() => {
+                const handle = profile.username || profile.displayName || 'user'
+                navigate(`/user/${encodeURIComponent(handle)}/followers`)
+              }}
+              aria-label={`Followers, ${followersCount}, view list`}
+            >
+              <span className="profile-ig-hero__stat-value">{followersCount}</span> followers
+            </button>
+            <span className="profile-ig-hero__stat-dot" aria-hidden="true">·</span>
+            <button
+              type="button"
+              className="profile-ig-hero__stat-segment profile-ig-hero__stat-segment--tappable"
+              onClick={() => {
+                const handle = profile.username || profile.displayName || 'user'
+                navigate(`/user/${encodeURIComponent(handle)}/following`)
+              }}
+              aria-label={`Following, ${followingCount}, view list`}
+            >
+              <span className="profile-ig-hero__stat-value">{followingCount}</span> following
+            </button>
+          </p>
+
           {/* Social links — shown only when at least one handle is set */}
           {setSocials.length > 0 && (
             <div className="profile-ig-hero__socials">
@@ -1733,113 +1465,100 @@ function Profile() {
             </div>
           )}
 
-          {/* ── Row 5: Action buttons (two equal-width) ── */}
+          {/* Visitor-only E0 taste-match readout — never on your own
+              profile, hides entirely when the engine hasn't computed
+              a match for this viewer↔owner pair yet. */}
+          {!isOwnProfile && (
+            <ProfileTasteMatchBanner viewerId={user?.id} ownerId={targetUserId} />
+          )}
+
+          {/* ── Row 6: State-adaptive primary action — never more than
+              one primary button visible at once. ── */}
           <div className="profile-ig-hero__actions">
             {isOwnProfile ? (
+              <button
+                type="button"
+                className="profile-ig-btn profile-ig-btn--primary"
+                onClick={() => setShowEditModal(true)}
+                aria-label="Edit profile"
+              >
+                Edit Profile
+              </button>
+            ) : following ? (
               <>
                 <button
                   type="button"
-                  className="profile-ig-btn profile-ig-btn--secondary"
-                  onClick={() => setShowEditModal(true)}
-                  aria-label="Edit profile"
-                >
-                  Edit Profile
-                </button>
-                <button
-                  type="button"
-                  className="profile-ig-btn profile-ig-btn--secondary"
-                  onClick={handleShareProfile}
-                  aria-label="Share profile"
-                >
-                  Share Profile
-                </button>
-                {/* DNA share — signature reveal; reduced-motion collapses animation */}
-                <motion.button
-                  type="button"
-                  className={`profile-ig-btn profile-ig-btn--dna${dnaSharing !== 'idle' ? ' profile-ig-btn--dna-active' : ''}`}
-                  onClick={handleShareDNA}
-                  disabled={dnaSharing === 'generating'}
-                  aria-label={
-                    dnaSharing === 'generating'
-                      ? 'Generating DNA card…'
-                      : dnaSharing === 'done'
-                      ? 'DNA card shared!'
-                      : 'Share your Gamer DNA card'
-                  }
-                  aria-busy={dnaSharing === 'generating'}
-                  initial={reducedMotion ? false : { opacity: 0, scale: 0.88 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={
-                    reducedMotion
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 400, damping: 26, delay: 0.18 }
-                  }
-                >
-                  {dnaSharing === 'generating'
-                    ? 'Generating…'
-                    : dnaSharing === 'done'
-                    ? '✓ Shared!'
-                    : 'Share DNA'}
-                </motion.button>
-                <motion.button
-                  type="button"
-                  className={`profile-ig-btn profile-ig-btn--dna${wrappedSharing !== 'idle' ? ' profile-ig-btn--dna-active' : ''}`}
-                  onClick={() => handleShareWrapped('year')}
-                  disabled={wrappedSharing === 'generating'}
-                  aria-label={
-                    wrappedSharing === 'generating'
-                      ? 'Generating Wrapped card…'
-                      : wrappedSharing === 'done'
-                      ? 'Wrapped card shared!'
-                      : 'Share your Year Wrapped card'
-                  }
-                  aria-busy={wrappedSharing === 'generating'}
-                  initial={reducedMotion ? false : { opacity: 0, scale: 0.88 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={
-                    reducedMotion
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 400, damping: 26, delay: 0.26 }
-                  }
-                >
-                  {wrappedSharing === 'generating'
-                    ? 'Generating…'
-                    : wrappedSharing === 'done'
-                    ? '✓ Shared!'
-                    : 'Wrapped'}
-                </motion.button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={`profile-ig-btn${following ? ' profile-ig-btn--secondary profile-ig-btn--following' : ' profile-ig-btn--primary'}`}
+                  className="profile-ig-btn profile-ig-btn--secondary profile-ig-btn--following"
                   onClick={handleFollowToggle}
                   disabled={followPending}
-                  aria-pressed={following}
-                  aria-label={following ? 'Unfollow' : 'Follow'}
+                  aria-pressed="true"
+                  aria-label="Unfollow"
                 >
-                  {following ? 'Following' : 'Follow'}
+                  <LuCheck size={14} aria-hidden="true" /> Following
                 </button>
                 <button
                   type="button"
-                  className="profile-ig-btn profile-ig-btn--secondary"
-                  onClick={() => {
-                    const handle =
-                      profile?.username ||
-                      profile?.id ||
-                      ''
-                    if (!handle) return
-                    navigate(`/messages/${encodeURIComponent(handle)}`)
-                  }}
+                  className="profile-ig-btn profile-ig-btn--primary"
+                  onClick={handleMessageUser}
                   aria-label="Send message"
                 >
                   Message
                 </button>
               </>
+            ) : (
+              <button
+                type="button"
+                className="profile-ig-btn profile-ig-btn--primary"
+                onClick={handleFollowToggle}
+                disabled={followPending}
+                aria-pressed="false"
+                aria-label="Follow"
+              >
+                Follow
+              </button>
             )}
           </div>
         </section>
+
+        {/* ═════════════════════════════════════════════════════════
+            OVERFLOW BOTTOM SHEET — replaces the old inline kebab
+            dropdown. Content differs for self vs visitor.
+            ═════════════════════════════════════════════════════════ */}
+        <ActionSheet
+          isOpen={overflowSheetOpen}
+          onClose={() => setOverflowSheetOpen(false)}
+          items={
+            isOwnProfile
+              ? [
+                  { label: 'Edit profile', onClick: () => setShowEditModal(true) },
+                  { label: 'Share profile', onClick: handleShareProfile },
+                  {
+                    label:
+                      wrappedSharing === 'generating'
+                        ? 'Generating…'
+                        : wrappedSharing === 'done'
+                        ? 'Shared!'
+                        : 'Wrapped',
+                    disabled: wrappedSharing === 'generating',
+                    onClick: () => handleShareWrapped('year'),
+                  },
+                  { divider: true },
+                  { label: 'Settings', onClick: () => navigate('/settings') },
+                ]
+              : [
+                  { label: 'Message', onClick: handleMessageUser },
+                  { label: 'Share profile', onClick: handleShareProfile },
+                  { label: 'Copy link', onClick: handleCopyProfileLink },
+                  { divider: true },
+                  {
+                    label: `Block ${profile.username || profile.displayName || 'user'}`,
+                    destructive: true,
+                    onClick: () => setBlockSheetOpen(true),
+                  },
+                  { label: 'Report', onClick: () => setReportProfileOpen(true) },
+                ]
+          }
+        />
 
         {/* ═════════════════════════════════════════════════════════
             TAB STRIP — Home / Reviews / Lists with sliding cobalt
@@ -1904,7 +1623,6 @@ function Profile() {
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
-                  currentObsessions={currentObsessions}
                   activities={activities}
                   gameImageMap={gameImageMap}
                   userIdentifier={profile.username || profile.displayName || 'user'}
@@ -1917,20 +1635,16 @@ function Profile() {
                     )
                   }
                   user={user}
+                  targetUserId={targetUserId}
                   isOwnProfile={isOwnProfile}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
-                  onEditObsessions={() => setShowObsessionPickerSheet(true)}
                   onShareFavorites={handleShareFavorites}
                   favSharing={favSharing}
-                  recentReviews={recentReviews}
                   pinnedLists={pinnedLists}
-                  onReviewsChevron={() => setActiveTab('reviews')}
                   onListsChevron={() => setActiveTab('lists')}
-                  onTapList={(id) => navigate(`/list/${id}`)}
                   allReviews={allReviews}
                   onReviewTap={(id) => navigate(`/review/${id}`)}
                   goalProgress={goalProgress}
-                  streakData={streakData}
                   rivalryData={rivalryData}
                   onSetGoal={() => setGoalSheetOpen(true)}
                   currentUserId={user?.id}
@@ -2036,15 +1750,6 @@ function Profile() {
           showWhy
         />
 
-        <FavoritesPickerSheet
-          isOpen={showObsessionPickerSheet}
-          initialFavorites={profile?.currentObsessions || []}
-          onSave={handleSaveObsessions}
-          onClose={() => setShowObsessionPickerSheet(false)}
-          label="Current Obsessions"
-          maxItems={3}
-        />
-
         <GamePickerSheet
           isOpen={showGamePickerSheet}
           onSelect={(game) => {
@@ -2121,172 +1826,144 @@ function Profile() {
 
 function HomeTab({
   favoriteGames,
-  currentObsessions,
   activities,
   gameImageMap,
   userIdentifier,
   onGameClick,
   onActivityChevron,
   user,
+  targetUserId,
   isOwnProfile,
   onEditFavorites,
-  onEditObsessions,
   onShareFavorites,
   favSharing,
-  recentReviews,
   pinnedLists,
-  onReviewsChevron,
   onListsChevron,
   allReviews,
   onReviewTap,
   goalProgress,
-  streakData,
   rivalryData,
   onSetGoal,
   currentUserId,
 }) {
-  // Earned milestone badges: milestones where isMilestoneSeen = true AND longest_streak >= milestone
-  const earnedMilestones = isOwnProfile && user?.id && streakData
-    ? MILESTONES.filter(
-        (m) => (streakData.longest_streak ?? 0) >= m && isMilestoneSeen(user.id, m)
-      )
-    : []
+  const navigate = useNavigate()
 
-  const paceInfo = goalProgress ? computePace(goalProgress) : null
-  const milestoneBeat = goalProgress?.hasGoal
-    ? computeMilestoneBeat(goalProgress.current, goalProgress.target)
-    : null
+  // Now Playing hero — derived from `activities` (see findNowPlaying).
+  const nowPlaying = useMemo(() => findNowPlaying(activities), [activities])
+  const nowPlayingTitle =
+    nowPlaying?.gameTitle || nowPlaying?.metadata?.game_title || 'Unknown game'
+  const nowPlayingImage =
+    nowPlaying?.igdbGameId != null ? gameImageMap.get(String(nowPlaying.igdbGameId)) : null
 
-  // Build rivalry rows: insert "you" at the right position, show closest rivals
-  const rivalryRows = (() => {
-    if (!goalProgress?.hasGoal || !rivalryData?.length) return []
+  // Circle rank — global rank of "you" in the merged, sorted rivalry list.
+  // This is the one thing that survives from the old Circle leaderboard.
+  const circleRank = (() => {
+    if (!goalProgress?.hasGoal || !rivalryData?.length) return null
     const withSelf = [
-      { userId: 'self', username: 'you', current: goalProgress.current, isSelf: true },
+      { userId: 'self', current: goalProgress.current, isSelf: true },
       ...rivalryData.map((r) => ({ ...r, isSelf: false })),
     ].sort((a, b) => b.current - a.current || (a.isSelf ? -1 : 1))
-    // Keep 3 rows centred around the "you" row
-    const selfIdx = withSelf.findIndex((r) => r.isSelf)
-    const start = Math.max(0, selfIdx - 1)
-    const end = Math.min(withSelf.length, start + 4)
-    return withSelf.slice(start, end)
+    const idx = withSelf.findIndex((r) => r.isSelf)
+    return idx === -1 ? null : idx + 1
   })()
+
+  // Next milestone badge — same "closest to completion" pick the old
+  // full badge rail used: highest in-progress ratio, else lowest-target
+  // locked badge. Badges are local-device stats, so this only ever runs
+  // for the signed-in user's own profile (useBadges gets a null userId
+  // on visitor profiles and returns empty lists).
+  const { earned, inProgress, locked, stats } = useBadges(isOwnProfile ? user?.id : null)
+  const nextBadge = (() => {
+    if (inProgress.length > 0) {
+      return inProgress.reduce((best, b) => {
+        const r = b.progress(stats) / b.target
+        const br = best.progress(stats) / best.target
+        return r > br ? b : best
+      })
+    }
+    if (locked.length > 0) {
+      return locked.reduce((best, b) => (b.target < best.target ? b : best))
+    }
+    return null
+  })()
+
+  const handleSeeAllBadges = () => {
+    navigate(`/user/${encodeURIComponent(userIdentifier)}/badges`)
+  }
 
   return (
     <div className="profile-home">
-      {/* Yearly Challenge — compact ring + milestone badge strip (own profile) */}
-      {isOwnProfile && goalProgress && (
-        <section className="profile-home__section profile-challenge-section">
-          <div className="profile-home__section-header">
-            <h3 className="profile-home__section-title">
-              {goalProgress.year} Challenge
-            </h3>
+      {/* NOW PLAYING hero — the user's current "Playing" game, if any.
+          Renders nothing when no game resolves (no fabricated state). */}
+      {nowPlaying && (
+        <section className="profile-home__section profile-home__section--card profile-now-playing" aria-label="Now playing">
+          <button
+            type="button"
+            className="profile-now-playing__cover"
+            onClick={() => onGameClick(nowPlaying.igdbGameId, nowPlayingImage)}
+            aria-label={`Open ${nowPlayingTitle}`}
+          >
+            {nowPlayingImage ? (
+              <img src={nowPlayingImage} alt="" loading="lazy" />
+            ) : (
+              <span className="profile-now-playing__fallback" aria-hidden="true">
+                {nowPlayingTitle.charAt(0)}
+              </span>
+            )}
+          </button>
+          <div className="profile-now-playing__body">
+            <span className="profile-now-playing__eyebrow">
+              <span className="profile-now-playing__dot" aria-hidden="true" />
+              Now playing
+            </span>
+            <button
+              type="button"
+              className="profile-now-playing__title"
+              onClick={() => onGameClick(nowPlaying.igdbGameId, nowPlayingImage)}
+            >
+              {nowPlayingTitle}
+            </button>
+            <span className="profile-now-playing__started">
+              Started {formatShortDate(nowPlaying.createdAt)}
+            </span>
           </div>
-          <div className="profile-challenge-row">
-            <GoalRing
-              current={goalProgress.current}
-              target={goalProgress.target}
-              year={goalProgress.year}
-              variant="full"
-              onSet={onSetGoal}
-            />
-            <div className="profile-challenge-info">
-              {goalProgress.hasGoal ? (
-                <>
-                  <p className="profile-challenge-headline">
-                    {goalProgress.current >= goalProgress.target
-                      ? 'Goal reached!'
-                      : `${goalProgress.target - goalProgress.current} to go`}
-                  </p>
-                  <p className="profile-challenge-sub">
-                    {goalProgress.current} of {goalProgress.target} games finished
-                  </p>
-                  {/* Pace indicator */}
-                  {paceInfo && (
-                    <span
-                      className={`profile-challenge-pace profile-challenge-pace--${paceInfo.status}`}
-                      aria-label={`Pace: ${paceInfo.label}`}
-                    >
-                      {paceInfo.label}
-                    </span>
-                  )}
-                  {/* Milestone beat */}
-                  {milestoneBeat != null && (
-                    <span className="profile-challenge-milestone" aria-label={`Milestone: ${milestoneBeat} games`}>
-                      🎯 {milestoneBeat} game{milestoneBeat === 1 ? '' : 's'}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="profile-challenge-edit"
-                    onClick={onSetGoal}
-                    aria-label="Edit yearly goal"
-                  >
-                    Edit goal
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="profile-challenge-headline">No goal set</p>
-                  <p className="profile-challenge-sub">
-                    Set a target for how many games you want to finish in {goalProgress.year}.
-                  </p>
-                  <button
-                    type="button"
-                    className="profile-challenge-edit"
-                    onClick={onSetGoal}
-                    aria-label={`Set a ${goalProgress.year} goal`}
-                  >
-                    Set goal
-                  </button>
-                </>
-              )}
-              {/* Streak milestone badges — quiet, earned-only */}
-              {earnedMilestones.length > 0 && (
-                <div className="profile-milestone-badges" aria-label="Streak milestones earned">
-                  {earnedMilestones.map((m) => (
-                    <span
-                      key={m}
-                      className="profile-milestone-badge"
-                      title={`${m}-day streak milestone`}
-                      aria-label={`${m}-day streak`}
-                    >
-                      🔥{m}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Rivalry mini-leaderboard — only when following someone with games this year */}
-          {goalProgress.hasGoal && rivalryRows.length > 1 && (
-            <div className="profile-rivalry" aria-label="Circle rivalry">
-              <p className="profile-rivalry__heading">Circle</p>
-              <ol className="profile-rivalry__list">
-                {rivalryRows.map((r, i) => (
-                  <li
-                    key={r.userId}
-                    className={`profile-rivalry__row${r.isSelf ? ' profile-rivalry__row--self' : ''}`}
-                  >
-                    <span className="profile-rivalry__rank" aria-hidden="true">{i + 1}</span>
-                    <span className="profile-rivalry__name">
-                      {r.isSelf ? 'you' : `@${r.username}`}
-                    </span>
-                    <span className="profile-rivalry__count">
-                      {r.current} {r.current === 1 ? 'game' : 'games'}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          {isOwnProfile && (
+            <button
+              type="button"
+              className="profile-now-playing__update"
+              onClick={() => navigate(`/game/${nowPlaying.igdbGameId}`)}
+              aria-label={`Update status for ${nowPlayingTitle}`}
+            >
+              Update
+            </button>
           )}
         </section>
       )}
 
-      {/* Section 1 — Favorite Games (hidden when empty on others' profiles;
-          own profile shows empty state with an edit affordance) */}
+      {/* TASTE cell — persona pills + genre DNA (read-only from the
+          cached E0 taste vector) above the avg rating + distribution.
+          Hidden entirely when the user has zero reviews; the DNA/tags
+          block independently hides itself when it has nothing real to
+          derive (see ProfileTasteDNA). */}
+      {allReviews.length > 0 && (
+        <section className="profile-home__section profile-taste-section" aria-label="Taste">
+          <div className="profile-home__section-header">
+            <h3 className="profile-home__section-title">Taste</h3>
+          </div>
+          <ProfileTasteDNA userId={targetUserId} allReviews={allReviews} isOwnProfile={isOwnProfile} />
+          <ProfileRatingsChart
+            reviews={allReviews}
+            onReviewTap={onReviewTap}
+            currentUserId={currentUserId}
+            hideTitle
+          />
+        </section>
+      )}
+
+      {/* FAVORITE GAMES cell — 3-up grid. Hidden when empty on others'
+          profiles; own profile shows an empty-state CTA. */}
       {(favoriteGames.length > 0 || isOwnProfile) && (
-        <section className="profile-home__section">
+        <section className="profile-home__section profile-home__section--card">
           <div className="profile-home__section-header">
             <h3 className="profile-home__section-title">Favorite Games</h3>
             <div className="profile-home__section-actions">
@@ -2328,7 +2005,7 @@ function HomeTab({
             </button>
           ) : (
             <div className="profile-favorites-row" role="list">
-              {favoriteGames.slice(0, 4).map((g) => (
+              {favoriteGames.slice(0, 3).map((g) => (
                 <button
                   key={g.id}
                   type="button"
@@ -2360,111 +2037,126 @@ function HomeTab({
                   )}
                 </button>
               ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Section 1b — Current Obsessions (rotating picks, distinct from
-          all-time favorites; own profile always shows, others see only
-          when non-empty) */}
-      {(currentObsessions.length > 0 || isOwnProfile) && (
-        <section className="profile-home__section">
-          <div className="profile-home__section-header">
-            <h3 className="profile-home__section-title profile-home__section-title--obsessions">
-              Current Obsessions
-            </h3>
-            {isOwnProfile && (
-              <button
-                type="button"
-                className="profile-home__edit-btn"
-                onClick={onEditObsessions}
-                aria-label="Edit current obsessions"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          {currentObsessions.length === 0 ? (
-            <button
-              type="button"
-              className="profile-home__fav-empty-cta profile-home__fav-empty-cta--obsessions"
-              onClick={onEditObsessions}
-              aria-label="Add current obsessions"
-            >
-              + What are you obsessed with right now?
-            </button>
-          ) : (
-            <div className="profile-obsessions-row" role="list">
-              {currentObsessions.slice(0, 3).map((g) => (
+              {isOwnProfile && favoriteGames.length < 3 && (
                 <button
-                  key={g.id}
                   type="button"
                   role="listitem"
-                  className="profile-obsession-card"
-                  onClick={() => onGameClick(g.id, g.image)}
+                  className="profile-favorite-card profile-favorite-card--add"
+                  onClick={onEditFavorites}
+                  aria-label="Add a favorite game"
                 >
-                  <div className="profile-obsession-card__cover">
-                    {g.image ? (
-                      <SharedCover gameId={g.id} imageSrc={g.image}>
-                        <img src={g.image} alt={g.title} loading="lazy" />
-                      </SharedCover>
-                    ) : (
-                      <span className="profile-obsession-card__fallback">
-                        {g.title?.charAt(0) || '?'}
-                      </span>
-                    )}
-                  </div>
-                  <span className="profile-obsession-card__name">{g.title}</span>
-                  {g.developer && (
-                    <span className="profile-obsession-card__dev">
-                      {g.developer}
-                    </span>
-                  )}
+                  <span className="profile-favorite-card__cover profile-favorite-card__cover--add">
+                    <LuPlus size={22} aria-hidden="true" />
+                  </span>
                 </button>
-              ))}
+              )}
             </div>
           )}
         </section>
       )}
 
-      {/* Section 2 — Recent Activity: horizontal scroll rail of the
-          user's most recent reviews/ratings, each as a cover tile with
-          star rating. Hidden entirely when the user has no reviews;
-          chevron routes to the Reviews tab. */}
-      <ProfileReviewsShelf
-        reviews={recentReviews}
-        onSeeAll={onReviewsChevron}
-      />
-
-      {/* Showcase — up to 3 user-pinned badges with rarity %. Own profile
-          sees empty-slot placeholders and an edit button; visitors see
-          nothing when no badges are pinned. */}
-      <BadgeShowcase user={user} isOwnProfile={isOwnProfile} />
-
-      {/* Section 3 — Badges (Sprint 5 P9). BadgesRow owns its own
-          section header + chevron so it can disappear entirely when
-          there are zero earned + zero in-progress badges (it returns
-          null in that case). Wrapping it in a bare <section> here
-          would leave an empty container in the DOM. */}
-      <BadgesRow user={user} username={userIdentifier} />
-
-      {/* Section 4 — Pinned Lists. Hidden entirely when the user has no
-          pinned lists; chevron routes to the Lists tab. */}
+      {/* Pinned Lists — hidden entirely when the user has no pinned
+          lists; chevron routes to the Lists tab. */}
       <PinnedListsSection
         pinnedLists={pinnedLists}
         onSeeAll={onListsChevron}
       />
 
-      {/* Section 5 — Ratings distribution. Hidden entirely when the
-          user has zero reviews (ProfileRatingsChart returns null). */}
-      <ProfileRatingsChart
-        reviews={allReviews}
-        onReviewTap={onReviewTap}
-        currentUserId={currentUserId}
-      />
+      {/* TWO-CELL ROW — Challenge (own profile, green) | Next milestone
+          (own profile, cobalt). Own-profile only: both the yearly goal
+          and local badge stats are signed-in-device data. */}
+      {isOwnProfile && goalProgress && (
+        <div className="profile-bento-row">
+          <section className="profile-home__section profile-home__section--card profile-challenge-cell" aria-label={`${goalProgress.year} challenge`}>
+            <h3 className="profile-home__section-title profile-home__section-title--compact">
+              {goalProgress.year} Challenge
+            </h3>
+            <div className="profile-challenge-compact">
+              <GoalRing
+                current={goalProgress.current}
+                target={goalProgress.target}
+                year={goalProgress.year}
+                variant="compact"
+                onSet={onSetGoal}
+              />
+              <div className="profile-challenge-compact__info">
+                {goalProgress.hasGoal ? (
+                  <>
+                    <p className="profile-challenge-compact__headline">
+                      {goalProgress.current}/{goalProgress.target}
+                    </p>
+                    <p className="profile-challenge-compact__sub">
+                      {goalProgress.current >= goalProgress.target
+                        ? 'Goal reached!'
+                        : `${goalProgress.target - goalProgress.current} to go`}
+                    </p>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="profile-challenge-compact__set-goal"
+                    onClick={onSetGoal}
+                  >
+                    Set a {goalProgress.year} goal
+                  </button>
+                )}
+              </div>
+            </div>
+            {circleRank != null && (
+              <p className="profile-challenge-compact__circle">
+                {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle
+              </p>
+            )}
+          </section>
 
-      {/* Living Activity Timeline — grouped by day, reactions, milestones */}
+          {nextBadge && (
+            <section className="profile-home__section profile-home__section--card profile-next-badge-cell" aria-label="Next milestone">
+              <h3 className="profile-home__section-title profile-home__section-title--compact">
+                Next milestone
+              </h3>
+              <button
+                type="button"
+                className="profile-next-badge"
+                onClick={handleSeeAllBadges}
+                aria-label={`Next badge: ${nextBadge.name}, ${nextBadge.progress(stats)} of ${nextBadge.target}`}
+              >
+                <span className="profile-next-badge__icon" aria-hidden="true">
+                  <nextBadge.icon size={20} strokeWidth={1.7} />
+                </span>
+                <span className="profile-next-badge__body">
+                  <span className="profile-next-badge__name">{nextBadge.name}</span>
+                  <span
+                    className="profile-next-badge__track"
+                    role="progressbar"
+                    aria-valuenow={nextBadge.progress(stats)}
+                    aria-valuemin={0}
+                    aria-valuemax={nextBadge.target}
+                  >
+                    <span
+                      className="profile-next-badge__fill"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (nextBadge.progress(stats) / nextBadge.target) * 100))}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="profile-next-badge__count">
+                    {nextBadge.progress(stats)} / {nextBadge.target}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="profile-next-badge__earned-link"
+                onClick={handleSeeAllBadges}
+              >
+                {earned.length} earned →
+              </button>
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ACTIVITY footer — vertical timeline, day-grouped, milestone tags */}
       <ActivityTimeline
         activities={activities}
         gameImageMap={gameImageMap}
