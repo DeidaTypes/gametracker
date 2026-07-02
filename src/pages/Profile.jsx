@@ -1379,9 +1379,20 @@ function Profile() {
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
         {/* ═════════════════════════════════════════════════════════
-            HEADER STRIP — name (left) / overflow ⋯ (right) only
+            HEADER STRIP — back chevron (visitor only) / name (left) /
+            overflow ⋯ (right) only
             ═════════════════════════════════════════════════════════ */}
-        <header className="profile-header-strip">
+        <header className={`profile-header-strip${!isOwnProfile ? ' profile-header-strip--visitor' : ''}`}>
+          {!isOwnProfile && (
+            <button
+              type="button"
+              className="profile-header-strip__icon-btn"
+              aria-label="Go back"
+              onClick={() => navigate(-1)}
+            >
+              <LuChevronLeft size={24} aria-hidden="true" />
+            </button>
+          )}
           <h1 className="profile-header-strip__title">{headerTitle}</h1>
           <button
             type="button"

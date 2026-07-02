@@ -28,6 +28,12 @@
   min-height: 56px;
 }
 
+/* Visitor profiles add a leading back-chevron slot; own profile keeps
+   the title flush left (untouched) via the default 2-column grid above. */
+.profile-header-strip--visitor {
+  grid-template-columns: auto 1fr auto;
+}
+
 .profile-header-strip__title {
   justify-self: start;
   font-family: var(--font-display);
