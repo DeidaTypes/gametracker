@@ -357,13 +357,22 @@ export async function getCurrentUser() {
  * The callback receives ({ event, session, user, profile }). We resolve the
  * profile row before invoking the callback so consumers don't have to.
  *
- * @param {(payload: { event: string, session: object|null, user: object|null, profile: object|null }) => void} callback
+ * Each firing does its own async profile-fetch round trip, so multiple
+ * events (or an event racing a signUp/logIn/getSession call elsewhere) can
+ * resolve out of order. `onEventStart`, when provided, is invoked
+ * synchronously the moment the raw event arrives (before the profile fetch)
+ * so the caller can stamp an ordering token at *receipt* time rather than at
+ * *resolution* time, and use it to discard stale/out-of-order deliveries.
+ *
+ * @param {(payload: { event: string, session: object|null, user: object|null, profile: object|null }, token: any) => void} callback
+ * @param {() => any} [onEventStart] optional hook called synchronously per event; its return value is threaded through to `callback` as `token`.
  * @returns {() => void} unsubscribe
  */
-export function onAuthStateChange(callback) {
+export function onAuthStateChange(callback, onEventStart) {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const token = typeof onEventStart === 'function' ? onEventStart() : undefined
     const user = session?.user || null
     let profile = null
     if (user) {
@@ -373,7 +382,7 @@ export function onAuthStateChange(callback) {
         profile = null
       }
     }
-    callback({ event, session, user, profile })
+    callback({ event, session, user, profile }, token)
   })
   return () => {
     subscription?.unsubscribe?.()
