@@ -251,25 +251,30 @@ body[data-larger-text='true'] {
 
   /* ---- Data-viz: genre tokens ----
      Categorical palette for genre-overlap visualizations (Discover →
-     Recently taste-match bars, Because You Played). Deliberately separate
-     from --color-accent-* (used for general UI accents) so a future accent
-     or theme change never desaturates these — see src/utils/genreColors.js
-     for the IGDB genre-name → token mapping. */
-  --genre-action:     #E2654A;
-  --genre-rpg:        #E8A33D;
-  --genre-adventure:  #5FBF7B;
-  --genre-strategy:   #4FA8D8;
-  --genre-shooter:    #C0574F;
-  --genre-sports:     #3DBFB0;
-  --genre-racing:     #E0567E;
-  --genre-puzzle:     #8B7BE0;
-  --genre-simulation: #6FA8DC;
-  --genre-fighting:   #D9736F;
-  --genre-platformer: #52B788;
-  --genre-horror:     #A6414F;
-  --genre-indie:      #C77DD2;
-  --genre-arcade:     #E0B84F;
-  --genre-default:    #7C89A8;
+     Recently taste-match bars, Because You Played; Profile → Taste DNA
+     genre bar/legend). Deliberately separate from --color-accent-* (used
+     for general UI accents) so a future accent or theme change never
+     desaturates these — see src/utils/genreColors.js for the IGDB
+     genre-name → token mapping.
+
+     Cool/jewel-tone palette — cobalt, teal-green, purple, rose, and
+     sky/steel hues only. Orange/amber is retired app-wide, so no token
+     here may fall in the ~0–55° (red-orange → amber-gold) hue range. */
+  --genre-action:     #4E79D0;  /* cobalt */
+  --genre-rpg:        #666FD6;  /* cobalt-indigo */
+  --genre-adventure:  #4ED08F;  /* emerald / teal-green */
+  --genre-strategy:   #4EAFD0;  /* sky / steel blue */
+  --genre-shooter:    #5F4ED0;  /* indigo-purple */
+  --genre-sports:     #4ED0CC;  /* teal */
+  --genre-racing:     #D04E79;  /* rose / pink */
+  --genre-puzzle:     #794ED0;  /* purple */
+  --genre-simulation: #4E93D0;  /* steel blue */
+  --genre-fighting:   #934ED0;  /* purple-violet */
+  --genre-platformer: #4ED0AF;  /* teal-green */
+  --genre-horror:     #D04EA5;  /* deep rose / berry */
+  --genre-indie:      #AF4ED0;  /* violet / orchid */
+  --genre-arcade:     #DA6CDA;  /* magenta / orchid */
+  --genre-default:    #7C89A8;  /* neutral slate — unchanged, never orange */
 
   /* Review / Journal button accent colors — vivid fills, bright text */
   --accent-review: #0a9e6a;

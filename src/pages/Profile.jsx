@@ -1334,9 +1334,7 @@ function Profile() {
   if (resolving || (!profile && !userNotFound)) {
     return (
       <div className="profile-page" aria-hidden="true">
-        <div className="profile-header-strip">
-          <span className="profile-header-strip__title-sk skeleton" />
-        </div>
+        <div className="profile-header-strip" />
         <div className="profile-ig-hero profile-ig-hero--skeleton">
           <div className="skeleton profile-ig-hero__avatar-sk" />
           <span className="skeleton profile-ig-hero__name-sk" />
@@ -1384,14 +1382,6 @@ function Profile() {
     ? (profile.bannerUrl || null)
     : otherUserBannerUrl
 
-  // Cobalt-Modern header strip — centered title is the user's
-  // display name per spec. Falls back to username then a generic
-  // placeholder so the header never renders empty.
-  const headerTitle =
-    profile.displayName?.trim() ||
-    profile.username?.trim() ||
-    'Profile'
-
   const reviewCount = allReviews.length
   // Games stat — total tracked games across every list (Want to Play /
   // Playing / Played / Dropped). Own profile keeps reading the
@@ -1410,8 +1400,9 @@ function Profile() {
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="profile-page">
         {/* ═════════════════════════════════════════════════════════
-            HEADER STRIP — back chevron (visitor only) / name (left) /
-            overflow ⋯ (right) only
+            HEADER STRIP — back chevron (visitor only, left) / overflow
+            ⋯ only (right). Identity now lives in the centered hero
+            below, so no name renders here.
             ═════════════════════════════════════════════════════════ */}
         <header className={`profile-header-strip${!isOwnProfile ? ' profile-header-strip--visitor' : ''}`}>
           {!isOwnProfile && (
@@ -1424,7 +1415,6 @@ function Profile() {
               <LuChevronLeft size={24} aria-hidden="true" />
             </button>
           )}
-          <h1 className="profile-header-strip__title">{headerTitle}</h1>
           <button
             type="button"
             className="profile-header-strip__icon-btn"
@@ -2136,7 +2126,6 @@ function HomeTab({
           <ProfileRatingsChart
             reviews={allReviews}
             onReviewTap={onReviewTap}
-            currentUserId={currentUserId}
             hideTitle
           />
         </section>
