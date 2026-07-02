@@ -354,9 +354,21 @@ function Profile() {
   const [resolving, setResolving] = useState(!!(paramUsername || paramUserId))
   const [userNotFound, setUserNotFound] = useState(false)
 
+  // Tracks which route param `resolvedUser` / `userNotFound` currently
+  // reflect. Needed because navigating directly between two OTHER
+  // users' profiles (e.g. tapping a link from user A's profile to user
+  // B's) changes `paramUsername`/`paramUserId` synchronously on render,
+  // but `resolvedUser` still holds user A's row until the effect below
+  // re-runs and its (async) lookup resolves. Without this guard, the
+  // render(s) in between would read `resolvedUser` (A's row) as if it
+  // were B's — i.e. the wrong profile's data, momentarily. See
+  // `resolvedMatchesParams` below.
+  const resolvedForKeyRef = useRef(null)
+
   useEffect(() => {
     // No param → own profile.
     if (!paramUsername && !paramUserId) {
+      resolvedForKeyRef.current = 'self'
       setResolvedUser(null)
       setResolving(false)
       setUserNotFound(false)
@@ -369,14 +381,16 @@ function Profile() {
     // /user/id/:userId route — look up by UUID directly.
     if (paramUserId) {
       const decodedId = decodeURIComponent(paramUserId)
+      const key = `id:${decodedId}`
       // Fast-path: own userId.
       if (user?.id && user.id === decodedId) {
-        if (!cancelled) { setResolvedUser(null); setResolving(false) }
+        if (!cancelled) { resolvedForKeyRef.current = key; setResolvedUser(null); setResolving(false) }
         return
       }
       safeWithTimeout(getUserById(decodedId), null, 8_000)
         .then((row) => {
           if (cancelled) return
+          resolvedForKeyRef.current = key
           if (!row) {
             setUserNotFound(true)
             setResolvedUser(null)
@@ -386,7 +400,7 @@ function Profile() {
           }
         })
         .catch(() => {
-          if (!cancelled) { setUserNotFound(true); setResolvedUser(null) }
+          if (!cancelled) { resolvedForKeyRef.current = key; setUserNotFound(true); setResolvedUser(null) }
         })
         .finally(() => { if (!cancelled) setResolving(false) })
       return () => { cancelled = true }
@@ -394,12 +408,13 @@ function Profile() {
 
     // /user/:username route.
     const decoded = decodeURIComponent(paramUsername)
+    const key = `username:${decoded.toLowerCase()}`
     // Fast-path: check against the signed-in user's own username so we
     // don't make a Supabase round-trip just to land on own profile.
     const localProfile = getProfile()
     const ownUsername = (localProfile?.username || '').trim()
     if (ownUsername && ownUsername.toLowerCase() === decoded.toLowerCase()) {
-      if (!cancelled) { setResolvedUser(null); setResolving(false) }
+      if (!cancelled) { resolvedForKeyRef.current = key; setResolvedUser(null); setResolving(false) }
       return
     }
     // 8-second timeout so a stalled connection doesn't leave resolving=true
@@ -408,6 +423,7 @@ function Profile() {
     safeWithTimeout(getUserByUsername(decoded), null, 8_000)
       .then((row) => {
         if (cancelled) return
+        resolvedForKeyRef.current = key
         if (!row) {
           setUserNotFound(true)
           setResolvedUser(null)
@@ -417,17 +433,45 @@ function Profile() {
         }
       })
       .catch(() => {
-        if (!cancelled) { setUserNotFound(true); setResolvedUser(null) }
+        if (!cancelled) { resolvedForKeyRef.current = key; setUserNotFound(true); setResolvedUser(null) }
       })
       .finally(() => { if (!cancelled) setResolving(false) })
     return () => { cancelled = true }
   }, [paramUsername, paramUserId, user?.id])
 
+  // The param key for THIS render — compared against resolvedForKeyRef
+  // (stamped by the effect above) to detect a stale resolvedUser from a
+  // previously-viewed profile that hasn't been superseded yet.
+  const paramKey = paramUserId
+    ? `id:${decodeURIComponent(paramUserId)}`
+    : paramUsername
+      ? `username:${decodeURIComponent(paramUsername).toLowerCase()}`
+      : 'self'
+  const resolvedMatchesParams = resolvedForKeyRef.current === paramKey
+
   // /profile (no param) is always the signed-in user.
   // /user/:username is own profile when the username matches.
   // /user/id/:userId is own profile when the UUID matches.
-  const isOwnProfile = (!paramUsername && !paramUserId) || (!resolving && resolvedUser === null && !userNotFound)
-  const targetUserId = resolvedUser?.id || user?.id
+  const isOwnProfile =
+    paramKey === 'self' ||
+    (!resolving && resolvedMatchesParams && resolvedUser === null && !userNotFound)
+
+  // ── profileUserId: single source of truth for every profile-scoped
+  // read (Reviews, Diary, Lists, Home stats/sections) ─────────────────
+  // MUST NEVER fall back to the signed-in session user id while we're
+  // viewing (or still resolving) someone else's profile — `resolvedUser`
+  // is only trustworthy once `resolvedMatchesParams` confirms it was
+  // resolved for the CURRENT route param. Falling back to `user?.id`
+  // here (the old behaviour) meant every profile-scoped fetch ran with
+  // the SESSION user's id for the entire duration of the username/id
+  // lookup, which is exactly what caused Reviews/Diary/Lists to briefly
+  // (or, on a slow connection, not so briefly) render the logged-in
+  // user's rows on another user's profile. Session user id is only
+  // valid for isOwnProfile checks and mutations (follow, edit, pin,
+  // goal) — never for reading profile content.
+  const targetUserId = isOwnProfile
+    ? (user?.id ?? null)
+    : (resolvedMatchesParams ? (resolvedUser?.id ?? null) : null)
 
   // Local profile blob (display name / avatar / bio / socials / favorites).
   // Lives in localStorage for the signed-in user; for "another user"
@@ -664,6 +708,12 @@ function Profile() {
       loadedProfileForUserRef.current = targetUserId
       setProfileLoading(false)
     } else {
+      // targetUserId is null — either genuinely no session user (signed
+      // out on own profile), or we're between route params and the new
+      // profileUserId hasn't resolved yet (still resolving, or
+      // resolvedUser is stale from a previously-viewed profile). Clear
+      // immediately in every case: never let a previous user's rows
+      // keep rendering under a new identity.
       setAllReviews([])
       setCustomLists([])
       setActivities([])
@@ -672,9 +722,15 @@ function Profile() {
       setPinnedRows([])
       setPinnedLists([])
       loadedProfileForUserRef.current = targetUserId
-      setProfileLoading(false)
+      // Only drop the loading skeleton once we're confident there's
+      // nothing pending (own profile, or a fully-settled not-found) —
+      // otherwise a slow lookup would flash an empty "0 reviews" state
+      // before the real profileUserId resolves.
+      if (paramKey === 'self' || (!resolving && resolvedMatchesParams)) {
+        setProfileLoading(false)
+      }
     }
-  }, [targetUserId, isOwnProfile, resolvedUser])
+  }, [targetUserId, isOwnProfile, resolvedUser, resolving, paramKey, resolvedMatchesParams])
 
   useEffect(() => {
     loadProfileData()
@@ -712,10 +768,17 @@ function Profile() {
   // render.
   const loadFollowState = useCallback(async () => {
     if (!targetUserId) {
+      // Same rule as loadProfileData: a null profileUserId (signed out,
+      // still resolving, or a stale resolvedUser from a previously-
+      // viewed profile) always resets the numerals so they never show a
+      // stale/wrong user's counts. Only drop the loading flag once
+      // we're confident there's nothing pending.
       setFollowersCount(0)
       setFollowingCount(0)
       setFollowing(false)
-      setFollowLoading(false)
+      if (paramKey === 'self' || (!resolving && resolvedMatchesParams)) {
+        setFollowLoading(false)
+      }
       return
     }
     const isFreshLoadForThisUser = loadedFollowForUserRef.current !== targetUserId
@@ -734,7 +797,7 @@ function Profile() {
     }
     loadedFollowForUserRef.current = targetUserId
     setFollowLoading(false)
-  }, [targetUserId, isOwnProfile])
+  }, [targetUserId, isOwnProfile, resolving, paramKey, resolvedMatchesParams])
 
   useEffect(() => {
     loadFollowState()
