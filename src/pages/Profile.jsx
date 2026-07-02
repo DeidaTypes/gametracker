@@ -38,6 +38,7 @@ import {
 } from '../services/listService'
 import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
 import { getProfileStats } from '../services/profileStatsService'
+import { getTrackedGamesCountForUser } from '../services/statsService'
 import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
 import { useBadges } from '../hooks/useBadges'
 import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
@@ -515,6 +516,10 @@ function Profile() {
   const [goalProgress, setGoalProgress] = useState(null)
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
   const [rivalryData, setRivalryData] = useState([])
+  // Supabase-backed "games" stat numeral for VISITOR profiles only (see
+  // getTrackedGamesCountForUser). `null` means "not resolved yet" so the
+  // stats line can hide the segment instead of flashing a fabricated 0.
+  const [visitorGamesCount, setVisitorGamesCount] = useState(null)
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
@@ -614,7 +619,12 @@ function Profile() {
         bio: resolvedUser.bio || '',
         bannerUrl: null, // fetched separately below via fetchUserBannerUrl
         socialLinks: {},
-        favoriteGames: [],
+        // Sourced from the public `users` row (favorite_games/
+        // current_obsessions are readable for any user — see
+        // users_select_all RLS) rather than hardcoded empty, so visitor
+        // profiles actually show the owner's Favorite Games.
+        favoriteGames: Array.isArray(resolvedUser.favorite_games) ? resolvedUser.favorite_games : [],
+        currentObsessions: Array.isArray(resolvedUser.current_obsessions) ? resolvedUser.current_obsessions : [],
         currentlyPlayingGame: null,
       })
     }
@@ -629,18 +639,32 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd] = await Promise.all([
+        const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, visitorGames] = await Promise.all([
           safeWithTimeout(getReviewsForUser(targetUserId), []),
           safeWithTimeout(getListsForUser(targetUserId), []),
           safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
           safeWithTimeout(getPinsForUser(targetUserId), []),
           safeWithTimeout(getPinnedListsForUser(targetUserId), []),
-          isOwnProfile ? safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null) : Promise.resolve(null),
+          // Challenge (yearly goal) — fetched for ANY profile now that
+          // user_goals RLS is privacy-aware rather than owner-only (see
+          // migration profile_visitor_rls_fix). A visitor viewing a
+          // private-activity user simply gets back { hasGoal: false }
+          // from RLS returning zero rows, which the UI already treats
+          // as "no goal set" — no special-casing needed here.
+          safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null),
           safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
+          // Rivalry ("#N in your circle") stays own-profile only — it's
+          // framed from the OWNER's follow graph and showing "your
+          // circle" data on someone else's profile would be confusing.
           isOwnProfile ? safeWithTimeout(getRivalryData(targetUserId, new Date().getFullYear()), []) : Promise.resolve([]),
+          // Games stat for visitor profiles — Supabase-backed count from
+          // game_trackers (publicly readable). Own profile keeps using
+          // the localStorage-derived count below (unchanged behaviour).
+          !isOwnProfile ? safeWithTimeout(getTrackedGamesCountForUser(targetUserId), 0) : Promise.resolve(null),
         ])
         if (gp) setGoalProgress(gp)
         if (rd) setRivalryData(rd)
+        if (!isOwnProfile) setVisitorGamesCount(visitorGames ?? 0)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
@@ -704,6 +728,9 @@ function Profile() {
         setReviewLikeCounts(new Map())
         setPinnedRows([])
         setPinnedLists([])
+        setGoalProgress(null)
+        setRivalryData([])
+        setVisitorGamesCount(null)
       }
       loadedProfileForUserRef.current = targetUserId
       setProfileLoading(false)
@@ -721,6 +748,9 @@ function Profile() {
       setReviewLikeCounts(new Map())
       setPinnedRows([])
       setPinnedLists([])
+      setGoalProgress(null)
+      setRivalryData([])
+      setVisitorGamesCount(null)
       loadedProfileForUserRef.current = targetUserId
       // Only drop the loading skeleton once we're confident there's
       // nothing pending (own profile, or a fully-settled not-found) —
@@ -1364,11 +1394,12 @@ function Profile() {
 
   const reviewCount = allReviews.length
   // Games stat — total tracked games across every list (Want to Play /
-  // Playing / Played / Dropped). Only computable on the signed-in device's
-  // own localStorage library; other users' libraries aren't synced to
-  // Supabase anywhere in this codebase, so we deliberately show `null`
-  // (hidden) rather than a fabricated/zero count on visitor profiles.
-  const gamesCount = isOwnProfile ? getProfileStats().totalGames : null
+  // Playing / Played / Dropped). Own profile keeps reading the
+  // localStorage-derived count (unchanged behaviour). Visitor profiles
+  // use the Supabase-backed `game_trackers` count fetched in
+  // loadProfileData — that table is publicly readable (trackers_select_all)
+  // so this is a real, live number rather than a fabricated/hidden one.
+  const gamesCount = isOwnProfile ? getProfileStats().totalGames : visitorGamesCount
 
   const setSocials = SOCIAL_PLATFORMS.filter(
     (p) => (profile[p.profileField] || '').trim().length > 0
@@ -1537,8 +1568,18 @@ function Profile() {
               type="button"
               className="profile-ig-hero__stat-segment profile-ig-hero__stat-segment--tappable"
               onClick={() => {
-                const handle = profile.username || profile.displayName || 'user'
-                navigate(`/user/${encodeURIComponent(handle)}/followers`)
+                // Most real accounts have no username set — routing by
+                // displayName (or the literal fallback string 'user')
+                // would 404 the lookup on the Followers page (it looks
+                // users up by their actual `username` column) and show
+                // "User not found." Prefer the real username when set;
+                // otherwise use the UUID route, which FollowsListPage
+                // resolves directly via getUserById.
+                navigate(
+                  profile.username
+                    ? `/user/${encodeURIComponent(profile.username)}/followers`
+                    : `/user/id/${encodeURIComponent(targetUserId)}/followers`
+                )
               }}
               aria-label={followLoading ? 'Followers, loading' : `Followers, ${followersCount}, view list`}
               disabled={followLoading}
@@ -1557,8 +1598,11 @@ function Profile() {
               type="button"
               className="profile-ig-hero__stat-segment profile-ig-hero__stat-segment--tappable"
               onClick={() => {
-                const handle = profile.username || profile.displayName || 'user'
-                navigate(`/user/${encodeURIComponent(handle)}/following`)
+                navigate(
+                  profile.username
+                    ? `/user/${encodeURIComponent(profile.username)}/following`
+                    : `/user/id/${encodeURIComponent(targetUserId)}/following`
+                )
               }}
               aria-label={followLoading ? 'Following, loading' : `Following, ${followingCount}, view list`}
               disabled={followLoading}
@@ -2200,10 +2244,15 @@ function HomeTab({
         onSeeAll={onListsChevron}
       />
 
-      {/* TWO-CELL ROW — Challenge (own profile, green) | Next milestone
-          (own profile, cobalt). Own-profile only: both the yearly goal
-          and local badge stats are signed-in-device data. */}
-      {isOwnProfile && (
+      {/* TWO-CELL ROW — Challenge (green) | Next milestone (own profile,
+          cobalt). Challenge now renders on visitor profiles too once the
+          owner actually has a goal set (user_goals RLS is privacy-aware,
+          not owner-only — see migration profile_visitor_rls_fix); a
+          visitor never sees the "Set a goal" CTA or an editable ring,
+          since those are owner-only actions. Next milestone stays
+          own-profile only — badge stats are signed-in-device-only data
+          that can't be read for another user. */}
+      {(isOwnProfile || goalProgress?.hasGoal) && (
         <div className="profile-bento-row">
           <section className="profile-home__section profile-home__section--card profile-challenge-cell" aria-label={`${goalProgress?.year ?? currentYear} challenge`}>
             <h3 className="profile-home__section-title profile-home__section-title--compact">
@@ -2212,6 +2261,8 @@ function HomeTab({
             {goalProgress === null ? (
               // `null` = not resolved yet. Never render "Set a goal" or a
               // fabricated 0/0 here — a real goal could still come back.
+              // (Visitors only reach this row once goalProgress.hasGoal is
+              // already true, so this skeleton only ever shows on own profile.)
               <div className="profile-challenge-compact" aria-hidden="true">
                 <Skeleton variant="circle" width={52} height={52} />
                 <div className="profile-challenge-compact__info">
@@ -2226,7 +2277,7 @@ function HomeTab({
                   target={goalProgress.target}
                   year={goalProgress.year}
                   variant="compact"
-                  onSet={onSetGoal}
+                  onSet={isOwnProfile ? onSetGoal : undefined}
                 />
                 <div className="profile-challenge-compact__info">
                   {goalProgress.hasGoal ? (
@@ -2240,7 +2291,7 @@ function HomeTab({
                           : `${goalProgress.target - goalProgress.current} to go`}
                       </p>
                     </>
-                  ) : (
+                  ) : isOwnProfile ? (
                     <button
                       type="button"
                       className="profile-challenge-compact__set-goal"
@@ -2248,7 +2299,7 @@ function HomeTab({
                     >
                       Set a {goalProgress.year} goal
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}

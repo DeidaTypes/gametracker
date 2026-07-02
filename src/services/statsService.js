@@ -406,6 +406,32 @@ export function parseLocalDateKey(key) {
 }
 
 /**
+ * Total tracked-games count for ANY user, sourced from `game_trackers`
+ * (RLS: publicly readable — see trackers_select_all). Used for the
+ * "games" stat numeral on visitor profiles, where the local-device-only
+ * `getStatsLocalSync`/`getProfileStats` counters aren't reachable (those
+ * only reflect the signed-in device's own localStorage library).
+ *
+ * Own profile continues to use the localStorage-derived count so
+ * behaviour there is unchanged — this is strictly additive for visitors.
+ *
+ * @param {string} userId
+ * @returns {Promise<number>}
+ */
+export async function getTrackedGamesCountForUser(userId) {
+  if (!userId) return 0
+  const { count, error } = await supabase
+    .from('game_trackers')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (error) {
+    console.error('[stats] getTrackedGamesCountForUser failed:', error.message)
+    return 0
+  }
+  return count || 0
+}
+
+/**
  * Fetch current streaks for users that `userId` follows, using the
  * `get_circle_streaks` Postgres function.
  *

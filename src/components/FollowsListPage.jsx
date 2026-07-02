@@ -4,7 +4,7 @@ import { LuChevronLeft } from 'react-icons/lu'
 import { UserPlus, UserMinus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getProfile, generateDefaultAvatar } from '../services/profileService'
-import { getUserByUsername } from '../services/userService'
+import { getUserByUsername, getUserById } from '../services/userService'
 import {
   followUser,
   unfollowUser,
@@ -22,15 +22,19 @@ import PulseDot from './PulseDot'
 import '../pages/UserFollows.css'
 
 /**
- * Shared screen for /user/:username/followers and
- * /user/:username/following. The two routes mount this component with
- * a different `mode` prop — keeps row/header/tab/pagination logic in
- * one place.
+ * Shared screen for /user/:username/followers|following AND
+ * /user/id/:userId/followers|following. The routes mount this
+ * component with a different `mode` prop — keeps row/header/tab/
+ * pagination logic in one place.
  *
- * Resolution flow mirrors UserBadgesPage: fast-path the signed-in
- * user's local profile when the URL :username matches, otherwise hit
- * Supabase via getUserByUsername. We never crash on a missing user —
- * we render an empty list with a friendly message.
+ * Resolution flow mirrors Profile.jsx: fast-path the signed-in user's
+ * local profile when the URL matches, otherwise hit Supabase via
+ * getUserByUsername (username route) or getUserById (id route — most
+ * real accounts never set a username, so without this fallback the
+ * username-only lookup would resolve to nothing and every visit to a
+ * usernameless user's Followers/Following list would render "User not
+ * found."). We never crash on a missing user — we render an empty
+ * list with a friendly message.
  *
  * Pagination is offset/limit based against followService. We keep an
  * `endReached` flag so the IntersectionObserver stops firing once the
@@ -40,7 +44,7 @@ const PAGE_SIZE = 20
 
 function FollowsListPage({ mode }) {
   const navigate = useNavigate()
-  const { username } = useParams()
+  const { username, userId: paramUserId } = useParams()
   const { user: authUser } = useAuth()
   const currentUserId = authUser?.id || null
 
@@ -74,13 +78,53 @@ function FollowsListPage({ mode }) {
   )
 
   const decodedUsername = decodeURIComponent(username || '')
+  const decodedUserId = decodeURIComponent(paramUserId || '')
 
-  /* ── Resolve username -> user_id ──────────────────────────── */
+  /* ── Resolve username|userId -> user_id ───────────────────── */
 
   useEffect(() => {
     let cancelled = false
 
     async function resolve() {
+      // /user/id/:userId route — resolve by UUID directly, no username
+      // lookup involved. Most real accounts have no username set, so
+      // this path is the common case, not just a fallback.
+      if (decodedUserId) {
+        if (currentUserId && decodedUserId === currentUserId) {
+          const localProfile = getProfile()
+          if (!cancelled) {
+            setTargetUserId(currentUserId)
+            setResolvedUser({
+              id: currentUserId,
+              username: localProfile?.username || '',
+              display_name: localProfile?.displayName || '',
+              avatar_url: null,
+            })
+            setResolveError(false)
+          }
+          return
+        }
+        try {
+          const row = await getUserById(decodedUserId)
+          if (cancelled) return
+          if (row?.id) {
+            setTargetUserId(row.id)
+            setResolvedUser(row)
+            setResolveError(false)
+          } else {
+            setResolveError(true)
+            setLoading(false)
+          }
+        } catch (err) {
+          console.error('[follows-page] user resolve (by id) failed:', err)
+          if (!cancelled) {
+            setResolveError(true)
+            setLoading(false)
+          }
+        }
+        return
+      }
+
       const localProfile = getProfile()
       const localUsername =
         localProfile?.username || localProfile?.displayName || ''
@@ -137,7 +181,7 @@ function FollowsListPage({ mode }) {
     return () => {
       cancelled = true
     }
-  }, [decodedUsername, currentUserId])
+  }, [decodedUsername, decodedUserId, currentUserId])
 
   /* ── Reset list when target / mode changes ────────────────── */
 
@@ -291,8 +335,19 @@ function FollowsListPage({ mode }) {
 
   const isOwnProfile = currentUserId && targetUserId && currentUserId === targetUserId
 
+  // Build the canonical route segment for the resolved profile. Prefer
+  // the username route when one exists (nicer URL); fall back to the
+  // /user/id/:userId route for the (common) case where the profile has
+  // no username — using titleHandle here would silently 404 since
+  // FollowsListPage/Profile only look users up by their real username.
+  const profilePathSegment = resolvedUser?.username
+    ? encodeURIComponent(resolvedUser.username)
+    : targetUserId
+      ? `id/${encodeURIComponent(targetUserId)}`
+      : encodeURIComponent(decodedUsername || titleHandle)
+
   const handleShareProfile = async () => {
-    const url = `${window.location.origin}/user/${encodeURIComponent(titleHandle)}`
+    const url = `${window.location.origin}/user/${profilePathSegment}`
     await shareContent({
       title: `${titleHandle} on GameTracker`,
       text: 'Check out my GameTracker profile!',
@@ -302,7 +357,7 @@ function FollowsListPage({ mode }) {
 
   const switchTab = (next) => {
     if (next === mode) return
-    navigate(`/user/${encodeURIComponent(decodedUsername || titleHandle)}/${next}`, {
+    navigate(`/user/${profilePathSegment}/${next}`, {
       replace: true,
     })
   }

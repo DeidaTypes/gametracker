@@ -620,6 +620,31 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Fallback for users without a username set (see /user/id/:userId
+                above) — most real accounts have no username, so without
+                these routes tapping Followers/Following from a visitor
+                profile navigated to a URL FollowsListPage could never
+                resolve, rendering "User not found." for real users. */}
+            <Route
+              path="/user/id/:userId/followers"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserFollowers /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/following"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserFollowing /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             <Route
               path="/stats"
               element={

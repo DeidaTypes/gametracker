@@ -224,7 +224,7 @@ export async function getFollowing(userId, limit = 20, offset = 0) {
   let query = supabase
     .from('follows')
     .select(
-      'followee_id, created_at, followee:users!followee_id(id, username, display_name, avatar_url)'
+      'followee_id, created_at, followee:users!follows_followee_id_fkey(id, username, display_name, avatar_url)'
     )
     .eq('follower_id', userId)
     .order('created_at', { ascending: false })
@@ -261,7 +261,7 @@ export async function getFollowers(userId, limit = 20, offset = 0) {
   let query = supabase
     .from('follows')
     .select(
-      'follower_id, created_at, follower:users!follower_id(id, username, display_name, avatar_url)'
+      'follower_id, created_at, follower:users!follows_follower_id_fkey(id, username, display_name, avatar_url)'
     )
     .eq('followee_id', userId)
     .order('created_at', { ascending: false })
