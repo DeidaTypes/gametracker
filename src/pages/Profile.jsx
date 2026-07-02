@@ -88,6 +88,7 @@ import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
 import ActivityTimeline from '../components/ActivityTimeline'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
+import Skeleton from '../components/Skeleton'
 import './Profile.css'
 
 /* ============================================================
@@ -461,10 +462,13 @@ function Profile() {
   const [reportProfileOpen, setReportProfileOpen] = useState(false)
 
   // Yearly challenge + streak milestones (own profile only).
+  // `null` means "not resolved yet" — distinct from a resolved
+  // `{ hasGoal: false, ... }`, which means "genuinely no goal set".
+  // Rendering must never treat the former as the latter (see GoalRing
+  // loading skeleton in HomeTab below) or a real goal flashes as
+  // "Set a goal" for a frame on every load.
   const thisYear = new Date().getFullYear()
-  const [goalProgress, setGoalProgress] = useState({
-    hasGoal: false, target: null, current: 0, year: thisYear, percent: 0,
-  })
+  const [goalProgress, setGoalProgress] = useState(null)
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
   const [rivalryData, setRivalryData] = useState([])
 
@@ -481,6 +485,15 @@ function Profile() {
 
   // Data
   const [allReviews, setAllReviews] = useState([])
+  // True until the FIRST loadProfileData() for the current targetUserId
+  // resolves. Gates the review-count stat (and anything else derived
+  // from allReviews on this render pass) so a loading profile never
+  // paints "0 reviews" — only a skeleton or the real, resolved count.
+  // Does NOT flip back to true on background refreshes (reviewAdded,
+  // storage, etc.) so optimistic updates still paint instantly per the
+  // app's optimistic-UI convention.
+  const [profileLoading, setProfileLoading] = useState(true)
+  const loadedProfileForUserRef = useRef(null)
   const [customLists, setCustomLists] = useState([])
   const [activities, setActivities] = useState([])
   const [journalEntries, setJournalEntries] = useState([])
@@ -516,6 +529,11 @@ function Profile() {
   const [followingCount, setFollowingCount] = useState(0)
   const [following, setFollowing] = useState(false)
   const [followPending, setFollowPending] = useState(false)
+  // Mirrors profileLoading's "first load per user" guard so the
+  // followers/following numerals skeleton on initial load only, never
+  // on optimistic follow/unfollow updates.
+  const [followLoading, setFollowLoading] = useState(true)
+  const loadedFollowForUserRef = useRef(null)
 
   // Sprint 7 — banner URL for non-own profiles fetched from Supabase.
   // Own profile reads bannerUrl directly from the localStorage profile blob.
@@ -530,6 +548,14 @@ function Profile() {
   /* ── Data loading ──────────────────────────────────────────────── */
 
   const loadProfileData = useCallback(async () => {
+    // Only show the loading skeleton on the FIRST fetch for this
+    // targetUserId (initial mount, or switching to a different user's
+    // profile). Background refreshes fired by reviewAdded/storage/etc.
+    // re-run this same function but must not re-arm the skeleton —
+    // that would fight the app's optimistic-update convention.
+    const isFreshLoadForThisUser = loadedProfileForUserRef.current !== targetUserId
+    if (isFreshLoadForThisUser) setProfileLoading(true)
+
     // Own profile: read display name / avatar / bio from localStorage.
     // Other-user profile: shape an equivalent blob from the Supabase row
     // that was resolved from the URL :username param.
@@ -635,6 +661,8 @@ function Profile() {
         setPinnedRows([])
         setPinnedLists([])
       }
+      loadedProfileForUserRef.current = targetUserId
+      setProfileLoading(false)
     } else {
       setAllReviews([])
       setCustomLists([])
@@ -643,6 +671,8 @@ function Profile() {
       setReviewLikeCounts(new Map())
       setPinnedRows([])
       setPinnedLists([])
+      loadedProfileForUserRef.current = targetUserId
+      setProfileLoading(false)
     }
   }, [targetUserId, isOwnProfile, resolvedUser])
 
@@ -683,9 +713,13 @@ function Profile() {
   const loadFollowState = useCallback(async () => {
     if (!targetUserId) {
       setFollowersCount(0)
+      setFollowingCount(0)
       setFollowing(false)
+      setFollowLoading(false)
       return
     }
+    const isFreshLoadForThisUser = loadedFollowForUserRef.current !== targetUserId
+    if (isFreshLoadForThisUser) setFollowLoading(true)
     try {
       const [followers, followingCnt, amFollowing] = await Promise.all([
         getFollowerCount(targetUserId),
@@ -698,6 +732,8 @@ function Profile() {
     } catch (err) {
       console.error('[profile] follow state load failed:', err)
     }
+    loadedFollowForUserRef.current = targetUserId
+    setFollowLoading(false)
   }, [targetUserId, isOwnProfile])
 
   useEffect(() => {
@@ -1413,7 +1449,14 @@ function Profile() {
               </>
             )}
             <span className="profile-ig-hero__stat-segment">
-              <span className="profile-ig-hero__stat-value">{reviewCount}</span> reviews
+              <span className="profile-ig-hero__stat-value">
+                {profileLoading ? (
+                  <Skeleton variant="text" width={14} height={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                ) : (
+                  reviewCount
+                )}
+              </span>{' '}
+              reviews
             </span>
             <span className="profile-ig-hero__stat-dot" aria-hidden="true">·</span>
             <button
@@ -1423,9 +1466,17 @@ function Profile() {
                 const handle = profile.username || profile.displayName || 'user'
                 navigate(`/user/${encodeURIComponent(handle)}/followers`)
               }}
-              aria-label={`Followers, ${followersCount}, view list`}
+              aria-label={followLoading ? 'Followers, loading' : `Followers, ${followersCount}, view list`}
+              disabled={followLoading}
             >
-              <span className="profile-ig-hero__stat-value">{followersCount}</span> followers
+              <span className="profile-ig-hero__stat-value">
+                {followLoading ? (
+                  <Skeleton variant="text" width={14} height={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                ) : (
+                  followersCount
+                )}
+              </span>{' '}
+              followers
             </button>
             <span className="profile-ig-hero__stat-dot" aria-hidden="true">·</span>
             <button
@@ -1435,9 +1486,17 @@ function Profile() {
                 const handle = profile.username || profile.displayName || 'user'
                 navigate(`/user/${encodeURIComponent(handle)}/following`)
               }}
-              aria-label={`Following, ${followingCount}, view list`}
+              aria-label={followLoading ? 'Following, loading' : `Following, ${followingCount}, view list`}
+              disabled={followLoading}
             >
-              <span className="profile-ig-hero__stat-value">{followingCount}</span> following
+              <span className="profile-ig-hero__stat-value">
+                {followLoading ? (
+                  <Skeleton variant="text" width={14} height={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                ) : (
+                  followingCount
+                )}
+              </span>{' '}
+              following
             </button>
           </p>
 
@@ -1807,12 +1866,13 @@ function Profile() {
             onClose={() => setGoalSheetOpen(false)}
             onSave={async (target) => {
               if (!user?.id) return
-              await setGoal(user.id, goalProgress.year, target)
-              const updated = await getGoalProgress(user.id, goalProgress.year)
+              const year = goalProgress?.year ?? thisYear
+              await setGoal(user.id, year, target)
+              const updated = await getGoalProgress(user.id, year)
               if (updated) setGoalProgress(updated)
             }}
-            year={goalProgress.year}
-            current={goalProgress.target ?? 0}
+            year={goalProgress?.year ?? thisYear}
+            current={goalProgress?.target ?? 0}
           />
         )}
       </div>
@@ -1854,6 +1914,10 @@ function HomeTab({
     nowPlaying?.gameTitle || nowPlaying?.metadata?.game_title || 'Unknown game'
   const nowPlayingImage =
     nowPlaying?.igdbGameId != null ? gameImageMap.get(String(nowPlaying.igdbGameId)) : null
+
+  // Fallback year label while goalProgress is still resolving (null) —
+  // never fabricates goal data, just labels the loading card correctly.
+  const currentYear = goalProgress?.year ?? new Date().getFullYear()
 
   // Circle rank — global rank of "you" in the merged, sorted rivalry list.
   // This is the one thing that survives from the old Circle leaderboard.
@@ -2065,43 +2129,55 @@ function HomeTab({
       {/* TWO-CELL ROW — Challenge (own profile, green) | Next milestone
           (own profile, cobalt). Own-profile only: both the yearly goal
           and local badge stats are signed-in-device data. */}
-      {isOwnProfile && goalProgress && (
+      {isOwnProfile && (
         <div className="profile-bento-row">
-          <section className="profile-home__section profile-home__section--card profile-challenge-cell" aria-label={`${goalProgress.year} challenge`}>
+          <section className="profile-home__section profile-home__section--card profile-challenge-cell" aria-label={`${goalProgress?.year ?? currentYear} challenge`}>
             <h3 className="profile-home__section-title profile-home__section-title--compact">
-              {goalProgress.year} Challenge
+              {goalProgress?.year ?? currentYear} Challenge
             </h3>
-            <div className="profile-challenge-compact">
-              <GoalRing
-                current={goalProgress.current}
-                target={goalProgress.target}
-                year={goalProgress.year}
-                variant="compact"
-                onSet={onSetGoal}
-              />
-              <div className="profile-challenge-compact__info">
-                {goalProgress.hasGoal ? (
-                  <>
-                    <p className="profile-challenge-compact__headline">
-                      {goalProgress.current}/{goalProgress.target}
-                    </p>
-                    <p className="profile-challenge-compact__sub">
-                      {goalProgress.current >= goalProgress.target
-                        ? 'Goal reached!'
-                        : `${goalProgress.target - goalProgress.current} to go`}
-                    </p>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="profile-challenge-compact__set-goal"
-                    onClick={onSetGoal}
-                  >
-                    Set a {goalProgress.year} goal
-                  </button>
-                )}
+            {goalProgress === null ? (
+              // `null` = not resolved yet. Never render "Set a goal" or a
+              // fabricated 0/0 here — a real goal could still come back.
+              <div className="profile-challenge-compact" aria-hidden="true">
+                <Skeleton variant="circle" width={52} height={52} />
+                <div className="profile-challenge-compact__info">
+                  <Skeleton variant="text" width={48} height={18} />
+                  <Skeleton variant="text" width={72} height={13} style={{ marginTop: 6 }} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="profile-challenge-compact">
+                <GoalRing
+                  current={goalProgress.current}
+                  target={goalProgress.target}
+                  year={goalProgress.year}
+                  variant="compact"
+                  onSet={onSetGoal}
+                />
+                <div className="profile-challenge-compact__info">
+                  {goalProgress.hasGoal ? (
+                    <>
+                      <p className="profile-challenge-compact__headline">
+                        {goalProgress.current}/{goalProgress.target}
+                      </p>
+                      <p className="profile-challenge-compact__sub">
+                        {goalProgress.current >= goalProgress.target
+                          ? 'Goal reached!'
+                          : `${goalProgress.target - goalProgress.current} to go`}
+                      </p>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="profile-challenge-compact__set-goal"
+                      onClick={onSetGoal}
+                    >
+                      Set a {goalProgress.year} goal
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {circleRank != null && (
               <p className="profile-challenge-compact__circle">
                 {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle

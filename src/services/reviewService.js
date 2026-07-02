@@ -118,14 +118,27 @@ export function getCachedUserReviews() {
    ============================================================ */
 
 /**
- * SELECT * FROM reviews WHERE user_id = $1 ORDER BY created_at DESC
+ * SELECT *, users.username, users.display_name, users.avatar_url
+ * FROM reviews JOIN users ON reviews.user_id = users.id
+ * WHERE user_id = $1 ORDER BY created_at DESC
+ *
+ * This is the single source of truth for a user's reviews — both the
+ * Profile "reviews" stat (count) and the Profile Reviews tab (list) call
+ * this same function so the two can never drift out of sync. The
+ * `users!reviews_user_id_fkey` FK hint matches every other embedding
+ * query in this file (getReviewsForGame, getRecentCommunityReviews,
+ * etc.) — without it, PostgREST fails ambiguity resolution as soon as a
+ * second FK path exists between reviews and users (this repo has hit
+ * that before), and a naive unhinted `users(...)` embed silently drops
+ * the reviewer's identity (rowToReviewCard falls back to "Anonymous")
+ * even when the row set itself is correct.
  */
 export async function getReviewsForUser(userId) {
   if (!userId) return []
   const { data, error } = await supabase
     .from('reviews')
     .select(
-      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at'
+      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at, users!reviews_user_id_fkey(username, display_name, avatar_url)'
     )
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
