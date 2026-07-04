@@ -101,6 +101,36 @@ class AuthError extends Error {
   }
 }
 
+/**
+ * Wipe any session already sitting in the Supabase client/local storage
+ * before starting a brand-new signUp()/logIn() attempt.
+ *
+ * Without this, if the device/browser already has a live session (a
+ * previous test account, or the user tapping "sign up" without signing out
+ * first), that old session's tokens stay live in the *same* client instance
+ * throughout the new attempt: its autoRefreshToken timer can still fire, and
+ * a manual getSession()/onAuthStateChange listener elsewhere in the app can
+ * still read it. Any of those can emit an auth event for the OLD account
+ * that lands after the new signUp/logIn's own SIGNED_IN event, which is
+ * exactly what produced "signs up as a new email, lands on the SAME cached
+ * account every time."
+ *
+ * `scope: 'local'` clears local storage + stops the client's internal
+ * refresh timer for that session WITHOUT a network round trip to revoke it
+ * server-side — there's no need to revoke an old session just because the
+ * user is starting a new one, and a network call here would slow down (and
+ * could fail/hang) every signup/login attempt for no benefit.
+ */
+async function clearLocalSession() {
+  try {
+    await supabase.auth.signOut({ scope: 'local' })
+  } catch {
+    // Best-effort — if this fails for some reason, proceeding with the
+    // signUp/logIn call below is still correct; worst case we're back to
+    // needing AuthContext's explicit-op guard to win the race.
+  }
+}
+
 /* ============================================================
    Profile-row bootstrap (signup hot path)
    ============================================================ */
@@ -202,6 +232,9 @@ export async function isUsernameAvailableRemote(username) {
  * @returns {Promise<{ user: object, session: object|null, profile: object }>}
  */
 export async function signUp({ email, password, displayName, username }) {
+  // Must happen before anything else — see clearLocalSession() for why.
+  await clearLocalSession()
+
   const trimmedDisplayName = (displayName || '').trim()
   if (!trimmedDisplayName) {
     throw new AuthError(
@@ -299,6 +332,9 @@ export async function signUp({ email, password, displayName, username }) {
  * @returns {Promise<{ user: object, session: object, profile: object|null }>}
  */
 export async function logIn({ email, password }) {
+  // Same reasoning as signUp() — see clearLocalSession().
+  await clearLocalSession()
+
   let data
   try {
     const res = await supabase.auth.signInWithPassword({ email, password })

@@ -51,25 +51,60 @@ export function AuthProvider({ children }) {
   // signUp(), and logIn(). Each does its own async round trip (profile
   // fetch, or the signUp/login network call itself), so — especially with
   // the Supabase `lock` override disabled (required for Capacitor; see
-  // supabase.js) — nothing serializes them relative to each other. Without
-  // a guard, whichever call's promise chain happens to *resolve* last wins,
-  // even if it was the *oldest* one started (e.g. a stale getSession() from
-  // a previous cached session resolving after a brand-new signUp already
-  // applied its own state). That produces exactly the "random unrelated
-  // cached account" symptom.
+  // supabase.js) — nothing serializes them relative to each other.
   //
-  // Fix: every operation that's about to write user/profile state stamps a
-  // monotonically increasing token when it *starts* (or, for auth events,
-  // when the raw event is *received* — see onEventStart below), and only
-  // applies its result if that token is still the most recent one issued by
-  // the time it resolves. A newer operation starting always "wins" the
-  // right to apply state, regardless of resolution order.
+  // A first attempt at fixing this gave every writer a monotonically
+  // increasing token and only let the *most-recently-issued* token apply.
+  // That was insufficient: signUp()/logIn() ARE the operations that cause
+  // supabase-js to emit an auth event (SIGNED_IN) as an internal side
+  // effect, part-way through their own call. Under "most recent token
+  // wins," that ambient echo of our own call — or, worse, an unrelated
+  // stale/ambient event from a session that already existed before signUp()
+  // ran (boot-time restore, or the client's autoRefreshToken timer for that
+  // old session) — always grabs a *newer* token than the one signUp()
+  // captured at its own start, so signUp()'s own state write was silently
+  // discarded every single time in favor of whatever the listener produced.
+  // The listener's echo of a brand-new signup often raced its own
+  // fetchProfile against the not-yet-inserted profile row (fetchProfile ran
+  // before insertProfileRowWithRetry finished) and, worse, an old session
+  // left in storage from previous testing was never cleared, so its
+  // autoRefreshToken timer could fire — deterministically, for whichever
+  // account happened to already be cached — and overwrite state with that
+  // unrelated account. That's why the symptom changed from "random account"
+  // to "same account every time": it stopped being a resolution-order race
+  // and became a deterministic "ambient events always beat explicit calls"
+  // bug feeding off a session that was never explicitly cleared.
+  //
+  // Fix: split writers into two classes.
+  //   - EXPLICIT ops (signUp/logIn/logOut) are user-initiated. While one is
+  //     in flight (`explicitInFlightRef`), NO ambient writer may touch
+  //     state at all — the explicit op is authoritative. When it commits,
+  //     it stamps a fresh "commit watermark" token (`lastExplicitCommitRef`).
+  //   - AMBIENT writers (boot restore, onAuthStateChange) may only apply
+  //     their result if (a) no explicit op is currently in flight, (b) their
+  //     token was issued *after* the last explicit commit watermark — so a
+  //     stale event received *during* an explicit op's flight can never
+  //     apply even if it resolves after the flag clears — and (c) no newer
+  //     ambient/explicit token has been issued since (ordinary "latest
+  //     wins" for legitimate ambient-vs-ambient races, e.g. two auth events
+  //     firing close together).
   const authSeqRef = useRef(0)
   const beginAuthOp = useCallback(() => {
     authSeqRef.current += 1
     return authSeqRef.current
   }, [])
-  const isCurrentAuthOp = useCallback((token) => authSeqRef.current === token, [])
+  // Token of the currently in-flight explicit op, or null when none is
+  // running. Set at the start of signUp/logIn/logOut, cleared once that
+  // same op has committed (or failed) — see runExplicitAuthOp below.
+  const explicitInFlightRef = useRef(null)
+  // Token watermark stamped the instant the most recent explicit op
+  // committed its state. Ambient writers must be newer than this to apply.
+  const lastExplicitCommitRef = useRef(0)
+  const canApplyAmbientWrite = useCallback((token) => {
+    if (explicitInFlightRef.current !== null) return false
+    if (token <= lastExplicitCommitRef.current) return false
+    return authSeqRef.current === token
+  }, [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -85,7 +120,7 @@ export function AuthProvider({ children }) {
     ;(async () => {
       try {
         const result = await getCurrentUser()
-        if (cancelled || !isCurrentAuthOp(token)) return
+        if (cancelled || !canApplyAmbientWrite(token)) return
         if (result) {
           setUser(result.user)
           setProfile(result.profile)
@@ -94,7 +129,7 @@ export function AuthProvider({ children }) {
           setProfile(null)
         }
       } catch {
-        if (!cancelled && isCurrentAuthOp(token)) {
+        if (!cancelled && canApplyAmbientWrite(token)) {
           setUser(null)
           setProfile(null)
         }
@@ -105,7 +140,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [beginAuthOp, isCurrentAuthOp])
+  }, [beginAuthOp, canApplyAmbientWrite])
 
   // Keep the localStorage profile mirror (read synchronously by the
   // own-profile UI) in step with the authoritative Supabase row. This is
@@ -126,14 +161,14 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChange(
       ({ user: nextUser, profile: nextProfile }, token) => {
         if (!mountedRef.current) return
-        if (!isCurrentAuthOp(token)) return
+        if (!canApplyAmbientWrite(token)) return
         setUser(nextUser)
         setProfile(nextProfile)
       },
       beginAuthOp
     )
     return unsubscribe
-  }, [beginAuthOp, isCurrentAuthOp])
+  }, [beginAuthOp, canApplyAmbientWrite])
 
   // When user resolves, run the one-time localStorage→Supabase review
   // migration (idempotent per-user, no-ops after the first success) and
@@ -179,44 +214,62 @@ export function AuthProvider({ children }) {
     }
   }, [user])
 
-  const signUp = useCallback(async (args) => {
-    const token = beginAuthOp()
-    // Use the session/user/profile returned directly by our own signUp()
-    // call as the source of truth — do NOT wait for the ambient
-    // onAuthStateChange listener to "catch up". The listener will still
-    // fire for this signUp (harmless, same data), but a slower, unrelated
-    // event (e.g. a stale getSession()/refreshSession() from a previous
-    // cached account) must never be allowed to overwrite this result —
-    // the token check below (and on the listener/restore effects) enforces
-    // that regardless of resolution order.
-    const result = await authSignUp(args)
-    if (isCurrentAuthOp(token)) {
-      setUser(result.user)
-      setProfile(result.profile)
+  // Shared runner for signUp/logIn/logOut. `run` performs the actual
+  // Supabase call and returns the { user, profile } to commit (or null to
+  // commit a signed-out state). Marks this op as the authoritative
+  // "in-flight explicit op" for its entire duration so no ambient writer
+  // (onAuthStateChange's echo of this very call included) can sneak state
+  // in ahead of, or instead of, our own result — see the guard comment
+  // above for the full "why" this exists.
+  const runExplicitAuthOp = useCallback(async (run) => {
+    const startToken = beginAuthOp()
+    explicitInFlightRef.current = startToken
+    try {
+      const result = await run()
+      // Bail if a *newer* explicit op has since taken over (e.g. the user
+      // triggered logOut while this one was still resolving) — never
+      // downgrade state to a stale explicit result either.
+      if (explicitInFlightRef.current !== startToken) return result
+      // Re-stamp a fresh token at commit time and record it as the
+      // watermark ambient writers must clear. Any auth event received
+      // *during* this call's network round trip (our own SIGNED_IN echo,
+      // or a stale event from whatever session existed before this call
+      // cleared it) already grabbed a token at or below this watermark, so
+      // it can never be applied afterward — regardless of when its own
+      // async work (e.g. its profile fetch) happens to resolve.
+      lastExplicitCommitRef.current = beginAuthOp()
+      if (result) {
+        setUser(result.user)
+        setProfile(result.profile)
+      } else {
+        setUser(null)
+        setProfile(null)
+      }
+      return result
+    } finally {
+      if (explicitInFlightRef.current === startToken) {
+        explicitInFlightRef.current = null
+      }
     }
-    return result
-  }, [beginAuthOp, isCurrentAuthOp])
+  }, [beginAuthOp])
 
-  const logIn = useCallback(async (args) => {
-    const token = beginAuthOp()
-    // Same principle as signUp: trust the session this call itself
-    // resolved with, not whatever the auth listener happens to deliver.
-    const result = await authLogIn(args)
-    if (isCurrentAuthOp(token)) {
-      setUser(result.user)
-      setProfile(result.profile)
-    }
-    return result
-  }, [beginAuthOp, isCurrentAuthOp])
+  const signUp = useCallback(
+    (args) => runExplicitAuthOp(() => authSignUp(args)),
+    [runExplicitAuthOp]
+  )
 
-  const logOut = useCallback(async () => {
-    const token = beginAuthOp()
-    await authLogOut()
-    if (isCurrentAuthOp(token)) {
-      setUser(null)
-      setProfile(null)
-    }
-  }, [beginAuthOp, isCurrentAuthOp])
+  const logIn = useCallback(
+    (args) => runExplicitAuthOp(() => authLogIn(args)),
+    [runExplicitAuthOp]
+  )
+
+  const logOut = useCallback(
+    () => runExplicitAuthOp(async () => {
+      await authLogOut()
+      return null
+    }),
+    [runExplicitAuthOp]
+  )
 
   const value = useMemo(
     () => ({ user, profile, loading, signUp, logIn, logOut }),
