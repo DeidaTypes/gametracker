@@ -22,6 +22,8 @@ function TextField({
   name,
   disabled,
   className = '',
+  endAdornment,
+  labelExtra,
   ...rest
 }) {
   const reactId = useId()
@@ -59,7 +61,7 @@ function TextField({
         .filter(Boolean)
         .join(' ')}
     >
-      {(label || showCounter) && (
+      {(label || showCounter || labelExtra) && (
         <div className="form-field__label-row">
           {label ? (
             <label htmlFor={inputId} className="form-field__label">
@@ -78,28 +80,34 @@ function TextField({
               {charLength}/{maxLength}
             </span>
           )}
+          {labelExtra}
         </div>
       )}
 
-      <input
-        id={inputId}
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        autoFocus={autoFocus}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        disabled={disabled}
-        required={required}
-        aria-invalid={hasError || undefined}
-        aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
-        className="form-field__control"
-        {...rest}
-      />
+      <div className={`form-field__control-row${endAdornment ? ' form-field__control-row--adorned' : ''}`}>
+        <input
+          id={inputId}
+          name={name}
+          type={type}
+          value={value}
+          onChange={onChange}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          autoFocus={autoFocus}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          disabled={disabled}
+          required={required}
+          aria-invalid={hasError || undefined}
+          aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
+          className="form-field__control"
+          {...rest}
+        />
+        {endAdornment && (
+          <div className="form-field__adornment">{endAdornment}</div>
+        )}
+      </div>
 
       {(hint || hasError) && (
         <div className="form-field__meta">

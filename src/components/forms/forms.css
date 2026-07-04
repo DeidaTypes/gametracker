@@ -146,6 +146,24 @@
   cursor: not-allowed;
 }
 
+/* ── Optional trailing adornment (e.g. password show/hide toggle) ───────── */
+.form-field__control-row {
+  position: relative;
+}
+
+.form-field__control-row--adorned .form-field__control {
+  padding-right: 44px;
+}
+
+.form-field__adornment {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
 /* Hint + error messages */
 .form-field__meta {
   margin-top: 6px;

@@ -1,0 +1,53 @@
+/* ============================================================
+   SIGN-UP SCREEN — Signature mesh visual treatment
+   Layered on top of the shared Auth.css layout (.auth-page,
+   .auth-card, .auth-header, .auth-form, .auth-footer, .auth-link,
+   .auth-error) and the shared signature mesh/glass/gradient system
+   (.auth-page--signature, .auth-mesh, .auth-brand-mark,
+   .auth-gradient-text). Everything here is scoped under .su-* so the
+   Log In screen (separate gradient direction) is untouched.
+
+   Tokens only — no hardcoded hex, no orange/amber. Sign-up leans
+   cobalt → --accent-review (Log In mirrors with --accent-journal →
+   cobalt — see LogIn.css).
+   ============================================================ */
+
+.su-page {
+  --auth-grad-from: var(--color-brand-primary);
+  --auth-grad-to: var(--accent-review);
+  --auth-brand-gradient: linear-gradient(
+    135deg,
+    var(--auth-grad-from) 0%,
+    var(--auth-grad-to) 100%
+  );
+  --auth-mesh-1: color-mix(in srgb, var(--color-brand-primary) 65%, transparent);
+  --auth-mesh-2: color-mix(in srgb, var(--accent-review) 60%, transparent);
+  --auth-mesh-3: color-mix(in srgb, var(--accent-journal) 45%, transparent);
+}
+
+.su-status {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  font-weight: var(--font-weight-medium);
+}
+
+.su-status--muted { color: var(--form-hint-color); }
+.su-status--pending { color: var(--color-text-secondary); }
+.su-status--ok { color: var(--accent-review-text); }
+.su-status--bad { color: var(--status-danger); }
+
+/* ── Password block ──────────────────────────────────────────────────── */
+.su-password-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.su-verify-note {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--form-hint-color);
+}
