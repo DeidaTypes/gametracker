@@ -48,6 +48,7 @@ import ListDetail from './pages/ListDetail'
 import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
 import SignUp from './pages/auth/SignUp'
+import ForgotPassword from './pages/auth/ForgotPassword'
 // Dev-only visual harnesses. Lazily imported and only registered when
 // import.meta.env.DEV is true so they're stripped from production bundles.
 const ReviewCardDemo = import.meta.env.DEV
@@ -88,7 +89,7 @@ if (typeof document !== 'undefined') {
   applySettingsToDom(getSettings())
 }
 
-const PUBLIC_PATHS = new Set(['/login', '/signup'])
+const PUBLIC_PATHS = new Set(['/login', '/signup', '/forgot-password'])
 
 /**
  * Animated route outlet. Wraps <Routes> in a single motion.div whose
@@ -329,6 +330,14 @@ function AppContent() {
               element={
                 <RedirectIfAuthed>
                   <PageTransition><SignUp /></PageTransition>
+                </RedirectIfAuthed>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <RedirectIfAuthed>
+                  <PageTransition><ForgotPassword /></PageTransition>
                 </RedirectIfAuthed>
               }
             />

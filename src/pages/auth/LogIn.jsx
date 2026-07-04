@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Flag, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
@@ -11,6 +12,7 @@ import {
   daysUntilHardDelete,
 } from '../../services/deleteAccountService'
 import './Auth.css'
+import './LogIn.css'
 
 function LogIn() {
   const navigate = useNavigate()
@@ -19,6 +21,7 @@ function LogIn() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -107,10 +110,21 @@ function LogIn() {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page li-page auth-page--signature">
+      <div className="auth-mesh" aria-hidden="true">
+        <span className="auth-mesh__blob auth-mesh__blob--a" />
+        <span className="auth-mesh__blob auth-mesh__blob--b" />
+        <span className="auth-mesh__blob auth-mesh__blob--c" />
+      </div>
       <div className="auth-card">
+        <div className="auth-brand-mark" aria-hidden="true">
+          <Flag strokeWidth={2.25} />
+        </div>
+
         <header className="auth-header">
-          <h1 className="auth-title">Welcome back</h1>
+          <h1 className="auth-title">
+            Welcome <span className="auth-gradient-text">back</span>
+          </h1>
           <p className="auth-subtitle">Log in to keep tracking your games.</p>
         </header>
 
@@ -135,12 +149,31 @@ function LogIn() {
 
           <TextField
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
+            labelExtra={
+              <Link
+                to={`/forgot-password${location.search || ''}`}
+                className="li-forgot-link"
+              >
+                Forgot?
+              </Link>
+            }
+            endAdornment={
+              <button
+                type="button"
+                className="auth-eye-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff strokeWidth={2} /> : <Eye strokeWidth={2} />}
+              </button>
+            }
           />
 
           <div className="auth-form__actions">

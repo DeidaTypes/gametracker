@@ -1,0 +1,46 @@
+/* ============================================================
+   LOG IN SCREEN — Signature mesh visual treatment
+   Mirrors SignUp.css's mesh/glass/gradient system (see Auth.css for
+   the shared .auth-page--signature / .auth-mesh / .auth-brand-mark /
+   .auth-gradient-text base) but leans the gradient direction the other
+   way — --accent-journal → cobalt — so the pair reads as related but
+   distinguishable, per spec.
+
+   Tokens only — no hardcoded hex, no orange/amber.
+   ============================================================ */
+
+.li-page {
+  --auth-grad-from: var(--accent-journal);
+  --auth-grad-to: var(--color-brand-primary);
+  --auth-brand-gradient: linear-gradient(
+    135deg,
+    var(--auth-grad-from) 0%,
+    var(--auth-grad-to) 100%
+  );
+  --auth-mesh-1: color-mix(in srgb, var(--accent-journal) 55%, transparent);
+  --auth-mesh-2: color-mix(in srgb, var(--color-brand-primary) 65%, transparent);
+  --auth-mesh-3: color-mix(in srgb, var(--accent-review) 40%, transparent);
+}
+
+/* ── "Forgot?" link inline with the Password label ───────────────────── */
+.li-forgot-link {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--color-brand-primary);
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.li-forgot-link:hover {
+  text-decoration: underline;
+}
+
+.li-forgot-link:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
