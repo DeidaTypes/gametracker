@@ -10,10 +10,19 @@ import {
   formatActivityMessage,
   getActivityHref,
 } from '../services/activityService'
+import StarRating from './StarRating'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './DayLogSheet.css'
 
 /**
  * DayLogSheet — bottom sheet showing every activity logged on a given day.
+ *
+ * Rows with an associated game (everything except 'list_created') render
+ * a cover thumbnail + title + a colored type tag, per the Calendar
+ * day-detail spec:
+ *   Reviewed/Rated      → green tag  (--accent-review), stars shown
+ *   Added to list       → purple tag (--accent-journal), "→ list name" shown
+ *   everything else     → neutral tag, plain sentence (unchanged look)
  *
  * Props:
  *   dateKey  {'YYYY-MM-DD' | null}  — day to display; null = closed
@@ -27,6 +36,36 @@ const ACTIVITY_ICONS = {
   game_added_to_list: '➕',
   session_logged:     '🎮',
   journal_written:    '📝',
+}
+
+const STATUS_TAG_LABEL = {
+  want: 'Want to Play',
+  currently: 'Playing',
+  played: 'Played',
+  dropped: 'Dropped',
+}
+
+/**
+ * Type tag { label, tone } for an activity row.
+ * tone: 'review' (green) | 'journal' (purple) | 'neutral' (default)
+ */
+function activityTag(activity) {
+  switch (activity.activityType) {
+    case 'review_posted':
+      return { label: 'Reviewed', tone: 'review' }
+    case 'game_added_to_list':
+      return { label: 'Added to list', tone: 'journal' }
+    case 'list_created':
+      return { label: 'New list', tone: 'journal' }
+    case 'status_changed':
+      return { label: STATUS_TAG_LABEL[activity.metadata?.to_status] || 'Status', tone: 'neutral' }
+    case 'session_logged':
+      return { label: 'Played', tone: 'neutral' }
+    case 'journal_written':
+      return { label: 'Journal', tone: 'neutral' }
+    default:
+      return { label: 'Activity', tone: 'neutral' }
+  }
 }
 
 function formatDayTitle(dateKey) {
@@ -131,7 +170,14 @@ export default function DayLogSheet({ dateKey, onClose }) {
             <div className="dls-handle" aria-hidden="true" />
 
             <div className="dls-header">
-              <h2 className="dls-title">{formatDayTitle(dateKey)}</h2>
+              <div className="dls-header-text">
+                <h2 className="dls-title">{formatDayTitle(dateKey)}</h2>
+                {!loading && activities.length > 0 && (
+                  <p className="dls-subtitle">
+                    {activities.length} {activities.length === 1 ? 'thing' : 'things'} logged
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 className="dls-close-btn"
@@ -160,6 +206,12 @@ export default function DayLogSheet({ dateKey, onClose }) {
                     const href = getActivityHref(act)
                     const msg  = formatActivityMessage(act)
                     const icon = ACTIVITY_ICONS[act.activityType] ?? '•'
+                    const tag  = activityTag(act)
+                    // Every type except 'list_created' is anchored to a
+                    // specific game — those get the rich cover+tag+meta
+                    // row; 'list_created' keeps the original sentence row
+                    // since there's no single game to show a cover for.
+                    const hasGameRow = act.activityType !== 'list_created'
 
                     return (
                       <li key={act.id} className="dls-item">
@@ -170,8 +222,37 @@ export default function DayLogSheet({ dateKey, onClose }) {
                           disabled={!href}
                           aria-label={msg}
                         >
-                          <span className="dls-item-icon" aria-hidden="true">{icon}</span>
-                          <span className="dls-item-text">{msg}</span>
+                          {hasGameRow ? (
+                            <>
+                              <img
+                                className="dls-item-cover"
+                                src={act.gameImage || COVER_FALLBACK}
+                                alt=""
+                                loading="lazy"
+                                onError={(e) => { e.target.src = COVER_FALLBACK }}
+                              />
+                              <div className="dls-item-content">
+                                <span className={`dls-item-tag dls-item-tag--${tag.tone}`}>
+                                  {tag.label}
+                                </span>
+                                <span className="dls-item-title">
+                                  {act.gameTitle || 'Untitled game'}
+                                </span>
+                                {act.activityType === 'review_posted' && act.reviewRating != null ? (
+                                  <StarRating rating={act.reviewRating} size={12} />
+                                ) : act.activityType === 'game_added_to_list' ? (
+                                  <span className="dls-item-list-target">
+                                    → {act.listName || 'a list'}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="dls-item-icon" aria-hidden="true">{icon}</span>
+                              <span className="dls-item-text">{msg}</span>
+                            </>
+                          )}
                           <span className="dls-item-time">{formatTime(act.createdAt)}</span>
                           {href && (
                             <ChevronRight

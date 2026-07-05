@@ -201,6 +201,86 @@ export async function fetchActivityCalendar(userId, daysBack = 400) {
   return counts
 }
 
+/**
+ * Fetch the set of local-calendar days (in the last `daysBack` days)
+ * on which `userId` added a game to a list. Powers the Calendar's
+ * purple "list add" corner dot — a separate, cheap query rather than
+ * widening `fetchActivityCalendar`'s per-day counts (which several
+ * other screens depend on) to carry a type breakdown.
+ *
+ * Same table/RLS as `fetchActivityCalendar` (own-row reads), just
+ * filtered to a single activity_type.
+ *
+ * @param {string} userId
+ * @param {number} [daysBack=400]
+ * @returns {Promise<Set<string>>}  local date keys 'YYYY-MM-DD'
+ */
+export async function fetchListAddDates(userId, daysBack = 400) {
+  if (!userId) return new Set()
+
+  const since = new Date()
+  since.setHours(0, 0, 0, 0)
+  since.setDate(since.getDate() - daysBack)
+
+  const { data, error } = await supabase
+    .from('activities')
+    .select('created_at')
+    .eq('user_id', userId)
+    .eq('activity_type', 'game_added_to_list')
+    .gte('created_at', since.toISOString())
+
+  if (error) {
+    console.error('[stats] fetchListAddDates failed:', error.message)
+    return new Set()
+  }
+
+  const dates = new Set()
+  for (const row of data || []) {
+    dates.add(toLocalDateKey(new Date(row.created_at)))
+  }
+  return dates
+}
+
+const listAddCache = new Map() // key -> { value: Set, expiresAt: number, promise?: Promise }
+
+/**
+ * Cached wrapper around fetchListAddDates — same TTL/dedup strategy
+ * as getCachedActivityCalendar, kept as an independent cache so it can
+ * be invalidated together without touching the heatmap's shape.
+ */
+export async function getCachedListAddDates(userId, daysBack = 400) {
+  if (!userId) return new Set()
+
+  const key = calendarCacheKey(userId, daysBack)
+  const now = Date.now()
+  const hit = listAddCache.get(key)
+
+  if (hit) {
+    if (hit.value && hit.expiresAt > now) {
+      return hit.value
+    }
+    if (hit.promise) {
+      return hit.promise
+    }
+  }
+
+  const promise = fetchListAddDates(userId, daysBack)
+    .then((value) => {
+      listAddCache.set(key, {
+        value,
+        expiresAt: Date.now() + CALENDAR_CACHE_TTL_MS,
+      })
+      return value
+    })
+    .catch((err) => {
+      listAddCache.delete(key)
+      throw err
+    })
+
+  listAddCache.set(key, { promise, expiresAt: 0 })
+  return promise
+}
+
 /* ============================================================
    In-memory cache for the activity calendar.
 
@@ -269,6 +349,7 @@ export async function getCachedActivityCalendar(userId, daysBack = 400) {
  */
 export function invalidateActivityCache() {
   calendarCache.clear()
+  listAddCache.clear()
 }
 
 /**

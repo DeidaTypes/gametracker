@@ -363,22 +363,45 @@ export async function fetchActivitiesForDay(userId, dateKey) {
     }
   }
 
-  const [listResult, reviewResult] = await Promise.all([
+  // list_games ids to resolve cover art for 'game_added_to_list' rows —
+  // metadata only denormalises game_title at write time, not the image,
+  // so a real (cheap, own-list) lookup is needed rather than fabricating
+  // a cover. Reviews already carry game_image on the row itself.
+  const listGameLookups = rows
+    .filter((r) => r.activity_type === 'game_added_to_list' && r.target_id && r.igdb_game_id != null)
+    .map((r) => ({ listId: r.target_id, igdbGameId: Number(r.igdb_game_id) }))
+
+  const [listResult, reviewResult, listGameResult] = await Promise.all([
     listTargetIds.size > 0
       ? supabase.from('lists').select('id, name').in('id', [...listTargetIds])
       : Promise.resolve({ data: [], error: null }),
     reviewTargetIds.size > 0
-      ? supabase.from('reviews').select('id, rating, game_title, igdb_game_id').in('id', [...reviewTargetIds])
+      ? supabase.from('reviews').select('id, rating, game_title, game_image, igdb_game_id').in('id', [...reviewTargetIds])
+      : Promise.resolve({ data: [], error: null }),
+    listGameLookups.length > 0
+      ? supabase
+          .from('list_games')
+          .select('list_id, igdb_game_id, game_image')
+          .in('list_id', [...new Set(listGameLookups.map((l) => l.listId))])
       : Promise.resolve({ data: [], error: null }),
   ])
 
   const listMap   = new Map((listResult.data   || []).map((l) => [l.id, l]))
   const reviewMap = new Map((reviewResult.data || []).map((r) => [r.id, r]))
+  const listGameImageMap = new Map()
+  for (const lg of listGameResult.data || []) {
+    if (!lg.game_image) continue
+    listGameImageMap.set(`${lg.list_id}::${lg.igdb_game_id}`, lg.game_image)
+  }
 
   return rows.map((r) => {
     const meta      = r.metadata || {}
     const listRow   = r.target_id ? listMap.get(r.target_id)   : null
     const reviewRow = r.target_id ? reviewMap.get(r.target_id) : null
+    const listGameImage =
+      r.activity_type === 'game_added_to_list' && r.target_id && r.igdb_game_id != null
+        ? listGameImageMap.get(`${r.target_id}::${Number(r.igdb_game_id)}`)
+        : null
     return {
       id:               r.id,
       activityType:     r.activity_type,
@@ -390,6 +413,7 @@ export async function fetchActivitiesForDay(userId, dateKey) {
       reviewRating:     reviewRow?.rating != null ? Number(reviewRow.rating) : null,
       reviewGameTitle:  reviewRow?.game_title || null,
       gameTitle:        meta.game_title || reviewRow?.game_title || null,
+      gameImage:        meta.game_image || reviewRow?.game_image || listGameImage || null,
     }
   })
 }

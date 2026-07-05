@@ -186,6 +186,24 @@
   line-height: 1;
 }
 
+/* "N days logged" — gradient headline text, cobalt → green. Falls back
+   to solid --color-text-primary if background-clip:text isn't supported. */
+.ac-stat-value--gradient {
+  color: var(--color-text-primary);
+  background: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .ac-stat-value--gradient {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--color-text-primary);
+  }
+}
+
 .ac-stat-label {
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
@@ -228,7 +246,23 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   background: transparent;
+  border: none;
+  padding: 0;
   position: relative;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Logged days are real <button>s (tappable); empty days are <div>s. */
+button.ac-day-cell {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+button.ac-day-cell:hover,
+button.ac-day-cell:focus-visible {
+  background: color-mix(in srgb, var(--accent-review) 55%, transparent);
+  outline: none;
 }
 
 .ac-day-num {
@@ -238,18 +272,19 @@
   line-height: 1;
 }
 
-/* Active day: filled cobalt accent */
+/* Logged day: filled activity-green, dark-ink number for AA contrast
+   (white-on-green fails AA at this size — see ActivityCalendar review) */
 .ac-day-cell--active {
-  background: var(--accent);
+  background: var(--accent-review);
 }
 
 .ac-day-cell--active .ac-day-num {
-  color: #fff;
+  color: var(--bg-base);
   font-weight: var(--font-weight-semibold);
 }
 
-/* Today: cobalt outline ring */
-.ac-day-cell--today:not(.ac-day-cell--active) {
+/* Today: cobalt ring — always shown, whether or not the day is logged */
+.ac-day-cell--today {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
@@ -258,9 +293,20 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Today + active: filled, white text */
+/* Today + logged: green fill wins, ring still shows, dark-ink number */
 .ac-day-cell--today.ac-day-cell--active .ac-day-num {
-  color: #fff;
+  color: var(--bg-base);
+}
+
+/* Logged day that includes a list-add: small purple corner dot */
+.ac-day-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-journal);
 }
 
 /* Outside-month padding cells: invisible */
@@ -275,11 +321,52 @@
   opacity: 0.45;
 }
 
+/* ── Legend ───────────────────────────────────────────────────────────── */
+
+.ac-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.ac-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+.ac-legend-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.ac-legend-swatch--logged {
+  background: var(--accent-review);
+}
+
+.ac-legend-swatch--list {
+  background: var(--accent-journal);
+}
+
+.ac-legend-swatch--today {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 /* ── Reduced motion ───────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .ac-back,
-  .ac-month-btn {
+  .ac-month-btn,
+  button.ac-day-cell {
     transition: none;
   }
 }

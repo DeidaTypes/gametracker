@@ -4,10 +4,12 @@ import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getCachedActivityCalendar,
+  getCachedListAddDates,
   computeStreaks,
   toLocalDateKey,
   invalidateActivityCache,
 } from '../services/statsService'
+import DayLogSheet from '../components/DayLogSheet'
 import './ActivityCalendar.css'
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -50,21 +52,29 @@ export default function ActivityCalendar() {
   const [viewYear, setViewYear] = useState(() => today.getFullYear())
   const [viewMonth, setViewMonth] = useState(() => today.getMonth())
   const [dateCounts, setDateCounts] = useState(null)
+  const [listAddDates, setListAddDates] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
+  const [dayLogDate, setDayLogDate] = useState(null)
 
   const fetchData = useCallback(async () => {
     if (!user?.id) {
       setDateCounts(new Map())
+      setListAddDates(new Set())
       setIsLoading(false)
       return
     }
     try {
       // 400 days back covers >13 months for prev/next navigation
-      const counts = await getCachedActivityCalendar(user.id, 400)
+      const [counts, listAdds] = await Promise.all([
+        getCachedActivityCalendar(user.id, 400),
+        getCachedListAddDates(user.id, 400),
+      ])
       setDateCounts(counts)
+      setListAddDates(listAdds)
     } catch (err) {
       console.error('[ActivityCalendar] fetch failed:', err)
       setDateCounts(new Map())
+      setListAddDates(new Set())
     } finally {
       setIsLoading(false)
     }
@@ -197,7 +207,7 @@ export default function ActivityCalendar() {
                 </div>
               )}
               <div className="ac-stat">
-                <span className="ac-stat-value">{totalDaysLogged}</span>
+                <span className="ac-stat-value ac-stat-value--gradient">{totalDaysLogged}</span>
                 <span className="ac-stat-label">days logged</span>
               </div>
             </div>
@@ -231,32 +241,71 @@ export default function ActivityCalendar() {
                   const isActive = (dateCounts?.get(cell.key) ?? 0) > 0
                   const isToday = cell.key === todayKey
                   const isFuture = cell.date > today
+                  const hasListAdd = isActive && listAddDates.has(cell.key)
+
+                  const cellClassName = [
+                    'ac-day-cell',
+                    isActive ? 'ac-day-cell--active' : '',
+                    isToday ? 'ac-day-cell--today' : '',
+                    isFuture ? 'ac-day-cell--future' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+
+                  const label = `${cell.key}${isActive ? ', logged' : ''}${hasListAdd ? ', includes a list add' : ''}${isToday ? ', today' : ''}`
+
+                  // Logged days are tappable → day-detail sheet. Empty
+                  // (non-logged) days stay as inert cells — nothing to
+                  // show, so no sheet, no button semantics.
+                  if (isActive) {
+                    return (
+                      <button
+                        key={cell.key}
+                        type="button"
+                        className={cellClassName}
+                        role="gridcell"
+                        aria-label={`${label}, tap to see this day's activity`}
+                        aria-current={isToday ? 'date' : undefined}
+                        onClick={() => setDayLogDate(cell.key)}
+                      >
+                        <span className="ac-day-num">{cell.day}</span>
+                        {hasListAdd && <span className="ac-day-dot" aria-hidden="true" />}
+                      </button>
+                    )
+                  }
 
                   return (
                     <div
                       key={cell.key}
-                      className={[
-                        'ac-day-cell',
-                        isActive ? 'ac-day-cell--active' : '',
-                        isToday ? 'ac-day-cell--today' : '',
-                        isFuture ? 'ac-day-cell--future' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
+                      className={cellClassName}
                       role="gridcell"
-                      aria-label={`${cell.key}${isActive ? ', active' : ''}${isToday ? ', today' : ''}`}
+                      aria-label={label}
                       aria-current={isToday ? 'date' : undefined}
                     >
                       <span className="ac-day-num">{cell.day}</span>
-                      {/* TODO: tap to see that day's entries (future item) */}
                     </div>
                   )
                 })}
               </div>
             </div>
+
+            {/* Legend */}
+            <div className="ac-legend" aria-hidden="true">
+              <span className="ac-legend-item">
+                <span className="ac-legend-swatch ac-legend-swatch--logged" /> logged
+              </span>
+              <span className="ac-legend-item">
+                <span className="ac-legend-swatch ac-legend-swatch--list" /> list add
+              </span>
+              <span className="ac-legend-item">
+                <span className="ac-legend-swatch ac-legend-swatch--today" /> today
+              </span>
+            </div>
           </>
         )}
       </div>
+
+      <DayLogSheet dateKey={dayLogDate} onClose={() => setDayLogDate(null)} />
     </div>
   )
 }
