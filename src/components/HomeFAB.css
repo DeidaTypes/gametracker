@@ -91,16 +91,21 @@
 }
 
 /* ── Icon button ─────────────────────────────────────────────────────────── */
-/* Fills the 44×44 item box absolutely so the button IS the item's hit area. */
+/* Fills the 44×44 item box absolutely so the button IS the item's hit area.
+   Each item carries its own --item-accent, matching the same multi-hue
+   system used across Home/Calendar/DayLogSheet (cobalt = system,
+   --accent-review green = reviews/ratings, --accent-journal purple =
+   lists/journal), so the radial menu previews the color its action logs as. */
 .home-fab-item__btn {
+  --item-accent: var(--accent);
   position: absolute;
   inset: 0;
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
   background: var(--color-surface-elevated, #1e2a3a);
-  border: 1.5px solid var(--color-border, rgba(255, 255, 255, 0.12));
-  color: var(--color-brand-primary);
+  border: 1.5px solid color-mix(in srgb, var(--item-accent) 40%, var(--color-border, rgba(255, 255, 255, 0.12)));
+  color: var(--item-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,28 +117,26 @@
 
 .home-fab-item__btn:active {
   transform: scale(0.9);
-  background: var(--color-brand-primary);
+  background: var(--item-accent);
   color: #fff;
 }
 
-/* Per-item accent colours (keep copper brand across all) */
-.home-fab-item__btn--log    { color: var(--color-brand-primary); }
-.home-fab-item__btn--review { color: var(--color-brand-primary); }
-.home-fab-item__btn--list   { color: var(--color-brand-primary); }
-.home-fab-item__btn--quest  { color: var(--color-brand-primary); }
+/* Per-item accent colours — session log & quest read as system cobalt,
+   review reads as review-green, list reads as journal-purple. */
+.home-fab-item__btn--log    { --item-accent: var(--accent); }
+.home-fab-item__btn--review { --item-accent: var(--accent-review); }
+.home-fab-item__btn--list   { --item-accent: var(--accent-journal); }
+.home-fab-item__btn--quest  { --item-accent: var(--accent); }
 
 /* ── Main FAB button ─────────────────────────────────────────────────────── */
-/* Solid cobalt (--accent) — the FAB is a persistent system control on the
-   nav bar, so it reads as the same system color as the active nav pill
-   (see BottomNav.css .bottom-nav-active-pill) rather than the CTA gradient.
-   Dark icon color (--color-bg-primary) keeps contrast solid against the
-   cobalt fill. The --grad-cta tokens remain untouched for genuine primary
-   CTAs (e.g. empty-state buttons). */
+/* Primary-action gradient (--grad-cta, cobalt→green) — dark icon color
+   (--color-bg-primary) rather than white keeps contrast solid against
+   both gradient stops (same recipe as the "＋ List" CTA). */
 .home-fab {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  background: var(--accent);
+  background: var(--grad-cta);
   color: var(--color-bg-primary);
   border: none;
   display: flex;
@@ -141,7 +144,8 @@
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent-review) 25%, transparent),
     0 2px 6px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
   transition: box-shadow 150ms ease;
@@ -151,13 +155,14 @@
 
 .home-fab:hover {
   box-shadow:
-    0 6px 24px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 6px 24px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 6px 24px color-mix(in srgb, var(--accent-review) 32%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .home-fab:active {
   box-shadow:
-    0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
