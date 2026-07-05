@@ -1,13 +1,16 @@
 /* ============================================================
-   HomeReviewCard — Home feed's text-forward review card.
+   HomeReviewCard — Home feed's per-item card ("The Feed").
    Namespace: home-review-card__*
    Tokens only — no hardcoded hex. Multi-hue by MEANING:
      - green  (--accent-review) → reviews/ratings: left accent bar,
-       star fill, "reviewed" verb.
+       star fill, "reviewed"/"rated" verb.
+     - cobalt (--accent) → system/activity: left accent bar + verb for
+       every non-rating event row (listed, backlogged, finished, played,
+       favorited — see the --home-review-card--{type} modifiers below),
+       plus the "more" expand link on the full card.
      - purple (--accent-journal, via --accent-journal-text for AA on
-       the dark surface) → social: react count, reply/comment.
-     - cobalt (--accent) → system: "more" expand link.
-     - --grad-cta (cobalt→green) → the "＋ List" primary action.
+       the dark surface) → social: react count, reply/comment, on every
+       row regardless of type.
    ============================================================ */
 
 .home-review-card {
@@ -171,12 +174,6 @@
 .home-review-card__actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.home-review-card__actions-left {
-  display: flex;
-  align-items: center;
   gap: 16px;
 }
 
@@ -216,35 +213,40 @@
   color: var(--accent-journal-text);
 }
 
-/* Primary action — cobalt→green gradient fill (--grad-cta). Text uses
-   --color-bg-primary (dark) rather than white: white fails AA against
-   both gradient stops, dark text passes against both (same recipe as
-   .review-card__own-pill's dark-on-brand treatment). */
-.home-review-card__list-btn {
-  background: var(--grad-cta);
-  border: none;
-  padding: 6px 12px;
-  border-radius: var(--radius-full, 999px);
-  color: var(--color-bg-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__list-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* ── Compact variant (rating-only activity) ── */
+/* ── Compact variant (non-review activity rows) ── */
 .home-review-card--compact {
   flex-direction: row;
   align-items: center;
   gap: 12px;
   padding: 12px var(--container-padding);
   padding-left: calc(var(--container-padding) + 8px);
+}
+
+/* System/activity accent — every compact type except 'rated' (which
+   keeps the review-green treatment inherited from .home-review-card).
+   Left accent bar + verb word both switch to cobalt so "The Feed"
+   visually distinguishes ratings from other social activity. */
+.home-review-card--listed,
+.home-review-card--backlogged,
+.home-review-card--finished,
+.home-review-card--played,
+.home-review-card--favorited {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.home-review-card--listed .home-review-card__verb,
+.home-review-card--backlogged .home-review-card__verb,
+.home-review-card--finished .home-review-card__verb,
+.home-review-card--played .home-review-card__verb,
+.home-review-card--favorited .home-review-card__verb {
+  color: var(--accent);
+}
+
+/* Compact rows render the verb inline within the name/game sentence
+   (see CompactVerbPhrase), so it should read as body copy weight, not
+   the bold standalone word the full card uses in its header. */
+.home-review-card--compact .home-review-card__verb {
+  font-weight: var(--font-weight-normal);
 }
 
 .home-review-card__compact-cover {
@@ -302,15 +304,40 @@
   gap: 8px;
 }
 
+/* ── Compact actions column (react + optional secondary action) ── */
+.home-review-card__compact-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .home-review-card__react--compact {
   flex-shrink: 0;
+}
+
+/* "View" (to the list) — outlined pill, cobalt text, mirrors the system
+   accent used for the rest of a 'listed' row. Deliberately not a
+   --grad-cta fill: this is a secondary navigation action, not the
+   primary "add this to your own list" CTA. */
+.home-review-card__view-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.24));
+  padding: 4px 10px;
+  border-radius: var(--radius-full, 999px);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-review-card__more,
   .home-review-card__react,
-  .home-review-card__reply,
-  .home-review-card__list-btn {
+  .home-review-card__reply {
     transition: none;
   }
 }
