@@ -101,14 +101,17 @@ function HomeSkeleton() {
  *   a. Header — time-aware greeting + search icon (opens search-to-log
  *      overlay) + notification bell.
  *   b. Compact streak strip — flame + "N-day streak" + 7 day-pips +
- *      "Calendar ›". Hidden when the streak is 0 (never a 0/7 grid).
+ *      "Calendar ›". Always visible for users with account history; shows
+ *      a neutral "Start a streak" zero-state (no guilt 0/7 grid) when
+ *      streak.current is 0.
  *   c. Continue breadcrumb — "Continue · {game} ›", shown only when the
  *      user has an active Playing game. No hero, no cover.
  *   d. Fresh reviews — the feed, promoted to lead content. Defaults to
  *      community scope for users with no follows (see getHomeFeed).
  *
  * State-adaptive: brand-new users (no follows AND no logged games) skip
- * (b) and (c) entirely in favor of a single "Log your first game" topper,
+ * (b) and (c) entirely in favor of a single "Log your first game" topper;
+ * everyone else always sees (b), even at a 0-day streak,
  * and the feed's own community fallback + "Find people to follow" row
  * carries the social-proof job normally.
  *
@@ -193,7 +196,10 @@ function Home() {
 
   const pageReady = !loading && followCount !== null
   const isNewUser = pageReady && followCount === 0 && loggedGamesCount === 0
-  const showStreakStrip = pageReady && !isNewUser && streak.current > 0
+  // Always show for anyone with account history — even a 0-day streak gets
+  // a neutral "Start a streak" state (see HomeStreakStrip). Hidden only for
+  // the true new-user empty state (same gate as the first-game topper).
+  const showStreakStrip = pageReady && !isNewUser
   const showContinueBreadcrumb = pageReady && !isNewUser && !!continuePlaying[0]
 
   if (!pageReady) {
@@ -260,8 +266,10 @@ function Home() {
           )}
 
           {/* ── b. Compact streak strip ───────────────────────────────────
-              Flame + "N-day streak" · 7 day-pips · "Calendar ›".
-              Hidden whenever the streak is 0 — never a 0/7 empty grid.
+              Flame + "N-day streak" · 7 day-pips · "Calendar ›". Always
+              shown for users with account history — a neutral "Start a
+              streak" zero-state replaces the guilt-trippy 0/7 grid when
+              streak.current is 0.
           ──────────────────────────────────────────────────────────────── */}
           {showStreakStrip && (
             <section className="home-section home-section-padded">

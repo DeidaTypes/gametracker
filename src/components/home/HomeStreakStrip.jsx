@@ -6,14 +6,23 @@ import './HomeStreakStrip.css'
 /**
  * HomeStreakStrip — compact single-row streak surface for Home.
  *
- * Feed-first spine (v3): replaces the old full TodayCard block. Renders
- * ONLY when the streak is real (current > 0) — a 0-day streak next to an
- * empty 7-day grid reads as a scoreboard the user is losing, not useful
- * information, so the strip stays hidden until there's something to show.
+ * Feed-first spine (v3): replaces the old full TodayCard block. Always
+ * renders for any user with account history (the parent hides it only for
+ * the true new-user empty state) — including at a 0-day streak, where it
+ * falls back to a neutral zero-state instead of a guilt-trippy "0 of 7"
+ * grid.
  *
- * Layout: flame + "N-day streak" (left) · 7 day-pips for the current
- * week (middle) · "Calendar ›" link (right). No "+GAMES" ring here — the
- * yearly-goal ring lives on Profile.
+ * Layout: flame + label (left) · 7 day-pips for the current week (middle)
+ * · "Calendar ›" link (right). No "+GAMES" ring here — the yearly-goal
+ * ring lives on Profile.
+ *
+ * States:
+ *   streak > 0  → purple flame + "N-day streak", filled pips for logged
+ *                 days, today ringed cobalt.
+ *   streak = 0  → muted flame + "Start a streak", all 7 pips empty
+ *                 (logged-day fills are intentionally suppressed here —
+ *                 this is a forward-looking prompt, not a progress
+ *                 readout), today still ringed cobalt.
  *
  * Props:
  *   streak     {number}  current consecutive-day streak
@@ -22,15 +31,16 @@ import './HomeStreakStrip.css'
  */
 function HomeStreakStrip({ streak = 0, weekCells = [] }) {
   const navigate = useNavigate()
-
-  if (!streak || streak <= 0) return null
+  const isZero = !streak || streak <= 0
 
   return (
-    <div className="streak-strip">
+    <div className={['streak-strip', isZero ? 'streak-strip--zero' : ''].filter(Boolean).join(' ')}>
       <div className="streak-strip__flame" aria-hidden="true">
         <Flame size={15} />
       </div>
-      <span className="streak-strip__label">{streak}-day streak</span>
+      <span className="streak-strip__label">
+        {isZero ? 'Start a streak' : `${streak}-day streak`}
+      </span>
 
       <div className="streak-strip__pips" role="group" aria-label="Last 7 days of activity">
         {weekCells.map((cell) => (
@@ -38,7 +48,7 @@ function HomeStreakStrip({ streak = 0, weekCells = [] }) {
             key={cell.key}
             className={[
               'streak-strip__pip',
-              cell.active ? 'streak-strip__pip--active' : '',
+              !isZero && cell.active ? 'streak-strip__pip--active' : '',
               cell.isToday ? 'streak-strip__pip--today' : '',
             ]
               .filter(Boolean)
