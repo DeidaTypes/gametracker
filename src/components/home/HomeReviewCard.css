@@ -46,6 +46,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.home-review-card__avatar-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
 .home-review-card__head-text {
   flex: 1;
   min-width: 0;
@@ -71,6 +76,12 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__author-name:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .home-review-card__verb {
@@ -99,11 +110,16 @@
   align-items: center;
   gap: 10px;
   padding: 8px;
-  background: var(--color-bg-secondary, #1a2240);
+  background: var(--color-bg-secondary);
   border-radius: var(--radius-md, 10px);
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__game-row:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .home-review-card__game-cover {
@@ -170,6 +186,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.home-review-card__more:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* ── Actions row ── */
 .home-review-card__actions {
   display: flex;
@@ -203,6 +225,12 @@
 .home-review-card__reply svg {
   width: 18px;
   height: 18px;
+}
+
+.home-review-card__react:focus-visible,
+.home-review-card__reply:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
 }
 
 .home-review-card__react[aria-pressed='true'] {
@@ -262,6 +290,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.home-review-card__compact-cover:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
 .home-review-card__compact-cover img {
   width: 100%;
   height: 100%;
@@ -298,6 +331,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.home-review-card__compact-name:focus-visible,
+.home-review-card__compact-game:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .home-review-card__compact-meta {
   display: flex;
   align-items: center;
@@ -332,6 +372,11 @@
   font-weight: var(--font-weight-bold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__view-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

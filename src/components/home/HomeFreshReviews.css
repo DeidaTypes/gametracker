@@ -82,6 +82,11 @@
   background: rgba(148, 168, 212, 0.1);
 }
 
+.fresh-reviews__find-nudge:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
 /* ── Infinite-scroll sentinel ── */
 .fresh-reviews__sentinel {
   display: flex;

@@ -194,6 +194,7 @@ body[data-larger-text='true'] {
   --accent:       #3b82f6;   /* cobalt — primary interactive accent */
   --accent-hover: #60a5fa;   /* lighter cobalt for hover */
   --accent-press: #2563eb;   /* darker cobalt for press */
+  --color-on-accent: #fff;   /* text/icon color on a solid accent-color fill (badges, filled buttons) */
   --text-primary:   #f0f3fa; /* primary text */
   --text-secondary: #94a8d4; /* muted text */
   --text-tertiary:  #5c6b8a; /* hint text / placeholders */

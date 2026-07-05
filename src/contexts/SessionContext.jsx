@@ -4,7 +4,7 @@
 // from `started_at` rather than accumulating deltas so that backgrounding
 // the app and returning never desynchronises the counter.
 //
-// Consumers use the `useSession` hook. GameDetail, TodayCard, and the
+// Consumers use the `useSession` hook. GameDetail, HomeFAB, and the
 // persistent SessionPill all read from this single source of truth.
 
 import React, {

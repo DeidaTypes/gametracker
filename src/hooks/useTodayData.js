@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getContinuePlayingGames } from '../services/libraryService'
-import { getCachedActivityCalendar, computeStreaks, toLocalDateKey, invalidateActivityCache, getCircleStreaks } from '../services/statsService'
-import { getTimeToBeat } from '../services/timeToBeatService'
-import { computeProgress } from '../services/progressHelper'
-import { getGoalProgress, computePace } from '../services/goalService'
+import { getCachedActivityCalendar, computeStreaks, toLocalDateKey, invalidateActivityCache } from '../services/statsService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -39,159 +35,74 @@ function buildWeekCells(dateCounts) {
 }
 
 /**
- * Count how many of the last 7 days have ≥1 activity.
- */
-function countActiveDays(weekCells) {
-  return weekCells.filter((c) => c.active).length
-}
-
-/**
- * useTodayData — all data the TodayCard needs, in one place.
+ * useTodayData — streak + rolling-week activity data for Home's compact
+ * streak strip (see HomeStreakStrip).
+ *
+ * Historically this hook also fed the old full TodayCard block (now-playing
+ * spotlight, time-to-beat progress, yearly goal ring, circle streaks) — that
+ * card was removed as part of the Home v3 feed-first pass and deleted as
+ * dead code, so this hook was trimmed down to only what Home still consumes.
+ * Name kept as-is (internal only) to minimize diff.
  *
  * Returns:
- *   nowPlaying    — enriched game object (with hoursPlayed, progressPercent,
- *                   lastPlayedAt) or null if the user has no Playing games.
- *   ttb           — getTimeToBeat result for nowPlaying, or null.
- *   progress      — computeProgress result for nowPlaying, or null.
- *   weekCells     — Array<{ key, dayLabel, active, isToday }>, 7 items.
- *   streak        — { current: number, longest: number }
- *   daysLogged    — number of active days in the last 7.
- *   isLoading     — true while the async activity fetch is in flight.
+ *   weekCells  — Array<{ key, dayLabel, active, isToday }>, 7 items.
+ *   streak     — { current: number, longest: number }
+ *   isLoading  — true while the async activity fetch is in flight.
  */
 export function useTodayData() {
   const { user } = useAuth()
 
-  // Now-playing: the most recently updated Playing game.
-  const [nowPlaying, setNowPlaying] = useState(null)
-  const [ttb, setTtb] = useState(null)
-  const [progress, setProgress] = useState(null)
-
-  // Activity-derived data.
   const [weekCells, setWeekCells] = useState(() => buildWeekCells(new Map()))
   const [streak, setStreak] = useState({ current: 0, longest: 0 })
-  const [daysLogged, setDaysLogged] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Social streaks — followed users who have an active streak and have opted in.
-  const [circleStreaks, setCircleStreaks] = useState([])
-
-  // Yearly goal progress.
-  const thisYear = new Date().getFullYear()
-  const [goalProgress, setGoalProgress] = useState({
-    hasGoal: false,
-    target: null,
-    current: 0,
-    year: thisYear,
-    percent: 0,
-  })
-
-  // Derive Now Playing + progress (synchronous, local).
-  const refreshNowPlaying = useCallback(() => {
-    const games = getContinuePlayingGames(1)
-    const game = games[0] ?? null
-    setNowPlaying(game)
-    return game
-  }, [])
-
-  // Fetch TTB and derive progress whenever the spotlight game changes.
-  useEffect(() => {
-    setTtb(null)
-    setProgress(null)
-    if (!nowPlaying?.id) return
-
-    let cancelled = false
-    getTimeToBeat(nowPlaying.id).then((data) => {
-      if (cancelled) return
-      setTtb(data)
-      setProgress(
-        computeProgress({
-          hoursPlayed: nowPlaying.hoursPlayed,
-          progressOverride: nowPlaying.progressPercent,
-          normallySeconds: data?.normallySeconds ?? null,
-        })
-      )
-    })
-    return () => { cancelled = true }
-  }, [nowPlaying?.id, nowPlaying?.hoursPlayed, nowPlaying?.progressPercent])
-
-  // Fetch activity calendar and derive week + streak (async, Supabase).
   const refreshActivity = useCallback(async () => {
     if (!user?.id) {
-      const cells = buildWeekCells(new Map())
-      setWeekCells(cells)
+      setWeekCells(buildWeekCells(new Map()))
       setStreak({ current: 0, longest: 0 })
-      setDaysLogged(0)
       setIsLoading(false)
       return
     }
 
     try {
-      // Run activity calendar + goal progress + circle streaks in parallel.
-      const [counts, gp, circle] = await Promise.all([
-        getCachedActivityCalendar(user.id, 60),
-        getGoalProgress(user.id, new Date().getFullYear()),
-        getCircleStreaks(user.id),
-      ])
-      const cells = buildWeekCells(counts)
-      setWeekCells(cells)
+      const counts = await getCachedActivityCalendar(user.id, 60)
+      setWeekCells(buildWeekCells(counts))
       setStreak(computeStreaks(counts))
-      setDaysLogged(countActiveDays(cells))
-      setGoalProgress(gp)
-      setCircleStreaks(circle)
     } catch (err) {
       console.error('[useTodayData] activity fetch failed:', err)
-      const cells = buildWeekCells(new Map())
-      setWeekCells(cells)
+      setWeekCells(buildWeekCells(new Map()))
       setStreak({ current: 0, longest: 0 })
-      setDaysLogged(0)
     } finally {
       setIsLoading(false)
     }
   }, [user?.id])
 
-  // Initial load.
   useEffect(() => {
-    refreshNowPlaying()
     setIsLoading(true)
     refreshActivity()
-  }, [refreshNowPlaying, refreshActivity])
+  }, [refreshActivity])
 
-  // Refresh when library or activity changes.
   useEffect(() => {
-    function onLibraryChange() {
-      refreshNowPlaying()
-    }
     function onActivityChange() {
       invalidateActivityCache()
       setIsLoading(true)
       refreshActivity()
     }
 
-    window.addEventListener('libraryUpdated', onLibraryChange)
     window.addEventListener('activityUpdated', onActivityChange)
     window.addEventListener('reviewAdded', onActivityChange)
-    window.addEventListener(APP_RESUMED_EVENT, onLibraryChange)
+    window.addEventListener(APP_RESUMED_EVENT, onActivityChange)
 
     return () => {
-      window.removeEventListener('libraryUpdated', onLibraryChange)
       window.removeEventListener('activityUpdated', onActivityChange)
       window.removeEventListener('reviewAdded', onActivityChange)
-      window.removeEventListener(APP_RESUMED_EVENT, onLibraryChange)
+      window.removeEventListener(APP_RESUMED_EVENT, onActivityChange)
     }
-  }, [refreshNowPlaying, refreshActivity])
-
-  const paceInfo = computePace(goalProgress)
+  }, [refreshActivity])
 
   return {
-    nowPlaying,
-    ttb,
-    progress,
     weekCells,
     streak,
-    daysLogged,
     isLoading,
-    goalProgress,
-    paceInfo,
-    circleStreaks,
   }
 }

@@ -118,7 +118,12 @@
 .home-fab-item__btn:active {
   transform: scale(0.9);
   background: var(--item-accent);
-  color: #fff;
+  color: var(--color-on-accent);
+}
+
+.home-fab-item__btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 /* Per-item accent colours — session log & quest read as system cobalt,
@@ -164,6 +169,11 @@
   box-shadow:
     0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.home-fab:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 3px;
 }
 
 /* Icon wrapper — Framer Motion rotates this to morph + → × */

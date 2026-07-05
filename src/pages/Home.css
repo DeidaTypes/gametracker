@@ -122,6 +122,12 @@
   background: rgba(148, 168, 212, 0.18);
 }
 
+.home-notif-btn:focus-visible,
+.home-search-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
 /* Numeric badge on the bell */
 .home-notif-badge {
   position: absolute;
@@ -131,14 +137,14 @@
   height: 16px;
   padding: 0 4px;
   border-radius: var(--radius-full);
-  background: var(--accent, #3b82f6);
-  color: #fff;
+  background: var(--accent);
+  color: var(--color-on-accent);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
   text-align: center;
   pointer-events: none;
-  box-shadow: 0 0 0 2px var(--color-bg-primary, var(--bg-base));
+  box-shadow: 0 0 0 2px var(--color-bg-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -337,6 +343,12 @@
   color: var(--color-text-tertiary);
 }
 
+.home-continue-breadcrumb:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* =============================================
    NEW-USER TOPPER
    "Log your first game" — shown in place of the streak strip and
@@ -365,6 +377,11 @@
 
 .home-first-game-topper:hover {
   background: var(--bg-surface-2);
+}
+
+.home-first-game-topper:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .home-first-game-topper svg {
