@@ -282,6 +282,28 @@ body[data-larger-text='true'] {
   --accent-journal: #8b32d1;
   --accent-journal-text: #e4c2ff;
 
+  /* =============================================
+     MULTI-HUE GRADIENT TOKENS
+     ---------------------------------------------------------------
+     Cobalt/green/purple only — no orange/amber. These compose the
+     three existing accent tokens (--accent, --accent-review,
+     --accent-journal) into restrained gradient accents. Introduced
+     for the Home multi-hue pass; safe to reuse anywhere the same
+     "system → reviews" or "system + reviews + social" story applies.
+     ============================================= */
+  /* Headline gradient text (background-clip:text) — cobalt to green */
+  --grad-headline: linear-gradient(90deg, var(--accent) 0%, var(--accent-review) 100%);
+  /* Primary-action fill — cobalt to green, matches the onboarding
+     picker's "Done" CTA recipe (see Onboarding.css .ob-picker__btn--primary) */
+  --grad-cta: linear-gradient(120deg, var(--accent) 0%, var(--accent-review) 100%);
+  /* Ambient wash — low-opacity cobalt + purple + green glows, layered
+     radial gradients. Applied as a background behind content only;
+     never used for text or interactive fills. */
+  --grad-ambient:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--accent-journal) 12%, transparent) 0%, transparent 55%),
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--accent-review) 11%, transparent) 0%, transparent 60%);
+
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);
   --color-surface-hover: rgba(148, 168, 212, 0.09);

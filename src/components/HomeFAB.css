@@ -123,19 +123,23 @@
 .home-fab-item__btn--quest  { color: var(--color-brand-primary); }
 
 /* ── Main FAB button ─────────────────────────────────────────────────────── */
+/* Primary-action gradient (--grad-cta, cobalt→green) — dark icon color
+   (--color-bg-primary) rather than white keeps contrast solid against
+   both gradient stops (same recipe as the "＋ List" CTA). */
 .home-fab {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  background: var(--color-brand-primary);
-  color: #ffffff;
+  background: var(--grad-cta);
+  color: var(--color-bg-primary);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    0 4px 16px rgba(59, 130, 246, 0.45),
+    0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent-review) 25%, transparent),
     0 2px 6px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
   transition: box-shadow 150ms ease;
@@ -145,13 +149,14 @@
 
 .home-fab:hover {
   box-shadow:
-    0 6px 24px rgba(59, 130, 246, 0.55),
+    0 6px 24px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 6px 24px color-mix(in srgb, var(--accent-review) 32%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .home-fab:active {
   box-shadow:
-    0 2px 8px rgba(59, 130, 246, 0.3),
+    0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
 

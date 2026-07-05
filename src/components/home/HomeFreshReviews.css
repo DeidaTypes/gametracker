@@ -15,6 +15,9 @@
   padding: 0 var(--container-padding) var(--spacing-sm);
 }
 
+/* Gradient heading — cobalt → green (--grad-headline), the one heading
+   treatment allowed by the multi-hue pass. Falls back to solid
+   --color-text-primary if background-clip:text isn't supported. */
 .fresh-reviews__title {
   margin: 0 0 2px;
   font-family: var(--font-display);
@@ -23,6 +26,18 @@
   line-height: var(--line-height-title);
   letter-spacing: var(--letter-spacing-display);
   color: var(--color-text-primary);
+  background: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .fresh-reviews__title {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--color-text-primary);
+  }
 }
 
 .fresh-reviews__subline {

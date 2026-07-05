@@ -1,8 +1,11 @@
 /* ============================================================
    HOME STREAK STRIP — compact single-row streak surface
    Namespace: streak-strip__*
-   Tokens only — cobalt (--accent) is the single accent used here,
-   matching EmberRing's existing streak treatment. No orange/amber.
+   Tokens only, multi-hue by MEANING — no orange/amber:
+     - flame icon           → --accent-journal (purple, social/streak)
+     - logged-day pips      → --accent-review (green, reviews/ratings)
+     - today-pip ring       → --accent (cobalt, system)
+     - "Calendar ›" link    → --accent (cobalt, system/nav link)
    ============================================================ */
 
 .streak-strip {
@@ -21,7 +24,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--accent-journal);
 }
 
 .streak-strip__label {
@@ -52,8 +55,8 @@
 }
 
 .streak-strip__pip--active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-review);
+  border-color: var(--accent-review);
 }
 
 .streak-strip__pip--today {

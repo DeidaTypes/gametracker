@@ -1,17 +1,29 @@
 /* ============================================================
    HomeReviewCard — Home feed's text-forward review card.
    Namespace: home-review-card__*
-   Tokens only — no hardcoded hex. Accents: cobalt (--accent) for
-   interactive state, --accent-review (green) for the review verb —
-   matches the review-green treatment used on GameDetail/Profile.
+   Tokens only — no hardcoded hex. Multi-hue by MEANING:
+     - green  (--accent-review) → reviews/ratings: left accent bar,
+       star fill, "reviewed" verb.
+     - purple (--accent-journal, via --accent-journal-text for AA on
+       the dark surface) → social: react count, reply/comment.
+     - cobalt (--accent) → system: "more" expand link.
+     - --grad-cta (cobalt→green) → the "＋ List" primary action.
    ============================================================ */
 
 .home-review-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px var(--container-padding);
+  padding-left: calc(var(--container-padding) + 8px);
   border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
+  /* Reviews/ratings accent bar — green, scoped to this card only. */
+  border-left: 3px solid color-mix(in srgb, var(--accent-review) 55%, transparent);
+  /* Star fill (StarRating reads --star from its ancestors) scoped to
+     Home only — the shared StarRating component keeps its gold fill
+     everywhere else in the app. */
+  --star: var(--accent-review);
 }
 
 /* ── Header: avatar + name + verb + timestamp ── */
@@ -68,6 +80,14 @@
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   white-space: nowrap;
+}
+
+/* Star specular glow — StarRating.css hardcodes a gold-tinted
+   drop-shadow for its glimmer effect app-wide; override it here (scoped
+   to Home only, via higher selector specificity) so the glow matches
+   the green fill instead of clashing with it. */
+.home-review-card .star-rating__layer--fill {
+  filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
 }
 
 /* ── Game row ── */
@@ -160,6 +180,11 @@
   gap: 16px;
 }
 
+/* Social actions — react + reply/comment share the purple hue. The
+   bright --accent-journal-text variant is used (rather than the base
+   --accent-journal) because these render as small text/icon pairs
+   directly on the dark card surface, where plain --accent-journal
+   falls short of AA contrast. */
 .home-review-card__react,
 .home-review-card__reply {
   background: none;
@@ -169,7 +194,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--color-text-secondary);
+  color: var(--accent-journal-text);
   font-family: var(--font-body);
   font-size: var(--font-size-body-sm, 14px);
   cursor: pointer;
@@ -184,22 +209,26 @@
 }
 
 .home-review-card__react[aria-pressed='true'] {
-  color: var(--accent);
+  color: var(--accent-journal-text);
 }
 
 .home-review-card__heart-icon--active {
-  color: var(--accent);
+  color: var(--accent-journal-text);
 }
 
+/* Primary action — cobalt→green gradient fill (--grad-cta). Text uses
+   --color-bg-primary (dark) rather than white: white fails AA against
+   both gradient stops, dark text passes against both (same recipe as
+   .review-card__own-pill's dark-on-brand treatment). */
 .home-review-card__list-btn {
-  background: none;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--grad-cta);
+  border: none;
   padding: 6px 12px;
   border-radius: var(--radius-full, 999px);
-  color: var(--accent);
+  color: var(--color-bg-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -215,6 +244,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px var(--container-padding);
+  padding-left: calc(var(--container-padding) + 8px);
 }
 
 .home-review-card__compact-cover {

@@ -3,6 +3,7 @@
    ============================================= */
 
 .home {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--color-bg-primary);
@@ -10,11 +11,30 @@
   overflow-x: hidden;
 }
 
+/* Ambient multi-hue wash — cobalt + purple + green glows behind the top
+   ~400px of the page only. Sits behind .home-body (z-index below content)
+   and never intercepts pointer events or affects text contrast, since it
+   only paints in the empty space around/behind existing surfaces. Static
+   (no animation), so it needs no prefers-reduced-motion override. */
+.home::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 400px;
+  background: var(--grad-ambient);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* =============================================
    HOME BODY — all sections live here
    ============================================= */
 
 .home-body {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xl);
@@ -82,7 +102,9 @@
   height: 40px;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary, var(--text-secondary));
+  /* System/nav hue — header icons read as cobalt, matching the active
+     nav pill and other system-level chrome. */
+  color: var(--accent);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -92,7 +114,7 @@
 .home-notif-btn:hover,
 .home-search-btn:hover {
   background: rgba(148, 168, 212, 0.1);
-  color: var(--color-text-primary, var(--text-primary));
+  color: var(--accent-hover);
 }
 
 .home-notif-btn:active,
