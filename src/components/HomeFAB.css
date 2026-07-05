@@ -123,14 +123,17 @@
 .home-fab-item__btn--quest  { color: var(--color-brand-primary); }
 
 /* ── Main FAB button ─────────────────────────────────────────────────────── */
-/* Primary-action gradient (--grad-cta, cobalt→green) — dark icon color
-   (--color-bg-primary) rather than white keeps contrast solid against
-   both gradient stops (same recipe as the "＋ List" CTA). */
+/* Solid cobalt (--accent) — the FAB is a persistent system control on the
+   nav bar, so it reads as the same system color as the active nav pill
+   (see BottomNav.css .bottom-nav-active-pill) rather than the CTA gradient.
+   Dark icon color (--color-bg-primary) keeps contrast solid against the
+   cobalt fill. The --grad-cta tokens remain untouched for genuine primary
+   CTAs (e.g. empty-state buttons). */
 .home-fab {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  background: var(--grad-cta);
+  background: var(--accent);
   color: var(--color-bg-primary);
   border: none;
   display: flex;
@@ -138,8 +141,7 @@
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent),
-    0 4px 16px color-mix(in srgb, var(--accent-review) 25%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent),
     0 2px 6px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
   transition: box-shadow 150ms ease;
@@ -149,14 +151,13 @@
 
 .home-fab:hover {
   box-shadow:
-    0 6px 24px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 6px 24px color-mix(in srgb, var(--accent-review) 32%, transparent),
+    0 6px 24px color-mix(in srgb, var(--accent) 55%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .home-fab:active {
   box-shadow:
-    0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent),
+    0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
