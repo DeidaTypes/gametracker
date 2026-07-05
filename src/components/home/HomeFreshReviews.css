@@ -1,0 +1,121 @@
+/* ============================================================
+   HOME FRESH REVIEWS — lead feed section of the Home spine
+   Namespace: fresh-reviews__*
+   Tokens only. HomeReviewCard.css owns the card treatment;
+   this file only styles the section head, nudge, and skeleton.
+   ============================================================ */
+
+.fresh-reviews {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Head ── */
+.fresh-reviews__head {
+  padding: 0 var(--container-padding) var(--spacing-sm);
+}
+
+.fresh-reviews__title {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+.fresh-reviews__subline {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+}
+
+/* ── List ── */
+.fresh-reviews__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Find people nudge (secondary CTA) ── */
+.fresh-reviews__find-nudge {
+  display: block;
+  width: calc(100% - var(--container-padding) * 2);
+  margin: 12px var(--container-padding);
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body-sm, 14px);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fresh-reviews__find-nudge:hover {
+  background: rgba(148, 168, 212, 0.06);
+  border-color: rgba(148, 168, 212, 0.28);
+}
+
+.fresh-reviews__find-nudge:active {
+  background: rgba(148, 168, 212, 0.1);
+}
+
+/* ── Infinite-scroll sentinel ── */
+.fresh-reviews__sentinel {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md) 0;
+  min-height: 1px;
+}
+
+.fresh-reviews__loading-more {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Skeleton ── */
+.fresh-reviews__skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+.fresh-reviews__skeleton-card {
+  display: flex;
+  gap: 10px;
+  padding: 14px var(--container-padding);
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
+}
+
+.fresh-reviews__skeleton-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+
+.fresh-reviews__skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.fresh-reviews__skeleton-line {
+  height: 10px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fresh-reviews__find-nudge {
+    transition: none;
+  }
+}

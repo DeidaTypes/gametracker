@@ -62,8 +62,17 @@
   gap: var(--spacing-sm);
 }
 
-/* Notification bell button */
-.home-notif-btn {
+/* Header icon cluster — search + bell */
+.home-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Search + notification bell buttons — same footprint */
+.home-notif-btn,
+.home-search-btn {
   position: relative;
   flex-shrink: 0;
   display: flex;
@@ -80,12 +89,14 @@
   margin-top: 2px;
 }
 
-.home-notif-btn:hover {
+.home-notif-btn:hover,
+.home-search-btn:hover {
   background: rgba(148, 168, 212, 0.1);
   color: var(--color-text-primary, var(--text-primary));
 }
 
-.home-notif-btn:active {
+.home-notif-btn:active,
+.home-search-btn:active {
   background: rgba(148, 168, 212, 0.18);
 }
 
@@ -109,7 +120,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-notif-btn {
+  .home-notif-btn,
+  .home-search-btn {
     transition: none;
   }
 }
@@ -169,11 +181,10 @@
   border-radius: var(--radius-md);
 }
 
-.home-sk-hero {
+.home-sk-strip {
   width: 100%;
-  aspect-ratio: 5 / 3;
-  border-radius: var(--radius-xl);
-  max-height: 260px;
+  height: 44px;
+  border-radius: var(--radius-lg);
 }
 
 .home-sk-single {
@@ -261,154 +272,86 @@
 }
 
 /* =============================================
-   HERO NUDGE VARIANTS
-   Shown when user has no active game:
-   - BacklogNudgeHero (has backlog)
-   - CommunityHighlightHero (empty state)
+   CONTINUE BREADCRUMB
+   "Continue · {game} ›" — minimal text + chevron row shown only
+   when the user has an active Playing game. No card, no cover.
    ============================================= */
 
-.hero-nudge {
+.home-continue-breadcrumb {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg, 16px);
-  background: var(--bg-surface-2, #1a2240);
-  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: var(--radius-xl, 16px);
-  padding: var(--spacing-lg, 16px);
-  position: relative;
-  overflow: hidden;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
   width: 100%;
-  text-align: left;
-  font-family: var(--font-body);
-  color: inherit;
-  cursor: default;
-}
-
-.hero-nudge--clickable {
+  padding: 2px 0;
+  background: transparent;
+  border: none;
   cursor: pointer;
+  text-align: left;
+  color: var(--color-text-tertiary);
   -webkit-tap-highlight-color: transparent;
-  transition: background 150ms ease;
 }
 
-.hero-nudge--clickable:hover {
-  background: var(--bg-surface-3, #1e2a50);
-}
-
-.hero-nudge--clickable:active {
-  background: rgba(148, 168, 212, 0.08);
-}
-
-.hero-nudge__body {
-  flex: 1;
+.home-continue-breadcrumb__text {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs, 4px);
-}
-
-.hero-nudge__eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-brand-primary, #b8904a);
+  font-size: var(--font-size-body-sm, 14px);
 }
 
-.hero-nudge__title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-title, 18px);
+.home-continue-breadcrumb__sep {
+  color: var(--color-text-tertiary);
+}
+
+.home-continue-breadcrumb__game {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.2;
 }
 
-.hero-nudge__sub {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-  color: var(--color-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.hero-nudge__cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: var(--spacing-sm, 8px);
-  padding: 8px 14px;
-  background: var(--color-brand-primary, #b8904a);
-  color: var(--color-bg-primary, #0d1526);
-  border: none;
-  border-radius: var(--radius-full, 9999px);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: filter 150ms ease;
-  align-self: flex-start;
-}
-
-.hero-nudge__cta:hover {
-  filter: brightness(1.1);
-}
-
-.hero-nudge__cta:active {
-  filter: brightness(0.9);
-}
-
-.hero-nudge__cta-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: var(--spacing-sm, 8px);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-  font-weight: 600;
-  color: var(--color-brand-primary, #b8904a);
-}
-
-/* Cover stack — backlog nudge shows up to 3 stacked covers */
-.hero-nudge__covers {
-  display: flex;
-  flex-direction: row;
-  gap: 6px;
+.home-continue-breadcrumb svg {
   flex-shrink: 0;
+  color: var(--color-text-tertiary);
 }
 
-.hero-nudge__cover-wrap {
-  width: 56px;
-  aspect-ratio: var(--cover-ratio, 3/4);
-  border-radius: var(--radius-md, 10px);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-  box-shadow: var(--shadow-cover);
-}
+/* =============================================
+   NEW-USER TOPPER
+   "Log your first game" — shown in place of the streak strip and
+   Continue breadcrumb for brand-new users (no follows, no logged games).
+   ============================================= */
 
-/* Community highlight single cover — a bit larger */
-.hero-nudge__cover-wrap--single {
-  width: 72px;
-}
-
-.hero-nudge__cover {
+.home-first-game-topper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  padding: 12px var(--spacing-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body-sm, 14px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  transition: background 150ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Skeleton for community highlight while game loads */
-.hero-nudge__skeleton {
-  width: 100%;
-  height: 120px;
-  border-radius: var(--radius-xl, 16px);
+.home-first-game-topper:hover {
+  background: var(--bg-surface-2);
+}
+
+.home-first-game-topper svg {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-nudge--clickable,
-  .hero-nudge__cta {
+  .home-first-game-topper {
     transition: none;
   }
 }
@@ -417,19 +360,9 @@
    RESPONSIVE
    ============================================= */
 
-@media (min-width: 480px) {
-  .home-sk-hero {
-    max-height: 300px;
-  }
-}
-
 @media (min-width: 769px) {
   .home-body {
     gap: var(--spacing-3xl);
     padding-top: var(--spacing-2xl);
-  }
-
-  .home-sk-hero {
-    max-height: 360px;
   }
 }

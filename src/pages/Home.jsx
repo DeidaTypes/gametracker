@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuBell } from 'react-icons/lu'
-import { ChevronRight } from 'lucide-react'
+import { Search, ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
-import HomeSearchBar from '../components/HomeSearchBar'
-import TodayCard from '../components/TodayCard'
-import BacklogSection from '../components/BacklogSection'
 import HomeFAB from '../components/HomeFAB'
-import HomeFeed from '../components/HomeFeed'
-import HeroCurrentlyPlaying from '../components/HeroCurrentlyPlaying'
+import HomeStreakStrip from '../components/home/HomeStreakStrip'
+import HomeFreshReviews from '../components/home/HomeFreshReviews'
 import TrackerSearchModal from '../components/TrackerSearchModal'
-import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getContinuePlayingGames, getGamesFromList } from '../services/libraryService'
+import { getFollowingCount } from '../services/followService'
 import { getProfile } from '../services/profileService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
+import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import useGameOfWeek from '../hooks/useGameOfWeek'
+import { useTodayData } from '../hooks/useTodayData'
 import './Home.css'
-import '../components/HomeShelf.css'
 
 // ── Time-aware greeting ───────────────────────────────────────────────────────
 
@@ -30,112 +27,49 @@ function getGreetingPhrase() {
   return 'Up late'
 }
 
-// ── Hero rotation variants ────────────────────────────────────────────────────
+// ── Continue breadcrumb ───────────────────────────────────────────────────────
 
 /**
- * BacklogNudgeHero — shown when the user has no active game but has a backlog.
- * Shows up to 3 backlog covers + a CTA to scroll down or pick via roulette.
+ * ContinueBreadcrumb — single-line "Continue · {game} ›" row.
+ *
+ * Replaces the old full Continue Playing hero. Deliberately minimal (text
+ * + chevron, no cover) — shown only when the user has an active (Playing)
+ * game; the parent hides this entirely otherwise.
  */
-function BacklogNudgeHero({ games }) {
+function ContinueBreadcrumb({ game }) {
   const navigate = useNavigate()
-  const preview = games.slice(0, 3)
 
-  return (
-    <div className="hero-nudge hero-nudge--backlog">
-      <div className="hero-nudge__body">
-        <span className="hero-nudge__eyebrow">Your Backlog</span>
-        <h2 className="hero-nudge__title">
-          {games.length === 1
-            ? '1 game waiting for you'
-            : `${games.length} games waiting for you`}
-        </h2>
-        <p className="hero-nudge__sub">Pick something up and make it your current game.</p>
-        <button
-          type="button"
-          className="hero-nudge__cta"
-          onClick={() => navigate('/list/want-to-play', { state: { selectedListId: 'want-to-play' } })}
-          aria-label="Open your backlog"
-        >
-          Browse backlog <ChevronRight size={14} aria-hidden="true" />
-        </button>
-      </div>
-      {preview.length > 0 && (
-        <div className="hero-nudge__covers" aria-hidden="true">
-          {preview.map((g) => (
-            <div key={g.id} className="hero-nudge__cover-wrap">
-              <img
-                src={g.image || COVER_FALLBACK}
-                alt=""
-                className="hero-nudge__cover"
-                loading="lazy"
-                onError={(e) => { e.target.src = COVER_FALLBACK }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * CommunityHighlightHero — shown when the user has no active game and no backlog.
- * Uses useGameOfWeek to surface a community-picked or curated game.
- */
-function CommunityHighlightHero() {
-  const navigate = useNavigate()
-  const { featured, loading } = useGameOfWeek()
-
-  if (loading) {
-    return (
-      <div className="hero-nudge hero-nudge--community" aria-hidden="true">
-        <div className="skeleton hero-nudge__skeleton" />
-      </div>
-    )
-  }
-
-  if (!featured) {
-    return (
-      <div className="hero-nudge hero-nudge--community">
-        <div className="hero-nudge__body">
-          <span className="hero-nudge__eyebrow">Get started</span>
-          <h2 className="hero-nudge__title">What are you playing?</h2>
-          <p className="hero-nudge__sub">Add a game to your library and track your progress here.</p>
-        </div>
-      </div>
-    )
-  }
-
-  const coverSrc = featured.coverUrl || COVER_FALLBACK
+  if (!game) return null
 
   return (
     <button
       type="button"
-      className="hero-nudge hero-nudge--community hero-nudge--clickable"
-      onClick={() => navigate(`/game/${featured.igdbGameId}`, featured.coverUrl ? { state: { coverImage: featured.coverUrl } } : undefined)}
-      aria-label={`Community highlight: ${featured.title}`}
+      className="home-continue-breadcrumb"
+      onClick={() =>
+        navigate(`/game/${game.id}`, game.image ? { state: { coverImage: game.image } } : undefined)
+      }
+      aria-label={`Continue playing ${game.title}`}
     >
-      <div className="hero-nudge__body">
-        <span className="hero-nudge__eyebrow">Community highlight</span>
-        <h2 className="hero-nudge__title">{featured.title}</h2>
-        {featured.pickReason && (
-          <p className="hero-nudge__sub">{featured.pickReason}</p>
-        )}
-        <span className="hero-nudge__cta-text">
-          View game <ChevronRight size={14} aria-hidden="true" />
-        </span>
-      </div>
-      {featured.coverUrl && (
-        <div className="hero-nudge__cover-wrap hero-nudge__cover-wrap--single">
-          <img
-            src={coverSrc}
-            alt=""
-            className="hero-nudge__cover"
-            loading="eager"
-            onError={(e) => { e.target.src = COVER_FALLBACK }}
-          />
-        </div>
-      )}
+      <span className="home-continue-breadcrumb__text">
+        Continue <span className="home-continue-breadcrumb__sep">·</span>{' '}
+        <span className="home-continue-breadcrumb__game">{game.title}</span>
+      </span>
+      <ChevronRight size={14} aria-hidden="true" />
+    </button>
+  )
+}
+
+// ── New-user topper ───────────────────────────────────────────────────────────
+
+/**
+ * LogFirstGameTopper — slim CTA shown in place of the streak strip +
+ * Continue breadcrumb for brand-new users (no follows, no logged games).
+ */
+function LogFirstGameTopper({ onLogGame }) {
+  return (
+    <button type="button" className="home-first-game-topper" onClick={onLogGame}>
+      <span>Log your first game</span>
+      <ChevronRight size={14} aria-hidden="true" />
     </button>
   )
 }
@@ -148,7 +82,9 @@ function HomeSkeleton() {
       <div className="home-sk-heading">
         <div className="skeleton home-sk-heading-block" />
       </div>
-      <div className="skeleton home-sk-hero" />
+      <div className="home-sk-single">
+        <div className="skeleton home-sk-strip" />
+      </div>
       <div className="home-sk-single">
         <div className="skeleton home-sk-single-card" />
       </div>
@@ -159,22 +95,36 @@ function HomeSkeleton() {
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
- * Home — personalized dashboard.
+ * Home — feed-first community spine (v3).
  *
  * Section spine, top to bottom:
- *   a. Time-aware greeting + inline search + notification bell
- *   b. CONTINUE PLAYING hero (active game cover, last-played, progress, Resume CTA)
- *      → rotation: if no active game → backlog nudge; if neither → community highlight
- *   c. Streak + calendar (compact TodayCard with now-playing hidden)
- *   d. Your Backlog — compact horizontal peek row (Explore owns Trending)
- *   e. THE FEED — full-width activity feed (people you follow + cold-start community fallback)
+ *   a. Header — time-aware greeting + search icon (opens search-to-log
+ *      overlay) + notification bell.
+ *   b. Compact streak strip — flame + "N-day streak" + 7 day-pips +
+ *      "Calendar ›". Hidden when the streak is 0 (never a 0/7 grid).
+ *   c. Continue breadcrumb — "Continue · {game} ›", shown only when the
+ *      user has an active Playing game. No hero, no cover.
+ *   d. Fresh reviews — the feed, promoted to lead content. Defaults to
+ *      community scope for users with no follows (see getHomeFeed).
+ *
+ * State-adaptive: brand-new users (no follows AND no logged games) skip
+ * (b) and (c) entirely in favor of a single "Log your first game" topper,
+ * and the feed's own community fallback + "Find people to follow" row
+ * carries the social-proof job normally.
+ *
+ * TODO(home-backlog-removal): "Your Backlog" was removed from Home as part
+ * of the v3 feed-first pass — it already lives on the Want to Play tracker
+ * tile in Library. Flagging here in case Library's treatment needs a
+ * follow-up pass once this ships.
  */
 function Home() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
+  const { open: openSearchOverlay } = useSearchOverlay()
   const [loading, setLoading] = useState(true)
   const [continuePlaying, setContinuePlaying] = useState([])
-  const [wantToPlayGames, setWantToPlayGames] = useState([])
+  const [loggedGamesCount, setLoggedGamesCount] = useState(0)
+  const [followCount, setFollowCount] = useState(null)
 
   const [addOpen, setAddOpen] = useState(false)
   const [addStatus, setAddStatus] = useState('currently')
@@ -185,6 +135,7 @@ function Home() {
   }, [])
 
   const { unreadCount: notifUnread } = useNotifications()
+  const { streak, weekCells } = useTodayData()
 
   const greeting = useMemo(getGreetingPhrase, [])
   const displayName =
@@ -196,7 +147,11 @@ function Home() {
     try {
       setLoading(true)
       setContinuePlaying(getContinuePlayingGames())
-      setWantToPlayGames(getGamesFromList('want-to-play'))
+      setLoggedGamesCount(
+        getGamesFromList('currently-playing').length +
+        getGamesFromList('played').length +
+        getGamesFromList('dropped').length
+      )
     } catch (err) {
       console.error('Error loading home data:', err)
     } finally {
@@ -223,7 +178,25 @@ function Home() {
     }
   }, [loadHomeData])
 
-  if (loading) {
+  // Follow count — determines the new-user state alongside loggedGamesCount.
+  useEffect(() => {
+    if (!user?.id) {
+      setFollowCount(0)
+      return undefined
+    }
+    let cancelled = false
+    getFollowingCount(user.id)
+      .then((count) => { if (!cancelled) setFollowCount(Number(count) || 0) })
+      .catch(() => { if (!cancelled) setFollowCount(0) })
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  const pageReady = !loading && followCount !== null
+  const isNewUser = pageReady && followCount === 0 && loggedGamesCount === 0
+  const showStreakStrip = pageReady && !isNewUser && streak.current > 0
+  const showContinueBreadcrumb = pageReady && !isNewUser && !!continuePlaying[0]
+
+  if (!pageReady) {
     return (
       <AppShell>
         <div className="home">
@@ -238,85 +211,81 @@ function Home() {
       <div className="home">
         <div className="home-body">
 
-          {/* ── a. Greeting + inline search ──────────────────────────────
-              Time-aware ("Good morning / afternoon / evening / Up late, {name}")
-              Bell persists for notification access.
+          {/* ── a. Header — greeting + search icon + bell ────────────────
+              Time-aware greeting ("Good morning / afternoon / evening /
+              Up late, {name}"). Search opens the search-to-log overlay;
+              bell persists for notification access.
           ──────────────────────────────────────────────────────────────── */}
           <header className="home-section home-section-padded home-greeting-block">
             <div className="home-greeting-row">
               <h1 className="home-greeting">{greeting}, {displayName}</h1>
-              <button
-                type="button"
-                className="home-notif-btn"
-                onClick={() => navigate('/notifications')}
-                aria-label={
-                  notifUnread > 0
-                    ? `${notifUnread} unread notification${notifUnread !== 1 ? 's' : ''}`
-                    : 'Notifications'
-                }
-              >
-                <LuBell size={22} />
-                {notifUnread > 0 && (
-                  <span className="home-notif-badge" aria-hidden="true">
-                    {notifUnread > 99 ? '99+' : notifUnread}
-                  </span>
-                )}
-              </button>
+              <div className="home-header-actions">
+                <button
+                  type="button"
+                  className="home-search-btn"
+                  onClick={openSearchOverlay}
+                  aria-label="Search games to log"
+                >
+                  <Search size={20} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="home-notif-btn"
+                  onClick={() => navigate('/notifications')}
+                  aria-label={
+                    notifUnread > 0
+                      ? `${notifUnread} unread notification${notifUnread !== 1 ? 's' : ''}`
+                      : 'Notifications'
+                  }
+                >
+                  <LuBell size={22} />
+                  {notifUnread > 0 && (
+                    <span className="home-notif-badge" aria-hidden="true">
+                      {notifUnread > 99 ? '99+' : notifUnread}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
-            <HomeSearchBar />
           </header>
 
-          {/* ── b. Continue Playing hero ──────────────────────────────────
-              Active game → full HeroCurrentlyPlaying with cover + progress.
-              No active game + backlog → BacklogNudgeHero.
-              Neither → CommunityHighlightHero (game of the week).
-              Never empty.
+          {/* ── New-user topper ───────────────────────────────────────────
+              Brand-new users (no follows, no logged games) get a single
+              slim CTA in place of the streak strip + Continue breadcrumb.
           ──────────────────────────────────────────────────────────────── */}
-          <section className="home-section home-section--bleed">
-            {continuePlaying.length > 0 ? (
-              <HeroCurrentlyPlaying
-                games={continuePlaying}
-                onAddGame={() => openAdd('currently')}
-                boxed={false}
-              />
-            ) : wantToPlayGames.length > 0 ? (
-              <div className="home-section-padded">
-                <BacklogNudgeHero games={wantToPlayGames} />
-              </div>
-            ) : (
-              <div className="home-section-padded">
-                <CommunityHighlightHero />
-              </div>
-            )}
-          </section>
+          {isNewUser && (
+            <section className="home-section home-section-padded">
+              <LogFirstGameTopper onLogGame={() => openAdd('currently')} />
+            </section>
+          )}
 
-          {/* ── c. Streak + calendar (compact) ───────────────────────────
-              TodayCard with now-playing hidden — the hero above owns that slot.
-              Streak ember ring + 7-day week row + streak nudge.
+          {/* ── b. Compact streak strip ───────────────────────────────────
+              Flame + "N-day streak" · 7 day-pips · "Calendar ›".
+              Hidden whenever the streak is 0 — never a 0/7 empty grid.
           ──────────────────────────────────────────────────────────────── */}
-          <section className="home-section home-section-padded">
-            <TodayCard hideNowPlaying />
-          </section>
+          {showStreakStrip && (
+            <section className="home-section home-section-padded">
+              <HomeStreakStrip streak={streak.current} weekCells={weekCells} />
+            </section>
+          )}
 
-          {/* ── d. Your Backlog ──────────────────────────────────────────
-              Compact horizontal peek row — small cover tiles, scroll sideways.
-              Trending lives on Explore; mood shelves live on Discover's SwipeDeck.
+          {/* ── c. Continue breadcrumb ────────────────────────────────────
+              "Continue · {game} ›" — shown only when there's an active
+              Playing game. Hidden otherwise (no fallback hero).
           ──────────────────────────────────────────────────────────────── */}
-          <section className="home-section home-section-padded">
-            <BacklogSection
-              games={wantToPlayGames}
-              onAddGame={() => openAdd('want')}
-            />
-          </section>
+          {showContinueBreadcrumb && (
+            <section className="home-section home-section-padded">
+              <ContinueBreadcrumb game={continuePlaying[0]} />
+            </section>
+          )}
 
-          {/* ── e. The Feed ───────────────────────────────────────────────
-              Full-width vertical activity feed.
-              Leads with live presence rows, then follow activity.
-              Cold-start fallback: broader community activity rows.
-              Never renders an empty island.
+          {/* ── d. Fresh reviews — the feed, promoted to lead content ────
+              getHomeFeed() + HomeReviewCard, infinite scroll. Defaults to
+              community scope for followee-less viewers (new-user social
+              proof), with a "Find people to follow" row alongside it.
           ──────────────────────────────────────────────────────────────── */}
           <section className="home-section home-section--feed">
-            <HomeFeed />
+            <HomeFreshReviews />
           </section>
 
         </div>
