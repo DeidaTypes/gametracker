@@ -1,6 +1,7 @@
 /* =====================================================
-   Onboarding — Sprint 7.6
-   Full-screen 5-step value-prop + game-picker flow.
+   Onboarding — 3-step flow (Track / Backlog / Favorites)
+   Rebuilt to match the approved onboarding mockups:
+   onboarding_1_track_v2, onboarding_2_backlog, onboarding_3_favorites.
    ===================================================== */
 
 /* ── Page shell ─────────────────────────────────────── */
@@ -14,14 +15,15 @@
   position: relative;
 }
 
-/* Subtle ambient glow behind content */
+/* Subtle ambient glow behind content — cobalt/journal wash so the whole
+   page reads as one continuous scene with the step-1 two-tone treatment. */
 .ob-page::before {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(
     ellipse 70% 50% at 50% 30%,
-    rgba(59, 130, 246, 0.08) 0%,
+    color-mix(in srgb, var(--accent) 8%, transparent) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -59,24 +61,32 @@
   align-items: center;
 }
 
+/* Dot states — mirrors the mockups: inactive is a small muted circle,
+   done is a small fully-saturated circle in the step's own accent, active
+   is an elongated pill in the step's accent. Colors come from the
+   --ob-dot-color custom property set per-dot in JS (var(--accent),
+   var(--accent-journal), var(--accent-review) — tokens only). */
 .ob-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--color-text-tertiary);
+  opacity: 0.5;
   transition:
     background 220ms ease,
-    transform 220ms ease;
+    width 220ms ease,
+    opacity 220ms ease;
 }
 
 .ob-dot--done {
-  background: var(--accent);
-  opacity: 0.45;
+  background: var(--ob-dot-color);
+  opacity: 1;
 }
 
 .ob-dot--active {
-  background: var(--accent);
-  transform: scale(1.3);
+  width: 22px;
+  background: var(--ob-dot-color);
+  opacity: 1;
 }
 
 .ob-skip {
@@ -129,7 +139,7 @@
   overflow: hidden;
 }
 
-/* ── Value-prop slide (screens 1-4) ─────────────────── */
+/* ── Value-prop slide (screens 1-2) ─────────────────── */
 
 .ob-vp {
   flex: 1;
@@ -140,16 +150,103 @@
   padding: 40px 32px 0;
   text-align: center;
   gap: 0;
+  position: relative;
 }
 
-.ob-vp__icon {
-  color: var(--accent);
+/* ── Ambient glow behind icon + headline ─────────────
+   Step 1 (twoTone): two overlapping cobalt + journal blobs.
+   Step 2 (solid): a single journal-purple blob — explicitly NOT the
+   two-tone treatment (flagged as a possible future unification, not
+   decided here). */
+.ob-vp__glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 340px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(180deg, black 0%, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, black 0%, black 55%, transparent 100%);
+}
+
+.ob-vp__glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+}
+
+.ob-vp__glow-blob--cobalt {
+  top: 2%;
+  left: 12%;
+  width: 210px;
+  height: 210px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  opacity: 0.55;
+}
+
+.ob-vp__glow-blob--journal {
+  top: 14%;
+  right: 8%;
+  width: 190px;
+  height: 190px;
+  background: color-mix(in srgb, var(--accent-journal) 60%, transparent);
+  opacity: 0.5;
+}
+
+.ob-vp__glow-blob--solo {
+  top: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 260px;
+  background: color-mix(in srgb, var(--accent-journal) 45%, transparent);
+  opacity: 0.55;
+}
+
+/* ── Icon frame ───────────────────────────────────────
+   Track (twoTone): gradient cobalt->journal border, dark fill behind icon.
+   Backlog (solid): single journal-purple border, no gradient. */
+.ob-vp__icon-frame {
+  position: relative;
+  z-index: 1;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 32px;
-  /* Subtle drop-shadow glow to lift the icon off the dark bg */
-  filter: drop-shadow(0 0 16px rgba(59, 130, 246, 0.35));
+  border: 1.5px solid transparent;
+}
+
+.ob-vp__icon-frame--twotone {
+  background:
+    linear-gradient(var(--color-bg-primary), var(--color-bg-primary)) padding-box,
+    linear-gradient(135deg, var(--accent) 0%, var(--accent-journal) 100%) border-box;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.ob-vp__icon-frame--solid {
+  background: color-mix(in srgb, var(--accent-journal) 7%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, var(--accent-journal) 45%, transparent);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent-journal) 18%, transparent);
+}
+
+.ob-vp--cobalt .ob-vp__icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 40%, transparent));
+}
+
+.ob-vp--journal .ob-vp__icon {
+  color: var(--accent-journal);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent-journal) 40%, transparent));
 }
 
 .ob-vp__title {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 600;
@@ -159,7 +256,18 @@
   letter-spacing: -0.01em;
 }
 
+/* Gradient word — cobalt -> journal, clipped to text. Used only on the
+   Track screen's "remembered." word, never as a full-headline treatment. */
+.ob-vp__title-gradient {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-journal) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .ob-vp__body {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 400;
@@ -171,6 +279,8 @@
 
 /* CTA button — pinned to bottom with safe-area breathing room */
 .ob-cta-wrap {
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding: 40px 0 calc(env(safe-area-inset-bottom, 0px) + 20px);
   margin-top: auto;
@@ -188,7 +298,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.12s;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Backlog step — single journal-purple accent CTA, flat fill (not the
+   gradient treatment used on the Favorites step's Done button). */
+.ob-cta-btn--journal {
+  background: var(--accent-journal);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-journal) 32%, transparent);
 }
 
 .ob-cta-btn:hover {
@@ -200,7 +317,7 @@
   opacity: 0.85;
 }
 
-/* ── Game-picker slide (screen 5) ───────────────────── */
+/* ── Game-picker slide (screen 3) ───────────────────── */
 
 .ob-picker {
   display: flex;
@@ -224,23 +341,32 @@
   text-align: center;
   margin: 0 auto 20px;
   display: block;
+  max-width: none;
 }
 
-/* Search row */
+/* Search row — cobalt glass styling matching the sign-up inputs:
+   translucent surface + backdrop blur + cobalt focus ring. */
 .ob-search-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   padding: 10px 14px;
   margin-bottom: 16px;
-  transition: border-color 0.15s;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 .ob-search-row:focus-within {
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .ob-search-icon {
@@ -300,33 +426,19 @@
   flex-shrink: 0;
 }
 
+/* Selected cover — colorful gradient tile (genre-token driven), matches
+   the Favorites mockup's pinned selection strip. */
 .ob-selected-cover {
   position: relative;
   width: 52px;
   height: 70px;
   border-radius: var(--radius-sm);
   overflow: visible;
-}
-
-.ob-selected-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  display: block;
-}
-
-.ob-selected-cover__fallback {
-  width: 52px;
-  height: 70px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-tertiary);
-  font-weight: 600;
-  font-size: 18px;
+  background: linear-gradient(
+    165deg,
+    var(--ob-tile-color) 0%,
+    color-mix(in srgb, var(--ob-tile-color) 40%, var(--color-bg-primary)) 100%
+  );
 }
 
 .ob-selected-remove {
@@ -372,7 +484,7 @@
 }
 
 .ob-picker__state--error {
-  color: var(--status-danger, #ef4444);
+  color: var(--status-danger);
 }
 
 .ob-picker__hint {
@@ -432,61 +544,69 @@
 
 .ob-grid__tile--picked {
   border-color: var(--accent);
-  border-radius: var(--radius-sm);
 }
 
+/* Result cover — colorful gradient tile driven by --ob-tile-color (one of
+   the app's --genre-* jewel-tone tokens, hashed per game id in JS so the
+   color varies by game rather than being decorative). No orange/amber is
+   ever possible here since the genre palette already excludes that hue
+   range app-wide. */
 .ob-grid__cover {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4;
   border-radius: calc(var(--radius-sm) - 2px);
   overflow: hidden;
-  background: var(--color-surface);
-}
-
-.ob-grid__cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ob-grid__cover-fallback {
-  width: 100%;
-  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-tertiary);
-  font-weight: 600;
-  font-size: 20px;
+  align-items: flex-end;
+  background: linear-gradient(
+    165deg,
+    var(--ob-tile-color) 0%,
+    color-mix(in srgb, var(--ob-tile-color) 40%, var(--color-bg-primary)) 100%
+  );
 }
 
-.ob-grid__check {
+.ob-grid__cover-scrim {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(59, 130, 246, 0.72);
-  color: #fff;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: linear-gradient(
+    180deg,
+    transparent 40%,
+    color-mix(in srgb, var(--color-bg-primary) 78%, transparent) 100%
+  );
 }
 
-.ob-grid__title {
+.ob-grid__cover-title {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 6px 6px;
   font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  text-align: center;
+  font-weight: 600;
+  color: var(--color-text-primary);
   line-height: 1.3;
-  padding: 0 2px 4px;
+  text-shadow: 0 1px 3px color-mix(in srgb, black 65%, transparent);
   /* Clamp to 2 lines */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.ob-grid__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-bg-primary) 85%, transparent);
 }
 
 /* ── Bottom action bar ──────────────────────────────── */
@@ -510,7 +630,7 @@
 }
 
 .ob-picker__count-hint--ready {
-  color: var(--accent);
+  color: var(--accent-review);
 }
 
 .ob-picker__actions {
@@ -543,10 +663,15 @@
   background: var(--color-surface-hover);
 }
 
+/* Done CTA — cobalt -> review (green) gradient, distinct from the flat
+   single-accent CTAs used on steps 1-2. */
 .ob-picker__btn--primary {
-  background: var(--accent);
+  background: linear-gradient(120deg, var(--accent) 0%, var(--accent-review) 100%);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.28);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 16%, transparent),
+    0 4px 18px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 4px 18px color-mix(in srgb, var(--accent-review) 18%, transparent);
 }
 
 .ob-picker__btn--primary:hover:not(:disabled) {

@@ -8,9 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   PlayCircle,
-  PenLine,
   List,
-  Users,
   Search,
   X,
   Check,
@@ -29,36 +27,70 @@ import { showToast } from '../components/Toast'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import './Onboarding.css'
 
-/** Four value-prop screens (indices 0-3). */
+/**
+ * Deterministic, colorful gradient-tile background per search result —
+ * hashed from the game's IGDB id across the app's --genre-* jewel-tone
+ * palette (cobalt / teal / purple / rose / steel only — orange/amber is
+ * retired app-wide, see src/styles/theme.css). Deliberately id-based
+ * rather than genre-based so visually similar games (e.g. a franchise
+ * that's all RPG) still read as distinct tiles, matching the Favorites
+ * mockup. Tokens only — no hardcoded hex.
+ */
+const TILE_COLOR_TOKENS = [
+  '--genre-action', '--genre-rpg', '--genre-adventure', '--genre-strategy',
+  '--genre-shooter', '--genre-sports', '--genre-racing', '--genre-puzzle',
+  '--genre-simulation', '--genre-fighting', '--genre-platformer',
+  '--genre-horror', '--genre-indie', '--genre-arcade',
+]
+
+function tileColorVar(id) {
+  const n = Math.abs(Number(id)) || 0
+  const token = TILE_COLOR_TOKENS[n % TILE_COLOR_TOKENS.length]
+  return `var(${token})`
+}
+
+/**
+ * Three value-prop/action screens (indices 0-2), matching the approved
+ * onboarding mockups:
+ *   0 — "Track what you play"  — cobalt -> journal two-tone intro
+ *   1 — "Build your backlog"   — single journal-purple accent
+ *   2 — favorites game-picker  — see PICKER_STEP below
+ *
+ * Condensed from a prior 5-screen flow ("Share your thoughts" and "Find
+ * your people" value props were dropped) so the step count matches the
+ * 3-step mockup set 1:1.
+ */
 const VALUE_PROP_SCREENS = [
   {
+    key: 'track',
     Icon: PlayCircle,
-    title: 'Track what you play',
-    body: "Log the games you've finished, are playing, or want to try.",
+    accent: 'cobalt',
+    twoTone: true,
+    announceTitle: "Every game you've ever played, remembered.",
+    titleLead: "Every game you've ever played,",
+    titleGradient: 'remembered.',
+    body: "From the one that hooked you as a kid to what you booted up last night — it all lives here.",
     cta: 'Next',
   },
   {
-    Icon: PenLine,
-    title: 'Share your thoughts',
-    body: 'Rate games, write reviews, and see what others think before you dive in.',
-    cta: 'Next',
-  },
-  {
+    key: 'backlog',
     Icon: List,
+    accent: 'journal',
+    twoTone: false,
+    announceTitle: 'Build your backlog',
     title: 'Build your backlog',
     body: 'Create lists for cozy games, multiplayer nights, anything you can think of.',
     cta: 'Next',
   },
-  {
-    Icon: Users,
-    title: 'Find your people',
-    body: "Follow friends and discover what they're playing. Game taste is the new music taste.",
-    cta: 'Get started',
-  },
 ]
 
-// Step 4 is the game-picker action screen.
-const PICKER_STEP = 4
+// Step 2 (the third screen) is the favorites game-picker.
+const PICKER_STEP = 2
+const TOTAL_STEPS = 3
+// Per-step dot/accent color, in step order — mirrors each screen's accent
+// and the picker's content-forward green so the dot trail visually narrates
+// cobalt -> journal purple -> review green across the whole flow.
+const STEP_ACCENT_VARS = ['var(--accent)', 'var(--accent-journal)', 'var(--accent-review)']
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -68,7 +100,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [direction, setDirection] = useState(1)
 
-  // Screen 5 — game picker
+  // Screen 3 — game picker
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -84,7 +116,7 @@ export default function Onboarding() {
   useEffect(() => {
     const title =
       step < PICKER_STEP
-        ? VALUE_PROP_SCREENS[step].title
+        ? VALUE_PROP_SCREENS[step].announceTitle
         : 'Add 3 favorite games'
     if (announceRef.current) {
       // Clear first so repeated-same-step announcements still fire.
@@ -259,16 +291,20 @@ export default function Onboarding() {
       {/* ── Header: progress dots + Skip ── */}
       <div className="ob-header">
         <div className="ob-dots" aria-hidden="true">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <span
-              key={i}
-              className={
-                'ob-dot' +
-                (i === Math.min(step, 3) ? ' ob-dot--active' : '') +
-                (i < step ? ' ob-dot--done' : '')
-              }
-            />
-          ))}
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => {
+            const state = i < step ? 'done' : i === step ? 'active' : 'inactive'
+            return (
+              <span
+                key={i}
+                className={`ob-dot ob-dot--${state}`}
+                style={
+                  state !== 'inactive'
+                    ? { '--ob-dot-color': STEP_ACCENT_VARS[i] }
+                    : undefined
+                }
+              />
+            )
+          })}
         </div>
         <button
           type="button"
@@ -336,21 +372,54 @@ export default function Onboarding() {
   )
 }
 
-// ── Value-prop slide (screens 1-4) ──────────────────────────────────────
+// ── Value-prop slide (screens 1-2) ──────────────────────────────────────
 
 function ValuePropSlide({ screen, onNext }) {
-  const { Icon, title, body, cta } = screen
+  const { Icon, accent, twoTone, title, titleLead, titleGradient, body, cta } =
+    screen
   return (
-    <div className="ob-vp">
-      <div className="ob-vp__icon" aria-hidden="true">
-        <Icon size={64} strokeWidth={1.5} />
+    <div className={`ob-vp ob-vp--${accent}`}>
+      <div className="ob-vp__glow" aria-hidden="true">
+        {twoTone ? (
+          <>
+            <span className="ob-vp__glow-blob ob-vp__glow-blob--cobalt" />
+            <span className="ob-vp__glow-blob ob-vp__glow-blob--journal" />
+          </>
+        ) : (
+          <span className="ob-vp__glow-blob ob-vp__glow-blob--solo" />
+        )}
       </div>
-      <h1 className="ob-vp__title">{title}</h1>
+
+      <div
+        className={
+          'ob-vp__icon-frame' +
+          (twoTone
+            ? ' ob-vp__icon-frame--twotone'
+            : ' ob-vp__icon-frame--solid')
+        }
+        aria-hidden="true"
+      >
+        <Icon size={42} strokeWidth={1.6} className="ob-vp__icon" />
+      </div>
+
+      <h1 className="ob-vp__title">
+        {twoTone ? (
+          <>
+            {titleLead}
+            <br />
+            <span className="ob-vp__title-gradient">{titleGradient}</span>
+          </>
+        ) : (
+          title
+        )}
+      </h1>
       <p className="ob-vp__body">{body}</p>
       <div className="ob-cta-wrap">
         <button
           type="button"
-          className="ob-cta-btn"
+          className={
+            'ob-cta-btn' + (accent === 'journal' ? ' ob-cta-btn--journal' : '')
+          }
           onClick={onNext}
         >
           {cta}
@@ -360,7 +429,7 @@ function ValuePropSlide({ screen, onNext }) {
   )
 }
 
-// ── Game-picker slide (screen 5) ────────────────────────────────────────
+// ── Game-picker slide (screen 3) ────────────────────────────────────────
 
 function GamePickerSlide({
   query,
@@ -435,14 +504,10 @@ function GamePickerSlide({
                 className="ob-selected-item"
                 role="listitem"
               >
-                <div className="ob-selected-cover">
-                  {g.image ? (
-                    <img src={g.image} alt="" loading="lazy" />
-                  ) : (
-                    <span className="ob-selected-cover__fallback">
-                      {g.title?.charAt(0) || '?'}
-                    </span>
-                  )}
+                <div
+                  className="ob-selected-cover"
+                  style={{ '--ob-tile-color': tileColorVar(g.id) }}
+                >
                   <button
                     type="button"
                     className="ob-selected-remove"
@@ -506,26 +571,21 @@ function GamePickerSlide({
                     className={
                       'ob-grid__tile' + (picked ? ' ob-grid__tile--picked' : '')
                     }
+                    style={{ '--ob-tile-color': tileColorVar(game.id) }}
                     onClick={() => toggleGame(game)}
                   >
                     <div className="ob-grid__cover">
-                      {game.image ? (
-                        <img src={game.image} alt="" loading="lazy" />
-                      ) : (
-                        <span className="ob-grid__cover-fallback">
-                          {game.title?.charAt(0) || '?'}
-                        </span>
-                      )}
+                      <span className="ob-grid__cover-scrim" aria-hidden="true" />
+                      <span className="ob-grid__cover-title">{game.title}</span>
                       {picked && (
                         <span
                           className="ob-grid__check"
                           aria-hidden="true"
                         >
-                          <Check size={13} strokeWidth={2.5} />
+                          <Check size={12} strokeWidth={3} />
                         </span>
                       )}
                     </div>
-                    <span className="ob-grid__title">{game.title}</span>
                   </button>
                 </li>
               )
