@@ -4,6 +4,9 @@ import { getRecentCommunityReviews } from './reviewService'
 import { getGamesByIds, getGamesByGenre } from './igdb'
 import { getCircleActivityEvents, getRecentGlobalActivityEvents } from './activityEventsService'
 import { getTasteMatch } from './tasteEngineService'
+import { getLikeCountsForReviews } from './likeService'
+import { getCommentCountsForReviews } from './commentService'
+import { getFlaggedContentIds } from './reportService'
 
 /**
  * Community Service — REAL cross-user activity for the Explore/Discover page.
@@ -918,6 +921,205 @@ export async function getCirclePulseForGame(igdbGameId) {
   } catch (err) {
     console.error('[community] getCirclePulseForGame failed:', err)
     return EMPTY
+  }
+}
+
+/**
+ * Home feed — text-forward community review feed.
+ *
+ * Distinct from `getRecentFollowingActivity` (Explore's "Recently" shelf,
+ * which sources `activity_events` and annotates each item with a
+ * taste-match strip). `getHomeFeed` sources the `reviews` table directly
+ * so the Home card can show the full review body, and never carries a
+ * `tasteMatch` field — that stays exclusive to Explore.
+ *
+ * There is no separate "ratings" table in this schema: `reviews.rating`
+ * is mandatory on every row (0.5–5.0), and a row with an empty `body`
+ * IS the "rated without writing a review" case (`type: 'rated'` on the
+ * returned item — HomeReviewCard renders that as its compact variant).
+ * `game_trackers.rating` is a second, currently-unused rating surface
+ * (finished-game ratings with no matching UI to set them yet) — not
+ * included here since it has no relevant rows to surface.
+ *
+ * Scope selection (first page only — `cursor == null && scope == null`):
+ *   - No follows at all             → 'community'
+ *   - Follows, but fewer than
+ *     HOME_FEED_SPARSE_THRESHOLD
+ *     recent rows from them         → 'mixed' (follow rows + a
+ *                                      non-followee community fill,
+ *                                      merged newest-first)
+ *   - Follows with enough activity  → 'following'
+ * The caller should pass the `scope` it got back on every subsequent
+ * `loadMore` call so pagination keeps reading from the same source(s)
+ * instead of re-deciding scope on every page (see useHomeFeed.js).
+ *
+ * Block + privacy enforcement: RLS on `reviews` (see
+ * supabase/migrations/20260704221500_home_feed_reviews_trackers_rls.sql)
+ * already restricts every row returned here to ones the viewer is
+ * allowed to see (own rows, public authors, or followed authors —
+ * minus any blocked relationship in either direction). `applyBlockFilter`
+ * is layered on top as defense-in-depth, same as every other read in
+ * this file.
+ *
+ * @param {{ cursor?: string|null, scope?: 'following'|'community'|'mixed'|null, limit?: number }} opts
+ * @returns {Promise<{
+ *   items: Array<{
+ *     id: string,
+ *     type: 'reviewed'|'rated',
+ *     body: string,
+ *     rating: number|null,
+ *     hasSpoilers: boolean,
+ *     createdAt: string,
+ *     author: { id: string|null, username: string|null, displayName: string, avatarUrl: string|null },
+ *     game: { id: number|string, title: string, image: string|null },
+ *     likeCount: number,
+ *     commentCount: number,
+ *   }>,
+ *   nextCursor: string|null,
+ *   scope: 'following'|'community'|'mixed',
+ *   hasMore: boolean,
+ * }>}
+ */
+const HOME_FEED_PAGE_SIZE = 15
+const HOME_FEED_SPARSE_THRESHOLD = 5
+
+async function _fetchHomeFeedReviewRows({ userIds = null, excludeUserIds = [], cursor = null, limit }) {
+  try {
+    let q = supabase
+      .from('reviews')
+      .select(
+        'id, user_id, igdb_game_id, body, rating, has_spoilers, game_title, game_image, created_at, ' +
+          'users!reviews_user_id_fkey(id, username, display_name, avatar_url)'
+      )
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (userIds) q = q.in('user_id', userIds)
+    if (excludeUserIds.length) q = q.not('user_id', 'in', `(${excludeUserIds.join(',')})`)
+    if (cursor) q = q.lt('created_at', cursor)
+    q = await applyBlockFilter(q, 'user_id')
+    const { data, error } = await q
+    if (error) {
+      console.error('[community] getHomeFeed page query failed:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[community] getHomeFeed page query crashed:', err)
+    return []
+  }
+}
+
+function _mergeReviewRowsByRecency(a, b) {
+  return [...a, ...b].sort((x, y) => new Date(y.created_at) - new Date(x.created_at))
+}
+
+function _homeFeedItemFromRow(row, likeCounts, commentCounts) {
+  const u = row.users || {}
+  const body = (row.body || '').trim()
+  return {
+    id: row.id,
+    type: body ? 'reviewed' : 'rated',
+    body,
+    rating: row.rating != null ? Number(row.rating) : null,
+    hasSpoilers: !!row.has_spoilers,
+    createdAt: row.created_at,
+    author: {
+      id: row.user_id || u.id || null,
+      username: u.username || null,
+      displayName: u.display_name || u.username || 'Player',
+      avatarUrl: u.avatar_url || null,
+    },
+    game: {
+      id: row.igdb_game_id,
+      title: row.game_title || 'Unknown Game',
+      image: row.game_image || null,
+    },
+    likeCount: likeCounts.get(row.id) || 0,
+    commentCount: commentCounts.get(row.id) || 0,
+  }
+}
+
+export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FEED_PAGE_SIZE } = {}) {
+  const _t0 = Date.now()
+  const EMPTY = (fallbackScope) => ({ items: [], nextCursor: null, scope: fallbackScope, hasMore: false })
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const viewerId = user?.id || null
+    if (!viewerId) return EMPTY('community')
+
+    const followeeIds = await _getCurrentUserFollowees()
+    let effectiveScope = scope
+    let rows = []
+
+    if (effectiveScope === 'following') {
+      rows = followeeIds.length
+        ? await _fetchHomeFeedReviewRows({ userIds: followeeIds, cursor, limit })
+        : []
+    } else if (effectiveScope === 'community') {
+      rows = await _fetchHomeFeedReviewRows({ excludeUserIds: [viewerId], cursor, limit })
+    } else if (effectiveScope === 'mixed') {
+      const [followRows, communityRows] = await Promise.all([
+        followeeIds.length
+          ? _fetchHomeFeedReviewRows({ userIds: followeeIds, cursor, limit })
+          : [],
+        _fetchHomeFeedReviewRows({
+          excludeUserIds: [...followeeIds, viewerId],
+          cursor,
+          limit,
+        }),
+      ])
+      // Merging two independently-cursored windows can in rare cases skip a
+      // row that would have surfaced on a later page (see note above) — an
+      // accepted trade-off, consistent with the client-side windowing this
+      // file already does elsewhere (e.g. _aggregateToMap, weaveForYouItems).
+      rows = _mergeReviewRowsByRecency(followRows, communityRows).slice(0, limit)
+    } else {
+      // First page — decide scope.
+      if (followeeIds.length === 0) {
+        effectiveScope = 'community'
+        rows = await _fetchHomeFeedReviewRows({ excludeUserIds: [viewerId], limit })
+      } else {
+        const followRows = await _fetchHomeFeedReviewRows({ userIds: followeeIds, limit })
+        if (followRows.length >= HOME_FEED_SPARSE_THRESHOLD) {
+          effectiveScope = 'following'
+          rows = followRows
+        } else {
+          effectiveScope = 'mixed'
+          const communityRows = await _fetchHomeFeedReviewRows({
+            excludeUserIds: [...followeeIds, viewerId],
+            limit,
+          })
+          rows = _mergeReviewRowsByRecency(followRows, communityRows).slice(0, limit)
+        }
+      }
+    }
+
+    if (import.meta.env.DEV) console.log(`[⏱ home] getHomeFeed scope=${effectiveScope} query: ${Date.now() - _t0}ms`)
+
+    if (rows.length === 0) return EMPTY(effectiveScope)
+
+    const flaggedIds = await getFlaggedContentIds('review')
+    const cleanRows = flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
+    if (cleanRows.length === 0) return EMPTY(effectiveScope)
+
+    const reviewIds = cleanRows.map((r) => r.id)
+    const [likeCounts, commentCounts] = await Promise.all([
+      getLikeCountsForReviews(reviewIds),
+      getCommentCountsForReviews(reviewIds),
+    ])
+
+    const items = cleanRows.map((row) => _homeFeedItemFromRow(row, likeCounts, commentCounts))
+    const hasMore = rows.length === limit
+    const nextCursor = hasMore ? rows[rows.length - 1].created_at : null
+
+    if (import.meta.env.DEV) console.log(`[⏱ home] getHomeFeed scope=${effectiveScope} TOTAL: ${Date.now() - _t0}ms (${items.length} items)`)
+
+    return { items, nextCursor, scope: effectiveScope, hasMore }
+  } catch (err) {
+    console.error('[community] getHomeFeed failed:', err)
+    return EMPTY(scope || 'community')
   }
 }
 
