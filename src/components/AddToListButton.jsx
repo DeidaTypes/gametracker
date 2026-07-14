@@ -14,7 +14,7 @@ import {
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import './AddToListButton.css'
 
-const STATUS_TILES = [
+export const STATUS_TILES = [
   {
     key: 'want',
     listId: 'want-to-play',
