@@ -60,30 +60,6 @@ function getEffectiveColor(color) {
   return { r, g, b }
 }
 
-// Genre → subtle tint colors (low saturation, "tinted" not "rainbow")
-const GENRE_COLORS = {
-  'role-playing (rpg)':   { bg: 'rgba(139,123,175,0.14)', border: 'rgba(139,123,175,0.28)', color: 'rgba(195,178,230,0.9)' },
-  'adventure':            { bg: 'rgba(74,168,153,0.13)',  border: 'rgba(74,168,153,0.26)',  color: 'rgba(130,210,190,0.9)' },
-  'strategy':             { bg: 'rgba(74,127,165,0.13)',  border: 'rgba(74,127,165,0.26)',  color: 'rgba(120,180,220,0.9)' },
-  'shooter':              { bg: 'rgba(100,140,80,0.13)',  border: 'rgba(100,140,80,0.26)',  color: 'rgba(155,205,130,0.9)' },
-  'action':               { bg: 'rgba(196,99,78,0.13)',   border: 'rgba(196,99,78,0.26)',   color: 'rgba(230,155,130,0.9)' },
-  'platform':             { bg: 'rgba(200,150,90,0.13)',  border: 'rgba(200,150,90,0.26)',  color: 'rgba(230,195,140,0.9)' },
-  'puzzle':               { bg: 'rgba(74,168,153,0.13)',  border: 'rgba(74,168,153,0.26)',  color: 'rgba(130,210,190,0.9)' },
-  'sport':                { bg: 'rgba(74,127,165,0.13)',  border: 'rgba(74,127,165,0.26)',  color: 'rgba(120,180,220,0.9)' },
-  'sports':               { bg: 'rgba(74,127,165,0.13)',  border: 'rgba(74,127,165,0.26)',  color: 'rgba(120,180,220,0.9)' },
-  'fighting':             { bg: 'rgba(196,99,78,0.13)',   border: 'rgba(196,99,78,0.26)',   color: 'rgba(230,155,130,0.9)' },
-  'simulation':           { bg: 'rgba(139,123,175,0.13)', border: 'rgba(139,123,175,0.26)', color: 'rgba(195,178,230,0.9)' },
-  'horror':               { bg: 'rgba(90,40,50,0.18)',    border: 'rgba(140,60,70,0.28)',   color: 'rgba(210,130,140,0.9)' },
-  'indie':                { bg: 'rgba(200,150,90,0.13)',  border: 'rgba(200,150,90,0.26)',  color: 'rgba(230,195,140,0.9)' },
-  'music':                { bg: 'rgba(139,123,175,0.13)', border: 'rgba(139,123,175,0.26)', color: 'rgba(195,178,230,0.9)' },
-  'racing':               { bg: 'rgba(196,99,78,0.13)',   border: 'rgba(196,99,78,0.26)',   color: 'rgba(230,155,130,0.9)' },
-  'arcade':               { bg: 'rgba(200,150,90,0.13)',  border: 'rgba(200,150,90,0.26)',  color: 'rgba(230,195,140,0.9)' },
-}
-
-function getGenreColor(genre) {
-  return GENRE_COLORS[genre.toLowerCase()] || null
-}
-
 function genreToSlug(genre) {
   return genre.toLowerCase().replace(/\s*\(.*?\)/g, '').trim().replace(/\s+/g, '-')
 }
@@ -1062,24 +1038,20 @@ function GameDetail() {
             className="gd-read-more-btn"
             onClick={() => setDescExpanded(v => !v)}
           >
-            {descExpanded ? 'Read less' : 'Read more'}
+            {descExpanded ? 'Less' : 'More'}
           </button>
 
           {game.genres.length > 0 && (
             <div className="gd-genre-row">
-              {game.genres.map((genre) => {
-                const tint = getGenreColor(genre)
-                return (
-                  <button
-                    key={genre}
-                    className="gd-genre-pill"
-                    onClick={() => navigate(`/search?genre=${genreToSlug(genre)}`)}
-                    style={tint ? { background: tint.bg, borderColor: tint.border, color: tint.color } : {}}
-                  >
-                    {genre}
-                  </button>
-                )
-              })}
+              {game.genres.map((genre) => (
+                <button
+                  key={genre}
+                  className="gd-genre-pill"
+                  onClick={() => navigate(`/search?genre=${genreToSlug(genre)}`)}
+                >
+                  {genre}
+                </button>
+              ))}
             </div>
           )}
         </div>

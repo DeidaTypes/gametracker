@@ -303,17 +303,15 @@
   display: inline-flex;
   align-items: center;
   padding: 5px 14px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
   letter-spacing: var(--letter-spacing-body);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
@@ -321,7 +319,8 @@
 }
 
 .gd-genre-pill:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-hover);
 }
 
 .gd-genre-pill:active {
@@ -631,7 +630,7 @@
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-relaxed);
   letter-spacing: var(--letter-spacing-body);
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-secondary);
   margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -644,7 +643,7 @@
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-brand-primary);
+  color: var(--accent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease;
@@ -1229,8 +1228,9 @@
 }
 
 /* ── Review / Journal quick-action pair ─────────────────────────────────
-   Two side-by-side tinted buttons below the genre pills, above Your Progress.
-   Uses --accent-review / --accent-journal tokens from theme.css.
+   Two equal-width outline buttons below the genre pills, above Your Progress.
+   Surface fill (var(--color-surface)) + accent border/text — not a solid
+   fill. Uses --accent-review / --accent-journal tokens from theme.css.
    ======================================================================= */
 .gd-action-pair {
   position: relative;
@@ -1255,48 +1255,33 @@
   font-weight: var(--font-weight-bold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, transform 0.1s ease;
   white-space: nowrap;
   line-height: 1;
 }
 
 .gd-action-pair-btn--review {
-  /* Vivid fill: small bright sheen at top-left keeps colour saturated */
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, white 10%, var(--accent-review)) 0%,
-    var(--accent-review) 100%
-  );
-  border: 1px solid color-mix(in srgb, white 40%, var(--accent-review));
-  color: var(--accent-review-text);
-  box-shadow:
-    0 3px 18px color-mix(in srgb, var(--accent-review) 65%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  background: var(--color-surface);
+  border: 1px solid var(--accent-review);
+  color: var(--accent-review);
 }
 
 .gd-action-pair-btn--journal {
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, white 10%, var(--accent-journal)) 0%,
-    var(--accent-journal) 100%
-  );
-  border: 1px solid color-mix(in srgb, white 40%, var(--accent-journal));
-  color: var(--accent-journal-text);
-  box-shadow:
-    0 3px 18px color-mix(in srgb, var(--accent-journal) 65%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  background: var(--color-surface);
+  border: 1px solid var(--accent-journal);
+  color: var(--accent-journal);
 }
 
-/* Explicitly carry the accent text token down to the span label and the SVG
+/* Explicitly carry the accent token down to the span label and the SVG
    so that WebKit / Capacitor WKWebView can't fall back to ButtonText grey. */
 .gd-action-pair-btn--review span,
 .gd-action-pair-btn--review svg {
-  color: var(--accent-review-text);
+  color: var(--accent-review);
 }
 
 .gd-action-pair-btn--journal span,
 .gd-action-pair-btn--journal svg {
-  color: var(--accent-journal-text);
+  color: var(--accent-journal);
 }
 
 /* Force the CSS stroke property so it wins over the SVG presentational
@@ -1308,17 +1293,20 @@
   stroke: currentColor;
 }
 
-.gd-action-pair-btn:hover {
-  opacity: 0.85;
+.gd-action-pair-btn--review:hover {
+  background: color-mix(in srgb, var(--accent-review) 12%, var(--color-surface));
+}
+
+.gd-action-pair-btn--journal:hover {
+  background: color-mix(in srgb, var(--accent-journal) 12%, var(--color-surface));
 }
 
 .gd-action-pair-btn:active {
-  opacity: 0.7;
   transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gd-action-pair-btn { transition: opacity 0.15s ease; }
+  .gd-action-pair-btn { transition: background 0.15s ease; }
   .gd-action-pair-btn:active { transform: none; }
 }
 
