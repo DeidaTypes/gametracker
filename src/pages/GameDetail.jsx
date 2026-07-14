@@ -28,6 +28,16 @@ import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
 import './GameDetail.css'
 
+// Display-only, shorter labels for the status tile grid below the title.
+// STATUS_TILES.label itself is left untouched — it still drives the fuller
+// wording used inside AddToListButton's bottom sheet.
+const GD_STATUS_LABELS = {
+  want: 'Backlog',
+  currently: 'Playing',
+  played: 'Played',
+  dropped: 'Dropped',
+}
+
 // ── Dominant-color helpers ──────────────────────────────────────────────────
 // Relative luminance per WCAG 2.1 (linearised sRGB)
 function getLuminance(r, g, b) {
@@ -753,26 +763,31 @@ function GameDetail() {
         </div>
       </div>
 
-      {/* ── Status pills — the existing four-way, mutually-exclusive status
+      {/* ── Status tiles — the existing four-way, mutually-exclusive status
            control. Same STATUS_TILES data and the same setGameStatus /
            getGameStatus store AddToListButton's sheet uses (imported, not
-           duplicated) — UNCHANGED logic, just rendered inline directly
-           under the title, above the fold. ── */}
+           duplicated) — UNCHANGED logic, just rendered as a square-tile
+           grid (instead of scrolling pills) directly under the title,
+           above the fold. GD_STATUS_LABELS below is a display-only label
+           override for this compact layout; STATUS_TILES.label (used by
+           AddToListButton's sheet) is untouched. ── */}
       <div className="gd-status-row" role="group" aria-label="Game status">
-        {STATUS_TILES.map((tile) => {
-          const active = status === tile.key
-          return (
-            <button
-              key={tile.key}
-              className={`gd-status-pill${active ? ' gd-status-pill--active' : ''}`}
-              onClick={() => handleStatusPillTap(tile.key)}
-              aria-pressed={active}
-            >
-              <span className="gd-status-pill-icon">{tile.icon}</span>
-              <span className="gd-status-pill-label">{tile.label}</span>
-            </button>
-          )
-        })}
+        <div className="gd-status-grid">
+          {STATUS_TILES.map((tile) => {
+            const active = status === tile.key
+            return (
+              <button
+                key={tile.key}
+                className={`gd-status-tile${active ? ' gd-status-tile--active' : ''}`}
+                onClick={() => handleStatusPillTap(tile.key)}
+                aria-pressed={active}
+              >
+                <span className="gd-status-tile-icon">{tile.icon}</span>
+                <span className="gd-status-tile-label">{GD_STATUS_LABELS[tile.key] || tile.label}</span>
+              </button>
+            )
+          })}
+        </div>
         <button
           className="gd-status-more-btn"
           onClick={() => setStatusSheetOpen(true)}

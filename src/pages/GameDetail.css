@@ -329,69 +329,78 @@
 }
 
 /* =====================================================
-   STATUS PILL ROW — the four-way, mutually-exclusive status
-   control (Want to Play / Playing / Played / Dropped), plus
-   a "more" trigger for Log play + custom lists. Sits directly
-   under the title, above the fold.
+   STATUS TILE GRID — the four-way, mutually-exclusive status
+   control (Backlog / Playing / Played / Dropped) rendered as
+   four equal-width square tiles, plus a "more" trigger for Log
+   play + custom lists. Sits directly under the title, above
+   the fold.
    ===================================================== */
 .gd-status-row {
   position: relative;
   z-index: 3;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   padding: 14px 20px 0;
   max-width: var(--page-max-width);
   margin: 0 auto;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
 
-.gd-status-row::-webkit-scrollbar {
-  display: none;
+.gd-status-grid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
-.gd-status-pill {
-  display: inline-flex;
+.gd-status-tile {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 9px 14px;
-  border-radius: var(--radius-full);
+  padding: 12px 4px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
   border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
   color: var(--color-text-secondary);
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   cursor: pointer;
-  flex-shrink: 0;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.gd-status-pill-icon {
+.gd-status-tile-icon {
   display: flex;
   flex-shrink: 0;
+  color: inherit;
 }
 
-.gd-status-pill-icon svg {
+.gd-status-tile-icon svg {
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
 }
 
-.gd-status-pill:hover {
+.gd-status-tile-label {
+  color: inherit;
+  line-height: var(--line-height-label);
+}
+
+.gd-status-tile:hover {
   background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
   border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
 }
 
-.gd-status-pill:active {
+.gd-status-tile:active {
   transform: scale(0.96);
 }
 
-.gd-status-pill--active {
+.gd-status-tile--active {
   background: var(--color-brand-primary);
   border-color: var(--color-brand-primary);
   color: var(--color-on-accent, #fff);

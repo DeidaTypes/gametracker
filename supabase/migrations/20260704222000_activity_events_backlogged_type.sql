@@ -1,0 +1,17 @@
+-- Home feed unification — new `activity_events.type` value.
+--
+-- Gap found while broadening Home's feed beyond reviews-only (see
+-- communityService.getHomeFeed): there is no event type for "added a
+-- game to the Want to Play backlog". `libraryService.STATUS_TO_EVENT_TYPE`
+-- deliberately left the `want` status unmapped — "adding a game to the
+-- wishlist is a browsing signal, not Pulse-worthy activity" (see the
+-- comment above that map). This sprint's Home spec explicitly asks for
+-- "added-to-backlog" as a feed event, which supersedes that exclusion for
+-- Home's purposes only (Explore/Collections behaviour is untouched).
+--
+-- `backlogged` is added as its own statement/migration (not combined with
+-- other DDL) so it is always safely committed before any later statement
+-- can reference the literal value — mirrors the existing
+-- 20260625211156_dm_message_reactions_presence.sql precedent for adding a
+-- value to an existing enum.
+ALTER TYPE activity_event_type ADD VALUE IF NOT EXISTS 'backlogged';
