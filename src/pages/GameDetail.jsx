@@ -5,17 +5,17 @@ import { getGameById } from '../services/igdb'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
 import ReviewCard from '../components/ReviewCard'
-import AddToListButton from '../components/AddToListButton'
+import AddToListButton, { STATUS_TILES } from '../components/AddToListButton'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
-import RatingsHistogram from '../components/RatingsHistogram'
+import CommunityRatingCard from '../components/CommunityRatingCard'
 import SimilarGamesRow from '../components/SimilarGamesRow'
-import { getReviewsForGame } from '../services/reviewService'
+import { getReviewsForGame, getRatingDistributionForGame } from '../services/reviewService'
 import { getCirclePulseForGame } from '../services/communityService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
-import { getGameStatus } from '../services/libraryService'
+import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getTracker, setProgressOverride } from '../services/hoursService'
 import { getTimeToBeat } from '../services/timeToBeatService'
@@ -24,7 +24,6 @@ import { useSession } from '../contexts/SessionContext'
 import LogSessionModal from '../components/LogSessionModal'
 import { logManualSession, getManualSessionsForGame, deleteManualSession } from '../services/sessionService'
 import ActionSheet from '../components/ActionSheet'
-import GameJournalSection from '../components/GameJournalSection'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
 import './GameDetail.css'
@@ -89,50 +88,6 @@ function weekendReadBadge(ttb) {
   return { text: 'Needs more time', variant: 'long' }
 }
 
-// Inline partial-fill star row for the hero rating display
-function PartialStarRow({ rating, size = 16 }) {
-  const uid = `psr-${Math.round(rating * 100)}`
-  return (
-    <span className="gd-partial-stars" aria-label={`${rating} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map((star) => {
-        const fill = Math.min(1, Math.max(0, rating - (star - 1)))
-        const pct = Math.round(fill * 100)
-        const clipId = `${uid}-s${star}`
-        return (
-          <svg
-            key={star}
-            width={size}
-            height={size}
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ display: 'block', flexShrink: 0 }}
-          >
-            <defs>
-              <clipPath id={clipId}>
-                <rect x="0" y="0" width={`${pct}%`} height="24" />
-              </clipPath>
-            </defs>
-            <path
-              d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-              stroke="var(--star-empty)"
-              strokeWidth="1.5"
-              fill="none"
-            />
-            {pct > 0 && (
-              <path
-                d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                fill="var(--star)"
-                clipPath={`url(#${clipId})`}
-              />
-            )}
-          </svg>
-        )
-      })}
-    </span>
-  )
-}
-
 // ── Review shape adapter ───────────────────────────────────────────────────
 // Maps a raw Supabase review row (joined with users) into the canonical
 // ReviewCard prop shape expected by src/components/ReviewCard.jsx.
@@ -192,6 +147,10 @@ function GameDetail() {
   // Sprint 6 P1 — real comment counts per review id, fetched once per
   // refresh. The ReviewCard badge consumes these via toReviewCardShape.
   const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
+  // Whole-game rating distribution (avg + per-star counts) for the
+  // community rating card — independent of `reviews` above, which is
+  // capped to the 20 most recent rows for the Top Reviews list.
+  const [ratingDist, setRatingDist] = useState(null)
   const [status, setStatus] = useState(null)
   const [dominantColor, setDominantColor] = useState(null)
   // Chrome-tint swatches: set after async extraction, cleared on unmount.
@@ -266,11 +225,22 @@ function GameDetail() {
     }
   }, [gameId])
 
+  const refreshRatingDistribution = useCallback(async () => {
+    try {
+      const dist = await getRatingDistributionForGame(gameId)
+      setRatingDist(dist)
+    } catch (err) {
+      console.error('[gameDetail] failed to load rating distribution:', err)
+      setRatingDist(null)
+    }
+  }, [gameId])
+
   useEffect(() => {
     async function fetchGame() {
       try {
         setLoading(true)
         setError(null)
+        setRatingDist(null)
         const gameData = await getGameById(gameId)
         setGame(gameData)
 
@@ -281,6 +251,7 @@ function GameDetail() {
         // the main content from rendering.
         Promise.all([
           refreshReviews(),
+          refreshRatingDistribution(),
           getDominantColor(gameData.image)
             .then(color => setDominantColor(color))
             .catch(() => {}),
@@ -323,6 +294,7 @@ function GameDetail() {
     const handleReviewAdded = () => {
       refreshReviews()
       refreshFromStore()
+      refreshRatingDistribution()
     }
     window.addEventListener('libraryUpdated', handleLibraryUpdate)
     window.addEventListener('storage', handleLibraryUpdate)
@@ -332,7 +304,7 @@ function GameDetail() {
       window.removeEventListener('storage', handleLibraryUpdate)
       window.removeEventListener('reviewAdded', handleReviewAdded)
     }
-  }, [refreshFromStore, refreshReviews])
+  }, [refreshFromStore, refreshReviews, refreshRatingDistribution])
 
   // Fetch the tracker row + TTB data for every game, regardless of library status.
   // Re-runs when the gameId changes (new game).
@@ -474,6 +446,16 @@ function GameDetail() {
   const openJournalComposer = useCallback(() => {
     setJournalModalOpen(true)
   }, [])
+
+  // Mirrors AddToListButton's internal handleStatusTap exactly — same
+  // store call + same libraryUpdated dispatch — so the inline pills and
+  // the sheet stay in sync via the one unchanged status store.
+  const handleStatusPillTap = useCallback((statusKey) => {
+    if (!game || status === statusKey) return
+    setGameStatus(game.id, statusKey, game)
+    refreshFromStore()
+    window.dispatchEvent(new Event('libraryUpdated'))
+  }, [game, status, refreshFromStore])
 
   const handleShare = () => {
     setDmShareOpen(true)
@@ -650,12 +632,13 @@ function GameDetail() {
   }
 
   const fallbackCover = COVER_FALLBACK
-  const ratingNum = game.rating ? parseFloat(game.rating) : null
 
-  // Decision helper — vibe tags: themes first (atmospheric), then genres,
-  // deduped and capped at 6. Both arrays come from IGDB via getGameById.
+  // Decision helper — vibe tags: atmospheric themes only, deduped and capped
+  // at 6. Genres are intentionally excluded here since they already render
+  // as their own tappable chips in the About section — including them here
+  // duplicated every genre chip on the page.
   const _vibeSet = new Set()
-  const vibeTags = [...(game.themes || []), ...(game.genres || [])]
+  const vibeTags = [...(game.themes || [])]
     .filter(t => {
       const k = t.toLowerCase()
       if (_vibeSet.has(k)) return false
@@ -731,6 +714,13 @@ function GameDetail() {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
+          <button className="gd-glass-btn" onClick={handleShare} aria-label="Share">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
         </div>
 
         <div className="gd-hero-cover-wrapper">
@@ -748,75 +738,76 @@ function GameDetail() {
         </div>
       </div>
 
-      {/* ── Title + right-side action icons ── */}
+      {/* ── Poster (in hero above) + Title ── */}
       <div className="gd-title-section">
         <div className="gd-title-text">
           <h1 className="gd-title">{game.title}</h1>
-          {game.year && <p className="gd-subtitle">{game.year}</p>}
-          {game.developers.length > 0 && (
-            <p className="gd-developer">{game.developers.join(', ')}</p>
+          {(game.year || game.developers.length > 0) && (
+            <p className="gd-subtitle">
+              {[game.year, game.developers.join(', ')].filter(Boolean).join(' · ')}
+            </p>
           )}
           {game.publishers.length > 0 && (
             <p className="gd-publisher">{game.publishers.join(', ')}</p>
           )}
-
-          {/* Star rating row */}
-          {ratingNum && (
-            <div className="gd-rating-row">
-              <PartialStarRow rating={ratingNum} size={15} />
-              <span className="gd-rating-text">
-                {game.rating} / 5
-              </span>
-            </div>
-          )}
-
-          {game.genres.length > 0 && (
-            <div className="gd-genre-row">
-              {game.genres.map((genre) => {
-                const tint = getGenreColor(genre)
-                return (
-                  <button
-                    key={genre}
-                    className="gd-genre-pill"
-                    onClick={() => navigate(`/search?genre=${genreToSlug(genre)}`)}
-                    style={tint ? { background: tint.bg, borderColor: tint.border, color: tint.color } : {}}
-                  >
-                    {genre}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Vertical action icons — right of the title block (Share + Heart only) */}
-        <div className="gd-action-buttons">
-          <button className="gd-action-circle" onClick={handleShare} aria-label="Share">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-          </button>
-          <button
-            className="gd-action-circle"
-            onClick={() => setStatusSheetOpen(true)}
-            aria-label="Set game status"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-          </button>
-          {/* Hidden status-sheet trigger — portal only, no visible button */}
-          <AddToListButton
-            game={game}
-            variant="hidden"
-            forceOpen={statusSheetOpen}
-            onForceClose={() => setStatusSheetOpen(false)}
-            onLogPlay={() => setLogSessionOpen(true)}
-          />
         </div>
       </div>
+
+      {/* ── Status pills — the existing four-way, mutually-exclusive status
+           control. Same STATUS_TILES data and the same setGameStatus /
+           getGameStatus store AddToListButton's sheet uses (imported, not
+           duplicated) — UNCHANGED logic, just rendered inline directly
+           under the title, above the fold. ── */}
+      <div className="gd-status-row" role="group" aria-label="Game status">
+        {STATUS_TILES.map((tile) => {
+          const active = status === tile.key
+          return (
+            <button
+              key={tile.key}
+              className={`gd-status-pill${active ? ' gd-status-pill--active' : ''}`}
+              onClick={() => handleStatusPillTap(tile.key)}
+              aria-pressed={active}
+            >
+              <span className="gd-status-pill-icon">{tile.icon}</span>
+              <span className="gd-status-pill-label">{tile.label}</span>
+            </button>
+          )
+        })}
+        <button
+          className="gd-status-more-btn"
+          onClick={() => setStatusSheetOpen(true)}
+          aria-label="More status options: log play, add to a custom list"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+          </svg>
+        </button>
+        {/* Hidden sheet — same unchanged 4-status picker, plus Log play and
+             custom lists, still reachable via the "more" button above. */}
+        <AddToListButton
+          game={game}
+          variant="hidden"
+          forceOpen={statusSheetOpen}
+          onForceClose={() => setStatusSheetOpen(false)}
+          onLogPlay={() => setLogSessionOpen(true)}
+        />
+      </div>
+
+      {/* ── Rating card — numeric average + whole-star histogram, built
+           from every community rating for this game (not just the 20
+           most recent shown in Top Reviews below). Hidden entirely when
+           the game has zero ratings so "Be the first to review" shows. ── */}
+      {ratingDist && ratingDist.totalCount > 0 && (
+        <div className="gd-rating-card">
+          <CommunityRatingCard
+            average={ratingDist.average}
+            totalCount={ratingDist.totalCount}
+            counts={ratingDist.counts}
+          />
+        </div>
+      )}
 
       {/* ── Add a Review / Journal Entry quick-action buttons ── */}
       <div className="gd-action-pair">
@@ -903,7 +894,9 @@ function GameDetail() {
             </div>
           )}
 
-          {/* Vibe tags — IGDB themes (atmospheric) + genres, deduped, max 6 */}
+          {/* Vibe tags — IGDB themes (atmospheric), deduped, max 6. Genres are
+               excluded here; they render as their own chips in the About
+               section below. */}
           {vibeTags.length > 0 && (
             <div className="gd-vibe-row" aria-label="Vibe tags">
               {vibeTags.map(tag => (
@@ -1033,7 +1026,100 @@ function GameDetail() {
       {/* ── Content Area ── */}
       <div className="gd-content">
 
-        {/* Top Reviews — above Information per Sprint 5 layout */}
+        {/* About + genre chips */}
+        <div className="gd-section">
+          <p className="gd-section-label">About</p>
+          <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
+            <p className="gd-description">{game.description}</p>
+            {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
+          </div>
+          <button
+            className="gd-read-more-btn"
+            onClick={() => setDescExpanded(v => !v)}
+          >
+            {descExpanded ? 'Read less' : 'Read more'}
+          </button>
+
+          {game.genres.length > 0 && (
+            <div className="gd-genre-row">
+              {game.genres.map((genre) => {
+                const tint = getGenreColor(genre)
+                return (
+                  <button
+                    key={genre}
+                    className="gd-genre-pill"
+                    onClick={() => navigate(`/search?genre=${genreToSlug(genre)}`)}
+                    style={tint ? { background: tint.bg, borderColor: tint.border, color: tint.color } : {}}
+                  >
+                    {genre}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="gd-divider" />
+
+        <div className="gd-section">
+          <p className="gd-section-label">Details</p>
+          <div className="gd-details-grid">
+            {game.developers.length > 0 && (
+              <div className="gd-detail-item">
+                <span className="gd-detail-key">Developer</span>
+                <span className="gd-detail-val">{game.developers.join(', ')}</span>
+              </div>
+            )}
+            {game.publishers.length > 0 && (
+              <div className="gd-detail-item">
+                <span className="gd-detail-key">Publisher</span>
+                <span className="gd-detail-val">{game.publishers.join(', ')}</span>
+              </div>
+            )}
+            {game.platforms.length > 0 && (
+              <div className="gd-detail-item">
+                <span className="gd-detail-key">Platforms</span>
+                <span className="gd-detail-val">{game.platforms.join(', ')}</span>
+              </div>
+            )}
+            {game.year && (
+              <div className="gd-detail-item">
+                <span className="gd-detail-key">Released</span>
+                <span className="gd-detail-val">{game.year}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Screenshots — scroll-snap + lightbox */}
+        {game.screenshots && game.screenshots.length > 0 && (
+          <>
+            <div className="gd-divider" />
+            <div className="gd-section">
+              <p className="gd-section-label">Screenshots</p>
+              <div className="gd-screenshots-scroll">
+                {game.screenshots.slice(0, 8).map((screenshot, index) => (
+                  <button
+                    key={index}
+                    className="gd-screenshot-btn"
+                    onClick={() => setLightboxSrc(screenshot)}
+                    aria-label={`View screenshot ${index + 1} fullscreen`}
+                  >
+                    <img
+                      src={screenshot}
+                      alt={`${game.title} screenshot ${index + 1}`}
+                      className="gd-screenshot"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="gd-divider" />
+
+        {/* Reviews — promoted here per the new section order */}
         <div className="gd-section">
           <div className="gd-section-header-row">
             <h2 className="gd-section-display-title">Top Reviews</h2>
@@ -1105,107 +1191,12 @@ function GameDetail() {
           })()}
         </div>
 
-        <div className="gd-divider" />
-
-        {/* Information — About + Details + Screenshots, with histogram on top */}
-        <div className="gd-section">
-          {/* Ratings histogram — renders only when review ratings exist */}
-          <RatingsHistogram
-            ratings={reviews
-              .map(r => parseFloat(r.rating))
-              .filter(r => !isNaN(r) && r >= 0 && r <= 5)}
-          />
-
-          <p className="gd-section-label">About</p>
-          <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
-            <p className="gd-description">{game.description}</p>
-            {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
-          </div>
-          <button
-            className="gd-read-more-btn"
-            onClick={() => setDescExpanded(v => !v)}
-          >
-            {descExpanded ? 'Read less' : 'Read more'}
-          </button>
-        </div>
-
-        <div className="gd-divider" />
-
-        <div className="gd-section">
-          <p className="gd-section-label">Details</p>
-          <div className="gd-details-grid">
-            {game.developers.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Developer</span>
-                <span className="gd-detail-val">{game.developers.join(', ')}</span>
-              </div>
-            )}
-            {game.publishers.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Publisher</span>
-                <span className="gd-detail-val">{game.publishers.join(', ')}</span>
-              </div>
-            )}
-            {game.platforms.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Platforms</span>
-                <span className="gd-detail-val">{game.platforms.join(', ')}</span>
-              </div>
-            )}
-            {game.year && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Released</span>
-                <span className="gd-detail-val">{game.year}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Screenshots — scroll-snap + lightbox */}
-        {game.screenshots && game.screenshots.length > 0 && (
-          <>
-            <div className="gd-divider" />
-            <div className="gd-section">
-              <p className="gd-section-label">Screenshots</p>
-              <div className="gd-screenshots-scroll">
-                {game.screenshots.slice(0, 8).map((screenshot, index) => (
-                  <button
-                    key={index}
-                    className="gd-screenshot-btn"
-                    onClick={() => setLightboxSrc(screenshot)}
-                    aria-label={`View screenshot ${index + 1} fullscreen`}
-                  >
-                    <img
-                      src={screenshot}
-                      alt={`${game.title} screenshot ${index + 1}`}
-                      className="gd-screenshot"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
         {/* Similar Games — SimilarGamesRow self-fetches in parallel; renders null (incl. header) if no results */}
         <SimilarGamesRow
           gameId={gameId}
           genreIds={game.genreIds || []}
           themeIds={game.themeIds || []}
         />
-
-        {/* Your Journal — per-game dated notes. Shown for any logged-in
-             user who has entries OR has the game tracked. GameJournalSection
-             self-manages its divider and hides entirely when there is
-             nothing to display. */}
-        {user && (
-          <GameJournalSection
-            game={game}
-            user={user}
-            status={status}
-            onAddEntry={openJournalComposer}
-          />
-        )}
 
       </div>
 

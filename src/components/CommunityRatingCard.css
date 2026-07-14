@@ -1,0 +1,122 @@
+/* =====================================================
+   COMMUNITY RATING CARD — numeric average + whole-star histogram
+   Left: gradient average number. Right: 5-row histogram (★5→★1).
+   No half-stars anywhere; this is the screen's one gradient heading.
+   ===================================================== */
+
+.crc-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Left: average ── */
+.crc-avg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.crc-avg-number {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display, -0.02em);
+  background: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .crc-avg-number {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--color-text-primary);
+  }
+}
+
+.crc-avg-caption {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.crc-avg-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Right: histogram ── */
+.crc-histogram {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.crc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crc-row-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  width: 22px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.crc-row-star {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  fill: var(--accent-review);
+}
+
+.crc-row-track {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.crc-row-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent-review);
+  transition: width 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crc-row-fill {
+    transition: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .crc-card {
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+  }
+}

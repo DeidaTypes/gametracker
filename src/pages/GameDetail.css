@@ -214,8 +214,7 @@
 }
 
 /* =====================================================
-   TITLE SECTION
-   Two-column: title/meta left, action icons right.
+   TITLE SECTION — title, "year · developer", publisher.
    ===================================================== */
 .gd-title-section {
   position: relative;
@@ -229,16 +228,6 @@
 .gd-title-text {
   flex: 1;
   min-width: 0;
-}
-
-/* ── Right-side Action Buttons — vertical stack ── */
-.gd-action-buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  padding-top: 6px;
 }
 
 @media (max-width: 359px) {
@@ -295,30 +284,6 @@
   margin: 0 0 4px;
 }
 
-/* ── Star Rating Row ── */
-.gd-rating-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  margin-bottom: 2px;
-}
-
-.gd-partial-stars {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.gd-rating-text {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: rgba(255, 255, 255, 0.45);
-  white-space: nowrap;
-}
-
 /* ── Genre Pills — now tappable buttons ── */
 .gd-genre-row {
   display: flex;
@@ -361,6 +326,114 @@
 
 .gd-genre-pill:active {
   transform: scale(0.94);
+}
+
+/* =====================================================
+   STATUS PILL ROW — the four-way, mutually-exclusive status
+   control (Want to Play / Playing / Played / Dropped), plus
+   a "more" trigger for Log play + custom lists. Sits directly
+   under the title, above the fold.
+   ===================================================== */
+.gd-status-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px 0;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gd-status-row::-webkit-scrollbar {
+  display: none;
+}
+
+.gd-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gd-status-pill-icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.gd-status-pill-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.gd-status-pill:hover {
+  background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
+  border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
+}
+
+.gd-status-pill:active {
+  transform: scale(0.96);
+}
+
+.gd-status-pill--active {
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  color: var(--color-on-accent, #fff);
+}
+
+.gd-status-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gd-status-more-btn:hover {
+  background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
+  border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
+}
+
+.gd-status-more-btn:active {
+  transform: scale(0.94);
+}
+
+/* =====================================================
+   RATING CARD — wraps CommunityRatingCard (numeric average +
+   whole-star histogram). This wrapper only owns page-level padding/
+   max-width; the card's own visual treatment lives in
+   CommunityRatingCard.css.
+   ===================================================== */
+.gd-rating-card {
+  position: relative;
+  z-index: 3;
+  padding: 14px 20px 0;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 .gd-action-circle {

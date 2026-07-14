@@ -105,6 +105,23 @@ export function clearReviewCache() {
   _cachedUserId = null
 }
 
+/**
+ * Clear the legacy pre-Supabase local review blob + its per-user migration
+ * marker. Reviews themselves live in Supabase (see clearReviewCache for the
+ * in-memory cache), but an un-migrated legacy blob left behind on this
+ * device would otherwise get migrated into whichever account signs in next
+ * (migrateLocalReviewsIfNeeded only skips when its marker already matches
+ * the *current* userId).
+ */
+export function clearLocalReviewsLegacyData() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(MIGRATED_KEY)
+  } catch {
+    // best-effort
+  }
+}
+
 export function getCachedUserId() {
   return _cachedUserId
 }
@@ -886,4 +903,60 @@ export async function getCommunityRatings({ limit = 2000 } = {}) {
     return []
   }
   return (data || []).map((r) => Number(r.rating)).filter((n) => Number.isFinite(n) && n > 0)
+}
+
+/**
+ * Whole-star rating distribution for a single game — every rating row is
+ * fetched (not just the 20 most recent shown in "Top Reviews") and rounded
+ * to its nearest whole star (1–5) for bucketing. Powers GameDetail's
+ * community rating card (numeric average + 5-row histogram).
+ *
+ * The `rating` column itself stores 0.5–5.0 in half-star steps (the
+ * composer's picker), but that granularity is out of scope for this
+ * whole-star display, so each real rating is rounded to its nearest
+ * integer star before counting — no values are invented, only bucketed.
+ * `average` is computed from the raw (unrounded) ratings so the numeric
+ * average stays precise to one decimal.
+ *
+ * Returns `{ average, totalCount, counts }`:
+ *   average    — mean of the raw ratings rounded to 1 decimal, or null
+ *                when the game has zero ratings
+ *   totalCount — total number of rating rows for this game
+ *   counts     — `{ 1: n, 2: n, 3: n, 4: n, 5: n }`, keyed by whole star
+ *
+ * @param {number|string} igdbGameId
+ * @returns {Promise<{ average: number|null, totalCount: number, counts: Record<number, number> }>}
+ */
+export async function getRatingDistributionForGame(igdbGameId) {
+  const EMPTY = { average: null, totalCount: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }
+  if (igdbGameId == null) return EMPTY
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('rating')
+    .eq('igdb_game_id', Number(igdbGameId))
+    .limit(10000)
+  if (error) {
+    console.error('[reviews] getRatingDistributionForGame failed:', error.message)
+    return EMPTY
+  }
+
+  const ratings = (data || [])
+    .map((r) => Number(r.rating))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  if (ratings.length === 0) return EMPTY
+
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  let sum = 0
+  for (const r of ratings) {
+    sum += r
+    const star = Math.min(5, Math.max(1, Math.round(r)))
+    counts[star] += 1
+  }
+
+  return {
+    average: Math.round((sum / ratings.length) * 10) / 10,
+    totalCount: ratings.length,
+    counts,
+  }
 }
