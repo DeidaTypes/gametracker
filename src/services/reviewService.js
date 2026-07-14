@@ -918,17 +918,30 @@ export async function getCommunityRatings({ limit = 2000 } = {}) {
  * `average` is computed from the raw (unrounded) ratings so the numeric
  * average stays precise to one decimal.
  *
- * Returns `{ average, totalCount, counts }`:
+ * Returns `{ average, totalCount, counts, error }`:
  *   average    — mean of the raw ratings rounded to 1 decimal, or null
- *                when the game has zero ratings
+ *                when the game has zero ratings (or the query failed)
  *   totalCount — total number of rating rows for this game
- *   counts     — `{ 1: n, 2: n, 3: n, 4: n, 5: n }`, keyed by whole star
+ *   counts     — `{ 1: n, 2: n, 3: n, 4: n, 5: n }` keyed by whole star, or
+ *                `null` when the query failed (never a fake all-zero map —
+ *                that shape is reserved for a *confirmed* zero-rating game)
+ *   error      — true only when the query itself failed (network/RLS/schema).
+ *                Callers must NOT treat this the same as a genuine
+ *                zero-rating game — it means "we don't know", not "there are
+ *                no ratings". The caller is responsible for logging/surfacing
+ *                this rather than silently rendering the empty state.
  *
  * @param {number|string} igdbGameId
- * @returns {Promise<{ average: number|null, totalCount: number, counts: Record<number, number> }>}
+ * @returns {Promise<{ average: number|null, totalCount: number, counts: Record<number, number>|null, error: boolean }>}
  */
 export async function getRatingDistributionForGame(igdbGameId) {
-  const EMPTY = { average: null, totalCount: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }
+  // Genuine "this game has zero ratings" — a confirmed result from a
+  // successful query, safe for the UI to treat as an empty state.
+  const EMPTY = { average: null, totalCount: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, error: false }
+  // "We don't know" — the query itself failed. Deliberately shaped
+  // differently from EMPTY (counts: null) so a failure can never be
+  // mistaken downstream for a confirmed zero-rating game.
+  const FAILED = { average: null, totalCount: 0, counts: null, error: true }
   if (igdbGameId == null) return EMPTY
 
   const { data, error } = await supabase
@@ -937,8 +950,8 @@ export async function getRatingDistributionForGame(igdbGameId) {
     .eq('igdb_game_id', Number(igdbGameId))
     .limit(10000)
   if (error) {
-    console.error('[reviews] getRatingDistributionForGame failed:', error.message)
-    return EMPTY
+    console.error('[reviews] getRatingDistributionForGame failed for igdb_game_id=%s:', igdbGameId, error.message, error)
+    return FAILED
   }
 
   const ratings = (data || [])
@@ -958,5 +971,6 @@ export async function getRatingDistributionForGame(igdbGameId) {
     average: Math.round((sum / ratings.length) * 10) / 10,
     totalCount: ratings.length,
     counts,
+    error: false,
   }
 }

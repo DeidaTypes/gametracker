@@ -17,8 +17,11 @@ function FullStar() {
  * Community rating card for GameDetail — numeric average (gradient number)
  * on the left, whole-star histogram (rows ★5→★1) on the right.
  *
- * Renders nothing when the game has zero ratings so the caller's "Be the
- * first to review" empty state can show instead.
+ * Renders whenever `totalCount > 0`. Renders nothing when `totalCount` is 0
+ * — which the caller (GameDetail) only sets on a genuine zero-rating game
+ * OR a failed query (see reviewService.getRatingDistributionForGame). A
+ * failed query is logged there rather than silently treated as "no
+ * ratings"; this component simply has nothing to draw in either case.
  *
  * @param {{
  *   average: number|null,

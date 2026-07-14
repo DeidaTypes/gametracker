@@ -236,12 +236,18 @@ function GameDetail() {
   }, [gameId])
 
   const refreshRatingDistribution = useCallback(async () => {
+    // getRatingDistributionForGame never throws — it catches its own
+    // Supabase errors and resolves to a distinct `{ error: true }` shape
+    // rather than a fake "zero ratings" result (see reviewService.js).
+    // This try/catch only guards against something upstream of that
+    // (e.g. gameId itself blowing up) and mirrors the same failure shape
+    // so a thrown error can't get silently reinterpreted as "no ratings".
     try {
       const dist = await getRatingDistributionForGame(gameId)
       setRatingDist(dist)
     } catch (err) {
       console.error('[gameDetail] failed to load rating distribution:', err)
-      setRatingDist(null)
+      setRatingDist({ average: null, totalCount: 0, counts: null, error: true })
     }
   }, [gameId])
 
@@ -812,8 +818,12 @@ function GameDetail() {
 
       {/* ── Rating card — numeric average + whole-star histogram, built
            from every community rating for this game (not just the 20
-           most recent shown in Top Reviews below). Hidden entirely when
-           the game has zero ratings so "Be the first to review" shows. ── */}
+           most recent shown in Top Reviews below). Renders whenever
+           totalCount > 0. Hides on a genuine zero-rating game (confirmed
+           by a successful query) OR on a failed query — but a failed
+           query is logged loudly in getRatingDistributionForGame rather
+           than silently masqueraded as "no ratings"; ratingDist.error
+           carries that distinction for any future caller that needs it. ── */}
       {ratingDist && ratingDist.totalCount > 0 && (
         <div className="gd-rating-card">
           <CommunityRatingCard
