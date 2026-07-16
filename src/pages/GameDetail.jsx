@@ -10,7 +10,7 @@ import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import CommunityRatingCard from '../components/CommunityRatingCard'
 import SimilarGamesRow from '../components/SimilarGamesRow'
 import { getReviewsForGame, getRatingDistributionForGame } from '../services/reviewService'
-import { getCirclePulseForGame } from '../services/communityService'
+import { getCirclePulseForGame, getFollowedRatingsForGame } from '../services/communityService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
@@ -58,6 +58,37 @@ function getEffectiveColor(color) {
     return { r: 24, g: 42, b: 70 }
   }
   return { r, g, b }
+}
+
+// Builds the "{name}, {name} and {N} others you follow rated this — avg
+// {X.X}★" sentence (with the shorter 1/2-follower phrasings) from
+// getFollowedRatingsForGame's `followers` array. Names are bolded inline
+// so no separate template strings are needed per count.
+function buildFollowSentence(followers, average) {
+  const names = followers.map((f) => f.displayName)
+  let namePart
+  if (names.length === 1) {
+    namePart = <strong>{names[0]}</strong>
+  } else if (names.length === 2) {
+    namePart = (
+      <>
+        <strong>{names[0]}</strong> and <strong>{names[1]}</strong>
+      </>
+    )
+  } else {
+    const othersCount = names.length - 2
+    namePart = (
+      <>
+        <strong>{names[0]}</strong>, <strong>{names[1]}</strong> and{' '}
+        <strong>{othersCount} other{othersCount === 1 ? '' : 's'}</strong>
+      </>
+    )
+  }
+  return (
+    <>
+      {namePart} you follow rated this — avg <strong>{average.toFixed(1)}</strong>★
+    </>
+  )
 }
 
 function genreToSlug(genre) {
@@ -147,6 +178,9 @@ function GameDetail() {
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
   const [circlePulse, setCirclePulse] = useState(null)
+  // "From people you follow" row — followed users who rated this game.
+  // Hidden entirely when count is 0 (no one followed has rated it).
+  const [followedRatings, setFollowedRatings] = useState(null)
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
 
@@ -211,6 +245,16 @@ function GameDetail() {
     }
   }, [gameId])
 
+  const refreshFollowedRatings = useCallback(async () => {
+    try {
+      const result = await getFollowedRatingsForGame(gameId)
+      setFollowedRatings(result)
+    } catch (err) {
+      console.error('[gameDetail] failed to load followed ratings:', err)
+      setFollowedRatings({ average: null, count: 0, followers: [] })
+    }
+  }, [gameId])
+
   const refreshRatingDistribution = useCallback(async () => {
     // getRatingDistributionForGame never throws — it catches its own
     // Supabase errors and resolves to a distinct `{ error: true }` shape
@@ -261,6 +305,8 @@ function GameDetail() {
           getCirclePulseForGame(gameId)
             .then(p => setCirclePulse(p))
             .catch(() => {}),
+          // From People You Follow — hides when no followed user rated it.
+          refreshFollowedRatings(),
         ])
       } catch (err) {
         console.error('Error fetching game:', err)
@@ -287,6 +333,7 @@ function GameDetail() {
       refreshReviews()
       refreshFromStore()
       refreshRatingDistribution()
+      refreshFollowedRatings()
     }
     window.addEventListener('libraryUpdated', handleLibraryUpdate)
     window.addEventListener('storage', handleLibraryUpdate)
@@ -296,7 +343,7 @@ function GameDetail() {
       window.removeEventListener('storage', handleLibraryUpdate)
       window.removeEventListener('reviewAdded', handleReviewAdded)
     }
-  }, [refreshFromStore, refreshReviews, refreshRatingDistribution])
+  }, [refreshFromStore, refreshReviews, refreshRatingDistribution, refreshFollowedRatings])
 
   // Fetch the tracker row + TTB data for every game, regardless of library status.
   // Re-runs when the gameId changes (new game).
@@ -1109,6 +1156,39 @@ function GameDetail() {
                     />
                   </button>
                 ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* From People You Follow — community row above the reviews list.
+             Hidden entirely when zero followed users rated this game; no
+             placeholders or fabricated names are ever rendered here. */}
+        {followedRatings && followedRatings.count > 0 && (
+          <>
+            <div className="gd-divider" />
+            <div className="gd-section">
+              <p className="gd-section-label">From People You Follow</p>
+              <div className="gd-follow-row">
+                <div className="gd-follow-avatars" aria-hidden="true">
+                  {followedRatings.followers.slice(0, 3).map((f) =>
+                    f.avatarUrl ? (
+                      <img
+                        key={f.userId}
+                        src={f.avatarUrl}
+                        alt=""
+                        className="gd-follow-avatar"
+                      />
+                    ) : (
+                      <div key={f.userId} className="gd-follow-avatar gd-follow-avatar--fallback">
+                        {(f.username || f.displayName || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )
+                  )}
+                </div>
+                <p className="gd-follow-text">
+                  {buildFollowSentence(followedRatings.followers, followedRatings.average)}
+                </p>
               </div>
             </div>
           </>

@@ -925,6 +925,83 @@ export async function getCirclePulseForGame(igdbGameId) {
 }
 
 /**
+ * "From people you follow" row for GameDetail — followed users who rated
+ * (reviewed) this specific game, for the community strip rendered directly
+ * above the Top Reviews list.
+ *
+ * Distinct from `getCirclePulseForGame`, which only returns an aggregate
+ * average + count for the "Your Circle" block — this returns per-user
+ * name/avatar info so the row can render stacked avatars plus the sentence
+ * "{name}, {name} and {N} others you follow rated this — avg {X.X}★".
+ * Ordered by most recent rating first, so the named users are the two most
+ * recent followed raters.
+ *
+ * FK hint used explicitly: reviews → users : reviews_user_id_fkey
+ *
+ * RLS (`reviews_select_visible`, see
+ * supabase/migrations/20260704221500_home_feed_reviews_trackers_rls.sql)
+ * already restricts the rows returned here to ones the viewer is allowed
+ * to see — a followed author's review only surfaces when their
+ * activity_privacy is 'everyone', or 'followers' (which the viewer
+ * satisfies by definition, since we only ever query followee ids), minus
+ * any blocked relationship. `applyBlockFilter` is layered on top as
+ * defense-in-depth, same as every other read in this file.
+ *
+ * @param {number|string} igdbGameId
+ * @returns {Promise<{
+ *   average: number|null,
+ *   count: number,
+ *   followers: Array<{ userId: string, username: string|null, displayName: string, avatarUrl: string|null, rating: number }>
+ * }>}
+ * Returns { average: null, count: 0, followers: [] } when the viewer
+ * follows no one, or none of them have rated this game — the caller hides
+ * the entire row on that shape.
+ */
+export async function getFollowedRatingsForGame(igdbGameId) {
+  const EMPTY = { average: null, count: 0, followers: [] }
+  try {
+    const followeeIds = await _getCurrentUserFollowees()
+    if (followeeIds.length === 0) return EMPTY
+
+    const gameIdNum = Number(igdbGameId)
+
+    let q = supabase
+      .from('reviews')
+      .select(
+        'user_id, rating, created_at, users!reviews_user_id_fkey(id, username, display_name, avatar_url)'
+      )
+      .in('user_id', followeeIds)
+      .eq('igdb_game_id', gameIdNum)
+      .order('created_at', { ascending: false })
+    q = await applyBlockFilter(q, 'user_id')
+    const { data, error } = await q
+    if (error) {
+      console.error('[community] getFollowedRatingsForGame failed:', error.message)
+      return EMPTY
+    }
+
+    const rows = data || []
+    if (rows.length === 0) return EMPTY
+
+    const sum = rows.reduce((acc, r) => acc + Number(r.rating), 0)
+    const average = Math.round((sum / rows.length) * 10) / 10
+
+    const followers = rows.map((r) => ({
+      userId: r.user_id,
+      username: r.users?.username || null,
+      displayName: r.users?.display_name || r.users?.username || 'Player',
+      avatarUrl: r.users?.avatar_url || null,
+      rating: Number(r.rating),
+    }))
+
+    return { average, count: followers.length, followers }
+  } catch (err) {
+    console.error('[community] getFollowedRatingsForGame crashed:', err)
+    return EMPTY
+  }
+}
+
+/**
  * Home feed — text-forward community review feed.
  *
  * Distinct from `getRecentFollowingActivity` (Explore's "Recently" shelf,

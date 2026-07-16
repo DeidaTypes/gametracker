@@ -598,6 +598,63 @@
   margin: 20px 0;
 }
 
+/* ── From People You Follow — community row above the reviews list ──
+   Same thin card surface as .gd-pulse-row (Your Circle block) for visual
+   consistency, sized up slightly to give the avatar stack + two-line
+   sentence room to breathe. */
+.gd-follow-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gd-follow-avatars {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.gd-follow-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-primary, #0c1322);
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.gd-follow-avatar + .gd-follow-avatar {
+  margin-left: -10px;
+}
+
+.gd-follow-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-primary);
+  color: var(--color-bg-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.gd-follow-text {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.gd-follow-text strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* ── Description — collapsible ── */
 .gd-description-wrapper {
   position: relative;
