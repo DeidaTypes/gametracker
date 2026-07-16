@@ -237,6 +237,9 @@ body[data-larger-text='true'] {
     var(--color-brand-primary) 0%,
     var(--color-brand-primary-dark) 100%
   );
+  /* Alias — shorthand brand-gradient token used for active-state fills
+     (e.g. bottom-nav pill) that want the cobalt brand gradient by name. */
+  --grad-brand: var(--color-brand-gradient);
   /* Legacy alias — keeps RatingsHistogram working without JSX edit */
   --accent-copper: var(--color-brand-primary);
 

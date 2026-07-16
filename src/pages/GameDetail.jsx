@@ -17,10 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
-import { getTracker, setProgressOverride } from '../services/hoursService'
 import { getTimeToBeat } from '../services/timeToBeatService'
-import { computeProgress } from '../services/progressHelper'
-import { useSession } from '../contexts/SessionContext'
 import LogSessionModal from '../components/LogSessionModal'
 import { logManualSession, getManualSessionsForGame, deleteManualSession } from '../services/sessionService'
 import ActionSheet from '../components/ActionSheet'
@@ -170,10 +167,6 @@ function GameDetail() {
   const [ratingDist, setRatingDist] = useState(null)
   const [status, setStatus] = useState(null)
   const [dominantColor, setDominantColor] = useState(null)
-  // Chrome-tint swatches: set after async extraction, cleared on unmount.
-  // Drives the status puck gradient, action-button tint, and (via context)
-  // the BottomNav accent color.
-  const [chromeTint, setChromeTint] = useState(null)
   const { setSwatches: setGlobalSwatches } = useGameColor()
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -184,34 +177,7 @@ function GameDetail() {
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
 
-  // ── Session timer ──────────────────────────────────────────────────────────
-  const {
-    session: activeSession,
-    elapsed: sessionElapsed,
-    isStarting: sessionStarting,
-    stopGameSession,
-    startGameSession,
-  } = useSession()
-
-  const isThisGameSession =
-    activeSession?.igdb_game_id != null &&
-    String(activeSession.igdb_game_id) === String(gameId)
-
-  // ── Hours / Progress state ──────────────────────────────────────────────────
-  const [tracker, setTracker] = useState(null)
-  const [trackerReady, setTrackerReady] = useState(false)
   const [ttb, setTtb] = useState(null)
-  // Optimistic local hours — non-null while a debounced save is in flight.
-  const [localHours, setLocalHours] = useState(null)
-  const [overrideOpen, setOverrideOpen] = useState(false)
-  // Optimistic local override — non-null while a debounced save is in flight.
-  const [localOverride, setLocalOverride] = useState(null)
-  const [toastMsg, setToastMsg] = useState(null)
-  const saveOverrideTimer = useRef(null)
-  const toastTimerRef = useRef(null)
-  // Tracks the currently-displayed game so debounced save callbacks don't
-  // mutate state after the user has already navigated to a different game.
-  const gameIdRef = useRef(gameId)
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
@@ -292,12 +258,12 @@ function GameDetail() {
             .then(color => setDominantColor(color))
             .catch(() => {}),
           getGameSwatches(gameData.image, gameId)
-            .then(sw => { setChromeTint(sw); setGlobalSwatches(sw) })
+            .then(sw => setGlobalSwatches(sw))
             .catch(() => {}),
           // Fetch TTB for ALL games (not just library games) so the Time to
           // Beat averages section is visible even before a game is tracked.
-          // The timeToBeatService caches results, so the tracker effect below
-          // will be a cache hit when status becomes truthy.
+          // timeToBeatService caches results, so the TTB/sessions effect
+          // below will be a cache hit for the same gameId.
           getTimeToBeat(gameId)
             .then(b => setTtb(b))
             .catch(() => {}),
@@ -345,43 +311,23 @@ function GameDetail() {
     }
   }, [refreshFromStore, refreshReviews, refreshRatingDistribution, refreshFollowedRatings])
 
-  // Fetch the tracker row + TTB data for every game, regardless of library status.
-  // Re-runs when the gameId changes (new game).
+  // Fetch Time to Beat + manual sessions for every game, regardless of
+  // library status. Re-runs when the gameId changes (new game).
   useEffect(() => {
     let cancelled = false
-    setTrackerReady(false)
-    setLocalHours(null)
-    setLocalOverride(null)
-    setOverrideOpen(false)
 
-    async function loadTrackerAndTtb() {
-      const [t, b, s] = await Promise.all([
-        getTracker(gameId).catch(() => null),
+    async function loadTtbAndSessions() {
+      const [b, s] = await Promise.all([
         getTimeToBeat(gameId).catch(() => null),
         getManualSessionsForGame(gameId).catch(() => []),
       ])
       if (cancelled) return
-      setTracker(t)
       setTtb(b)
       setSessions(s)
-      setTrackerReady(true)
     }
 
-    loadTrackerAndTtb()
+    loadTtbAndSessions()
     return () => { cancelled = true }
-  }, [gameId])
-
-  // Clean up debounce timers on unmount so stale callbacks never fire.
-  useEffect(() => {
-    return () => {
-      clearTimeout(saveOverrideTimer.current)
-      clearTimeout(toastTimerRef.current)
-    }
-  }, [])
-
-  // Keep gameIdRef in sync so save callbacks can detect game navigation.
-  useEffect(() => {
-    gameIdRef.current = gameId
   }, [gameId])
 
   // Revert chrome tint when navigating away from this page.
@@ -451,13 +397,10 @@ function GameDetail() {
         gameImage: game?.image,
       })
       if (result) {
-        setTracker(t => ({ ...t, hours_played: result.newHours }))
-        setLocalHours(null)
         await refreshSessions()
         setLogSessionOpen(false)
-        showToast(`${formatDuration(totalMinutes)} logged`)
       } else {
-        showToast('Could not save — try again')
+        console.error('[gameDetail] failed to log session')
       }
     } finally {
       setLogSaving(false)
@@ -467,12 +410,9 @@ function GameDetail() {
   const handleDeleteSession = useCallback(async (sessionId, mins) => {
     const result = await deleteManualSession(sessionId, gameId, mins)
     if (result) {
-      setTracker(t => ({ ...t, hours_played: result.newHours }))
-      setLocalHours(null)
       setSessions(prev => prev.filter(s => s.id !== sessionId))
-      showToast(`${formatDuration(mins)} removed`)
     } else {
-      showToast('Could not delete — try again')
+      console.error('[gameDetail] failed to delete session')
     }
   }, [gameId])
 
@@ -498,91 +438,6 @@ function GameDetail() {
 
   const handleShare = () => {
     setDmShareOpen(true)
-  }
-
-  // ── Progress computed values ────────────────────────────────────────────────
-  // Prefer local (optimistic) values while a save is in flight.
-  const effectiveHours = localHours !== null ? localHours : (tracker?.hours_played ?? 0)
-  const effectiveOverride = localOverride !== null ? localOverride : (tracker?.progress_override ?? null)
-  const progress = trackerReady
-    ? computeProgress({
-        hoursPlayed: effectiveHours,
-        progressOverride: effectiveOverride,
-        normallySeconds: ttb?.normallySeconds ?? null,
-      })
-    : null
-
-  // ── Toast helper ─────────────────────────────────────────────────────────────
-  const showToast = (msg) => {
-    setToastMsg(msg)
-    clearTimeout(toastTimerRef.current)
-    toastTimerRef.current = setTimeout(() => setToastMsg(null), 3000)
-  }
-
-  // ── Override handlers ─────────────────────────────────────────────────────────
-  // Slider: 400ms debounced persist of the manual % override.
-  const handleOverrideChange = (val) => {
-    const num = parseFloat(val)
-    const prev = effectiveOverride
-    const capturedGameId = gameId
-    setLocalOverride(num)
-    clearTimeout(saveOverrideTimer.current)
-    saveOverrideTimer.current = setTimeout(async () => {
-      const result = await setProgressOverride(capturedGameId, num)
-      if (gameIdRef.current !== capturedGameId) return
-      if (result) {
-        setTracker(t => ({ ...t, progress_override: result.progress_override }))
-        setLocalOverride(null)
-      } else {
-        setLocalOverride(prev)
-        showToast('Could not save override — try again')
-      }
-    }, 400)
-  }
-
-  // Clear: removes the manual override and falls back to hours-based estimate.
-  const handleClearOverride = async () => {
-    const capturedGameId = gameId
-    setLocalOverride(null)
-    const result = await setProgressOverride(capturedGameId, null)
-    if (gameIdRef.current !== capturedGameId) return
-    if (result) {
-      setTracker(t => ({ ...t, progress_override: null }))
-    } else {
-      showToast('Could not clear override — try again')
-    }
-  }
-
-  // ── Session handlers ──────────────────────────────────────────────────────
-  const handleStartSession = useCallback(() => {
-    startGameSession(gameId, {
-      gameTitle: game?.title,
-      gameImage: game?.image,
-    })
-  }, [startGameSession, gameId, game])
-
-  const handleStopSession = useCallback(() => {
-    stopGameSession()
-  }, [stopGameSession])
-
-  // On stop: refresh the tracker row so the progress bar reflects the
-  // new hours total immediately (libraryUpdated also fires from context).
-  useEffect(() => {
-    function onLibOrSession() {
-      if (status && !statusChangeInFlight.current) {
-        getTracker(gameId)
-          .then((t) => { if (t) setTracker(t) })
-          .catch(() => {})
-      }
-    }
-    window.addEventListener('libraryUpdated', onLibOrSession)
-    return () => window.removeEventListener('libraryUpdated', onLibOrSession)
-  }, [gameId, status])
-
-  function formatSessionElapsed(s) {
-    const m = Math.floor(s / 60)
-    const sec = s % 60
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   }
 
   if (loading) {
@@ -690,17 +545,6 @@ function GameDetail() {
   const weekendBadge = weekendReadBadge(ttb)
 
   const effectiveColor = getEffectiveColor(dominantColor)
-
-  // Action-circle (FAB) tint: full vibrant → vibrantDark gradient fill
-  const fabStyle = chromeTint
-    ? {
-        background: `linear-gradient(135deg,
-          rgb(${chromeTint.vibrant.r},${chromeTint.vibrant.g},${chromeTint.vibrant.b}) 0%,
-          rgb(${chromeTint.vibrantDark.r},${chromeTint.vibrantDark.g},${chromeTint.vibrantDark.b}) 100%)`,
-        borderColor: `rgba(${chromeTint.vibrant.r},${chromeTint.vibrant.g},${chromeTint.vibrant.b},0.4)`,
-        color: '#fff',
-      }
-    : {}
 
   // Small poster glow — radial bloom directly behind the cover art
   const glowStyle = effectiveColor

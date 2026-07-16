@@ -89,7 +89,7 @@
 .bottom-nav-pill {
   position: absolute;
   inset: 0;
-  background: var(--accent);
+  background: var(--grad-brand);
   border-radius: 22px;
   z-index: 0;
   /* Sit just under the icon and above the tab's own background. */
