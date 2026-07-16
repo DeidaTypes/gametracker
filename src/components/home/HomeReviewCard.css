@@ -1,34 +1,55 @@
 /* ============================================================
    HomeReviewCard — Home feed's per-item card ("The Feed").
    Namespace: home-review-card__*
-   Tokens only — no hardcoded hex. Multi-hue by MEANING:
-     - green  (--accent-review) → reviews/ratings: left accent bar,
-       star fill, "reviewed"/"rated" verb.
-     - cobalt (--accent) → system/activity: left accent bar + verb for
-       every non-rating event row (listed, backlogged, finished, played,
-       favorited — see the --home-review-card--{type} modifiers below),
-       plus the "more" expand link on the full card.
-     - purple (--accent-journal, via --accent-journal-text for AA on
-       the dark surface) → social: react count, reply/comment, on every
-       row regardless of type.
+   Tokens only — no hardcoded hex. Every event type shares the exact
+   same shell (background/border/radius/padding/gap all come from
+   <ReviewCardShell/> — see ReviewCardShell.css) and the exact same
+   one-line header. Only the content zone below the header adapts.
 
-   The bounded card surface (background, hairline border, radius,
-   padding, and the gap between this card's own sections) comes from the
-   shared <ReviewCardShell/> — see src/components/reviews/ReviewCardShell.css.
-   Everything below only layers Home-specific content styling (the
-   accent bar, verb colors, star tint) on top of that shared shell.
+   3px left accent bar + header verb color, by MEANING:
+     - green  (--accent-review)      → reviewed / rated
+     - purple (--accent-journal[-text]) → added a game to a list
+     - cobalt (--accent)             → backlogged / finished / played /
+                                        favorited (every other status event)
+   Like/reply icons keep the existing purple social hue on every row
+   regardless of type (see .home-review-card__react/__reply below) —
+   that's a different, deliberate use of purple from the header/accent
+   bar's per-type coloring.
    ============================================================ */
 
 .home-review-card {
   position: relative;
-  /* Reviews/ratings accent bar — green, scoped to this card only. */
+}
+
+.home-review-card--reviewed,
+.home-review-card--rated {
   border-left: 3px solid color-mix(in srgb, var(--accent-review) 55%, transparent);
-  /* Star fill (StarRating reads --star from its ancestors) scoped to
-     Home only — the shared StarRating component keeps its gold fill
-     everywhere else in the app. */
+}
+
+.home-review-card--listed {
+  border-left: 3px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
+}
+
+.home-review-card--backlogged,
+.home-review-card--finished,
+.home-review-card--played,
+.home-review-card--favorited {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Star fill (StarRating reads --star from its ancestors) scoped to
+   Home only — the shared StarRating component keeps its gold fill
+   everywhere else in the app. */
+.home-review-card--reviewed,
+.home-review-card--rated {
   --star: var(--accent-review);
 }
 
+.home-review-card .star-rating__layer--fill {
+  filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
+}
+
+/* ── Header (identical for every type) ── */
 .home-review-card__avatar-btn {
   flex-shrink: 0;
   background: none;
@@ -63,8 +84,19 @@
 }
 
 .home-review-card__verb {
-  color: var(--accent-review);
   font-weight: var(--font-weight-medium);
+  color: var(--accent-review);
+}
+
+.home-review-card--listed .home-review-card__verb {
+  color: var(--accent-journal-text);
+}
+
+.home-review-card--backlogged .home-review-card__verb,
+.home-review-card--finished .home-review-card__verb,
+.home-review-card--played .home-review-card__verb,
+.home-review-card--favorited .home-review-card__verb {
+  color: var(--accent);
 }
 
 .home-review-card__time {
@@ -74,22 +106,20 @@
   white-space: nowrap;
 }
 
-/* Star specular glow — StarRating.css hardcodes a gold-tinted
-   drop-shadow for its glimmer effect app-wide; override it here (scoped
-   to Home only, via higher selector specificity) so the glow matches
-   the green fill instead of clashing with it. */
-.home-review-card .star-rating__layer--fill {
-  filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
+/* ── Content zone (adapts per type) ── */
+.home-review-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-/* ── Game row ── */
 .home-review-card__game-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md, 10px);
+  padding: 0;
+  background: none;
+  border: none;
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
@@ -98,15 +128,26 @@
 .home-review-card__game-row:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
-.home-review-card__game-cover {
+.home-review-card__cover {
   flex-shrink: 0;
-  width: 40px;
-  height: 54px;
   border-radius: var(--radius-sm, 6px);
   object-fit: cover;
-  background: var(--color-bg-tertiary);
+  background: var(--color-bg-secondary);
+}
+
+/* REVIEWED — small cover; the review text carries the card. */
+.home-review-card__cover--sm {
+  width: 38px;
+  height: 50px;
+}
+
+/* RATED / LISTED / status types — no text, so the cover grows. */
+.home-review-card__cover--lg {
+  width: 52px;
+  height: 69px;
 }
 
 .home-review-card__game-meta {
@@ -127,7 +168,7 @@
   text-overflow: ellipsis;
 }
 
-/* ── Review body ── */
+/* ── REVIEWED body ── */
 .home-review-card__body {
   display: flex;
   flex-direction: column;
@@ -170,18 +211,124 @@
   border-radius: var(--radius-sm);
 }
 
-/* ── Actions row ── */
+/* ── RATED — no text, so the cover + stars carry the card. ── */
+.home-review-card__content--rated {
+  flex-direction: row;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__content--rated:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.home-review-card__rated-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-review-card__rated-stars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-review-card__score {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--accent-review);
+}
+
+/* ── LISTED — destination-list pill + mosaic ── */
+.home-review-card__list-pill {
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--accent-journal) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-journal) 40%, transparent);
+  color: var(--accent-journal-text);
+  padding: 5px 12px;
+  border-radius: var(--radius-full, 999px);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__list-pill:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.home-review-card__mosaic {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  width: 100%;
+  max-width: 220px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__mosaic:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.home-review-card__mosaic-cell {
+  display: block;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-xs, 3px);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.home-review-card__mosaic-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── FINISHED / BACKLOGGED / PLAYED / FAVORITED — status pill ── */
+.home-review-card__status-pill {
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+  padding: 5px 12px;
+  border-radius: var(--radius-full, 999px);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Actions row (identical for every type) ── */
 .home-review-card__actions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* Social actions — react + reply/comment share the purple hue. The
-   bright --accent-journal-text variant is used (rather than the base
-   --accent-journal) because these render as small text/icon pairs
-   directly on the dark card surface, where plain --accent-journal
-   falls short of AA contrast. */
+/* Social actions — react + reply/comment share the purple hue on every
+   row regardless of type. The bright --accent-journal-text variant is
+   used (rather than the base --accent-journal) because these render as
+   small text/icon pairs directly on the dark card surface, where plain
+   --accent-journal falls short of AA contrast. */
 .home-review-card__react,
 .home-review-card__reply {
   background: none;
@@ -211,152 +358,17 @@
   outline-offset: 1px;
 }
 
-.home-review-card__react[aria-pressed='true'] {
-  color: var(--accent-journal-text);
-}
-
 .home-review-card__heart-icon--active {
   color: var(--accent-journal-text);
 }
 
-/* ── Compact variant (non-review activity rows) ──
-   Overrides the shell's column layout to a row (cover + text + actions)
-   — this isn't a review (no rating/body), so it keeps its own internal
-   layout; the surrounding bounded box (background/border/radius/padding)
-   is still the shared shell, same as every other card. */
-.home-review-card--compact {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-/* System/activity accent — every compact type except 'rated' (which
-   keeps the review-green treatment inherited from .home-review-card).
-   Left accent bar + verb word both switch to cobalt so "The Feed"
-   visually distinguishes ratings from other social activity. */
-.home-review-card--listed,
-.home-review-card--backlogged,
-.home-review-card--finished,
-.home-review-card--played,
-.home-review-card--favorited {
-  border-left-color: color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-.home-review-card--listed .home-review-card__verb,
-.home-review-card--backlogged .home-review-card__verb,
-.home-review-card--finished .home-review-card__verb,
-.home-review-card--played .home-review-card__verb,
-.home-review-card--favorited .home-review-card__verb {
-  color: var(--accent);
-}
-
-/* Compact rows render the verb inline within the name/game sentence
-   (see CompactVerbPhrase), so it should read as body copy weight, not
-   the bold standalone word the full card uses in its header. */
-.home-review-card--compact .home-review-card__verb {
-  font-weight: var(--font-weight-normal);
-}
-
-.home-review-card__compact-cover {
-  flex-shrink: 0;
-  width: 38px;
-  height: 51px;
-  border-radius: var(--radius-sm, 6px);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__compact-cover:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-}
-
-.home-review-card__compact-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.home-review-card__compact-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.home-review-card__compact-sentence {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--color-text-secondary);
-}
-
-.home-review-card__compact-name,
-.home-review-card__compact-game {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: inherit;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__compact-name:focus-visible,
-.home-review-card__compact-game:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.home-review-card__compact-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ── Compact actions column (react + optional secondary action) ── */
-.home-review-card__compact-actions {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.home-review-card__react--compact {
-  flex-shrink: 0;
-}
-
-/* "View" (to the list) — outlined pill, cobalt text, mirrors the system
-   accent used for the rest of a 'listed' row. Deliberately not a
-   --grad-cta fill: this is a secondary navigation action, not the
-   primary "add this to your own list" CTA. */
-.home-review-card__view-btn {
-  background: transparent;
-  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.24));
-  padding: 4px 10px;
-  border-radius: var(--radius-full, 999px);
-  color: var(--accent);
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__view-btn:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
+/* Comments aren't polymorphic yet (review_comments has a review_id FK
+   only — see schema diagnosis) — every non-review card still shows this
+   affordance but it's a real no-op, visually muted so it doesn't read
+   as a working, counted control. */
+.home-review-card__reply--disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {

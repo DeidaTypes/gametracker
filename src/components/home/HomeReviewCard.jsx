@@ -8,6 +8,7 @@ import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
+import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
@@ -20,6 +21,8 @@ import './HomeReviewCard.css'
 // 'rated' items).
 const EVENT_REACTION_EMOJI = '\u2764\uFE0F'
 
+const REVIEW_TYPES = new Set(['reviewed', 'rated'])
+
 function relativeTime(iso) {
   if (!iso) return ''
   try {
@@ -30,12 +33,12 @@ function relativeTime(iso) {
 }
 
 /**
- * Formats `seconds` as "45m", "2h", or "2h 30m" for the 'played' event
- * row's optional "for {duration}" qualifier. Returns null below 60s or
- * for missing/invalid values so the caller can skip the qualifier
- * entirely rather than rendering "for 0m".
+ * Formats `seconds` as "45m", "2h", or "2h 30m" for a status pill's
+ * optional duration qualifier ('finished'/'played'). Returns null below
+ * 60s or for missing/invalid values so the caller can omit the
+ * qualifier entirely rather than rendering "for 0m" — never fabricated.
  */
-function formatPlayedDuration(seconds) {
+function formatDuration(seconds) {
   const s = Number(seconds)
   if (!Number.isFinite(s) || s < 60) return null
   const h = Math.floor(s / 3600)
@@ -46,7 +49,53 @@ function formatPlayedDuration(seconds) {
 }
 
 /**
- * EventReactButton — react control for non-review event rows (listed,
+ * One-line header verb for `item.type` — no game name here (that lives
+ * in the content zone below). `listName` is passed separately since it
+ * may come from the item itself or from useListPreview's lazy hydration.
+ */
+function headerVerb(item, listName) {
+  switch (item.type) {
+    case 'reviewed':
+      return 'reviewed'
+    case 'rated':
+      return 'rated'
+    case 'listed':
+      return listName ? `added a game to ${listName}` : 'added a game to a list'
+    case 'backlogged':
+      return 'added to backlog'
+    case 'finished':
+      return 'finished'
+    case 'played':
+      return 'played'
+    case 'favorited':
+      return 'favorited'
+    default:
+      return 'did something'
+  }
+}
+
+/** Status pill copy for the finished/backlogged/played/favorited content zone. Omits any duration that isn't actually stored. */
+function statusLabel(item) {
+  switch (item.type) {
+    case 'finished': {
+      const d = formatDuration(item.durationSeconds)
+      return d ? `Finished \u00b7 ${d}` : 'Finished'
+    }
+    case 'backlogged':
+      return 'Backlog'
+    case 'played': {
+      const d = formatDuration(item.durationSeconds)
+      return d ? `Played \u00b7 ${d}` : 'Played'
+    }
+    case 'favorited':
+      return 'Favorited'
+    default:
+      return null
+  }
+}
+
+/**
+ * EventReactButton — like control for non-review event rows (listed,
  * backlogged, finished, played, favorited). Backed by the generic
  * `reactions` table (target_id = the activity_events row id) rather
  * than review_likes, since these rows aren't reviews. A single fixed
@@ -54,14 +103,14 @@ function formatPlayedDuration(seconds) {
  * even though useReactions supports a full emoji set for surfaces that
  * want one.
  */
-function EventReactButton({ targetId, className = '' }) {
+function EventReactButton({ targetId }) {
   const { reactions, toggle } = useReactions('activity', targetId)
   const mine = reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)
   const reacted = mine?.reacted || false
   const count = mine?.count || 0
   return (
     <Pressable
-      className={`home-review-card__react${className ? ` ${className}` : ''}`}
+      className="home-review-card__react"
       onClick={(e) => {
         e.stopPropagation()
         toggle(EVENT_REACTION_EMOJI)
@@ -79,119 +128,251 @@ function EventReactButton({ targetId, className = '' }) {
   )
 }
 
-/** ListViewAction — "View" affordance for 'listed' rows, deep-links to the list. */
-function ListViewAction({ listId }) {
-  const navigate = useNavigate()
-  if (!listId) return null
+/**
+ * CommentAction — every card type gets a comment affordance (task
+ * requirement), but `review_comments` only has a `review_id` FK (see
+ * schema diagnosis: comments are NOT polymorphic today, unlike
+ * `reactions`). For 'reviewed'/'rated' this is real and wired to the
+ * existing comments thread; for every other type it renders visibly but
+ * is a deliberate no-op — no invented schema, no fabricated count —
+ * until a future migration adds a polymorphic comments target.
+ */
+function CommentAction({ item, onReply }) {
+  if (REVIEW_TYPES.has(item.type)) {
+    return (
+      <Pressable className="home-review-card__reply" onClick={onReply} aria-label="Reply">
+        <HiOutlineChat />
+        <span>{item.commentCount || 0}</span>
+      </Pressable>
+    )
+  }
   return (
     <Pressable
-      className="home-review-card__view-btn"
-      onClick={(e) => {
-        e.stopPropagation()
-        navigate(`/list/${listId}`)
-      }}
+      className="home-review-card__reply home-review-card__reply--disabled"
+      onClick={(e) => e.stopPropagation()}
+      aria-disabled="true"
+      aria-label="Comments aren't available for this activity yet"
     >
-      View
+      <HiOutlineChat />
     </Pressable>
   )
 }
 
 /**
- * Renders the verb phrase (and any trailing qualifier) for a compact
- * event row's sentence, given `item.type`. Keeps HomeReviewCard's main
- * body focused on layout rather than per-type copy branching.
+ * HomeCardContent — the adaptive content zone. Chosen from `item.type`,
+ * this is the core of the concept: every event renders in the same
+ * shell with the same one-line header, but what fills the middle
+ * changes shape entirely so a rating never looks like a review missing
+ * its text, and a list-add never looks like a bare cover.
  */
-function CompactVerbPhrase({ item, onGameClick }) {
-  const gameBtn = (
-    <button type="button" className="home-review-card__compact-game" onClick={onGameClick}>
-      {item.game.title}
-    </button>
-  )
-  switch (item.type) {
-    case 'rated':
-      return <span className="home-review-card__verb">rated {gameBtn}</span>
-    case 'listed':
-      return (
-        <span className="home-review-card__verb">
-          added {gameBtn} to {item.listName ? `\u2018${item.listName}\u2019` : 'a list'}
-        </span>
-      )
-    case 'backlogged':
-      return <span className="home-review-card__verb">added {gameBtn} to their backlog</span>
-    case 'finished':
-      return <span className="home-review-card__verb">finished {gameBtn}</span>
-    case 'played': {
-      const duration = formatPlayedDuration(item.durationSeconds)
-      return (
-        <span className="home-review-card__verb">
-          played {gameBtn}
-          {duration ? ` for ${duration}` : ''}
-        </span>
-      )
-    }
-    case 'favorited':
-      return <span className="home-review-card__verb">favorited {gameBtn}</span>
-    default:
-      return <span className="home-review-card__verb">did something with {gameBtn}</span>
+function HomeCardContent({
+  item,
+  img,
+  onGameClick,
+  onListClick,
+  listName,
+  listGameCount,
+  listCovers,
+  expanded,
+  onExpand,
+  bodyOverflows,
+  bodyRef,
+}) {
+  const handleImgError = (e) => {
+    e.target.src = COVER_FALLBACK
   }
+
+  if (item.type === 'reviewed') {
+    return (
+      <div className="home-review-card__content">
+        <Pressable
+          as="div"
+          className="home-review-card__game-row"
+          onClick={onGameClick}
+          aria-label={`View ${item.game.title}`}
+        >
+          <img
+            src={img}
+            className="home-review-card__cover home-review-card__cover--sm"
+            alt=""
+            loading="lazy"
+            onError={handleImgError}
+          />
+          <div className="home-review-card__game-meta">
+            <span className="home-review-card__game-title">{item.game.title}</span>
+            {item.rating != null && <StarRating rating={item.rating} size={14} />}
+          </div>
+        </Pressable>
+
+        <div className="home-review-card__body">
+          <p ref={bodyRef} className={expanded ? '' : 'home-review-card__clamp'}>
+            {item.body}
+          </p>
+          {!expanded && bodyOverflows && (
+            <button type="button" className="home-review-card__more" onClick={onExpand}>
+              more
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (item.type === 'rated') {
+    return (
+      <Pressable
+        as="div"
+        className="home-review-card__content home-review-card__content--rated"
+        onClick={onGameClick}
+        aria-label={`View ${item.game.title}`}
+      >
+        <img
+          src={img}
+          className="home-review-card__cover home-review-card__cover--lg"
+          alt=""
+          loading="lazy"
+          onError={handleImgError}
+        />
+        <div className="home-review-card__rated-meta">
+          <span className="home-review-card__game-title">{item.game.title}</span>
+          {item.rating != null && (
+            <div className="home-review-card__rated-stars">
+              <StarRating rating={item.rating} size={26} />
+              <span className="home-review-card__score">{item.rating.toFixed(1)}</span>
+            </div>
+          )}
+        </div>
+      </Pressable>
+    )
+  }
+
+  if (item.type === 'listed') {
+    const covers = (listCovers || []).slice(0, 4)
+    return (
+      <div className="home-review-card__content">
+        <Pressable
+          as="div"
+          className="home-review-card__game-row"
+          onClick={onGameClick}
+          aria-label={`View ${item.game.title}`}
+        >
+          <img
+            src={img}
+            className="home-review-card__cover home-review-card__cover--lg"
+            alt=""
+            loading="lazy"
+            onError={handleImgError}
+          />
+          <span className="home-review-card__game-title">{item.game.title}</span>
+        </Pressable>
+
+        {item.listId && (
+          <Pressable
+            className="home-review-card__list-pill"
+            onClick={onListClick}
+            aria-label={`View ${listName || 'list'}`}
+          >
+            {listName || 'a list'}
+            {listGameCount != null ? ` \u00b7 ${listGameCount} game${listGameCount === 1 ? '' : 's'}` : ''}
+          </Pressable>
+        )}
+
+        {covers.length > 0 && (
+          <Pressable
+            as="div"
+            className="home-review-card__mosaic"
+            onClick={onListClick}
+            aria-label={`View ${listName || 'list'} covers`}
+          >
+            {covers.map((src, i) => (
+              <span key={i} className="home-review-card__mosaic-cell">
+                <img src={src} alt="" loading="lazy" />
+              </span>
+            ))}
+          </Pressable>
+        )}
+      </div>
+    )
+  }
+
+  // finished / backlogged / played / favorited — cover-forward status rows
+  const label = statusLabel(item)
+  return (
+    <div className="home-review-card__content">
+      <Pressable
+        as="div"
+        className="home-review-card__game-row"
+        onClick={onGameClick}
+        aria-label={`View ${item.game.title}`}
+      >
+        <img
+          src={img}
+          className="home-review-card__cover home-review-card__cover--lg"
+          alt=""
+          loading="lazy"
+          onError={handleImgError}
+        />
+        <span className="home-review-card__game-title">{item.game.title}</span>
+      </Pressable>
+      {label && <span className="home-review-card__status-pill">{label}</span>}
+    </div>
+  )
 }
 
 /**
  * HomeReviewCard — "The Feed"'s per-item card. Renders every unified
- * activity type communityService.getHomeFeed returns.
+ * activity type communityService.getHomeFeed returns (today just
+ * 'reviewed'/'rated' — see getHomeFeed's doc comment) plus every type
+ * this shell is built to support ('listed', 'backlogged', 'finished',
+ * 'played', 'favorited') so it's ready the moment the feed emits them.
  *
- * Distinct from Explore's `RecentActivityCard` (the taste-match /
- * genre-overlap strip lives there exclusively — never here) and from
- * the canonical `ReviewCard` (cover-header + gradient treatment used by
- * Profile/GameDetail). Home's version leads with the review TEXT.
+ * Every type renders inside the identical <ReviewCardShell/> — one
+ * surface, one hairline border, one radius/padding, no nested surfaces,
+ * no dividers between cards — with a 3px left accent bar colored by
+ * event type (green = review/rating, purple = list-add, cobalt = every
+ * other status event) and a single-line header: avatar + "{actor} {verb}"
+ * + a right-aligned relative timestamp. Only the CONTENT ZONE below the
+ * header adapts per type (see HomeCardContent) — that's the part of the
+ * concept that keeps a rating from ever looking like a review missing
+ * its text, or a list-add from looking like a bare cover.
  *
- * Both layouts below render inside the shared <ReviewCardShell/> — the
- * same bounded card surface (background, hairline border, radius,
- * padding, gap) every other review-display surface in the app uses —
- * so Home's feed reads as a stack of individually bounded cards rather
- * than a divided list, with no per-card divider border. Two layouts,
- * chosen from `item.type` (a property of the data, not a display
- * preference the caller passes in):
- *   - 'reviewed' → full card: one-line <ReviewCardShellHeader/> (avatar +
- *     name + "reviewed" + timestamp), game cover + title + stars,
- *     clamped body with a "more" affordance, and an action row (react,
- *     reply).
- *   - anything else ('rated', 'listed', 'backlogged', 'finished',
- *     'played', 'favorited') → compact event row: cover + "{actor} {verb}
- *     {game}[...]" + timestamp + react, with "View" to the list for
- *     'listed' rows (see ListViewAction) where it makes sense. This isn't
- *     a review at all (no rating/body to lead with), so it keeps its own
- *     horizontal cover+sentence+actions layout rather than adopting the
- *     header — only the surrounding shell (bounded box) is shared.
- *
- * Reactions are real: 'reviewed'/'rated' use `review_likes` (via
- * useLikeState); every other event type uses the generic cross-surface
- * `reactions` table (via EventReactButton/useReactions). Reply counts on
- * the full card are `review_comments` (item.commentCount, batched by
- * communityService.getHomeFeed's getCommentCountsForReviews) — never
- * fabricated placeholders.
+ * Likes: 'reviewed'/'rated' use `review_likes` (via useLikeState); every
+ * other type uses the generic cross-surface `reactions` table (via
+ * EventReactButton/useReactions) — that table is polymorphic
+ * (target_type: 'activity') and already supports non-review targets.
+ * Comments: `review_comments` only has a review_id FK — NOT polymorphic
+ * — so every non-review type renders the comment affordance as a
+ * visible no-op rather than a fabricated count (see CommentAction).
  *
  * @param {{ item: object }} props  See communityService.getHomeFeed's
- *   doc comment for the full per-type item shape.
+ *   doc comment for the 'reviewed'/'rated' item shape. Other types add:
+ *   listId, listName?, listGameCount?, listPreviewCovers?, reactionTargetId,
+ *   durationSeconds? (all optional/omitted rather than fabricated).
  */
 export default function HomeReviewCard({ item }) {
   const navigate = useNavigate()
-  const isReviewType = item.type === 'reviewed' || item.type === 'rated'
-  const isCompact = item.type !== 'reviewed' || !item.body
+  const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
   const [expanded, setExpanded] = useState(false)
   const [bodyOverflows, setBodyOverflows] = useState(false)
   const bodyRef = useRef(null)
 
+  const listPreview = useListPreview(item.type === 'listed' ? item.listId : null)
+  const listName = item.listName || listPreview?.name || null
+  const listGameCount = item.listGameCount ?? listPreview?.gameCount ?? null
+  const listCovers =
+    item.listPreviewCovers ||
+    (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
+
   useLayoutEffect(() => {
-    if (isCompact || expanded) {
+    if (item.type !== 'reviewed' || expanded) {
       setBodyOverflows(false)
       return
     }
     const el = bodyRef.current
     if (!el) return
     setBodyOverflows(el.scrollHeight > el.clientHeight + 1)
-  }, [item.body, isCompact, expanded])
+  }, [item.body, item.type, expanded])
 
   const when = relativeTime(item.createdAt)
   const img = item.game.image || COVER_FALLBACK
@@ -210,6 +391,11 @@ export default function HomeReviewCard({ item }) {
       `/game/${item.game.id}`,
       item.game.image ? { state: { coverImage: item.game.image } } : undefined
     )
+  }
+
+  const goToList = (e) => {
+    e?.stopPropagation?.()
+    if (item.listId) navigate(`/list/${item.listId}`)
   }
 
   // TODO(reply-thread): a dedicated /reviews/:id/comments thread screen is
@@ -241,66 +427,12 @@ export default function HomeReviewCard({ item }) {
     }
   }
 
-  const ReactButton = ({ className = '' }) => (
-    <Pressable
-      className={`home-review-card__react${className ? ` ${className}` : ''}`}
-      onClick={handleReact}
-      aria-pressed={likeState.liked}
-      aria-label={likeState.liked ? 'Remove reaction' : 'React'}
-    >
-      {likeState.liked ? (
-        <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
-      ) : (
-        <HiOutlineHeart className="home-review-card__heart-icon" />
-      )}
-      <span>{displayedLikeCount}</span>
-    </Pressable>
-  )
-
-  if (isCompact) {
-    const showViewAction = item.type === 'listed'
-    return (
-      <ReviewCardShell className={`home-review-card home-review-card--compact home-review-card--${item.type}`}>
-        <Pressable
-          as="div"
-          className="home-review-card__compact-cover"
-          onClick={goToGame}
-          aria-label={`View ${item.game.title}`}
-        >
-          <img src={img} alt="" loading="lazy" onError={(e) => { e.target.src = COVER_FALLBACK }} />
-        </Pressable>
-
-        <div className="home-review-card__compact-body">
-          <p className="home-review-card__compact-sentence">
-            <button type="button" className="home-review-card__compact-name" onClick={goToAuthor}>
-              {item.author.displayName}
-            </button>{' '}
-            <CompactVerbPhrase item={item} onGameClick={goToGame} />
-          </p>
-          <div className="home-review-card__compact-meta">
-            {item.type === 'rated' && item.rating != null && <StarRating rating={item.rating} size={13} />}
-            <span className="home-review-card__time">{when}</span>
-          </div>
-        </div>
-
-        <div className="home-review-card__compact-actions">
-          {showViewAction && <ListViewAction listId={item.listId} />}
-          {isReviewType ? (
-            <ReactButton className="home-review-card__react--compact" />
-          ) : (
-            <EventReactButton targetId={item.reactionTargetId} className="home-review-card__react--compact" />
-          )}
-        </div>
-      </ReviewCardShell>
-    )
-  }
-
   return (
-    <ReviewCardShell className="home-review-card">
+    <ReviewCardShell className={`home-review-card home-review-card--${item.type}`}>
       <ReviewCardShellHeader
         avatar={
           <button type="button" className="home-review-card__avatar-btn" onClick={goToAuthor}>
-            <Avatar user={item.author} size={36} />
+            <Avatar user={item.author} size={32} />
           </button>
         }
         end={<span className="home-review-card__time">{when}</span>}
@@ -308,49 +440,45 @@ export default function HomeReviewCard({ item }) {
         <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
           {item.author.displayName}
         </button>
-        <span className="home-review-card__verb">reviewed</span>
+        <span className="home-review-card__verb">{headerVerb(item, listName)}</span>
       </ReviewCardShellHeader>
 
-      <Pressable
-        as="div"
-        className="home-review-card__game-row"
-        onClick={goToGame}
-        aria-label={`View ${item.game.title}`}
-      >
-        <img
-          src={img}
-          className="home-review-card__game-cover"
-          alt=""
-          loading="lazy"
-          onError={(e) => { e.target.src = COVER_FALLBACK }}
-        />
-        <div className="home-review-card__game-meta">
-          <span className="home-review-card__game-title">{item.game.title}</span>
-          {item.rating != null && <StarRating rating={item.rating} size={15} />}
-        </div>
-      </Pressable>
-
-      <div className="home-review-card__body">
-        <p ref={bodyRef} className={expanded ? '' : 'home-review-card__clamp'}>
-          {item.body}
-        </p>
-        {!expanded && bodyOverflows && (
-          <button
-            type="button"
-            className="home-review-card__more"
-            onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
-          >
-            more
-          </button>
-        )}
-      </div>
+      <HomeCardContent
+        item={item}
+        img={img}
+        onGameClick={goToGame}
+        onListClick={goToList}
+        listName={listName}
+        listGameCount={listGameCount}
+        listCovers={listCovers}
+        expanded={expanded}
+        onExpand={(e) => {
+          e.stopPropagation()
+          setExpanded(true)
+        }}
+        bodyOverflows={bodyOverflows}
+        bodyRef={bodyRef}
+      />
 
       <div className="home-review-card__actions">
-        <ReactButton />
-        <Pressable className="home-review-card__reply" onClick={goToReply} aria-label="Reply">
-          <HiOutlineChat />
-          <span>{item.commentCount || 0}</span>
-        </Pressable>
+        {isReviewType ? (
+          <Pressable
+            className="home-review-card__react"
+            onClick={handleReact}
+            aria-pressed={likeState.liked}
+            aria-label={likeState.liked ? 'Remove reaction' : 'React'}
+          >
+            {likeState.liked ? (
+              <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+            ) : (
+              <HiOutlineHeart className="home-review-card__heart-icon" />
+            )}
+            <span>{displayedLikeCount}</span>
+          </Pressable>
+        ) : (
+          <EventReactButton targetId={item.reactionTargetId} />
+        )}
+        <CommentAction item={item} onReply={goToReply} />
       </div>
     </ReviewCardShell>
   )
