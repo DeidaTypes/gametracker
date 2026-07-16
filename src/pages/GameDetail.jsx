@@ -1268,7 +1268,7 @@ function GameDetail() {
           })()}
         </div>
 
-        {/* Similar Games — SimilarGamesRow self-fetches in parallel; renders null (incl. header) if no results */}
+        {/* More Like This — SimilarGamesRow self-fetches in parallel; renders null (incl. header/divider) if no results */}
         <SimilarGamesRow
           gameId={gameId}
           genreIds={game.genreIds || []}

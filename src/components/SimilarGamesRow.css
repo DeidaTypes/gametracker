@@ -14,17 +14,23 @@
   display: none;
 }
 
-.sgr-cover-btn {
+.sgr-item {
   flex-shrink: 0;
+  width: 120px;
+  scroll-snap-align: start;
+}
+
+.sgr-cover-btn {
+  display: block;
   width: 120px;
   height: 180px;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  scroll-snap-align: start;
   border-radius: 8px;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sgr-cover-img {
@@ -41,7 +47,37 @@
 }
 
 .sgr-cover-skeleton {
-  flex-shrink: 0;
   border-radius: 8px;
-  scroll-snap-align: start;
+}
+
+/* Title always renders (real data — the game's own name). Clamped to a
+   single line so a long title never breaks row height consistency. */
+.sgr-title {
+  margin: 8px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Only rendered when a real per-item match score exists — see
+   SimilarGamesRow.jsx. Never fabricated. */
+.sgr-match {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--accent-review);
+}
+
+.sgr-title-skeleton {
+  width: 70%;
+  height: 13px;
+  margin-top: 8px;
+  border-radius: var(--radius-xs, 4px);
 }
