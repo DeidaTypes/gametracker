@@ -1587,3 +1587,31 @@
 @media (prefers-reduced-motion: reduce) {
   .gd-pulse-live-dot { animation: none; }
 }
+
+/* ── Headrow hero: short art strip + poster/title side-by-side ── */
+.gd-hero { min-height: 190px; }
+
+.gd-title-section {
+  margin-top: -54px;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.gd-hero-cover-wrapper {
+  margin: 0;
+  display: block;
+  flex-shrink: 0;
+}
+
+.gd-hero-cover { width: 96px; }
+
+.gd-title {
+  font-size: var(--font-size-display-l);
+  line-height: var(--line-height-display-l);
+}
+
+@media (min-width: 769px) {
+  .gd-hero { min-height: 240px; }
+  .gd-hero-cover { width: 120px; }
+  .gd-title-section { margin-top: -64px; }
+}

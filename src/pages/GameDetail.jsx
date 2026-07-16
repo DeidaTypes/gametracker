@@ -605,7 +605,10 @@ function GameDetail() {
             </svg>
           </button>
         </div>
+      </div>
 
+      {/* ── Poster (in hero above) + Title ── */}
+      <div className="gd-title-section">
         <div className="gd-hero-cover-wrapper">
           {/* Poster glow — radial dominant-color bloom behind the cover art */}
           <div className="gd-poster-glow" style={glowStyle} aria-hidden="true" />
@@ -619,10 +622,6 @@ function GameDetail() {
             </SharedCover>
           </div>
         </div>
-      </div>
-
-      {/* ── Poster (in hero above) + Title ── */}
-      <div className="gd-title-section">
         <div className="gd-title-text">
           <h1 className="gd-title">{game.title}</h1>
           {(game.year || game.developers.length > 0) && (
