@@ -412,31 +412,6 @@
   color: var(--color-on-accent, #fff);
 }
 
-.gd-status-more-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.gd-status-more-btn:hover {
-  background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
-  border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
-}
-
-.gd-status-more-btn:active {
-  transform: scale(0.94);
-}
-
 /* =====================================================
    RATING CARD — wraps CommunityRatingCard (numeric average +
    whole-star histogram). This wrapper only owns page-level padding/
@@ -520,11 +495,12 @@
   color: var(--color-text-primary);
 }
 
-/* Vertical stack of ReviewCards — 16px gap as specified */
+/* Vertical stack of ReviewCards — shared shell gap, consistent with
+   every other review-display surface (Home, Explore, Profile, thread). */
 .gd-top-reviews-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--section-gap);
 }
 
 /* Empty-state block when no reviews exist and the current user hasn't reviewed */
@@ -1614,4 +1590,72 @@
   .gd-hero { min-height: 240px; }
   .gd-hero-cover { width: 120px; }
   .gd-title-section { margin-top: -64px; }
+}
+
+/* =====================================================
+   REVIEW / JOURNAL QUICK-ACTION — GRADIENT FILL OVERRIDE
+   Appended last on purpose: at equal specificity this overrides the
+   outline treatment defined earlier in this file (.gd-action-pair-btn--review
+   / --journal, their :hover rules, and the span/svg accent-color rules)
+   without editing or removing any of it. Turns both buttons into gradient
+   fills instead of accent-outlined surfaces.
+   Review uses the existing --grad-cta token (cobalt → review-green).
+   Journal has no prebuilt token pairing --accent-journal with cobalt, so
+   it composes the same recipe by hand from existing variables.
+   ===================================================== */
+.gd-action-pair-btn--review {
+  background: var(--grad-cta);
+  border: none;
+  color: var(--color-on-accent);
+}
+
+.gd-action-pair-btn--journal {
+  background: linear-gradient(120deg, var(--accent) 0%, var(--accent-journal) 100%);
+  border: none;
+  color: var(--color-on-accent);
+}
+
+.gd-action-pair-btn--review span,
+.gd-action-pair-btn--review svg,
+.gd-action-pair-btn--journal span,
+.gd-action-pair-btn--journal svg {
+  color: var(--color-on-accent);
+}
+
+.gd-action-pair-btn--review svg,
+.gd-action-pair-btn--journal svg {
+  stroke: currentColor;
+}
+
+.gd-action-pair-btn--review:hover {
+  background: var(--grad-cta);
+}
+
+.gd-action-pair-btn--journal:hover {
+  background: linear-gradient(120deg, var(--accent) 0%, var(--accent-journal) 100%);
+}
+
+/* =====================================================
+   STATUS TILE — ACTIVE STATE GRADIENT FILL OVERRIDE
+   Appended last on purpose: at equal specificity this overrides the
+   solid --color-brand-primary fill defined earlier (.gd-status-tile--active)
+   without editing or removing any of it. Inactive tiles (plain
+   .gd-status-tile) are untouched — muted surface + border — so the
+   active tile stays visually distinct.
+   Composed the same way as the contribute buttons above: the existing
+   --grad-cta token (cobalt --accent → --accent-review green).
+   ===================================================== */
+.gd-status-tile--active {
+  background: var(--grad-cta);
+  border: none;
+  color: var(--color-on-accent, #fff);
+}
+
+/* Restated because .gd-status-tile:hover (class + pseudo-class) is
+   higher specificity than the plain .gd-status-tile--active class
+   above and would otherwise overwrite the gradient with the muted
+   hover surface when the active tile is hovered. */
+.gd-status-tile--active:hover {
+  background: var(--grad-cta);
+  border-color: transparent;
 }

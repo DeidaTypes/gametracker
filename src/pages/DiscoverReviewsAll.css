@@ -75,7 +75,7 @@
 .dra-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md, 12px);
+  gap: var(--section-gap);
   padding: 8px var(--page-padding, 16px) 0;
   width: 100%;
   box-sizing: border-box;

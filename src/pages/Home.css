@@ -294,7 +294,9 @@
    HOME SECTION VARIANTS
    ============================================= */
 
-/* The feed section has no horizontal padding — HomeFeed handles it per-row */
+/* The feed section itself has no horizontal padding — HomeFreshReviews'
+   own head/list elements apply --container-padding so its bounded
+   review cards sit inset from the screen edge like every other card. */
 .home-section--feed {
   padding: 0;
 }

@@ -1,0 +1,58 @@
+/* ============================================================
+   ReviewCardShell — shared bounded-card chrome for every review
+   surface app-wide. Tokens only — no hardcoded hex.
+   Namespace: review-card-shell__*
+   ============================================================ */
+
+.review-card-shell {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--review-card-radius);
+  padding: var(--review-card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+/* ── One-line header: avatar + flexible actor/action text + fixed end ── */
+.review-card-shell__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.review-card-shell__header-avatar {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.review-card-shell__header-line {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+/* Children of the header line truncate individually (e.g. a long game
+   or display name) rather than the row wrapping to a second line. */
+.review-card-shell__header-line > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.review-card-shell__header-end {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}

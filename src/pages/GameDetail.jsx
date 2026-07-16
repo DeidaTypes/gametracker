@@ -597,6 +597,17 @@ function GameDetail() {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
+          <button
+            className="gd-glass-btn"
+            onClick={() => setStatusSheetOpen(true)}
+            aria-label="More status options: log play, add to a custom list"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="19" r="1.5" />
+            </svg>
+          </button>
           <button className="gd-glass-btn" onClick={handleShare} aria-label="Share">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -660,19 +671,9 @@ function GameDetail() {
             )
           })}
         </div>
-        <button
-          className="gd-status-more-btn"
-          onClick={() => setStatusSheetOpen(true)}
-          aria-label="More status options: log play, add to a custom list"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="5" r="1.5" />
-            <circle cx="12" cy="12" r="1.5" />
-            <circle cx="12" cy="19" r="1.5" />
-          </svg>
-        </button>
         {/* Hidden sheet — same unchanged 4-status picker, plus Log play and
-             custom lists, still reachable via the "more" button above. */}
+             custom lists, still reachable via the overflow button in the
+             hero topbar above. */}
         <AddToListButton
           game={game}
           variant="hidden"
@@ -1098,7 +1099,7 @@ function GameDetail() {
                     <div key={row.id} id={`review-${row.id}`}>
                       <ReviewCard
                         review={shaped}
-                        variant="default"
+                        variant="gamedetail"
                         showOwnPill={own}
                         isOwn={own}
                         onEdit={openReviewComposer}

@@ -101,7 +101,7 @@
 .gra-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--section-gap);
   padding: var(--spacing-md) var(--page-padding, 20px);
 }
 

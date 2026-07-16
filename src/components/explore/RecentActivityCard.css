@@ -2,29 +2,18 @@
    RecentActivityCard — Discover "Recently" shelf.
    Followed users' recent ratings + reviews (no list-adds), each with a
    real algorithmic taste-match strip and contextual actions.
+
+   The bounded card surface (background, hairline border, radius,
+   padding, gap) and the one-line actor/action header come from the
+   shared <ReviewCardShell/> + <ReviewCardShellHeader/> — see
+   src/components/reviews/ReviewCardShell.css. Everything below only
+   layers Explore-specific content styling on top of that shared shell.
    ============================================= */
 
 .recent-activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.recent-activity-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border-radius: var(--radius-lg, 16px);
-  background: var(--bg-surface);
-  border: 1px solid var(--color-border);
-}
-
-/* ---- Head: actor + action + game sentence ---- */
-.recent-activity-card__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  gap: var(--section-gap);
 }
 
 .recent-activity-card__avatar-btn {
@@ -34,19 +23,6 @@
   cursor: pointer;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
-}
-
-.recent-activity-card__head-text {
-  min-width: 0;
-  flex: 1;
-}
-
-.recent-activity-card__sentence {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--text-secondary);
 }
 
 .recent-activity-card__actor-name,
@@ -65,16 +41,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.recent-activity-card__verb {
+  color: var(--text-secondary);
+}
+
 .recent-activity-card__game-name {
   color: var(--accent);
   font-weight: var(--font-weight-semibold);
-}
-
-.recent-activity-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
 }
 
 .recent-activity-card__time {

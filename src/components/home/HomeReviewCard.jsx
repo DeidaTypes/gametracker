@@ -10,6 +10,7 @@ import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
+import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
@@ -144,15 +145,24 @@ function CompactVerbPhrase({ item, onGameClick }) {
  * the canonical `ReviewCard` (cover-header + gradient treatment used by
  * Profile/GameDetail). Home's version leads with the review TEXT.
  *
- * Two layouts, chosen from `item.type` (a property of the data, not a
- * display preference the caller passes in):
- *   - 'reviewed' → full card: avatar/name/timestamp header, game cover +
- *     title + stars, clamped body with a "more" affordance, and an
- *     action row (react, reply).
+ * Both layouts below render inside the shared <ReviewCardShell/> — the
+ * same bounded card surface (background, hairline border, radius,
+ * padding, gap) every other review-display surface in the app uses —
+ * so Home's feed reads as a stack of individually bounded cards rather
+ * than a divided list, with no per-card divider border. Two layouts,
+ * chosen from `item.type` (a property of the data, not a display
+ * preference the caller passes in):
+ *   - 'reviewed' → full card: one-line <ReviewCardShellHeader/> (avatar +
+ *     name + "reviewed" + timestamp), game cover + title + stars,
+ *     clamped body with a "more" affordance, and an action row (react,
+ *     reply).
  *   - anything else ('rated', 'listed', 'backlogged', 'finished',
  *     'played', 'favorited') → compact event row: cover + "{actor} {verb}
  *     {game}[...]" + timestamp + react, with "View" to the list for
- *     'listed' rows (see ListViewAction) where it makes sense.
+ *     'listed' rows (see ListViewAction) where it makes sense. This isn't
+ *     a review at all (no rating/body to lead with), so it keeps its own
+ *     horizontal cover+sentence+actions layout rather than adopting the
+ *     header — only the surrounding shell (bounded box) is shared.
  *
  * Reactions are real: 'reviewed'/'rated' use `review_likes` (via
  * useLikeState); every other event type uses the generic cross-surface
@@ -250,7 +260,7 @@ export default function HomeReviewCard({ item }) {
   if (isCompact) {
     const showViewAction = item.type === 'listed'
     return (
-      <article className={`home-review-card home-review-card--compact home-review-card--${item.type}`}>
+      <ReviewCardShell className={`home-review-card home-review-card--compact home-review-card--${item.type}`}>
         <Pressable
           as="div"
           className="home-review-card__compact-cover"
@@ -281,26 +291,25 @@ export default function HomeReviewCard({ item }) {
             <EventReactButton targetId={item.reactionTargetId} className="home-review-card__react--compact" />
           )}
         </div>
-      </article>
+      </ReviewCardShell>
     )
   }
 
   return (
-    <article className="home-review-card">
-      <header className="home-review-card__head">
-        <button type="button" className="home-review-card__avatar-btn" onClick={goToAuthor}>
-          <Avatar user={item.author} size={36} />
+    <ReviewCardShell className="home-review-card">
+      <ReviewCardShellHeader
+        avatar={
+          <button type="button" className="home-review-card__avatar-btn" onClick={goToAuthor}>
+            <Avatar user={item.author} size={36} />
+          </button>
+        }
+        end={<span className="home-review-card__time">{when}</span>}
+      >
+        <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
+          {item.author.displayName}
         </button>
-        <div className="home-review-card__head-text">
-          <p className="home-review-card__sentence">
-            <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
-              {item.author.displayName}
-            </button>{' '}
-            <span className="home-review-card__verb">reviewed</span>
-          </p>
-          <span className="home-review-card__time">{when}</span>
-        </div>
-      </header>
+        <span className="home-review-card__verb">reviewed</span>
+      </ReviewCardShellHeader>
 
       <Pressable
         as="div"
@@ -343,6 +352,6 @@ export default function HomeReviewCard({ item }) {
           <span>{item.commentCount || 0}</span>
         </Pressable>
       </div>
-    </article>
+    </ReviewCardShell>
   )
 }

@@ -1,18 +1,19 @@
 /* =====================================================
    REVIEW CARD — Sprint 5 canonical component
-   Used on Home timeline, Game detail, and Profile reviews tab.
+   Used on Profile Reviews tab, the review detail/thread page, Game
+   Detail's review list, and both "all reviews" screens.
    The cover header pulls a dominant color from the cover image
    (set via --dominant-rgb on the cover header element).
+
+   The bounded card surface itself (background, hairline border,
+   radius, padding, internal gap) comes from the shared
+   <ReviewCardShell/> (src/components/reviews/ReviewCardShell.css) —
+   the same shell HomeReviewCard and RecentActivityCard use, so every
+   review-display surface in the app shares an identical box. `.review-card`
+   below only adds the cursor affordance layered on top of that shell.
    ===================================================== */
 
 .review-card {
-  background: var(--color-bg-tertiary);
-  border-radius: var(--review-card-radius);
-  padding: var(--review-card-padding);
-  display: flex;
-  flex-direction: column;
-  gap: var(--section-gap);
-  box-shadow: var(--surface-1-shadow);
   cursor: pointer;
   /* Avoid triggering global :hover brightness lift on the card itself —
      interactive children handle their own feedback. */
@@ -368,6 +369,104 @@
 
 .review-card__kebab-menu-report {
   color: var(--color-text-secondary) !important;
+}
+
+/* =====================================================
+   GAMEDETAIL VARIANT — compact, text-forward layout
+   Used only on the Game Detail page's review list (variant="gamedetail").
+   No cover thumbnail / game title — the surrounding page already scopes
+   to that game. Everything below is scoped under .review-card--gamedetail
+   so it cannot affect the default/compact/detail variants.
+   ===================================================== */
+
+.review-card--gamedetail .review-card__gd-avatar-btn {
+  display: flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-card--gamedetail .review-card__gd-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.review-card--gamedetail .review-card__gd-name {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-card--gamedetail .review-card__gd-meta {
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+}
+
+/* Star rating — restrained, flat, right-aligned in the header.
+   Overrides are scoped here only; StarRating.css's own rules
+   (used by every other variant) are left untouched. */
+.review-card--gamedetail .star-rating-display {
+  flex-shrink: 0;
+}
+
+.review-card--gamedetail .star-rating-display svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Kill the shared component's specular-highlight glow
+   (filter: brightness + drop-shadow) and mute the gold fill
+   so it reads as restrained rather than bright/saturated. */
+.review-card--gamedetail .star-rating__layer--fill {
+  filter: none;
+  opacity: 0.75;
+}
+
+/* Empty stars: push the already-muted token further into the
+   background so they read as low-contrast, not a competing color. */
+.review-card--gamedetail .star-rating__layer--base {
+  opacity: 0.6;
+}
+
+.review-card--gamedetail .review-card__gd-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-card--gamedetail .review-card__gd-footer button {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+/* Outline-style reaction icons, muted and small. HiOutlineChat is
+   already stroke-based/outline; this only resizes + mutes it and the
+   heart icon's unliked (outline) state to match. */
+.review-card--gamedetail .review-card__gd-footer button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.review-card--gamedetail .review-card__gd-footer button[aria-pressed='true'] {
+  color: var(--color-brand-primary);
 }
 
 /* ---------------- Heart pulse animation ---------------- */

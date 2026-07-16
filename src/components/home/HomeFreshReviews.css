@@ -48,10 +48,15 @@
   color: var(--color-text-tertiary);
 }
 
-/* ── List ── */
+/* ── List ──
+   Each item is now an individually bounded <ReviewCardShell/> card
+   (no shared divider borders), so the list needs its own gap — the
+   same --section-gap every other review list in the app uses. */
 .fresh-reviews__list {
   display: flex;
   flex-direction: column;
+  gap: var(--section-gap);
+  padding: 0 var(--container-padding);
 }
 
 /* ── Find people nudge (secondary CTA) ── */

@@ -1218,7 +1218,7 @@
 .profile-reviews__list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--section-gap);
 }
 
 .profile-reviews__sentinel {

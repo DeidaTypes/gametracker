@@ -11,29 +11,22 @@
      - purple (--accent-journal, via --accent-journal-text for AA on
        the dark surface) → social: react count, reply/comment, on every
        row regardless of type.
+
+   The bounded card surface (background, hairline border, radius,
+   padding, and the gap between this card's own sections) comes from the
+   shared <ReviewCardShell/> — see src/components/reviews/ReviewCardShell.css.
+   Everything below only layers Home-specific content styling (the
+   accent bar, verb colors, star tint) on top of that shared shell.
    ============================================================ */
 
 .home-review-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px var(--container-padding);
-  padding-left: calc(var(--container-padding) + 8px);
-  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
   /* Reviews/ratings accent bar — green, scoped to this card only. */
   border-left: 3px solid color-mix(in srgb, var(--accent-review) 55%, transparent);
   /* Star fill (StarRating reads --star from its ancestors) scoped to
      Home only — the shared StarRating component keeps its gold fill
      everywhere else in the app. */
   --star: var(--accent-review);
-}
-
-/* ── Header: avatar + name + verb + timestamp ── */
-.home-review-card__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
 }
 
 .home-review-card__avatar-btn {
@@ -49,21 +42,6 @@
 .home-review-card__avatar-btn:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
-}
-
-.home-review-card__head-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.home-review-card__sentence {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
 }
 
 .home-review-card__author-name {
@@ -241,13 +219,15 @@
   color: var(--accent-journal-text);
 }
 
-/* ── Compact variant (non-review activity rows) ── */
+/* ── Compact variant (non-review activity rows) ──
+   Overrides the shell's column layout to a row (cover + text + actions)
+   — this isn't a review (no rating/body), so it keeps its own internal
+   layout; the surrounding bounded box (background/border/radius/padding)
+   is still the shared shell, same as every other card. */
 .home-review-card--compact {
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  padding: 12px var(--container-padding);
-  padding-left: calc(var(--container-padding) + 8px);
 }
 
 /* System/activity accent — every compact type except 'rated' (which

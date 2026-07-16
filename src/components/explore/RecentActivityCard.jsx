@@ -10,6 +10,7 @@ import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { addGameToBacklog } from '../../services/libraryService'
 import { genreColorVar } from '../../utils/genreColors'
+import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import './RecentActivityCard.css'
 
 const ACTION_LABEL = { reviewed: 'reviewed', rated: 'rated' }
@@ -86,6 +87,13 @@ function TasteMatchStrip({ tasteMatch }) {
  *   - Add to backlog (always — writes want-to-play + game_trackers)
  *   - React / reply (only when the activity has a reviewId — a bare
  *     `rated` event with no review has nothing to like/comment on)
+ *
+ * Renders inside the shared <ReviewCardShell/> (same bounded box as
+ * Home/GameDetail/Profile/thread) with a one-line <ReviewCardShellHeader/>
+ * (avatar + actor + action + game, rating + time pinned to the end).
+ * The algorithmic taste-match strip below the cover is Explore-exclusive
+ * content and is NOT part of the shared shell — Home's card never shows
+ * it, per the discovery-vs-conversation distinction between the two feeds.
  */
 export default function RecentActivityCard({ item }) {
   const navigate = useNavigate()
@@ -140,27 +148,28 @@ export default function RecentActivityCard({ item }) {
   }
 
   return (
-    <article className="recent-activity-card">
-      <div className="recent-activity-card__head">
-        <button type="button" className="recent-activity-card__avatar-btn" onClick={goToAuthor}>
-          <Avatar user={item.actor} size={32} />
-        </button>
-        <div className="recent-activity-card__head-text">
-          <p className="recent-activity-card__sentence">
-            <button type="button" className="recent-activity-card__actor-name" onClick={goToAuthor}>
-              {item.actor.displayName}
-            </button>{' '}
-            {ACTION_LABEL[item.type] || 'rated'}{' '}
-            <button type="button" className="recent-activity-card__game-name" onClick={goToGame}>
-              {item.game.title}
-            </button>
-          </p>
-          <div className="recent-activity-card__meta">
+    <ReviewCardShell className="recent-activity-card">
+      <ReviewCardShellHeader
+        avatar={
+          <button type="button" className="recent-activity-card__avatar-btn" onClick={goToAuthor}>
+            <Avatar user={item.actor} size={32} />
+          </button>
+        }
+        end={
+          <>
             {item.rating != null && <StarRating rating={item.rating} size={12} />}
             <span className="recent-activity-card__time">{timeAgo(item.timestamp)}</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      >
+        <button type="button" className="recent-activity-card__actor-name" onClick={goToAuthor}>
+          {item.actor.displayName}
+        </button>
+        <span className="recent-activity-card__verb">{ACTION_LABEL[item.type] || 'rated'}</span>
+        <button type="button" className="recent-activity-card__game-name" onClick={goToGame}>
+          {item.game.title}
+        </button>
+      </ReviewCardShellHeader>
 
       <Pressable
         as="div"
@@ -210,6 +219,6 @@ export default function RecentActivityCard({ item }) {
           </div>
         )}
       </div>
-    </article>
+    </ReviewCardShell>
   )
 }
