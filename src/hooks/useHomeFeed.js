@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getHomeFeed } from '../services/communityService'
+import { ACTIVITY_EVENT_LOGGED } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
 import { APP_RESUMED_EVENT } from './useAppResume'
+
+const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
 
 /**
  * useHomeFeed — pagination + scope tracking for the Home text-forward
@@ -20,6 +23,18 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  * via prefetchLikeStatesForReviews so HomeReviewCard's react button
  * renders the correct liked/count on first paint without an extra
  * per-card round-trip.
+ *
+ * Seamless own-activity updates: every mutation Home cares about
+ * (create list, add to list, rate/review, mark finished, add to
+ * backlog) already fire-and-forgets `logActivityEvent` AFTER its
+ * primary write succeeds (see activityEventsService.js), which only
+ * then dispatches ACTIVITY_EVENT_LOGGED. That ordering means a failed
+ * mutation never fires the event — the feed is simply never touched,
+ * so there's nothing to roll back. On success, this hook re-fetches
+ * page 1 (the mutation is already committed, so getHomeFeed already
+ * includes it) and splices in only the ids it hasn't already
+ * rendered, prepended to the top — no loading-flag flip, so the rest
+ * of the list never flashes/reloads.
  */
 export function useHomeFeed({ pageSize = 15 } = {}) {
   const { user } = useAuth()
@@ -93,6 +108,27 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     }
   }, [user?.id, pageSize, loadingMore, hasMore])
 
+  const silentRefresh = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const result = await getHomeFeed({ limit: pageSize })
+      setItems((prev) => {
+        const seen = new Set(prev.map((it) => it.id))
+        const fresh = result.items.filter((it) => !seen.has(it.id))
+        return fresh.length ? [...fresh, ...prev] : prev
+      })
+      setScope(result.scope)
+      if (result.items.length) {
+        prefetchLikeStatesForReviews(
+          result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
+        )
+      }
+    } catch {
+      // Soft-fail — the next natural refresh (mount / app resume) still
+      // picks the new row up eventually.
+    }
+  }, [user?.id, pageSize])
+
   useEffect(() => {
     refresh()
   }, [refresh])
@@ -104,6 +140,14 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [refresh])
+
+  useEffect(() => {
+    function onActivityLogged(e) {
+      if (e?.detail?.actor_user_id === user?.id) silentRefresh()
+    }
+    window.addEventListener(ACTIVITY_EVENT_LOGGED, onActivityLogged)
+    return () => window.removeEventListener(ACTIVITY_EVENT_LOGGED, onActivityLogged)
+  }, [user?.id, silentRefresh])
 
   return { items, loading, loadingMore, hasMore, scope, error, refresh, loadMore }
 }

@@ -49,17 +49,51 @@ function formatDuration(seconds) {
 }
 
 /**
- * One-line header verb for `item.type` — no game name here (that lives
- * in the content zone below). `listName` is passed separately since it
- * may come from the item itself or from useListPreview's lazy hydration.
+ * One-line header verb for `item.type`. For everyone else's cards this
+ * stays name-free (the game lives in the content zone below); for the
+ * viewer's OWN cards (`item.isOwn`) the verb folds the game/list name
+ * straight in, per spec ("You added Hollow Knight to Cozy Nights", "You
+ * rated Hades", "You created Cozy Nights", "You finished Disco
+ * Elysium") — own cards read as a complete sentence with "You" (see the
+ * header render below) even though the content zone still shows the
+ * same cover/details as everyone else's cards.
+ *
+ * `listName` is passed separately since it may come from the item
+ * itself (list_created events carry it directly) or from
+ * useListPreview's lazy hydration (game_added_to_list events don't).
  */
 function headerVerb(item, listName) {
+  const title = item.game?.title
+  if (item.isOwn) {
+    switch (item.type) {
+      case 'reviewed':
+        return title ? `reviewed ${title}` : 'reviewed'
+      case 'rated':
+        return title ? `rated ${title}` : 'rated'
+      case 'listed':
+        if (item.listKind === 'created') return `created ${listName || 'a list'}`
+        return title
+          ? `added ${title} to ${listName || 'a list'}`
+          : `added a game to ${listName || 'a list'}`
+      case 'backlogged':
+        return title ? `added ${title} to your backlog` : 'added a game to your backlog'
+      case 'finished':
+        return title ? `finished ${title}` : 'finished'
+      case 'played':
+        return title ? `played ${title}` : 'played'
+      case 'favorited':
+        return title ? `favorited ${title}` : 'favorited'
+      default:
+        return 'did something'
+    }
+  }
   switch (item.type) {
     case 'reviewed':
       return 'reviewed'
     case 'rated':
       return 'rated'
     case 'listed':
+      if (item.listKind === 'created') return `created ${listName || 'a list'}`
       return listName ? `added a game to ${listName}` : 'added a game to a list'
     case 'backlogged':
       return 'added to backlog'
@@ -126,6 +160,42 @@ function EventReactButton({ targetId }) {
       <span>{count}</span>
     </Pressable>
   )
+}
+
+/**
+ * ReadOnlyLikeCount — own-card like control, task requirement: no
+ * self-reactions, but the count still renders so the viewer can see
+ * engagement on their own activity. A plain non-interactive `<span>`
+ * (not a `<button>`/Pressable) — nothing to press, so nothing pretends
+ * to be pressable.
+ */
+function ReadOnlyLikeCount({ count, liked }) {
+  return (
+    <span
+      className="home-review-card__react home-review-card__react--readonly"
+      aria-label={`${count} like${count === 1 ? '' : 's'}`}
+    >
+      {liked ? (
+        <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+      ) : (
+        <HiOutlineHeart className="home-review-card__heart-icon" />
+      )}
+      <span>{count}</span>
+    </span>
+  )
+}
+
+/**
+ * ReadOnlyEventLikeCount — same as ReadOnlyLikeCount but for non-review
+ * own event types, reading the live count off the same polymorphic
+ * `reactions` cache EventReactButton uses (target_type: 'activity'), so
+ * a reaction added by someone else after page load still shows up here
+ * without a separate round-trip.
+ */
+function ReadOnlyEventLikeCount({ targetId }) {
+  const { reactions } = useReactions('activity', targetId)
+  const mine = reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)
+  return <ReadOnlyLikeCount count={mine?.count || 0} liked={false} />
 }
 
 /**
@@ -248,23 +318,29 @@ function HomeCardContent({
 
   if (item.type === 'listed') {
     const covers = (listCovers || []).slice(0, 4)
+    // list_created events have no specific game (see
+    // communityService._homeFeedItemFromOwnEvent) — skip the game row
+    // entirely rather than rendering a bare/fabricated cover.
+    const hasGame = !!item.game
     return (
       <div className="home-review-card__content">
-        <Pressable
-          as="div"
-          className="home-review-card__game-row"
-          onClick={onGameClick}
-          aria-label={`View ${item.game.title}`}
-        >
-          <img
-            src={img}
-            className="home-review-card__cover home-review-card__cover--lg"
-            alt=""
-            loading="lazy"
-            onError={handleImgError}
-          />
-          <span className="home-review-card__game-title">{item.game.title}</span>
-        </Pressable>
+        {hasGame && (
+          <Pressable
+            as="div"
+            className="home-review-card__game-row"
+            onClick={onGameClick}
+            aria-label={`View ${item.game.title}`}
+          >
+            <img
+              src={img}
+              className="home-review-card__cover home-review-card__cover--lg"
+              alt=""
+              loading="lazy"
+              onError={handleImgError}
+            />
+            <span className="home-review-card__game-title">{item.game.title}</span>
+          </Pressable>
+        )}
 
         {item.listId && (
           <Pressable
@@ -344,10 +420,19 @@ function HomeCardContent({
  * — so every non-review type renders the comment affordance as a
  * visible no-op rather than a fabricated count (see CommentAction).
  *
+ * Own cards (`item.isOwn`, Home-is-the-hub sprint): "You" replaces the
+ * author name in the header, `headerVerb` folds the game/list name
+ * into the verb itself ("You rated Hades"), and the like control
+ * becomes a read-only count (ReadOnlyLikeCount / ReadOnlyEventLikeCount)
+ * — no self-reactions, but engagement from others is still visible.
+ * The comment affordance is untouched by `isOwn`: tapping the count on
+ * an own review still opens the thread, same as anyone else's.
+ *
  * @param {{ item: object }} props  See communityService.getHomeFeed's
- *   doc comment for the 'reviewed'/'rated' item shape. Other types add:
- *   listId, listName?, listGameCount?, listPreviewCovers?, reactionTargetId,
- *   durationSeconds? (all optional/omitted rather than fabricated).
+ *   doc comment for the full item shape. Non-review types add: listId,
+ *   listKind? ('created'|'added'), listName?, listGameCount?,
+ *   listPreviewCovers?, reactionTargetId, durationSeconds? (all
+ *   optional/omitted rather than fabricated).
  */
 export default function HomeReviewCard({ item }) {
   const navigate = useNavigate()
@@ -375,7 +460,7 @@ export default function HomeReviewCard({ item }) {
   }, [item.body, item.type, expanded])
 
   const when = relativeTime(item.createdAt)
-  const img = item.game.image || COVER_FALLBACK
+  const img = item.game?.image || COVER_FALLBACK
   const displayedLikeCount = likeState.count || item.likeCount || 0
 
   const goToAuthor = (e) => {
@@ -387,6 +472,7 @@ export default function HomeReviewCard({ item }) {
 
   const goToGame = (e) => {
     e?.stopPropagation?.()
+    if (!item.game) return
     navigate(
       `/game/${item.game.id}`,
       item.game.image ? { state: { coverImage: item.game.image } } : undefined
@@ -438,7 +524,7 @@ export default function HomeReviewCard({ item }) {
         end={<span className="home-review-card__time">{when}</span>}
       >
         <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
-          {item.author.displayName}
+          {item.isOwn ? 'You' : item.author.displayName}
         </button>
         <span className="home-review-card__verb">{headerVerb(item, listName)}</span>
       </ReviewCardShellHeader>
@@ -461,7 +547,13 @@ export default function HomeReviewCard({ item }) {
       />
 
       <div className="home-review-card__actions">
-        {isReviewType ? (
+        {item.isOwn ? (
+          isReviewType ? (
+            <ReadOnlyLikeCount count={displayedLikeCount} liked={likeState.liked} />
+          ) : (
+            <ReadOnlyEventLikeCount targetId={item.reactionTargetId} />
+          )
+        ) : isReviewType ? (
           <Pressable
             className="home-review-card__react"
             onClick={handleReact}

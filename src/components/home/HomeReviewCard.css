@@ -371,6 +371,14 @@
   cursor: default;
 }
 
+/* Own cards: like becomes a read-only count (no self-reactions) — a
+   real, accurate number, so it stays full-opacity unlike the disabled
+   comment no-op above. Rendered as a <span>, not a button, so removing
+   the pointer affordance is enough to communicate "not interactive". */
+.home-review-card__react--readonly {
+  cursor: default;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-review-card__more,
   .home-review-card__react,

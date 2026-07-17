@@ -9,10 +9,13 @@ import { queueCelebration } from './celebrationService'
 import { supabase } from './supabase'
 import { showToast } from '../components/Toast'
 
-// Map tracker status → Pulse activity_event type. 'want' has no
-// corresponding event type — adding a game to the wishlist is a
-// browsing signal, not Pulse-worthy activity.
+// Map tracker status → Pulse activity_event type. 'want' maps to
+// 'backlogged' — Home-hub sprint: this is surfaced on the viewer's own
+// Home feed (see communityService.getHomeFeed), but Explore/Collections
+// still don't treat it as circle-worthy activity (neither reads
+// 'backlogged' out of activity_events today).
 const STATUS_TO_EVENT_TYPE = {
+  want: ACTIVITY_EVENT_TYPES.BACKLOGGED,
   currently: ACTIVITY_EVENT_TYPES.STARTED,
   played: ACTIVITY_EVENT_TYPES.COMPLETED,
   dropped: ACTIVITY_EVENT_TYPES.DROPPED,
@@ -449,7 +452,7 @@ export function setGameStatus(gameId, newStatus, game = null) {
 
     // Pulse — emit a uniform activity_events row so the follow-graph
     // feed picks the status change up. 'currently' → started, 'played'
-    // → completed, 'dropped' → dropped. Wishlist adds are not surfaced.
+    // → completed, 'dropped' → dropped, 'want' → backlogged (Home-only).
     const eventType = STATUS_TO_EVENT_TYPE[newStatus]
     if (eventType) {
       const baseMeta = {

@@ -51,6 +51,12 @@ export const ACTIVITY_EVENT_TYPES = Object.freeze({
   COMPLETED: 'completed',
   DROPPED: 'dropped',
   GOAL_HIT: 'goal_hit',
+  // Home-feed-hub sprint: "added to backlog" is Pulse-worthy for the
+  // viewer's own Home feed even though it stays excluded from
+  // Explore/Collections (see libraryService.STATUS_TO_EVENT_TYPE and
+  // supabase/migrations/20260704222000_activity_events_backlogged_type.sql,
+  // which adds this literal to the Postgres enum).
+  BACKLOGGED: 'backlogged',
 })
 
 const VALID_TYPES = new Set(Object.values(ACTIVITY_EVENT_TYPES))
@@ -392,6 +398,8 @@ export function formatActivityEventMessage(event) {
     }
     case 'favorited':
       return `${actor} favorited ${game}`
+    case 'backlogged':
+      return `${actor} added ${game} to their backlog`
     case 'listed': {
       const listName = meta.list_name || 'a list'
       if (meta.kind === 'list_created') {
@@ -455,6 +463,7 @@ export function getActivityEventHref(event) {
     case 'dropped':
     case 'favorited':
     case 'rated':
+    case 'backlogged':
       return id ? `/game/${id}` : null
     case 'reviewed': {
       if (!id) return null

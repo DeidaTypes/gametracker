@@ -1029,28 +1029,55 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  * The caller should pass the `scope` it got back on every subsequent
  * `loadMore` call so pagination keeps reading from the same source(s)
  * instead of re-deciding scope on every page (see useHomeFeed.js).
+ * NOTE: this scope decision is about OTHER users' rows only — see
+ * "Own activity" below for the viewer's own stream, which is merged in
+ * on top regardless of scope.
+ *
+ * Own activity (Home-is-the-hub sprint) — the viewer's own reviewed/
+ * rated/listed/finished/backlogged rows are fetched unconditionally
+ * (own `reviews` rows via the same `_fetchHomeFeedReviewRows` helper,
+ * plus own `activity_events` rows of type 'listed' | 'completed' |
+ * 'backlogged' — see OWN_FEED_EVENT_TYPES) and merged into the exact
+ * same recency-sorted stream as everyone else's items, via
+ * `_interleaveOwnWithCap`. Each returned item carries `isOwn: true`
+ * when it's the viewer's; HomeReviewCard uses that to render
+ * second-person wording and hide (but not remove) the like control.
+ * Own items are capped at ~1-in-3 consecutive slots whenever another
+ * item is available to fill that slot instead — see
+ * `_interleaveOwnWithCap`'s doc comment — so a very active viewer can't
+ * bury their circle's activity, but an active viewer with a quiet
+ * circle still sees their own activity rather than an empty feed.
  *
  * Block + privacy enforcement: RLS on `reviews` (see
  * supabase/migrations/20260704221500_home_feed_reviews_trackers_rls.sql)
+ * and on `activity_events` (see supabase/activity_events.sql +
+ * supabase/migrations/20260704222500_home_feed_activity_events_block_rls.sql)
  * already restricts every row returned here to ones the viewer is
- * allowed to see (own rows, public authors, or followed authors —
- * minus any blocked relationship in either direction). `applyBlockFilter`
- * is layered on top as defense-in-depth, same as every other read in
- * this file.
+ * allowed to see — and both policies explicitly always allow
+ * `auth.uid() = <author column>`, so the viewer's own rows are never
+ * blocked by their own privacy setting. `applyBlockFilter` is layered
+ * on top as defense-in-depth, same as every other read in this file;
+ * it's a no-op on the viewer's own-row reads (you can't block
+ * yourself), same as everywhere else.
  *
  * @param {{ cursor?: string|null, scope?: 'following'|'community'|'mixed'|null, limit?: number }} opts
  * @returns {Promise<{
  *   items: Array<{
  *     id: string,
- *     type: 'reviewed'|'rated',
- *     body: string,
- *     rating: number|null,
- *     hasSpoilers: boolean,
+ *     type: 'reviewed'|'rated'|'listed'|'finished'|'backlogged',
+ *     isOwn: boolean,
  *     createdAt: string,
  *     author: { id: string|null, username: string|null, displayName: string, avatarUrl: string|null },
- *     game: { id: number|string, title: string, image: string|null },
+ *     game: { id: number|string, title: string, image: string|null }|null,
  *     likeCount: number,
  *     commentCount: number,
+ *     body?: string,
+ *     rating?: number|null,
+ *     hasSpoilers?: boolean,
+ *     listKind?: 'created'|'added',
+ *     listId?: string|null,
+ *     listName?: string|null,
+ *     reactionTargetId?: string,
  *   }>,
  *   nextCursor: string|null,
  *   scope: 'following'|'community'|'mixed',
@@ -1059,6 +1086,64 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  */
 const HOME_FEED_PAGE_SIZE = 15
 const HOME_FEED_SPARSE_THRESHOLD = 5
+
+// Own-activity event types surfaced on Home, sourced from `activity_events`
+// (reviewed/rated own rows come from `reviews` instead — see
+// _fetchHomeFeedReviewRows). Deliberately narrower than every type Pulse
+// logs: 'started'/'dropped'/'favorited'/'goal_hit' stay Explore/Profile-only
+// per this sprint's spec.
+//   'listed'     → metadata.kind 'list_created' (created a list) or
+//                  'game_added_to_list' (added a game to a list)
+//   'completed'  → rendered as HomeReviewCard's 'finished' type
+//   'backlogged' → added to the Want to Play backlog (Home-only signal —
+//                  see libraryService.STATUS_TO_EVENT_TYPE)
+const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged']
+
+/**
+ * Soft-cap interleave: merges two recency-sorted item arrays (the
+ * viewer's own activity + everyone else's) into one recency-ordered
+ * stream, deferring an own item whenever taking it next would put an
+ * own item in 2 of the last 3 emitted slots AND another (non-own) item
+ * is available to take that slot instead. Once the "other" queue runs
+ * dry the cap stops applying — an all-own feed beats an empty one, per
+ * spec ("the cap is a ceiling, not a quota").
+ *
+ * Never drops an item: a capped own item just waits for its next turn
+ * and stays in relative recency order among own items.
+ */
+function _interleaveOwnWithCap(ownItems, otherItems, limit) {
+  const result = []
+  const recentOwnFlags = []
+  let oi = 0
+  let ti = 0
+  while (result.length < limit && (oi < ownItems.length || ti < otherItems.length)) {
+    const own = ownItems[oi]
+    const other = otherItems[ti]
+    let takeOwn = !!own && (!other || new Date(own.createdAt) >= new Date(other.createdAt))
+    if (takeOwn && other) {
+      const cappedByRecentWindow = recentOwnFlags.filter(Boolean).length >= 1
+      if (cappedByRecentWindow) takeOwn = false
+    }
+    if (takeOwn) {
+      result.push(own)
+      oi++
+      recentOwnFlags.push(true)
+    } else if (other) {
+      result.push(other)
+      ti++
+      recentOwnFlags.push(false)
+    } else if (own) {
+      // Other queue is dry — cap no longer applies.
+      result.push(own)
+      oi++
+      recentOwnFlags.push(true)
+    } else {
+      break
+    }
+    if (recentOwnFlags.length > 2) recentOwnFlags.shift()
+  }
+  return result
+}
 
 async function _fetchHomeFeedReviewRows({ userIds = null, excludeUserIds = [], cursor = null, limit }) {
   try {
@@ -1090,12 +1175,13 @@ function _mergeReviewRowsByRecency(a, b) {
   return [...a, ...b].sort((x, y) => new Date(y.created_at) - new Date(x.created_at))
 }
 
-function _homeFeedItemFromRow(row, likeCounts, commentCounts) {
+function _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn = false } = {}) {
   const u = row.users || {}
   const body = (row.body || '').trim()
   return {
     id: row.id,
     type: body ? 'reviewed' : 'rated',
+    isOwn,
     body,
     rating: row.rating != null ? Number(row.rating) : null,
     hasSpoilers: !!row.has_spoilers,
@@ -1113,6 +1199,113 @@ function _homeFeedItemFromRow(row, likeCounts, commentCounts) {
     },
     likeCount: likeCounts.get(row.id) || 0,
     commentCount: commentCounts.get(row.id) || 0,
+  }
+}
+
+/**
+ * Fetch a page of the viewer's OWN 'listed' | 'completed' | 'backlogged'
+ * activity_events rows. Fails soft to [] (same convention as every other
+ * read in this file) — the most likely failure mode is the 'backlogged'
+ * enum value migration not having been run yet in this environment
+ * (see supabase/migrations/20260704222000_activity_events_backlogged_type.sql),
+ * which would otherwise take down the whole Home feed rather than just
+ * quietly omitting these own-activity rows.
+ */
+async function _fetchOwnActivityEventRows({ viewerId, cursor = null, limit }) {
+  try {
+    let q = supabase
+      .from('activity_events')
+      .select('id, type, entity_id, metadata, created_at')
+      .eq('actor_user_id', viewerId)
+      .in('type', OWN_FEED_EVENT_TYPES)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (cursor) q = q.lt('created_at', cursor)
+    const { data, error } = await q
+    if (error) {
+      console.error('[community] getHomeFeed own activity_events query failed:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('[community] getHomeFeed own activity_events query crashed:', err)
+    return []
+  }
+}
+
+/**
+ * Shape one own `activity_events` row into a Home feed item. `author` is
+ * the viewer's own profile (fetched once per getHomeFeed call, not per
+ * row — see getHomeFeed). Mirrors _homeFeedItemFromRow's item shape so
+ * HomeReviewCard's single switch-on-type render path keeps working
+ * unmodified for every type.
+ *
+ * 'listed' rows fork on metadata.kind:
+ *   - 'list_created' has no specific game — `game: null`, `listName`
+ *     comes straight from metadata (no round-trip needed).
+ *   - 'game_added_to_list' has a game but metadata never carries
+ *     list_name (see listService.addGameToList) — `listName` stays
+ *     unset here so HomeReviewCard's existing useListPreview(listId)
+ *     lazy-hydration fills it in card-side, same as it already does for
+ *     any 'listed' row.
+ */
+function _homeFeedItemFromOwnEvent(row, author) {
+  const meta = row.metadata || {}
+  const base = {
+    id: row.id,
+    createdAt: row.created_at,
+    isOwn: true,
+    author,
+    likeCount: 0,
+    commentCount: 0,
+    reactionTargetId: row.id,
+  }
+
+  if (row.type === 'listed') {
+    if (meta.kind === 'list_created') {
+      return {
+        ...base,
+        type: 'listed',
+        listKind: 'created',
+        listId: row.entity_id,
+        listName: meta.list_name || null,
+        game: null,
+      }
+    }
+    return {
+      ...base,
+      type: 'listed',
+      listKind: 'added',
+      listId: meta.list_id || null,
+      game: {
+        id: row.entity_id,
+        title: meta.game_title || 'Unknown Game',
+        image: meta.game_image || null,
+      },
+    }
+  }
+
+  if (row.type === 'completed') {
+    return {
+      ...base,
+      type: 'finished',
+      game: {
+        id: row.entity_id,
+        title: meta.game_title || 'Unknown Game',
+        image: meta.game_image || null,
+      },
+    }
+  }
+
+  // 'backlogged'
+  return {
+    ...base,
+    type: 'backlogged',
+    game: {
+      id: row.entity_id,
+      title: meta.game_title || 'Unknown Game',
+      image: meta.game_image || null,
+    },
   }
 }
 
@@ -1173,25 +1366,90 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       }
     }
 
+    // Own activity — merged into the SAME stream regardless of scope
+    // (see module doc comment). Fetched independently of the
+    // followee-vs-community decision above: it's "Home is the hub", not
+    // a 4th scope.
+    const [ownReviewRows, ownEventRows] = await Promise.all([
+      _fetchHomeFeedReviewRows({ userIds: [viewerId], cursor, limit }),
+      _fetchOwnActivityEventRows({ viewerId, cursor, limit }),
+    ])
+
     if (import.meta.env.DEV) console.log(`[⏱ home] getHomeFeed scope=${effectiveScope} query: ${Date.now() - _t0}ms`)
 
-    if (rows.length === 0) return EMPTY(effectiveScope)
+    if (rows.length === 0 && ownReviewRows.length === 0 && ownEventRows.length === 0) {
+      return EMPTY(effectiveScope)
+    }
 
     const flaggedIds = await getFlaggedContentIds('review')
-    const cleanRows = flaggedIds.size > 0 ? rows.filter((r) => !flaggedIds.has(r.id)) : rows
-    if (cleanRows.length === 0) return EMPTY(effectiveScope)
+    const allReviewRows = [...rows, ...ownReviewRows]
+    const cleanReviewRows =
+      flaggedIds.size > 0 ? allReviewRows.filter((r) => !flaggedIds.has(r.id)) : allReviewRows
 
-    const reviewIds = cleanRows.map((r) => r.id)
+    const reviewIds = cleanReviewRows.map((r) => r.id)
     const [likeCounts, commentCounts] = await Promise.all([
       getLikeCountsForReviews(reviewIds),
       getCommentCountsForReviews(reviewIds),
     ])
 
-    const items = cleanRows.map((row) => _homeFeedItemFromRow(row, likeCounts, commentCounts))
-    const hasMore = rows.length === limit
-    const nextCursor = hasMore ? rows[rows.length - 1].created_at : null
+    const shapedReviewItems = cleanReviewRows.map((row) =>
+      _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn: row.user_id === viewerId })
+    )
+    const otherItems = shapedReviewItems.filter((it) => !it.isOwn)
+    const ownReviewItems = shapedReviewItems.filter((it) => it.isOwn)
 
-    if (import.meta.env.DEV) console.log(`[⏱ home] getHomeFeed scope=${effectiveScope} TOTAL: ${Date.now() - _t0}ms (${items.length} items)`)
+    // Own non-review activity needs the viewer's own profile for the
+    // author avatar/name — one lightweight lookup per call (skipped
+    // entirely when there's nothing to attach it to).
+    let ownEventItems = []
+    if (ownEventRows.length > 0) {
+      const { data: viewerProfile } = await supabase
+        .from('users')
+        .select('id, username, display_name, avatar_url')
+        .eq('id', viewerId)
+        .single()
+      const author = {
+        id: viewerId,
+        username: viewerProfile?.username || null,
+        displayName: viewerProfile?.display_name || viewerProfile?.username || 'You',
+        avatarUrl: viewerProfile?.avatar_url || null,
+      }
+      ownEventItems = ownEventRows.map((row) => _homeFeedItemFromOwnEvent(row, author))
+    }
+
+    const ownItems = [...ownReviewItems, ...ownEventItems].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    )
+
+    const items = _interleaveOwnWithCap(ownItems, otherItems, limit)
+
+    // A source might still have more beyond this page even if this exact
+    // combined page came back short (e.g. own rows deferred by the cap,
+    // or flagged-content filtering trimmed a review out) — treat any
+    // full-size raw fetch as "there's more".
+    const hasMore =
+      rows.length === limit || ownReviewRows.length === limit || ownEventRows.length === limit
+
+    // Next cursor = the oldest timestamp seen across every raw source
+    // this page touched, so loadMore never skips a row a deferred/
+    // filtered item left behind. Can reproduce a small number of
+    // already-seen ids on the next page in rare cases; useHomeFeed's
+    // loadMore already dedupes by id — same accepted trade-off as the
+    // mixed-scope merge above.
+    const tails = [rows, ownReviewRows, ownEventRows]
+      .filter((arr) => arr.length)
+      .map((arr) => arr[arr.length - 1].created_at)
+    const nextCursor =
+      hasMore && tails.length
+        ? tails.reduce((oldest, t) => (new Date(t) < new Date(oldest) ? t : oldest))
+        : null
+
+    if (import.meta.env.DEV) {
+      console.log(
+        `[⏱ home] getHomeFeed scope=${effectiveScope} TOTAL: ${Date.now() - _t0}ms ` +
+          `(${items.length} items, ${ownItems.length} own)`
+      )
+    }
 
     return { items, nextCursor, scope: effectiveScope, hasMore }
   } catch (err) {

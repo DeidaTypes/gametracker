@@ -5,10 +5,14 @@ import HomeReviewCard from './HomeReviewCard'
 import FindFriendsModal from '../FindFriendsModal'
 import './HomeFreshReviews.css'
 
+// Home is the hub — the stream always includes the viewer's own activity
+// alongside whichever scope communityService.getHomeFeed decided on, so
+// the subline stays honest about that ("You and ...") rather than
+// implying this is only other people's activity.
 const SUBLINE_BY_SCOPE = {
-  following: 'From people you follow',
-  mixed: 'From people you follow, plus the community',
-  community: 'From the community',
+  following: 'You and people you follow',
+  mixed: 'You, people you follow, and the community',
+  community: 'You and the community',
 }
 
 function FeedSkeleton() {
