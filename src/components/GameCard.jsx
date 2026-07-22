@@ -6,7 +6,14 @@ import Pressable from './Pressable'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import './GameCard.css'
 
-function GameCard({ game }) {
+/**
+ * @param {object} game
+ * @param {boolean} [titleOverlay=true]  When false, suppresses the internal
+ *   gradient + title overlay so a caller can render the title elsewhere
+ *   (e.g. below the cover). All other behavior — cover art, shared-element
+ *   transition, tap-to-navigate, hover affordance — is unchanged either way.
+ */
+function GameCard({ game, titleOverlay = true }) {
   const navigate = useNavigate()
 
   const imageUrl = getBestImageUrl(game, 800) || game.image
@@ -46,10 +53,14 @@ function GameCard({ game }) {
             }}
           />
         </SharedCover>
-        <div className="game-card-gradient-overlay"></div>
-        <div className="game-card-title-overlay">
-          <h3 className="game-card-title">{game.title}</h3>
-        </div>
+        {titleOverlay && (
+          <>
+            <div className="game-card-gradient-overlay"></div>
+            <div className="game-card-title-overlay">
+              <h3 className="game-card-title">{game.title}</h3>
+            </div>
+          </>
+        )}
         <div className="game-card-hover-overlay">
           <div className="play-indicator">View Details →</div>
         </div>

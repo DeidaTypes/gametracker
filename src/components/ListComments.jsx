@@ -171,7 +171,7 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
     <section className="lc-section" aria-label="Comments">
       {comments.length > 0 && (
         <h3 className="lc-heading">
-          {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+          Comments · {comments.length}
         </h3>
       )}
 

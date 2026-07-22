@@ -24,6 +24,7 @@ import {
   removeGameFromList,
   reorderListGames,
   getOwnerRatingsForList,
+  getOwnerTrackerDataForList,
   isTrackerList,
   pinList,
   unpinList,
@@ -48,6 +49,16 @@ function fmtDate(iso) {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/* ── Per-cover status dot (owner's tracker status, real data only) ──
+   Cool/jewel-tone status tokens only — no orange/amber. 'want' gets a
+   neutral tertiary dot rather than --status-warning (which is amber). */
+const STATUS_DOT_COLOR = {
+  played: 'var(--status-success)',
+  currently: 'var(--color-status-playing)',
+  dropped: 'var(--status-danger)',
+  want: 'var(--color-text-tertiary)',
 }
 
 /* ── Context-aware empty state for tracker and custom list pages ── */
@@ -135,6 +146,10 @@ function ListDetail() {
   // Owner ratings: { [igdbGameId]: rating }
   const [ownerRatings, setOwnerRatings] = useState({})
 
+  // Owner tracker data (status + hours): { [igdbGameId]: { status, hoursPlayed } }
+  // Powers the stats row's Played/Total-hours cells and the per-cover status dot.
+  const [ownerTrackerData, setOwnerTrackerData] = useState({})
+
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState('')
@@ -206,6 +221,23 @@ function ListDetail() {
       games.map((g) => g.id)
     ).then((ratings) => {
       if (!cancelled) setOwnerRatings(ratings)
+    })
+    return () => { cancelled = true }
+  }, [listInfo?.userId, games, isTracker])
+
+  // Load the list owner's tracker status + hours for all games in this
+  // list (real data only — same source as the Played/Total-hours stats).
+  useEffect(() => {
+    if (!listInfo?.userId || !games.length || isTracker) {
+      setOwnerTrackerData({})
+      return
+    }
+    let cancelled = false
+    getOwnerTrackerDataForList(
+      listInfo.userId,
+      games.map((g) => g.id)
+    ).then((data) => {
+      if (!cancelled) setOwnerTrackerData(data)
     })
     return () => { cancelled = true }
   }, [listInfo?.userId, games, isTracker])
@@ -478,6 +510,22 @@ function ListDetail() {
   // Viewer can add games only if they own the list, are a collaborator, or it's a personal tracker list
   const canEdit = isOwner || isCollaborator || isTracker
 
+  // ── Stats row (custom lists only) — real data, never fabricated ─────────
+  // Avg rating excludes games the owner hasn't rated (not counted as 0).
+  const ratedValues = games
+    .map((g) => ownerRatings[g.id])
+    .filter((r) => r != null)
+  const avgRating = ratedValues.length
+    ? ratedValues.reduce((sum, r) => sum + r, 0) / ratedValues.length
+    : null
+  const playedCount = games.filter(
+    (g) => ownerTrackerData[g.id]?.status === 'played'
+  ).length
+  const totalHours = games.reduce(
+    (sum, g) => sum + (ownerTrackerData[g.id]?.hoursPlayed || 0),
+    0
+  )
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -537,6 +585,22 @@ function ListDetail() {
 
   return (
     <div className="list-detail-page content-fade-in">
+
+      {/* 0. Hero — blurred, low-opacity cover mosaic behind the sticky header +
+          title, fading to the page base color. Custom lists only; decorative,
+          so it's skipped entirely when there are no covers to build it from. */}
+      {!isTracker && games.length > 0 && (
+        <div className="ld-hero" aria-hidden="true">
+          <div className="ld-hero__mosaic">
+            {games.slice(0, 6).map((g, i) => (
+              <div className="ld-hero__cell" key={g.id ?? i}>
+                {g.image && <img src={g.image} alt="" loading="lazy" />}
+              </div>
+            ))}
+          </div>
+          <div className="ld-hero__fade" />
+        </div>
+      )}
 
       {/* 1. Header bar — sticky, safe-area-aware, chevron left + "List" centre + actions right */}
       <header className="list-detail-header-bar">
@@ -600,45 +664,54 @@ function ListDetail() {
         </div>
       </header>
 
-      {/* 2. Meta / description body — only rendered when there is content to show */}
-      {(author || listInfo.createdAt || listInfo.description || isOwner) && (
+      {/* 2. Title + byline + collaborators + description + stats + actions —
+          custom lists only. Tracker lists' getListInfo() never populates
+          author/createdAt/description, so this block never rendered for
+          them before this restyle either; `isTracker` is guarded explicitly
+          here so that stays true regardless. */}
+      {!isTracker && (
         <div className="list-detail-body">
-          {/* Author + date row (game count moves below the divider, above the grid) */}
+          {/* Title — its own line, large. The "+" add-games control lives
+              only in the sticky header above; it is never inline with this
+              title, so there's nothing glued together here. */}
+          <h1 className="ld-title">{listInfo.name}</h1>
+
+          {/* Byline — owner avatar + "{username} · {created date}" + saved count */}
           {(author || listInfo.createdAt) && (
-            <div className="list-detail-meta-row">
+            <div className="ld-byline">
               {author && (
                 <>
                   <button
                     type="button"
-                    className="list-detail-author-btn"
+                    className="ld-byline-author"
                     onClick={() => author.username && navigate(`/profile/${author.username}`)}
                   >
                     {author.avatarUrl ? (
                       <img
                         src={author.avatarUrl}
                         alt=""
-                        className="list-detail-author-avatar"
+                        className="ld-byline-avatar"
                         loading="lazy"
                       />
                     ) : (
-                      <span className="list-detail-author-avatar list-detail-author-avatar--fallback" aria-hidden="true">
+                      <span className="ld-byline-avatar ld-byline-avatar--fallback" aria-hidden="true">
                         {(author.displayName || author.username || '?').charAt(0).toUpperCase()}
                       </span>
                     )}
-                    <span className="list-detail-author-name">
+                    <span className="ld-byline-name">
                       {author.displayName || author.username}
                     </span>
                   </button>
-                  {listInfo.createdAt && <span className="list-detail-meta-dot" aria-hidden="true">·</span>}
+                  {listInfo.createdAt && <span className="ld-byline-dot" aria-hidden="true">·</span>}
                 </>
               )}
               {listInfo.createdAt && (
-                <span className="list-detail-meta-item">{fmtDate(listInfo.createdAt)}</span>
+                <span className="ld-byline-item">{fmtDate(listInfo.createdAt)}</span>
               )}
               {listInfo.isCustom && listInfo.isPublic && saveCount > 0 && (
                 <>
-                  <span className="list-detail-meta-dot" aria-hidden="true">·</span>
-                  <span className="list-detail-meta-item">
+                  <span className="ld-byline-dot" aria-hidden="true">·</span>
+                  <span className="ld-byline-item">
                     saved by {saveCount} {saveCount === 1 ? 'person' : 'people'}
                   </span>
                 </>
@@ -647,7 +720,7 @@ function ListDetail() {
           )}
 
           {/* Collaborator avatars row — only shown when there are co-editors */}
-          {!isTracker && collaborators.length > 0 && (
+          {collaborators.length > 0 && (
             <div className="list-detail-collab-row">
               <div className="list-detail-collab-avatars">
                 {collaborators.slice(0, 5).map((c) => (
@@ -692,7 +765,9 @@ function ListDetail() {
             </div>
           )}
 
-          {/* Description — inline edit for owner, read-only for viewer */}
+          {/* Description — inline edit for owner, read-only for viewer.
+              Empty + owner → quiet "Add a description" affordance (no box).
+              Empty + viewer → renders nothing. */}
           {isOwner && editingDesc ? (
             <div className="list-detail-desc-edit-wrap">
               <textarea
@@ -747,6 +822,67 @@ function ListDetail() {
               <p className="list-detail-description">{listInfo.description}</p>
             )
           )}
+
+          {/* Stats row — single bounded card, cells with dividers. Real
+              data only: Avg rating excludes games the owner hasn't rated
+              (not counted as 0) and hides entirely if nothing is rated. */}
+          {games.length > 0 && (
+            <div className="ld-stats-card">
+              <div className="ld-stats-cell">
+                <span className="ld-stats-value">{games.length}</span>
+                <span className="ld-stats-label">Games</span>
+              </div>
+              <div className="ld-stats-cell">
+                <span className="ld-stats-value">{playedCount}</span>
+                <span className="ld-stats-label">Played</span>
+              </div>
+              {avgRating != null && (
+                <div className="ld-stats-cell">
+                  <span className="ld-stats-value ld-stats-value--grad">
+                    {avgRating.toFixed(1)}
+                  </span>
+                  <span className="ld-stats-label">Avg rating</span>
+                </div>
+              )}
+              <div className="ld-stats-cell">
+                <span className="ld-stats-value">{Math.round(totalHours)}h</span>
+                <span className="ld-stats-label">Total</span>
+              </div>
+            </div>
+          )}
+
+          {/* Actions — state-adaptive. Owner (canEdit) gets "Add games";
+              non-owner on a public list gets "Save · {count}". A
+              collaborator who isn't the owner can legitimately see both
+              (same dual condition the header actions already use above). */}
+          {(canEdit || (listInfo.isCustom && listInfo.isPublic && !isOwner && currentUserId)) && (
+            <div className="ld-actions-row">
+              {canEdit && (
+                <button
+                  type="button"
+                  className="ld-action-btn"
+                  onClick={() => setShowAddGames(true)}
+                >
+                  <HiPlus size={16} aria-hidden="true" />
+                  Add games
+                </button>
+              )}
+              {listInfo.isCustom && listInfo.isPublic && !isOwner && currentUserId && (
+                <button
+                  type="button"
+                  className={`ld-action-btn${isSaved ? ' ld-action-btn--saved' : ''}`}
+                  onClick={handleSaveToggle}
+                  aria-pressed={isSaved}
+                >
+                  {isSaved
+                    ? <BookmarkCheck size={16} aria-hidden="true" />
+                    : <Bookmark size={16} aria-hidden="true" />
+                  }
+                  Save · {saveCount}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -769,11 +905,13 @@ function ListDetail() {
             />
           )
         ) : (
-          /* Custom list: cover grid with drag reorder */
+          /* Custom list: 3-up cover grid, titles below, drag reorder */
           games.length > 0 ? (
             <div className="list-detail-grid" ref={gridRef}>
               {games.map((game) => {
                 const rating = ownerRatings[game.id]
+                const trackerStatus = ownerTrackerData[game.id]?.status
+                const dotColor = trackerStatus ? STATUS_DOT_COLOR[trackerStatus] : null
                 return (
                   <div
                     key={game.id}
@@ -786,45 +924,59 @@ function ListDetail() {
                     onDrop={(isOwner || isCollaborator) ? (e) => handleDrop(e, game.id) : undefined}
                     onDragEnd={(isOwner || isCollaborator) ? () => handleDragEnd(game.id) : undefined}
                   >
-                    <GameCard game={game} />
+                    <div className="ld-grid-cover">
+                      <GameCard game={game} titleOverlay={false} />
 
-                    {/* Rating badge — owner's real rating only */}
-                    {rating != null && (
-                      <div className="list-detail-rating-badge" aria-label={`Your rating: ${rating}`}>
-                        <Star size={9} aria-hidden="true" />
-                        {rating}
-                      </div>
-                    )}
+                      {/* Status dot — owner's real tracker status only */}
+                      {dotColor && (
+                        <span
+                          className="ld-grid-status-dot"
+                          style={{ '--dot-color': dotColor }}
+                          aria-hidden="true"
+                        />
+                      )}
 
-                    {/* Drag handle */}
-                    {(isOwner || isCollaborator) && (
-                      <button
-                        type="button"
-                        className="list-detail-drag-handle"
-                        aria-label={`Drag to reorder ${game.title}`}
-                        onPointerDown={() => activateDragHandle(game.id)}
-                        onPointerUp={() => deactivateDragHandle(game.id)}
-                        onPointerCancel={() => deactivateDragHandle(game.id)}
-                      >
-                        <GripVertical size={14} aria-hidden="true" />
-                      </button>
-                    )}
+                      {/* Rating badge — owner's real rating only */}
+                      {rating != null && (
+                        <div className="list-detail-rating-badge" aria-label={`Your rating: ${rating}`}>
+                          <Star size={9} aria-hidden="true" />
+                          {rating}
+                        </div>
+                      )}
 
-                    {/* Remove button */}
-                    {(isOwner || isCollaborator) && (
-                      <button
-                        type="button"
-                        className="list-detail-remove-button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveGame(game.id, game.title)
-                        }}
-                        aria-label={`Remove ${game.title}`}
-                        title="Remove from list"
-                      >
-                        ×
-                      </button>
-                    )}
+                      {/* Drag handle */}
+                      {(isOwner || isCollaborator) && (
+                        <button
+                          type="button"
+                          className="list-detail-drag-handle"
+                          aria-label={`Drag to reorder ${game.title}`}
+                          onPointerDown={() => activateDragHandle(game.id)}
+                          onPointerUp={() => deactivateDragHandle(game.id)}
+                          onPointerCancel={() => deactivateDragHandle(game.id)}
+                        >
+                          <GripVertical size={14} aria-hidden="true" />
+                        </button>
+                      )}
+
+                      {/* Remove button */}
+                      {(isOwner || isCollaborator) && (
+                        <button
+                          type="button"
+                          className="list-detail-remove-button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveGame(game.id, game.title)
+                          }}
+                          aria-label={`Remove ${game.title}`}
+                          title="Remove from list"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Title — below the cover, not overlaid */}
+                    <p className="ld-grid-title">{game.title}</p>
                   </div>
                 )
               })}

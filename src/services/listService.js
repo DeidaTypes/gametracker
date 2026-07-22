@@ -549,6 +549,41 @@ export async function getOwnerRatingsForList(userId, gameIds) {
   return Object.fromEntries((data || []).map((r) => [r.igdb_game_id, r.rating]))
 }
 
+/**
+ * Fetch the list owner's tracker status + hours_played for each game in a
+ * list (real data only — `game_trackers`, gated by the same
+ * `trackers_select_visible` RLS tiering `reviews`/`getOwnerRatingsForList`
+ * already relies on). Powers the list-detail stats row's "Played" count
+ * and "Total hours" cell, plus the per-cover status dot.
+ *
+ * Note: `game_trackers.igdb_game_id` is stored as text (see hoursService),
+ * unlike `reviews`/`list_games`, which are bigint — hence the String()
+ * cast on the query and the Number() cast back on the returned keys so
+ * this lines up with the numeric `game.id` used everywhere else.
+ *
+ * @param {string} userId         UUID of the list owner
+ * @param {Array<number>} gameIds IGDB game IDs to look up
+ * @returns {Promise<Object<number, { status: string|null, hoursPlayed: number }>>}
+ */
+export async function getOwnerTrackerDataForList(userId, gameIds) {
+  if (!userId || !gameIds?.length) return {}
+  const { data, error } = await supabase
+    .from('game_trackers')
+    .select('igdb_game_id, status, hours_played')
+    .eq('user_id', userId)
+    .in('igdb_game_id', gameIds.map(String))
+  if (error) {
+    console.error('[lists] getOwnerTrackerDataForList failed:', error.message)
+    return {}
+  }
+  return Object.fromEntries(
+    (data || []).map((r) => [
+      Number(r.igdb_game_id),
+      { status: r.status || null, hoursPlayed: Number(r.hours_played) || 0 },
+    ])
+  )
+}
+
 // ── Collaboration ─────────────────────────────────────────────────────────────
 
 /**

@@ -1,8 +1,60 @@
 .list-detail-page {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   background: transparent;
   padding-bottom: var(--bottom-nav-safe-area);
+}
+
+/* ── Editorial hero — blurred, low-opacity cover mosaic behind the sticky
+   header + title, fading to the page base color. Custom lists only;
+   absolutely positioned so it never affects layout height — the header
+   and title block that follow it in the DOM sit in normal flow directly
+   on top, visually overlapping it. ── */
+.ld-hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 230px;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ld-hero__mosaic {
+  position: absolute;
+  inset: -24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  filter: blur(34px);
+  transform: scale(1.06);
+  opacity: 0.38;
+}
+
+.ld-hero__cell {
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.ld-hero__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ld-hero__fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, var(--bg-base) 88%);
+}
+
+@media (min-width: 769px) {
+  .ld-hero {
+    height: 270px;
+  }
 }
 
 /* ── Loading skeleton ── */
@@ -315,24 +367,40 @@
   transform: scale(0.92);
 }
 
-/* ── Body — meta + description (only rendered when there is content) ── */
+/* ── Body — meta + description (only rendered when there is content) ──
+   position: relative + z-index above the absolutely-positioned .ld-hero
+   so title/byline/etc. always paint on top of the hero mosaic. */
 .list-detail-body {
+  position: relative;
+  z-index: 1;
   padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg);
   max-width: var(--page-max-width);
   margin: 0 auto;
 }
 
+/* ── Editorial title — its own line, large. The "+" add-games control
+   lives only in the sticky header (never inline with this), so there's
+   nothing glued together. ── */
+.ld-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
 
-/* ── Meta row (author · date · count) ── */
-.list-detail-meta-row {
+/* ── Byline — owner avatar + "{username} · {created date}" + saved count ── */
+.ld-byline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-bottom: var(--spacing-md);
+  margin: 0 0 4px;
 }
 
-.list-detail-author-btn {
+.ld-byline-author {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -343,15 +411,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.list-detail-author-avatar {
-  width: 22px;
-  height: 22px;
+.ld-byline-avatar {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
 
-.list-detail-author-avatar--fallback {
+.ld-byline-avatar--fallback {
   background: var(--color-brand-primary);
   color: #fff;
   font-family: var(--font-body);
@@ -362,7 +430,7 @@
   justify-content: center;
 }
 
-.list-detail-author-name {
+.ld-byline-name {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
@@ -370,21 +438,137 @@
   transition: color var(--transition-fast);
 }
 
-.list-detail-author-btn:hover .list-detail-author-name {
+.ld-byline-author:hover .ld-byline-name {
   color: var(--color-text-primary);
 }
 
-.list-detail-meta-dot {
+.ld-byline-dot {
   font-size: 10px;
   color: var(--color-text-muted);
   line-height: 1;
 }
 
-.list-detail-meta-item {
+.ld-byline-item {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
+}
+
+/* ── Stats row — single bounded card, cells with vertical dividers ── */
+.ld-stats-card {
+  display: flex;
+  align-items: stretch;
+  margin-top: var(--spacing-lg);
+  background: var(--bg-surface, var(--color-surface));
+  border: 1px solid var(--border-subtle, var(--color-border));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ld-stats-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: var(--spacing-md) var(--spacing-xs);
+  border-right: 1px solid var(--border-subtle, var(--color-border));
+}
+
+.ld-stats-cell:last-child {
+  border-right: none;
+}
+
+.ld-stats-value {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
+}
+
+/* The screen's one gradient heading — see CommunityRatingCard.css for the
+   same recipe used on GameDetail's community-rating average. */
+.ld-stats-value--grad {
+  background: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .ld-stats-value--grad {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--color-text-primary);
+  }
+}
+
+.ld-stats-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 359px) {
+  .ld-stats-cell {
+    padding: var(--spacing-sm) 2px;
+  }
+}
+
+/* ── Actions row — state-adaptive Add-games / Save pills ── */
+.ld-actions-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.ld-action-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px var(--spacing-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all var(--transition-fast);
+}
+
+.ld-action-btn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border-hover);
+}
+
+.ld-action-btn--saved {
+  border: none;
+  background: var(--color-brand-gradient);
+  color: #fff;
+}
+
+.ld-action-btn--saved:hover {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-action-btn {
+    transition: none;
+  }
 }
 
 /* ── Description ── */
@@ -409,27 +593,28 @@
   color: var(--color-text-primary);
 }
 
-/* ── "Add a description" placeholder (owner only, no description set) ── */
+/* ── "Add a description" affordance (owner only, no description set) —
+   a quiet inline text button, not a dashed box. ── */
 .list-detail-desc-placeholder {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 60ch;
-  padding: 10px 14px;
+  padding: 0;
+  margin: 0;
   background: none;
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border: none;
   text-align: left;
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
+  font-style: italic;
   color: var(--color-text-muted);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
 .list-detail-desc-placeholder:hover {
-  border-color: var(--color-brand-primary);
   color: var(--color-text-secondary);
 }
 
@@ -557,26 +742,62 @@
   padding-right: var(--page-padding);
 }
 
+/* Editorial grid — fixed 3-across, titles rendered below each cover
+   (not overlaid). Desktop widens the gap rather than the column count. */
 .list-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-sm);
-}
-
-@media (min-width: 480px) {
-  .list-detail-grid {
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-  }
 }
 
 @media (min-width: 769px) {
   .list-detail-grid {
-    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: var(--spacing-lg);
   }
 }
 
 .list-detail-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Cover wrapper — the positioning context for the status dot, rating
+   badge, drag handle, and remove button (all anchor to the cover only,
+   never the title text below it). */
+.ld-grid-cover {
   position: relative;
+}
+
+/* Title — below the cover, editorial-grid style */
+.ld-grid-title {
+  margin: 0;
+  padding: 0 2px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+/* Status dot — owner's real tracker status only. Top-left, so it never
+   collides with the top-right remove button (owner/collaborator view). */
+.ld-grid-status-dot {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-color);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .list-detail-remove-button {
