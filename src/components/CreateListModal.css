@@ -789,66 +789,170 @@
 }
 
 /* ============================================================
-   New 3-tap Create List — presented inside CenteredModal (.cm-card).
+   Two-step New List flow — presented inside CenteredModal (.cm-card).
    The popup shell provides the surface, rounding, centering, and the
    keyboard-aware sizing (lifts above the keyboard via --keyboard-inset).
-   These rules only lay out the header, the pinned name band, and the
-   scrollable games body.  (clm-* namespace)
+   Step 1 (identity) and Step 2 (game picker) share the .clm-body /
+   .clm-selected-* / .clm-search-* primitives.  (clm-* namespace)
    ============================================================ */
 
-/* ── Header row: [✕]  New List  [Create] ── */
-.clm-header {
+/* ══════════════════════ STEP 1 — Identity ══════════════════════ */
+
+.clm-step1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+}
+
+.clm-eyebrow {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+/* Headline name field — idle-grey underline that lights up with the
+   brand gradient once a name is entered. Two stacked pseudo-elements
+   crossfade via opacity so the switch from flat grey to gradient is a
+   smooth transition rather than an abrupt color swap. */
+.clm-name-field {
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.clm-name-field::after,
+.clm-name-field::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.clm-name-field::after {
+  background: var(--color-border);
+}
+
+.clm-name-field::before {
+  background: var(--grad-brand);
+  opacity: 0;
+  transition: opacity var(--transition-smooth, 0.25s ease);
+}
+
+.clm-name-field--filled::before {
+  opacity: 1;
+}
+
+.clm-name-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: var(--spacing-xs) 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.clm-name-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Description — quiet, optional, no visible border ── */
+.clm-desc-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+  font-feature-settings: normal;
+}
+
+.clm-desc-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ── Footer: visibility pill left, Cancel / Next right ── */
+.clm-step1-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xs);
 }
 
-.clm-header-title {
-  font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-primary);
-  flex: 1;
-  text-align: center;
-}
-
-.clm-cancel-btn {
-  width: 36px;
-  height: 36px;
+.clm-visibility-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: var(--radius-full);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  font-size: 16px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: background var(--transition-fast), color var(--transition-fast);
   flex-shrink: 0;
 }
 
-.clm-cancel-btn:hover {
+.clm-visibility-pill:hover {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
-.clm-cancel-btn:active {
-  transform: scale(0.92);
+.clm-visibility-pill:active {
+  transform: scale(0.96);
 }
 
-/* Cobalt Create button */
-.clm-create-btn {
+.clm-step1-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
   flex-shrink: 0;
-  padding: 0 var(--spacing-md);
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-brand-primary, #3b82f6);
+}
+
+.clm-cancel-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.clm-cancel-link:hover {
+  color: var(--color-text-primary);
+}
+
+.clm-next-btn {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-lg);
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--grad-brand);
   border: none;
   color: #fff;
   font-family: var(--font-body);
@@ -859,25 +963,154 @@
   white-space: nowrap;
 }
 
+.clm-next-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.clm-next-btn:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.clm-next-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* ══════════════════════ STEP 2 — Game picker ══════════════════════ */
+
+.clm-step2 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ── Header row: Back  |  Add games  |  Create · n ── */
+.clm-step2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.clm-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.clm-back-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.clm-step2-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Gradient Create button */
+.clm-create-btn {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-md);
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--grad-brand);
+  border: none;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  white-space: nowrap;
+}
+
 .clm-create-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: default;
   pointer-events: none;
 }
 
 .clm-create-btn:not(:disabled):hover {
-  opacity: 0.88;
+  opacity: 0.9;
 }
 
 .clm-create-btn:not(:disabled):active {
   transform: scale(0.96);
 }
 
-/* ── Pinned name input band — fixed below the header, stays visible
-   above the keyboard, never scrolls away ── */
-.clm-name-pinned {
+/* ── Step progress dots ── */
+.clm-progress-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: var(--spacing-sm);
   flex-shrink: 0;
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xs);
+}
+
+.clm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border-hover);
+  transition: width var(--transition-fast), background var(--transition-fast);
+}
+
+.clm-dot--active {
+  width: 20px;
+  background: var(--grad-brand);
+}
+
+.clm-step2-subtitle {
+  margin: 0;
+  padding: 0 var(--spacing-lg) var(--spacing-sm);
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Pinned search input band — fixed below the header, stays visible
+   above the keyboard, never scrolls away ── */
+.clm-search-pinned {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-lg) var(--spacing-sm);
+}
+
+.clm-search-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
 }
 
 /* ── Scrollable body ── */
@@ -906,46 +1139,7 @@
   border-radius: var(--radius-xs);
 }
 
-/* ── Name input ── */
-.clm-name-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid var(--color-border);
-  border-radius: 0;
-  padding: var(--spacing-xs) 0;
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  outline: none;
-  transition: border-color var(--transition-fast);
-  box-sizing: border-box;
-}
-
-.clm-name-input::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.clm-name-input:focus {
-  border-bottom-color: var(--color-brand-primary, #3b82f6);
-}
-
-/* ── Games panel ── */
-.clm-games-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  /* Subtle entrance; respects reduced-motion via the media query below */
-  animation: clmPanelIn 0.18s ease both;
-}
-
-@keyframes clmPanelIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Selected strip ── */
+/* ── Selected / "in this list" strip ── */
 .clm-selected-section {
   display: flex;
   flex-direction: column;
@@ -1048,8 +1242,8 @@
   width: 100%;
   background: var(--color-bg-secondary, rgba(255, 255, 255, 0.06));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 40px;
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
@@ -1088,51 +1282,53 @@
   color: rgba(196, 130, 130, 0.95);
 }
 
-/* ── 2-column results grid ── */
-.clm-results-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-sm);
-}
-
-/* Each cell is a button so the whole cover + title is tappable */
-.clm-result-item {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
+/* ── Results — row list: cover + title + year/dev + add/added toggle ── */
+.clm-row-list-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-radius: var(--radius-md);
-  transition: opacity var(--transition-fast);
+  gap: var(--spacing-xs);
+}
+
+.clm-row-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each row is a button so the whole thing is tappable */
+.clm-row-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: var(--spacing-xs) 0;
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 0.5px solid var(--color-border);
+  transition: background var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
 
-.clm-result-item:active {
-  opacity: 0.75;
+.clm-row-list .clm-row-item:last-child {
+  border-bottom: none;
 }
 
-/* ── Cover wrapper: maintains 3:4 aspect ratio ── */
-.clm-result-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-secondary);
+.clm-row-item:active {
+  background: var(--color-surface);
 }
 
-.clm-result-img {
-  width: 100%;
-  height: 100%;
+.clm-row-cover {
+  flex-shrink: 0;
+  width: 44px;
+  height: 60px;
   object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
   display: block;
 }
 
-.clm-result-img--placeholder {
+.clm-row-cover--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1142,55 +1338,62 @@
     rgba(59, 130, 246, 0.05) 100%
   );
   font-family: var(--font-display);
-  font-size: var(--font-size-display-xl);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-tertiary);
 }
 
-/* Selected-state overlay on the cover */
-.clm-result-item--selected .clm-result-cover {
-  border-color: var(--color-brand-primary, #3b82f6);
-}
-
-.clm-result-item--selected .clm-result-cover::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(59, 130, 246, 0.22);
-  pointer-events: none;
-}
-
-/* Cobalt checkmark badge in top-right corner */
-.clm-checkmark {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-full);
-  background: var(--color-brand-primary, #3b82f6);
-  color: #fff;
-  font-size: 14px;
-  font-weight: var(--font-weight-bold);
+.clm-row-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-  z-index: 2;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* Game title below the cover */
-.clm-result-title {
+.clm-row-title {
   margin: 0;
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-caption);
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.clm-row-meta {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Toggle: quiet "+" circle when unpicked, gradient check when picked */
+.clm-row-toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.clm-row-toggle--selected {
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: #fff;
 }
 
 /* ── Mobile: extra bottom padding so the last row clears the home
@@ -1203,19 +1406,23 @@
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .clm-games-panel {
-    animation: none;
-  }
-
-  .clm-cancel-btn,
+  .clm-name-field::before,
+  .clm-dot,
+  .clm-visibility-pill,
+  .clm-cancel-link,
+  .clm-next-btn,
+  .clm-back-btn,
   .clm-create-btn,
-  .clm-selected-remove {
+  .clm-selected-remove,
+  .clm-row-item,
+  .clm-row-toggle {
     transition: none;
   }
 
-  .clm-cancel-btn:active,
+  .clm-visibility-pill:active,
+  .clm-next-btn:not(:disabled):active,
   .clm-create-btn:not(:disabled):active,
-  .clm-result-item:active {
+  .clm-row-item:active {
     transform: none;
     opacity: 0.7;
   }

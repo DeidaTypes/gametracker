@@ -224,8 +224,8 @@ function Library() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleCreateList = async (listName, description, initialGames) => {
-    const listId = await createList({ name: listName, description, isPublic: true })
+  const handleCreateList = async (listName, description, initialGames, isPublic = true) => {
+    const listId = await createList({ name: listName, description, isPublic })
     for (let i = 0; i < initialGames.length; i++) {
       const g = initialGames[i]
       await addGameToList(listId, g.id, i, { title: g.title, image: g.image })

@@ -1313,11 +1313,11 @@ function Profile() {
     [pinnedLists]
   )
 
-  const handleCreateList = async (listName, description, initialGames) => {
+  const handleCreateList = async (listName, description, initialGames, isPublic = true) => {
     const listId = await createList({
       name: listName,
       description,
-      isPublic: true,
+      isPublic,
     })
     for (let i = 0; i < initialGames.length; i++) {
       const g = initialGames[i]
