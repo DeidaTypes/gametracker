@@ -1,5 +1,6 @@
 /* ============================================
-   LIBRARY PAGE — Hero + Trackers + Lists
+   LIBRARY PAGE — Shelf: header, search, status chips,
+   poster grid, lists rail.
    Cobalt design language, DM Sans throughout.
    ============================================ */
 
@@ -11,15 +12,11 @@
 }
 
 /* =============================================
-   HERO
-   180px tall. Cobalt-tinted surface. Title +
-   subtitle left, "+ New list" right, 5 recent
-   covers along the bottom.
+   HEADER — three stacked rows: title, search,
+   status chips + inline sort icon.
    ============================================= */
 
-.lib-hero {
-  position: relative;
-  min-height: 180px;
+.lib-header {
   padding: var(--spacing-xl) var(--page-padding) var(--spacing-md);
   padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
   background:
@@ -28,150 +25,165 @@
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  overflow: hidden;
-}
-
-.lib-hero-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: var(--spacing-md);
 }
 
-.lib-hero-text {
-  min-width: 0;
-}
-
-.lib-hero-title {
+.lib-title {
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--text-primary);
-  margin: 0 0 4px 0;
-}
-
-.lib-hero-sub {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--text-secondary);
   margin: 0;
 }
 
-/* Backlog hours total — shown below the tracked-count subtitle when
-   at least one Want-to-Play game has IGDB time-to-beat data. */
-.lib-hero-backlog {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--accent);
-  margin: 3px 0 0;
+/* ── Search ── */
+
+.lib-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.lib-hero-backlog-note {
+.lib-search-icon {
+  position: absolute;
+  left: 14px;
   color: var(--text-tertiary);
-  font-weight: 400;
+  pointer-events: none;
 }
 
-/* Cobalt outline button (not filled). Pairs with the filled state on
-   :hover so the button still reads as the primary CTA. */
-.lib-hero-newbtn {
+.lib-search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 40px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.lib-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.lib-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-surface);
+}
+
+/* ── Status chips + inline sort ── */
+
+.lib-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lib-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-left: calc(var(--page-padding) * -1);
+  padding-left: var(--page-padding);
+}
+
+.lib-chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* Icon-only sort trigger — opens the Sort By action sheet. Sits fixed
+   at the end of the chip row (outside the chips' own scroll area). */
+.lib-sort-icon-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+}
+
+@media (hover: hover) {
+  .lib-sort-icon-btn:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+}
+
+.lib-sort-icon-btn:active {
+  transform: scale(0.94);
+}
+
+.lib-chip {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  height: 36px;
+  padding: 0 14px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
+  color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color var(--transition-fast),
-              color var(--transition-fast),
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast),
               border-color var(--transition-fast),
-              box-shadow var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
+              color var(--transition-fast);
 }
 
-@media (hover: hover) {
-  .lib-hero-newbtn:hover {
-    background: rgba(59, 130, 246, 0.12);
-    color: var(--accent-hover);
-    border-color: var(--accent-hover);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.18);
-  }
-}
-
-.lib-hero-newbtn:active {
-  background: rgba(59, 130, 246, 0.18);
-}
-
-/* Recent-covers strip — 36×48 portrait covers overlapping by 8px each.
-   Hidden entirely when the user has no tracked games (handled in JSX). */
-.lib-hero-recents {
-  display: flex;
-  align-items: flex-end;
-  margin-top: auto;
-}
-
-.lib-hero-recent {
-  position: relative;
-  width: 36px;
-  height: 48px;
-  margin-left: -8px;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  background: var(--bg-surface-2);
-  overflow: hidden;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: transform var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.lib-hero-recent:first-child {
-  margin-left: 0;
-}
-
-@media (hover: hover) {
-  .lib-hero-recent:hover {
-    transform: translateY(-2px);
-    z-index: 100 !important;
-  }
-}
-
-.lib-hero-recent:active {
-  transform: translateY(0) scale(0.96);
-}
-
-.lib-hero-recent-img,
-.lib-hero-recent-fallback {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.lib-hero-recent-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
+.lib-chip-label {
   font-size: 14px;
-  font-weight: 700;
-  background: rgba(59, 130, 246, 0.08);
+  font-weight: 600;
+}
+
+.lib-chip-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.lib-chip--active {
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: var(--color-on-accent);
+}
+
+.lib-chip--active .lib-chip-count {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+@media (hover: hover) {
+  .lib-chip:not(.lib-chip--active):hover {
+    background: var(--bg-surface);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+}
+
+.lib-chip:active {
+  transform: scale(0.97);
 }
 
 /* =============================================
@@ -182,12 +194,12 @@
   padding: 0 var(--page-padding);
 }
 
-.lib-section--trackers {
-  margin-top: 16px;
+.lib-section--grid {
+  margin-top: 20px;
 }
 
 .lib-section--lists {
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
 .lib-section-label {
@@ -203,213 +215,136 @@
 }
 
 /* =============================================
-   TRACKERS — three 96px cards
+   POSTER GRID — 3 columns, status dot on cover,
+   title below.
    ============================================= */
 
-.lib-trackers {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.lib-tracker-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 96px;
-  padding: 0 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  gap: var(--spacing-md);
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast),
-              transform var(--transition-smooth);
-  overflow: hidden;
-}
-
-@media (hover: hover) {
-  .lib-tracker-card:hover {
-    background: var(--bg-surface-2);
-    border-color: var(--border-strong);
-  }
-  .lib-tracker-card:hover .lib-tracker-fan-card {
-    transform: translateX(calc(var(--fan-x) * 1.1))
-               rotate(calc(var(--fan-r) * 1.1));
-  }
-}
-
-.lib-tracker-card:active {
-  transform: scale(0.99);
-}
-
-.lib-tracker-text {
-  min-width: 0;
-  flex: 1;
-}
-
-.lib-tracker-title {
+.lib-grid-empty {
   font-family: var(--font-body);
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0;
-  color: var(--text-primary);
-  margin: 0 0 4px 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lib-tracker-count {
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 1.3;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: var(--spacing-2xl) 0;
   margin: 0;
 }
 
-/* Time-to-beat backlog hint shown on the Want to Play tracker card. */
-.lib-tracker-backlog-hint {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--accent);
-  margin: 3px 0 0;
+.lib-poster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
-/* ── Fan stack ── */
-
-.lib-tracker-fan-wrap {
-  position: relative;
-  flex-shrink: 0;
+.lib-poster-card {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 80px;
-  /* Reserve enough horizontal room for the spread fan without colliding
-     with the title column. The 3 covers fan ~22px each side of center. */
-  width: 124px;
+  flex-direction: column;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.lib-tracker-fan {
+.lib-poster-cover-wrap {
   position: relative;
   width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-}
-
-.lib-tracker-fan-card {
-  grid-area: 1 / 1;
-  width: 56px;
-  height: 76px;
-  border-radius: 6px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-surface-2);
   box-shadow: var(--shadow-cover);
-  transform-origin: center 85%;
-  transform: translateX(var(--fan-x)) rotate(var(--fan-r));
   transition: transform var(--transition-smooth);
 }
 
-.lib-tracker-fan-img {
+@media (hover: hover) {
+  .lib-poster-card:hover .lib-poster-cover-wrap {
+    transform: translateY(-2px);
+  }
+}
+
+.lib-poster-card:active .lib-poster-cover-wrap {
+  transform: scale(0.97);
+}
+
+.lib-poster-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.lib-tracker-fan-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  background: rgba(59, 130, 246, 0.08);
+.lib-poster-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg-base);
 }
 
-/* ── Empty tracker mini-card ──
-   Replaces the fan with a muted silhouette + copy. */
-
-.lib-tracker-card--empty {
-  background: rgba(148, 168, 212, 0.03);
-}
-
-.lib-tracker-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-
-.lib-tracker-empty-silhouette {
-  width: 44px;
-  height: 60px;
-  border-radius: 6px;
-  border: 1.5px dashed rgba(148, 168, 212, 0.22);
-  background: rgba(148, 168, 212, 0.03);
-}
-
-.lib-tracker-empty-copy {
+.lib-poster-title {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.2;
-  color: var(--text-tertiary);
-  text-align: center;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lib-loadmore {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+@media (hover: hover) {
+  .lib-loadmore:hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-strong);
+  }
 }
 
 /* =============================================
-   CUSTOM LISTS — 2-column mosaic grid
+   YOUR LISTS RAIL — horizontal scroll of mosaic
+   tiles, pinned first, "New list" tile last.
    ============================================= */
 
-/* Custom list skeleton — 4 cards matching lib-list-card shape */
-.lib-list-card--skeleton {
-  pointer-events: none;
-}
-
-/* Square mosaic placeholder */
-.lib-list-mosaic-skeleton {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: calc(var(--radius-lg) - 4px);
-}
-
-/* Title placeholder — 70% wide */
-.lib-sk-name {
-  width: 70%;
-  height: 14px;
-  border-radius: var(--radius-sm);
-}
-
-/* Count placeholder — 40% wide */
-.lib-sk-count {
-  width: 40%;
-  height: 12px;
-  border-radius: var(--radius-sm);
-  margin-top: 4px;
-}
-
-.lib-lists-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.lib-lists-rail {
+  display: flex;
   gap: var(--spacing-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin: 0 calc(var(--page-padding) * -1);
+  padding: 0 var(--page-padding) 4px;
 }
 
-.lib-list-card {
+.lib-lists-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.lib-list-tile {
+  position: relative;
+  flex-shrink: 0;
+  width: 132px;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -428,20 +363,34 @@
 }
 
 @media (hover: hover) {
-  .lib-list-card:hover {
+  .lib-list-tile:hover {
     background: var(--bg-surface-2);
     border-color: var(--border-strong);
     transform: translateY(-2px);
   }
 }
 
-.lib-list-card:active {
+.lib-list-tile:active {
   transform: translateY(0) scale(0.99);
 }
 
-/* Square 2x2 mosaic. aspect-ratio:1/1 locks the card height to its
-   width regardless of the title length below. */
-.lib-list-mosaic {
+.lib-list-tile-pin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(10, 15, 31, 0.72);
+  color: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.lib-list-tile-mosaic {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -454,7 +403,7 @@
   overflow: hidden;
 }
 
-.lib-list-mosaic-cell {
+.lib-list-tile-mosaic-cell {
   position: relative;
   width: 100%;
   height: 100%;
@@ -462,66 +411,60 @@
   overflow: hidden;
 }
 
-.lib-list-mosaic-cell--empty {
+.lib-list-tile-mosaic-cell--empty {
   background: rgba(148, 168, 212, 0.04);
 }
 
-.lib-list-mosaic-img {
+.lib-list-tile-mosaic-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.lib-list-mosaic-fallback {
+.lib-list-tile-mosaic-fallback {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-tertiary);
   background: rgba(59, 130, 246, 0.08);
 }
 
 /* SharedCover wraps the <img> in its own div — make sure both fill the cell. */
-.lib-list-mosaic-cell > * {
+.lib-list-tile-mosaic-cell > * {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-/* Custom cover image replaces the 2×2 mosaic grid */
-.lib-list-mosaic--custom-cover {
+.lib-list-tile-mosaic--cover {
   display: block;
 }
 
-.lib-list-cover-img {
+.lib-list-tile-cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.lib-list-meta {
-  padding: 2px 4px 4px;
-  min-width: 0;
-}
-
-.lib-list-name {
+.lib-list-tile-name {
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
-  margin: 0 0 2px 0;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.lib-list-count {
+.lib-list-tile-count {
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
@@ -530,48 +473,74 @@
   margin: 0;
 }
 
-/* Empty custom-lists state — full-width card with cobalt link. */
-.lib-lists-empty {
-  display: flex;
-  flex-direction: column;
+/* "New list" tile — dashed border, centered plus + label. */
+.lib-list-tile--new {
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: var(--spacing-xl) var(--spacing-lg);
-  background: var(--bg-surface);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
+  gap: 8px;
+  border: 1.5px dashed var(--border-strong);
+  background: rgba(148, 168, 212, 0.03);
+  min-height: 168px;
 }
 
-.lib-lists-empty-copy {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--text-secondary);
-  margin: 0;
+.lib-list-tile-new-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.lib-lists-empty-link {
-  background: transparent;
-  border: none;
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
+.lib-list-tile-new-label {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--transition-fast),
-              background-color var(--transition-fast);
 }
 
-@media (hover: hover) {
-  .lib-lists-empty-link:hover {
-    color: var(--accent-hover);
-    background: rgba(59, 130, 246, 0.10);
-  }
+/* Skeleton loading tiles */
+.lib-list-tile--skeleton {
+  pointer-events: none;
+}
+
+.lib-list-tile-mosaic-skeleton {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: calc(var(--radius-lg) - 4px);
+}
+
+.lib-sk-name {
+  width: 70%;
+  height: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.lib-sk-count {
+  width: 40%;
+  height: 11px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+/* Sort-By action-sheet item content — label left, checkmark (on the
+   active sort) right. */
+.lib-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.lib-sort-item svg {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 /* =============================================
@@ -579,11 +548,11 @@
    ============================================= */
 
 @media (max-width: 359px) {
-  .lib-hero {
+  .lib-header {
     padding: var(--spacing-lg) var(--container-padding-sm) var(--spacing-sm);
   }
 
-  .lib-hero-title {
+  .lib-title {
     font-size: 24px;
   }
 
@@ -591,246 +560,56 @@
     padding: 0 var(--container-padding-sm);
   }
 
-  /* Tighter card padding on very narrow phones. The fan can't shrink
-     further without breaking the 56×76 spec, so we trim the title
-     column instead. */
-  .lib-tracker-card {
-    padding: 0 12px;
-    gap: 8px;
+  .lib-chips {
+    margin-left: calc(var(--container-padding-sm) * -1);
+    padding-left: var(--container-padding-sm);
   }
 
-  .lib-tracker-fan-wrap {
-    width: 116px;
+  .lib-lists-rail {
+    margin: 0 calc(var(--container-padding-sm) * -1);
+    padding-left: var(--container-padding-sm);
+    padding-right: var(--container-padding-sm);
   }
 
-  .lib-tracker-title {
-    font-size: 16px;
+  .lib-poster-grid {
+    gap: 10px;
   }
 }
 
 @media (min-width: 769px) {
-  .lib-hero {
+  .lib-header {
     padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-lg);
-    min-height: 200px;
   }
 
   .lib-section {
     padding: 0 var(--page-padding-desktop);
   }
 
-  .lib-hero,
+  .lib-header,
   .lib-section {
     max-width: var(--page-max-width);
     margin-left: auto;
     margin-right: auto;
   }
 
-  .lib-hero-title {
+  .lib-chips {
+    margin-left: calc(var(--page-padding-desktop) * -1);
+    padding-left: var(--page-padding-desktop);
+  }
+
+  .lib-lists-rail {
+    margin: 0 calc(var(--page-padding-desktop) * -1);
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
+  }
+
+  .lib-title {
     font-size: 32px;
   }
 
-  .lib-tracker-card {
-    height: 104px;
-    padding: 0 20px;
+  .lib-poster-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
-
-  /* On wider viewports, fit 3 columns of lists rather than 2 — keeps
-     the mosaic from ballooning to ~480px squares on tablet/desktop. */
-  .lib-lists-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* =============================================
-   COLLECTION IDENTITY STAT LINE
-   One-line summary: "RPG person · 312h total · longest: …"
-   Shown in the hero below the backlog hint.
-   ============================================= */
-
-.lib-hero-identity {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--text-tertiary);
-  margin: 5px 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* =============================================
-   SMART SECTIONS — On a roll / Almost done / Untouched
-   Horizontal scroll strips of small game cards.
-   ============================================= */
-
-.lib-section--smart {
-  margin-top: 16px;
-  /* The scroll strips break out of the section padding; each group
-     handles its own horizontal-scroll padding so covers bleed edge-to-edge. */
-  padding: 0;
-}
-
-.lib-smart-group {
-  margin-bottom: 16px;
-}
-
-.lib-smart-group:last-child {
-  margin-bottom: 0;
-}
-
-.lib-smart-group-label {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  margin: 0 0 8px 0;
-  padding: 0 var(--page-padding);
-}
-
-/* Horizontal scroll container — no scrollbar, overflows naturally */
-.lib-smart-scroll {
-  display: flex;
-  gap: 10px;
-  padding: 0 var(--page-padding) 6px;
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  /* Extra bottom padding so progress bar / dot shadow isn't clipped */
-}
-
-.lib-smart-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* Individual game card in a smart section */
-.lib-smart-card {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
-  width: 60px;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-}
-
-@media (hover: hover) {
-  .lib-smart-card:hover .lib-smart-cover-wrap {
-    transform: translateY(-2px);
-  }
-}
-
-.lib-smart-card:active .lib-smart-cover-wrap {
-  transform: scale(0.97);
-}
-
-/* Cover area — portrait 3:4 ratio */
-.lib-smart-cover-wrap {
-  position: relative;
-  width: 60px;
-  height: 80px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--bg-surface-2);
-  box-shadow: var(--shadow-cover);
-  transition: transform var(--transition-smooth);
-  flex-shrink: 0;
-}
-
-/* Muted state for "untouched" games */
-.lib-smart-cover-wrap--muted {
-  opacity: 0.55;
-}
-
-.lib-smart-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.lib-smart-cover-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  background: rgba(59, 130, 246, 0.08);
-}
-
-/* Progress bar — thin strip along the bottom of the cover */
-.lib-smart-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.lib-smart-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
-  transition: width 0.4s ease;
-}
-
-/* "On a roll" pulse dot — top-right corner of the cover */
-.lib-smart-roll-dot {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg-base);
-}
-
-/* Game title below cover */
-.lib-smart-title {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 60px;
-  margin: 0;
-}
-
-/* Hours / percent hint below title */
-.lib-smart-hint {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  margin: 0;
-}
-
-/* Stale count hint on the Want to Play tracker card */
-.lib-tracker-stale-hint {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: color-mix(in srgb, var(--accent, #c47f2e) 75%, var(--text-secondary));
-  margin: 2px 0 0;
 }
 
 /* =============================================
@@ -838,33 +617,20 @@
    ============================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  .lib-hero-newbtn,
-  .lib-hero-recent,
-  .lib-tracker-card,
-  .lib-tracker-fan-card,
-  .lib-list-card,
-  .lib-lists-empty-link,
-  .lib-smart-cover-wrap,
-  .lib-smart-progress-fill {
+  .lib-chip,
+  .lib-sort-icon-btn,
+  .lib-poster-card,
+  .lib-poster-cover-wrap,
+  .lib-list-tile,
+  .lib-loadmore {
     transition: none;
   }
 
-  .lib-tracker-card:active,
-  .lib-list-card:active,
-  .lib-hero-recent:active,
-  .lib-smart-card:active .lib-smart-cover-wrap {
+  .lib-poster-card:active .lib-poster-cover-wrap {
     transform: none;
   }
 
-  @media (hover: hover) {
-    .lib-tracker-card:hover .lib-tracker-fan-card,
-    .lib-list-card:hover,
-    .lib-hero-recent:hover {
-      transform: translateX(var(--fan-x, 0)) rotate(var(--fan-r, 0));
-    }
-
-    .lib-smart-card:hover .lib-smart-cover-wrap {
-      transform: none;
-    }
+  .lib-list-tile:active {
+    transform: none;
   }
 }
