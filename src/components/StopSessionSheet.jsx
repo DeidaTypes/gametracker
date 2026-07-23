@@ -1,17 +1,16 @@
 // StopSessionSheet — brief confirmation shown after a play session ends.
 //
 // Displays the time added and the new hours total, then offers a single
-// optional journal-line input. The note is written to game_journal by
-// stopSession in sessionService; here we just collect it before the call.
-//
-// Because the session has ALREADY been stopped by the time this sheet mounts
-// (stopGameSession in SessionContext does the DB write), the note is forwarded
-// to the service via a re-write path: if the user types a note and taps Done,
-// we write a journal entry directly here using Supabase.
+// optional journal-line input. stopSession() (in sessionService) already
+// created a journal_entries row for this session with a blank body — the
+// note isn't known until the user types it here. Tapping Done fills that
+// same entry in via updateJournalEntry(); it never inserts a second,
+// parallel diary row (this sheet used to write to a separate `game_journal`
+// table — that write path has been retired in favor of the one canonical
+// Diary schema, journal_entries, shared with "Add to Journal").
 
 import React, { useState, useEffect, useRef } from 'react'
-import { supabase } from '../services/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { updateJournalEntry } from '../services/journalService'
 import { useSession } from '../contexts/SessionContext'
 import './StopSessionSheet.css'
 
@@ -33,7 +32,6 @@ function formatAdded(h) {
 }
 
 export default function StopSessionSheet() {
-  const { user } = useAuth()
   const { stopResult, dismissStopResult } = useSession()
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
@@ -54,17 +52,14 @@ export default function StopSessionSheet() {
   const newLabel = formatHours(stopResult.newHours)
 
   async function handleDone() {
-    if (note.trim() && !saved) {
+    if (note.trim() && !saved && stopResult.journalEntryId) {
       setSaving(true)
       try {
-        await supabase.from('game_journal').insert({
-          user_id: user.id,
-          game_id: Number(stopResult.igdbGameId),
-          body: note.trim(),
-        })
+        await updateJournalEntry(stopResult.journalEntryId, { body: note.trim() })
         setSaved(true)
       } catch {
-        // Non-fatal: dismiss anyway
+        // Non-fatal: dismiss anyway — the session's diary entry still
+        // exists with a blank body, it just won't have this note.
       } finally {
         setSaving(false)
       }

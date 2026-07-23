@@ -155,6 +155,11 @@ export function SessionProvider({ children }) {
             newHours: result.newHours,
             prevHours: result.prevHours,
             igdbGameId: capturedSession.igdb_game_id,
+            // stopSession() already created a diary entry for this session
+            // (blank body — the note isn't known yet). StopSessionSheet
+            // fills it in via updateJournalEntry rather than inserting a
+            // second, parallel diary row.
+            journalEntryId: result.journalEntry?.id ?? null,
           })
           // Notify progress bar consumers so hours display updates immediately.
           try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}

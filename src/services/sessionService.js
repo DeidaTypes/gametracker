@@ -1,17 +1,49 @@
-// Session Service — start/stop timed play sessions, persist to Supabase,
-// increment hours_played on the tracker row, and log toward the streak.
+// Session Service — logs play sessions (timed or manual), rolls the
+// duration up into the game's tracked hours, and always records a diary
+// entry for the session.
 //
 // Schema:
-//   play_sessions (id, user_id, igdb_game_id, started_at, ended_at, seconds, note)
-//   game_journal  (id, user_id, game_id, body)
-//   activities    (id, user_id, activity_type, igdb_game_id, metadata)
-//   game_trackers (…, hours_played)
+//   play_sessions (id, user_id, igdb_game_id, started_at, ended_at, hours,
+//                  seconds, note, played_on, game_title, game_image,
+//                  created_at)
+//     `hours` (numeric) is the canonical duration field — added by
+//     supabase/migrations/20260723190000_play_sessions_hours_rollup_diary.sql.
+//     `seconds` is kept in sync alongside it purely for legacy readers
+//     (getSessionsFromFollowing, getManualSessionsForGame) that were built
+//     before `hours` existed — every writer below sets both together.
 //
-// None of these functions throw — errors are logged and surfaced as null returns
-// so callers can show graceful fallbacks without a try/catch every call-site.
+//   journal_entries (see journalService.js) — the ONE diary/journal table
+//     in this app. Every session ALWAYS writes a row here via
+//     saveJournalEntry(), even when notes are blank, so "Add to Journal"
+//     and session logging share a single, reusable schema. Do NOT write
+//     to `game_journal` — that table is a pre-existing parallel diary this
+//     refactor retires from new writers (see StopSessionSheet.jsx, which
+//     now updates the session's journal_entries row instead of inserting
+//     into game_journal).
+//
+//   game_trackers (…, hours_played) — the single source of truth for a
+//     game's lifetime playtime, read by Library / Game Detail / Profile.
+//     Rolled up by the `trg_play_sessions_rollup` DB trigger on
+//     play_sessions (INSERT / UPDATE OF hours / DELETE) — this file NEVER
+//     computes hours_played client-side. That read-then-write pattern is
+//     exactly what produced double-counting/drift risk before; the
+//     trigger runs inside the same transaction as the session write, so
+//     concurrent logs on the same game can't race.
+//
+//   activities    (id, user_id, activity_type, igdb_game_id, metadata) —
+//     legacy streak calendar, deduped to one 'session_logged' row per
+//     calendar day.
+//
+//   activity_events (Pulse/F1) — one 'played' event per logged session via
+//     logActivityEvent(), so sessions can surface in the follow-graph feed.
+//
+// None of these functions throw — errors are logged and surfaced as null
+// returns so callers can show graceful fallbacks without a try/catch every
+// call-site.
 
 import { supabase } from './supabase'
-import { getTracker, setHoursPlayed } from './hoursService'
+import { getTracker } from './hoursService'
+import { saveJournalEntry } from './journalService'
 import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
@@ -19,11 +51,184 @@ import {
 import { updateStreak } from './streakMilestoneService'
 import { dispatchStreakUpdated } from '../components/MilestoneCelebration'
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// ── Shared side effects ────────────────────────────────────────────────────
+//
+// Diary + streak-calendar + Pulse side effects shared by every session
+// write path (logSession's manual/quick log, and the timer stop flow).
+// Playtime rollup is deliberately NOT here — it happens transactionally
+// via the trg_play_sessions_rollup DB trigger on the play_sessions write
+// itself, so it can never be double-applied or skipped independently of
+// whichever function below actually wrote the session row.
 
 /**
- * Insert a new play session row with started_at = now().
- * Returns the inserted row or null on error.
+ * @returns {Promise<object|null>} the created journal_entries row
+ */
+async function applySessionSideEffects({
+  igdbGameId,
+  hours,
+  notes,
+  gameTitle,
+  gameImage,
+  playedOn,
+}) {
+  // 1. Diary — ALWAYS create an entry, even with blank notes. A session
+  //    with no note still records playtime + timestamp + game.
+  let journalEntry = null
+  try {
+    journalEntry = await saveJournalEntry({
+      igdbGameId,
+      title: null,
+      body: notes && notes.trim() ? notes.trim() : '',
+      gameTitle,
+      gameImage,
+      hoursPlayed: hours,
+    })
+  } catch (err) {
+    console.error('[session] journal entry write failed:', err)
+  }
+
+  // 2. Legacy streak calendar — de-duped once per day (fire-and-forget).
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    ensureActivityForDay(user.id, igdbGameId, playedOn, hours, { gameTitle }).catch(() => {})
+  }
+
+  // 3. Pulse — one 'played' activity_event per logged session so it can
+  //    appear in the follow-graph feed.
+  if (hours > 0) {
+    logActivityEvent({
+      type: ACTIVITY_EVENT_TYPES.PLAYED,
+      entityId: String(igdbGameId),
+      metadata: {
+        seconds: Math.round(hours * 3600),
+        added_hours: hours,
+        played_on: playedOn,
+        game_title: gameTitle ?? null,
+        game_image: gameImage ?? null,
+        source: 'session',
+      },
+    })
+  }
+
+  return journalEntry
+}
+
+/**
+ * Read the tracker's current hours_played AFTER a play_sessions write has
+ * already committed (and the rollup trigger has already run as part of
+ * that same transaction). Used only to shape a friendly return value for
+ * confirmation UIs — never to compute the rollup itself.
+ */
+async function readHoursAfterRollup(igdbGameId, addedHours) {
+  const tracker = await getTracker(igdbGameId)
+  const newHours = tracker?.hours_played != null ? Number(tracker.hours_played) : addedHours
+  const prevHours = Math.max(0, newHours - addedHours)
+  return { newHours, prevHours }
+}
+
+// ── logSession — THE single entry point for logging a play session ────────
+
+/**
+ * Log a play session for a game. This is the single entry point every
+ * caller should use: quick-log sheets, the manual "log a session" forms
+ * on Game Detail / tracker rows, and any future caller all call this
+ * directly. The live timer (start/stop) flow shares the same
+ * `applySessionSideEffects` helper above but must UPDATE the in-progress
+ * row it already opened via `startSession()` rather than INSERT a new
+ * one — see `stopSession` below.
+ *
+ * Writes a play_sessions row (hours_played rollup happens automatically
+ * via the DB trigger — never computed here), ALWAYS creates a diary
+ * entry (even with blank notes), logs the legacy streak activity, and
+ * emits a Pulse 'played' activity_event.
+ *
+ * @param {{
+ *   gameId: number|string,
+ *   hours: number,
+ *   notes?: string|null,
+ *   gameTitle?: string|null,
+ *   gameImage?: string|null,
+ *   playedOn?: string,   'YYYY-MM-DD', defaults to today
+ * }} args
+ * @returns {Promise<{
+ *   sessionRow: object,
+ *   journalEntry: object|null,
+ *   addedHours: number,
+ *   newHours: number,
+ *   prevHours: number,
+ * }|null>}
+ */
+export async function logSession({
+  gameId,
+  hours,
+  notes = null,
+  gameTitle = null,
+  gameImage = null,
+  playedOn = null,
+} = {}) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const h = Math.round((Number(hours) || 0) * 100) / 100
+    if (!(h > 0)) {
+      console.warn('[session] logSession called with non-positive hours:', hours)
+      return null
+    }
+
+    const dateStr = playedOn || new Date().toISOString().split('T')[0]
+    const noonUtc = `${dateStr}T12:00:00.000Z`
+    const seconds = Math.round(h * 3600)
+
+    const { data: sessionRow, error } = await supabase
+      .from('play_sessions')
+      .insert({
+        user_id: user.id,
+        igdb_game_id: Number(gameId),
+        hours: h,
+        seconds,
+        started_at: noonUtc,
+        ended_at: noonUtc,
+        played_on: dateStr,
+        note: notes && notes.trim() ? notes.trim() : null,
+        game_title: gameTitle,
+        game_image: gameImage,
+      })
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('[session] logSession insert failed:', error.message)
+      return null
+    }
+
+    const journalEntry = await applySessionSideEffects({
+      igdbGameId: gameId,
+      hours: h,
+      notes,
+      gameTitle,
+      gameImage,
+      playedOn: dateStr,
+    })
+
+    const { newHours, prevHours } = await readHoursAfterRollup(gameId, h)
+
+    try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
+
+    return { sessionRow, journalEntry, addedHours: h, newHours, prevHours }
+  } catch (err) {
+    console.error('[session] logSession crashed:', err)
+    return null
+  }
+}
+
+// ── Start (timer) ───────────────────────────────────────────────────────────
+
+/**
+ * Insert a new play session row with started_at = now(). `hours` is left
+ * null until the session is stopped (so the rollup trigger does not fire
+ * on start — there's no playtime yet). Returns the inserted row or null
+ * on error.
  *
  * @param {number|string} igdbGameId
  * @param {{ gameTitle?: string, gameImage?: string }} meta
@@ -58,16 +263,21 @@ export async function startSession(igdbGameId, meta = {}) {
   }
 }
 
-// ── Stop ──────────────────────────────────────────────────────────────────────
+// ── Stop (timer) ─────────────────────────────────────────────────────────────
 
 /**
- * End a play session:
- *   1. Set ended_at + seconds on the session row.
- *   2. Increment hours_played on the game_trackers row.
- *   3. Log a 'session_logged' activity so it counts toward the streak calendar.
- *   4. If note is provided, write a game_journal entry.
+ * End a play session started via `startSession`:
+ *   1. Close the row (ended_at, seconds, hours) — the rollup trigger fires
+ *      on this UPDATE OF hours and atomically increments
+ *      game_trackers.hours_played. No client-side read-then-write here.
+ *   2. ALWAYS create a diary entry for the session, even with a blank
+ *      body — the note UI (StopSessionSheet) is shown *after* this
+ *      resolves, so the note isn't known yet; the caller can fill it in
+ *      afterwards via `updateJournalEntry(result.journalEntry.id, …)`.
+ *   3. Log the legacy streak activity + Pulse 'played' event.
  *
- * Returns { sessionRow, addedHours, newHours } or null on hard failure.
+ * Returns { sessionRow, journalEntry, addedHours, newHours, prevHours } or
+ * null on hard failure.
  *
  * @param {string}        sessionId
  * @param {string|number} igdbGameId
@@ -86,14 +296,17 @@ export async function stopSession(sessionId, igdbGameId, opts = {}) {
     const now = new Date()
     const startedAt = opts.startedAt ? new Date(opts.startedAt) : now
     const seconds = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000))
+    const hours = Math.round((seconds / 3600) * 100) / 100
 
-    // 1. Close the session row
+    // 1. Close the session row. The trg_play_sessions_rollup trigger fires
+    //    on this UPDATE (hours: null → hours) and applies the rollup.
     const { data: sessionRow, error: stopErr } = await supabase
       .from('play_sessions')
       .update({
         ended_at: now.toISOString(),
         seconds,
-        note: opts.note || null,
+        hours,
+        note: opts.note && opts.note.trim() ? opts.note.trim() : null,
       })
       .eq('id', sessionId)
       .eq('user_id', user.id)
@@ -105,79 +318,23 @@ export async function stopSession(sessionId, igdbGameId, opts = {}) {
       return null
     }
 
-    // 2. Increment hours_played on game_trackers
-    const addedHours = seconds / 3600
-    let newHours = addedHours
+    const playedOn = now.toISOString().split('T')[0]
 
-    const currentTracker = await getTracker(igdbGameId)
-    const prevHours = Number(currentTracker?.hours_played) || 0
-    newHours = prevHours + addedHours
-
-    await setHoursPlayed(
+    // 2 & 3. Diary (always, even blank) + streak + Pulse.
+    const journalEntry = await applySessionSideEffects({
       igdbGameId,
-      newHours,
-      {
-        game_title: opts.gameTitle,
-        game_image: opts.gameImage,
-      }
-    )
+      hours,
+      notes: opts.note,
+      gameTitle: opts.gameTitle,
+      gameImage: opts.gameImage,
+      playedOn,
+    })
 
-    // 3. Log activity for streak calendar (fire-and-forget)
-    supabase
-      .from('activities')
-      .insert({
-        user_id: user.id,
-        activity_type: 'session_logged',
-        igdb_game_id: Number(igdbGameId),
-        metadata: {
-          seconds,
-          game_title: opts.gameTitle ?? null,
-          added_hours: addedHours,
-        },
-      })
-      .then(({ error }) => {
-        if (error) console.error('[session] activity log failed:', error.message)
-        else {
-          try { window.dispatchEvent(new Event('activityUpdated')) } catch {}
-          // Session logged — advance the streak and fire milestone check.
-          updateStreak(user.id)
-            .then((row) => { if (row) dispatchStreakUpdated(row.current_streak) })
-            .catch(() => {})
-        }
-      })
+    const { newHours, prevHours } = await readHoursAfterRollup(igdbGameId, hours)
 
-    // Pulse — emit a 'played' activity_event so the follow-graph feed
-    // surfaces this session. Only fires for sessions with non-trivial
-    // duration so a quickly-cancelled timer doesn't pollute the feed.
-    if (seconds >= 60) {
-      logActivityEvent({
-        type: ACTIVITY_EVENT_TYPES.PLAYED,
-        entityId: String(igdbGameId),
-        metadata: {
-          seconds,
-          added_hours: addedHours,
-          game_title: opts.gameTitle ?? null,
-          game_image: opts.gameImage ?? null,
-          source: 'session',
-        },
-      })
-    }
+    try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
 
-    // 4. Journal note (fire-and-forget, only if note was provided)
-    if (opts.note && opts.note.trim()) {
-      supabase
-        .from('game_journal')
-        .insert({
-          user_id: user.id,
-          game_id: Number(igdbGameId),
-          body: opts.note.trim(),
-        })
-        .then(({ error }) => {
-          if (error) console.error('[session] journal insert failed:', error.message)
-        })
-    }
-
-    return { sessionRow, addedHours, newHours, prevHours }
+    return { sessionRow, journalEntry, addedHours: hours, newHours, prevHours }
   } catch (err) {
     console.error('[session] stopSession crashed:', err)
     return null
@@ -221,90 +378,27 @@ export async function getActiveSession() {
 // ── Manual log ────────────────────────────────────────────────────────────────
 
 /**
- * Log a manual play session (no live timer).
- *   1. Insert a play_sessions row with played_on + seconds (= minutes × 60).
- *      started_at and ended_at are both set to noon UTC on the played date so
- *      getActiveSession() (which filters ended_at IS NULL) ignores these rows.
- *   2. Increment game_trackers.hours_played by the logged duration.
- *   3. Ensure one 'session_logged' activity row exists for played_on so the
- *      streak calendar marks that day active. No duplicate is created if the
- *      user logs a second session on the same day.
+ * Log a manual play session (no live timer). Thin wrapper around
+ * `logSession` kept for backward compatibility with existing call sites
+ * (QuickLogSheet, GameDetail's log-session form, TrackerGameList's
+ * LogSessionSheet) — all of them ultimately funnel through the single
+ * `logSession` entry point.
  *
  * @param {number|string} igdbGameId
  * @param {number} minutes  Duration in whole minutes (> 0)
  * @param {string} playedOn Local date string 'YYYY-MM-DD'
  * @param {{ gameTitle?: string, gameImage?: string }} meta
- * @returns {Promise<{ sessionRow, addedHours, newHours, prevHours }|null>}
+ * @returns {Promise<{ sessionRow, journalEntry, addedHours, newHours, prevHours }|null>}
  */
 export async function logManualSession(igdbGameId, minutes, playedOn, meta = {}) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const seconds = Math.round(minutes * 60)
-    // Noon UTC on the played date is within the correct calendar day for
-    // virtually all timezones (UTC-11 through UTC+12).
-    const noonUtc = `${playedOn}T12:00:00.000Z`
-
-    // 1. Insert session row
-    const { data: sessionRow, error } = await supabase
-      .from('play_sessions')
-      .insert({
-        user_id: user.id,
-        igdb_game_id: Number(igdbGameId),
-        started_at: noonUtc,
-        ended_at: noonUtc,
-        seconds,
-        played_on: playedOn,
-        game_title: meta.gameTitle ?? null,
-        game_image: meta.gameImage ?? null,
-      })
-      .select('*')
-      .single()
-
-    if (error) {
-      console.error('[session] logManualSession insert failed:', error.message)
-      return null
-    }
-
-    // 2. Increment hours_played on game_trackers
-    const addedHours = minutes / 60
-    const currentTracker = await getTracker(igdbGameId)
-    const prevHours = Number(currentTracker?.hours_played) || 0
-    const newHours = prevHours + addedHours
-
-    await setHoursPlayed(igdbGameId, newHours, {
-      game_title: meta.gameTitle,
-      game_image: meta.gameImage,
-    })
-
-    // 3. Ensure one activity for this date (fire-and-forget; never throws)
-    ensureActivityForDay(user.id, igdbGameId, playedOn, addedHours, meta).catch(() => {})
-
-    // Pulse — emit a 'played' activity_event for the follow-graph feed.
-    // Unlike the streak calendar (one row per calendar day), the Pulse
-    // feed surfaces every manual log so a long backfill of past
-    // sessions reads naturally in the timeline.
-    if (minutes > 0) {
-      logActivityEvent({
-        type: ACTIVITY_EVENT_TYPES.PLAYED,
-        entityId: String(igdbGameId),
-        metadata: {
-          seconds,
-          added_hours: addedHours,
-          played_on: playedOn,
-          game_title: meta.gameTitle ?? null,
-          game_image: meta.gameImage ?? null,
-          source: 'manual',
-        },
-      })
-    }
-
-    return { sessionRow, addedHours, newHours, prevHours }
-  } catch (err) {
-    console.error('[session] logManualSession crashed:', err)
-    return null
-  }
+  return logSession({
+    gameId: igdbGameId,
+    hours: Number(minutes) / 60,
+    notes: null,
+    playedOn,
+    gameTitle: meta.gameTitle,
+    gameImage: meta.gameImage,
+  })
 }
 
 /**
@@ -342,6 +436,10 @@ async function ensureActivityForDay(userId, igdbGameId, playedOn, addedHours, me
   }
 
   try { window.dispatchEvent(new Event('activityUpdated')) } catch {}
+  // Session logged — advance the streak and fire milestone check.
+  updateStreak(userId)
+    .then((row) => { if (row) dispatchStreakUpdated(row.current_streak) })
+    .catch(() => {})
 }
 
 // ── Fetch manual sessions for a game ─────────────────────────────────────────
@@ -386,11 +484,15 @@ export async function getManualSessionsForGame(igdbGameId) {
 // ── Delete a manual session ───────────────────────────────────────────────────
 
 /**
- * Delete a manually-logged session and subtract its duration from hours_played.
+ * Delete a manually-logged session. The rollup trigger fires on this
+ * DELETE and atomically subtracts the row's `hours` from
+ * game_trackers.hours_played — no client-side subtraction here, so a
+ * delete can never drift out of sync with what was actually rolled up.
  *
  * @param {string}        sessionId
  * @param {number|string} igdbGameId
- * @param {number}        minutes   Duration of the session (to subtract)
+ * @param {number}        minutes   Duration of the session (for the
+ *                                  returned `removedHours`, display only)
  * @returns {Promise<{ removedHours: number, newHours: number }|null>}
  */
 export async function deleteManualSession(sessionId, igdbGameId, minutes) {
@@ -409,14 +511,10 @@ export async function deleteManualSession(sessionId, igdbGameId, minutes) {
       return null
     }
 
-    const removedHours = minutes / 60
-    const currentTracker = await getTracker(igdbGameId)
-    const prevHours = Number(currentTracker?.hours_played) || 0
-    const newHours = Math.max(0, prevHours - removedHours)
+    const tracker = await getTracker(igdbGameId)
+    const newHours = Number(tracker?.hours_played) || 0
 
-    await setHoursPlayed(igdbGameId, newHours)
-
-    return { removedHours, newHours }
+    return { removedHours: Number(minutes) / 60, newHours }
   } catch (err) {
     console.error('[session] deleteManualSession crashed:', err)
     return null
@@ -509,7 +607,9 @@ export async function getSessionsFromFollowing({ limit = 60 } = {}) {
 
 /**
  * Discard an open session without logging hours. Used when the user
- * cancels a session rather than stopping it normally.
+ * cancels a session rather than stopping it normally. The row being
+ * deleted here always has `hours IS NULL` (never closed), so the rollup
+ * trigger's delta is 0 — nothing to undo.
  *
  * @param {string} sessionId
  */
