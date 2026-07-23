@@ -1,5 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { shouldShowCount } from '../../utils/formatSocialCount'
 import './CollectionCard.css'
 
 function curatorName(collection) {
@@ -54,8 +55,12 @@ export default function CollectionCard({ collection }) {
         </p>
         <p className="collection-card__meta">
           {collection.gameCount} game{collection.gameCount !== 1 ? 's' : ''}
-          <span className="collection-card__dot" aria-hidden="true">·</span>
-          {collection.saveCount} save{collection.saveCount !== 1 ? 's' : ''}
+          {shouldShowCount(collection.saveCount) && (
+            <>
+              <span className="collection-card__dot" aria-hidden="true">·</span>
+              {collection.saveCount} saves
+            </>
+          )}
         </p>
       </div>
     </button>

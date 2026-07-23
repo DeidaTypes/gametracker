@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useReactions } from '../hooks/useReactions'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import './Reactions.css'
 
 /**
@@ -49,10 +50,14 @@ export default function Reactions({ targetType, targetId, className = '' }) {
           className={`reactions__pill${reacted ? ' reactions__pill--active' : ''}${burstEmoji === emoji ? ' reactions__pill--burst' : ''}`}
           onClick={() => handleToggle(emoji)}
           aria-pressed={reacted}
-          aria-label={`${emoji} ${count} reaction${count !== 1 ? 's' : ''}${reacted ? ', remove' : ', add'}`}
+          aria-label={
+            shouldShowCount(count)
+              ? `${emoji} ${count} reactions${reacted ? ', remove' : ', add'}`
+              : `${emoji}${reacted ? ', remove' : ', add'}`
+          }
         >
           <span className="reactions__emoji" aria-hidden="true">{emoji}</span>
-          <span className="reactions__count">{count}</span>
+          {shouldShowCount(count) && <span className="reactions__count">{count}</span>}
         </button>
       ))}
 

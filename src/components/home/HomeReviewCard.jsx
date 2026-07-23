@@ -12,6 +12,7 @@ import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
+import { shouldShowCount } from '../../utils/formatSocialCount'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
@@ -157,7 +158,7 @@ function EventReactButton({ targetId }) {
       ) : (
         <HiOutlineHeart className="home-review-card__heart-icon" />
       )}
-      <span>{count}</span>
+      {shouldShowCount(count) && <span>{count}</span>}
     </Pressable>
   )
 }
@@ -170,17 +171,18 @@ function EventReactButton({ targetId }) {
  * to be pressable.
  */
 function ReadOnlyLikeCount({ count, liked }) {
+  const showCount = shouldShowCount(count)
   return (
     <span
       className="home-review-card__react home-review-card__react--readonly"
-      aria-label={`${count} like${count === 1 ? '' : 's'}`}
+      aria-label={showCount ? `${count} likes` : 'Like'}
     >
       {liked ? (
         <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
       ) : (
         <HiOutlineHeart className="home-review-card__heart-icon" />
       )}
-      <span>{count}</span>
+      {showCount && <span>{count}</span>}
     </span>
   )
 }
@@ -212,7 +214,7 @@ function CommentAction({ item, onReply }) {
     return (
       <Pressable className="home-review-card__reply" onClick={onReply} aria-label="Reply">
         <HiOutlineChat />
-        <span>{item.commentCount || 0}</span>
+        {shouldShowCount(item.commentCount) && <span>{item.commentCount}</span>}
       </Pressable>
     )
   }
@@ -565,7 +567,7 @@ export default function HomeReviewCard({ item }) {
             ) : (
               <HiOutlineHeart className="home-review-card__heart-icon" />
             )}
-            <span>{displayedLikeCount}</span>
+            {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
           </Pressable>
         ) : (
           <EventReactButton targetId={item.reactionTargetId} />

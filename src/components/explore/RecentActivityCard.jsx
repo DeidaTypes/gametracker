@@ -11,6 +11,7 @@ import { likeReview, unlikeReview } from '../../services/likeService'
 import { addGameToBacklog } from '../../services/libraryService'
 import { genreColorVar } from '../../utils/genreColors'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
+import { shouldShowCount } from '../../utils/formatSocialCount'
 import './RecentActivityCard.css'
 
 const ACTION_LABEL = { reviewed: 'reviewed', rated: 'rated' }
@@ -207,7 +208,7 @@ export default function RecentActivityCard({ item }) {
               ) : (
                 <HiOutlineHeart className="recent-activity-card__heart-icon" />
               )}
-              <span>{likeState.count || 0}</span>
+              {shouldShowCount(likeState.count) && <span>{likeState.count}</span>}
             </Pressable>
             <Pressable
               className="recent-activity-card__icon-btn"

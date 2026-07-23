@@ -18,6 +18,7 @@ import Pressable from './Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { shareCard } from '../services/share'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import DmShareSheet from './DmShareSheet'
 import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
@@ -315,6 +316,7 @@ function ReviewCard({
   // (seeded by parents via prefetchLikeStatesForReviews); the
   // review.likeCount fallback keeps demo / dev fixtures rendering.
   const displayedLikeCount = likeState.count || review.likeCount || 0
+  const displayedCommentCount = review.commentCount || 0
 
   // gamedetail variant: whole stars only (no half-star glyphs), and a
   // "relationship · time ago" meta line — relationship is read from the
@@ -423,11 +425,11 @@ function ReviewCard({
               ) : (
                 <HiOutlineHeart className="review-card__heart-icon" />
               )}
-              <span>{displayedLikeCount}</span>
+              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
             </Pressable>
             <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
               <HiOutlineChat />
-              <span>{review.commentCount || 0}</span>
+              {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
             </Pressable>
           </div>
         </>
@@ -536,11 +538,11 @@ function ReviewCard({
               ) : (
                 <HiOutlineHeart className="review-card__heart-icon" />
               )}
-              <span>{displayedLikeCount}</span>
+              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
             </Pressable>
             <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
               <HiOutlineChat />
-              <span>{review.commentCount || 0}</span>
+              {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
             </Pressable>
           </div>
           <div className="review-card__actions-right">

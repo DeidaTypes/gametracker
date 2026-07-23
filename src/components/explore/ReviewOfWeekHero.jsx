@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { shouldShowCount } from '../../utils/formatSocialCount'
 import './ReviewOfWeekHero.css'
 
 /** Half-star aware rating display: "★★★★☆  4.0" */
@@ -107,7 +108,7 @@ export default function ReviewOfWeekHero({ review }) {
                 />
               )}
               <span className="rotw-author">{authorName}</span>
-              {likeCount > 0 && (
+              {shouldShowCount(likeCount) && (
                 <span className="rotw-like-badge" aria-label={`${likeCount} likes`}>
                   <Heart size={11} className="rotw-like-icon" aria-hidden="true" />
                   {likeCount}

@@ -18,6 +18,7 @@ import {
 } from '../services/messageService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
@@ -725,10 +726,10 @@ function Bubble({ message, isOutgoing, onReport }) {
                 type="button"
                 className={`dm-bubble__reaction-pill${r.reacted ? ' dm-bubble__reaction-pill--reacted' : ''}`}
                 onClick={() => toggle(r.emoji)}
-                aria-label={`${r.emoji} ${r.count}`}
+                aria-label={shouldShowCount(r.count) ? `${r.emoji} ${r.count}` : r.emoji}
               >
                 {r.emoji}
-                <span className="dm-bubble__reaction-count">{r.count}</span>
+                {shouldShowCount(r.count) && <span className="dm-bubble__reaction-count">{r.count}</span>}
               </button>
             ))}
           </div>

@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import LogSessionModal from '../components/LogSessionModal'
 import { logManualSession, getManualSessionsForGame, deleteManualSession } from '../services/sessionService'
@@ -892,7 +893,9 @@ function GameDetail() {
               <p className="gd-pulse-label">
                 {circlePulse.activePresence.length === 1
                   ? `${circlePulse.activePresence[0].displayName} is playing`
-                  : `${circlePulse.activePresence.length} friends playing now`}
+                  : shouldShowCount(circlePulse.activePresence.length)
+                    ? `${circlePulse.activePresence.length} friends playing now`
+                    : 'Friends playing now'}
               </p>
             </div>
           )}

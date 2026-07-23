@@ -6,6 +6,7 @@ import {
   deleteListComment,
 } from '../services/listInteractionService'
 import { showToast } from './Toast'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import './ListComments.css'
 
 function timeAgo(iso) {
@@ -59,7 +60,7 @@ function CommentRow({ comment, canDelete, onDelete }) {
 
   return (
     <div className={`lc-comment${deleting ? ' lc-comment--deleting' : ''}`}>
-      <Avatar user={user} size={30} />
+      <Avatar user={user} size={28} />
       <div className="lc-comment-content">
         <div className="lc-comment-header">
           <span className="lc-comment-author">{displayName}</span>
@@ -164,16 +165,13 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
     }
   }
 
-  // Don't render the section at all when there are no comments and user isn't signed in
-  if (!loading && comments.length === 0 && !currentUserId) return null
-
   return (
     <section className="lc-section" aria-label="Comments">
-      {comments.length > 0 && (
-        <h3 className="lc-heading">
-          Comments · {comments.length}
-        </h3>
-      )}
+      {/* Heading always renders, even at zero — only the comment count
+          itself is hidden below the zero-state threshold (< 3). */}
+      <h3 className="lc-heading">
+        Comments{shouldShowCount(comments.length) ? ` · ${comments.length}` : ''}
+      </h3>
 
       {!loading && comments.length > 0 && (
         <div className="lc-list">
@@ -198,10 +196,20 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
             className="lc-compose-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Add a comment…"
+            placeholder="Add a comment"
             maxLength={2000}
             rows={1}
             aria-label="Write a comment"
+            onFocus={() => {
+              // Wait 50ms so main.jsx has finished writing the updated
+              // --keyboard-inset (and .list-detail-page's padding-bottom
+              // has picked it up) before we scroll — otherwise we'd
+              // scroll to where the composer *was* about to land, not
+              // where the keyboard has actually pushed the layout to.
+              setTimeout(() => {
+                textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+              }, 50)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -209,14 +217,18 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
               }
             }}
           />
-          <button
-            type="submit"
-            className="lc-compose-submit"
-            disabled={!draft.trim() || submitting}
-            aria-label="Post comment"
-          >
-            Post
-          </button>
+          {/* Text-only "Post" — appears only once there's something to
+              post; no button at all while the composer is empty. */}
+          {draft.trim() && (
+            <button
+              type="submit"
+              className="lc-compose-submit"
+              disabled={submitting}
+              aria-label="Post comment"
+            >
+              Post
+            </button>
+          )}
         </form>
       )}
     </section>

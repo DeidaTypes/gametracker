@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { shouldShowCount } from '../../utils/formatSocialCount'
 import './MostPlayedRail.css'
 
 /**
@@ -43,7 +44,9 @@ function MovementBadge({ movement, delta }) {
 
 function LiveChip({ count, onClick }) {
   if (!count) return null
-  const label = count === 1 ? '1 friend playing — jump in' : `${count} friends playing — jump in`
+  const label = shouldShowCount(count)
+    ? `${count} friends playing — jump in`
+    : 'Friends playing — jump in'
   return (
     <button
       type="button"
@@ -72,8 +75,9 @@ function MostPlayedRow({ item, rank, mode }) {
 
   // ── Circle-mode row ──────────────────────────────────────────────────────
   if (isCircle) {
-    const friendLabel =
-      item.friend_count === 1 ? '1 friend' : `${item.friend_count} friends`
+    const friendLabel = shouldShowCount(item.friend_count)
+      ? `${item.friend_count} friends`
+      : 'Friends'
 
     return (
       <Pressable
@@ -104,17 +108,20 @@ function MostPlayedRow({ item, rank, mode }) {
           <LiveChip count={item.liveCount || 0} onClick={handleClick} />
         </div>
 
-        <span className="mpr-row__friend-count" aria-hidden="true">
-          {item.friend_count}
-          <span className="mpr-row__friend-icon" aria-hidden="true">👤</span>
-        </span>
+        {shouldShowCount(item.friend_count) && (
+          <span className="mpr-row__friend-count" aria-hidden="true">
+            {item.friend_count}
+            <span className="mpr-row__friend-icon" aria-hidden="true">👤</span>
+          </span>
+        )}
       </Pressable>
     )
   }
 
   // ── Global-mode row (original) ────────────────────────────────────────────
-  const playerLabel =
-    item.player_count === 1 ? '1 player' : `${item.player_count} players`
+  const playerLabel = shouldShowCount(item.player_count)
+    ? `${item.player_count} players`
+    : 'Being played this week'
 
   return (
     <Pressable

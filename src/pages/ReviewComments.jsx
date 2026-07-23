@@ -13,6 +13,7 @@ import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import { getReviewById } from '../services/reviewService'
 import {
   getCommentsForReview,
@@ -693,7 +694,7 @@ function ReviewComments() {
         <div className="rc-header__titles">
           <h1 className="rc-title">Comments</h1>
           <span className="rc-count" aria-live="polite">
-            {commentsLoading ? '…' : commentCount}
+            {commentsLoading ? '' : shouldShowCount(commentCount) ? commentCount : ''}
           </span>
         </div>
         <span className="rc-header__spacer" aria-hidden="true" />

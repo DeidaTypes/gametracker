@@ -13,6 +13,7 @@ import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
+import { shouldShowCount } from '../utils/formatSocialCount'
 import { getReviewById } from '../services/reviewService'
 import {
   getCommentsForReview,
@@ -400,7 +401,7 @@ function CommentRow({
                   <HiOutlineHeart size={14} aria-hidden="true" />
                 )}
               </span>
-              {localLike.count > 0 && localLike.count}
+              {shouldShowCount(localLike.count) && localLike.count}
             </button>
 
             {!isReply && (
@@ -949,7 +950,7 @@ function ReviewDetail() {
         <section className="rd-thread" aria-label="Comments">
           <div className="rd-thread__divider">
             <span className="rd-thread__divider-label">Comments</span>
-            {!commentsLoading && (
+            {!commentsLoading && shouldShowCount(commentCount) && (
               <span className="rd-thread__divider-count" aria-live="polite">
                 {commentCount}
               </span>
