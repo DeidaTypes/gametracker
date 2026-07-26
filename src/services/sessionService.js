@@ -521,6 +521,67 @@ export async function deleteManualSession(sessionId, igdbGameId, minutes) {
   }
 }
 
+// ── Sessions for a date range (weekly rhythm card) ─────────────────────────────
+
+/**
+ * Fetch the current user's completed play sessions whose `started_at` falls
+ * within [rangeStartIso, rangeEndIso) — used by the Home "This week" card
+ * and its week-detail view. Only closed sessions count (`ended_at IS NOT
+ * NULL`) so an in-progress timer never inflates the week's hours/session
+ * count before it's actually stopped.
+ *
+ * Ordered newest-first. Returns [] on error, when signed out, or when the
+ * week genuinely has no sessions — callers must render a neutral empty
+ * state rather than fabricating rows.
+ *
+ * @param {string} userId
+ * @param {string} rangeStartIso  ISO timestamp, inclusive
+ * @param {string} rangeEndIso    ISO timestamp, exclusive
+ * @returns {Promise<Array<{
+ *   id: string,
+ *   igdbGameId: number|null,
+ *   gameTitle: string|null,
+ *   gameImage: string|null,
+ *   hours: number,
+ *   note: string|null,
+ *   startedAt: string,
+ *   playedOn: string|null,   'YYYY-MM-DD', derived from played_on or started_at
+ * }>>}
+ */
+export async function getSessionsForWeek(userId, rangeStartIso, rangeEndIso) {
+  if (!userId || !rangeStartIso || !rangeEndIso) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('play_sessions')
+      .select('id, igdb_game_id, game_title, game_image, hours, note, started_at, ended_at, played_on')
+      .eq('user_id', userId)
+      .not('ended_at', 'is', null)
+      .gte('started_at', rangeStartIso)
+      .lt('started_at', rangeEndIso)
+      .order('started_at', { ascending: false })
+
+    if (error) {
+      console.error('[session] getSessionsForWeek failed:', error.message)
+      return []
+    }
+
+    return (data || []).map((row) => ({
+      id: row.id,
+      igdbGameId: row.igdb_game_id != null ? Number(row.igdb_game_id) : null,
+      gameTitle: row.game_title || null,
+      gameImage: row.game_image || null,
+      hours: Number(row.hours) || 0,
+      note: row.note || null,
+      startedAt: row.started_at,
+      playedOn: row.played_on || (row.started_at ? row.started_at.slice(0, 10) : null),
+    }))
+  } catch (err) {
+    console.error('[session] getSessionsForWeek crashed:', err)
+    return []
+  }
+}
+
 // ── Following sessions feed ───────────────────────────────────────────────────
 
 /**

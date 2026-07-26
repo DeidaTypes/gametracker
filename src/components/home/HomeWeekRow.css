@@ -1,0 +1,15 @@
+/* ============================================================
+   HOME WEEK ROW — "This week" + "{year} goal" two-cell layout
+   Namespace: hwr-*
+   ============================================================ */
+
+.hwr-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  align-items: stretch;
+}
+
+.hwr-row--single {
+  grid-template-columns: 1fr;
+}

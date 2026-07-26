@@ -1,0 +1,296 @@
+/* =============================================
+   WEEK DETAIL SHEET
+   Cobalt Modern · DM Sans · CSS variables only
+   ============================================= */
+
+.wds-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+.wds-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 85dvh;
+}
+
+.wds-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  align-self: center;
+  margin-bottom: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* ── Header ────────────────────────────────── */
+
+.wds-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.wds-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wds-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+}
+
+.wds-subtitle {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+.wds-close-btn {
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wds-close-btn:hover,
+.wds-close-btn:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--bg-surface-2);
+  outline: none;
+}
+
+.wds-summary {
+  margin: 0;
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* ── Day-by-day activity tracker ─────────────── */
+
+.wds-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wds-tracker-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.wds-tracker-cell--future {
+  opacity: 0.4;
+}
+
+.wds-tracker-day {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+}
+
+.wds-tracker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+}
+
+.wds-tracker-dot--active {
+  background: var(--accent-review);
+  border-color: var(--accent-review);
+}
+
+.wds-tracker-dot--today {
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 3.5px var(--accent);
+}
+
+/* ── Scrollable body ────────────────────────── */
+
+.wds-body {
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Loading / empty ────────────────────────── */
+
+.wds-loading {
+  margin: var(--spacing-xl) 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+}
+
+.wds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl) 0;
+}
+
+.wds-empty-icon {
+  display: flex;
+  color: var(--color-text-tertiary);
+  opacity: 0.6;
+}
+
+.wds-empty-text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* ── Session list ─────────────────────────────── */
+
+.wds-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wds-item {
+  display: block;
+}
+
+.wds-item-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 10px var(--spacing-sm);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+
+.wds-item-btn:not(.wds-item-btn--static):hover,
+.wds-item-btn:not(.wds-item-btn--static):focus-visible {
+  background: var(--bg-surface-2);
+  outline: none;
+}
+
+.wds-item-btn.wds-item-btn--static {
+  cursor: default;
+}
+
+.wds-item-cover {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface-2);
+}
+
+.wds-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.wds-item-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.wds-item-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wds-item-hours {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-review-text);
+}
+
+.wds-item-time {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-tertiary);
+}
+
+.wds-item-note {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  font-style: italic;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.wds-item-chevron {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--color-text-tertiary);
+}

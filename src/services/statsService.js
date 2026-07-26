@@ -487,6 +487,62 @@ export function parseLocalDateKey(key) {
 }
 
 /**
+ * Local-calendar week bounds (Sunday → Saturday) for the week containing
+ * `referenceDate`. Used by the Home "This week" card / week-detail view so
+ * "this week" means the same thing everywhere: a fixed Sun–Sat window, not
+ * a rolling 7-day lookback (that's what the streak strip's pips used —
+ * different UI, different question).
+ *
+ * @param {Date} [referenceDate]
+ * @returns {{ start: Date, end: Date }}  start = local midnight Sunday,
+ *          end = start + 7 days (exclusive upper bound)
+ */
+export function getLocalWeekBounds(referenceDate = new Date()) {
+  const start = new Date(referenceDate)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - start.getDay())
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+
+  return { start, end }
+}
+
+/**
+ * Build the 7 day-cells (Sun → Sat) for a calendar week, reusing the exact
+ * same local-date-key + "active if count > 0" logic the old streak strip's
+ * day dots used (toLocalDateKey + a Map/Set membership check) — just
+ * anchored to a fixed week start instead of a rolling 7-day window.
+ *
+ * @param {Date} weekStart          local midnight Sunday (see getLocalWeekBounds)
+ * @param {Set<string>} activeDateKeys  local 'YYYY-MM-DD' keys with ≥1 session
+ * @returns {Array<{ key, dayLabel, active, isToday, isFuture }>}
+ */
+export function buildCalendarWeekCells(weekStart, activeDateKeys) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayKey = toLocalDateKey(today)
+
+  const SHORT_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const cells = []
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart)
+    d.setDate(weekStart.getDate() + i)
+    const key = toLocalDateKey(d)
+    cells.push({
+      key,
+      dayLabel: SHORT_DAYS[d.getDay()],
+      active: activeDateKeys?.has(key) ?? false,
+      isToday: key === todayKey,
+      isFuture: d.getTime() > today.getTime(),
+    })
+  }
+
+  return cells
+}
+
+/**
  * Total tracked-games count for ANY user, sourced from `game_trackers`
  * (RLS: publicly readable — see trackers_select_all). Used for the
  * "games" stat numeral on visitor profiles, where the local-device-only

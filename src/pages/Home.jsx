@@ -4,7 +4,7 @@ import { LuBell } from 'react-icons/lu'
 import { Search, ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import HomeFAB from '../components/HomeFAB'
-import HomeStreakStrip from '../components/home/HomeStreakStrip'
+import HomeWeekRow from '../components/home/HomeWeekRow'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import HomeLogSessionModal from '../components/home/HomeLogSessionModal'
 import HomeFreshReviews from '../components/home/HomeFreshReviews'
@@ -15,13 +15,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import { useTodayData } from '../hooks/useTodayData'
 import './Home.css'
 
 // ── New-user topper ───────────────────────────────────────────────────────────
 
 /**
- * LogFirstGameTopper — slim CTA shown in place of the streak strip +
+ * LogFirstGameTopper — slim CTA shown in place of the weekly rhythm row +
  * Continue breadcrumb for brand-new users (no follows, no logged games).
  */
 function LogFirstGameTopper({ onLogGame }) {
@@ -41,8 +40,9 @@ function HomeSkeleton() {
       <div className="home-sk-heading">
         <div className="skeleton home-sk-heading-block" />
       </div>
-      <div className="home-sk-single">
-        <div className="skeleton home-sk-strip" />
+      <div className="home-sk-single home-sk-week-row">
+        <div className="skeleton home-sk-week-cell" />
+        <div className="skeleton home-sk-week-cell" />
       </div>
       <div className="home-sk-single">
         <div className="skeleton home-sk-single-card" />
@@ -69,16 +69,20 @@ function HomeSkeleton() {
  *      end-to-end but no UI in this app ever writes it, so it's always
  *      null in practice — showing a bar here would mean fabricating a
  *      number. See HomeNowPlayingHero.jsx for the full accounting.
- *   c. Compact streak strip — flame + "N-day streak" + 7 day-pips +
- *      "Calendar ›". Always visible for users with account history; shows
- *      a neutral "Start a streak" zero-state (no guilt 0/7 grid) when
- *      streak.current is 0.
+ *   c. Weekly rhythm row — "This week" card (real sessions-this-week +
+ *      total hours from play_sessions, tap to open the week-detail sheet;
+ *      "Calendar ›" keeps the entry point into the full /activity screen)
+ *      beside a "{year} goal" card that hides entirely when no goal is
+ *      set. Replaces the old daily streak strip — a daily streak punishes
+ *      deep multi-week playthroughs, weekly rhythm rewards them. Always
+ *      visible for users with account history; a zero-session week reads
+ *      as a neutral "No sessions yet this week", never fabricated data.
  *   d. Fresh reviews — the feed, promoted to lead content. Defaults to
  *      community scope for users with no follows (see getHomeFeed).
  *
  * State-adaptive: brand-new users (no follows AND no logged games) skip
  * (b) and (c) entirely in favor of a single "Log your first game" topper;
- * everyone else always sees (c), even at a 0-day streak,
+ * everyone else always sees (c), even in a zero-session week,
  * and the feed's own community fallback + "Find people to follow" row
  * carries the social-proof job normally.
  */
@@ -110,7 +114,6 @@ function Home() {
   }, [])
 
   const { unreadCount: notifUnread } = useNotifications()
-  const { streak, weekCells } = useTodayData()
 
   const loadHomeData = useCallback(() => {
     try {
@@ -169,10 +172,11 @@ function Home() {
 
   const pageReady = !loading && followCount !== null
   const isNewUser = pageReady && followCount === 0 && loggedGamesCount === 0
-  // Always show for anyone with account history — even a 0-day streak gets
-  // a neutral "Start a streak" state (see HomeStreakStrip). Hidden only for
-  // the true new-user empty state (same gate as the first-game topper).
-  const showStreakStrip = pageReady && !isNewUser
+  // Always show for anyone with account history — even a zero-session week
+  // gets a neutral "No sessions yet this week" state (see HomeWeekCard).
+  // Hidden only for the true new-user empty state (same gate as the
+  // first-game topper).
+  const showWeekRow = pageReady && !isNewUser
   // Gated on real content so the section wrapper itself never renders as
   // an empty shell — HomeNowPlayingHero also self-guards defensively, but
   // the decision of whether to render *anything* (including the wrapper)
@@ -235,7 +239,7 @@ function Home() {
 
           {/* ── New-user topper ───────────────────────────────────────────
               Brand-new users (no follows, no logged games) get a single
-              slim CTA in place of the streak strip + Continue breadcrumb.
+              slim CTA in place of the weekly rhythm row + Continue breadcrumb.
           ──────────────────────────────────────────────────────────────── */}
           {isNewUser && (
             <section className="home-section home-section-padded">
@@ -259,15 +263,15 @@ function Home() {
             </section>
           )}
 
-          {/* ── c. Compact streak strip ───────────────────────────────────
-              Flame + "N-day streak" · 7 day-pips · "Calendar ›". Always
-              shown for users with account history — a neutral "Start a
-              streak" zero-state replaces the guilt-trippy 0/7 grid when
-              streak.current is 0.
+          {/* ── c. Weekly rhythm row ───────────────────────────────────────
+              "This week" (real sessions + hours, tap for detail) beside a
+              "{year} goal" card that hides when no goal is set. Always
+              shown for users with account history — a zero-session week
+              reads as a neutral state, not a guilt-trippy empty grid.
           ──────────────────────────────────────────────────────────────── */}
-          {showStreakStrip && (
+          {showWeekRow && (
             <section className="home-section home-section-padded">
-              <HomeStreakStrip streak={streak.current} weekCells={weekCells} />
+              <HomeWeekRow />
             </section>
           )}
 
