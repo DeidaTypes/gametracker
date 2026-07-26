@@ -64,22 +64,30 @@
 }
 
 /* =============================================
-   GREETING HEADER
-   "Welcome back, {name}" + inline search below it
+   COMPACT HEADER
+   Single row: wordmark left, search + bell right. No greeting.
    ============================================= */
 
-.home-greeting-block {
+.home-header-block {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
 }
 
-/* Greeting row: text left, bell right */
-.home-greeting-row {
+/* Header row: wordmark left, icon cluster right */
+.home-header-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
+}
+
+.home-wordmark {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--color-text-primary);
 }
 
 /* Header icon cluster — search + bell */
@@ -152,17 +160,6 @@
   .home-search-btn {
     transition: none;
   }
-}
-
-.home-greeting {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-display-l);
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-  overflow-wrap: break-word;
 }
 
 /* =============================================
@@ -302,59 +299,9 @@
 }
 
 /* =============================================
-   CONTINUE BREADCRUMB
-   "Continue · {game} ›" — minimal text + chevron row shown only
-   when the user has an active Playing game. No card, no cover.
-   ============================================= */
-
-.home-continue-breadcrumb {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  width: 100%;
-  padding: 2px 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  color: var(--color-text-tertiary);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-continue-breadcrumb__text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-}
-
-.home-continue-breadcrumb__sep {
-  color: var(--color-text-tertiary);
-}
-
-.home-continue-breadcrumb__game {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.home-continue-breadcrumb svg {
-  flex-shrink: 0;
-  color: var(--color-text-tertiary);
-}
-
-.home-continue-breadcrumb:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* =============================================
    NEW-USER TOPPER
-   "Log your first game" — shown in place of the streak strip and
-   Continue breadcrumb for brand-new users (no follows, no logged games).
+   "Log your first game" — shown in place of the streak strip and Now
+   Playing hero for brand-new users (no follows, no logged games).
    ============================================= */
 
 .home-first-game-topper {

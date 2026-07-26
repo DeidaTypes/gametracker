@@ -1,0 +1,255 @@
+/* =============================================
+   HOME NOW PLAYING HERO
+   Sits directly under Home's compact header. Reuses the shared
+   ReviewCardShell box + the Sprint 5 "cover header" dominant-color tint
+   pattern (see ReviewCard.css) so it reads as the same design language
+   as the rest of Home, just applied to the active game instead of a
+   review. Namespace: nph-*
+   ============================================= */
+
+.nph {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ---------------- Cover header (cover + title + stats) ---------------- */
+
+.nph__cover-header {
+  --dominant-rgb: 40 50 80;
+  display: grid;
+  grid-template-columns: var(--cover-thumb-size) 1fr;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: var(--cover-header-height);
+  padding: var(--cover-header-padding);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--dominant-rgb) / 0.4) 0%,
+    rgba(var(--dominant-rgb) / 0.4) 30%,
+    var(--color-bg-tertiary) 100%
+  );
+  transition: background var(--transition-normal);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nph__cover-thumb {
+  width: var(--cover-thumb-size);
+  height: var(--cover-thumb-size);
+  border-radius: var(--cover-thumb-radius);
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-cover);
+}
+
+.nph__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nph__eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.nph__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nph__stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  min-height: 18px;
+}
+
+.nph__stats-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nph__dot {
+  color: var(--color-text-tertiary);
+}
+
+.nph__stats-skeleton {
+  width: 90px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------------- Actions ---------------- */
+
+.nph__actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px var(--cover-header-padding) var(--cover-header-padding);
+}
+
+.nph__btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
+}
+
+.nph__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.nph__btn--primary {
+  /* Home's blue→green gradient identity — same recipe as the
+     onboarding picker's primary CTA (see --grad-cta in theme.css). */
+  background: var(--grad-cta);
+  color: var(--color-on-accent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.nph__btn--primary:not(:disabled):hover {
+  opacity: 0.92;
+}
+
+.nph__btn--secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.nph__btn--secondary:not(:disabled):hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.nph__btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nph__cover-header,
+  .nph__btn {
+    transition: none;
+  }
+  .nph__btn:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* =============================================
+   BACKLOG NUDGE — fallback #2 (no active Playing game)
+   Slim single-row CTA, styled like the existing new-user topper so the
+   hero slot never feels like an empty gap.
+   ============================================= */
+
+.nph-backlog {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 12px var(--spacing-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nph-backlog:hover {
+  background: var(--bg-surface-2);
+}
+
+.nph-backlog:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.nph-backlog__cover {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.nph-backlog__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  color: var(--accent);
+}
+
+.nph-backlog__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nph-backlog__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body-sm, 14px);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.nph-backlog__sub {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nph-backlog__chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nph-backlog {
+    transition: none;
+  }
+}
