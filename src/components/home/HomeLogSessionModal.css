@@ -1,0 +1,292 @@
+/* HomeLogSessionModal — premium purple→blue "Log a Session" popup.
+   Namespace: hlsm-* */
+
+.hlsm-modal {
+  overflow: hidden;
+}
+
+/* ── Header — purple/blue gradient wash behind title ── */
+
+.hlsm-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 16px 20px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-journal) 22%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 65%,
+    transparent 100%
+  );
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.hlsm-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--color-on-accent, #fff);
+  background: var(--grad-purple-blue);
+}
+
+.hlsm-title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--text-primary);
+}
+
+.hlsm-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.hlsm-close:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Game context row (read-only — not an input) ── */
+
+.hlsm-game-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+}
+
+.hlsm-game-cover {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface-2, #1a2240);
+}
+
+.hlsm-game-cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hlsm-game-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Body ── */
+
+.hlsm-body {
+  padding: 18px 20px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hlsm-field-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label, 11px);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.hlsm-body .hlsm-field-label:not(:first-child) {
+  margin-top: 18px;
+}
+
+/* ── Hours stepper ── */
+
+.hlsm-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  padding: 8px 10px;
+}
+
+.hlsm-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.hlsm-stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.hlsm-stepper-btn:active {
+  transform: scale(0.94);
+}
+
+.hlsm-hours-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  text-align: center;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 20px;
+  font-weight: var(--font-weight-bold, 700);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.hlsm-hours-input::-webkit-outer-spin-button,
+.hlsm-hours-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ── Notes textarea ── */
+
+.hlsm-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.hlsm-textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 12px;
+  box-sizing: border-box;
+  background: var(--bg-surface-2, #1a2240);
+  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  border-radius: var(--radius-md, 10px);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus, which is what causes the
+     viewport jump/jank this modal is required to avoid. */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.hlsm-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.hlsm-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.hlsm-char-count {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 4px 0 0;
+  text-align: right;
+  align-self: flex-end;
+}
+
+/* ── Footer ── */
+
+.hlsm-footer {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px 20px;
+}
+
+.hlsm-btn {
+  flex: 1;
+  height: 46px;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body, 15px);
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.hlsm-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.hlsm-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.hlsm-btn--cancel {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  color: var(--text-secondary);
+}
+
+.hlsm-btn--cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--text-primary);
+}
+
+.hlsm-btn--save {
+  background: var(--grad-purple-blue);
+  color: var(--color-on-accent, #fff);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-journal) 35%, transparent);
+}
+
+.hlsm-btn--save:not(:disabled):hover {
+  opacity: 0.92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hlsm-close,
+  .hlsm-stepper-btn,
+  .hlsm-textarea,
+  .hlsm-btn {
+    transition: none;
+  }
+  .hlsm-stepper-btn:active,
+  .hlsm-btn:not(:disabled):active {
+    transform: none;
+  }
+}

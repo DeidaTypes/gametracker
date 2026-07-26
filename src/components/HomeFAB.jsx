@@ -11,7 +11,7 @@ import {
 } from 'react-icons/lu'
 import CreateListModal from './CreateListModal'
 import GamePickerSheet from './GamePickerSheet'
-import QuickLogSheet from './QuickLogSheet'
+import HomeLogSessionModal from './home/HomeLogSessionModal'
 import Pressable from './Pressable'
 import { createList, addGameToList } from '../services/listService'
 import { getGamesFromList } from '../services/libraryService'
@@ -110,7 +110,9 @@ function useSmartDefaultGame(session) {
 
 function HomeFAB() {
   const [isOpen, setIsOpen] = useState(false)
-  const [quickLogOpen, setQuickLogOpen] = useState(false)
+  const [logSessionOpen, setLogSessionOpen] = useState(false)
+  const [logSessionGame, setLogSessionGame] = useState(null)
+  const [logGamePickerOpen, setLogGamePickerOpen] = useState(false)
   const [createListOpen, setCreateListOpen] = useState(false)
   const [gamePickerOpen, setGamePickerOpen] = useState(false)
   const fabRef = useRef(null)
@@ -143,7 +145,18 @@ function HomeFAB() {
 
   const handleLog = () => {
     closeRadial(false)
-    setQuickLogOpen(true)
+    if (defaultGame) {
+      setLogSessionGame(defaultGame)
+      setLogSessionOpen(true)
+    } else {
+      setLogGamePickerOpen(true)
+    }
+  }
+
+  const handleLogGamePicked = (picked) => {
+    setLogGamePickerOpen(false)
+    setLogSessionGame(picked)
+    setLogSessionOpen(true)
   }
 
   const handleReview = () => {
@@ -259,14 +272,22 @@ function HomeFAB() {
 
       {/* ── Sheets & Modals (outside radial root so z-index is independent) ── */}
 
-      <QuickLogSheet
-        isOpen={quickLogOpen}
+      <HomeLogSessionModal
+        isOpen={logSessionOpen}
         onClose={() => {
-          setQuickLogOpen(false)
+          setLogSessionOpen(false)
           setTimeout(() => fabRef.current?.focus(), 60)
         }}
-        defaultGame={defaultGame}
-        returnFocusRef={fabRef}
+        game={logSessionGame}
+      />
+
+      <GamePickerSheet
+        isOpen={logGamePickerOpen}
+        onSelect={handleLogGamePicked}
+        onCancel={() => {
+          setLogGamePickerOpen(false)
+          fabRef.current?.focus()
+        }}
       />
 
       <CreateListModal
