@@ -12,11 +12,17 @@
 -- rec list) for any environment that already has the old columns.
 --
 -- This file owns four cache tables + two read RPCs. NOTHING here is
--- fabricated — every row is derived from real `reviews` / `game_trackers`
--- data mapped to real IGDB genre/theme metadata by the `taste-engine`
--- Edge Function. When a user has too little data the engine writes
--- nothing, so the read APIs return empty / null rather than an invented
--- guess.
+-- fabricated — every row is derived from the user's REAL behavior mapped to
+-- real IGDB genre/theme metadata by the `taste-engine` Edge Function. When a
+-- user has too little data the engine writes nothing, so the read APIs return
+-- empty / null rather than an invented guess.
+--
+-- NOTE: the behavioral-signal columns on `user_taste_vectors` (genre_signals,
+-- signal_totals, hours_total, session_count, ...) and the `user_swipe_signals`
+-- table are added by
+--   supabase/migrations/20260728120000_behavioral_taste_profile.sql
+-- which also replaces `get_user_taste_vector` with the signal-aware version.
+-- Run this file first, then that migration.
 --
 --   1. `game_tags`                 — IGDB metadata cache (genres, themes,
 --                                    similar_games, quality) keyed by IGDB
@@ -71,9 +77,16 @@ COMMENT ON TABLE public.game_tags IS
 --   { "Role-playing (RPG)": 0.63, "Adventure": 0.41, ... }
 -- so cosine similarity between two users is a plain dot product.
 --
--- `signal_count` = number of distinct rated/tracked games that resolved
--- to real IGDB tags — the input to `confidence`. `confidence` in [0,1]
+-- `signal_count` = number of distinct games with ANY behavioral signal that
+-- resolved to real IGDB tags — the input to `confidence`. `confidence` in [0,1]
 -- ramps to 1.0 at TASTE_CONFIDENCE_FULL (8) signal games.
+--
+-- The weights are accumulated from EVERY behavioral signal (hours played,
+-- finishes, ratings, reviews, list curation, backlog adds, swipes), each
+-- recency-decayed — not from ratings alone. See the header of
+-- supabase/functions/taste-engine/index.ts for the weighting model, and the
+-- 20260728120000 migration for the provenance columns that record which signal
+-- types produced each genre's score.
 CREATE TABLE IF NOT EXISTS public.user_taste_vectors (
   user_id            uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
   genre_weights      jsonb   NOT NULL DEFAULT '{}'::jsonb,

@@ -21,18 +21,25 @@
 //     }
 //   }
 //
-// We DO NOT create a Supabase table for swipes — they are intentionally
-// device-local for now. Backlogged games already flow into the cross-device
-// `game_trackers` row via libraryService.addGameToList('want-to-play'); the
-// negative signals (skip / not_interested) stay local because they're noisy
-// and would clutter the multi-device library mental model.
+// localStorage stays the SOURCE OF TRUTH for deck behavior: exclusion, TTLs and
+// the local taste signal all read from it, so the deck keeps working offline and
+// while signed out exactly as before.
+//
+// It is additionally MIRRORED to `user_swipe_signals` for signed-in users, because
+// the taste engine runs as a scheduled server-side job with no browser. Without
+// that mirror, left-swipes are structurally invisible to the taste vector and
+// right-swipes only show up indirectly as a `want` tracker row, which the engine
+// can't distinguish from a manual backlog add. The mirror is best-effort and
+// fire-and-forget: a failed write costs a little taste signal, never a swipe.
 //
 // Used by:
 //   - src/components/explore/SwipeDeck.jsx — recordSwipe + getTasteSignal
 //   - src/components/explore/SessionEndPick.jsx — pickTonightsMatch
 //   - src/services/igdb.js getDiscoveryDeck — biases the next batch
+//   - supabase/functions/taste-engine — reads the mirrored table daily
 
 import { getGamesFromList } from './libraryService'
+import { supabase } from './supabase'
 
 const STORAGE_KEY = 'gt:swipes:v1'
 
@@ -70,6 +77,83 @@ function writeStore(store) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
   } catch { /* storage full — non-fatal, swipes just won't persist */ }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Server mirror — taste signal only (see header)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mirror one swipe into `user_swipe_signals` so the daily taste engine can see
+ * it. Best-effort by design: signed-out users are skipped, and every failure is
+ * swallowed. The genre/theme names ride along so the engine can bucket the
+ * signal even before IGDB tag resolution has cached that game.
+ */
+async function mirrorSwipe(igdbGameId, action, genres, themeNames) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.id) return
+
+    await supabase.from('user_swipe_signals').upsert(
+      {
+        user_id: user.id,
+        igdb_game_id: Number(igdbGameId),
+        action,
+        genre_names: genres,
+        theme_names: themeNames,
+        swiped_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,igdb_game_id' },
+    )
+  } catch {
+    // Non-fatal: localStorage already holds the authoritative swipe.
+  }
+}
+
+/**
+ * Push any local swipes the server hasn't seen yet — covers swipes made while
+ * signed out, on another device, or before this mirror existed.
+ *
+ * Only inserts what's missing; it never overwrites a server row, so a newer
+ * swipe recorded elsewhere wins. Safe to call on every app start.
+ */
+export async function syncSwipesToServer() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.id) return 0
+
+    const local = readStore().swipes
+    const localIds = Object.keys(local)
+    if (localIds.length === 0) return 0
+
+    const { data: existing, error } = await supabase
+      .from('user_swipe_signals')
+      .select('igdb_game_id')
+      .eq('user_id', user.id)
+    if (error) return 0
+
+    const known = new Set((existing || []).map((r) => String(r.igdb_game_id)))
+    const rows = localIds
+      .filter((id) => !known.has(String(id)) && /^\d+$/.test(id))
+      .map((id) => {
+        const row = local[id]
+        return {
+          user_id: user.id,
+          igdb_game_id: Number(id),
+          action: row.action,
+          genre_names: Array.isArray(row.genres) ? row.genres : [],
+          theme_names: Array.isArray(row.themeNames) ? row.themeNames : [],
+          swiped_at: row.ts || new Date().toISOString(),
+        }
+      })
+      .filter((r) => Object.values(SWIPE_ACTIONS).includes(r.action))
+
+    if (rows.length === 0) return 0
+    const { error: insErr } = await supabase.from('user_swipe_signals').insert(rows)
+    return insErr ? 0 : rows.length
+  } catch {
+    return 0
+  }
 }
 
 // Genres on a card come over as comma-joined "RPG, Adventure". Normalise once.
@@ -119,17 +203,22 @@ export function recordSwipe(game, action) {
   const id = String(game.id)
   const { ids: themeIds, names: themeNames } = extractThemes(game)
 
+  const genres = splitGenreString(game.genre)
+
   store.swipes[id] = {
     action,
     ts: new Date().toISOString(),
     title: game.title || '',
-    genres: splitGenreString(game.genre),
+    genres,
     themeIds,
     themeNames,
     year: game.year ?? null,
     rating: game.rating != null ? parseFloat(game.rating) : null,
   }
   writeStore(store)
+  // Mirror to the server for the taste engine — deliberately not awaited so the
+  // deck animation never waits on a network round trip.
+  void mirrorSwipe(game.id, action, genres, themeNames)
   window.dispatchEvent(new CustomEvent('gt:swipe-recorded', { detail: { id, action } }))
 }
 
@@ -138,9 +227,17 @@ export function getSwipes() {
   return readStore().swipes
 }
 
-/** Clear all swipes — Settings "reset discovery" affordance. */
+/** Clear all swipes — Settings "reset discovery" affordance. Also clears the
+ * server mirror, so "reset discovery" genuinely resets the taste signal instead
+ * of leaving the engine reading swipes the user thinks they deleted. */
 export function clearSwipes() {
   writeStore({ version: 1, swipes: {} })
+  void (async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) await supabase.from('user_swipe_signals').delete().eq('user_id', user.id)
+    } catch { /* non-fatal */ }
+  })()
   window.dispatchEvent(new CustomEvent('gt:swipe-cleared'))
 }
 
