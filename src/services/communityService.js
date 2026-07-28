@@ -5,7 +5,7 @@ import { getGamesByIds, getGamesByGenre } from './igdb'
 import { getCircleActivityEvents, getRecentGlobalActivityEvents } from './activityEventsService'
 import { getTasteMatch } from './tasteEngineService'
 import { getLikeCountsForReviews } from './likeService'
-import { getCommentCountsForReviews } from './commentService'
+import { getCommentCountsForReviews, getCommentCountsForEvents } from './commentService'
 import { getFlaggedContentIds } from './reportService'
 
 /**
@@ -1127,22 +1127,24 @@ const HOME_FEED_SPARSE_THRESHOLD = 5
 //   'listed'     → metadata.kind 'list_created' (created a list) or
 //                  'game_added_to_list' (added a game to a list)
 //   'completed'  → rendered as HomeReviewCard's 'finished' type
-//   'backlogged' → added to the Want to Play backlog (Home-only signal —
-//                  see libraryService.STATUS_TO_EVENT_TYPE) — own-only,
-//                  same as before: Explore/Collections don't treat
-//                  someone else's backlog add as circle-worthy, and
-//                  neither does this feed.
+//   'backlogged' → added to the Want to Play backlog (see
+//                  libraryService.STATUS_TO_EVENT_TYPE) — also surfaced
+//                  for other users now, see OTHER_FEED_EVENT_TYPES below
 //   'started'    → moved a game to Currently Playing
 //   'played'     → logged a play session (sessionService.js)
 const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged', 'started', 'played']
 
 // Other-users' event types surfaced on Home (Pulse broadening — task:
-// "finished, started, rated, reviewed, added to a list, logged a
-// session"). 'rated'/'reviewed' come from the `reviews` table, not this
-// list. Deliberately excludes 'backlogged' (see OWN_FEED_EVENT_TYPES
-// above — not circle-worthy from someone else) and 'dropped'/'favorited'/
-// 'goal_hit' (Explore/Profile-only, out of scope for this pass).
-const OTHER_FEED_EVENT_TYPES = ['listed', 'completed', 'started', 'played']
+// "logged a session, logged/added a game, finished a game, started a
+// game, rated a game, reviewed, added to a list"). 'rated'/'reviewed'
+// come from the `reviews` table, not this list. 'backlogged' ("logged/
+// added a game") WAS own-only in an earlier pass (the reasoning being
+// "not circle-worthy from someone else") but the broadening task
+// explicitly calls for other users' backlog adds to render too (e.g.
+// "justin added Left 4 Dead 2 to his backlog") — included below.
+// Deliberately still excludes 'dropped'/'favorited'/'goal_hit'
+// (Explore/Profile-only, out of scope for this pass).
+const OTHER_FEED_EVENT_TYPES = ['listed', 'completed', 'started', 'played', 'backlogged']
 
 /**
  * Soft-cap interleave: merges two recency-sorted item arrays (the
@@ -1343,12 +1345,18 @@ function _authorFromActorJoin(actor) {
  *     any 'listed' row.
  *
  * 'played' carries `durationSeconds` from metadata.seconds (written by
- * sessionService.applySessionSideEffects) so HomeReviewCard's
- * statusLabel can render "Played · 2h 30m" — omitted (not zero) when the
- * writer didn't supply it, same never-fabricate convention as everywhere
- * else in this file.
+ * sessionService.applySessionSideEffects) so HomeReviewCard's headerVerb
+ * can render "logged 2h 30m" — omitted (not zero) when the writer didn't
+ * supply it, same never-fabricate convention as everywhere else in this
+ * file.
+ *
+ * `commentCounts` — a Map<activityEventId, number> from
+ * getCommentCountsForEvents (see the Pulse comment-broadening work in
+ * commentService.js) — every non-review card is now first-class
+ * commentable, same as a review, so this can no longer be hardcoded to
+ * 0 the way it was before comments became polymorphic.
  */
-function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null } = {}) {
+function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCounts = null } = {}) {
   const meta = row.metadata || {}
   const author = isOwn ? viewerAuthor : _authorFromActorJoin(row.actor)
   const base = {
@@ -1357,7 +1365,7 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null } = {}) {
     isOwn,
     author,
     likeCount: 0,
-    commentCount: 0,
+    commentCount: commentCounts ? commentCounts.get(row.id) || 0 : 0,
     reactionTargetId: row.id,
   }
 
@@ -1423,15 +1431,86 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null } = {}) {
     }
   }
 
-  // 'backlogged' (own-only today — see OWN_FEED_EVENT_TYPES)
+  // 'backlogged' plus a generic fallback for any other real
+  // activity_events type (dropped/favorited/goal_hit/reviewed) that
+  // isn't feed-eligible today but could still be looked up directly by
+  // id (e.g. getActivityEventForCard, which fetches by id with no
+  // `type IN (...)` filter) — HomeReviewCard's headerVerb already
+  // degrades an unrecognized `type` gracefully ("did something") rather
+  // than mislabeling it, so this is never silently wrong.
   return {
     ...base,
-    type: 'backlogged',
+    type: row.type === 'backlogged' ? 'backlogged' : row.type,
     game: {
       id: row.entity_id,
       title: meta.game_title || 'Unknown Game',
       image: meta.game_image || null,
     },
+  }
+}
+
+/**
+ * Fetch + shape a single `activity_events` row into the exact same
+ * item shape `getHomeFeed` produces, for the activity-comments thread
+ * page (`/activity/:activityId/comments`) to render via
+ * `<HomeReviewCard item={...}/>` at the top of the thread — the same
+ * card the viewer tapped into from the feed, so the header/content
+ * reads identically instead of a bespoke summary being built twice.
+ *
+ * Mirrors reviewService.getReviewById's contract (soft-fails to null,
+ * same block-filter pass) but needs one extra step reviews don't: the
+ * viewer's own profile lookup for `isOwn` rows, same as getHomeFeed
+ * does for the feed page itself.
+ *
+ * @param {string} activityEventId
+ * @returns {Promise<object|null>} same item shape as getHomeFeed's
+ *   non-review items (see _homeFeedItemFromEventRow)
+ */
+export async function getActivityEventForCard(activityEventId) {
+  if (!activityEventId) return null
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const viewerId = user?.id || null
+
+    let q = supabase
+      .from('activity_events')
+      .select(
+        'id, actor_user_id, type, entity_id, metadata, created_at,' +
+          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url)'
+      )
+      .eq('id', activityEventId)
+      .maybeSingle()
+    q = await applyBlockFilter(q, 'actor_user_id')
+    const { data: row, error } = await q
+    if (error) {
+      console.error('[community] getActivityEventForCard failed:', error.message)
+      return null
+    }
+    if (!row) return null
+
+    const isOwn = !!viewerId && row.actor_user_id === viewerId
+    let viewerAuthor = null
+    if (isOwn) {
+      const { data: viewerProfile } = await supabase
+        .from('users')
+        .select('id, username, display_name, avatar_url')
+        .eq('id', viewerId)
+        .single()
+      viewerAuthor = {
+        id: viewerId,
+        username: viewerProfile?.username || null,
+        displayName: viewerProfile?.display_name || viewerProfile?.username || 'You',
+        avatarUrl: viewerProfile?.avatar_url || null,
+      }
+    }
+
+    const commentCounts = await getCommentCountsForEvents([row.id])
+    return _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor, commentCounts })
+  } catch (err) {
+    console.error('[community] getActivityEventForCard crashed:', err)
+    return null
   }
 }
 
@@ -1612,11 +1691,14 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
         avatarUrl: viewerProfile?.avatar_url || null,
       }
     }
+    const allEventIds = [...otherEventRows, ...ownEventRows].map((row) => row.id)
+    const eventCommentCounts = await getCommentCountsForEvents(allEventIds)
+
     const otherEventItems = otherEventRows.map((row) =>
-      _homeFeedItemFromEventRow(row, { isOwn: false })
+      _homeFeedItemFromEventRow(row, { isOwn: false, commentCounts: eventCommentCounts })
     )
     const ownEventItems = ownEventRows.map((row) =>
-      _homeFeedItemFromEventRow(row, { isOwn: true, viewerAuthor })
+      _homeFeedItemFromEventRow(row, { isOwn: true, viewerAuthor, commentCounts: eventCommentCounts })
     )
 
     const otherItems = [...otherReviewItems, ...otherEventItems].sort(

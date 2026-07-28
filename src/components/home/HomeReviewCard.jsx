@@ -1,7 +1,8 @@
-import React, { useLayoutEffect, useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
-import { HiOutlineHeart, HiHeart, HiOutlineChat } from 'react-icons/hi'
+import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlinePlus, HiCheck } from 'react-icons/hi'
+import { List as ListIcon } from 'lucide-react'
 import Avatar from '../explore/Avatar'
 import StarRating from '../StarRating'
 import Pressable from '../Pressable'
@@ -35,10 +36,9 @@ function relativeTime(iso) {
 }
 
 /**
- * Formats `seconds` as "45m", "2h", or "2h 30m" for a status pill's
- * optional duration qualifier ('finished'/'played'). Returns null below
- * 60s or for missing/invalid values so the caller can omit the
- * qualifier entirely rather than rendering "for 0m" — never fabricated.
+ * Formats `seconds` as "45m", "2h", or "2h 30m". Returns null below 60s
+ * or for missing/invalid values so callers omit the qualifier entirely
+ * rather than rendering "for 0m" — never fabricated.
  */
 function formatDuration(seconds) {
   const s = Number(seconds)
@@ -51,62 +51,47 @@ function formatDuration(seconds) {
 }
 
 /**
- * One-line header verb for `item.type`. For everyone else's cards this
- * stays name-free (the game lives in the content zone below); for the
- * viewer's OWN cards (`item.isOwn`) the verb folds the game/list name
- * straight in, per spec ("You added Hollow Knight to Cozy Nights", "You
- * rated Hades", "You created Cozy Nights", "You finished Disco
- * Elysium") — own cards read as a complete sentence with "You" (see the
- * header render below) even though the content zone still shows the
- * same cover/details as everyone else's cards.
- *
- * `listName` is passed separately since it may come from the item
- * itself (list_created events carry it directly) or from
- * useListPreview's lazy hydration (game_added_to_list events don't).
+ * Trims a review body down to a single short "quoted note" for the
+ * game row's secondary line — never a multi-line paragraph. Cuts at
+ * the nearest word boundary (never mid-word) and only falls back to a
+ * hard cut if there's no reasonable space to break on.
  */
-function headerVerb(item, listName) {
-  const title = item.game?.title
-  if (item.isOwn) {
-    switch (item.type) {
-      case 'reviewed':
-        return title ? `reviewed ${title}` : 'reviewed'
-      case 'rated':
-        return title ? `rated ${title}` : 'rated'
-      case 'listed':
-        if (item.listKind === 'created') return `created ${listName || 'a list'}`
-        return title
-          ? `added ${title} to ${listName || 'a list'}`
-          : `added a game to ${listName || 'a list'}`
-      case 'backlogged':
-        return title ? `added ${title} to your backlog` : 'added a game to your backlog'
-      case 'finished':
-        return title ? `finished ${title}` : 'finished'
-      case 'started':
-        return title ? `started ${title}` : 'started'
-      case 'played':
-        return title ? `played ${title}` : 'played'
-      case 'favorited':
-        return title ? `favorited ${title}` : 'favorited'
-      default:
-        return 'did something'
-    }
-  }
+function truncateQuote(body, max = 88) {
+  if (!body) return null
+  const trimmed = body.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return null
+  if (trimmed.length <= max) return trimmed
+  const cut = trimmed.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  const safe = lastSpace > 40 ? cut.slice(0, lastSpace) : cut
+  return `${safe.trimEnd()}\u2026`
+}
+
+/**
+ * One-line header verb for `item.type` — deliberately short and never
+ * carrying the game/list title (that lives in the game row below, so
+ * nothing on the card repeats it). Identical for own vs. others' cards
+ * — only the subject differs ("You" vs. the author's name, handled by
+ * the caller), so no isOwn branching is needed here at all.
+ */
+function headerVerb(item) {
   switch (item.type) {
     case 'reviewed':
       return 'reviewed'
     case 'rated':
       return 'rated'
     case 'listed':
-      if (item.listKind === 'created') return `created ${listName || 'a list'}`
-      return listName ? `added a game to ${listName}` : 'added a game to a list'
+      return item.listKind === 'created' ? 'created a list' : 'added to a list'
     case 'backlogged':
-      return 'added to backlog'
+      return 'backlogged'
     case 'finished':
       return 'finished'
     case 'started':
       return 'started'
-    case 'played':
-      return 'played'
+    case 'played': {
+      const duration = formatDuration(item.durationSeconds)
+      return duration ? `logged ${duration}` : 'logged a session'
+    }
     case 'favorited':
       return 'favorited'
     default:
@@ -114,36 +99,37 @@ function headerVerb(item, listName) {
   }
 }
 
-/** Status pill copy for the finished/backlogged/started/played/favorited content zone. Omits any duration that isn't actually stored. */
-function statusLabel(item) {
+/**
+ * The single secondary line under the game title, per type — never a
+ * paragraph, never more than one line. Most types render nothing here
+ * (the header verb + title already say everything there is to say);
+ * only 'reviewed' (a short quoted note) and 'finished' (total playtime,
+ * since the bare "finished" verb doesn't carry it) add one.
+ */
+function secondaryLine(item) {
   switch (item.type) {
+    case 'reviewed': {
+      const quote = truncateQuote(item.body)
+      return quote ? `\u201c${quote}\u201d` : null
+    }
+    case 'listed':
+      return item.listKind === 'created' ? null : `Added to ${item._listName || 'a list'}`
     case 'finished': {
       const d = formatDuration(item.durationSeconds)
-      return d ? `Finished \u00b7 ${d}` : 'Finished'
+      return d ? `${d} played` : null
     }
-    case 'backlogged':
-      return 'Backlog'
-    case 'started':
-      return 'Started'
-    case 'played': {
-      const d = formatDuration(item.durationSeconds)
-      return d ? `Played \u00b7 ${d}` : 'Played'
-    }
-    case 'favorited':
-      return 'Favorited'
     default:
       return null
   }
 }
 
 /**
- * EventReactButton — like control for non-review event rows (listed,
- * backlogged, finished, played, favorited). Backed by the generic
- * `reactions` table (target_id = the activity_events row id) rather
- * than review_likes, since these rows aren't reviews. A single fixed
- * emoji keeps the visual language identical to the review ReactButton
- * even though useReactions supports a full emoji set for surfaces that
- * want one.
+ * EventReactButton — like control for non-review event rows. Backed by
+ * the generic `reactions` table (target_id = the activity_events row
+ * id) rather than review_likes, since these rows aren't reviews. A
+ * single fixed emoji keeps the visual language identical to the review
+ * react button even though useReactions supports a full emoji set for
+ * surfaces that want one.
  */
 function EventReactButton({ targetId }) {
   const { reactions, toggle } = useReactions('activity', targetId)
@@ -152,7 +138,7 @@ function EventReactButton({ targetId }) {
   const count = mine?.count || 0
   return (
     <Pressable
-      className="home-review-card__react"
+      className="home-review-card__icon-btn home-review-card__icon-btn--social"
       onClick={(e) => {
         e.stopPropagation()
         toggle(EVENT_REACTION_EMOJI)
@@ -171,17 +157,16 @@ function EventReactButton({ targetId }) {
 }
 
 /**
- * ReadOnlyLikeCount — own-card like control, task requirement: no
- * self-reactions, but the count still renders so the viewer can see
- * engagement on their own activity. A plain non-interactive `<span>`
- * (not a `<button>`/Pressable) — nothing to press, so nothing pretends
- * to be pressable.
+ * ReadOnlyLikeCount — own-card like control: no self-reactions, but the
+ * count still renders so the viewer can see engagement on their own
+ * activity. A plain non-interactive `<span>` (not a button/Pressable) —
+ * nothing to press, so nothing pretends to be pressable.
  */
 function ReadOnlyLikeCount({ count, liked }) {
   const showCount = shouldShowCount(count)
   return (
     <span
-      className="home-review-card__react home-review-card__react--readonly"
+      className="home-review-card__icon-btn home-review-card__icon-btn--social home-review-card__icon-btn--readonly"
       aria-label={showCount ? `${count} likes` : 'Like'}
     >
       {liked ? (
@@ -208,13 +193,36 @@ function ReadOnlyEventLikeCount({ targetId }) {
 }
 
 /**
- * BacklogAction — contextual quick action for OTHER people's rating/
- * review cards ("add to backlog on a rating"): a one-tap way to queue up
- * a game a friend just rated/reviewed, mirroring the identical pattern
- * already shipped on Explore's Discover "Recently" shelf (see
- * RecentActivityCard.handleBacklog) rather than inventing a new one.
- * Hidden on own cards — backlogging a game you already rated makes no
- * sense — and whenever the item has no game to add (list_created).
+ * CommentAction — every card type (except the lightest 'backlogged'
+ * type — see the no-action-row branch in the main render) gets a real,
+ * working comment affordance. `review_comments` is polymorphic — it can
+ * target either a review or an activity_events row (see
+ * supabase/migrations/20260728140000_polymorphic_activity_comments.sql
+ * + commentService.js) — so this is identical for every type, just
+ * routed to the matching thread page (see goToReply).
+ */
+function CommentAction({ item, onReply }) {
+  return (
+    <Pressable
+      className="home-review-card__icon-btn home-review-card__icon-btn--social"
+      onClick={onReply}
+      aria-label="Reply"
+    >
+      <HiOutlineChat />
+      {shouldShowCount(item.commentCount) && <span>{item.commentCount}</span>}
+    </Pressable>
+  )
+}
+
+/**
+ * BacklogAction — icon-only quick "add this game to my backlog" action.
+ * Used two ways: (1) contextual, inside the bordered actions row, on
+ * other people's cards that have a game (rating/review/list-add/status
+ * events alike); (2) as the lightest card type's inline trailing icon
+ * on a 'backlogged' event's game row (see HomeCardBody) — mirrors the
+ * identical control Explore's Discover "Recently" shelf already ships
+ * (RecentActivityCard.handleBacklog). Hidden on own cards — backlogging
+ * a game you already have activity on makes no sense.
  */
 function BacklogAction({ game }) {
   const [backlogged, setBacklogged] = useState(false)
@@ -231,210 +239,86 @@ function BacklogAction({ game }) {
 
   return (
     <Pressable
-      className="home-review-card__backlog-btn"
+      className="home-review-card__icon-btn home-review-card__icon-btn--accent"
       onClick={handleClick}
       disabled={backlogging || backlogged}
-      aria-label={`Add ${game.title} to backlog`}
+      aria-label={backlogged ? `${game.title} added to backlog` : `Add ${game.title} to backlog`}
     >
-      {backlogged ? 'Added to Backlog' : '+ Add to Backlog'}
+      {backlogged ? <HiCheck /> : <HiOutlinePlus />}
     </Pressable>
   )
 }
 
 /**
- * CommentAction — every card type gets a comment affordance (task
- * requirement), but `review_comments` only has a `review_id` FK (see
- * schema diagnosis: comments are NOT polymorphic today, unlike
- * `reactions`). For 'reviewed'/'rated' this is real and wired to the
- * existing comments thread; for every other type it renders visibly but
- * is a deliberate no-op — no invented schema, no fabricated count —
- * until a future migration adds a polymorphic comments target.
+ * HomeCardBody — the compact content zone: a small cover + title (+ at
+ * most one secondary line) for every type that has a specific game, or
+ * a small mosaic/list-icon "cover" + list name + game count for a
+ * list_created event (which has no specific game). Every type renders
+ * through this same one-row shape — that's what keeps the feed's
+ * rhythm steady per type rather than each type inventing its own block.
+ *
+ * `trailing` is an optional node rendered at the end of the row itself
+ * (used only by the 'backlogged' lightest-card variant's inline "+" —
+ * see the main render below) so that card never needs a separate,
+ * bordered actions row at all.
  */
-function CommentAction({ item, onReply }) {
-  if (REVIEW_TYPES.has(item.type)) {
-    return (
-      <Pressable className="home-review-card__reply" onClick={onReply} aria-label="Reply">
-        <HiOutlineChat />
-        {shouldShowCount(item.commentCount) && <span>{item.commentCount}</span>}
-      </Pressable>
-    )
-  }
-  return (
-    <Pressable
-      className="home-review-card__reply home-review-card__reply--disabled"
-      onClick={(e) => e.stopPropagation()}
-      aria-disabled="true"
-      aria-label="Comments aren't available for this activity yet"
-    >
-      <HiOutlineChat />
-    </Pressable>
-  )
-}
-
-/**
- * HomeCardContent — the adaptive content zone. Chosen from `item.type`,
- * this is the core of the concept: every event renders in the same
- * shell with the same one-line header, but what fills the middle
- * changes shape entirely so a rating never looks like a review missing
- * its text, and a list-add never looks like a bare cover.
- */
-function HomeCardContent({
-  item,
-  img,
-  onGameClick,
-  onListClick,
-  listName,
-  listGameCount,
-  listCovers,
-  expanded,
-  onExpand,
-  bodyOverflows,
-  bodyRef,
-}) {
+function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameCount, listCovers, trailing }) {
   const handleImgError = (e) => {
     e.target.src = COVER_FALLBACK
   }
 
-  if (item.type === 'reviewed') {
-    return (
-      <div className="home-review-card__content">
-        <Pressable
-          as="div"
-          className="home-review-card__game-row"
-          onClick={onGameClick}
-          aria-label={`View ${item.game.title}`}
-        >
-          <img
-            src={img}
-            className="home-review-card__cover home-review-card__cover--sm"
-            alt=""
-            loading="lazy"
-            onError={handleImgError}
-          />
-          <div className="home-review-card__game-meta">
-            <span className="home-review-card__game-title">{item.game.title}</span>
-            {item.rating != null && <StarRating rating={item.rating} size={14} />}
-          </div>
-        </Pressable>
-
-        <div className="home-review-card__body">
-          <p ref={bodyRef} className={expanded ? '' : 'home-review-card__clamp'}>
-            {item.body}
-          </p>
-          {!expanded && bodyOverflows && (
-            <button type="button" className="home-review-card__more" onClick={onExpand}>
-              more
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (item.type === 'rated') {
-    return (
-      <Pressable
-        as="div"
-        className="home-review-card__content home-review-card__content--rated"
-        onClick={onGameClick}
-        aria-label={`View ${item.game.title}`}
-      >
-        <img
-          src={img}
-          className="home-review-card__cover home-review-card__cover--lg"
-          alt=""
-          loading="lazy"
-          onError={handleImgError}
-        />
-        <div className="home-review-card__rated-meta">
-          <span className="home-review-card__game-title">{item.game.title}</span>
-          {item.rating != null && (
-            <div className="home-review-card__rated-stars">
-              <StarRating rating={item.rating} size={26} />
-              <span className="home-review-card__score">{item.rating.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
-      </Pressable>
-    )
-  }
-
-  if (item.type === 'listed') {
+  if (item.type === 'listed' && item.listKind === 'created') {
     const covers = (listCovers || []).slice(0, 4)
-    // list_created events have no specific game (see
-    // communityService._homeFeedItemFromOwnEvent) — skip the game row
-    // entirely rather than rendering a bare/fabricated cover.
-    const hasGame = !!item.game
     return (
-      <div className="home-review-card__content">
-        {hasGame && (
-          <Pressable
-            as="div"
-            className="home-review-card__game-row"
-            onClick={onGameClick}
-            aria-label={`View ${item.game.title}`}
-          >
-            <img
-              src={img}
-              className="home-review-card__cover home-review-card__cover--lg"
-              alt=""
-              loading="lazy"
-              onError={handleImgError}
-            />
-            <span className="home-review-card__game-title">{item.game.title}</span>
-          </Pressable>
-        )}
-
-        {item.listId && (
-          <Pressable
-            className="home-review-card__list-pill"
-            onClick={onListClick}
-            aria-label={`View ${listName || 'list'}`}
-          >
-            {listName || 'a list'}
-            {listGameCount != null ? ` \u00b7 ${listGameCount} game${listGameCount === 1 ? '' : 's'}` : ''}
-          </Pressable>
-        )}
-
-        {covers.length > 0 && (
-          <Pressable
-            as="div"
-            className="home-review-card__mosaic"
-            onClick={onListClick}
-            aria-label={`View ${listName || 'list'} covers`}
-          >
-            {covers.map((src, i) => (
-              <span key={i} className="home-review-card__mosaic-cell">
-                <img src={src} alt="" loading="lazy" />
-              </span>
-            ))}
-          </Pressable>
-        )}
-      </div>
+      <Pressable
+        as="div"
+        className="home-review-card__row"
+        onClick={onListClick}
+        aria-label={`View ${listName || 'list'}`}
+      >
+        <span className="home-review-card__thumb home-review-card__thumb--mosaic" aria-hidden="true">
+          {covers.length > 0 ? (
+            covers.map((src, i) => <img key={i} src={src} alt="" loading="lazy" />)
+          ) : (
+            <ListIcon size={16} />
+          )}
+        </span>
+        <span className="home-review-card__meta">
+          <span className="home-review-card__title">{listName || 'a list'}</span>
+          {listGameCount != null && (
+            <span className="home-review-card__secondary">
+              {listGameCount} game{listGameCount === 1 ? '' : 's'}
+            </span>
+          )}
+        </span>
+      </Pressable>
     )
   }
 
-  // finished / backlogged / played / favorited — cover-forward status rows
-  const label = statusLabel(item)
+  if (!item.game) return null
+
+  const secondary = secondaryLine({ ...item, _listName: listName })
+
   return (
-    <div className="home-review-card__content">
-      <Pressable
-        as="div"
-        className="home-review-card__game-row"
-        onClick={onGameClick}
-        aria-label={`View ${item.game.title}`}
-      >
-        <img
-          src={img}
-          className="home-review-card__cover home-review-card__cover--lg"
-          alt=""
-          loading="lazy"
-          onError={handleImgError}
-        />
-        <span className="home-review-card__game-title">{item.game.title}</span>
-      </Pressable>
-      {label && <span className="home-review-card__status-pill">{label}</span>}
-    </div>
+    <Pressable
+      as="div"
+      className="home-review-card__row"
+      onClick={onGameClick}
+      aria-label={`View ${item.game.title}`}
+    >
+      <img
+        src={img}
+        className="home-review-card__thumb"
+        alt=""
+        loading="lazy"
+        onError={handleImgError}
+      />
+      <span className="home-review-card__meta">
+        <span className="home-review-card__title">{item.game.title}</span>
+        {secondary && <span className="home-review-card__secondary">{secondary}</span>}
+      </span>
+      {trailing}
+    </Pressable>
   )
 }
 
@@ -442,19 +326,19 @@ function HomeCardContent({
  * HomeReviewCard — "The pulse"'s per-item card. Renders every unified
  * activity type communityService.getHomeFeed returns — 'reviewed' /
  * 'rated' (from `reviews`) plus 'started' / 'finished' / 'listed' /
- * 'played' / 'backlogged' (from `activity_events`; 'backlogged' is
- * own-only — see getHomeFeed's doc comment) — through the exact same
- * shell, one switch-on-type render path.
+ * 'played' / 'backlogged' / 'favorited' (from `activity_events`, for
+ * both the viewer and everyone else — see getHomeFeed's doc comment) —
+ * through the exact same compact shell: a single-line header (avatar +
+ * "{actor} {verb}" + a right-aligned timestamp, with stars appended
+ * next to the timestamp for reviewed/rated), a small cover + title (+
+ * at most one secondary line) game row, and — except for the lightest
+ * 'backlogged' type, which stops at the game row plus an inline "+" —
+ * an icon-only actions row separated by a hairline top border.
  *
  * Every type renders inside the identical <ReviewCardShell/> — one
- * surface, one hairline border, one radius/padding, no nested surfaces,
- * no dividers between cards — with a 3px left accent bar colored by
- * event type (green = review/rating, purple = list-add, cobalt = every
- * other status event) and a single-line header: avatar + "{actor} {verb}"
- * + a right-aligned relative timestamp. Only the CONTENT ZONE below the
- * header adapts per type (see HomeCardContent) — that's the part of the
- * concept that keeps a rating from ever looking like a review missing
- * its text, or a list-add from looking like a bare cover.
+ * surface, one hairline border, one radius/padding — with a 3px left
+ * accent bar colored by event type (green = review/rating, purple =
+ * list-add, cobalt = every other status event).
  *
  * Likes: 'reviewed'/'rated' use `review_likes` (via useLikeState); every
  * other type uses the generic cross-surface `reactions` table (via
@@ -463,27 +347,27 @@ function HomeCardContent({
  * Every count on this card (likes, comments, reactions) goes through
  * `shouldShowCount` — the zero-state rule: a count renders as a numeral
  * only once it's >= 3, otherwise just the bare icon affordance, so
- * nothing here ever reads "0 likes" / "0 comments".
- * Comments: `review_comments` only has a review_id FK — NOT polymorphic
- * — so every non-review type renders the comment affordance as a
- * visible no-op rather than a fabricated count (see CommentAction).
+ * nothing here ever reads "0 likes" / "0 comments". The whole
+ * like+comment cluster is pushed to the right edge of the actions row
+ * (`margin-left: auto` — see HomeReviewCard.css) so a contextual
+ * backlog "+" on the left never crowds it.
+ * Comments: `review_comments` is polymorphic (review_id OR
+ * activity_event_id, exactly one set — see commentService.js) so every
+ * type except 'backlogged' gets a real, counted comment affordance
+ * routed to the matching thread page (see CommentAction / goToReply).
  *
- * Contextual actions per type: a list-add's destination list is already
- * one tap away via the list pill/mosaic (see HomeCardContent's 'listed'
- * branch — no extra control needed). A rating/review on someone else's
- * card additionally gets a "+ Add to Backlog" quick action (see
- * BacklogAction) — obvious value on a discovery surface, mirroring the
- * identical control Explore's Discover "Recently" shelf already ships
- * (RecentActivityCard). Hidden on own cards (nothing to discover about a
- * game you already rated).
+ * Contextual "add to backlog": any non-own card with a game gets the
+ * small "+" icon in the actions row EXCEPT 'backlogged' cards, which
+ * get it inline in the game row itself instead (no bordered actions
+ * row at all) — that event type is deliberately the lightest card:
+ * header + game row + one inline icon, nothing else.
  *
  * Own cards (`item.isOwn`, Home-is-the-hub sprint): "You" replaces the
- * author name in the header, `headerVerb` folds the game/list name
- * into the verb itself ("You rated Hades"), and the like control
- * becomes a read-only count (ReadOnlyLikeCount / ReadOnlyEventLikeCount)
- * — no self-reactions, but engagement from others is still visible.
- * The comment affordance is untouched by `isOwn`: tapping the count on
- * an own review still opens the thread, same as anyone else's.
+ * author name in the header, and the like control becomes a read-only
+ * count (ReadOnlyLikeCount / ReadOnlyEventLikeCount) — no
+ * self-reactions, but engagement from others is still visible. The
+ * comment affordance is untouched by `isOwn`: tapping the count on an
+ * own review still opens the thread, same as anyone else's.
  *
  * @param {{ item: object }} props  See communityService.getHomeFeed's
  *   doc comment for the full item shape. Non-review types add: listId,
@@ -495,9 +379,6 @@ export default function HomeReviewCard({ item }) {
   const navigate = useNavigate()
   const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
-  const [expanded, setExpanded] = useState(false)
-  const [bodyOverflows, setBodyOverflows] = useState(false)
-  const bodyRef = useRef(null)
 
   const listPreview = useListPreview(item.type === 'listed' ? item.listId : null)
   const listName = item.listName || listPreview?.name || null
@@ -505,16 +386,6 @@ export default function HomeReviewCard({ item }) {
   const listCovers =
     item.listPreviewCovers ||
     (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
-
-  useLayoutEffect(() => {
-    if (item.type !== 'reviewed' || expanded) {
-      setBodyOverflows(false)
-      return
-    }
-    const el = bodyRef.current
-    if (!el) return
-    setBodyOverflows(el.scrollHeight > el.clientHeight + 1)
-  }, [item.body, item.type, expanded])
 
   const when = relativeTime(item.createdAt)
   const img = item.game?.image || COVER_FALLBACK
@@ -541,13 +412,15 @@ export default function HomeReviewCard({ item }) {
     if (item.listId) navigate(`/list/${item.listId}`)
   }
 
-  // TODO(reply-thread): a dedicated /reviews/:id/comments thread screen is
-  // out of scope for this sprint — route to the existing review-comments
-  // page (same destination ReviewCard.jsx's comment action uses) until it
-  // exists.
+  // Reviews/ratings route to the existing review-comments thread (same
+  // destination ReviewCard.jsx's comment action uses); every other
+  // type routes to the equivalent thread keyed by the activity_events
+  // row id instead (item.id IS that row's id for non-review items —
+  // see communityService._homeFeedItemFromEventRow).
   const goToReply = (e) => {
     e.stopPropagation()
-    navigate(`/reviews/${item.id}/comments`)
+    if (isReviewType) navigate(`/reviews/${item.id}/comments`)
+    else navigate(`/activity/${item.id}/comments`)
   }
 
   const handleReact = async (e) => {
@@ -570,23 +443,34 @@ export default function HomeReviewCard({ item }) {
     }
   }
 
+  // 'backlogged' is the lightest card type — header + game row + an
+  // inline "+" (for other people's cards only) is enough, per this
+  // sprint's decluttering pass. No like/comment affordance at all.
+  const isLightBacklog = item.type === 'backlogged'
+  const showBacklogAdd = !item.isOwn && !!item.game && !isLightBacklog
+
   return (
     <ReviewCardShell className={`home-review-card home-review-card--${item.type}`}>
       <ReviewCardShellHeader
         avatar={
           <button type="button" className="home-review-card__avatar-btn" onClick={goToAuthor}>
-            <Avatar user={item.author} size={32} />
+            <Avatar user={item.author} size={28} />
           </button>
         }
-        end={<span className="home-review-card__time">{when}</span>}
+        end={
+          <>
+            {isReviewType && item.rating != null && <StarRating rating={item.rating} size={12} />}
+            <span className="home-review-card__time">{when}</span>
+          </>
+        }
       >
         <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
           {item.isOwn ? 'You' : item.author.displayName}
         </button>
-        <span className="home-review-card__verb">{headerVerb(item, listName)}</span>
+        <span className="home-review-card__verb">{headerVerb(item)}</span>
       </ReviewCardShellHeader>
 
-      <HomeCardContent
+      <HomeCardBody
         item={item}
         img={img}
         onGameClick={goToGame}
@@ -594,44 +478,42 @@ export default function HomeReviewCard({ item }) {
         listName={listName}
         listGameCount={listGameCount}
         listCovers={listCovers}
-        expanded={expanded}
-        onExpand={(e) => {
-          e.stopPropagation()
-          setExpanded(true)
-        }}
-        bodyOverflows={bodyOverflows}
-        bodyRef={bodyRef}
+        trailing={
+          isLightBacklog && !item.isOwn && item.game ? <BacklogAction game={item.game} /> : null
+        }
       />
 
-      <div className="home-review-card__actions">
-        {!item.isOwn && isReviewType && item.game && <BacklogAction game={item.game} />}
-        <div className="home-review-card__social-actions">
-          {item.isOwn ? (
-            isReviewType ? (
-              <ReadOnlyLikeCount count={displayedLikeCount} liked={likeState.liked} />
-            ) : (
-              <ReadOnlyEventLikeCount targetId={item.reactionTargetId} />
-            )
-          ) : isReviewType ? (
-            <Pressable
-              className="home-review-card__react"
-              onClick={handleReact}
-              aria-pressed={likeState.liked}
-              aria-label={likeState.liked ? 'Remove reaction' : 'React'}
-            >
-              {likeState.liked ? (
-                <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+      {!isLightBacklog && (
+        <div className="home-review-card__actions">
+          {showBacklogAdd && <BacklogAction game={item.game} />}
+          <div className="home-review-card__social-actions">
+            {item.isOwn ? (
+              isReviewType ? (
+                <ReadOnlyLikeCount count={displayedLikeCount} liked={likeState.liked} />
               ) : (
-                <HiOutlineHeart className="home-review-card__heart-icon" />
-              )}
-              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
-            </Pressable>
-          ) : (
-            <EventReactButton targetId={item.reactionTargetId} />
-          )}
-          <CommentAction item={item} onReply={goToReply} />
+                <ReadOnlyEventLikeCount targetId={item.reactionTargetId} />
+              )
+            ) : isReviewType ? (
+              <Pressable
+                className="home-review-card__icon-btn home-review-card__icon-btn--social"
+                onClick={handleReact}
+                aria-pressed={likeState.liked}
+                aria-label={likeState.liked ? 'Remove reaction' : 'React'}
+              >
+                {likeState.liked ? (
+                  <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+                ) : (
+                  <HiOutlineHeart className="home-review-card__heart-icon" />
+                )}
+                {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
+              </Pressable>
+            ) : (
+              <EventReactButton targetId={item.reactionTargetId} />
+            )}
+            <CommentAction item={item} onReply={goToReply} />
+          </div>
         </div>
-      </div>
+      )}
     </ReviewCardShell>
   )
 }

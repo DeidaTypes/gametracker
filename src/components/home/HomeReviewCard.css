@@ -4,7 +4,10 @@
    Tokens only — no hardcoded hex. Every event type shares the exact
    same shell (background/border/radius/padding/gap all come from
    <ReviewCardShell/> — see ReviewCardShell.css) and the exact same
-   one-line header. Only the content zone below the header adapts.
+   compact structure: one-line header, one small game row (+ at most
+   one secondary line), one icon-only actions row. Only the game row's
+   secondary line and the presence/shape of the actions row adapt per
+   type — see HomeReviewCard.jsx's HomeCardBody / main render.
 
    3px left accent bar + header verb color, by MEANING:
      - green  (--accent-review)      → reviewed / rated
@@ -13,9 +16,10 @@
                                         played / favorited (every other
                                         status event)
    Like/reply icons keep the existing purple social hue on every row
-   regardless of type (see .home-review-card__react/__reply below) —
-   that's a different, deliberate use of purple from the header/accent
-   bar's per-type coloring.
+   regardless of type (see .home-review-card__icon-btn--social below)
+   — a different, deliberate use of purple from the header/accent
+   bar's per-type coloring. The contextual "add to backlog" icon uses
+   the copper --accent instead, so it never reads as a social action.
    ============================================================ */
 
 .home-review-card {
@@ -51,7 +55,11 @@
   filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
 }
 
-/* ── Header (identical for every type) ── */
+/* ── Header (identical for every type) — one line, never wraps.
+   Avatar is deliberately small (28px) and the verb is always short
+   (see headerVerb in the .jsx) so a display name + verb + timestamp
+   reliably fit on one row without needing the wrap escape hatch older
+   revisions of this card used. ── */
 .home-review-card__avatar-btn {
   flex-shrink: 0;
   background: none;
@@ -67,6 +75,9 @@
   outline-offset: 2px;
 }
 
+/* Actor name gets room to breathe — only a genuinely long display name
+   (> ~55% of the header's width) actually clips; typical names/handles
+   never do. */
 .home-review-card__author-name {
   background: none;
   border: none;
@@ -77,6 +88,12 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   -webkit-tap-highlight-color: transparent;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .home-review-card__author-name:focus-visible {
@@ -85,9 +102,12 @@
   border-radius: var(--radius-sm);
 }
 
+/* Verb — short, fixed vocabulary (never a game/list title), so it
+   never needs to wrap or clip. */
 .home-review-card__verb {
   font-weight: var(--font-weight-medium);
   color: var(--accent-review);
+  white-space: nowrap;
 }
 
 .home-review-card--listed .home-review-card__verb {
@@ -109,14 +129,12 @@
   white-space: nowrap;
 }
 
-/* ── Content zone (adapts per type) ── */
-.home-review-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.home-review-card__game-row {
+/* ── Game row (identical shape for every type) ──
+   Small cover + title (+ one optional secondary line). This is the
+   ONE content row every type renders through — the whole point being
+   a rating never looks bigger than a review, and a list-add never
+   grows a bespoke block of its own. */
+.home-review-card__row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -125,277 +143,156 @@
   border: none;
   cursor: pointer;
   text-align: left;
+  width: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 
-.home-review-card__game-row:focus-visible {
+.home-review-card__row:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
-.home-review-card__cover {
+.home-review-card__thumb {
   flex-shrink: 0;
+  width: 34px;
+  height: 45px;
   border-radius: var(--radius-sm, 6px);
   object-fit: cover;
   background: var(--color-bg-secondary);
 }
 
-/* REVIEWED — small cover; the review text carries the card. */
-.home-review-card__cover--sm {
-  width: 38px;
-  height: 50px;
-}
-
-/* RATED / LISTED / status types — no text, so the cover grows. */
-.home-review-card__cover--lg {
-  width: 52px;
-  height: 69px;
-}
-
-.home-review-card__game-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.home-review-card__game-title {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── REVIEWED body ── */
-.home-review-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.home-review-card__body p {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
-  color: var(--color-text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.home-review-card__clamp {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.home-review-card__more {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-  font-weight: var(--font-weight-semibold);
-  color: var(--accent);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__more:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* ── RATED — no text, so the cover + stars carry the card. ── */
-.home-review-card__content--rated {
-  flex-direction: row;
-  align-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__content--rated:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.home-review-card__rated-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.home-review-card__rated-stars {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.home-review-card__score {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
-  color: var(--accent-review);
-}
-
-/* ── LISTED — destination-list pill + mosaic ── */
-.home-review-card__list-pill {
-  align-self: flex-start;
-  background: color-mix(in srgb, var(--accent-journal) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-journal) 40%, transparent);
-  color: var(--accent-journal-text);
-  padding: 5px 12px;
-  border-radius: var(--radius-chip);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__list-pill:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-}
-
-.home-review-card__mosaic {
+/* list_created's mosaic/fallback-icon "cover" — same footprint as a
+   game cover so the row's rhythm never shifts by type. */
+.home-review-card__thumb--mosaic {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  width: 100%;
-  max-width: 220px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__mosaic:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.home-review-card__mosaic-cell {
-  display: block;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius-xs, 3px);
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
   overflow: hidden;
-  background: var(--color-bg-secondary);
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
 }
 
-.home-review-card__mosaic-cell img {
+.home-review-card__thumb--mosaic img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* ── FINISHED / BACKLOGGED / PLAYED / FAVORITED — status pill ── */
-.home-review-card__status-pill {
-  align-self: flex-start;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--accent);
-  padding: 5px 12px;
-  border-radius: var(--radius-chip);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
+.home-review-card__thumb--mosaic svg {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  margin: 0 auto;
 }
 
-/* ── Actions row (identical for every type) ──
-   space-between so the contextual BacklogAction (when present, on
-   other people's reviewed/rated cards) sits opposite the react/reply
-   group rather than crowding next to it; with no backlog button the
-   lone social-actions group still lands flush left, same as before. */
+.home-review-card__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Title wraps at word boundaries when long — never clipped/truncated
+   mid-word, per this card's "wraps if long" rule. */
+.home-review-card__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: normal;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Secondary line — stars/hours/a short quoted note. Exactly one line,
+   never a paragraph; long quotes are already pre-truncated in JS at a
+   word boundary, but this is a second safety net. */
+.home-review-card__secondary {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Actions row (identical for every type except the lightest
+   'backlogged' card, which skips this entirely — see .jsx). A hairline
+   top border separates it from the game row above; the like+comment
+   cluster is always pushed to the row's right edge via margin-left:
+   auto on .home-review-card__social-actions, so a contextual backlog
+   "+" (rendered as this row's first/only other child) never crowds
+   it. ── */
 .home-review-card__actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
 }
 
 .home-review-card__social-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
+  margin-left: auto;
 }
 
-/* ── Contextual "add to backlog" quick action (rated/reviewed, other
-   people's cards only) — mirrors RecentActivityCard__backlog-btn on
-   Explore's Discover shelf so the same action looks the same wherever
-   it appears. ── */
-.home-review-card__backlog-btn {
+/* ── Icon-only action buttons (like, comment, contextual "+") ──
+   Render as a small ~32px-tall pill (icon, or icon + numeral once a
+   count clears the zero-state threshold) but keep a full 44px
+   effective tap target via the ::after hit-slop below, which extends
+   the clickable area beyond the visible box without pushing any
+   sibling in the flex row. */
+.home-review-card__icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 8px 9px;
+  margin: 0;
+  border-radius: var(--radius-full);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  border-radius: var(--radius-full);
-  padding: 7px 14px;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  white-space: nowrap;
 }
 
-.home-review-card__backlog-btn:disabled {
-  opacity: 0.65;
+.home-review-card__icon-btn::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.home-review-card__icon-btn svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.home-review-card__icon-btn--social {
+  color: var(--accent-journal-text);
+}
+
+.home-review-card__icon-btn--accent {
+  color: var(--accent);
+}
+
+.home-review-card__icon-btn:disabled {
+  opacity: 0.6;
   cursor: default;
 }
 
-.home-review-card__backlog-btn:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-}
-
-/* Social actions — react + reply/comment share the purple hue on every
-   row regardless of type. The bright --accent-journal-text variant is
-   used (rather than the base --accent-journal) because these render as
-   small text/icon pairs directly on the dark card surface, where plain
-   --accent-journal falls short of AA contrast. */
-.home-review-card__react,
-.home-review-card__reply {
-  background: none;
-  border: none;
-  padding: 6px;
-  margin: -6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent-journal-text);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__react svg,
-.home-review-card__reply svg {
-  width: 18px;
-  height: 18px;
-}
-
-.home-review-card__react:focus-visible,
-.home-review-card__reply:focus-visible {
+.home-review-card__icon-btn:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 1px;
 }
@@ -404,27 +301,18 @@
   color: var(--accent-journal-text);
 }
 
-/* Comments aren't polymorphic yet (review_comments has a review_id FK
-   only — see schema diagnosis) — every non-review card still shows this
-   affordance but it's a real no-op, visually muted so it doesn't read
-   as a working, counted control. */
-.home-review-card__reply--disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
 /* Own cards: like becomes a read-only count (no self-reactions) — a
    real, accurate number, so it stays full-opacity unlike the disabled
-   comment no-op above. Rendered as a <span>, not a button, so removing
-   the pointer affordance is enough to communicate "not interactive". */
-.home-review-card__react--readonly {
+   states above. Rendered as a <span>, not a button, so removing the
+   pointer affordance is enough to communicate "not interactive"; the
+   hit-slop pseudo-element is harmless left in place since nothing
+   listens for clicks on a span. */
+.home-review-card__icon-btn--readonly {
   cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-review-card__more,
-  .home-review-card__react,
-  .home-review-card__reply {
+  .home-review-card__icon-btn {
     transition: none;
   }
 }

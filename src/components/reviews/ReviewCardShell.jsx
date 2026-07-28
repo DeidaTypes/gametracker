@@ -48,15 +48,27 @@ export function ReviewCardShell({
  *
  * `avatar` renders fixed-width on the left. `children` is the flexible
  * middle — actor name + action verb + any screen-specific wording — and
- * is forced onto a single line (no wrap, clipped rather than pushing the
- * row taller). `end` renders fixed-width, right-aligned content that
- * never truncates (a timestamp, or timestamp + rating).
+ * by default is forced onto a single line (no wrap, clipped rather than
+ * pushing the row taller). `end` renders fixed-width, right-aligned
+ * content that never truncates (a timestamp, or timestamp + rating).
+ *
+ * `lineClassName` is an opt-in escape hatch from that single-line
+ * default — pass a modifier class to let the line wrap onto a second
+ * row instead of ellipsis-clipping mid-word, for a screen whose header
+ * content can't be kept short/fixed-vocabulary. Left unset, every
+ * current consumer (RecentActivityCard, ReviewCard's gamedetail
+ * variant, HomeReviewCard) keeps today's exact single-line truncation
+ * behavior — HomeReviewCard in particular no longer needs the escape
+ * hatch since its header verb is always short and never carries a
+ * game/list title (see HomeReviewCard.jsx's headerVerb).
  */
-export function ReviewCardShellHeader({ avatar, end, className = '', children }) {
+export function ReviewCardShellHeader({ avatar, end, className = '', lineClassName = '', children }) {
   return (
     <div className={`review-card-shell__header${className ? ` ${className}` : ''}`}>
       {avatar && <div className="review-card-shell__header-avatar">{avatar}</div>}
-      <div className="review-card-shell__header-line">{children}</div>
+      <div className={`review-card-shell__header-line${lineClassName ? ` ${lineClassName}` : ''}`}>
+        {children}
+      </div>
       {end != null && <div className="review-card-shell__header-end">{end}</div>}
     </div>
   )
