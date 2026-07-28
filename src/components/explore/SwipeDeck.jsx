@@ -10,6 +10,7 @@ import { SwipeCard } from './SwipeCard'
 import {
   recordSwipe,
   getSwipeExcludeIds,
+  incrementSessionAddCount,
   SWIPE_ACTIONS,
 } from '../../services/swipeService'
 import './SwipeDeck.css'
@@ -303,6 +304,9 @@ export function SwipeDeck() {
     (game) => {
       // Positive signal (local) + cross-device backlog write.
       recordSwipe(game, SWIPE_ACTIONS.BACKLOG)
+      // Real backlog add — counts toward the "N added tonight" payoff
+      // indicator next to the section header (never counts skips).
+      incrementSessionAddCount()
 
       addGameToList('want-to-play', {
         id:        String(game.id),

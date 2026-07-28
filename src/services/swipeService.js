@@ -49,6 +49,42 @@ export const SWIPE_ACTIONS = Object.freeze({
   NOT_INTERESTED: 'not_interested',
 })
 
+// Session-scoped (sessionStorage, i.e. "tonight") count of REAL backlog adds
+// made from the swipe deck — powers the "N added tonight" payoff indicator
+// next to the deck's section header. Counts only actual writes to the
+// backlog (SwipeDeck.handleSwipeRight), never skips/not-interested, and is
+// never fabricated. sessionStorage (not localStorage) is deliberate: it
+// resets when the tab/session ends, matching the "tonight" framing, but
+// survives in-app navigation away from and back to Discover within the
+// same session.
+const SESSION_ADD_COUNT_KEY = 'gt:swipe-session-adds:v1'
+export const SESSION_ADD_COUNT_CHANGED_EVENT = 'gt:swipe-session-add-count-changed'
+
+/** Current count of real backlog adds made this session. */
+export function getSessionAddCount() {
+  try {
+    const n = parseInt(sessionStorage.getItem(SESSION_ADD_COUNT_KEY), 10)
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Bump the session add count by one. Call exactly once per real backlog
+ * add (never per swipe/skip). Returns the new count.
+ */
+export function incrementSessionAddCount() {
+  const next = getSessionAddCount() + 1
+  try {
+    sessionStorage.setItem(SESSION_ADD_COUNT_KEY, String(next))
+  } catch { /* storage full — non-fatal, indicator just won't update */ }
+  window.dispatchEvent(
+    new CustomEvent(SESSION_ADD_COUNT_CHANGED_EVENT, { detail: { count: next } })
+  )
+  return next
+}
+
 // How recently a "skip" must have happened to keep the card out of rotation.
 // Older skips age out so the user isn't punished forever for a single bad mood.
 const SKIP_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days

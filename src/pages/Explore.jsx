@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
@@ -6,6 +6,10 @@ import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
 import HiddenGemsRail from '../components/explore/HiddenGemsRail'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
+import {
+  getSessionAddCount,
+  SESSION_ADD_COUNT_CHANGED_EVENT,
+} from '../services/swipeService'
 import './Explore.css'
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -34,6 +38,18 @@ import './Explore.css'
 function Explore() {
   const { isOpen, open } = useSearchOverlay()
   const reduced = useReducedMotion()
+
+  // "N added tonight" payoff indicator — real backlog adds from the swipe
+  // deck this session (see swipeService.incrementSessionAddCount). Hidden
+  // entirely at zero, never rendered as "0 added tonight".
+  const [addedTonight, setAddedTonight] = useState(0)
+
+  useEffect(() => {
+    setAddedTonight(getSessionAddCount())
+    const onChange = (e) => setAddedTonight(e.detail?.count ?? getSessionAddCount())
+    window.addEventListener(SESSION_ADD_COUNT_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(SESSION_ADD_COUNT_CHANGED_EVENT, onChange)
+  }, [])
 
   return (
     <div className="explore-page">
@@ -65,6 +81,11 @@ function Explore() {
       <section className="explore-section explore-section--swipe-deck">
         <div className="explore-section__pad discover-section-header">
           <h2 className="discover-section-title">Swipe to discover</h2>
+          {addedTonight > 0 && (
+            <span className="discover-payoff-indicator">
+              {addedTonight} added tonight
+            </span>
+          )}
         </div>
         <SwipeDeck />
       </section>

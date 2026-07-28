@@ -6,6 +6,13 @@ import CollectionCard from './CollectionCard'
 import './SectionScaffold.css'
 import './CollectionCard.css'
 
+// Zero-state rule for this rail specifically: a collection with fewer than
+// 5 games reads as an abandoned/half-started list rather than a real
+// curated pick, so it never surfaces here — regardless of curated or
+// community origin. (The /discover/collections browse-all page is out of
+// scope for this rule and keeps listService's own gameCount > 0 filter.)
+const MIN_RAIL_GAME_COUNT = 5
+
 /**
  * CollectionsShelf — Discover "Collections" shelf.
  *
@@ -24,7 +31,7 @@ export default function CollectionsShelf() {
   const collections = useMemo(() => {
     const curated = data?.curated || []
     const community = data?.community || []
-    return [...curated, ...community]
+    return [...curated, ...community].filter((c) => c.gameCount >= MIN_RAIL_GAME_COUNT)
   }, [data])
 
   if (loading || collections.length === 0) return null

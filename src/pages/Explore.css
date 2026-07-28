@@ -303,6 +303,18 @@
   margin: 0;
 }
 
+/* "N added tonight" — swipe deck session payoff indicator. Only ever
+   rendered when the count is > 0 (see Explore.jsx); never shows "0". */
+.discover-payoff-indicator {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
 /* "Word / Word" slash toggle (Popular / New, Popular / Following).
    Left label is the default selection. Active = cobalt, inactive + sep = muted. */
 .discover-slash-toggle {
