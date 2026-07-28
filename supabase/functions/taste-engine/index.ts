@@ -12,23 +12,31 @@
 //   1. Builds a NORMALIZED genre/theme affinity vector from EVERY behavioral
 //      signal the app records — not just ratings → user_taste_vectors.
 //      See "Behavioral weighting" below for the model.
-//   2. Selects the user's SEED SET: their top 10-15 highest-weighted
-//      rated/tracked games (dynamic — fewer if they've rated fewer;
-//      empty if none qualify) → user_recommendation_seeds.
-//   3. For EACH seed independently: IGDB similar_games of that seed +
-//      genre/theme matches sharing that seed's genres, filtered to
-//      exclude owned titles + a quality bar, re-ranked by taste affinity
-//      → that seed's own ~10-20-game list in user_recommendations, keyed
-//      by (user, seed, game) so every seed's picks are cached and
-//      retrievable independently.
+//   2. Reads that SAME vector's top-weighted genres + themes (no separate
+//      seed selection, no similar_games) and queries IGDB for games that
+//      are members of those genres/themes AND clear a "hidden gem" bar —
+//      high total_rating, but a total_rating_count still inside an
+//      under-the-radar band (see the HIDDEN_GEM_* constants) — excluding
+//      anything the user already knows. A niche-indie player's top genre
+//      is Indie, so their gems are indie; a sports player's is Sport, so
+//      theirs are sport. → user_hidden_gems, ranked strongest-affinity +
+//      highest-quality first.
+//
+// Previously this step picked 10-15 "seed" games and asked IGDB for each
+// seed's similar_games — which, being IGDB's own popularity-biased
+// similarity graph, kept surfacing titles the user already knew (see
+// "Hidden gems" replaces "Because you played" in the sprint notes). This
+// pass never touches similar_games; genre/theme membership + the rating
+// bar are the entire candidate query.
 //
 // IGDB is reached through the existing `igdb-proxy` function's
 // /multiquery endpoint so a user's whole batch of lookups (tag
-// resolution across every seed + genre-candidate queries) rides in a
-// small, bounded number of POSTs (~2-3/user) instead of one round trip
-// per seed — see igdbMulti() below. All IGDB traffic is throttled to
-// ≤4 req/s with ≤8 concurrent, batched via id lists (≤ ID_CHUNK per
-// sub-query) and ≤ MULTIQUERY_MAX_SUBQUERIES sub-queries per POST.
+// resolution across every signal game + genre/theme candidate queries)
+// rides in a small, bounded number of POSTs (~2-3/user) instead of one
+// round trip per lookup — see igdbMulti() below. All IGDB traffic is
+// throttled to ≤4 req/s with ≤8 concurrent, batched via id lists
+// (≤ ID_CHUNK per sub-query) and ≤ MULTIQUERY_MAX_SUBQUERIES sub-queries
+// per POST.
 //
 // Auth: this function is deployed with verify_jwt=false and instead
 // requires a shared `x-engine-secret` header matching the ENGINE_SECRET
@@ -37,7 +45,7 @@
 // Request  : POST { trigger?, userId?, limit? }
 //   userId — optional: refresh a single user only (smoke tests).
 //   limit  — optional cap on users processed (default: all).
-// Response : 200 { ok, users_processed, vectors_written, seeds_written, recs_written }
+// Response : 200 { ok, users_processed, vectors_written, gems_written }
 //
 // ── Behavioral weighting ────────────────────────────────────────────────────
 // This engine previously read ONLY reviews.rating + game_trackers.status, took
@@ -144,23 +152,41 @@ const BACKLOG_STATUSES = new Set(['want', 'want_to_play', 'want-to-play', 'backl
 const DROPPED_STATUSES = new Set(['dropped'])
 
 const CONFIDENCE_FULL = 8 // signal games → confidence 1.0
-const MIN_REC_SIGNAL = 2  // fewer tag-resolved signal games → no recs (empty)
-// Seed floor, on the post-decay behavioral scale. A seed also REQUIRES direct
-// play evidence (see playedEvidence) so "Because you played X" can never name a
-// game the user merely bookmarked or added to a list.
-const SEED_MIN_WEIGHT = 3.0
-const SEED_MAX = 15         // top 10-15 seeds — dynamic, scales down to however many qualify
+const MIN_REC_SIGNAL = 2  // fewer tag-resolved signal games → no hidden gems (empty, section hides)
 
 // Supabase caps a single select at 1000 rows. The behavioral tables (sessions,
 // activity events, list entries) grow without bound, so every read paginates —
 // silently truncating input would quietly corrupt every vector.
 const PAGE_SIZE = 1000
 
-// Recommendation quality bar + shaping.
-const REC_MIN_RATING = 70
-const REC_MIN_RATING_COUNT = 15
-const REC_PER_SEED_MAX = 20 // each seed's OWN cached list, not a global merged top-N
-const GENRE_CANDIDATE_LIMIT = 40
+// ── Hidden gems: candidate scope + quality/volume bar ────────────────────────
+// Thresholds below were tuned empirically against the live IGDB catalog
+// (see the sprint's threshold report) so every genre/theme gets a healthy
+// candidate pool without admitting low-signal noise:
+//   • total_rating >= 80        — "high rating quality": strict enough that
+//     a pick is a genuine, honest "94% loved it", not a mediocre game
+//     that happens to have few raters.
+//   • 15 <= total_rating_count <= 200 — "low rating volume": the floor
+//     keeps a percentage from being a fluke off 2-3 raters; the ceiling
+//     is calibrated against real IGDB data for well-known hits (Hades
+//     ~1700, Celeste ~1450, Undertale ~1900, Minecraft ~550 ratings) —
+//     everything in that mainstream tier is comfortably excluded, while
+//     genuinely loved-but-overlooked titles (rating count in the tens to
+//     low hundreds) pass through.
+// `parent_game = null` additionally drops DLC/expansion entries (which
+// otherwise inflate the "hidden" pool with fragmented, artificially-low
+// rating counts split off their base game).
+const HIDDEN_GEM_MIN_RATING = 80
+const HIDDEN_GEM_MIN_RATING_COUNT = 15
+const HIDDEN_GEM_MAX_RATING_COUNT = 200
+// How many of the user's top-weighted genres / themes seed candidate
+// queries — bounded so a user's whole gem search stays inside one
+// /multiquery POST (well under MULTIQUERY_MAX_SUBQUERIES) even before the
+// cross-run genreGemCache/themeGemCache dedup kicks in.
+const HIDDEN_GEM_TOP_GENRES = 4
+const HIDDEN_GEM_TOP_THEMES = 2
+const HIDDEN_GEM_CANDIDATE_LIMIT = 40 // per genre/theme sub-query
+const HIDDEN_GEM_CACHE_MAX = 24       // this user's whole cached pool (client reads slices of it)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -293,14 +319,13 @@ function latest(...values: (number | null)[]): number | null {
 }
 
 // ── IGDB /multiquery batching ────────────────────────────────────────────────
-// Selecting 10-15 seeds per user (up from a single seed) means a naive
-// implementation would fire one IGDB round trip per seed/genre lookup —
-// 10-15+ requests per user, per day, across the whole user base. Instead
-// every independent lookup (a tag-resolution chunk, a genre-candidate
-// query, ...) becomes a named sub-query and gets packed, up to
-// MULTIQUERY_MAX_SUBQUERIES at a time, into a single POST to IGDB's
-// /multiquery endpoint — collapsing what would be N round trips into a
-// small constant number (~2-3 per user for the full seed set).
+// A naive implementation would fire one IGDB round trip per tag-resolution
+// chunk or per genre/theme candidate lookup — many requests per user, per
+// day, across the whole user base. Instead every independent lookup becomes
+// a named sub-query and gets packed, up to MULTIQUERY_MAX_SUBQUERIES at a
+// time, into a single POST to IGDB's /multiquery endpoint — collapsing what
+// would be N round trips into a small constant number (~2-3 per user for
+// the full signal-tag + hidden-gem-candidate set).
 interface SubQuery { name: string; endpoint: string; body: string }
 
 function subQueryBlock(sq: SubQuery): string {
@@ -459,18 +484,6 @@ function round(v: number, dp = 2): number {
   return Math.round(v * f) / f
 }
 
-// Cosine of a candidate's binary tag set against a normalized user vector.
-function tagCosine(tagNames: string[], userVec: Record<string, number>): number {
-  if (tagNames.length === 0) return 0
-  const invLen = 1 / Math.sqrt(tagNames.length) // candidate vector L2-normalized (binary)
-  let dot = 0
-  for (const name of tagNames) {
-    const w = userVec[name]
-    if (w) dot += w * invLen
-  }
-  return Math.max(0, Math.min(1, dot))
-}
-
 // ── Per-user data model ─────────────────────────────────────────────────────────
 /** Every behavioral signal type that can contribute to a taste vector. */
 type SignalKind =
@@ -512,12 +525,6 @@ interface UserSignal {
   sessionCount: number
   swipeRight: number
   swipeLeft: number
-}
-
-/** Direct play evidence — a game may only anchor "Because you played X" if the
- * user actually played it, not merely bookmarked or curated it. */
-function playedEvidence(g: GameSignals): boolean {
-  return g.hours > 0 || g.finished || g.rated || g.reviewed
 }
 
 /**
@@ -926,24 +933,26 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
   for (const u of userList) for (const gid of u.games.keys()) allSignalIds.add(gid)
   const tags = await resolveTags(db, Array.from(allSignalIds))
 
-  // Per-run cache of "top games in genre" candidate lists.
-  const genreTopCache = new Map<number, GameTag[]>()
+  // Per-run cache of hidden-gem candidate lists, keyed `genre:<id>` / `theme:<id>`
+  // — shared across every user this run so two users with an overlapping top
+  // genre/theme don't each pay for the same IGDB query.
+  const hiddenGemCache = new Map<string, GameTag[]>()
 
   let vectorsWritten = 0
-  let seedsWritten = 0
-  let recsWritten = 0
+  let gemsWritten = 0
 
   for (const u of userList) {
     // 3. Build the normalized affinity vector from every behavioral signal.
     const genreBucket = new Map<string, GenreAccum>()
     const themeBucket = new Map<string, GenreAccum>()
     const genreIdWeight = new Map<number, number>()
+    const themeIdWeight = new Map<number, number>()
     let signalCount = 0
     let hoursTotal = 0
     let lastSignalAt: number | null = null
     const signalTotals: Record<string, number> = {}
     const weightedGames: {
-      gid: number; weight: number; title: string | null; tag?: GameTag; played: boolean
+      gid: number; weight: number; title: string | null; tag?: GameTag
     }[] = []
 
     for (const [gid, g] of u.games) {
@@ -954,7 +963,7 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
       const genreNames = tag?.genre_names?.length ? tag.genre_names : g.fallbackGenres
       const themeNames = tag?.theme_names?.length ? tag.theme_names : g.fallbackThemes
 
-      // This game's net decayed score, used for seed ranking.
+      // This game's net decayed score, used for topRatedIds ranking.
       let decayedTotal = 0
       for (const c of g.contributions) {
         const decayed = c.points * recencyWeight(c.at, nowMs)
@@ -966,7 +975,6 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
       hoursTotal += g.hours
       weightedGames.push({
         gid, weight: decayedTotal, title: g.title || tag?.name || null, tag,
-        played: playedEvidence(g),
       })
 
       if (genreNames.length === 0 && themeNames.length === 0) continue
@@ -976,11 +984,14 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
       accumulate(genreBucket, genreNames, gid, g.contributions, nowMs)
       accumulate(themeBucket, themeNames, gid, g.contributions, nowMs)
 
-      // Genre-ID weights drive IGDB candidate queries, so only real resolved
-      // tag ids qualify (the swipe fallback is names-only).
+      // Genre/theme-ID weights drive IGDB candidate queries, so only real
+      // resolved tag ids qualify (the swipe fallback is names-only).
       if (tag && decayedTotal > 0) {
         for (const gidTag of tag.genre_ids) {
           genreIdWeight.set(gidTag, (genreIdWeight.get(gidTag) || 0) + decayedTotal)
+        }
+        for (const tidTag of tag.theme_ids) {
+          themeIdWeight.set(tidTag, (themeIdWeight.get(tidTag) || 0) + decayedTotal)
         }
       }
     }
@@ -1042,54 +1053,55 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
     if (vErr) { console.error('[taste-engine] vector upsert error:', vErr.message); continue }
     vectorsWritten++
 
-    // 4. Recommendations — only with enough signal (else leave both caches empty).
+    // 4. Hidden gems — only with enough signal to personalize (else leave the
+    // cache empty; the section hides rather than falling back to anything
+    // generic).
     if (signalCount < MIN_REC_SIGNAL) {
-      await db.from('user_recommendations').delete().eq('user_id', u.userId)
-      await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
+      await db.from('user_hidden_gems').delete().eq('user_id', u.userId)
       continue
     }
 
-    // Seed set: the user's top 10-15 highest-weighted games they genuinely
-    // played/loved — dynamic, not a fixed count. Scales down to however
-    // many qualify (min 1); empty when none clear the honesty floor.
-    //
-    // `played` is a hard requirement, not just a high score: now that lists and
-    // backlog adds contribute weight, a heavily-curated-but-never-played game
-    // could otherwise clear the numeric floor and let "Because you played X"
-    // name a game the user never played.
-    const seeds = weightedGames
-      .filter((g) => g.tag && g.played && g.weight >= SEED_MIN_WEIGHT)
-      .slice(0, SEED_MAX)
-    if (seeds.length === 0) {
-      await db.from('user_recommendations').delete().eq('user_id', u.userId)
-      await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
+    // The user's top-weighted genres/themes BY RESOLVED-TAG ID (not the
+    // normalized name-keyed genreWeights/themeWeights — those drive display
+    // and scoring below, these numeric ids drive the IGDB candidate query).
+    // Empty when every signal game was swipe-fallback-only (no real IGDB tag
+    // ever resolved) — genuinely nothing to scope a genre/theme query to.
+    const topGenreIds = Array.from(genreIdWeight.entries())
+      .sort((a, b) => b[1] - a[1]).slice(0, HIDDEN_GEM_TOP_GENRES).map(([id]) => id)
+    const topThemeIds = Array.from(themeIdWeight.entries())
+      .sort((a, b) => b[1] - a[1]).slice(0, HIDDEN_GEM_TOP_THEMES).map(([id]) => id)
+    if (topGenreIds.length === 0 && topThemeIds.length === 0) {
+      await db.from('user_hidden_gems').delete().eq('user_id', u.userId)
       continue
     }
 
-    // 4a. Genre/theme candidate pool — the user's top 3 genres overall
-    // (shared across seeds so this stays a handful of queries regardless
-    // of seed count), fetched via ONE /multiquery POST for whichever
-    // genres this run hasn't already cached.
-    const topGenreIds = Array.from(genreIdWeight.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id)
-    const missingGenreIds = topGenreIds.filter((id) => !genreTopCache.has(id))
-    if (missingGenreIds.length > 0) {
-      const genreSubQueries: SubQuery[] = missingGenreIds.map((genreId) => ({
-        name: `genre_${genreId}`,
+    // 4a. Fetch (or reuse this run's cache of) each candidate tag's own
+    // hidden-gem pool: real IGDB genre/theme membership + the quality/volume
+    // bar, nothing else — no similar_games, no popularity ranking.
+    const wanted = [
+      ...topGenreIds.map((id) => ({ kind: 'genre' as const, id })),
+      ...topThemeIds.map((id) => ({ kind: 'theme' as const, id })),
+    ]
+    const missing = wanted.filter(({ kind, id }) => !hiddenGemCache.has(`${kind}:${id}`))
+    if (missing.length > 0) {
+      const subQueries: SubQuery[] = missing.map(({ kind, id }) => ({
+        name: `hg_${kind}_${id}`,
         endpoint: 'games',
         body:
-          `${TAG_FIELDS}; where genres = (${genreId}) & total_rating >= 75 & ` +
-          `total_rating_count >= 25 & cover != null & version_parent = null; ` +
-          `sort total_rating_count desc; limit ${GENRE_CANDIDATE_LIMIT};`,
+          `${TAG_FIELDS}; where ${kind}s = (${id}) & total_rating >= ${HIDDEN_GEM_MIN_RATING} & ` +
+          `total_rating_count >= ${HIDDEN_GEM_MIN_RATING_COUNT} & total_rating_count <= ${HIDDEN_GEM_MAX_RATING_COUNT} & ` +
+          `cover != null & version_parent = null & parent_game = null; ` +
+          `sort total_rating desc; limit ${HIDDEN_GEM_CANDIDATE_LIMIT};`,
       }))
       try {
-        const resultsByName = await igdbMulti(genreSubQueries)
+        const resultsByName = await igdbMulti(subQueries)
         const warmRows: GameTag[] = []
-        for (const genreId of missingGenreIds) {
-          const list = (resultsByName.get(`genre_${genreId}`) || []).map(shapeIgdbGame)
-          genreTopCache.set(genreId, list)
+        for (const { kind, id } of missing) {
+          const list = (resultsByName.get(`hg_${kind}_${id}`) || []).map(shapeIgdbGame)
+          hiddenGemCache.set(`${kind}:${id}`, list)
           warmRows.push(...list)
         }
-        // Opportunistically warm the tag cache with these rows.
+        // Opportunistically warm the shared tag cache with these rows.
         if (warmRows.length) {
           await db.from('game_tags').upsert(
             warmRows.map((t) => ({ ...t, fetched_at: new Date().toISOString() })),
@@ -1097,130 +1109,76 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
           )
         }
       } catch (err) {
-        console.error('[taste-engine] genre candidate fetch failed:', String(err))
-        for (const genreId of missingGenreIds) genreTopCache.set(genreId, [])
+        console.error('[taste-engine] hidden-gem candidate fetch failed:', String(err))
+        for (const { kind, id } of missing) hiddenGemCache.set(`${kind}:${id}`, [])
       }
     }
 
-    // 4b. Build EACH seed's own candidate set independently: that seed's
-    // similar_games (curated similarity) + genre candidates sharing one
-    // of that seed's genres. The same candidate game can legitimately
-    // appear under multiple seeds — every seed gets its own list.
-    const seedCandidates = new Map<number, Map<number, boolean>>() // seedGid -> (candGid -> fromSimilar)
-    for (const seed of seeds) {
-      const m = new Map<number, boolean>()
-      for (const simId of seed.tag?.similar_game_ids || []) {
-        if (!u.knownIds.has(simId)) m.set(simId, true)
-      }
-      for (const genreId of topGenreIds) {
-        if (!seed.tag?.genre_ids.includes(genreId)) continue
-        for (const cand of genreTopCache.get(genreId) || []) {
-          if (u.knownIds.has(cand.igdb_game_id)) continue
-          if (!m.has(cand.igdb_game_id)) m.set(cand.igdb_game_id, false)
+    // 4b. Merge every affinity tag's candidates for this user, excluding
+    // anything already known (owned/tracked/reviewed/etc — task 6). A
+    // candidate matching more than one of the user's tags keeps whichever
+    // match has the STRONGER normalized affinity, so "matched_tag" always
+    // names the single most honest reason this pick surfaced.
+    const bestMatch = new Map<number, { tag: GameTag; matchedTag: string; matchedWeight: number }>()
+    for (const { kind, id } of wanted) {
+      for (const tag of hiddenGemCache.get(`${kind}:${id}`) || []) {
+        if (u.knownIds.has(tag.igdb_game_id)) continue
+        // Belt-and-suspenders on top of the query's own rating filters —
+        // user_hidden_gems.total_rating/_count are NOT NULL.
+        if (tag.total_rating == null || tag.total_rating_count == null) continue
+
+        const names = kind === 'genre' ? tag.genre_names : tag.theme_names
+        const weights = kind === 'genre' ? genreWeights : themeWeights
+        let matchedTag: string | null = null
+        let matchedWeight = -1
+        for (const name of names) {
+          const w = weights[name]
+          if (w != null && w > matchedWeight) { matchedWeight = w; matchedTag = name }
+        }
+        if (matchedTag == null) continue // this tag's id didn't survive back to a named affinity — skip rather than guess
+
+        const existing = bestMatch.get(tag.igdb_game_id)
+        if (!existing || matchedWeight > existing.matchedWeight) {
+          bestMatch.set(tag.igdb_game_id, { tag, matchedTag, matchedWeight })
         }
       }
-      seedCandidates.set(seed.gid, m)
     }
 
-    // 5. Resolve tags for the UNION of every seed's candidates in one
-    // batched pass (still just one /multiquery POST for the whole user,
-    // regardless of how many seeds contributed candidates).
-    const allCandidateIds = new Set<number>()
-    for (const m of seedCandidates.values()) for (const gid of m.keys()) allCandidateIds.add(gid)
-    const candTags = await resolveTags(db, Array.from(allCandidateIds))
+    // Strongest affinity first, quality as the tiebreaker within a tag —
+    // this is what makes a sports-heavy profile's list lead with Sport picks
+    // and an indie-heavy profile's lead with Indie picks.
+    const ranked = Array.from(bestMatch.values())
+      .sort((a, b) => b.matchedWeight - a.matchedWeight || (b.tag.total_rating ?? 0) - (a.tag.total_rating ?? 0))
+      .slice(0, HIDDEN_GEM_CACHE_MAX)
 
-    // 6. Score + rank each seed's candidates independently, then cache
-    // that seed's own top ~10-20 list.
+    await db.from('user_hidden_gems').delete().eq('user_id', u.userId)
+    if (ranked.length === 0) continue // nothing cleared the bar for this user's own genres — hide, never fill in generic picks
+
     const nowIso = new Date().toISOString()
-    const recRows: any[] = []
-    const seedRows: any[] = []
+    const gemRows = ranked.map((r, i) => ({
+      user_id: u.userId,
+      igdb_game_id: r.tag.igdb_game_id,
+      game_title: r.tag.name,
+      game_image: r.tag.cover_image_id
+        ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${r.tag.cover_image_id}.jpg`
+        : null,
+      genre_names: r.tag.genre_names,
+      matched_tag: r.matchedTag,
+      total_rating: r.tag.total_rating,
+      total_rating_count: r.tag.total_rating_count,
+      rank: i + 1,
+      generated_at: nowIso,
+    }))
 
-    seeds.forEach((seed, seedIdx) => {
-      const seedTitle = seed.tag?.name || seed.title
-      const candidates = seedCandidates.get(seed.gid) || new Map()
-
-      const scored: any[] = []
-      for (const [gid, fromSimilar] of candidates) {
-        const tag = candTags.get(gid)
-        if (!tag) continue
-        // Quality bar + display requirements.
-        if (tag.total_rating == null || tag.total_rating < REC_MIN_RATING) continue
-        if (tag.total_rating_count == null || tag.total_rating_count < REC_MIN_RATING_COUNT) continue
-        if (!tag.cover_image_id) continue
-
-        const genreOverlap = tagCosine(tag.genre_names, genreWeights)
-        const themeOverlap = tagCosine(tag.theme_names, themeWeights)
-        const tasteBlend = 0.7 * genreOverlap + 0.3 * themeOverlap
-        const qualityNorm = Math.max(0, Math.min(1, (tag.total_rating - REC_MIN_RATING) / 30))
-        const base = 0.70 * tasteBlend + 0.15 * qualityNorm + (fromSimilar ? 0.15 : 0)
-        const matchScore = Math.round(Math.max(0, Math.min(1, base)) * 100)
-
-        scored.push({ gid, matchScore, tag })
-      }
-
-      scored.sort((a, b) => b.matchScore - a.matchScore)
-      const top = scored.slice(0, REC_PER_SEED_MAX)
-
-      for (const [i, s] of top.entries()) {
-        recRows.push({
-          user_id: u.userId,
-          seed_game_id: seed.gid,
-          seed_title: seedTitle,
-          igdb_game_id: s.gid,
-          match_score: s.matchScore,
-          game_title: s.tag.name,
-          game_image: s.tag.cover_image_id
-            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${s.tag.cover_image_id}.jpg`
-            : null,
-          genre_names: s.tag.genre_names,
-          total_rating: s.tag.total_rating,
-          total_rating_count: s.tag.total_rating_count,
-          rank: i + 1,
-          generated_at: nowIso,
-        })
-      }
-
-      // Only keep the seed itself if it actually produced recommendations —
-      // an empty seed shouldn't occupy a rotation slot client-side.
-      if (top.length > 0) {
-        seedRows.push({
-          user_id: u.userId,
-          seed_game_id: seed.gid,
-          seed_title: seedTitle,
-          seed_image: seed.tag?.cover_image_id
-            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${seed.tag.cover_image_id}.jpg`
-            : null,
-          seed_weight: seed.weight,
-          seed_rank: seedIdx + 1,
-          rec_count: top.length,
-          generated_at: nowIso,
-        })
-      }
-    })
-
-    // Replace this user's seed set + recommendations atomically-ish
-    // (delete then insert) so a shrinking seed set (fewer qualifying
-    // games than yesterday) doesn't leave stale seeds/picks behind.
-    await db.from('user_recommendations').delete().eq('user_id', u.userId)
-    await db.from('user_recommendation_seeds').delete().eq('user_id', u.userId)
-
-    if (seedRows.length > 0) {
-      const { error: sErr } = await db.from('user_recommendation_seeds').insert(seedRows)
-      if (sErr) console.error('[taste-engine] seeds insert error:', sErr.message)
-      else seedsWritten += seedRows.length
-    }
-    if (recRows.length > 0) {
-      const { error: rErr } = await db.from('user_recommendations').insert(recRows)
-      if (rErr) console.error('[taste-engine] recs insert error:', rErr.message)
-      else recsWritten += recRows.length
-    }
+    const { error: gErr } = await db.from('user_hidden_gems').insert(gemRows)
+    if (gErr) console.error('[taste-engine] hidden gems insert error:', gErr.message)
+    else gemsWritten += gemRows.length
   }
 
   return {
     users_processed: userList.length,
     vectors_written: vectorsWritten,
-    seeds_written: seedsWritten,
-    recs_written: recsWritten,
+    gems_written: gemsWritten,
     // Rate-limit accounting: requests is total POSTs to IGDB (each carrying up
     // to MULTIQUERY_MAX_SUBQUERIES sub-queries), and the two peaks must stay
     // within RATE_MAX / MAX_CONCURRENCY.

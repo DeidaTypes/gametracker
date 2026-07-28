@@ -1,16 +1,17 @@
 /* =============================================
-   BecauseYouPlayedRail — Discover page closer.
-   Horizontal rail of E0 recommendations anchored to a single named seed.
+   HiddenGemsRail — Discover page closer.
+   Horizontal rail of high-rating, low-volume games scoped to the
+   user's own taste-vector affinities. Replaces BecauseYouPlayedRail.
    ============================================= */
 
-.byp-head {
+.hg-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.byp-refresh-btn {
+.hg-refresh-btn {
   background: none;
   border: none;
   display: inline-flex;
@@ -26,33 +27,33 @@
   transition: color var(--transition-fast);
 }
 
-.byp-refresh-btn:hover:not(:disabled) {
+.hg-refresh-btn:hover:not(:disabled) {
   color: var(--accent);
 }
 
-.byp-refresh-btn:disabled {
+.hg-refresh-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-@keyframes bypRefreshSpin {
+@keyframes hgRefreshSpin {
   to { transform: rotate(360deg); }
 }
 
-.byp-refresh-btn--spinning svg {
-  animation: bypRefreshSpin 0.8s linear infinite;
+.hg-refresh-btn--spinning svg {
+  animation: hgRefreshSpin 0.8s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .byp-refresh-btn {
+  .hg-refresh-btn {
     transition: none;
   }
-  .byp-refresh-btn--spinning svg {
+  .hg-refresh-btn--spinning svg {
     animation: none;
   }
 }
 
-.byp-card {
+.hidden-gem-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -68,7 +69,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.byp-card__cover-wrap {
+.hidden-gem-card__cover-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
@@ -77,19 +78,19 @@
   background: var(--bg-surface-2);
 }
 
-.byp-card__cover {
+.hidden-gem-card__cover {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.byp-card__badge {
+.hidden-gem-card__tag {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  bottom: 8px;
+  left: 8px;
   padding: 3px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: rgba(12, 18, 33, 0.78);
   backdrop-filter: blur(4px);
   color: var(--accent);
@@ -97,9 +98,54 @@
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.byp-card__title {
+.hidden-gem-card__backlog-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(12, 18, 33, 0.78);
+  backdrop-filter: blur(4px);
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.hidden-gem-card__backlog-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.hidden-gem-card__backlog-btn--added {
+  color: var(--accent);
+}
+
+.hidden-gem-card__backlog-btn:disabled {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hidden-gem-card__backlog-btn {
+    transition: none;
+  }
+  .hidden-gem-card__backlog-btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.hidden-gem-card__title {
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
@@ -110,8 +156,18 @@
   text-overflow: ellipsis;
 }
 
+.hidden-gem-card__signal {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (min-width: 769px) {
-  .byp-card {
+  .hidden-gem-card {
     flex: 0 0 190px;
     width: 190px;
     min-width: 190px;

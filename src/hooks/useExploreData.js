@@ -17,7 +17,7 @@ import {
 } from '../services/reviewService'
 import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
 import { getCollections } from '../services/listService'
-import { getBecauseYouPlayed } from '../services/tasteEngineService'
+import { getHiddenGems } from '../services/tasteEngineService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -203,11 +203,12 @@ export function useRecentFollowingActivity() {
 }
 
 /**
- * Discover page — "Because you played {seed}" closer rail: E0
- * recommendations anchored to exactly one of the user's top-rated seed
- * games, rotating seeds on every load. Returns null when the engine has
- * no recommendations for this user yet (component hides the section).
+ * Discover page — "Hidden gems for you" closer rail: high-rating,
+ * low-rating-volume games scoped to the genres/themes the user's own
+ * taste vector shows affinity for, rotating to a different cached slice
+ * on every load/refresh. Returns null when the engine has too little
+ * signal to personalize for this user yet (component hides the section).
  */
-export function useBecauseYouPlayed() {
-  return useAsyncSection(() => getBecauseYouPlayed())
+export function useHiddenGems() {
+  return useAsyncSection(() => getHiddenGems())
 }

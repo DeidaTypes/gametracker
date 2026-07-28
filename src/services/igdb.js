@@ -1632,12 +1632,12 @@ export async function getDiscoveryDeck({
 
 // ─── Broad discovery pool — full-catalog swipe deck (ALL genres, always) ─────
 //
-// The E0 taste engine's `user_recommendations` table (see tasteEngineService)
-// only ever contains candidates pulled from the user's own top genres +
-// similar_games of already-played titles. That's correct for "Because You
-// Played" (intentionally narrow), but it means an entire genre the user has
-// never engaged with — Sports, Puzzle, Simulation, Racing, Fighting, etc. —
-// can NEVER appear in that pool, no matter how good the game is.
+// The E0 taste engine's `user_hidden_gems` table (see tasteEngineService)
+// only ever contains candidates pulled from the user's own top genres/themes.
+// That's correct for "Hidden gems for you" (intentionally narrow), but it
+// means an entire genre the user has never engaged with — Sports, Puzzle,
+// Simulation, Racing, Fighting, etc. — can NEVER appear in that pool, no
+// matter how good the game is.
 //
 // This is the fix: query IGDB directly across EVERY major genre, gated only
 // by quality (total_rating + total_rating_count), never by genre affinity.

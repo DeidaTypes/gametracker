@@ -92,11 +92,11 @@ function gameToCard(game, topGenres) {
  * FULL real IGDB catalog across EVERY major genre (Sports, Puzzle, Strategy,
  * Simulation, Racing, Fighting, RPG, Shooter, everything), gated only by a
  * quality bar (total_rating + total_rating_count). Deliberately NOT sourced
- * from the E0 taste engine's user_recommendations table — that pool only
- * ever contains candidates from the user's own top genres + similar_games of
- * played titles, which structurally starves out every genre the user hasn't
- * already engaged with. That's the right behavior for the page's "Because
- * you played {seed}" closer (intentionally narrow) but the wrong one here.
+ * from the E0 taste engine's user_hidden_gems table — that pool only ever
+ * contains candidates from the user's own top genres/themes, which
+ * structurally starves out every genre the user hasn't already engaged
+ * with. That's the right behavior for the page's "Hidden gems for you"
+ * closer (intentionally narrow) but the wrong one here.
  *
  * The user's taste vector (getTasteVector) is read ONLY to lightly bias
  * on-card copy (matchGenres) and result ORDER (see applyTasteOrderBias in
