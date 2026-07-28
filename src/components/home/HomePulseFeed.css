@@ -1,24 +1,24 @@
 /* ============================================================
-   HOME FRESH REVIEWS — lead feed section of the Home spine
-   Namespace: fresh-reviews__*
+   HOME PULSE FEED — lead feed section of the Home spine ("The pulse")
+   Namespace: pulse-feed__*
    Tokens only. HomeReviewCard.css owns the card treatment;
    this file only styles the section head, nudge, and skeleton.
    ============================================================ */
 
-.fresh-reviews {
+.pulse-feed {
   display: flex;
   flex-direction: column;
 }
 
 /* ── Head ── */
-.fresh-reviews__head {
+.pulse-feed__head {
   padding: 0 var(--container-padding) var(--spacing-sm);
 }
 
 /* Gradient heading — cobalt → green (--grad-headline), the one heading
    treatment allowed by the multi-hue pass. Falls back to solid
    --color-text-primary if background-clip:text isn't supported. */
-.fresh-reviews__title {
+.pulse-feed__title {
   margin: 0 0 2px;
   font-family: var(--font-display);
   font-size: var(--font-size-title);
@@ -33,14 +33,14 @@
 }
 
 @supports not (background-clip: text) {
-  .fresh-reviews__title {
+  .pulse-feed__title {
     background: none;
     -webkit-text-fill-color: unset;
     color: var(--color-text-primary);
   }
 }
 
-.fresh-reviews__subline {
+.pulse-feed__subline {
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
@@ -52,7 +52,7 @@
    Each item is now an individually bounded <ReviewCardShell/> card
    (no shared divider borders), so the list needs its own gap — the
    same --section-gap every other review list in the app uses. */
-.fresh-reviews__list {
+.pulse-feed__list {
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
@@ -60,7 +60,7 @@
 }
 
 /* ── Find people nudge (secondary CTA) ── */
-.fresh-reviews__find-nudge {
+.pulse-feed__find-nudge {
   display: block;
   width: calc(100% - var(--container-padding) * 2);
   margin: 12px var(--container-padding);
@@ -78,55 +78,55 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.fresh-reviews__find-nudge:hover {
+.pulse-feed__find-nudge:hover {
   background: rgba(148, 168, 212, 0.06);
   border-color: rgba(148, 168, 212, 0.28);
 }
 
-.fresh-reviews__find-nudge:active {
+.pulse-feed__find-nudge:active {
   background: rgba(148, 168, 212, 0.1);
 }
 
-.fresh-reviews__find-nudge:focus-visible {
+.pulse-feed__find-nudge:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
 /* ── Infinite-scroll sentinel ── */
-.fresh-reviews__sentinel {
+.pulse-feed__sentinel {
   display: flex;
   justify-content: center;
   padding: var(--spacing-md) 0;
   min-height: 1px;
 }
 
-.fresh-reviews__loading-more {
+.pulse-feed__loading-more {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
 /* ── Skeleton ── */
-.fresh-reviews__skeleton {
+.pulse-feed__skeleton {
   display: flex;
   flex-direction: column;
 }
 
-.fresh-reviews__skeleton-card {
+.pulse-feed__skeleton-card {
   display: flex;
   gap: 10px;
   padding: 14px var(--container-padding);
   border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
 }
 
-.fresh-reviews__skeleton-avatar {
+.pulse-feed__skeleton-avatar {
   flex-shrink: 0;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
 }
 
-.fresh-reviews__skeleton-lines {
+.pulse-feed__skeleton-lines {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -134,13 +134,13 @@
   padding-top: 4px;
 }
 
-.fresh-reviews__skeleton-line {
+.pulse-feed__skeleton-line {
   height: 10px;
   border-radius: var(--radius-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fresh-reviews__find-nudge {
+  .pulse-feed__find-nudge {
     transition: none;
   }
 }

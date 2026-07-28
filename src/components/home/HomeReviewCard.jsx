@@ -10,6 +10,7 @@ import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
 import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
+import { addGameToBacklog } from '../../services/libraryService'
 import { showToast } from '../Toast'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import { shouldShowCount } from '../../utils/formatSocialCount'
@@ -80,6 +81,8 @@ function headerVerb(item, listName) {
         return title ? `added ${title} to your backlog` : 'added a game to your backlog'
       case 'finished':
         return title ? `finished ${title}` : 'finished'
+      case 'started':
+        return title ? `started ${title}` : 'started'
       case 'played':
         return title ? `played ${title}` : 'played'
       case 'favorited':
@@ -100,6 +103,8 @@ function headerVerb(item, listName) {
       return 'added to backlog'
     case 'finished':
       return 'finished'
+    case 'started':
+      return 'started'
     case 'played':
       return 'played'
     case 'favorited':
@@ -109,7 +114,7 @@ function headerVerb(item, listName) {
   }
 }
 
-/** Status pill copy for the finished/backlogged/played/favorited content zone. Omits any duration that isn't actually stored. */
+/** Status pill copy for the finished/backlogged/started/played/favorited content zone. Omits any duration that isn't actually stored. */
 function statusLabel(item) {
   switch (item.type) {
     case 'finished': {
@@ -118,6 +123,8 @@ function statusLabel(item) {
     }
     case 'backlogged':
       return 'Backlog'
+    case 'started':
+      return 'Started'
     case 'played': {
       const d = formatDuration(item.durationSeconds)
       return d ? `Played \u00b7 ${d}` : 'Played'
@@ -198,6 +205,40 @@ function ReadOnlyEventLikeCount({ targetId }) {
   const { reactions } = useReactions('activity', targetId)
   const mine = reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)
   return <ReadOnlyLikeCount count={mine?.count || 0} liked={false} />
+}
+
+/**
+ * BacklogAction — contextual quick action for OTHER people's rating/
+ * review cards ("add to backlog on a rating"): a one-tap way to queue up
+ * a game a friend just rated/reviewed, mirroring the identical pattern
+ * already shipped on Explore's Discover "Recently" shelf (see
+ * RecentActivityCard.handleBacklog) rather than inventing a new one.
+ * Hidden on own cards — backlogging a game you already rated makes no
+ * sense — and whenever the item has no game to add (list_created).
+ */
+function BacklogAction({ game }) {
+  const [backlogged, setBacklogged] = useState(false)
+  const [backlogging, setBacklogging] = useState(false)
+
+  const handleClick = async (e) => {
+    e.stopPropagation()
+    if (backlogging || backlogged) return
+    setBacklogging(true)
+    const added = await addGameToBacklog(game)
+    setBacklogging(false)
+    if (added) setBacklogged(true)
+  }
+
+  return (
+    <Pressable
+      className="home-review-card__backlog-btn"
+      onClick={handleClick}
+      disabled={backlogging || backlogged}
+      aria-label={`Add ${game.title} to backlog`}
+    >
+      {backlogged ? 'Added to Backlog' : '+ Add to Backlog'}
+    </Pressable>
+  )
 }
 
 /**
@@ -398,11 +439,12 @@ function HomeCardContent({
 }
 
 /**
- * HomeReviewCard — "The Feed"'s per-item card. Renders every unified
- * activity type communityService.getHomeFeed returns (today just
- * 'reviewed'/'rated' — see getHomeFeed's doc comment) plus every type
- * this shell is built to support ('listed', 'backlogged', 'finished',
- * 'played', 'favorited') so it's ready the moment the feed emits them.
+ * HomeReviewCard — "The pulse"'s per-item card. Renders every unified
+ * activity type communityService.getHomeFeed returns — 'reviewed' /
+ * 'rated' (from `reviews`) plus 'started' / 'finished' / 'listed' /
+ * 'played' / 'backlogged' (from `activity_events`; 'backlogged' is
+ * own-only — see getHomeFeed's doc comment) — through the exact same
+ * shell, one switch-on-type render path.
  *
  * Every type renders inside the identical <ReviewCardShell/> — one
  * surface, one hairline border, one radius/padding, no nested surfaces,
@@ -418,9 +460,22 @@ function HomeCardContent({
  * other type uses the generic cross-surface `reactions` table (via
  * EventReactButton/useReactions) — that table is polymorphic
  * (target_type: 'activity') and already supports non-review targets.
+ * Every count on this card (likes, comments, reactions) goes through
+ * `shouldShowCount` — the zero-state rule: a count renders as a numeral
+ * only once it's >= 3, otherwise just the bare icon affordance, so
+ * nothing here ever reads "0 likes" / "0 comments".
  * Comments: `review_comments` only has a review_id FK — NOT polymorphic
  * — so every non-review type renders the comment affordance as a
  * visible no-op rather than a fabricated count (see CommentAction).
+ *
+ * Contextual actions per type: a list-add's destination list is already
+ * one tap away via the list pill/mosaic (see HomeCardContent's 'listed'
+ * branch — no extra control needed). A rating/review on someone else's
+ * card additionally gets a "+ Add to Backlog" quick action (see
+ * BacklogAction) — obvious value on a discovery surface, mirroring the
+ * identical control Explore's Discover "Recently" shelf already ships
+ * (RecentActivityCard). Hidden on own cards (nothing to discover about a
+ * game you already rated).
  *
  * Own cards (`item.isOwn`, Home-is-the-hub sprint): "You" replaces the
  * author name in the header, `headerVerb` folds the game/list name
@@ -549,30 +604,33 @@ export default function HomeReviewCard({ item }) {
       />
 
       <div className="home-review-card__actions">
-        {item.isOwn ? (
-          isReviewType ? (
-            <ReadOnlyLikeCount count={displayedLikeCount} liked={likeState.liked} />
-          ) : (
-            <ReadOnlyEventLikeCount targetId={item.reactionTargetId} />
-          )
-        ) : isReviewType ? (
-          <Pressable
-            className="home-review-card__react"
-            onClick={handleReact}
-            aria-pressed={likeState.liked}
-            aria-label={likeState.liked ? 'Remove reaction' : 'React'}
-          >
-            {likeState.liked ? (
-              <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+        {!item.isOwn && isReviewType && item.game && <BacklogAction game={item.game} />}
+        <div className="home-review-card__social-actions">
+          {item.isOwn ? (
+            isReviewType ? (
+              <ReadOnlyLikeCount count={displayedLikeCount} liked={likeState.liked} />
             ) : (
-              <HiOutlineHeart className="home-review-card__heart-icon" />
-            )}
-            {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
-          </Pressable>
-        ) : (
-          <EventReactButton targetId={item.reactionTargetId} />
-        )}
-        <CommentAction item={item} onReply={goToReply} />
+              <ReadOnlyEventLikeCount targetId={item.reactionTargetId} />
+            )
+          ) : isReviewType ? (
+            <Pressable
+              className="home-review-card__react"
+              onClick={handleReact}
+              aria-pressed={likeState.liked}
+              aria-label={likeState.liked ? 'Remove reaction' : 'React'}
+            >
+              {likeState.liked ? (
+                <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
+              ) : (
+                <HiOutlineHeart className="home-review-card__heart-icon" />
+              )}
+              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
+            </Pressable>
+          ) : (
+            <EventReactButton targetId={item.reactionTargetId} />
+          )}
+          <CommentAction item={item} onReply={goToReply} />
+        </div>
       </div>
     </ReviewCardShell>
   )

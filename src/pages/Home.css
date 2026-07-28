@@ -297,9 +297,9 @@
    HOME SECTION VARIANTS
    ============================================= */
 
-/* The feed section itself has no horizontal padding — HomeFreshReviews'
+/* The feed section itself has no horizontal padding — HomePulseFeed's
    own head/list elements apply --container-padding so its bounded
-   review cards sit inset from the screen edge like every other card. */
+   activity cards sit inset from the screen edge like every other card. */
 .home-section--feed {
   padding: 0;
 }

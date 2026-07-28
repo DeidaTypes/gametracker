@@ -7,7 +7,7 @@ import HomeFAB from '../components/HomeFAB'
 import HomeWeekRow from '../components/home/HomeWeekRow'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import HomeLogSessionModal from '../components/home/HomeLogSessionModal'
-import HomeFreshReviews from '../components/home/HomeFreshReviews'
+import HomePulseFeed from '../components/home/HomePulseFeed'
 import TrackerSearchModal from '../components/TrackerSearchModal'
 import { getContinuePlayingGames, getGamesFromList } from '../services/libraryService'
 import { getFollowingCount } from '../services/followService'
@@ -77,7 +77,7 @@ function HomeSkeleton() {
  *      deep multi-week playthroughs, weekly rhythm rewards them. Always
  *      visible for users with account history; a zero-session week reads
  *      as a neutral "No sessions yet this week", never fabricated data.
- *   d. Fresh reviews — the feed, promoted to lead content. Defaults to
+ *   d. The pulse — the feed, promoted to lead content. Defaults to
  *      community scope for users with no follows (see getHomeFeed).
  *
  * State-adaptive: brand-new users (no follows AND no logged games) skip
@@ -85,6 +85,12 @@ function HomeSkeleton() {
  * everyone else always sees (c), even in a zero-session week,
  * and the feed's own community fallback + "Find people to follow" row
  * carries the social-proof job normally.
+ *
+ * "The pulse" is intentionally NOT reviews-only: getHomeFeed unions the
+ * `reviews` table (written reviews + bare star ratings) with `activity_events`
+ * rows (finished, started, added-to-list, logged-a-session) into one
+ * recency-ordered stream, so the feed reads as "what your circle is up
+ * to", not just "who wrote something".
  */
 function Home() {
   const navigate = useNavigate()
@@ -275,13 +281,13 @@ function Home() {
             </section>
           )}
 
-          {/* ── d. Fresh reviews — the feed, promoted to lead content ────
+          {/* ── d. The pulse — the feed, promoted to lead content ────────
               getHomeFeed() + HomeReviewCard, infinite scroll. Defaults to
               community scope for followee-less viewers (new-user social
               proof), with a "Find people to follow" row alongside it.
           ──────────────────────────────────────────────────────────────── */}
           <section className="home-section home-section--feed">
-            <HomeFreshReviews />
+            <HomePulseFeed />
           </section>
 
         </div>

@@ -3,28 +3,29 @@ import { useAuth } from '../../contexts/AuthContext'
 import useHomeFeed from '../../hooks/useHomeFeed'
 import HomeReviewCard from './HomeReviewCard'
 import FindFriendsModal from '../FindFriendsModal'
-import './HomeFreshReviews.css'
+import './HomePulseFeed.css'
 
 // Home is the hub — the stream always includes the viewer's own activity
 // alongside whichever scope communityService.getHomeFeed decided on, so
-// the subline stays honest about that ("You and ...") rather than
-// implying this is only other people's activity.
+// the subline stays honest about that ("your circle" folds the viewer's
+// own activity in too) rather than implying this is only other people's
+// activity.
 const SUBLINE_BY_SCOPE = {
-  following: 'You and people you follow',
-  mixed: 'You, people you follow, and the community',
-  community: 'You and the community',
+  following: 'What your circle is up to',
+  mixed: 'What your circle — and the community — is up to',
+  community: 'What the community is up to',
 }
 
 function FeedSkeleton() {
   return (
-    <div className="fresh-reviews__skeleton" aria-hidden="true">
+    <div className="pulse-feed__skeleton" aria-hidden="true">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="fresh-reviews__skeleton-card">
-          <div className="skeleton fresh-reviews__skeleton-avatar" />
-          <div className="fresh-reviews__skeleton-lines">
-            <div className="skeleton fresh-reviews__skeleton-line" style={{ width: '55%' }} />
-            <div className="skeleton fresh-reviews__skeleton-line" style={{ width: '90%' }} />
-            <div className="skeleton fresh-reviews__skeleton-line" style={{ width: '70%' }} />
+        <div key={i} className="pulse-feed__skeleton-card">
+          <div className="skeleton pulse-feed__skeleton-avatar" />
+          <div className="pulse-feed__skeleton-lines">
+            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '55%' }} />
+            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '90%' }} />
+            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '70%' }} />
           </div>
         </div>
       ))}
@@ -33,19 +34,25 @@ function FeedSkeleton() {
 }
 
 /**
- * HomeFreshReviews — "Fresh reviews" section, lead content of the Home
- * feed-first spine (v3).
+ * HomePulseFeed — "The pulse" section, lead content of the Home
+ * feed-first spine (v3), formerly "Fresh reviews".
  *
  * Thin presentational wrapper around useHomeFeed + HomeReviewCard (both
  * out of scope to modify here — see communityService.getHomeFeed for the
  * following/community/mixed scope decision, which already defaults new
- * users with no follows to broad community reviews).
+ * users with no follows to broad community activity, and for the unified
+ * event-type broadening: reviewed/rated (reviews table) plus started/
+ * finished/listed/played activity_events rows, all rendered through the
+ * same HomeReviewCard shell regardless of type).
  *
  * Infinite scroll via an IntersectionObserver sentinel; hides entirely
  * (no header, no empty-state copy) once loaded with zero items, per the
- * hide-empty rule — never a fabricated placeholder.
+ * hide-empty rule — never a fabricated placeholder. In practice this only
+ * fires for a signed-out viewer or a total fetch failure: getHomeFeed's
+ * own community fallback means a real feed is populated even for a
+ * brand-new user with no follows and no activity of their own.
  */
-export default function HomeFreshReviews() {
+export default function HomePulseFeed() {
   const { user } = useAuth()
   const { items, loading, loadingMore, hasMore, scope, loadMore } = useHomeFeed({ pageSize: 15 })
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
@@ -70,10 +77,10 @@ export default function HomeFreshReviews() {
 
   return (
     <>
-      <section className="fresh-reviews" aria-label="Fresh reviews">
-        <div className="fresh-reviews__head">
-          <h2 className="fresh-reviews__title">Fresh reviews</h2>
-          <p className="fresh-reviews__subline">
+      <section className="pulse-feed" aria-label="The pulse">
+        <div className="pulse-feed__head">
+          <h2 className="pulse-feed__title">The pulse</h2>
+          <p className="pulse-feed__subline">
             {SUBLINE_BY_SCOPE[scope] || SUBLINE_BY_SCOPE.following}
           </p>
         </div>
@@ -82,7 +89,7 @@ export default function HomeFreshReviews() {
           <FeedSkeleton />
         ) : (
           <>
-            <div className="fresh-reviews__list">
+            <div className="pulse-feed__list">
               {items.map((item) => (
                 <HomeReviewCard key={item.id} item={item} />
               ))}
@@ -91,7 +98,7 @@ export default function HomeFreshReviews() {
             {scope !== 'following' && (
               <button
                 type="button"
-                className="fresh-reviews__find-nudge"
+                className="pulse-feed__find-nudge"
                 onClick={() => setFindFriendsOpen(true)}
               >
                 Find people to follow
@@ -99,8 +106,8 @@ export default function HomeFreshReviews() {
             )}
 
             {hasMore && (
-              <div ref={sentinelRef} className="fresh-reviews__sentinel" aria-hidden="true">
-                {loadingMore && <span className="fresh-reviews__loading-more">Loading…</span>}
+              <div ref={sentinelRef} className="pulse-feed__sentinel" aria-hidden="true">
+                {loadingMore && <span className="pulse-feed__loading-more">Loading…</span>}
               </div>
             )}
           </>

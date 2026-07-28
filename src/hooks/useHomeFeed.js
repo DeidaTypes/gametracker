@@ -8,8 +8,14 @@ import { APP_RESUMED_EVENT } from './useAppResume'
 const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
 
 /**
- * useHomeFeed — pagination + scope tracking for the Home text-forward
- * review feed (see communityService.getHomeFeed / HomeReviewCard).
+ * useHomeFeed — pagination + scope tracking for "The pulse", Home's
+ * unified activity feed (see communityService.getHomeFeed /
+ * HomeReviewCard). Items span reviewed/rated (from `reviews`) plus
+ * started/finished/listed/played (from `activity_events`) — every
+ * `item.id` is only guaranteed to be a `reviews` row id for
+ * REVIEW_ITEM_TYPES ('reviewed'/'rated'); every other type's `id` is an
+ * `activity_events` row id, which is why the like-state prefetch below
+ * filters to REVIEW_ITEM_TYPES before hitting `review_likes`.
  *
  * Mirrors useCircleActivity's shape ({ items, loading, loadingMore,
  * hasMore, loadMore, refresh }) plus a `scope` field the UI can use to
@@ -66,8 +72,9 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       setScope(result.scope)
       cursorRef.current = result.nextCursor
       scopeRef.current = result.scope
-      if (result.items.length) {
-        prefetchLikeStatesForReviews(result.items.map((it) => it.id))
+      const reviewIds = result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
+      if (reviewIds.length) {
+        prefetchLikeStatesForReviews(reviewIds)
       }
     } catch (err) {
       setError(err)
@@ -97,8 +104,9 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       })
       setHasMore(result.hasMore)
       cursorRef.current = result.nextCursor
-      if (result.items.length) {
-        prefetchLikeStatesForReviews(result.items.map((it) => it.id))
+      const reviewIds = result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
+      if (reviewIds.length) {
+        prefetchLikeStatesForReviews(reviewIds)
       }
     } catch (err) {
       setError(err)

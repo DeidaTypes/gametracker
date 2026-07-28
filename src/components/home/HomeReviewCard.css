@@ -9,8 +9,9 @@
    3px left accent bar + header verb color, by MEANING:
      - green  (--accent-review)      → reviewed / rated
      - purple (--accent-journal[-text]) → added a game to a list
-     - cobalt (--accent)             → backlogged / finished / played /
-                                        favorited (every other status event)
+     - cobalt (--accent)             → backlogged / finished / started /
+                                        played / favorited (every other
+                                        status event)
    Like/reply icons keep the existing purple social hue on every row
    regardless of type (see .home-review-card__react/__reply below) —
    that's a different, deliberate use of purple from the header/accent
@@ -32,6 +33,7 @@
 
 .home-review-card--backlogged,
 .home-review-card--finished,
+.home-review-card--started,
 .home-review-card--played,
 .home-review-card--favorited {
   border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
@@ -94,6 +96,7 @@
 
 .home-review-card--backlogged .home-review-card__verb,
 .home-review-card--finished .home-review-card__verb,
+.home-review-card--started .home-review-card__verb,
 .home-review-card--played .home-review-card__verb,
 .home-review-card--favorited .home-review-card__verb {
   color: var(--accent);
@@ -257,7 +260,7 @@
   border: 1px solid color-mix(in srgb, var(--accent-journal) 40%, transparent);
   color: var(--accent-journal-text);
   padding: 5px 12px;
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
@@ -311,17 +314,56 @@
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--accent);
   padding: 5px 12px;
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
 }
 
-/* ── Actions row (identical for every type) ── */
+/* ── Actions row (identical for every type) ──
+   space-between so the contextual BacklogAction (when present, on
+   other people's reviewed/rated cards) sits opposite the react/reply
+   group rather than crowding next to it; with no backlog button the
+   lone social-actions group still lands flush left, same as before. */
 .home-review-card__actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-review-card__social-actions {
+  display: flex;
+  align-items: center;
   gap: 16px;
+}
+
+/* ── Contextual "add to backlog" quick action (rated/reviewed, other
+   people's cards only) — mirrors RecentActivityCard__backlog-btn on
+   Explore's Discover shelf so the same action looks the same wherever
+   it appears. ── */
+.home-review-card__backlog-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: var(--radius-full);
+  padding: 7px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.home-review-card__backlog-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.home-review-card__backlog-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 /* Social actions — react + reply/comment share the purple hue on every
