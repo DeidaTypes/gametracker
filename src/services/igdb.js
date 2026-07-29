@@ -487,22 +487,51 @@ function shapeForCoverRow(games) {
     }))
 }
 
+// Genre/theme name -> IGDB id never changes, so once resolved it's cached
+// for the life of the tab. Browse-category fetching calls getGamesByGenre
+// for the same handful of genre names repeatedly (initial browse fetch,
+// Search's genre cards, category-detail pages), and each call used to
+// pay for a full "look up the id" round-trip before the actual games
+// query could even start. Caching the id collapses that back down to a
+// single hop after the first lookup.
+const genreIdCache = new Map()
+const themeIdCache = new Map()
+
+async function resolveGenreId(genreName) {
+  if (genreIdCache.has(genreName)) return genreIdCache.get(genreName)
+  const genreQuery = `fields id;
+where name = "${genreName}";`
+  const genres = await igdbRequest('genres', genreQuery)
+  if (genres.length === 0) return null
+  const id = genres[0].id
+  genreIdCache.set(genreName, id)
+  return id
+}
+
+async function resolveThemeId(themeName) {
+  if (themeIdCache.has(themeName)) return themeIdCache.get(themeName)
+  const themeQuery = `fields id;
+where name = "${themeName}";`
+  const themes = await igdbRequest('themes', themeQuery)
+  if (themes.length === 0) return null
+  const id = themes[0].id
+  themeIdCache.set(themeName, id)
+  return id
+}
+
 /**
  * Fetch top games tagged with an IGDB *theme* (e.g. "Horror", "Sci-fi").
  * Themes are distinct from genres in IGDB — Horror is a theme, not a genre.
  */
 export async function getGamesByTheme(themeName, limit = 30) {
   try {
-    const themeQuery = `fields id;
-where name = "${themeName}";`
-    const themes = await igdbRequest('themes', themeQuery)
+    const themeId = await resolveThemeId(themeName)
 
-    if (themes.length === 0) {
+    if (themeId == null) {
       console.warn(`Theme "${themeName}" not found`)
       return []
     }
 
-    const themeId = themes[0].id
     const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
 
     const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
@@ -519,16 +548,13 @@ limit ${limit};`
 
 export async function getGamesByGenre(genreName, limit = 30) {
   try {
-    const genreQuery = `fields id;
-where name = "${genreName}";`
-    const genres = await igdbRequest('genres', genreQuery)
+    const genreId = await resolveGenreId(genreName)
 
-    if (genres.length === 0) {
+    if (genreId == null) {
       console.warn(`Genre "${genreName}" not found`)
       return []
     }
 
-    const genreId = genres[0].id
     const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
 
     const query = `fields name, cover.image_id, rating, rating_count, first_release_date;

@@ -4,6 +4,15 @@ import {
   getGamesByGenre,
   getGamesByTheme,
 } from './igdb'
+import { getSWR } from './swrCache'
+
+// Browse listings (popular/new-releases/genre buckets) don't change
+// meaningfully within a session — cache them so switching between the
+// Search page and the Explore/Home browse grid, or just re-visiting
+// either, doesn't re-fire the same ~13 IGDB calls every time. TTL is
+// generous (10 min) since this is discovery content, not live data.
+const BROWSE_CATEGORIES_TTL_MS = 10 * 60 * 1000
+const BROWSE_CATEGORIES_KEY = 'search:browse-categories'
 
 const CATEGORY_META = [
   { key: 'top-rated',     label: 'Top Rated',      color: '#7B2D8B', pinned: true },
@@ -51,8 +60,18 @@ export function getCategoryDefinitions() {
  * and all unique genre fetches in a single `Promise.all`. Then derive
  * sub-categories (top-rated, classic-hits, most-reviewed, hidden-gems) from the
  * popular games result — no extra requests.
+ *
+ * Cached (stale-while-revalidate, 10 min) via swrCache — both the Search
+ * page and the Explore/Home browse grid call this, so without a shared
+ * cache each mount re-fires the full ~13-call fan-out from scratch.
  */
 export async function fetchBrowseCategories() {
+  return getSWR(BROWSE_CATEGORIES_KEY, fetchBrowseCategoriesUncached, {
+    ttlMs: BROWSE_CATEGORIES_TTL_MS,
+  })
+}
+
+async function fetchBrowseCategoriesUncached() {
   const [popularResult, recentResult, ...genreResults] = await Promise.allSettled([
     getPopularGames(30),
     getRecentlyReleasedGames(10),

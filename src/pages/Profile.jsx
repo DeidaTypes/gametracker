@@ -92,6 +92,7 @@ import { getJournalEntriesForUser, getMoodMeta } from '../services/journalServic
 import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { getSWR } from '../services/swrCache'
 import './Profile.css'
 
 /* ============================================================
@@ -102,6 +103,14 @@ import './Profile.css'
    ============================================================ */
 
 const PROFILE_TIMEOUT_MS = 10_000
+
+// How long a profile's fetched bundle (reviews/lists/activities/pins/
+// goal/journal/rivalry/like+comment counts) is served from the shared
+// swrCache without re-hitting the network. Short enough that a genuinely
+// stale profile (e.g. someone else posted while you were browsing)
+// resolves quickly, long enough that Home -> Profile -> back -> Profile
+// doesn't re-run all ~28-35 queries from scratch.
+const PROFILE_CACHE_TTL_MS = 45 * 1000
 
 function safeWithTimeout(promise, fallback, ms = PROFILE_TIMEOUT_MS) {
   return Promise.race([
@@ -598,7 +607,7 @@ function Profile() {
 
   /* ── Data loading ──────────────────────────────────────────────── */
 
-  const loadProfileData = useCallback(async () => {
+  const loadProfileData = useCallback(async ({ force = false } = {}) => {
     // Only show the loading skeleton on the FIRST fetch for this
     // targetUserId (initial mount, or switching to a different user's
     // profile). Background refreshes fired by reviewAdded/storage/etc.
@@ -641,29 +650,63 @@ function Profile() {
         // Each call is guarded by safeWithTimeout so a stalled mobile
         // connection resolves to an empty fallback rather than hanging
         // the profile data indefinitely.
-        const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, visitorGames] = await Promise.all([
-          safeWithTimeout(getReviewsForUser(targetUserId), []),
-          safeWithTimeout(getListsForUser(targetUserId), []),
-          safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
-          safeWithTimeout(getPinsForUser(targetUserId), []),
-          safeWithTimeout(getPinnedListsForUser(targetUserId), []),
-          // Challenge (yearly goal) — fetched for ANY profile now that
-          // user_goals RLS is privacy-aware rather than owner-only (see
-          // migration profile_visitor_rls_fix). A visitor viewing a
-          // private-activity user simply gets back { hasGoal: false }
-          // from RLS returning zero rows, which the UI already treats
-          // as "no goal set" — no special-casing needed here.
-          safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null),
-          safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
-          // Rivalry ("#N in your circle") stays own-profile only — it's
-          // framed from the OWNER's follow graph and showing "your
-          // circle" data on someone else's profile would be confusing.
-          isOwnProfile ? safeWithTimeout(getRivalryData(targetUserId, new Date().getFullYear()), []) : Promise.resolve([]),
-          // Games stat for visitor profiles — Supabase-backed count from
-          // game_trackers (publicly readable). Own profile keeps using
-          // the localStorage-derived count below (unchanged behaviour).
-          !isOwnProfile ? safeWithTimeout(getTrackedGamesCountForUser(targetUserId), 0) : Promise.resolve(null),
-        ])
+        //
+        // The whole bundle (including the like/comment prefetch) is
+        // wrapped in the shared swrCache: Profile was re-fetching all
+        // ~28-35 queries from scratch on every single mount, even when
+        // navigating back to a profile visited seconds earlier. `force`
+        // is set to true from mutation-driven refreshes (reviewAdded,
+        // pin changes, etc.) below so those still always get fresh data;
+        // a plain re-mount within the cache window is what gets to skip
+        // the network entirely.
+        const fetchProfileBundle = async () => {
+          const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, visitorGames] = await Promise.all([
+            safeWithTimeout(getReviewsForUser(targetUserId), []),
+            safeWithTimeout(getListsForUser(targetUserId), []),
+            safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
+            safeWithTimeout(getPinsForUser(targetUserId), []),
+            safeWithTimeout(getPinnedListsForUser(targetUserId), []),
+            // Challenge (yearly goal) — fetched for ANY profile now that
+            // user_goals RLS is privacy-aware rather than owner-only (see
+            // migration profile_visitor_rls_fix). A visitor viewing a
+            // private-activity user simply gets back { hasGoal: false }
+            // from RLS returning zero rows, which the UI already treats
+            // as "no goal set" — no special-casing needed here.
+            safeWithTimeout(getGoalProgress(targetUserId, new Date().getFullYear()), null),
+            safeWithTimeout(getJournalEntriesForUser(targetUserId, { limit: 50 }), []),
+            // Rivalry ("#N in your circle") stays own-profile only — it's
+            // framed from the OWNER's follow graph and showing "your
+            // circle" data on someone else's profile would be confusing.
+            isOwnProfile ? safeWithTimeout(getRivalryData(targetUserId, new Date().getFullYear()), []) : Promise.resolve([]),
+            // Games stat for visitor profiles — Supabase-backed count from
+            // game_trackers (publicly readable). Own profile keeps using
+            // the localStorage-derived count below (unchanged behaviour).
+            !isOwnProfile ? safeWithTimeout(getTrackedGamesCountForUser(targetUserId), 0) : Promise.resolve(null),
+          ])
+
+          // Union the unsorted review ids and the pinned-review ids —
+          // a pinned review's row should always be in `rows`, but
+          // defensively de-dupe via Set in case a pin's source review
+          // hasn't propagated yet.
+          const idSet = new Set(rows.map((r) => r.id))
+          for (const p of pins) {
+            if (p.review?.id) idSet.add(p.review.id)
+          }
+          const ids = Array.from(idSet)
+          const [counts, cCounts] = await Promise.all([
+            safeWithTimeout(prefetchLikeStatesForReviews(ids), new Map()),
+            safeWithTimeout(getCommentCountsForReviews(ids), new Map()),
+          ])
+
+          return { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, visitorGames, counts, cCounts }
+        }
+
+        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, visitorGames, counts, cCounts } =
+          await getSWR(`profile:${targetUserId}`, fetchProfileBundle, {
+            ttlMs: PROFILE_CACHE_TTL_MS,
+            force,
+          })
+
         if (gp) setGoalProgress(gp)
         if (rd) setRivalryData(rd)
         if (!isOwnProfile) setVisitorGamesCount(visitorGames ?? 0)
@@ -695,32 +738,16 @@ function Profile() {
             .catch(() => setOtherUserBannerUrl(null))
         }
 
-        // Batch-fetch like counts + this user's liked-set + comment
-        // counts for every review on this profile in parallel. Seeds the
+        // Like counts + this user's liked-set + comment counts for every
+        // review on this profile — fetched as part of fetchProfileBundle
+        // above (in parallel with itself) so it's covered by the same
+        // cache entry rather than re-firing on every mount regardless of
+        // whether the rest of the bundle was a cache hit. Seeds the
         // useLikeState cache too so cards render with filled hearts
         // immediately (no per-card flicker), and the comment badge
         // matches the real Supabase row count rather than 0.
-        try {
-          // Union the unsorted review ids and the pinned-review ids —
-          // a pinned review's row should always be in `rows`, but
-          // defensively de-dupe via Set in case a pin's source review
-          // hasn't propagated yet.
-          const idSet = new Set(rows.map((r) => r.id))
-          for (const p of pins) {
-            if (p.review?.id) idSet.add(p.review.id)
-          }
-          const ids = Array.from(idSet)
-          const [counts, cCounts] = await Promise.all([
-            safeWithTimeout(prefetchLikeStatesForReviews(ids), new Map()),
-            safeWithTimeout(getCommentCountsForReviews(ids), new Map()),
-          ])
-          setReviewLikeCounts(counts)
-          setReviewCommentCounts(cCounts)
-        } catch (err) {
-          console.error('[profile] like/comment count prefetch failed:', err)
-          setReviewLikeCounts(new Map())
-          setReviewCommentCounts(new Map())
-        }
+        setReviewLikeCounts(counts)
+        setReviewCommentCounts(cCounts)
       } catch (err) {
         console.error('[profile] load failed:', err)
         setAllReviews([])
@@ -765,8 +792,14 @@ function Profile() {
   }, [targetUserId, isOwnProfile, resolvedUser, resolving, paramKey, resolvedMatchesParams])
 
   useEffect(() => {
+    // Plain mount: cache-aware — a revisit within PROFILE_CACHE_TTL_MS
+    // reuses the last fetched bundle instead of re-running every query.
     loadProfileData()
-    const refresh = () => loadProfileData()
+    // Every one of these events means "specific data just changed,
+    // don't show something stale" (a review was posted, a pin moved,
+    // the app resumed after who-knows-how-long backgrounded, etc.), so
+    // they all force a real refetch rather than risking a cache hit.
+    const refresh = () => loadProfileData({ force: true })
     window.addEventListener('storage', refresh)
     window.addEventListener('reviewAdded', refresh)
     window.addEventListener('profileUpdated', refresh)

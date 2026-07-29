@@ -116,14 +116,39 @@ export async function deleteGoal(userId, year) {
  */
 export async function countFinishedThisYear(userId, year = new Date().getFullYear()) {
   if (!userId) return 0
+  const counts = await countFinishedThisYearForUsers([userId], year)
+  return counts.get(userId) || 0
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   countFinishedThisYearForUsers
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Same as `countFinishedThisYear`, but for many users in ONE query
+ * instead of one query per user.
+ *
+ * getRivalryData used to call `countFinishedThisYear` once per followee
+ * (up to 20 extra round-trips on top of the `getFollowing` call itself).
+ * This fetches every matching activity row for the whole batch of user
+ * ids up front and buckets/dedupes the distinct igdb_game_id set per
+ * user in JS — one round-trip no matter how many followees there are.
+ *
+ * @param {string[]} userIds
+ * @param {number} [year]
+ * @returns {Promise<Map<string, number>>} userId -> distinct Finished count
+ */
+export async function countFinishedThisYearForUsers(userIds, year = new Date().getFullYear()) {
+  const ids = Array.from(new Set((userIds || []).filter(Boolean)))
+  if (!ids.length) return new Map()
 
   const yearStart = `${year}-01-01T00:00:00.000Z`
   const yearEnd   = `${year + 1}-01-01T00:00:00.000Z`
 
   const { data, error } = await supabase
     .from('activities')
-    .select('igdb_game_id')
-    .eq('user_id', userId)
+    .select('user_id, igdb_game_id')
+    .in('user_id', ids)
     .eq('activity_type', 'status_changed')
     .eq('metadata->>to_status', 'played')
     .gte('created_at', yearStart)
@@ -131,14 +156,25 @@ export async function countFinishedThisYear(userId, year = new Date().getFullYea
     .not('igdb_game_id', 'is', null)
 
   if (error) {
-    console.error('[goal] countFinishedThisYear failed:', error.message)
-    return 0
+    console.error('[goal] countFinishedThisYearForUsers failed:', error.message)
+    return new Map()
   }
 
-  // Deduplicate in JS (the query already filters to only played events but
-  // a user might mark the same game played twice after un-marking it).
-  const unique = new Set((data || []).map((r) => r.igdb_game_id))
-  return unique.size
+  // Deduplicate per-user in JS (a user might mark the same game played
+  // twice after un-marking it — we only want the distinct game set).
+  const uniqueGamesByUser = new Map()
+  for (const row of data || []) {
+    let set = uniqueGamesByUser.get(row.user_id)
+    if (!set) {
+      set = new Set()
+      uniqueGamesByUser.set(row.user_id, set)
+    }
+    set.add(row.igdb_game_id)
+  }
+
+  const counts = new Map()
+  for (const id of ids) counts.set(id, uniqueGamesByUser.get(id)?.size || 0)
+  return counts
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -254,6 +290,11 @@ function milestoneStep(target) {
  * if they would otherwise produce an empty list; the caller can filter
  * further.
  *
+ * Two queries total regardless of follow-list size — `getFollowing`
+ * plus ONE grouped aggregate via `countFinishedThisYearForUsers` — where
+ * this used to be `getFollowing` + one `countFinishedThisYear` call PER
+ * followee (as many as 21 queries for a maxed-out 20-follow list).
+ *
  * @param {string} userId     — signed-in user's id
  * @param {number} [year]
  * @returns {Promise<Array<{ userId: string, username: string, current: number }>>}
@@ -264,18 +305,18 @@ export async function getRivalryData(userId, year = new Date().getFullYear()) {
   const followRows = await getFollowing(userId, 20, 0)
   if (!followRows.length) return []
 
-  const results = await Promise.all(
-    followRows.map(async (row) => {
-      const fid = row.followee_id
-      const u = row.followee
-      const count = await countFinishedThisYear(fid, year)
-      return {
-        userId: fid,
-        username: u?.username || u?.display_name || 'user',
-        current: count,
-      }
-    })
-  )
+  const followeeIds = followRows.map((row) => row.followee_id)
+  const counts = await countFinishedThisYearForUsers(followeeIds, year)
+
+  const results = followRows.map((row) => {
+    const fid = row.followee_id
+    const u = row.followee
+    return {
+      userId: fid,
+      username: u?.username || u?.display_name || 'user',
+      current: counts.get(fid) || 0,
+    }
+  })
 
   return results.sort((a, b) => b.current - a.current)
 }

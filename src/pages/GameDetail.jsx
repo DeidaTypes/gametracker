@@ -262,13 +262,9 @@ function GameDetail() {
           getGameSwatches(gameData.image, gameId)
             .then(sw => setGlobalSwatches(sw))
             .catch(() => {}),
-          // Fetch TTB for ALL games (not just library games) so the Time to
-          // Beat averages section is visible even before a game is tracked.
-          // timeToBeatService caches results, so the TTB/sessions effect
-          // below will be a cache hit for the same gameId.
-          getTimeToBeat(gameId)
-            .then(b => setTtb(b))
-            .catch(() => {}),
+          // Time to Beat is fetched by the loadTtbAndSessions effect below
+          // (it needs to run alongside getManualSessionsForGame anyway) —
+          // intentionally not duplicated here.
           // Community Pulse — circle-scoped signals; hides when empty.
           getCirclePulseForGame(gameId)
             .then(p => setCirclePulse(p))

@@ -105,6 +105,11 @@ export function useLikeState(reviewId) {
  *   1. likes count per review_id (via getLikeCountsForReviews)
  *   2. SELECT review_id FROM likes WHERE user_id = me AND review_id IN (...)
  *
+ * The count query and the auth lookup don't depend on each other, so
+ * they're fired together via Promise.all instead of waiting on counts
+ * before even starting the auth round-trip — only the liked-set query
+ * itself has a real dependency (it needs the resolved user id).
+ *
  * Returns the count Map so callers (TimelineFeed, Profile, GameDetail)
  * can use it directly for sort comparisons without re-querying.
  *
@@ -114,13 +119,14 @@ export function useLikeState(reviewId) {
 export async function prefetchLikeStatesForReviews(reviewIds) {
   if (!reviewIds || reviewIds.length === 0) return new Map()
 
-  const counts = await getLikeCountsForReviews(reviewIds)
+  const [counts, userResult] = await Promise.all([
+    getLikeCountsForReviews(reviewIds),
+    supabase.auth.getUser().catch(() => ({ data: { user: null } })),
+  ])
 
   let likedSet = new Set()
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const user = userResult?.data?.user
     if (user) {
       const { data, error } = await supabase
         .from('review_likes')
