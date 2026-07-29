@@ -229,7 +229,7 @@
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   padding: 3px 7px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   color: var(--color-accent-copper, #c87941);
   background: rgba(200, 121, 65, 0.12);
   border: 1px solid rgba(200, 121, 65, 0.24);

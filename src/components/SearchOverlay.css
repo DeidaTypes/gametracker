@@ -416,7 +416,7 @@
   padding: 4px 12px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);

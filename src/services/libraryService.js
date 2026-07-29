@@ -197,6 +197,29 @@ export async function addGameToBacklog(game) {
     console.error('[library] addGameToBacklog crashed:', err)
   }
 
+  // Pulse — this quick-add path (the "+ Add to Backlog" button on
+  // other people's rating/review/status cards — see
+  // HomeReviewCard.BacklogAction) bypassed setGameStatus entirely, so
+  // unlike every other status transition it never emitted a
+  // 'backlogged' activity_event — the feed broadening task's "logged/
+  // added a game" event type went missing specifically for this entry
+  // point. Mirrors setGameStatus's 'want' branch (same event type,
+  // same metadata shape) so a card-triggered backlog add reads
+  // identically to one made from the game/library screens. Only fires
+  // when the game was actually newly added (`added`), never on the
+  // already-in-backlog no-op.
+  if (added) {
+    logActivityEvent({
+      type: ACTIVITY_EVENT_TYPES.BACKLOGGED,
+      entityId: String(game.id),
+      metadata: {
+        from_status: null,
+        game_title: game.title || null,
+        game_image: game.image || null,
+      },
+    })
+  }
+
   showToast(
     added ? `Added "${game.title}" to Backlog` : `"${game.title}" is already in your backlog`,
     added ? 'success' : 'error',

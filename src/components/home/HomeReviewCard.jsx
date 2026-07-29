@@ -6,6 +6,7 @@ import Avatar from '../explore/Avatar'
 import StarRating from '../StarRating'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getSizedImageUrl } from '../../services/imageUtils'
 import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
 import { useListPreview } from '../../hooks/useListPreview'
@@ -282,7 +283,9 @@ function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameC
       >
         <span className="home-review-card__thumb home-review-card__thumb--mosaic" aria-hidden="true">
           {covers.length > 0 ? (
-            covers.map((src, i) => <img key={i} src={src} alt="" loading="lazy" />)
+            covers.map((src, i) => (
+              <img key={i} src={getSizedImageUrl(src, 46)} alt="" loading="lazy" />
+            ))
           ) : (
             <ListIcon size={16} />
           )}
@@ -404,7 +407,9 @@ export default function HomeReviewCard({ item }) {
     (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
 
   const when = formatActivityDate(item.createdAt)
-  const img = item.game?.image || COVER_FALLBACK
+  // 34x46 row thumbnail (see .home-review-card__thumb) — sized down from
+  // the full t_cover_big the game data carries, not requested at that size.
+  const img = item.game?.image ? getSizedImageUrl(item.game.image, 46) : COVER_FALLBACK
   const displayedLikeCount = likeState.count || item.likeCount || 0
 
   const eventReaction = eventReactions.reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)

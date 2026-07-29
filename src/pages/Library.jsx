@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Search as SearchIcon, List, Pin, ArrowUpDown, Check } from 'lucide-react'
+import { Search as SearchIcon, List, Pin, ArrowUpDown, Check, Plus } from 'lucide-react'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
@@ -34,6 +35,10 @@ const STATUS_TABS = [
   { key: 'currently', label: 'Currently Playing', listId: 'currently-playing' },
   { key: 'played', label: 'Played', listId: 'played' },
   { key: 'dropped', label: 'Dropped', listId: 'dropped' },
+  // 'No status' — games that only exist in a custom list, never tagged
+  // with a tracker status. Like 'all', it has no localStorage bucket of
+  // its own; it's derived from combinedGames (see below).
+  { key: 'nostatus', label: 'No status', listId: null },
 ]
 
 const STATUS_BUCKET_IDS = STATUS_TABS.filter((t) => t.listId).map((t) => t.listId)
@@ -173,19 +178,46 @@ function Library() {
     return out
   }, [trackerLists])
 
+  // Combined library set: status-tracked games plus every game from every
+  // custom list (Supabase), deduped by IGDB id. Status-tracked entries
+  // always win over list entries for the same game — a game that's both
+  // tracked AND in a list still shows its tracker status, not null.
+  // `customLists` (not `otherLists`) is used here because it's the full,
+  // unfiltered result of getListsForUser — pinned lists are already
+  // included in it; `otherLists`/`pinnedLists` only exist to order the
+  // lists rail.
+  const combinedGames = useMemo(() => {
+    const byId = new Map()
+    for (const g of allTracked) {
+      if (!g?.id) continue
+      byId.set(String(g.id), g)
+    }
+    for (const list of customLists) {
+      for (const g of list.games || []) {
+        if (!g?.id) continue
+        const key = String(g.id)
+        if (byId.has(key)) continue
+        byId.set(key, { ...g, _status: null })
+      }
+    }
+    return Array.from(byId.values())
+  }, [allTracked, customLists])
+
   const counts = useMemo(() => {
-    const c = { all: allTracked.length }
+    const c = { all: combinedGames.length }
     for (const tab of STATUS_TABS) {
       if (!tab.listId) continue
-      c[tab.key] = allTracked.filter((g) => g._status === tab.key).length
+      c[tab.key] = combinedGames.filter((g) => g._status === tab.key).length
     }
+    c.nostatus = combinedGames.filter((g) => g._status === null).length
     return c
-  }, [allTracked])
+  }, [combinedGames])
 
   const statusFiltered = useMemo(() => {
-    if (activeStatus === 'all') return allTracked
-    return allTracked.filter((g) => g._status === activeStatus)
-  }, [allTracked, activeStatus])
+    if (activeStatus === 'all') return combinedGames
+    if (activeStatus === 'nostatus') return combinedGames.filter((g) => g._status === null)
+    return combinedGames.filter((g) => g._status === activeStatus)
+  }, [combinedGames, activeStatus])
 
   const searchFiltered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -250,7 +282,9 @@ function Library() {
   // ── Render helpers ────────────────────────────────────────────────────────
 
   const renderPosterCard = (g) => {
-    const dotColor = STATUS_DOT_COLOR[g._status] || 'var(--text-tertiary)'
+    // No status ⇒ list-only game ⇒ no dot at all (dot communicates a
+    // tracker status; there isn't one to show).
+    const dotColor = g._status ? STATUS_DOT_COLOR[g._status] : null
     return (
       <button
         key={g.id}
@@ -270,11 +304,13 @@ function Library() {
               onError={(e) => { e.target.src = COVER_FALLBACK }}
             />
           </SharedCover>
-          <span
-            className="lib-poster-dot"
-            style={{ background: dotColor }}
-            aria-hidden="true"
-          />
+          {dotColor && (
+            <span
+              className="lib-poster-dot"
+              style={{ background: dotColor }}
+              aria-hidden="true"
+            />
+          )}
         </div>
         <p className="lib-poster-title">{g.title || '—'}</p>
       </button>
@@ -284,7 +320,11 @@ function Library() {
   const renderListTile = (list, isPinned) => {
     const { id, name, games = [], gameCount = 0, coverImageUrl } = list
     const mosaic = games.slice(0, 4)
-    const placeholders = Math.max(0, 4 - mosaic.length)
+    // No blank quadrants: the mosaic's grid shape adapts to how many
+    // covers are actually available (1 = full-bleed, 2 = halves,
+    // 3 = one tall + two stacked, 4+ = the classic 2x2). A count-less
+    // list (0 games) falls back to a single centered initial letter.
+    const mosaicCount = Math.min(mosaic.length, 4)
 
     const mosaicAlt = mosaic.length > 0
       ? `${name} — covers of ${mosaic.map((g) => g.title).filter(Boolean).join(', ')}`
@@ -314,32 +354,38 @@ function Library() {
             />
           </div>
         ) : (
-          <div className="lib-list-tile-mosaic" role="img" aria-label={mosaicAlt}>
-            {mosaic.map((g) => (
-              <div key={g.id} className="lib-list-tile-mosaic-cell">
-                {g.image ? (
-                  <SharedCover gameId={g.id} imageSrc={g.image}>
-                    <img
-                      src={g.image}
-                      alt=""
-                      className="lib-list-tile-mosaic-img"
-                      loading="lazy"
-                      draggable={false}
-                    />
-                  </SharedCover>
-                ) : (
-                  <div className="lib-list-tile-mosaic-fallback">
-                    {g.title?.charAt(0) || '?'}
-                  </div>
-                )}
+          <div
+            className={`lib-list-tile-mosaic lib-list-tile-mosaic--count-${mosaicCount || 1}`}
+            role="img"
+            aria-label={mosaicAlt}
+          >
+            {mosaicCount === 0 ? (
+              <div className="lib-list-tile-mosaic-cell">
+                <div className="lib-list-tile-mosaic-fallback">
+                  {name?.charAt(0) || '?'}
+                </div>
               </div>
-            ))}
-            {Array.from({ length: placeholders }).map((_, i) => (
-              <div
-                key={`ph-${i}`}
-                className="lib-list-tile-mosaic-cell lib-list-tile-mosaic-cell--empty"
-              />
-            ))}
+            ) : (
+              mosaic.map((g) => (
+                <div key={g.id} className="lib-list-tile-mosaic-cell">
+                  {g.image ? (
+                    <SharedCover gameId={g.id} imageSrc={g.image}>
+                      <img
+                        src={g.image}
+                        alt=""
+                        className="lib-list-tile-mosaic-img"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    </SharedCover>
+                  ) : (
+                    <div className="lib-list-tile-mosaic-fallback">
+                      {g.title?.charAt(0) || '?'}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
         <p className="lib-list-tile-name">{name}</p>
@@ -355,12 +401,15 @@ function Library() {
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <div className="library-page">
+        {/* Ambient wash — behind the top ~320px only; cards/nav stay solid. */}
+        <div className="lib-ambient-wash" aria-hidden="true" />
+
         {/* ── Header ─────────────────────────────────────────────────── */}
         <header className="lib-header">
           <h1 className="lib-title">Library</h1>
 
           <div className="lib-search-wrap">
-            <SearchIcon size={16} className="lib-search-icon" aria-hidden="true" />
+            <SearchIcon size={15} className="lib-search-icon" aria-hidden="true" />
             <input
               type="text"
               className="lib-search-input"
@@ -372,23 +421,28 @@ function Library() {
           </div>
 
           <div className="lib-chip-row">
-            <div className="lib-chips" role="tablist" aria-label="Filter by status">
-              {STATUS_TABS.map((tab) => {
-                const active = activeStatus === tab.key
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    className={`lib-chip${active ? ' lib-chip--active' : ''}`}
-                    onClick={() => setActiveStatus(tab.key)}
-                  >
-                    <span className="lib-chip-label">{tab.label}</span>
-                    <span className="lib-chip-count">{counts[tab.key] ?? 0}</span>
-                  </button>
-                )
-              })}
+            <div className="lib-chips-scroll">
+              <div className="lib-chips" role="tablist" aria-label="Filter by status">
+                {STATUS_TABS.map((tab) => {
+                  const active = activeStatus === tab.key
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      className={`lib-chip${active ? ' lib-chip--active' : ''}`}
+                      onClick={() => setActiveStatus(tab.key)}
+                    >
+                      <span className="lib-chip-label">{tab.label}</span>
+                      <span className="lib-chip-count">{counts[tab.key] ?? 0}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              {/* Right-edge fade — reads the row as "scrollable" rather
+                  than clipped when a chip is cut off at the edge. */}
+              <span className="lib-chip-row-fade" aria-hidden="true" />
             </div>
             <button
               type="button"
@@ -403,7 +457,7 @@ function Library() {
 
         {/* ── Poster grid ────────────────────────────────────────────── */}
         <section className="lib-section lib-section--grid" aria-label="Your games">
-          {allTracked.length === 0 ? (
+          {combinedGames.length === 0 ? (
             <EmptyState
               icon={List}
               title="No games tracked yet."
@@ -458,17 +512,31 @@ function Library() {
             <div className="lib-lists-rail content-fade-in" ref={railRef}>
               {pinnedLists.map((list) => renderListTile(list, true))}
               {otherLists.map((list) => renderListTile(list, false))}
-              <button
-                type="button"
-                className="lib-list-tile lib-list-tile--new"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <span className="lib-list-tile-new-icon" aria-hidden="true">+</span>
-                <span className="lib-list-tile-new-label">New list</span>
-              </button>
             </div>
           )}
         </section>
+
+        {/* Floating "New list" action — replaces the old dashed rail tile.
+            Opens the same CreateListModal flow via the same handler.
+            Portaled straight to <body> rather than rendered in place:
+            every page is wrapped in PageTransition's motion.div, which
+            sets a persistent inline `transform` (even at rest) — per
+            spec, that establishes a new containing block for any
+            `position: fixed` descendant, so the FAB would be pinned to
+            the (tall, scrollable) page instead of the viewport and
+            drift off-screen as the page scrolls. Same reasoning already
+            documented in App.jsx for SessionPill/SearchOverlay. */}
+        {createPortal(
+          <button
+            type="button"
+            className="lib-fab"
+            onClick={() => setShowCreateModal(true)}
+            aria-label="Create new list"
+          >
+            <Plus size={24} aria-hidden="true" />
+          </button>,
+          document.body
+        )}
 
         <CreateListModal
           isOpen={showCreateModal}

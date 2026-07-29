@@ -190,7 +190,7 @@
   color: var(--text-secondary, #94a8d4);
   background: var(--bg-surface-2, #1a2240);
   border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-chip);
   padding: 7px 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -329,7 +329,7 @@ body[data-reduce-motion='true'] .rnc-details-chevron {
   color: var(--text-secondary, #94a8d4);
   background: var(--bg-surface, #131a35);
   border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-chip);
   padding: 5px 11px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

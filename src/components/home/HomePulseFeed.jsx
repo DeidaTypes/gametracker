@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import useHomeFeed from '../../hooks/useHomeFeed'
 import HomeReviewCard from './HomeReviewCard'
 import FindFriendsModal from '../FindFriendsModal'
+import WindowedListItem from '../WindowedListItem'
 import './HomePulseFeed.css'
 
 // Home is the hub — the stream always includes the viewer's own activity
@@ -91,7 +92,9 @@ export default function HomePulseFeed() {
           <>
             <div className="pulse-feed__list">
               {items.map((item) => (
-                <HomeReviewCard key={item.id} item={item} />
+                <WindowedListItem key={item.id}>
+                  <HomeReviewCard item={item} />
+                </WindowedListItem>
               ))}
             </div>
 

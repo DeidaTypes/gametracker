@@ -1,0 +1,71 @@
+/* =============================================
+   REORDER TRASH TARGET
+   Slide-up drop zone for the ListDetail long-press
+   drag-to-reorder interaction. Values below are copied
+   verbatim from the interaction spec — the only place in
+   this component allowed to hardcode colors outside the
+   app's design tokens.
+   ============================================= */
+
+.reorder-trash-target {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 96px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: rgba(20, 12, 18, 0.55);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e07a7a;
+  font-size: 13px;
+  font-weight: 600;
+  transform: translateY(100%);
+  opacity: 0;
+  /* Above .bottom-nav (z-index: 1000) — it occupies the same footprint
+     while a drag is active. */
+  z-index: 1001;
+  /* Hit-testing is done manually in ListDetail via getBoundingClientRect
+     against the pointer that's captured on the dragged cover — this bar
+     never needs to receive pointer events of its own. */
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.reorder-trash-target--visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Armed — the dragged cover's center is over this bar. */
+.reorder-trash-target--armed {
+  background: rgba(180, 60, 70, 0.42);
+  border-top-color: rgba(224, 122, 122, 0.45);
+}
+
+.reorder-trash-target svg,
+.reorder-trash-target__label {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.reorder-trash-target--armed svg,
+.reorder-trash-target--armed .reorder-trash-target__label {
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reorder-trash-target,
+  .reorder-trash-target svg,
+  .reorder-trash-target__label {
+    transition: none;
+  }
+}

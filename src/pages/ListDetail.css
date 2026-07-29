@@ -4,57 +4,41 @@
   min-height: 100dvh;
   background: transparent;
   padding-bottom: var(--bottom-nav-safe-area);
+  /* Scoped override — tightens horizontal page padding for this page only,
+     without touching the shared --page-padding token used elsewhere. */
+  --page-padding: 16px;
 }
 
-/* ── Editorial hero — blurred, low-opacity cover mosaic behind the sticky
-   header + title, fading to the page base color. Custom lists only;
-   absolutely positioned so it never affects layout height — the header
-   and title block that follow it in the DOM sit in normal flow directly
-   on top, visually overlapping it. ── */
-.ld-hero {
+/* ── Keyboard-aware bottom clearance ──
+   `.list-detail-page` is the content root that drives the scrollable
+   height of `.main-content` (the app's single scroll container — see
+   the comment in ListDetail.jsx above the header-fade scroll listener).
+   We can't add this padding to `.main-content` itself since it's shared
+   by every page; scoping it here (like ReviewComments.css's `.rc-scroll`
+   pattern) only affects ListDetail.
+   Gated behind `body.keyboard-open` (written by main.jsx) so the page's
+   default bottom-nav-safe-area spacing is untouched until the keyboard
+   is actually up — at that point the floating nav is already hidden by
+   the same class, so this padding is the only clearance the composer
+   needs to clear the keyboard. */
+body.keyboard-open .list-detail-page {
+  padding-bottom: calc(var(--keyboard-inset, 0px) + 28px);
+  transition: padding-bottom 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Ambient wash — Cobalt Modern multi-hue glow behind the top of the
+   page only. Tracker lists only (custom lists are one continuous
+   background color per the Musicboard-inspired rebuild below). Sits
+   behind the header and content; never intercepts taps. ── */
+.ld-ambient-wash {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 230px;
-  overflow: hidden;
-  z-index: 0;
+  height: 320px;
+  background: var(--grad-ambient);
   pointer-events: none;
-}
-
-.ld-hero__mosaic {
-  position: absolute;
-  inset: -24px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  filter: blur(34px);
-  transform: scale(1.06);
-  opacity: 0.38;
-}
-
-.ld-hero__cell {
-  overflow: hidden;
-  background: var(--bg-surface);
-}
-
-.ld-hero__cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ld-hero__fade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 0%, var(--bg-base) 88%);
-}
-
-@media (min-width: 769px) {
-  .ld-hero {
-    height: 270px;
-  }
+  z-index: -1;
 }
 
 /* ── Loading skeleton ── */
@@ -151,7 +135,8 @@
   border-radius: var(--radius-sm);
 }
 
-/* ── Cover hero ── */
+/* ── Cover hero (legacy — no longer referenced by ListDetail.jsx, kept
+   only because a future upload-cover feature may resurrect it) ── */
 .list-detail-cover {
   position: relative;
   width: 100%;
@@ -162,7 +147,6 @@
   flex-shrink: 0;
 }
 
-/* Custom cover image */
 .list-detail-cover__img {
   width: 100%;
   height: 100%;
@@ -170,7 +154,6 @@
   display: block;
 }
 
-/* 2×2 mosaic of game covers */
 .list-detail-cover__mosaic {
   width: 100%;
   height: 100%;
@@ -212,7 +195,6 @@
   background: rgba(59, 130, 246, 0.08);
 }
 
-/* Pencil / edit button — top-right of the cover */
 .list-detail-cover__edit-btn {
   position: absolute;
   top: 10px;
@@ -249,7 +231,6 @@
   opacity: 0.6;
 }
 
-/* Upload-in-progress overlay */
 .list-detail-cover__uploading-overlay {
   position: absolute;
   inset: 0;
@@ -260,7 +241,6 @@
   z-index: 4;
 }
 
-/* Spinner — small (inside pencil button) and large (overlay) */
 .list-detail-cover__spinner {
   display: inline-block;
   width: 14px;
@@ -289,7 +269,11 @@
   }
 }
 
-/* ── Header bar (sticky, 3-col: back | label | actions) ── */
+/* ══════════════════════════════════════════════════════════════════════
+   TRACKER LISTS ONLY (Want to Play / Playing / Played / Dropped) —
+   completely untouched: sticky 3-col header bar, edge-to-edge row list.
+   ══════════════════════════════════════════════════════════════════════ */
+
 .list-detail-header-bar {
   position: sticky;
   top: 0;
@@ -299,7 +283,10 @@
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
   padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
-  background: var(--glass-bg);
+  /* Fully opaque (not --glass-bg) — the hero/title scroll directly behind
+     this bar, and a translucent background let the big title ghost/bleed
+     through as it passed underneath instead of being cleanly hidden. */
+  background: var(--bg-base);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-bottom: 1px solid var(--color-border);
@@ -335,6 +322,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.list-detail-header-label--visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-header-label {
+    transition: none;
+  }
 }
 
 .list-detail-header-actions {
@@ -367,374 +366,30 @@
   transform: scale(0.92);
 }
 
-/* ── Body — meta + description (only rendered when there is content) ──
-   position: relative + z-index above the absolutely-positioned .ld-hero
-   so title/byline/etc. always paint on top of the hero mosaic. */
-.list-detail-body {
+.list-detail-content {
   position: relative;
   z-index: 1;
-  padding: var(--spacing-xl) var(--page-padding) var(--spacing-lg);
+  padding: 0 var(--page-padding) 0;
   max-width: var(--page-max-width);
   margin: 0 auto;
 }
 
-/* ── Editorial title — its own line, large. The "+" add-games control
-   lives only in the sticky header (never inline with this), so there's
-   nothing glued together. ── */
-.ld-title {
-  margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-xl);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-display-xl);
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-}
-
-/* ── Byline — owner avatar + "{username} · {created date}" + saved count ── */
-.ld-byline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 4px;
-}
-
-.ld-byline-author {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.ld-byline-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.ld-byline-avatar--fallback {
-  background: var(--color-brand-primary);
-  color: #fff;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: var(--font-weight-bold);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ld-byline-name {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  transition: color var(--transition-fast);
-}
-
-.ld-byline-author:hover .ld-byline-name {
-  color: var(--color-text-primary);
-}
-
-.ld-byline-dot {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  line-height: 1;
-}
-
-.ld-byline-item {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-}
-
-/* ── Stats row — single bounded card, cells with vertical dividers ── */
-.ld-stats-card {
-  display: flex;
-  align-items: stretch;
-  margin-top: var(--spacing-lg);
-  background: var(--bg-surface, var(--color-surface));
-  border: 1px solid var(--border-subtle, var(--color-border));
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.ld-stats-cell {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: var(--spacing-md) var(--spacing-xs);
-  border-right: 1px solid var(--border-subtle, var(--color-border));
-}
-
-.ld-stats-cell:last-child {
-  border-right: none;
-}
-
-.ld-stats-value {
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
-}
-
-/* The screen's one gradient heading — see CommunityRatingCard.css for the
-   same recipe used on GameDetail's community-rating average. */
-.ld-stats-value--grad {
-  background: var(--grad-headline);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-@supports not (background-clip: text) {
-  .ld-stats-value--grad {
-    background: none;
-    -webkit-text-fill-color: unset;
-    color: var(--color-text-primary);
-  }
-}
-
-.ld-stats-label {
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-@media (max-width: 359px) {
-  .ld-stats-cell {
-    padding: var(--spacing-sm) 2px;
-  }
-}
-
-/* ── Actions row — state-adaptive Add-games / Save pills ── */
-.ld-actions-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-}
-
-.ld-action-btn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px var(--spacing-md);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: all var(--transition-fast);
-}
-
-.ld-action-btn:hover {
-  background: var(--color-surface);
-  border-color: var(--color-border-hover);
-}
-
-.ld-action-btn--saved {
-  border: none;
-  background: var(--color-brand-gradient);
-  color: #fff;
-}
-
-.ld-action-btn--saved:hover {
-  opacity: 0.9;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ld-action-btn {
-    transition: none;
-  }
-}
-
-/* ── Description ── */
-.list-detail-description {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-secondary);
-  margin: 0;
-  white-space: pre-wrap;
-  max-width: 60ch;
-}
-
-.list-detail-description--editable {
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-description--editable:hover {
-  color: var(--color-text-primary);
-}
-
-/* ── "Add a description" affordance (owner only, no description set) —
-   a quiet inline text button, not a dashed box. ── */
-.list-detail-desc-placeholder {
-  display: block;
-  width: auto;
-  max-width: 60ch;
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
-  text-align: left;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  font-style: italic;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--transition-fast);
-}
-
-.list-detail-desc-placeholder:hover {
-  color: var(--color-text-secondary);
-}
-
-/* ── Inline textarea edit ── */
-.list-detail-desc-edit-wrap {
-  width: 100%;
-  max-width: 60ch;
-}
-
-.list-detail-desc-textarea {
-  display: block;
-  width: 100%;
-  min-height: 80px;
-  max-height: 200px;
-  padding: 12px 14px;
-  background: var(--bg-base, var(--color-bg-base));
-  border: 1px solid var(--border-subtle, var(--color-border));
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  /* 16px prevents iOS auto-zoom on focus */
-  font-size: 16px;
-  line-height: 1.55;
-  resize: none;
-  outline: none;
-  box-sizing: border-box;
-  overflow-y: auto;
-  transition: border-color var(--transition-fast);
-  -webkit-text-size-adjust: 100%;
-}
-
-.list-detail-desc-textarea:focus {
-  border-color: var(--color-brand-primary);
-}
-
-.list-detail-desc-textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-.list-detail-desc-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-}
-
-.list-detail-desc-cancel-btn {
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-desc-cancel-btn:hover {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-.list-detail-desc-save-btn {
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  border: none;
-  background: var(--color-brand-primary);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-desc-save-btn:hover {
-  opacity: 0.88;
-}
-
-.list-detail-desc-save-btn:active {
-  opacity: 0.72;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .list-detail-desc-textarea,
-  .list-detail-desc-placeholder,
-  .list-detail-description--editable {
-    transition: none;
-  }
-}
-
-/* ── Content ── */
-.list-detail-content {
-  padding: var(--spacing-xl) var(--page-padding);
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-}
-
-/* Compact game count — single muted line above the grid.
-   Tracker content uses edge-to-edge rows, so we only side-pad
-   the count chip, not the full content block. */
 .list-detail-game-count {
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
+  font-size: 11.5px;
   font-weight: var(--font-weight-medium);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  margin: 0 0 var(--spacing-md) 0;
+  margin: 22px 0 11px;
   padding: 0;
   line-height: 1.4;
 }
 
-/* When the content block is hosting TrackerGameList, remove side padding
-   so the full-bleed rows can own their own page-padding. */
 .list-detail-content--tracker {
   padding-left: 0;
   padding-right: 0;
+  padding-bottom: var(--spacing-xl);
 }
 
 .list-detail-content--tracker .list-detail-game-count {
@@ -742,105 +397,17 @@
   padding-right: var(--page-padding);
 }
 
-/* Editorial grid — fixed 3-across, titles rendered below each cover
-   (not overlaid). Desktop widens the gap rather than the column count. */
-.list-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-sm);
-}
-
 @media (min-width: 769px) {
-  .list-detail-grid {
-    gap: var(--spacing-lg);
+  .list-detail-content {
+    padding: 0 var(--page-padding-desktop) 0;
+  }
+
+  .list-detail-content--tracker {
+    padding-bottom: var(--spacing-2xl);
   }
 }
 
-.list-detail-grid-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Cover wrapper — the positioning context for the status dot, rating
-   badge, drag handle, and remove button (all anchor to the cover only,
-   never the title text below it). */
-.ld-grid-cover {
-  position: relative;
-}
-
-/* Title — below the cover, editorial-grid style */
-.ld-grid-title {
-  margin: 0;
-  padding: 0 2px;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.3;
-  color: var(--color-text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-wrap: break-word;
-}
-
-/* Status dot — owner's real tracker status only. Top-left, so it never
-   collides with the top-right remove button (owner/collaborator view). */
-.ld-grid-status-dot {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dot-color);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  z-index: 2;
-  pointer-events: none;
-}
-
-.list-detail-remove-button {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  font-size: 18px;
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  z-index: 2;
-  opacity: 0;
-  transition: all var(--transition-smooth);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.list-detail-grid-item:hover .list-detail-remove-button,
-.list-detail-grid-item:focus-within .list-detail-remove-button {
-  opacity: 1;
-}
-
-.list-detail-remove-button:hover {
-  background: var(--color-accent-pink);
-  transform: scale(1.08);
-}
-
-@media (hover: none) {
-  .list-detail-remove-button {
-    opacity: 1;
-  }
-}
-
-/* ── Empty state ── */
+/* ── Empty state (shared by tracker lists and custom lists) ── */
 .list-detail-empty {
   text-align: center;
   padding: var(--spacing-3xl) var(--spacing-xl);
@@ -856,6 +423,20 @@
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-body);
   margin: 0;
+}
+
+.list-detail-empty .es-root {
+  padding: 24px 20px;
+  gap: 12px;
+}
+
+.list-detail-empty .es-cta {
+  background: var(--grad-cta);
+  border: none;
+  color: #fff;
+  height: auto;
+  padding: 11px 24px;
+  font-size: 13.5px;
 }
 
 .list-detail-back-button {
@@ -878,170 +459,536 @@
   box-shadow: 0 8px 24px rgba(91, 143, 255, 0.35);
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   CUSTOM LISTS — Musicboard-inspired rebuild. Values below are copied
+   verbatim from the mockup spec (listdetail_C_minimal.html, phone
+   "1 · Header +"). Supplemental rules needed for behavior the literal
+   mockup doesn't cover (header title fade, avatar-initial fallback,
+   inline-edit affordance, grid-item wrapper) are called out inline.
+   ══════════════════════════════════════════════════════════════════════ */
 
-@media (min-width: 769px) {
-  .list-detail-body {
-    padding: var(--spacing-2xl) var(--page-padding-desktop) var(--spacing-xl);
-  }
-
-  .list-detail-content {
-    padding: var(--spacing-2xl) var(--page-padding-desktop);
-  }
-}
-
-/* ── Save button — "saved" accent state ── */
-.list-detail-save-btn--saved {
-  color: var(--color-brand-primary);
-}
-
-/* ── Drag-to-reorder ── */
-.list-detail-grid-item[draggable="true"] {
-  cursor: default;
-}
-.list-detail-grid-item.drag-over {
-  outline: 2px solid var(--color-brand-primary);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-  opacity: 0.7;
-}
-
-/* ── Drag handle (owner only, bottom-right of card) ── */
-.list-detail-drag-handle {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.65);
-  color: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+/* ── Scoping note ──────────────────────────────────────────────────────
+   Every selector below is prefixed with `.list-detail-page` on purpose.
+   Vite bundles ALL page CSS into one global stylesheet (no CSS Modules
+   here), so a bare element selector like `header { ... }` or a generic
+   class like `.icon-btn` applies to *every* matching element on *every*
+   page, not just this one. That's exactly what caused the Library chip
+   row regression: an unscoped `header { align-items: center; ... }`
+   rule here was overriding Library's `.lib-header` cross-axis stretch
+   (align-items defaults to `stretch`), which is what let `.lib-chip-row`
+   size itself to fit the header instead of ballooning to its content's
+   width. Every selector here is scoped so nothing in this file can leak
+   onto another page's markup again. ── */
+.list-detail-page header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: grab;
-  z-index: 3;
+  justify-content: space-between;
+  padding: 14px;
+  background: linear-gradient(to bottom, rgba(10, 15, 31, .96), rgba(10, 15, 31, .7) 70%, transparent);
+}
+
+.list-detail-page .header-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* Supplemental — sticky header title. Not covered by the literal mockup
+   spec (the mockup screenshot never shows it, since it's still at
+   scroll-top); rule 3 of the brief requires it to fade in only once the
+   masthead has scrolled behind the header. Centered independently of
+   the header's flex layout since it's taken out of flow. */
+.list-detail-page .header-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f0f3fa;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
 }
 
-.list-detail-drag-handle:active {
-  cursor: grabbing;
-  transform: scale(0.92);
-}
-
-/* Show handle on hover (desktop) and always on touch devices */
-.list-detail-grid-item:hover .list-detail-drag-handle,
-.list-detail-grid-item:focus-within .list-detail-drag-handle {
+.list-detail-page .header-title--visible {
   opacity: 1;
 }
 
-@media (hover: none) {
-  .list-detail-drag-handle {
-    opacity: 0.75;
-  }
-}
-
-/* ── Owner rating badge (bottom-left of card) ── */
-.list-detail-rating-badge {
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.72);
-  color: var(--color-brand-primary);
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  line-height: 1;
-  pointer-events: none;
-  z-index: 2;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .list-detail-drag-handle,
-  .list-detail-grid-item.drag-over {
+  .list-detail-page .header-title {
     transition: none;
   }
 }
 
-/* ── Collaborator avatar row ── */
-.list-detail-collab-row {
+/* all three header buttons */
+.list-detail-page .icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 15, 31, .5);
+  border: 1px solid rgba(255, 255, 255, .08);
+  color: #f0f3fa;
+  backdrop-filter: blur(10px);
+  flex: 0 0 auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-page .icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+/* the + button ONLY — this is the screen's single gradient element */
+.list-detail-page .icon-btn--add {
+  background: linear-gradient(100deg, #3b82f6, #5fa28d);
+  border: none;
+}
+
+.list-detail-page .icon-btn--add svg {
+  stroke: #fff;
+  stroke-width: 2.4;
+}
+
+/* MASTHEAD CARD */
+.list-detail-page .masthead {
+  margin: 4px 16px 0;
+  background: #131a35;
+  border: 1px solid rgba(148, 168, 212, .12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.list-detail-page .masthead-strip {
+  height: 76px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  position: relative;
+  /* Supplemental — clips the row to the declared 76px. Without this,
+     the (auto-sized) implicit grid row grows to the covers' intrinsic
+     portrait aspect ratio instead of being cropped by object-fit:cover,
+     so each image bleeds past the strip into the card below it. */
+  overflow: hidden;
+}
+
+.list-detail-page .masthead-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.list-detail-page .masthead-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #131a35 6%, rgba(19, 26, 53, .62) 62%, rgba(19, 26, 53, .2));
+}
+
+.list-detail-page .masthead-inner {
+  padding: 12px 14px 14px;
+}
+
+.list-detail-page .masthead-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.list-detail-page .masthead-byline {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
-.list-detail-collab-avatars {
-  display: flex;
-  align-items: center;
-}
-
-/* Each avatar overlaps the previous by 6 px */
-.list-detail-collab-avatars > * + * {
-  margin-left: -6px;
-}
-
-.list-detail-collab-avatar {
-  width: 26px;
-  height: 26px;
+.list-detail-page .masthead-byline img {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 2px solid var(--color-bg-primary, #0a0f1e);
+  flex: 0 0 auto;
   object-fit: cover;
-  flex-shrink: 0;
 }
 
-.list-detail-collab-avatar--fallback {
-  display: flex;
+.list-detail-page .masthead-byline span {
+  font-size: 12.5px;
+  color: #94a8d4;
+  line-height: 1;
+}
+
+.list-detail-page .masthead-byline b {
+  color: #f0f3fa;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Supplemental — avatar-initial fallback for authors without an avatar
+   image (the literal mockup only styles a real <img>). Same footprint
+   as .masthead-byline img so it slots in identically. */
+.list-detail-page .masthead-byline-fallback {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-surface-active, rgba(148, 168, 212, 0.13));
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
-  user-select: none;
-}
-
-.list-detail-collab-avatar--overflow {
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
+  background: var(--color-brand-primary);
+  color: #fff;
+  font-family: var(--font-body);
   font-size: 10px;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
 }
 
-.list-detail-collab-label {
-  font-size: var(--font-size-caption, 12px);
-  color: var(--color-text-secondary);
-  flex: 1;
+/* STAT LINE — one inline row, NOT a card */
+.list-detail-page .statline {
+  font-size: 12.5px;
+  color: #94a8d4;
+  margin-top: 9px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
-.list-detail-collab-manage-btn {
-  background: none;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold);
-  padding: 3px 10px;
-  border-radius: 20px;
+.list-detail-page .statline b {
+  color: #f0f3fa;
+  font-weight: 600;
+}
+
+.list-detail-page .statline .rating {
+  background: linear-gradient(100deg, #6ea3ff, #8fd0bd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+}
+
+.list-detail-page .statline .sep {
+  opacity: .35;
+}
+
+.list-detail-page .masthead-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c3cfea;
+  margin-top: 11px;
+}
+
+/* Supplemental — owner tap-to-edit affordance on the description text. */
+.list-detail-page .masthead-desc--editable {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 120ms ease, color 120ms ease;
 }
 
-.list-detail-collab-manage-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+.list-detail-page .masthead-desc-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #94a8d4;
+  margin-top: 11px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
+.list-detail-page .masthead-desc-add svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+/* Inline description edit — reuses the same textarea/actions treatment
+   as before, just relocated inside .masthead-inner. Not covered by the
+   literal mockup (which never shows the editing state), so it keeps its
+   own pre-existing surface/border rather than inventing a new one. */
+.list-detail-desc-edit-wrap {
+  width: 100%;
+  margin-top: 11px;
+}
+
+.list-detail-desc-textarea {
+  display: block;
+  width: 100%;
+  min-height: 70px;
+  max-height: 200px;
+  padding: 10px 12px;
+  background: var(--bg-base, var(--color-bg-base));
+  border: 1px solid rgba(148, 168, 212, .12);
+  border-radius: 8px;
+  color: #f0f3fa;
+  font-family: var(--font-body);
+  /* 16px prevents iOS auto-zoom on focus */
+  font-size: 16px;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  overflow-y: auto;
+  transition: border-color var(--transition-fast);
+  -webkit-text-size-adjust: 100%;
+}
+
+.list-detail-desc-textarea:focus {
+  border-color: var(--color-brand-primary);
+}
+
+.list-detail-desc-textarea::placeholder {
+  color: #94a8d4;
+}
+
+.list-detail-desc-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.list-detail-desc-cancel-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(148, 168, 212, .2);
+  background: transparent;
+  color: #c3cfea;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-desc-cancel-btn:hover {
+  background: rgba(148, 168, 212, .08);
+  color: #f0f3fa;
+}
+
+.list-detail-desc-save-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-brand-primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-desc-save-btn:hover {
+  opacity: 0.88;
+}
+
+.list-detail-desc-save-btn:active {
+  opacity: 0.72;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-page .list-detail-desc-textarea,
+  .list-detail-page .masthead-desc-add,
+  .list-detail-page .masthead-desc--editable {
+    transition: none;
+  }
+}
+
+/* BODY */
+.list-detail-page .list-body {
+  padding: 0 16px 28px;
+}
+
+/* SECTION LABEL ROW */
+.list-detail-page .section-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 22px 0 11px;
+}
+
+.list-detail-page .section-row p {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a8d4;
+}
+
+.list-detail-page .section-row a {
+  font-size: 12px;
+  color: #94a8d4;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-page .section-row a svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+/* GAME GRID */
+.list-detail-page .game-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+/* ── Pagination sentinel — see ListDetail.jsx's IntersectionObserver ── */
+.ld-games-sentinel {
+  height: 1px;
+}
+
+.list-detail-page .game-cover {
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, .07);
+}
+
+.list-detail-page .game-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.list-detail-page .game-title {
+  font-size: 10.5px;
+  color: #c3cfea;
+  margin-top: 5px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Supplemental — the per-game grid item wrapper (cover + title stacked).
+   The literal mockup has no class for this since it's implicit block
+   flow in the static HTML; this one exists purely so the long-press
+   drag-to-reorder interaction (ListDetail.jsx) has something to attach
+   positional transforms + refs (itemEls) to. */
+.list-detail-page .gg-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Long-press drag-to-reorder (owner/collaborator only) ──
+   .gg-item carries ONLY the positional translate3d — the dragged item's
+   is written imperatively per pointermove frame (no transition, follows
+   the finger 1:1); siblings get theirs from React state (dragOrder) and
+   transition smoothly into their shifted slot. Scale/shadow/opacity
+   "lift" feedback lives one level down, on .game-cover, so it can
+   transition independently of the position transform.
+   Scoped to `.list-detail-page .game-grid` specifically (never a bare
+   global selector) so `touch-action: none` can only ever apply to this
+   page's grid, and only while `.game-grid--dragging` is actually present
+   (ListDetail.jsx adds/removes that class exactly when dragGameId is
+   non-null / null — see hardResetDrag). */
+.list-detail-page .game-grid--dragging {
+  touch-action: none;
+}
+
+.list-detail-page .gg-item--dragged {
+  z-index: 50;
+  transition: none;
+}
+
+.list-detail-page .gg-item--drag-shift {
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.list-detail-page .game-cover--lifted {
+  transform: scale(1.06);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.85);
+  opacity: 0.95;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Armed — dragged cover's center is over the slide-up trash target
+   (ReorderTrashTarget). Overrides the lift feedback above via cascade
+   (two classes beat one, no !important needed). */
+.list-detail-page .game-cover--lifted.game-cover--armed {
+  transform: scale(0.92);
+  opacity: 0.6;
+}
+
+.list-detail-page .game-cover--removing {
+  transform: scale(0.8);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-page .gg-item--dragged,
+  .list-detail-page .gg-item--drag-shift,
+  .list-detail-page .game-cover--removing {
+    transition: none;
+  }
+
+  /* Keep the interaction fully functional (translate3d position-
+     tracking on .gg-item is untouched above) but drop the decorative
+     lift: no scale, no shadow, no dim/armed treatment. */
+  .list-detail-page .game-cover--lifted,
+  .list-detail-page .game-cover--lifted.game-cover--armed {
+    transform: none;
+    box-shadow: none;
+    opacity: 1;
+    transition: none;
+  }
+}
+
+/* Supplemental — the tappable/navigable surface inside .game-cover.
+   Fills the cover exactly like the plain <img> would in the static
+   mockup; SharedCover's own frame (position: absolute; inset: 0) needs
+   this to be a positioning context. */
+.list-detail-page .gg-cover-tap {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 769px) {
+  .list-detail-page .masthead,
+  .list-detail-page .list-body {
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

@@ -23,7 +23,7 @@
 .review-card__own-pill {
   align-self: flex-start;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: var(--color-brand-primary);
   color: var(--color-bg-primary);
   font-size: 11px;
@@ -137,7 +137,7 @@
   text-transform: uppercase;
   line-height: 1;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
 }
 
 /* Vibe pill — copper accent by default, nudged per vibe */

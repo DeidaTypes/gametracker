@@ -14,6 +14,7 @@ import { shouldShowCount } from '../utils/formatSocialCount'
 import { fetchBrowseCategories } from '../services/browseService'
 import { fetchPopularThisWeek } from '../services/igdb'
 import { getContinuePlayingGames } from '../services/libraryService'
+import { getSizedImageUrl } from '../services/imageUtils'
 import { searchReviewsByText } from '../services/reviewService'
 import { searchUsers } from '../services/userService'
 import { searchPublicLists } from '../services/listService'
@@ -401,9 +402,10 @@ function GamesTabResults({
                   {game.image ? (
                     <SharedCover gameId={game.id} imageSrc={game.image}>
                       <img
-                        src={game.image}
+                        src={getSizedImageUrl(game.image, 52)}
                         alt=""
                         className="sp-result-cover__img"
+                        loading="lazy"
                       />
                     </SharedCover>
                   ) : (

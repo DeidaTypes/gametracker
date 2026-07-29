@@ -266,7 +266,7 @@
   display: inline-flex;
   align-items: center;
   height: 36px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: var(--color-bg-elevated);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.25),
@@ -277,7 +277,7 @@
 /* Standalone pill chip (no remove button — used for trending) */
 .sp-chip--pill {
   height: 36px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: var(--color-bg-elevated);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.25),
@@ -627,7 +627,7 @@
   align-items: center;
   height: 36px;
   padding: 0 16px;
-  border-radius: 18px;
+  border-radius: var(--radius-chip);
   background: rgba(255, 255, 255, 0.08);
   border: none;
   font-family: var(--font-body);
@@ -886,7 +886,7 @@
   align-items: center;
   height: 26px;
   padding: 0 10px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: color-mix(in srgb, var(--color-accent) 18%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
   font-family: var(--font-body);
@@ -913,7 +913,7 @@
   background: var(--color-bg-elevated);
   border: none;
   padding: 12px 16px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   color: var(--color-text-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-body);

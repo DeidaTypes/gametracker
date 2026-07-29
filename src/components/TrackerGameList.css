@@ -41,7 +41,7 @@
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-secondary);
@@ -104,6 +104,11 @@
 .tgl-list {
   display: flex;
   flex-direction: column;
+}
+
+/* ── Pagination sentinel — see TrackerGameList.jsx's IntersectionObserver ── */
+.tgl-sentinel {
+  height: 1px;
 }
 
 /* ── Game row ──────────────────────────────────────────────── */

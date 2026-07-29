@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { useSearch } from '../hooks/useSearch'
 import { addRecent } from '../utils/recentSearches'
+import { getSizedImageUrl } from '../services/imageUtils'
 import CoverPlaceholder from './explore/CoverPlaceholder'
 import './HomeSearchBar.css'
 
@@ -152,7 +153,12 @@ function HomeSearchBar() {
                 >
                   <div className="home-search-cover">
                     {game.image ? (
-                      <img src={game.image} alt="" className="home-search-cover__img" />
+                      <img
+                        src={getSizedImageUrl(game.image, 53)}
+                        alt=""
+                        className="home-search-cover__img"
+                        loading="lazy"
+                      />
                     ) : (
                       <CoverPlaceholder title={game.title} className="home-search-cover__img" />
                     )}

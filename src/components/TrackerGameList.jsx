@@ -68,6 +68,12 @@ const MOVE_TARGETS = [
 
 const QUICK_LOG_OPTIONS = [15, 30, 60, 120]
 
+// Client-side pagination — trackers can grow into the hundreds of
+// games, and this list previously rendered every row (with its own
+// cover image, progress bar, enrichment data) up front. Reveal one
+// page at a time via the sentinel below instead.
+const PAGE_SIZE = 30
+
 // ─── Utility helpers ──────────────────────────────────────────────────────────
 
 function formatLastPlayed(iso) {
@@ -479,6 +485,10 @@ function TrackerGameList({ listId, games }) {
   const [bulkMoveSheetOpen, setBulkMoveSheetOpen] = useState(false)
   const [bulkRateSheetOpen, setBulkRateSheetOpen] = useState(false)
 
+  // ── Pagination ───────────────────────────────────────────────────────────
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const listSentinelRef = useRef(null)
+
   // ── Load enrichment data ────────────────────────────────────────────────────
 
   const loadEnrichment = useCallback(async () => {
@@ -624,6 +634,32 @@ function TrackerGameList({ listId, games }) {
         return arr
     }
   }, [filteredGames, sortBy])
+
+  // Reset to the first page whenever the list identity, sort, or filter
+  // changes — otherwise switching sort/filter would keep whatever
+  // visibleCount the user had scrolled to on the previous view.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [listId, sortBy, filterBy])
+
+  const visibleGames = sortedGames.slice(0, visibleCount)
+  const hasMoreGames = sortedGames.length > visibleGames.length
+
+  useEffect(() => {
+    if (!hasMoreGames) return undefined
+    const node = listSentinelRef.current
+    if (!node) return undefined
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => c + PAGE_SIZE)
+        }
+      },
+      { rootMargin: '600px' }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasMoreGames])
 
   // ── Select mode handlers ────────────────────────────────────────────────────
 
@@ -821,22 +857,27 @@ function TrackerGameList({ listId, games }) {
             )}
           </div>
         ) : (
-          sortedGames.map((game) => (
-            <TrackerGameRow
-              key={game.id}
-              game={game}
-              enrich={game._enrich}
-              listId={listId}
-              selectMode={selectMode}
-              isSelected={selectedIds.has(String(game.id))}
-              onToggleSelect={(id) => toggleItem(String(id))}
-              onLogSession={(g) => {
-                setLogTarget(g)
-                setLogSheetOpen(true)
-              }}
-              navigate={navigate}
-            />
-          ))
+          <>
+            {visibleGames.map((game) => (
+              <TrackerGameRow
+                key={game.id}
+                game={game}
+                enrich={game._enrich}
+                listId={listId}
+                selectMode={selectMode}
+                isSelected={selectedIds.has(String(game.id))}
+                onToggleSelect={(id) => toggleItem(String(id))}
+                onLogSession={(g) => {
+                  setLogTarget(g)
+                  setLogSheetOpen(true)
+                }}
+                navigate={navigate}
+              />
+            ))}
+            {hasMoreGames && (
+              <div ref={listSentinelRef} className="tgl-sentinel" aria-hidden="true" />
+            )}
+          </>
         )}
       </div>
 

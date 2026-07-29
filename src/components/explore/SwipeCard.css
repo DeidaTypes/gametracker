@@ -211,7 +211,7 @@
   position: absolute;
   top: 24px;
   padding: 6px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-chip);
   border: 2.5px solid;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);

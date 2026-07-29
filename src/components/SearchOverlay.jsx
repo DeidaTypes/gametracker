@@ -17,6 +17,7 @@ import {
   useRecents,
 } from '../utils/recentSearches'
 import { searchReviewsByText } from '../services/reviewService'
+import { getSizedImageUrl } from '../services/imageUtils'
 import { searchUsers } from '../services/userService'
 import { searchPublicLists } from '../services/listService'
 import {
@@ -214,7 +215,12 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
             >
               <div className="so-result-cover">
                 {game.image ? (
-                  <img src={game.image} alt="" className="so-result-cover__img" />
+                  <img
+                    src={getSizedImageUrl(game.image, 58)}
+                    alt=""
+                    className="so-result-cover__img"
+                    loading="lazy"
+                  />
                 ) : (
                   <CoverPlaceholder title={game.title} className="so-result-cover__img" />
                 )}

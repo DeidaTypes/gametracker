@@ -6,34 +6,39 @@ import { getFlaggedContentIds } from './reportService'
  * Comment Service — Supabase-backed.
  *
  * Sprint 6 P1: powers the threaded comments page at /reviews/:id/comments
- * and the comment-count badge on every ReviewCard.
+ * and the comment-count badge on every ReviewCard. Pulse feed broadening
+ * (see supabase/migrations/20260728140000_polymorphic_activity_comments.sql)
+ * widened review_comments to ALSO target an activity_events row, so every
+ * non-review Pulse card (logged session, finished/started a game, added to
+ * backlog, added to a list) gets the identical comment affordance.
  *
- * Schema (mirrored from supabase/comments.sql — run that file in the
- * Supabase SQL editor before this code is exercised):
+ * Schema (mirrored from that migration — run it in the Supabase SQL
+ * editor before this code is exercised):
  *
  *   CREATE TABLE review_comments (
- *     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- *     review_id         uuid NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
- *     user_id           uuid NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
- *     parent_comment_id uuid REFERENCES review_comments(id) ON DELETE CASCADE,
- *     body              text NOT NULL CHECK (length(body) BETWEEN 1 AND 2000),
- *     created_at        timestamptz NOT NULL DEFAULT now(),
- *     updated_at        timestamptz NOT NULL DEFAULT now()
+ *     id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ *     review_id          uuid REFERENCES reviews(id) ON DELETE CASCADE,
+ *     activity_event_id  uuid REFERENCES activity_events(id) ON DELETE CASCADE,
+ *     user_id            uuid NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+ *     parent_comment_id  uuid REFERENCES review_comments(id) ON DELETE CASCADE,
+ *     body               text NOT NULL CHECK (length(body) BETWEEN 1 AND 2000),
+ *     created_at         timestamptz NOT NULL DEFAULT now(),
+ *     updated_at         timestamptz NOT NULL DEFAULT now(),
+ *     CHECK (
+ *       (review_id IS NOT NULL AND activity_event_id IS NULL) OR
+ *       (review_id IS NULL AND activity_event_id IS NOT NULL)
+ *     )
  *   );
  *
- *   CREATE INDEX review_comments_review_idx ON review_comments(review_id, created_at);
- *   CREATE INDEX review_comments_parent_idx ON review_comments(parent_comment_id);
+ * RLS policies are target-agnostic (auth.uid() = user_id for writes,
+ * USING (true) for reads) — they didn't need to change for the new
+ * column.
  *
- *   ALTER TABLE review_comments ENABLE ROW LEVEL SECURITY;
- *
- *   CREATE POLICY review_comments_select_all ON review_comments
- *     FOR SELECT USING (true);
- *   CREATE POLICY review_comments_insert_self ON review_comments
- *     FOR INSERT WITH CHECK (auth.uid() = user_id);
- *   CREATE POLICY review_comments_update_own ON review_comments
- *     FOR UPDATE USING (auth.uid() = user_id);
- *   CREATE POLICY review_comments_delete_own ON review_comments
- *     FOR DELETE USING (auth.uid() = user_id);
+ * Every read/write below accepts EITHER `reviewId` OR `activityEventId`
+ * (never both) via a small `{ reviewId, activityEventId }` target
+ * object — existing review-only call sites (ReviewDetail, GameDetail,
+ * Profile, TimelineFeed) are untouched, since passing just `reviewId`
+ * behaves exactly as before.
  *
  * Mirrors src/services/likeService.js + followService.js:
  *   - all writes resolve auth.uid() from supabase.auth.getUser()
@@ -168,11 +173,79 @@ export async function getCommentCountsForReviews(reviewIds) {
 }
 
 /* ============================================================
+   Activity-event comments (Pulse feed broadening)
+   ============================================================ */
+
+/**
+ * Same contract as getCommentsForReview, keyed by activity_event_id
+ * instead of review_id.
+ *
+ * @param {string} activityEventId
+ * @returns {Promise<Array>} see getCommentsForReview's return shape
+ */
+export async function getCommentsForActivityEvent(activityEventId) {
+  if (!activityEventId) return []
+  const [flaggedIds, queryResult] = await Promise.all([
+    getFlaggedContentIds('comment'),
+    (async () => {
+      let query = supabase
+        .from('review_comments')
+        .select('*, users(username, display_name, avatar_url)')
+        .eq('activity_event_id', activityEventId)
+        .order('created_at', { ascending: true })
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    })(),
+  ])
+  const { data, error } = await queryResult
+  if (error) {
+    console.error('[comments] getCommentsForActivityEvent failed:', error.message)
+    return []
+  }
+  const rows = data || []
+  return flaggedIds.size > 0 ? rows.filter((c) => !flaggedIds.has(c.id)) : rows
+}
+
+/**
+ * Batched comment counts for an array of activity_events IDs. Mirrors
+ * getCommentCountsForReviews exactly — every non-review Pulse card
+ * needs a real count (not a hardcoded 0) to honor the zero-state rule
+ * (shouldShowCount only renders a numeral at >= 3).
+ *
+ * @param {string[]} activityEventIds
+ * @returns {Promise<Map<string, number>>}
+ */
+export async function getCommentCountsForEvents(activityEventIds) {
+  const counts = new Map()
+  if (!activityEventIds || activityEventIds.length === 0) return counts
+  for (const id of activityEventIds) counts.set(id, 0)
+
+  let query = supabase
+    .from('review_comments')
+    .select('activity_event_id')
+    .in('activity_event_id', activityEventIds)
+  query = await applyBlockFilter(query, 'user_id')
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[comments] getCommentCountsForEvents failed:', error.message)
+    return counts
+  }
+
+  for (const row of data || []) {
+    counts.set(row.activity_event_id, (counts.get(row.activity_event_id) || 0) + 1)
+  }
+  return counts
+}
+
+/* ============================================================
    Mutations
    ============================================================ */
 
 /**
- * INSERT a comment. RLS enforces user_id = auth.uid().
+ * INSERT a comment on either a review OR an activity_events row
+ * (exactly one of `reviewId` / `activityEventId` must be supplied).
+ * RLS enforces user_id = auth.uid().
  *
  * One-level-of-nesting enforcement: if `parentCommentId` is supplied,
  * we look up the parent and reject the insert when the parent itself
@@ -185,13 +258,15 @@ export async function getCommentCountsForReviews(reviewIds) {
  * name already populated.
  *
  * @param {{
- *   reviewId: string,
+ *   reviewId?: string,
+ *   activityEventId?: string,
  *   body: string,
  *   parentCommentId?: string | null,
  * }} args
  * @returns {Promise<{
  *   id: string,
- *   review_id: string,
+ *   review_id: string | null,
+ *   activity_event_id: string | null,
  *   user_id: string,
  *   parent_comment_id: string | null,
  *   body: string,
@@ -200,8 +275,21 @@ export async function getCommentCountsForReviews(reviewIds) {
  *   users: { username: string, display_name: string, avatar_url: string } | null,
  * }>}
  */
-export async function postComment({ reviewId, body, parentCommentId = null }) {
-  if (!reviewId) throw new Error('reviewId is required')
+export async function postComment({
+  reviewId = null,
+  activityEventId = null,
+  body,
+  parentCommentId = null,
+}) {
+  if (!reviewId && !activityEventId) {
+    throw new Error('reviewId or activityEventId is required')
+  }
+  if (reviewId && activityEventId) {
+    throw new Error('Pass only one of reviewId or activityEventId, not both.')
+  }
+  const targetColumn = reviewId ? 'review_id' : 'activity_event_id'
+  const targetId = reviewId || activityEventId
+
   const trimmed = (body || '').trim()
   if (!trimmed) throw new Error('Comment cannot be empty.')
   if (trimmed.length > 2000) {
@@ -212,11 +300,11 @@ export async function postComment({ reviewId, body, parentCommentId = null }) {
   if (!userId) throw new Error('You must be signed in to comment.')
 
   // Enforce one-level-of-nesting. If a parent is supplied, ensure it
-  // is itself a top-level comment.
+  // is itself a top-level comment on the same target.
   if (parentCommentId) {
     const { data: parent, error: parentErr } = await supabase
       .from('review_comments')
-      .select('id, parent_comment_id, review_id')
+      .select('id, parent_comment_id, review_id, activity_event_id')
       .eq('id', parentCommentId)
       .maybeSingle()
     if (parentErr) {
@@ -227,13 +315,13 @@ export async function postComment({ reviewId, body, parentCommentId = null }) {
     if (parent.parent_comment_id) {
       throw new Error("Replies can't be nested further.")
     }
-    if (parent.review_id !== reviewId) {
-      throw new Error('Parent comment belongs to a different review.')
+    if (parent[targetColumn] !== targetId) {
+      throw new Error('Parent comment belongs to a different item.')
     }
   }
 
   const insert = {
-    review_id: reviewId,
+    [targetColumn]: targetId,
     user_id: userId,
     parent_comment_id: parentCommentId || null,
     body: trimmed,

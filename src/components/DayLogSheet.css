@@ -216,7 +216,7 @@
   letter-spacing: var(--letter-spacing-label);
   line-height: 1;
   padding: 3px 6px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: var(--bg-surface-2);
   color: var(--color-text-tertiary);
 }

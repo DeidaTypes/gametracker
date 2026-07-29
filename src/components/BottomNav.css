@@ -33,6 +33,18 @@
   /* Phone: ~280 px wide; narrower viewports collapse to full-width
      minus 32 px of side gutters. */
   width: min(280px, calc(100vw - 32px));
+
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---- Long-press drag-to-reorder (ListDetail) ----
+   Slides fully out of the way, down and out, while a grid item is
+   being dragged — see LIST_REORDER_DRAG_EVENT above. The slide-up
+   trash target (ReorderTrashTarget) takes over the vacated space. */
+.bottom-nav--hidden {
+  transform: translateX(-50%) translateY(120%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Mobile only — replicates the original responsive behavior. */
@@ -150,6 +162,7 @@
    transition prop is already swapped to { duration: 0 } in JS; this just
    collapses the chrome transitions that aren't owned by motion. */
 @media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
   .bottom-nav-item,
   .bottom-nav-icon {
     transition: none;

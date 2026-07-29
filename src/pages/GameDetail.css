@@ -312,7 +312,7 @@
   padding: 5px 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
@@ -881,7 +881,7 @@
 .gd-sk-pill {
   width: 68px;
   height: 28px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
 }
 
 /* Description lines */
@@ -1250,7 +1250,7 @@
 .gd-vibe-pill {
   display: inline-block;
   padding: 3px 9px;
-  border-radius: 20px;
+  border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: var(--font-weight-medium);
@@ -1271,7 +1271,7 @@
   gap: 5px;
   margin-top: 2px;
   padding: 4px 10px 4px 8px;
-  border-radius: 20px;
+  border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: var(--font-weight-medium);

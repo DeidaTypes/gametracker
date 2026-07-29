@@ -5,10 +5,33 @@
    ============================================ */
 
 .library-page {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 0 0 var(--bottom-nav-safe-area);
+  /* Extra clearance beyond the shared bottom-nav safe area so the FAB
+     (fixed, 52px tall, floating 82px off the bottom edge) never sits on
+     top of the last row of the "Your Lists" rail — the rail can always
+     scroll its final card fully clear of the button. */
+  padding: 0 0 calc(var(--bottom-nav-safe-area) + 90px);
   background: transparent;
+  /* Scoped override — tightens horizontal page padding for this page only,
+     without touching the shared --page-padding token used elsewhere. */
+  --page-padding: 16px;
+}
+
+/* ── Ambient wash ──
+   Cobalt Modern multi-hue glow behind the top of the page only. Purely
+   decorative: sits behind the header/content, never intercepts taps, and
+   never washes over cards or the bottom nav (those keep solid surfaces). */
+.lib-ambient-wash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 320px;
+  background: var(--grad-ambient);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* =============================================
@@ -17,23 +40,24 @@
    ============================================= */
 
 .lib-header {
-  padding: var(--spacing-xl) var(--page-padding) var(--spacing-md);
-  padding-top: calc(var(--spacing-xl) + env(safe-area-inset-top, 0px));
+  position: relative;
+  z-index: 1;
+  padding: 14px var(--page-padding) 14px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
   background:
     radial-gradient(120% 100% at 0% 0%, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0) 60%),
     linear-gradient(180deg, #1a2240 0%, var(--bg-surface) 100%);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
 }
 
 .lib-title {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
   margin: 0;
 }
@@ -44,25 +68,26 @@
   position: relative;
   display: flex;
   align-items: center;
+  margin: 10px 0 12px;
 }
 
 .lib-search-icon {
   position: absolute;
-  left: 14px;
+  left: 11px;
   color: var(--text-tertiary);
   pointer-events: none;
 }
 
 .lib-search-input {
   width: 100%;
-  height: 44px;
-  padding: 0 14px 0 40px;
+  height: 38px;
+  padding: 9px 12px 9px 34px;
   background: var(--bg-surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 400;
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
@@ -85,12 +110,26 @@
   gap: 10px;
 }
 
-.lib-chips {
+/* Positioning context for the right-edge fade overlay below — sizes
+   itself to the chips' own flex slot so the fade always sits exactly
+   at the scroll area's visible right edge, never over the sort button. */
+.lib-chips-scroll {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.lib-chips {
   display: flex;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 7px;
   overflow-x: auto;
+  overflow-y: hidden;
+  /* Native iOS momentum scrolling — without this the drag gesture can get
+     captured by the outer `.main-content` vertical scroller (which owns
+     its own -webkit-overflow-scrolling:touch) instead of scrolling this
+     nested horizontal row, especially inside the Capacitor WKWebView. */
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
   margin-left: calc(var(--page-padding) * -1);
@@ -101,6 +140,19 @@
   display: none;
 }
 
+/* Right-edge fade mask — a ~24px gradient into the header's own
+   background so a cut-off chip reads as "scrollable", not clipped.
+   Purely decorative: never intercepts taps. */
+.lib-chip-row-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to right, transparent, var(--bg-surface));
+  pointer-events: none;
+}
+
 /* Icon-only sort trigger — opens the Sort By action sheet. Sits fixed
    at the end of the chip row (outside the chips' own scroll area). */
 .lib-sort-icon-btn {
@@ -108,8 +160,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   background: var(--bg-surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
@@ -134,15 +186,17 @@
 }
 
 .lib-chip {
-  flex-shrink: 0;
+  /* Mandatory: without a fixed 0 0 auto flex, chips shrink to fit the
+     available width instead of overflowing — the row never becomes
+     scrollable and text gets clipped mid-word at the right edge. */
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  padding: 7px 12px;
   background: var(--bg-surface-2);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   color: var(--text-secondary);
   font-family: var(--font-body);
   cursor: pointer;
@@ -154,20 +208,36 @@
 }
 
 .lib-chip-label {
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 600;
 }
 
 .lib-chip-count {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  opacity: 0.6;
   color: var(--text-tertiary);
 }
 
+/* Active-state fill matches the approved blue → green CTA gradient used
+   by GameDetail's "Add a Review" button (.gd-action-pair-btn--review,
+   background: var(--grad-cta)) instead of the plain cobalt brand
+   gradient, so the chip reads as the same CTA color as the rest of the
+   app rather than a solid cobalt fill. */
 .lib-chip--active {
-  background: var(--grad-brand);
+  background: var(--grad-cta);
+  /* Kept as a transparent 1px border (not `border: none`) — .lib-chip
+     already reserves 1px of border-box for the border on every chip;
+     dropping the border width here would shrink the active chip by
+     ~2px relative to its inactive siblings. Visually identical to no
+     border since the color is fully transparent. */
   border-color: transparent;
-  color: var(--color-on-accent);
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(59, 130, 246, 0.8);
+}
+
+.lib-chip--active .lib-chip-label {
+  color: #fff;
 }
 
 .lib-chip--active .lib-chip-count {
@@ -191,6 +261,8 @@
    ============================================= */
 
 .lib-section {
+  position: relative;
+  z-index: 1;
   padding: 0 var(--page-padding);
 }
 
@@ -199,18 +271,20 @@
 }
 
 .lib-section--lists {
-  margin-top: 28px;
+  /* Top spacing now owned by .lib-section-label's own margin-top (22px)
+     below, so this no longer adds an extra offset on top of it. */
+  margin-top: 0;
 }
 
 .lib-section-label {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin: 0 0 12px 0;
+  margin: 22px 0 11px;
   padding: 0;
 }
 
@@ -229,10 +303,29 @@
   margin: 0;
 }
 
+/* Empty-state density — scoped to this section only (EmptyState is a
+   shared component used elsewhere at its default, more spacious sizing).
+   Tightens the block so it stays within ~240px tall. */
+.lib-section--grid .es-root {
+  padding: 24px 20px;
+  gap: 12px;
+}
+
+/* "Find games" CTA on the main empty state — Cobalt Modern gradient fill,
+   sized down to match the tightened empty-state block above. */
+.lib-section--grid .es-cta {
+  background: var(--grad-cta);
+  border: none;
+  color: #ffffff;
+  height: auto;
+  padding: 11px 24px;
+  font-size: 13.5px;
+}
+
 .lib-poster-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .lib-poster-card {
@@ -287,15 +380,14 @@
 
 .lib-poster-title {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.3;
   color: var(--text-secondary);
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lib-loadmore {
@@ -344,7 +436,7 @@
 .lib-list-tile {
   position: relative;
   flex-shrink: 0;
-  width: 132px;
+  width: 136px;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -393,7 +485,7 @@
 .lib-list-tile-mosaic {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 94px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
@@ -403,16 +495,39 @@
   overflow: hidden;
 }
 
+/* No blank quadrants — the grid shape adapts to how many covers are
+   actually available instead of always assuming 4. */
+
+/* 1 game — single full-bleed cover, no split at all */
+.lib-list-tile-mosaic--count-1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* 2 games — two equal halves side by side */
+.lib-list-tile-mosaic--count-2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* 3 games — one full-height cover left, two stacked right */
+.lib-list-tile-mosaic--count-3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.lib-list-tile-mosaic--count-3 .lib-list-tile-mosaic-cell:first-child {
+  grid-row: 1 / span 2;
+}
+
+/* 4+ games use the base 2x2 rule above — no override needed. */
+
 .lib-list-tile-mosaic-cell {
   position: relative;
   width: 100%;
   height: 100%;
   background: var(--bg-surface-2);
   overflow: hidden;
-}
-
-.lib-list-tile-mosaic-cell--empty {
-  background: rgba(148, 168, 212, 0.04);
 }
 
 .lib-list-tile-mosaic-img {
@@ -454,7 +569,7 @@
 
 .lib-list-tile-name {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
@@ -466,42 +581,57 @@
 
 .lib-list-tile-count {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.3;
   color: var(--text-secondary);
   margin: 0;
 }
 
-/* "New list" tile — dashed border, centered plus + label. */
-.lib-list-tile--new {
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1.5px dashed var(--border-strong);
-  background: rgba(148, 168, 212, 0.03);
-  min-height: 168px;
-}
-
-.lib-list-tile-new-icon {
+/* Floating "New list" action button — replaces the old dashed rail tile.
+   Fixed bottom-right, floats above the bottom nav. Opens the existing
+   CreateListModal flow via the existing handleCreateList handler.
+   Rendered via a portal straight to <body> (see Library.jsx) so this
+   `position: fixed` is genuinely viewport-anchored instead of pinned to
+   the scrolling page. z-index sits above the bottom nav (1000) so the
+   FAB + nav are the two topmost fixed elements on the page — nothing in
+   the page content can ever paint over either of them. */
+.lib-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--bottom-nav-height, 58px) + 18px + env(safe-area-inset-bottom, 0px));
+  z-index: 1005;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  border: none;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.12);
-  color: var(--accent);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1;
+  /* Approved blue → green CTA gradient — same token GameDetail's
+     "Add a Review" button uses (.gd-action-pair-btn--review,
+     background: var(--grad-cta)) — instead of the plain cobalt brand
+     gradient, so the FAB reads as the same CTA color as the rest of
+     the app rather than a solid cobalt fill. */
+  background: var(--grad-cta);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 12px 28px -10px rgba(59, 130, 246, 0.9);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.lib-list-tile-new-label {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
+/* Explicitly carry #fff down to the "+" icon SVG so WebKit / Capacitor
+   WKWebView can't fall back to ButtonText grey (same pattern used in
+   GameDetail.css for the review / journal action buttons). */
+.lib-fab svg {
+  color: #ffffff;
+  stroke: currentColor;
+}
+
+@media (min-width: 769px) {
+  .lib-fab {
+    display: none;
+  }
 }
 
 /* Skeleton loading tiles */
@@ -511,7 +641,7 @@
 
 .lib-list-tile-mosaic-skeleton {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 94px;
   border-radius: calc(var(--radius-lg) - 4px);
 }
 

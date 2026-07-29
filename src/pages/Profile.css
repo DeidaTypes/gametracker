@@ -1090,7 +1090,7 @@
   font-weight: var(--font-weight-semibold);
   color: var(--accent);
   background: rgba(59, 130, 246, 0.1);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   padding: 2px 8px;
   width: fit-content;
 }
@@ -1848,7 +1848,7 @@ img.profile-list-row__author-avatar {
   font-weight: 500;
   color: var(--accent-copper, #d4955a);
   background: color-mix(in srgb, var(--accent-copper, #d4955a) 10%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 2px 7px;
 }
 
@@ -1860,7 +1860,7 @@ img.profile-list-row__author-avatar {
   font-weight: 500;
   color: var(--color-text-tertiary);
   background: rgba(148, 168, 212, 0.08);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 2px 7px;
 }
 
@@ -1917,7 +1917,7 @@ img.profile-list-row__author-avatar {
   text-transform: uppercase;
   line-height: 1;
   padding: 3px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: rgba(148, 168, 212, 0.10);
   border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
   color: var(--text-secondary, #94a8d4);
@@ -1931,7 +1931,7 @@ img.profile-list-row__author-avatar {
   text-transform: uppercase;
   line-height: 1;
   padding: 3px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   color: var(--color-bg-primary, #0a0f25);
   background: var(--color-brand-primary, #c9873a);
 }

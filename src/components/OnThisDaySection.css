@@ -117,7 +117,7 @@
   text-transform: uppercase;
   color: var(--color-bg, #0a0e24);
   background: var(--accent-copper, #d4955a);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   padding: 1px 5px;
 }
 
@@ -170,7 +170,7 @@
   font-weight: 500;
   color: var(--accent-copper, #d4955a);
   background: color-mix(in srgb, var(--accent-copper, #d4955a) 10%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 2px 7px;
 }
 
@@ -182,7 +182,7 @@
   font-weight: 500;
   color: var(--color-text-tertiary);
   background: rgba(148, 168, 212, 0.08);
-  border-radius: 10px;
+  border-radius: var(--radius-chip);
   padding: 2px 7px;
 }
 

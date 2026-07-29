@@ -22,6 +22,7 @@ import { formatActivityDate } from '../utils/formatActivityDate'
 import DmShareSheet from './DmShareSheet'
 import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
+import { getSizedImageUrl } from '../services/imageUtils'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
@@ -136,18 +137,24 @@ function ReviewCard({
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
 
+  // Sized once at 64px — the cover header's actual on-screen footprint
+  // (--cover-thumb-size) — so the <img> below and getDominantColor
+  // share the exact same small IGDB URL: one download total, no
+  // separate full-size fetch just to sample a swatch.
+  const coverThumbUrl = getSizedImageUrl(review.game?.coverUrl, 64)
+
   // Pull the dominant swatch for the cover-header gradient. Cached at the
   // service layer so timeline scroll doesn't re-extract the same image.
   useEffect(() => {
     let cancelled = false
-    if (!review.game?.coverUrl) return undefined
-    getDominantColor(review.game.coverUrl).then((c) => {
+    if (!coverThumbUrl) return undefined
+    getDominantColor(coverThumbUrl).then((c) => {
       if (!cancelled && c) setColor(c)
     })
     return () => {
       cancelled = true
     }
-  }, [review.game?.coverUrl])
+  }, [coverThumbUrl])
 
   // Detect whether the body actually overflows the clamp so we only
   // render "Read more..." when there's hidden content.
@@ -427,7 +434,7 @@ function ReviewCard({
           aria-label={`View ${review.game.name}`}
         >
           <img
-            src={review.game.coverUrl}
+            src={coverThumbUrl}
             className="review-card__cover-thumb"
             alt=""
             loading="lazy"

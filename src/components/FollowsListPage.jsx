@@ -19,6 +19,7 @@ import { showToast } from './Toast'
 import EmptyState from './EmptyState'
 import FindFriendsModal from './FindFriendsModal'
 import PulseDot from './PulseDot'
+import WindowedListItem from './WindowedListItem'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import '../pages/UserFollows.css'
 
@@ -466,21 +467,22 @@ function FollowsListPage({ mode }) {
         ) : (
           <>
             {rows.map((row) => (
-              <FollowRow
-                key={row.id}
-                row={row}
-                currentUserId={currentUserId}
-                following={!!followingMap[row.id]}
-                live={liveSet.has(row.id)}
-                onToggle={() => toggleFollow(row.id)}
-                onTap={() => {
-                  if (row.username) {
-                    navigate(`/user/${encodeURIComponent(row.username)}`)
-                  } else if (row.id) {
-                    navigate(`/user/id/${encodeURIComponent(row.id)}`)
-                  }
-                }}
-              />
+              <WindowedListItem key={row.id}>
+                <FollowRow
+                  row={row}
+                  currentUserId={currentUserId}
+                  following={!!followingMap[row.id]}
+                  live={liveSet.has(row.id)}
+                  onToggle={() => toggleFollow(row.id)}
+                  onTap={() => {
+                    if (row.username) {
+                      navigate(`/user/${encodeURIComponent(row.username)}`)
+                    } else if (row.id) {
+                      navigate(`/user/id/${encodeURIComponent(row.id)}`)
+                    }
+                  }}
+                />
+              </WindowedListItem>
             ))}
             {!endReached && (
               <div

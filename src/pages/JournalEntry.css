@@ -280,7 +280,7 @@ body[data-reduce-motion='true'] .je-edit-btn {
   color: var(--accent-copper, #d4955a);
   background: color-mix(in srgb, var(--accent-copper, #d4955a) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-copper, #d4955a) 30%, transparent);
-  border-radius: 20px;
+  border-radius: var(--radius-chip);
   padding: 3px 10px 3px 8px;
   line-height: 1.4;
 }
@@ -299,7 +299,7 @@ body[data-reduce-motion='true'] .je-edit-btn {
   color: var(--color-text-secondary);
   background: rgba(148, 168, 212, 0.08);
   border: 1px solid rgba(148, 168, 212, 0.15);
-  border-radius: 20px;
+  border-radius: var(--radius-chip);
   padding: 3px 10px;
   line-height: 1.4;
 }
@@ -313,7 +313,7 @@ body[data-reduce-motion='true'] .je-edit-btn {
   color: var(--status-warning, #f59e0b);
   background: color-mix(in srgb, var(--status-warning, #f59e0b) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--status-warning, #f59e0b) 35%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-chip);
   padding: 2px 7px;
   line-height: 1.4;
 }

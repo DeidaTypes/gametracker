@@ -317,7 +317,7 @@
 .bsc-profile__genre-pill {
   padding: 14px 32px;
   border: 1px solid rgba(59,130,246,0.3);
-  border-radius: 40px;
+  border-radius: var(--radius-chip);
   font-size: 28px;
   font-weight: 500;
   color: #94a8d4;

@@ -1,9 +1,15 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { House, Compass, BookCopy, User } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import './BottomNav.css'
+
+// Fired by ListDetail's long-press drag-to-reorder interaction so this
+// globally-mounted nav (rendered once in App.jsx, outside any page's
+// component tree) can slide out of the way while a grid item is being
+// dragged, and slide back once the drag session ends. detail: { active }.
+export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
 
 /**
  * Cobalt-Modern floating-pill bottom navigation.
@@ -81,6 +87,20 @@ function BottomNav() {
   const location = useLocation()
   const reduced = useReducedMotion()
   const { unreadCount } = useUnreadMessages()
+  const [dragReorderActive, setDragReorderActive] = useState(false)
+
+  useEffect(() => {
+    const handler = (e) => setDragReorderActive(!!e.detail?.active)
+    window.addEventListener(LIST_REORDER_DRAG_EVENT, handler)
+    return () => window.removeEventListener(LIST_REORDER_DRAG_EVENT, handler)
+  }, [])
+
+  // Safety net — always show the nav again on route change, in case a
+  // drag session was ever interrupted in a way that skipped its own
+  // cleanup (e.g. the page unmounted mid-drag).
+  useEffect(() => {
+    setDragReorderActive(false)
+  }, [location.pathname])
 
   // Hide on onboarding (App.jsx already guards auth/login screens).
   if (location.pathname === '/onboarding') return null
@@ -91,7 +111,11 @@ function BottomNav() {
     : { type: 'spring', stiffness: 380, damping: 30 }
 
   return (
-    <nav className="bottom-nav" aria-label="Primary">
+    <nav
+      className={`bottom-nav${dragReorderActive ? ' bottom-nav--hidden' : ''}`}
+      aria-label="Primary"
+      aria-hidden={dragReorderActive || undefined}
+    >
       {NAV_ITEMS.map(({ id, to, label, Icon, isActive }) => {
         const active = isActive(location.pathname)
         // Profile tab carries the unread-DM dot until messages get their

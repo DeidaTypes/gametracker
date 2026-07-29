@@ -58,7 +58,7 @@
   top: 8px;
   left: 8px;
   padding: 3px 8px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-chip);
   background: rgba(12, 18, 33, 0.72);
   backdrop-filter: blur(4px);
   color: var(--accent);

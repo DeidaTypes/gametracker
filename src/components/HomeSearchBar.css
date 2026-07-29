@@ -118,7 +118,7 @@
 .home-search-genre-pill {
   padding: 8px 14px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-chip);
   background: var(--bg-elevated, var(--bg-surface));
   color: var(--text-primary);
   font-family: var(--font-body);

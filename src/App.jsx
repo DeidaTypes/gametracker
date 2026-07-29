@@ -732,6 +732,19 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Pulse feed broadening — same threaded comments page, keyed
+                to a non-review activity_events row (logged session,
+                finished/started a game, added to backlog/a list). */}
+            <Route
+              path="/activity/:activityId/comments"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ReviewComments /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             {/* Sprint 7 P1 — Canonical review detail + CenteredModal composer. */}
             <Route
               path="/review/:id"
