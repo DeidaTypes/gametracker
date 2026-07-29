@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useSession } from '../contexts/SessionContext'
@@ -7,6 +7,7 @@ import {
   getSettings,
 } from '../services/userSettingsService'
 import { APP_RESUMED_EVENT } from './useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 /**
  * Pulse — usePresence()
@@ -29,6 +30,21 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  * scales with follow count) and means a follow/unfollow doesn't
  * require leaving and rejoining a channel.
  *
+ * Singleton channel
+ * ------------------
+ * This hook is mounted from five separate places (NudgesProvider,
+ * CoopSignalCard, Profile, FindFriendsModal, FollowsListPage). They're
+ * all the same signed-in user, so joining the channel once per mount
+ * used to create up to five duplicate subscriptions to the exact same
+ * topic — wasted sockets, and `supabase.realtime.channels.find(...)`
+ * lookups elsewhere had no way to know which duplicate they'd get back.
+ *
+ * `presenceStore` below is a module-level, ref-counted singleton: the
+ * first mount joins the channel, every subsequent mount just registers
+ * as a listener on the shared state, and the channel is only left when
+ * the last mount unmounts (ref count hits zero). There is at most one
+ * `pulse:presence:v1` subscription for the whole app at any time.
+ *
  * Privacy / opt-in
  * ----------------
  * The hook is a no-op unless the local presence opt-in setting is
@@ -47,11 +63,11 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  *
  * Resume handling
  * ---------------
- * On `app:resumed` (fired by appLifecycle on iOS / the visibilitychange
- * fallback on web) we explicitly re-track our current state — the
+ * On `app:resumed` we explicitly re-track our current state — the
  * `track()` payload is what other members read, so the rejoin must
  * restate it or the channel will show us as having joined without a
- * game.
+ * game. CHANNEL_ERROR / TIMED_OUT / CLOSED are additionally handled by
+ * the shared subscribeWithRecovery() backoff, independent of resume.
  *
  * @returns {{
  *   enabled: boolean,            // is presence opt-in on
@@ -66,20 +82,152 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  */
 const CHANNEL = 'pulse:presence:v1'
 
+/**
+ * Module-level singleton — one channel, ref-counted across every mounted
+ * usePresence() consumer. Nothing here is React state; consumers read it
+ * via useSyncExternalStore so each still re-renders on its own schedule.
+ */
+const presenceStore = {
+  refCount: 0,
+  userId: null,
+  channel: null,
+  disposeSubscribe: null,
+  presenceMap: /** @type {Record<string, any>} */ ({}),
+  latestPayload: null,
+  lastTrackedKey: null,
+  listeners: /** @type {Set<() => void>} */ (new Set()),
+}
+
+function notifyPresenceListeners() {
+  for (const listener of presenceStore.listeners) listener()
+}
+
+function subscribeToPresenceStore(listener) {
+  presenceStore.listeners.add(listener)
+  return () => presenceStore.listeners.delete(listener)
+}
+
+function getPresenceSnapshot() {
+  return presenceStore.presenceMap
+}
+
+function refreshPresenceMap() {
+  const state = presenceStore.channel?.presenceState() || {}
+  // Each value is an array of metas; we only care about the most
+  // recent one per user id (same key collapses to one entry).
+  const flat = {}
+  for (const [key, metas] of Object.entries(state)) {
+    if (!Array.isArray(metas) || metas.length === 0) continue
+    flat[key] = metas[metas.length - 1]
+  }
+  presenceStore.presenceMap = flat
+  notifyPresenceListeners()
+}
+
+function trackLatestPayload() {
+  const channel = presenceStore.channel
+  const payload = presenceStore.latestPayload
+  if (!channel || !payload) return
+  const key = JSON.stringify(payload)
+  if (key === presenceStore.lastTrackedKey) return
+  presenceStore.lastTrackedKey = key
+  channel.track(payload).catch(() => {})
+}
+
+function teardownPresenceChannel() {
+  presenceStore.disposeSubscribe?.()
+  presenceStore.disposeSubscribe = null
+  if (presenceStore.channel) {
+    try {
+      presenceStore.channel.untrack().catch(() => {})
+    } catch {
+      // best effort
+    }
+    supabase.removeChannel(presenceStore.channel)
+  }
+  presenceStore.channel = null
+  presenceStore.userId = null
+  presenceStore.presenceMap = {}
+  presenceStore.lastTrackedKey = null
+  notifyPresenceListeners()
+}
+
+function ensurePresenceChannel(userId) {
+  if (presenceStore.channel && presenceStore.userId === userId) return
+  // Identity changed underneath an open channel (rare — account switch) —
+  // drop the old one before joining as the new user.
+  if (presenceStore.channel) teardownPresenceChannel()
+
+  presenceStore.userId = userId
+  const channel = supabase.channel(CHANNEL, {
+    config: { presence: { key: userId } },
+  })
+
+  channel
+    .on('presence', { event: 'sync' }, refreshPresenceMap)
+    .on('presence', { event: 'join' }, refreshPresenceMap)
+    .on('presence', { event: 'leave' }, refreshPresenceMap)
+
+  presenceStore.disposeSubscribe = subscribeWithRecovery(channel, (status) => {
+    if (status === 'SUBSCRIBED') trackLatestPayload()
+  })
+  presenceStore.channel = channel
+}
+
+/** Called by every mounted hook whenever its inputs change; idempotent. */
+function retrackPresence(payload) {
+  presenceStore.latestPayload = payload
+  trackLatestPayload()
+}
+
+function acquirePresence(userId, payload) {
+  presenceStore.refCount += 1
+  ensurePresenceChannel(userId)
+  retrackPresence(payload)
+}
+
+function releasePresence() {
+  presenceStore.refCount = Math.max(0, presenceStore.refCount - 1)
+  if (presenceStore.refCount === 0) teardownPresenceChannel()
+}
+
+// Module-level (not per-mount) resume handler — restates the join payload
+// so other members don't see us as present-but-gameless after a resume.
+// Registered once for the lifetime of the module, matching the channel's
+// own singleton lifetime.
+if (typeof window !== 'undefined') {
+  window.addEventListener(APP_RESUMED_EVENT, () => {
+    if (!presenceStore.channel || !presenceStore.latestPayload) return
+    // Resume may have handed us a dead channel object; re-track
+    // unconditionally rather than relying on the lastTrackedKey dedupe.
+    presenceStore.lastTrackedKey = null
+    trackLatestPayload()
+  })
+}
+
+function buildPresencePayload({ userId, profile, session }) {
+  return {
+    user_id: userId,
+    display_name: profile?.display_name || profile?.username || null,
+    game_id: session?.igdb_game_id != null ? Number(session.igdb_game_id) : null,
+    game_title: session?.game_title ?? null,
+    game_image: session?.game_image ?? null,
+    started_at: session?.started_at ?? null,
+    // online_at lets the server-side prune stale ghosts.
+    online_at: new Date().toISOString(),
+  }
+}
+
 export function usePresence() {
   const { user, profile } = useAuth()
   const { session } = useSession()
   const [enabled, setEnabled] = useState(() => !!getSettings().presenceOptIn)
   const [followeeIds, setFolloweeIds] = useState(/** @type {Set<string>} */ (new Set()))
-  const [presenceMap, setPresenceMap] = useState(/** @type {Record<string, any>} */ ({}))
 
-  // Track the latest session payload in a ref so the channel listener
-  // can always read the current game without re-creating the channel
-  // every time the session changes.
-  const sessionRef = useRef(session)
-  useEffect(() => {
-    sessionRef.current = session
-  }, [session])
+  const presenceMap = useSyncExternalStore(
+    subscribeToPresenceStore,
+    getPresenceSnapshot
+  )
 
   // ── Sync `enabled` with the user settings event bus ─────────────────
   useEffect(() => {
@@ -127,96 +275,32 @@ export function usePresence() {
     }
   }, [user?.id])
 
-  // ── Join the presence channel ───────────────────────────────────────
+  // ── Acquire / release the shared presence channel ───────────────────
   useEffect(() => {
-    if (!enabled || !user?.id) {
-      setPresenceMap({})
-      return undefined
-    }
-
-    function buildPayload() {
-      const active = sessionRef.current
-      return {
-        user_id: user.id,
-        display_name: profile?.display_name || profile?.username || null,
-        game_id: active?.igdb_game_id != null ? Number(active.igdb_game_id) : null,
-        game_title: active?.game_title ?? null,
-        game_image: active?.game_image ?? null,
-        started_at: active?.started_at ?? null,
-        // online_at lets the server-side prune stale ghosts.
-        online_at: new Date().toISOString(),
-      }
-    }
-
-    const channel = supabase.channel(CHANNEL, {
-      config: { presence: { key: user.id } },
-    })
-
-    function refreshState() {
-      const state = channel.presenceState() || {}
-      // Each value is an array of metas; we only care about the most
-      // recent one per user id (same key collapses to one entry).
-      const flat = {}
-      for (const [key, metas] of Object.entries(state)) {
-        if (!Array.isArray(metas) || metas.length === 0) continue
-        flat[key] = metas[metas.length - 1]
-      }
-      setPresenceMap(flat)
-    }
-
-    channel
-      .on('presence', { event: 'sync' }, refreshState)
-      .on('presence', { event: 'join' }, refreshState)
-      .on('presence', { event: 'leave' }, refreshState)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          channel.track(buildPayload()).catch(() => {})
-        }
-      })
-
-    function reTrack() {
-      // Called when our own session changes or the app resumes — the
-      // channel itself is fine, we just need to publish a fresh payload.
-      channel.track(buildPayload()).catch(() => {})
-    }
-
-    window.addEventListener(APP_RESUMED_EVENT, reTrack)
-
-    return () => {
-      window.removeEventListener(APP_RESUMED_EVENT, reTrack)
-      try {
-        channel.untrack().catch(() => {})
-      } catch {
-        // best effort
-      }
-      supabase.removeChannel(channel)
-    }
-    // We intentionally rebuild the channel only when opt-in or user
-    // changes. Session changes are handled via sessionRef + the
-    // separate `reTrack on session change` effect below.
+    if (!enabled || !user?.id) return undefined
+    acquirePresence(user.id, buildPresencePayload({ userId: user.id, profile, session }))
+    return () => releasePresence()
+    // Only join/leave on opt-in or identity change — payload updates are
+    // handled by the retrack effect below without touching ref counting.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, user?.id])
 
   // ── Re-track when the active session or profile changes ─────────────
   useEffect(() => {
     if (!enabled || !user?.id) return undefined
-    // Find the live channel by name. Cheaper than rebuilding the
-    // subscription on every session tick.
-    const channel = supabase.realtime.channels?.find(
-      (c) => c.topic === `realtime:${CHANNEL}` || c.topic === CHANNEL
-    )
-    if (!channel) return undefined
-    const payload = {
-      user_id: user.id,
-      display_name: profile?.display_name || profile?.username || null,
-      game_id: session?.igdb_game_id != null ? Number(session.igdb_game_id) : null,
-      game_title: session?.game_title ?? null,
-      game_image: session?.game_image ?? null,
-      started_at: session?.started_at ?? null,
-      online_at: new Date().toISOString(),
-    }
-    channel.track(payload).catch(() => {})
+    retrackPresence(buildPresencePayload({ userId: user.id, profile, session }))
     return undefined
-  }, [enabled, user?.id, profile?.display_name, session?.id, session?.igdb_game_id])
+  }, [
+    enabled,
+    user?.id,
+    profile?.display_name,
+    profile?.username,
+    session?.id,
+    session?.igdb_game_id,
+    session?.game_title,
+    session?.game_image,
+    session?.started_at,
+  ])
 
   // ── Derive the surfaced list ────────────────────────────────────────
   const playingNow = useMemo(() => {

@@ -13,6 +13,7 @@ import {
   MESSAGES_CHANGED_EVENT,
 } from '../services/messageService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 const UnreadMessagesContext = createContext({ unreadCount: 0, refresh: () => {} })
 
@@ -106,9 +107,11 @@ export function UnreadMessagesProvider({ children }) {
         },
         () => refresh()
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
   }, [userId, refresh, resumeKey])

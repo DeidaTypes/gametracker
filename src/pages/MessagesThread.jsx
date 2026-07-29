@@ -20,6 +20,7 @@ import { getUserByUsername, getUserById } from '../services/userService'
 import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
 import { useReactions } from '../hooks/useReactions'
@@ -147,6 +148,11 @@ function MessagesThread() {
   // Report sheet — holds the message being reported (incoming only).
   const [reportTarget, setReportTarget] = useState(null)
 
+  // Bumped on app resume so the realtime effect below tears down the dead
+  // (post-suspend) channel and re-subscribes onto a fresh socket — same
+  // pattern as UnreadMessagesContext / NotificationsContext.
+  const [resumeKey, setResumeKey] = useState(0)
+
   const partnerId = partner?.id || null
   const currentUserId = user?.id || null
 
@@ -213,12 +219,18 @@ function MessagesThread() {
 
   useEffect(() => {
     if (!partnerId) return undefined
-    const onResume = () => loadThread()
+    // Resume also bumps resumeKey (the realtime effect below depends on
+    // it) so the dead post-suspend channel is torn down and rebuilt rather
+    // than left relying on a naive re-subscribe of the same instance.
+    const onResume = () => {
+      setResumeKey((k) => k + 1)
+      loadThread()
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
-    window.addEventListener(MESSAGES_CHANGED_EVENT, onResume)
+    window.addEventListener(MESSAGES_CHANGED_EVENT, loadThread)
     return () => {
       window.removeEventListener(APP_RESUMED_EVENT, onResume)
-      window.removeEventListener(MESSAGES_CHANGED_EVENT, onResume)
+      window.removeEventListener(MESSAGES_CHANGED_EVENT, loadThread)
     }
   }, [partnerId, loadThread])
 
@@ -262,7 +274,8 @@ function MessagesThread() {
           await appendRealtimeRow(row)
         }
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     async function appendRealtimeRow(row) {
       // The realtime payload doesn't include the joined sender row,
@@ -295,9 +308,19 @@ function MessagesThread() {
     }
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
-  }, [partnerId, currentUserId, user])
+    // Narrowed to currentUserId (user?.id) rather than the whole `user`
+    // object — `user` gets a new reference on every auth token refresh,
+    // which used to tear down and rebuild this channel on every refresh
+    // even though nothing about the subscription actually needs to
+    // change. appendRealtimeRow reads `user?.user_metadata` from the
+    // closure captured when the effect last ran (i.e. when currentUserId
+    // last changed), which is fine since display name/avatar rarely
+    // change mid-thread.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerId, currentUserId, resumeKey])
 
   /* ── Auto-scroll to bottom when messages append ──────────── */
 

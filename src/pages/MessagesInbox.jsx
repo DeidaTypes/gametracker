@@ -9,6 +9,7 @@ import { searchUsers } from '../services/userService'
 import { useDebounce } from '../hooks/useDebounce'
 import { generateDefaultAvatar } from '../services/profileService'
 import { supabase } from '../services/supabase'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import EmptyState from '../components/EmptyState'
 import CenteredModal from '../components/CenteredModal'
 import './MessagesInbox.css'
@@ -61,6 +62,10 @@ function MessagesInbox() {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [composeOpen, setComposeOpen] = useState(false)
+  // Bumped on app resume so the realtime effect below tears down the dead
+  // (post-suspend) channel and re-subscribes onto a fresh socket — same
+  // pattern as UnreadMessagesContext / NotificationsContext.
+  const [resumeKey, setResumeKey] = useState(0)
 
   const reload = useCallback(async () => {
     try {
@@ -126,22 +131,30 @@ function MessagesInbox() {
         // re-sort if necessary when the realtime echo arrives).
         () => reload()
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
-  }, [user?.id, reload])
+  }, [user?.id, reload, resumeKey])
 
-  /* ── Refetch on iOS resume + after mark-as-read in thread ─── */
+  /* ── Refetch on iOS resume + after mark-as-read in thread ───
+     Resume also bumps resumeKey (the realtime effect above depends on it)
+     so the dead post-suspend channel is torn down and rebuilt rather than
+     left relying on a naive re-subscribe of the same instance. */
 
   useEffect(() => {
-    const onRefresh = () => reload()
-    window.addEventListener(APP_RESUMED_EVENT, onRefresh)
-    window.addEventListener(MESSAGES_CHANGED_EVENT, onRefresh)
+    const onResume = () => {
+      setResumeKey((k) => k + 1)
+      reload()
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    window.addEventListener(MESSAGES_CHANGED_EVENT, reload)
     return () => {
-      window.removeEventListener(APP_RESUMED_EVENT, onRefresh)
-      window.removeEventListener(MESSAGES_CHANGED_EVENT, onRefresh)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+      window.removeEventListener(MESSAGES_CHANGED_EVENT, reload)
     }
   }, [reload])
 

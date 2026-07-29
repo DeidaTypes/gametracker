@@ -6,6 +6,7 @@ import {
   getCircleActivityEvents,
 } from '../services/activityEventsService'
 import { APP_RESUMED_EVENT } from './useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 /**
  * Pulse — useCircleActivity()
@@ -56,6 +57,10 @@ export function useCircleActivity({ limit = 50, pageSize } = {}) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState(null)
+  // Bumped on app resume so the realtime effect below tears down the dead
+  // (post-suspend) channel and re-subscribes onto a fresh socket — same
+  // pattern as UnreadMessagesContext / NotificationsContext.
+  const [resumeKey, setResumeKey] = useState(0)
 
   // Track the follow-graph in a ref so the realtime listener can
   // synchronously filter incoming INSERTs without re-creating the
@@ -160,6 +165,7 @@ export function useCircleActivity({ limit = 50, pageSize } = {}) {
 
   useEffect(() => {
     function onResume() {
+      setResumeKey((k) => k + 1)
       refresh()
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
@@ -214,12 +220,14 @@ export function useCircleActivity({ limit = 50, pageSize } = {}) {
           })
         }
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
-  }, [user?.id])
+  }, [user?.id, resumeKey])
 
   // ── Local optimistic insert for the actor's own events ──────────────
   useEffect(() => {

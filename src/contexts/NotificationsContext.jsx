@@ -14,6 +14,7 @@ import {
   markAllNotificationsRead,
 } from '../services/notificationService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 const NotificationsContext = createContext({
   notifications: [],
@@ -102,9 +103,11 @@ export function NotificationsProvider({ children }) {
           refresh()
         }
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
   }, [userId, refresh, resumeKey])

@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { bumpCommentsCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -565,12 +566,19 @@ function ReviewDetail() {
   // ── Refs ────────────────────────────────────────────────────
   /** The textarea inside the inline composer. */
   const inputRef = useRef(null)
-  /** The scrollable thread container. */
-  const scrollRef = useRef(null)
+  /** Sentinel at the bottom of the thread — scrolled into view instead of
+   * setting scrollTop directly, since `.rd-scroll` is no longer its own
+   * scroll container (`.main-content` is; see ReviewDetail.css). */
+  const threadBottomRef = useRef(null)
 
   // ── Report sheet ────────────────────────────────────────────
   const [reportTarget, setReportTarget] = useState(null)
   const [reportReview, setReportReview] = useState(false)
+
+  // Bumped on app resume so the realtime effect below tears down the dead
+  // (post-suspend) channel and re-subscribes onto a fresh socket — same
+  // pattern as UnreadMessagesContext / NotificationsContext.
+  const [resumeKey, setResumeKey] = useState(0)
 
   const isAuthed = !!user
 
@@ -631,7 +639,10 @@ function ReviewDetail() {
      while the app was suspended anyway — so edits, deletes, and likes that
      happened in the meantime are only picked up by refetching here. */
   useEffect(() => {
-    const onResume = () => loadThread({ silent: true })
+    const onResume = () => {
+      setResumeKey((k) => k + 1)
+      loadThread({ silent: true })
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [loadThread])
@@ -677,10 +688,14 @@ function ReviewDetail() {
           })
         }
       )
-      .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [reviewId])
+    const disposeSubscribe = subscribeWithRecovery(channel)
+
+    return () => {
+      disposeSubscribe()
+      supabase.removeChannel(channel)
+    }
+  }, [reviewId, resumeKey])
 
   /* ── Auto-grow textarea ───────────────────────────────────── */
 
@@ -695,8 +710,7 @@ function ReviewDetail() {
 
   const scrollToBottom = useCallback(() => {
     window.requestAnimationFrame(() => {
-      const el = scrollRef.current
-      if (el) el.scrollTop = el.scrollHeight
+      threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     })
   }, [])
 
@@ -944,8 +958,8 @@ function ReviewDetail() {
         </button>
       </header>
 
-      {/* ── Scrollable thread ────────────────────── */}
-      <div className="rd-scroll" ref={scrollRef}>
+      {/* ── Thread body ──────────────────────────── */}
+      <div className="rd-scroll">
         {/* Review block */}
         <div className="rd-review-wrap">
           {reviewLoading ? (
@@ -1026,6 +1040,10 @@ function ReviewDetail() {
               />
             ))
           )}
+          {/* Sentinel: scrolled into view after posting or when the
+              keyboard opens, so the newest comment stays visible above
+              the composer (see scrollToBottom / handleComposerFocus). */}
+          <div ref={threadBottomRef} aria-hidden="true" />
         </section>
       </div>
 

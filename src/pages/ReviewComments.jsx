@@ -9,20 +9,25 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LuCheck, LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import ReviewCard from '../components/ReviewCard'
+import HomeReviewCard from '../components/home/HomeReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { getReviewById } from '../services/reviewService'
+import { getActivityEventForCard } from '../services/communityService'
 import {
   getCommentsForReview,
+  getCommentsForActivityEvent,
   postComment,
   updateComment,
   deleteComment,
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { bumpCommentsCount } from '../hooks/useUserStats'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import './ReviewComments.css'
 
 /* ============================================================
@@ -366,16 +371,28 @@ function CommentRow({
    ============================================================ */
 
 function ReviewComments() {
-  const { reviewId } = useParams()
+  // This page also powers the Pulse-broadening activity thread at
+  // /activity/:activityId/comments — same composer/thread UI, just
+  // keyed to whichever target the route carries (never both). See
+  // commentService.js's polymorphic review_comments contract.
+  const { reviewId, activityId } = useParams()
+  const targetType = reviewId ? 'review' : 'activity'
+  const targetId = reviewId || activityId
   const navigate = useNavigate()
   const { user } = useAuth()
 
   const [review, setReview] = useState(null)
+  const [activityItem, setActivityItem] = useState(null)
   const [reviewLoading, setReviewLoading] = useState(true)
   const [reviewMissing, setReviewMissing] = useState(false)
 
   const [comments, setComments] = useState([])
   const [commentsLoading, setCommentsLoading] = useState(true)
+
+  // Bumped on app resume so the realtime effect below tears down the dead
+  // (post-suspend) channel and re-subscribes onto a fresh socket — same
+  // pattern as UnreadMessagesContext / NotificationsContext.
+  const [resumeKey, setResumeKey] = useState(0)
 
   // Composer state. `replyTo` holds the parent comment object (not just
   // the id) so we can prepend "@displayName " on focus AND pass the
@@ -390,9 +407,10 @@ function ReviewComments() {
   // Keep a ref in sync with editingComment so handleComposerFocus can
   // read the current value without being a stale closure.
   const editingCommentRef = useRef(null)
-  // Scrollable body — used to scroll the thread when the keyboard opens.
-  const scrollRef = useRef(null)
-  // Sentinel at the bottom of the thread list.
+  // Sentinel at the bottom of the thread list — scrolled into view when
+  // the keyboard opens (see handleComposerFocus). `.rc-scroll` itself is
+  // no longer a scroll container (`.main-content` is), so there's no ref
+  // needed on the body element itself.
   const threadBottomRef = useRef(null)
 
   // Report sheet
@@ -405,67 +423,105 @@ function ReviewComments() {
     editingCommentRef.current = editingComment
   }, [editingComment])
 
-  /* ── Initial load ────────────────────────────────────────────── */
+  /* ── Load ────────────────────────────────────────────────────── */
+
+  /** Discards responses from a load that a newer one has superseded. */
+  const loadGenerationRef = useRef(0)
+
+  /**
+   * @param {{ silent?: boolean }} [opts] `silent` leaves the loading flags
+   *   alone, so a resume revalidation swaps the thread in underneath the user
+   *   instead of flashing skeletons over content already on screen.
+   */
+  const loadThread = useCallback(
+    ({ silent = false } = {}) => {
+      if (!targetId) return
+      const generation = ++loadGenerationRef.current
+      const isStale = () => generation !== loadGenerationRef.current
+
+      if (!silent) {
+        setReviewLoading(true)
+        setReviewMissing(false)
+      }
+      const headerFetch =
+        targetType === 'review' ? getReviewById(targetId) : getActivityEventForCard(targetId)
+      headerFetch
+        .then((row) => {
+          if (isStale()) return
+          if (!row) {
+            setReviewMissing(true)
+            setReview(null)
+            setActivityItem(null)
+          } else if (targetType === 'review') {
+            setReview(row)
+          } else {
+            setActivityItem(row)
+          }
+        })
+        .catch(() => {
+          if (!isStale()) setReviewMissing(true)
+        })
+        .finally(() => {
+          if (!isStale()) setReviewLoading(false)
+        })
+
+      if (!silent) setCommentsLoading(true)
+      const commentsFetch =
+        targetType === 'review'
+          ? getCommentsForReview(targetId)
+          : getCommentsForActivityEvent(targetId)
+      commentsFetch
+        .then((rows) => {
+          if (isStale()) return
+          setComments(rows)
+        })
+        .catch((err) => {
+          console.error('[ReviewComments] load failed:', err)
+          if (!isStale()) setComments([])
+        })
+        .finally(() => {
+          if (!isStale()) setCommentsLoading(false)
+        })
+    },
+    [targetId, targetType]
+  )
 
   useEffect(() => {
-    if (!reviewId) return undefined
-    let cancelled = false
+    loadThread()
+  }, [loadThread])
 
-    setReviewLoading(true)
-    setReviewMissing(false)
-    getReviewById(reviewId)
-      .then((row) => {
-        if (cancelled) return
-        if (!row) {
-          setReviewMissing(true)
-          setReview(null)
-        } else {
-          setReview(row)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setReviewMissing(true)
-      })
-      .finally(() => {
-        if (!cancelled) setReviewLoading(false)
-      })
-
-    setCommentsLoading(true)
-    getCommentsForReview(reviewId)
-      .then((rows) => {
-        if (cancelled) return
-        setComments(rows)
-      })
-      .catch((err) => {
-        console.error('[ReviewComments] load failed:', err)
-        if (!cancelled) setComments([])
-      })
-      .finally(() => {
-        if (!cancelled) setCommentsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
+  /* ── Resume revalidation ──────────────────────────────────────
+     The realtime subscription below only carries INSERTs, and it was dead
+     while the app was suspended anyway — so edits, deletes, and comments
+     posted in the meantime are only picked up by refetching here. */
+  useEffect(() => {
+    const onResume = () => {
+      setResumeKey((k) => k + 1)
+      loadThread({ silent: true })
     }
-  }, [reviewId])
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [loadThread])
 
   /* ── Realtime subscription ──────────────────────────────────────
-     INSERT events on the comments table, filtered by review_id, are
-     pushed into local state so other users' comments appear without a
-     refresh. We dedupe by id because the optimistic insert we did on
-     our own submit may beat the realtime echo back. */
+     INSERT events on review_comments, filtered by whichever target
+     column this thread is keyed to, are pushed into local state so
+     other users' comments appear without a refresh. We dedupe by id
+     because the optimistic insert we did on our own submit may beat
+     the realtime echo back. */
   useEffect(() => {
-    if (!reviewId) return undefined
+    if (!targetId) return undefined
+    const filterColumn = targetType === 'review' ? 'review_id' : 'activity_event_id'
 
     const channel = supabase
-      .channel(`comments:${reviewId}`)
+      .channel(`review_comments:${targetType}:${targetId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'comments',
-          filter: `review_id=eq.${reviewId}`,
+          table: 'review_comments',
+          filter: `${filterColumn}=eq.${targetId}`,
         },
         async (payload) => {
           const row = payload?.new
@@ -491,12 +547,14 @@ function ReviewComments() {
           })
         }
       )
-      .subscribe()
+
+    const disposeSubscribe = subscribeWithRecovery(channel)
 
     return () => {
+      disposeSubscribe()
       supabase.removeChannel(channel)
     }
-  }, [reviewId])
+  }, [targetId, targetType, resumeKey])
 
   /* ── Threaded view model ────────────────────────────────────── */
 
@@ -546,7 +604,11 @@ function ReviewComments() {
 
   // When the textarea gains focus the keyboard slides in. After it
   // settles (~320 ms) we either scroll the comment being edited into
-  // view (edit mode) or scroll the list to the bottom (normal mode).
+  // view (edit mode) or scroll the bottom sentinel into view (normal
+  // mode). `.rc-scroll` no longer owns its own scroll (see
+  // ReviewComments.css) — `.main-content` is the real scroll container,
+  // so we scroll via scrollIntoView() rather than setting scrollTop
+  // directly on a ref.
   const handleComposerFocus = useCallback(() => {
     setTimeout(() => {
       const editing = editingCommentRef.current
@@ -554,8 +616,7 @@ function ReviewComments() {
         const el = document.querySelector(`[data-comment-id="${editing.id}"]`)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       } else {
-        const el = scrollRef.current
-        if (el) el.scrollTop = el.scrollHeight
+        threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       }
     }, 320)
   }, [])
@@ -623,7 +684,8 @@ function ReviewComments() {
     setPosting(true)
     try {
       const inserted = await postComment({
-        reviewId,
+        reviewId: targetType === 'review' ? targetId : null,
+        activityEventId: targetType === 'activity' ? targetId : null,
         body: trimmed,
         parentCommentId: replyTo?.id || null,
       })
@@ -700,7 +762,7 @@ function ReviewComments() {
         <span className="rc-header__spacer" aria-hidden="true" />
       </header>
 
-      <div className="rc-scroll" ref={scrollRef}>
+      <div className="rc-scroll">
         <div className="rc-review-wrap">
           {reviewLoading ? (
             <div className="rc-review-skel" aria-hidden="true">
@@ -711,12 +773,20 @@ function ReviewComments() {
                 <div className="skeleton rc-review-skel__line" style={{ width: '80%' }} />
               </div>
             </div>
-          ) : reviewMissing || !reviewCardShape ? (
+          ) : targetType === 'review' ? (
+            reviewMissing || !reviewCardShape ? (
+              <div className="rc-review-missing">
+                This review is no longer available.
+              </div>
+            ) : (
+              <ReviewCard review={reviewCardShape} variant="compact" />
+            )
+          ) : reviewMissing || !activityItem ? (
             <div className="rc-review-missing">
-              This review is no longer available.
+              This activity is no longer available.
             </div>
           ) : (
-            <ReviewCard review={reviewCardShape} variant="compact" />
+            <HomeReviewCard item={{ ...activityItem, commentCount }} />
           )}
         </div>
 

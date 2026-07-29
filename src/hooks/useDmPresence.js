@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 /**
  * F1 — DM-thread online presence.
@@ -45,13 +46,15 @@ export function useDmPresence(partnerId) {
       .on('presence', { event: 'sync' }, refreshState)
       .on('presence', { event: 'join' }, refreshState)
       .on('presence', { event: 'leave' }, refreshState)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          channel.track({ online_at: new Date().toISOString() }).catch(() => {})
-        }
-      })
+
+    const disposeSubscribe = subscribeWithRecovery(channel, (status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.track({ online_at: new Date().toISOString() }).catch(() => {})
+      }
+    })
 
     return () => {
+      disposeSubscribe()
       try {
         channel.untrack().catch(() => {})
       } catch {
