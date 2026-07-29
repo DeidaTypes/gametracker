@@ -400,27 +400,71 @@ export async function getCurrentUser() {
  * so the caller can stamp an ordering token at *receipt* time rather than at
  * *resolution* time, and use it to discard stale/out-of-order deliveries.
  *
+ * DEADLOCK HAZARD — why the profile fetch is deferred out of this callback
+ * -----------------------------------------------------------------------
+ * supabase-js invokes auth-state-change subscribers from *inside* its own
+ * auth lock, and it awaits whatever the subscriber returns before releasing
+ * that lock. So an `async` subscriber that awaits a Supabase call — such as
+ * fetchProfile()'s PostgREST query — deadlocks the client: the query has to
+ * resolve an access token, which calls getSession(), which tries to acquire
+ * the very lock this callback is still holding. Nothing breaks the cycle, so
+ * getSession() never settles and *every* subsequent Supabase call (auth AND
+ * data) hangs forever. The only recovery was a force-quit + relaunch.
+ *
+ * This is not a resume-only bug. It fires on any event emitted from within
+ * the lock, which includes the ~hourly TOKEN_REFRESHED tick from
+ * autoRefreshToken, an expired-token refresh triggered by a plain data
+ * query, and an explicit refreshSession() — all reproduced against
+ * @supabase/supabase-js 2.105.1.
+ *
+ * Fix (Supabase's own documented workaround): capture `event`/`session`
+ * synchronously, return immediately so the lock is released, and run the
+ * profile fetch from a `setTimeout(..., 0)` macrotask outside the lock.
+ *
+ * Deferring delivery is safe for consumers because `onEventStart` still
+ * stamps its ordering token synchronously at *receipt* time — the token, not
+ * the delivery time, is what orders events — and AuthContext's guard already
+ * treats a callback that resolves later than its event as the normal case.
+ *
  * @param {(payload: { event: string, session: object|null, user: object|null, profile: object|null }, token: any) => void} callback
  * @param {() => any} [onEventStart] optional hook called synchronously per event; its return value is threaded through to `callback` as `token`.
  * @returns {() => void} unsubscribe
  */
 export function onAuthStateChange(callback, onEventStart) {
+  let active = true
+  const pending = new Set()
+
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (event, session) => {
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    // Everything in this function body must stay synchronous and free of
+    // Supabase calls — see the DEADLOCK HAZARD note above.
     const token = typeof onEventStart === 'function' ? onEventStart() : undefined
     const user = session?.user || null
-    let profile = null
-    if (user) {
-      try {
-        profile = await fetchProfile(user.id)
-      } catch {
-        profile = null
+
+    const timer = setTimeout(async () => {
+      pending.delete(timer)
+      if (!active) return
+      let profile = null
+      if (user) {
+        try {
+          profile = await fetchProfile(user.id)
+        } catch {
+          profile = null
+        }
       }
-    }
-    callback({ event, session, user, profile }, token)
+      if (!active) return
+      callback({ event, session, user, profile }, token)
+    }, 0)
+    pending.add(timer)
   })
+
   return () => {
+    // Drop deferred deliveries that haven't run yet, and make any already
+    // running one a no-op, so an unsubscribed consumer is never called back.
+    active = false
+    pending.forEach(clearTimeout)
+    pending.clear()
     subscription?.unsubscribe?.()
   }
 }

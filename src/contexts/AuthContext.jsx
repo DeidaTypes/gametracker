@@ -157,6 +157,14 @@ export function AuthProvider({ children }) {
   // raw event is *received* (before onAuthStateChange's internal profile
   // fetch runs), so two events firing close together are ordered by receipt
   // order rather than by however long their individual profile fetches take.
+  //
+  // That indirection is load-bearing: onAuthStateChange deliberately defers
+  // the profile fetch AND this callback into a later macrotask, because
+  // awaiting a Supabase call inside the raw listener deadlocks the client
+  // (see the DEADLOCK HAZARD note in services/auth.js). Delivery can
+  // therefore land arbitrarily late relative to its event — which the guard
+  // below already handles, since every decision it makes is a function of the
+  // receipt-time token and never of when the payload happens to arrive.
   useEffect(() => {
     const unsubscribe = onAuthStateChange(
       ({ user: nextUser, profile: nextProfile }, token) => {
