@@ -57,6 +57,12 @@ export const ACTIVITY_EVENT_TYPES = Object.freeze({
   // supabase/migrations/20260704222000_activity_events_backlogged_type.sql,
   // which adds this literal to the Postgres enum).
   BACKLOGGED: 'backlogged',
+  // Emit-events-for-every-action sprint: journal entries previously only
+  // wrote to the legacy `activities` table (see
+  // journalService.logJournalActivityOnce) and never surfaced on Pulse at
+  // all. See supabase/migrations/20260729140000_activity_events_journaled_type.sql,
+  // which adds this literal to the Postgres enum.
+  JOURNALED: 'journaled',
 })
 
 const VALID_TYPES = new Set(Object.values(ACTIVITY_EVENT_TYPES))
@@ -92,7 +98,8 @@ function emitLogged(row) {
  *
  * @param {{
  *   type: 'played'|'rated'|'reviewed'|'favorited'|'listed'|
- *         'started'|'completed'|'dropped'|'goal_hit',
+ *         'started'|'completed'|'dropped'|'goal_hit'|'backlogged'|
+ *         'journaled',
  *   entityId?: string|number|null,
  *   metadata?: Record<string, any>,
  * }} args
@@ -400,6 +407,8 @@ export function formatActivityEventMessage(event) {
       return `${actor} favorited ${game}`
     case 'backlogged':
       return `${actor} added ${game} to their backlog`
+    case 'journaled':
+      return `${actor} added a journal entry for ${game}`
     case 'listed': {
       const listName = meta.list_name || 'a list'
       if (meta.kind === 'list_created') {
@@ -464,6 +473,7 @@ export function getActivityEventHref(event) {
     case 'favorited':
     case 'rated':
     case 'backlogged':
+    case 'journaled':
       return id ? `/game/${id}` : null
     case 'reviewed': {
       if (!id) return null

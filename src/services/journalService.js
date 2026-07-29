@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { logActivity, ACTIVITY_TYPES } from './activityService'
+import { ACTIVITY_EVENT_TYPES, logActivityEvent } from './activityEventsService'
 
 /**
  * Journal Service — per-game dated notes a user writes as they play.
@@ -83,7 +84,6 @@ export async function saveJournalEntry({
   if (error) throw error
 
   // Activity tie-in: fire-and-forget; must never throw or roll back the save.
-  // TODO: Sprint N — push journal_written into the social activity feed.
   logJournalActivityOnce({
     userId: user.id,
     igdbGameId,
@@ -91,6 +91,20 @@ export async function saveJournalEntry({
     gameImage,
     entryId: data.id,
   }).catch(() => {})
+
+  // Pulse — one 'journaled' event per entry (not de-duped per day like the
+  // legacy `activities` row above — Pulse should reflect every entry the
+  // user writes, same as every other emit-events-for-every-action type).
+  logActivityEvent({
+    type: ACTIVITY_EVENT_TYPES.JOURNALED,
+    entityId: igdbGameId,
+    metadata: {
+      entry_id: data.id,
+      game_title: gameTitle || null,
+      game_image: gameImage || null,
+      mood: mood || null,
+    },
+  })
 
   try {
     window.dispatchEvent(new Event('journalEntryAdded'))

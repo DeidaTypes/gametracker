@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { formatDistanceToNow } from 'date-fns'
 import {
   HiOutlineHeart,
   HiHeart,
@@ -19,6 +18,7 @@ import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { shareCard } from '../services/share'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { formatActivityDate } from '../utils/formatActivityDate'
 import DmShareSheet from './DmShareSheet'
 import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
@@ -64,21 +64,6 @@ const LIFE_LABELS = {
   healing:     'Healing',
   traveling:   'Traveling',
   new_chapter: 'New Chapter',
-}
-
-/**
- * "3 days ago" style relative timestamp for the `gamedetail` variant's
- * meta line. Mirrors the local relativeTime() helper already used by
- * HomeReviewCard — kept local here rather than extracted to a shared
- * util so this change stays scoped to ReviewCard.
- */
-function relativeTime(iso) {
-  if (!iso) return ''
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true })
-  } catch {
-    return ''
-  }
 }
 
 /**
@@ -325,7 +310,7 @@ function ReviewCard({
   const gdWholeRating = Math.round(
     Math.max(0, Math.min(5, Number(review.rating) || 0))
   )
-  const gdTimeAgo = relativeTime(review.createdAt)
+  const gdTimeAgo = formatActivityDate(review.createdAt)
   const gdMeta = [review.relationship, gdTimeAgo].filter(Boolean).join(' · ')
 
   // Shared between variants so the clamp / "Read more…" logic isn't

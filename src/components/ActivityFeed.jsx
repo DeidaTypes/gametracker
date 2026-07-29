@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from 'date-fns'
 import {
   getActivitiesForUser,
   formatActivityMessage,
   getActivityHref,
 } from '../services/activityService'
+import { formatActivityDate } from '../utils/formatActivityDate'
 import EmptyState from './EmptyState'
 import './ActivityFeed.css'
 
@@ -22,30 +22,6 @@ const TYPE_GLYPH = {
   review_posted: '\u2605',        // ★
   list_created: '\u2630',         // ☰
   game_added_to_list: '+',
-}
-
-/**
- * Compact "2h ago" / "yesterday" / "3d ago" formatter built on top of
- * date-fns `formatDistanceToNow`. We special-case the most common buckets
- * so the timeline reads tightly; we fall back to the date-fns default
- * for anything older than ~30 days.
- */
-function relativeTime(timestamp) {
-  if (!timestamp) return ''
-  const then = new Date(timestamp).getTime()
-  if (Number.isNaN(then)) return ''
-  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days}d ago`
-  if (days < 30) return `${Math.floor(days / 7)}w ago`
-  // Anything older than a month → fall back to date-fns ("about 2 months ago").
-  return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
 }
 
 /**
@@ -189,7 +165,7 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName, avatarColor 
         {activities.map((activity) => {
           const href = getActivityHref(activity)
           const message = formatActivityMessage(activity)
-          const time = relativeTime(activity.createdAt)
+          const time = formatActivityDate(activity.createdAt)
           return (
             <li
               key={activity.id}

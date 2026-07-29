@@ -1,0 +1,26 @@
+-- Pulse — every action broadening (Sprint: emit activity events for all
+-- actions).
+--
+-- Gap found while auditing every user-visible action against
+-- activity_events: journal entries (journalService.saveJournalEntry) only
+-- ever wrote to the legacy `activities` table (see
+-- journalService.logJournalActivityOnce) — never to activity_events, so a
+-- journal entry could never appear in the Pulse feed. This adds the
+-- missing enum value so journalService can emit a 'journaled' event
+-- alongside its existing legacy-activities write, without touching that
+-- write path.
+--
+-- Own statement/migration (not combined with other DDL) so it is always
+-- safely committed before anything can reference the literal value —
+-- same precedent as 20260704222000_activity_events_backlogged_type.sql.
+--
+-- NOTE: as of this migration, the live `activity_event_type` enum was
+-- also missing the previously-written 'backlogged' value (that migration
+-- existed in the repo but had never actually been run against the
+-- database) — applied together with this one. Flagging here since it's
+-- the root cause of "the Pulse feed only ever shows reviews": every
+-- activity_events read filters with `.in('type', [...])` including
+-- 'backlogged', and Postgres rejects the entire array literal (not just
+-- the missing value) when casting to the enum, so EVERY non-review event
+-- read silently failed and returned zero rows.
+ALTER TYPE activity_event_type ADD VALUE IF NOT EXISTS 'journaled';

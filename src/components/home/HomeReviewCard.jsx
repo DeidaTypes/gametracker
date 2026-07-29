@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from 'date-fns'
 import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlinePlus, HiCheck } from 'react-icons/hi'
 import { List as ListIcon } from 'lucide-react'
 import Avatar from '../explore/Avatar'
@@ -15,6 +14,7 @@ import { addGameToBacklog } from '../../services/libraryService'
 import { showToast } from '../Toast'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import { shouldShowCount } from '../../utils/formatSocialCount'
+import { formatActivityDate } from '../../utils/formatActivityDate'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
@@ -25,15 +25,6 @@ import './HomeReviewCard.css'
 const EVENT_REACTION_EMOJI = '\u2764\uFE0F'
 
 const REVIEW_TYPES = new Set(['reviewed', 'rated'])
-
-function relativeTime(iso) {
-  if (!iso) return ''
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true })
-  } catch {
-    return ''
-  }
-}
 
 /**
  * Formats `seconds` as "45m", "2h", or "2h 30m". Returns null below 60s
@@ -94,6 +85,8 @@ function headerVerb(item) {
     }
     case 'favorited':
       return 'favorited'
+    case 'journaled':
+      return 'added a journal entry'
     default:
       return 'did something'
   }
@@ -410,7 +403,7 @@ export default function HomeReviewCard({ item }) {
     item.listPreviewCovers ||
     (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
 
-  const when = relativeTime(item.createdAt)
+  const when = formatActivityDate(item.createdAt)
   const img = item.game?.image || COVER_FALLBACK
   const displayedLikeCount = likeState.count || item.likeCount || 0
 

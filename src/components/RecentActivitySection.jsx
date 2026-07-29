@@ -1,18 +1,9 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNowStrict } from 'date-fns'
 import SharedCover from './SharedCover'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { formatActivityDate } from '../utils/formatActivityDate'
 import './HomeShelf.css'
-
-function humanTimeAgo(dateStr) {
-  if (!dateStr) return null
-  try {
-    return formatDistanceToNowStrict(new Date(dateStr), { addSuffix: true })
-  } catch {
-    return null
-  }
-}
 
 /**
  * RecentActivitySection — a glance at the games you most recently looked at.
@@ -39,7 +30,7 @@ function RecentActivitySection({ games = [] }) {
 
       <div className="shelf-rail" role="list">
         {games.map((game) => {
-          const when = humanTimeAgo(game.viewedAt)
+          const when = formatActivityDate(game.viewedAt) || null
           return (
             <button
               key={game.id}

@@ -1030,9 +1030,10 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  *      surface (finished-game ratings with no UI to set them yet) — not
  *      included here since it has no relevant rows to surface.
  *   2. `activity_events` rows of type 'started' | 'completed' | 'listed' |
- *      'played' (see OTHER_FEED_EVENT_TYPES / OWN_FEED_EVENT_TYPES) —
- *      "started a game", "finished a game" (rendered as `type: 'finished'`),
- *      "added a game/created a list", and "logged a session" respectively.
+ *      'played' | 'journaled' (see OTHER_FEED_EVENT_TYPES /
+ *      OWN_FEED_EVENT_TYPES) — "started a game", "finished a game"
+ *      (rendered as `type: 'finished'`), "added a game/created a list",
+ *      "logged a session", and "added a journal entry" respectively.
  *      'backlogged' stays own-only (see OWN_FEED_EVENT_TYPES's comment);
  *      'dropped' / 'favorited' / 'goal_hit' stay Explore/Profile-only —
  *      out of scope for this pass.
@@ -1132,7 +1133,9 @@ const HOME_FEED_SPARSE_THRESHOLD = 5
 //                  for other users now, see OTHER_FEED_EVENT_TYPES below
 //   'started'    → moved a game to Currently Playing
 //   'played'     → logged a play session (sessionService.js)
-const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged', 'started', 'played']
+//   'journaled'  → wrote a journal entry (journalService.js) — see
+//                  supabase/migrations/20260729140000_activity_events_journaled_type.sql
+const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged', 'started', 'played', 'journaled']
 
 // Other-users' event types surfaced on Home (Pulse broadening — task:
 // "logged a session, logged/added a game, finished a game, started a
@@ -1144,7 +1147,9 @@ const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged', 'started', 'p
 // "justin added Left 4 Dead 2 to his backlog") — included below.
 // Deliberately still excludes 'dropped'/'favorited'/'goal_hit'
 // (Explore/Profile-only, out of scope for this pass).
-const OTHER_FEED_EVENT_TYPES = ['listed', 'completed', 'started', 'played', 'backlogged']
+// 'journaled' added by the emit-events-for-every-action sprint — journal
+// entries previously never surfaced on Home at all (own or others').
+const OTHER_FEED_EVENT_TYPES = ['listed', 'completed', 'started', 'played', 'backlogged', 'journaled']
 
 /**
  * Soft-cap interleave: merges two recency-sorted item arrays (the
@@ -1423,6 +1428,19 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCou
       ...base,
       type: 'played',
       durationSeconds: Number.isFinite(seconds) && seconds > 0 ? seconds : null,
+      game: {
+        id: row.entity_id,
+        title: meta.game_title || 'Unknown Game',
+        image: meta.game_image || null,
+      },
+    }
+  }
+
+  if (row.type === 'journaled') {
+    return {
+      ...base,
+      type: 'journaled',
+      mood: meta.mood || null,
       game: {
         id: row.entity_id,
         title: meta.game_title || 'Unknown Game',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatActivityDate } from '../utils/formatActivityDate'
 import {
   getListComments,
   postListComment,
@@ -9,14 +9,6 @@ import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import './ListComments.css'
 
-function timeAgo(iso) {
-  if (!iso) return ''
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true })
-  } catch {
-    return ''
-  }
-}
 
 function Avatar({ user, size = 32 }) {
   const name = user?.display_name || user?.username || '?'
@@ -64,7 +56,7 @@ function CommentRow({ comment, canDelete, onDelete }) {
       <div className="lc-comment-content">
         <div className="lc-comment-header">
           <span className="lc-comment-author">{displayName}</span>
-          <span className="lc-comment-time">{timeAgo(comment.created_at)}</span>
+          <span className="lc-comment-time">{formatActivityDate(comment.created_at)}</span>
           {canDelete && (
             <button
               type="button"

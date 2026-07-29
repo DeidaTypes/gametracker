@@ -20,11 +20,12 @@
                         zone 2 by a thin hairline.
 
    3px left accent bar + header verb color, by MEANING:
-     - green  (--accent-review)      → reviewed / rated
-     - purple (--accent-journal[-text]) → added a game to a list
-     - cobalt (--accent)             → backlogged / finished / started /
-                                        played / favorited (every other
-                                        status event)
+     - green   (--accent-review)        → reviewed / rated
+     - purple  (--accent-journal[-text]) → added to a list / created a list
+     - cobalt  (--accent)               → added a journal entry
+     - neutral (--color-text-secondary) → logged a session / backlogged /
+                                           finished / started / favorited
+                                           (every other status event)
    Like/reply icons keep the existing purple social hue on every row
    regardless of type (see .home-review-card__icon-btn--social below)
    — a different, deliberate use of purple from the header/accent
@@ -54,12 +55,16 @@
   border-left: 3px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
 }
 
+.home-review-card--journaled {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .home-review-card--backlogged,
 .home-review-card--finished,
 .home-review-card--started,
 .home-review-card--played,
 .home-review-card--favorited {
-  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-left: 3px solid var(--color-border);
 }
 
 /* Star fill (StarRating reads --star from its ancestors) scoped to
@@ -147,12 +152,16 @@
   color: var(--accent-journal-text);
 }
 
+.home-review-card--journaled .home-review-card__verb {
+  color: var(--accent);
+}
+
 .home-review-card--backlogged .home-review-card__verb,
 .home-review-card--finished .home-review-card__verb,
 .home-review-card--started .home-review-card__verb,
 .home-review-card--played .home-review-card__verb,
 .home-review-card--favorited .home-review-card__verb {
-  color: var(--accent);
+  color: var(--color-text-secondary);
 }
 
 .home-review-card__time {
