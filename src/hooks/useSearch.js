@@ -3,6 +3,7 @@ import { searchGames } from '../services/searchService'
 import { searchGamesWithFilters, fetchShortGameIds } from '../services/igdb'
 import { getCategoryDefinitions } from '../services/browseService'
 import { parseNaturalQuery } from '../utils/parseNaturalQuery'
+import { APP_RESUMED_EVENT } from './useAppResume'
 
 const DEBOUNCE_MS = 200
 
@@ -30,6 +31,17 @@ export function useSearch(query) {
   const [parsedFilters, setParsedFilters] = useState([])
   const timerRef = useRef(null)
   const abortRef = useRef(0)
+
+  // Re-runs the search below on resume. A search that was in flight when the
+  // app was suspended is dead — its IGDB request went out over a socket the OS
+  // tore down — so without this the user comes back to a spinner that never
+  // resolves, or to results for a query they've since changed.
+  const [resumeKey, setResumeKey] = useState(0)
+  useEffect(() => {
+    const onResume = () => setResumeKey((k) => k + 1)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [])
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -124,7 +136,7 @@ export function useSearch(query) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [query])
+  }, [query, resumeKey])
 
   return { results, isLoading, error, parsedFilters }
 }

@@ -22,6 +22,7 @@ import {
   addGameToList,
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Library.css'
 
 // Status chips — exact order + wording the Library shelf renders. `listId`
@@ -138,9 +139,13 @@ function Library() {
     }
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
+    // The WebView isn't remounted on resume, so the mount call above never
+    // re-runs and custom lists edited on another device stay invisible.
+    window.addEventListener(APP_RESUMED_EVENT, handleUpdate)
     return () => {
       window.removeEventListener('libraryUpdated', handleUpdate)
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
+      window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
     }
   }, [loadTrackerLists, loadCustomLists])
 

@@ -10,6 +10,7 @@ import {
   invalidateActivityCache,
 } from '../services/statsService'
 import DayLogSheet from '../components/DayLogSheet'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './ActivityCalendar.css'
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -94,10 +95,14 @@ export default function ActivityCalendar() {
     window.addEventListener('activityUpdated', onActivityChange)
     window.addEventListener('reviewAdded', onActivityChange)
     window.addEventListener('libraryUpdated', onActivityChange)
+    // Resume goes through the same handler so the cached calendar is busted
+    // too — a plain refetch would just re-read the stale cache.
+    window.addEventListener(APP_RESUMED_EVENT, onActivityChange)
     return () => {
       window.removeEventListener('activityUpdated', onActivityChange)
       window.removeEventListener('reviewAdded', onActivityChange)
       window.removeEventListener('libraryUpdated', onActivityChange)
+      window.removeEventListener(APP_RESUMED_EVENT, onActivityChange)
     }
   }, [fetchData])
 

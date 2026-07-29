@@ -26,6 +26,7 @@ import {
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { bumpCommentsCount } from '../hooks/useUserStats'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -573,41 +574,67 @@ function ReviewDetail() {
 
   const isAuthed = !!user
 
-  /* ── Initial load ─────────────────────────────────────────── */
+  /* ── Load ─────────────────────────────────────────────────── */
+
+  /** Discards responses from a load that a newer one has superseded. */
+  const loadGenerationRef = useRef(0)
+
+  /**
+   * @param {{ silent?: boolean }} [opts] `silent` leaves the loading flags
+   *   alone, so a resume revalidation swaps the thread in underneath the user
+   *   instead of flashing skeletons over content already on screen.
+   */
+  const loadThread = useCallback(
+    ({ silent = false } = {}) => {
+      if (!reviewId) return
+      const generation = ++loadGenerationRef.current
+      const isStale = () => generation !== loadGenerationRef.current
+
+      if (!silent) {
+        setReviewLoading(true)
+        setReviewMissing(false)
+      }
+      getReviewById(reviewId)
+        .then((row) => {
+          if (isStale()) return
+          if (!row) { setReviewMissing(true); setReview(null) }
+          else setReview(row)
+        })
+        .catch(() => { if (!isStale()) setReviewMissing(true) })
+        .finally(() => { if (!isStale()) setReviewLoading(false) })
+
+      if (!silent) setCommentsLoading(true)
+      getCommentsForReview(reviewId)
+        .then((rows) => {
+          if (isStale()) return
+          setComments(rows)
+          const ids = rows.map((c) => c.id)
+          getCommentLikeStates(ids, user?.id || null).then((states) => {
+            if (!isStale()) setLikeStates(states)
+          })
+        })
+        .catch((err) => {
+          console.error('[ReviewDetail] load failed:', err)
+          if (!isStale()) setComments([])
+        })
+        .finally(() => { if (!isStale()) setCommentsLoading(false) })
+    },
+    [reviewId, user?.id]
+  )
 
   useEffect(() => {
-    if (!reviewId) return undefined
-    let cancelled = false
+    loadThread()
+  }, [loadThread])
 
-    setReviewLoading(true)
-    setReviewMissing(false)
-    getReviewById(reviewId)
-      .then((row) => {
-        if (cancelled) return
-        if (!row) { setReviewMissing(true); setReview(null) }
-        else setReview(row)
-      })
-      .catch(() => { if (!cancelled) setReviewMissing(true) })
-      .finally(() => { if (!cancelled) setReviewLoading(false) })
-
-    setCommentsLoading(true)
-    getCommentsForReview(reviewId)
-      .then((rows) => {
-        if (cancelled) return
-        setComments(rows)
-        const ids = rows.map((c) => c.id)
-        getCommentLikeStates(ids, user?.id || null).then((states) => {
-          if (!cancelled) setLikeStates(states)
-        })
-      })
-      .catch((err) => {
-        console.error('[ReviewDetail] load failed:', err)
-        if (!cancelled) setComments([])
-      })
-      .finally(() => { if (!cancelled) setCommentsLoading(false) })
-
-    return () => { cancelled = true }
-  }, [reviewId, user?.id])
+  /* ── Resume revalidation ──────────────────────────────────────
+     The realtime subscription below only carries INSERTs, and it was dead
+     while the app was suspended anyway — so edits, deletes, and likes that
+     happened in the meantime are only picked up by refetching here. */
+  useEffect(() => {
+    const onResume = () => loadThread({ silent: true })
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [loadThread])
 
   /* ── Realtime subscription ────────────────────────────────────
      INSERTs on review_comments filtered by review_id so that comments

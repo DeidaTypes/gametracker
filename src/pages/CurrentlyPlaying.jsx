@@ -7,6 +7,7 @@ import SharedCover from '../components/SharedCover'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getDominantColor } from '../services/colorExtract'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './CurrentlyPlaying.css'
 
 function GameRow({ game }) {
@@ -104,7 +105,11 @@ function CurrentlyPlaying() {
     load()
 
     window.addEventListener('libraryUpdated', load)
-    return () => window.removeEventListener('libraryUpdated', load)
+    window.addEventListener(APP_RESUMED_EVENT, load)
+    return () => {
+      window.removeEventListener('libraryUpdated', load)
+      window.removeEventListener(APP_RESUMED_EVENT, load)
+    }
   }, [])
 
   return (

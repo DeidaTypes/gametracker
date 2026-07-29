@@ -24,6 +24,7 @@ import { logManualSession, getManualSessionsForGame, deleteManualSession } from 
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './GameDetail.css'
 
 // Display-only, shorter labels for the status tile grid below the title.
@@ -389,6 +390,35 @@ function GameDetail() {
     const data = await getManualSessionsForGame(gameId).catch(() => [])
     setSessions(data)
   }, [gameId])
+
+  // Resume revalidation. Deliberately NOT a re-run of the mount-time
+  // fetchGame(): the IGDB metadata it loads (title, cover, summary) can't have
+  // changed while we were suspended, and re-running it would flip `loading`
+  // back on and flash the skeleton over content the user is looking at. Only
+  // the parts other people can move — reviews, ratings, pulse — plus local
+  // status and sessions are reloaded.
+  useEffect(() => {
+    if (!gameId) return undefined
+    const onResume = () => {
+      refreshFromStore()
+      refreshReviews()
+      refreshRatingDistribution()
+      refreshFollowedRatings()
+      refreshSessions()
+      getCirclePulseForGame(gameId)
+        .then((p) => setCirclePulse(p))
+        .catch(() => {})
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [
+    gameId,
+    refreshFromStore,
+    refreshReviews,
+    refreshRatingDistribution,
+    refreshFollowedRatings,
+    refreshSessions,
+  ])
 
   const handleLogSession = useCallback(async ({ totalMinutes, playedOn }) => {
     setLogSaving(true)

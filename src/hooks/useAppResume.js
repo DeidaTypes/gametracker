@@ -1,18 +1,22 @@
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { supabase } from '../services/supabase'
+import { runResumeSequence } from '../services/resumeSequence'
 
 /**
- * Global window event fired whenever the native app returns to the
- * foreground (Capacitor `appStateChange` → isActive === true). Screens and
- * data hooks listen for it to reload their data, and realtime providers
- * listen for it to re-establish dropped subscriptions.
+ * Global window event fired whenever the app returns to the foreground
+ * (Capacitor `appStateChange` → isActive === true on native, or
+ * `visibilitychange` on web). Screens and data hooks listen for it to reload
+ * their data, and realtime providers listen for it to re-establish dropped
+ * subscriptions.
  *
  * Using a window event (rather than threading a callback through React
  * context) keeps the recovery decoupled: any hook anywhere can opt into
  * resume-refresh by adding a single listener.
+ *
+ * Defined in services/resumeSequence.js (which dispatches it) and re-exported
+ * here because this is where the app has always imported it from.
  */
-export const APP_RESUMED_EVENT = 'app:resumed'
+export { APP_RESUMED_EVENT } from '../services/resumeSequence'
 
 /**
  * Why this hook exists
@@ -31,12 +35,16 @@ export const APP_RESUMED_EVENT = 'app:resumed'
  * mount-time state, the realtime socket is dead, and the only thing that
  * recovers it is a full force-quit + relaunch that remounts everything.
  *
- * NATIVE path: handled by src/services/appLifecycle.js (imported once from
- * main.jsx). That module owns appStateChange, auth refresh, realtime
- * reconnect, and APP_RESUMED_EVENT dispatch for iOS/Android.
+ * NATIVE path: `appStateChange`, wired in src/services/appLifecycle.js
+ * (imported once from main.jsx).
  *
- * WEB / PWA path (this hook): `visibilitychange` drives the same recovery so
- * the browser build and TestFlight web previews also recover gracefully.
+ * WEB / PWA path (this hook): `visibilitychange`, so the browser build and
+ * TestFlight web previews recover gracefully too.
+ *
+ * Both paths call the same runResumeSequence(). They used to hold separate
+ * copies of the recovery logic, and the copy here had drifted: it dropped the
+ * realtime socket with `disconnect()` and never called `connect()`, so every
+ * web resume permanently killed realtime instead of restoring it.
  */
 export function useAppResume() {
   useEffect(() => {
@@ -44,37 +52,8 @@ export function useAppResume() {
     // would cause double session-refreshes and double realtime reconnects.
     if (Capacitor.isNativePlatform()) return
 
-    // Web fallback: visibilitychange is reliable in desktop/PWA browsers.
-    async function handleResume() {
-      // Validate/refresh the session.
-      try {
-        const { data } = await supabase.auth.getSession()
-        const session = data?.session
-        if (session) {
-          const expiresAtMs = session.expires_at ? session.expires_at * 1000 : 0
-          const aboutToExpire = expiresAtMs > 0 && expiresAtMs - Date.now() < 60_000
-          if (aboutToExpire) {
-            await supabase.auth.refreshSession()
-          }
-        }
-      } catch (err) {
-        console.warn('[app-resume] session refresh failed:', err)
-      }
-
-      // Drop the stale realtime socket so subscribers reconnect cleanly.
-      try {
-        supabase.realtime?.disconnect()
-      } catch (err) {
-        console.warn('[app-resume] realtime disconnect failed:', err)
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event(APP_RESUMED_EVENT))
-      }
-    }
-
     const onVisible = () => {
-      if (document.visibilityState === 'visible') handleResume()
+      if (document.visibilityState === 'visible') runResumeSequence('visibilitychange')
     }
 
     document.addEventListener('visibilitychange', onVisible)

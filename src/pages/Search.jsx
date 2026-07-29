@@ -32,6 +32,7 @@ import EmptyState from '../components/EmptyState'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Search.css'
 
 const TABS = [
@@ -940,10 +941,22 @@ function Search() {
   const [trendingGames, setTrendingGames] = useState([])
   const [trendingLoading, setTrendingLoading] = useState(true)
 
+  // Bumped on resume and threaded through the dependency array of every fetch
+  // on this page. The WebView isn't remounted when the app returns to the
+  // foreground, so these effects are the only thing standing between the user
+  // and the suggestions/results they left behind — including a request that was
+  // still in flight when the OS tore the socket down.
+  const [resumeKey, setResumeKey] = useState(0)
+  useEffect(() => {
+    const onResume = () => setResumeKey((k) => k + 1)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [])
+
   // Load once on mount — both are cheap (library = sync, trending = single IGDB call).
   useEffect(() => {
     setContinuePlaying(getContinuePlayingGames(5))
-  }, [])
+  }, [resumeKey])
 
   useEffect(() => {
     let cancelled = false
@@ -957,7 +970,7 @@ function Search() {
         if (!cancelled) setTrendingLoading(false)
       })
     return () => { cancelled = true }
-  }, [])
+  }, [resumeKey])
 
   const totalGameResultCount =
     gameResults.games.length +
@@ -1017,7 +1030,7 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [genresRetry])
+  }, [genresRetry, resumeKey])
 
   // Reviews tab — debounced search.
   useEffect(() => {
@@ -1039,7 +1052,7 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery])
+  }, [activeTab, debouncedQuery, resumeKey])
 
   // Users tab — debounced search.
   useEffect(() => {
@@ -1061,7 +1074,7 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery])
+  }, [activeTab, debouncedQuery, resumeKey])
 
   // Lists tab — debounced search.
   useEffect(() => {
@@ -1083,7 +1096,7 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery])
+  }, [activeTab, debouncedQuery, resumeKey])
 
   // Reviews tab "submit on pause" — 1.5s after the user stops typing,
   // record the query as a recent. Independent of the 300ms search debounce.

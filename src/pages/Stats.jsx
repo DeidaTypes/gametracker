@@ -19,6 +19,7 @@ import {
   parseLocalDateKey,
 } from '../services/statsService'
 import SharedCover, { SharedCoverScope } from '../components/SharedCover'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Stats.css'
 
 /**
@@ -438,12 +439,14 @@ function Stats() {
     window.addEventListener('profileUpdated', refresh)
     window.addEventListener('libraryUpdated', refresh)
     window.addEventListener('activityUpdated', refresh)
+    window.addEventListener(APP_RESUMED_EVENT, refresh)
     return () => {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('reviewAdded', refresh)
       window.removeEventListener('profileUpdated', refresh)
       window.removeEventListener('libraryUpdated', refresh)
       window.removeEventListener('activityUpdated', refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, refresh)
     }
   }, [])
 
@@ -477,11 +480,15 @@ function Stats() {
     window.addEventListener('activityUpdated', onActivity)
     window.addEventListener('reviewAdded', onActivity)
     window.addEventListener('libraryUpdated', onActivity)
+    // Resume busts the cache as well: the 5-minute window it exists to serve
+    // is about repeat navigation within one session, not across a suspension.
+    window.addEventListener(APP_RESUMED_EVENT, onActivity)
     return () => {
       cancelled = true
       window.removeEventListener('activityUpdated', onActivity)
       window.removeEventListener('reviewAdded', onActivity)
       window.removeEventListener('libraryUpdated', onActivity)
+      window.removeEventListener(APP_RESUMED_EVENT, onActivity)
     }
   }, [user?.id])
 

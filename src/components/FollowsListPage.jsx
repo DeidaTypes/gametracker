@@ -19,6 +19,7 @@ import { showToast } from './Toast'
 import EmptyState from './EmptyState'
 import FindFriendsModal from './FindFriendsModal'
 import PulseDot from './PulseDot'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import '../pages/UserFollows.css'
 
 /**
@@ -263,6 +264,28 @@ function FollowsListPage({ mode }) {
     fetchPage(page)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
+
+  /* ── Resume revalidation ──────────────────────────────────── */
+
+  // A follower list is exactly the kind of thing that moves while you're away,
+  // and the WebView isn't remounted on resume so the effects above never
+  // re-run. We reload the first page and reset pagination rather than
+  // refetching every page the user had scrolled through: that collapses a
+  // deep-scrolled list back to one page, but the sentinel re-paginates from
+  // there immediately, which isn't worth multi-page refetch bookkeeping.
+  useEffect(() => {
+    if (!targetUserId) return undefined
+    function onResume() {
+      setPage(0)
+      setEndReached(false)
+      fetchPage(0)
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    // fetchPage omitted for the same reason as the first-page effect above —
+    // it rebuilds whenever followingMap does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetUserId, mode, currentUserId])
 
   /* ── Infinite-scroll sentinel ─────────────────────────────── */
 

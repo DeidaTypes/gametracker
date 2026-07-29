@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import GameCard from '../components/GameCard'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Wishlist.css'
 
 function Wishlist() {
   const [wishlistGames, setWishlistGames] = useState([])
 
-  useEffect(() => {
-    // Load games from localStorage
+  const loadWishlist = useCallback(() => {
     const savedWishlist = localStorage.getItem('gameWishlist')
     if (savedWishlist) {
       try {
@@ -16,6 +16,14 @@ function Wishlist() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    loadWishlist()
+    // Re-read on resume: localStorage can be written by another tab, and on
+    // native the WebView isn't remounted so this never re-runs otherwise.
+    window.addEventListener(APP_RESUMED_EVENT, loadWishlist)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, loadWishlist)
+  }, [loadWishlist])
 
   return (
     <div className="wishlist-page">

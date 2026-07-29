@@ -91,6 +91,7 @@ import ActivityTimeline from '../components/ActivityTimeline'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Profile.css'
 
 /* ============================================================
@@ -779,6 +780,10 @@ function Profile() {
     window.addEventListener(PIN_CHANGED_EVENT, refresh)
     // List pin changes (pin/unpin from ListDetail or ListsTab).
     window.addEventListener(LIST_PIN_CHANGED_EVENT, refresh)
+    // The events above only cover changes this device made. On resume the
+    // whole profile could have moved on elsewhere — new reviews, new lists,
+    // new activity — and the mount call never re-runs by itself.
+    window.addEventListener(APP_RESUMED_EVENT, refresh)
     return () => {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('reviewAdded', refresh)
@@ -788,6 +793,7 @@ function Profile() {
       window.removeEventListener('journalEntryAdded', refresh)
       window.removeEventListener(PIN_CHANGED_EVENT, refresh)
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, refresh)
     }
   }, [loadProfileData])
 
@@ -832,6 +838,13 @@ function Profile() {
 
   useEffect(() => {
     loadFollowState()
+    // Follow counts are the numerals most likely to have moved while the app
+    // was backgrounded, and they're the one part of the hero that
+    // loadProfileData doesn't own. Reloading here skips the spinner because
+    // targetUserId hasn't changed, so the numerals just settle to new values.
+    const onResume = () => loadFollowState()
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [loadFollowState])
 
   // Sprint 7 — open the Edit Profile modal when this page is reached

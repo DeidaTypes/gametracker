@@ -40,6 +40,7 @@ import {
 import ListComments from '../components/ListComments'
 import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './ListDetail.css'
 
 function fmtDate(iso) {
@@ -195,7 +196,13 @@ function ListDetail() {
     refresh()
     const handler = () => refresh()
     window.addEventListener('libraryUpdated', handler)
-    return () => window.removeEventListener('libraryUpdated', handler)
+    // A collaborative list can change while the app is backgrounded; refresh()
+    // also re-derives the owner-ratings / save-state effects downstream.
+    window.addEventListener(APP_RESUMED_EVENT, handler)
+    return () => {
+      window.removeEventListener('libraryUpdated', handler)
+      window.removeEventListener(APP_RESUMED_EVENT, handler)
+    }
   }, [refresh])
 
   // Derived: can the current user edit this list's cover?
