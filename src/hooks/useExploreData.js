@@ -18,6 +18,7 @@ import {
 import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
 import { getCollections } from '../services/listService'
 import { getGamingMap } from '../services/gamingMapService'
+import { getActiveThemedDrop } from '../services/themedDropsService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -213,4 +214,19 @@ export function useRecentFollowingActivity() {
  */
 export function useGamingMap() {
   return useAsyncSection(() => getGamingMap())
+}
+
+/**
+ * Discover page — the one themed drop that is live right now.
+ *
+ * A single RPC against tables the themed-drops job filled days ago (see
+ * themedDropsService), so the drop card costs no IGDB call. `data.active`
+ * is false between drops or when the schedule has nothing to serve; every
+ * consumer hides itself in that case rather than showing a placeholder.
+ *
+ * Both the Explore card and the full-drop page use this hook — the service
+ * memoises for 5 minutes, so tapping through doesn't re-query.
+ */
+export function useActiveThemedDrop() {
+  return useAsyncSection(() => getActiveThemedDrop())
 }

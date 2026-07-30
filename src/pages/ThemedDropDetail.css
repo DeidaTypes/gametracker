@@ -1,0 +1,64 @@
+/* =====================================================
+   THEMED DROP — full drop view
+   Route: /discover/drop
+   ===================================================== */
+
+.tdd-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: var(--bottom-nav-safe-area);
+}
+
+.tdd-content {
+  padding: 14px var(--page-padding) 0;
+}
+
+/* One-line pitch + the day the next drop lands, on a single row so the
+   grid still starts near the top of the screen. */
+.tdd-intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tdd-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.tdd-next {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.tdd-empty-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin: 24px auto 0;
+  text-align: center;
+  max-width: 280px;
+}
+
+.tdd-sk-cover {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-lg);
+}
+
+@media (min-width: 769px) {
+  .tdd-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}

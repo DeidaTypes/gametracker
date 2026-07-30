@@ -375,6 +375,40 @@ limit ${limit};`
   }
 }
 
+/**
+ * One page of release history, newest first — the see-all behind the
+ * Discover "New & Notable" rail.
+ *
+ * Same filter as getRecentReleasesForDiscover (released, has a cover) with
+ * no lower date bound, so the grid is that rail continued: scrolling down
+ * walks backward in time instead of hitting the 90-day wall. Paged by
+ * offset because IGDB sorts server-side and we want the global date order,
+ * not a per-genre one. Games sharing an exact release timestamp can order
+ * differently between pages, so callers must dedupe by id — cheap, and the
+ * alternative (keyset on first_release_date) would silently *drop* games
+ * that share the boundary second, which is common for same-day releases.
+ *
+ * @param {{ limit?: number, offset?: number }} [opts]
+ * @returns {Promise<Array<object>>} newest-first page; shorter than `limit`
+ *   means the catalog is exhausted.
+ */
+export async function getRecentReleasesPage({ limit = 36, offset = 0 } = {}) {
+  const now = Math.floor(Date.now() / 1000)
+
+  const query = `fields name, cover.image_id, first_release_date;
+where first_release_date <= ${now} & cover != null;
+sort first_release_date desc;
+limit ${limit};
+offset ${offset};`
+
+  try {
+    return formatUpcomingGames(await igdbRequest('games', query))
+  } catch (err) {
+    console.error('[igdb] getRecentReleasesPage failed:', err)
+    return []
+  }
+}
+
 export async function getRecentlyReleasedGames(limit = 30) {
   const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)
   const now = Math.floor(Date.now() / 1000)

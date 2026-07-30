@@ -1,0 +1,99 @@
+/* =============================================
+   CLEAN GAME TILE — cover + title, no ratings
+   Used by: themed-drop grid, New & Notable rail,
+   New & Notable see-all grid.
+   ============================================= */
+
+.clean-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 200ms ease, filter 200ms ease;
+}
+
+.clean-tile__cover {
+  /* SharedCover's frame is position:absolute; inset:0 — without a
+     positioning context here the cover escapes the tile entirely. */
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-cover);
+}
+
+.clean-tile__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.clean-tile__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .clean-tile:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* ---- Slot: horizontal rail ---- */
+.explore-scroll-row .clean-tile {
+  flex: 0 0 120px;
+  width: 120px;
+  min-width: 120px;
+  scroll-snap-align: start;
+}
+
+/* ---- Slot: see-all poster grid ---- */
+.clean-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 12px;
+}
+
+@media (min-width: 769px) {
+  .explore-scroll-row .clean-tile {
+    flex: 0 0 158px;
+    width: 158px;
+    min-width: 158px;
+  }
+
+  .clean-tile-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 22px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clean-tile,
+  .clean-tile:hover {
+    transform: none;
+    transition: none;
+  }
+  /* Non-motion press feedback: accent ring on the cover */
+  .clean-tile:active .clean-tile__cover {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}

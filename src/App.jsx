@@ -16,6 +16,8 @@ import Home from './pages/Home'
 import Explore from './pages/Explore'
 import DiscoverReviewsAll from './pages/DiscoverReviewsAll'
 import DiscoverCollectionsAll from './pages/DiscoverCollectionsAll'
+import DiscoverNewAll from './pages/DiscoverNewAll'
+import ThemedDropDetail from './pages/ThemedDropDetail'
 import Search from './pages/Search'
 import CategoryResults from './pages/CategoryResults'
 import Library from './pages/Library'
@@ -407,6 +409,26 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><DiscoverCollectionsAll /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/discover/drop"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ThemedDropDetail /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/discover/new"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><DiscoverNewAll /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

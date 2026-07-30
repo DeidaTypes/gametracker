@@ -1,0 +1,166 @@
+/* =============================================
+   THEMED DROP CARD — Discover slot 2
+   One card, one drop. Purple→cobalt Explore
+   identity, composed from existing tokens only.
+   ============================================= */
+
+.themed-drop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: inherit;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  /* Purple wash bleeding out of the top-left corner into the card
+     surface — the same purple→cobalt pair the page wash uses, so the
+     drop reads as part of Explore rather than a pasted-in banner. */
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      color-mix(in srgb, var(--accent-journal) 20%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+      transparent 55%
+    ),
+    var(--bg-surface);
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+
+@media (hover: hover) {
+  .themed-drop-card:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+/* ---- Kicker row: "THIS WEEK'S DROP" + next-drop cue ---- */
+
+.themed-drop-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Purple→cobalt gradient text, same accent moment as the swipe deck's
+   payoff indicator. Falls back to solid --accent where background-clip
+   isn't supported. */
+.themed-drop-card__kicker {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--grad-purple-blue);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .themed-drop-card__kicker {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--accent);
+  }
+}
+
+.themed-drop-card__next {
+  flex-shrink: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ---- Theme + one-line pitch ---- */
+
+.themed-drop-card__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.themed-drop-card__subtitle {
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--text-secondary);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Cover strip + "+N" ---- */
+
+.themed-drop-card__covers {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.themed-drop-card__cover {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 74px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
+}
+
+.themed-drop-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.themed-drop-card__more {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 74px;
+  aspect-ratio: var(--cover-ratio);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+}
+
+@media (min-width: 769px) {
+  .themed-drop-card {
+    padding: 18px;
+    gap: 8px;
+  }
+
+  .themed-drop-card__cover,
+  .themed-drop-card__more {
+    max-width: 96px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .themed-drop-card {
+    transition: none;
+  }
+  .themed-drop-card:active {
+    border-color: var(--accent);
+  }
+}

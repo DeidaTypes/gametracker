@@ -1,0 +1,61 @@
+/* =============================================
+   DISCOVER SEE-ALL HEADER — back chevron + title
+   ============================================= */
+
+.discover-subheader {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-sm) var(--page-padding);
+  padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top, 0px));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.discover-subheader__btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.discover-subheader__btn:hover,
+.discover-subheader__btn:focus-visible {
+  background: var(--border-subtle);
+}
+
+.discover-subheader__btn:active {
+  opacity: 0.6;
+}
+
+.discover-subheader__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-subheader__spacer {
+  width: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-subheader__btn {
+    transition: none;
+  }
+}

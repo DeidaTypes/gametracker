@@ -1,0 +1,45 @@
+/* =====================================================
+   NEW & NOTABLE — full grid, newest first
+   Route: /discover/new
+   ===================================================== */
+
+.dna-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: var(--bottom-nav-safe-area);
+}
+
+.dna-content {
+  padding: 16px var(--page-padding) 0;
+}
+
+.dna-more-grid {
+  margin-top: 18px;
+}
+
+.dna-sentinel {
+  height: 1px;
+}
+
+.dna-empty-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin: 24px auto 0;
+  text-align: center;
+  max-width: 280px;
+}
+
+.dna-sk-cover {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-lg);
+}
+
+@media (min-width: 769px) {
+  .dna-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
+import ThemedDropCard from '../components/explore/ThemedDropCard'
+import NewNotableRail from '../components/explore/NewNotableRail'
 import GamingMapSection from '../components/explore/GamingMapSection'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
@@ -24,15 +26,25 @@ import './Explore.css'
  *      lightly nudges card order, never which genres are eligible. Backed
  *      by the real IGDB catalog + background pagination, so it never runs
  *      out mid-session — for active browsing/decision-making (skip/backlog).
- *   2. Your gaming map     — the user's 23 formal genres grouped strictly
+ *   2. This week's drop   — the one live themed drop as a single card
+ *      (theme, pitch, four covers, +N), tapping through to the whole
+ *      drop. Absent, not empty, between drops.
+ *   3. New & Notable      — recent releases newest-first, continuing
+ *      backward in time on its see-all.
+ *   4. Collections        — curated ("by Checkpoint") + popular community
+ *                            lists as mosaic cards (hidden if none qualify)
+ *   5. Your gaming map     — the user's 23 formal genres grouped strictly
  *      by tier (Home turf / Exploring / On the horizon / Haven't explored),
  *      each tile driven by getGamingMap's real per-genre stats. Hides
  *      entirely for a brand-new account with no map yet.
- *   3. Collections        — curated ("by Checkpoint") + popular community
- *                            lists as mosaic cards (hidden if none qualify)
- *   4. From people you follow — "Recently": followed users' real ratings
+ *   6. From people you follow — "Recently": followed users' real ratings
  *      + reviews, each with an algorithmic taste-match strip. Falls back
  *      to broader community activity so it's never empty.
+ *
+ * Discover shows no ratings. Not on a rail, not on a card, not on any of
+ * its see-all grids — covers and titles only. A score under a cover turns
+ * browsing into judging, and the whole surface is for games the viewer
+ * hasn't judged yet; ratings live on the game detail page, one tap in.
  */
 function Explore() {
   const { isOpen, open } = useSearchOverlay()
@@ -89,13 +101,19 @@ function Explore() {
         <SwipeDeck />
       </section>
 
-      {/* ── 2. Your gaming map — tiered genre bands + Venture Out ── */}
-      <GamingMapSection />
+      {/* ── 2. This week's drop — the one live themed drop ── */}
+      <ThemedDropCard />
 
-      {/* ── 3. Collections — curated + community lists ── */}
+      {/* ── 3. New & Notable — recent releases, clean covers ── */}
+      <NewNotableRail />
+
+      {/* ── 4. Collections — curated + community lists ── */}
       <CollectionsShelf />
 
-      {/* ── 4. From people you follow — "Recently" ratings & reviews ── */}
+      {/* ── 5. Your gaming map — tiered genre bands + Venture Out ── */}
+      <GamingMapSection />
+
+      {/* ── 6. From people you follow — "Recently" ratings & reviews ── */}
       <FollowingShelf />
 
     </div>
