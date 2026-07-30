@@ -47,6 +47,25 @@ const LIST_STATUS_MAP = {
 }
 
 /**
+ * Local status key → the value `game_trackers.status` actually accepts.
+ *
+ * These two vocabularies were never the same. `game_trackers_status_check`
+ * allows ('want_to_play','playing','played','dropped'); the local library
+ * speaks ('want','currently','played','dropped'). Backlog syncs wrote the
+ * LOCAL word 'want', so Postgres rejected every one of them — the upsert
+ * error is logged and swallowed, so this failed silently for as long as the
+ * sync has existed (the live table held zero backlog rows). Any server-side
+ * feature reading backlog intent — Your Gaming Map's ON THE HORIZON tier —
+ * saw an empty backlog for every user.
+ */
+export const TRACKER_STATUS = Object.freeze({
+  want: 'want_to_play',
+  currently: 'playing',
+  played: 'played',
+  dropped: 'dropped',
+})
+
+/**
  * Record that a game was cleared out of the Want-to-Play backlog.
  * Called by setGameStatus whenever a game moves away from 'want'.
  */
@@ -183,7 +202,7 @@ export async function addGameToBacklog(game) {
         {
           user_id: user.id,
           igdb_game_id: String(game.id),
-          status: 'want',
+          status: TRACKER_STATUS.want,
           game_title: game.title,
           game_image: game.image || null,
         },

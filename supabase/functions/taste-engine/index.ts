@@ -79,6 +79,7 @@
 // still count: you genuinely played that genre, you just didn't finish.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refreshGamingMap } from './gamingMap.ts'
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -887,6 +888,12 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
   const tags = await resolveTags(db, Array.from(allSignalIds))
 
   let vectorsWritten = 0
+  // Handed to the gaming-map step below so Venture Out can bias toward themes
+  // the user already likes without re-reading what we just computed.
+  const vectorsByUser = new Map<string, {
+    genreWeights: Record<string, number>
+    themeWeights: Record<string, number>
+  }>()
 
   for (const u of userList) {
     // 3. Build the normalized affinity vector from every behavioral signal.
@@ -986,11 +993,34 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
     }, { onConflict: 'user_id' })
     if (vErr) { console.error('[taste-engine] vector upsert error:', vErr.message); continue }
     vectorsWritten++
+    vectorsByUser.set(u.userId, { genreWeights, themeWeights })
+  }
+
+  // 4. Your Gaming Map — genre pools + per-user tiers + Venture Out pools.
+  // Runs AFTER the vectors are written because Venture Out biases toward the
+  // themes they encode, and shares this function's IGDB throttle rather than
+  // opening a second unmetered path (igdbMulti is passed in, not re-created).
+  // A failure here degrades the map for a day; it must not lose the taste
+  // vectors we just computed, so it is caught rather than thrown.
+  let gamingMap: any = { error: 'not_run' }
+  try {
+    gamingMap = await refreshGamingMap(db, {
+      igdbMulti,
+      resolveTags,
+      sources: { trackers, reviews, sessions, swipes },
+      tags,
+      vectors: vectorsByUser,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[taste-engine] gaming map refresh failed:', message)
+    gamingMap = { error: message }
   }
 
   return {
     users_processed: userList.length,
     vectors_written: vectorsWritten,
+    gaming_map: gamingMap,
     // Rate-limit accounting: requests is total POSTs to IGDB (each carrying up
     // to MULTIQUERY_MAX_SUBQUERIES sub-queries), and the two peaks must stay
     // within RATE_MAX / MAX_CONCURRENCY.

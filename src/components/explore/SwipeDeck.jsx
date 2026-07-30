@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getTasteVector } from '../../services/tasteEngineService'
 import { fetchBroadDiscoveryBatch } from '../../services/igdb'
-import { getAllLists, addGameToList } from '../../services/libraryService'
+import { getAllLists, addGameToList, TRACKER_STATUS } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
 import { showToast } from '../Toast'
 import { SwipeCard } from './SwipeCard'
@@ -322,7 +322,7 @@ export function SwipeDeck() {
             {
               user_id:      user.id,
               igdb_game_id: String(game.id),
-              status:       'want',
+              status:       TRACKER_STATUS.want,
               game_title:   game.title,
               game_image:   game.image || game.coverUrl || null,
             },
