@@ -17,14 +17,14 @@
 .gaming-map__body {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-top: 16px;
+  gap: 18px;
+  margin-top: 14px;
 }
 
 .gaming-map__tier {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .map-tier-label {
@@ -50,15 +50,58 @@
 
 .gaming-map__grid {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .gaming-map__grid--2col {
   grid-template-columns: 1fr 1fr;
 }
 
-.gaming-map__grid--3col {
-  grid-template-columns: repeat(3, 1fr);
+.gaming-map__grid--chips {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+/* ---- "See all" / "Show less" toggle ---- */
+.gaming-map__see-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 2px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 150ms ease;
+}
+
+.gaming-map__see-all:active {
+  opacity: 0.6;
+}
+
+.gaming-map__see-all-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 150ms ease;
+}
+
+.gaming-map__see-all-chevron--up {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gaming-map__see-all,
+  .gaming-map__see-all-chevron {
+    transition: none;
+  }
 }
 
 /* ---- Skeleton (loading) ---- */
@@ -76,8 +119,8 @@
 }
 
 .gaming-map__skel-tile {
-  height: 84px;
-  border-radius: var(--radius-lg);
+  height: 64px;
+  border-radius: var(--radius-md);
 }
 
 @media (min-width: 769px) {
@@ -85,7 +128,7 @@
     grid-template-columns: repeat(4, 1fr);
   }
 
-  .gaming-map__grid--3col {
-    grid-template-columns: repeat(6, 1fr);
+  .gaming-map__grid--chips {
+    grid-template-columns: repeat(8, 1fr);
   }
 }

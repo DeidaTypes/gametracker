@@ -41,7 +41,7 @@ function GamingMapTile({ genre, tier }) {
         tabIndex={0}
         aria-label={`${displayName} — not explored yet, tap to look inside`}
       >
-        <Icon size={22} className="map-tile__icon" aria-hidden="true" />
+        <Icon size={16} className="map-tile__icon" aria-hidden="true" />
         <span className="map-tile__label">{displayName}</span>
       </Pressable>
     )
@@ -84,7 +84,7 @@ function GamingMapTile({ genre, tier }) {
     >
       <span className="map-tile__head">
         <span className="map-tile__title">{displayName}</span>
-        <ChevronRight size={18} className="map-tile__chevron" aria-hidden="true" />
+        <ChevronRight size={16} className="map-tile__chevron" aria-hidden="true" />
       </span>
       <span className="map-tile__meta">{statsLine}</span>
     </Pressable>
