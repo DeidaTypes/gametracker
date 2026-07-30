@@ -4,7 +4,6 @@ import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
-import HiddenGemsRail from '../components/explore/HiddenGemsRail'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import {
   getSessionAddCount,
@@ -29,11 +28,6 @@ import './Explore.css'
  *   3. From people you follow — "Recently": followed users' real ratings
  *      + reviews, each with an algorithmic taste-match strip. Falls back
  *      to broader community activity so it's never empty.
- *   4. Hidden gems for you — closer rail. High-rating, low-volume games
- *      scoped to the genres/themes the user's OWN taste vector shows
- *      real affinity for, passive/scannable. Never a mainstream title
- *      everyone already knows, and never overlaps with the Swipe deck's
- *      broad variety.
  */
 function Explore() {
   const { isOpen, open } = useSearchOverlay()
@@ -95,9 +89,6 @@ function Explore() {
 
       {/* ── 3. From people you follow — "Recently" ratings & reviews ── */}
       <FollowingShelf />
-
-      {/* ── 4. Hidden gems for you — taste-scoped closer rail ── */}
-      <HiddenGemsRail />
 
     </div>
   )

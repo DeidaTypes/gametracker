@@ -92,12 +92,10 @@ function gameToCard(game, topGenres) {
  * Source of truth: fetchBroadDiscoveryBatch (src/services/igdb.js) — the
  * FULL real IGDB catalog across EVERY major genre (Sports, Puzzle, Strategy,
  * Simulation, Racing, Fighting, RPG, Shooter, everything), gated only by a
- * quality bar (total_rating + total_rating_count). Deliberately NOT sourced
- * from the E0 taste engine's user_hidden_gems table — that pool only ever
- * contains candidates from the user's own top genres/themes, which
- * structurally starves out every genre the user hasn't already engaged
- * with. That's the right behavior for the page's "Hidden gems for you"
- * closer (intentionally narrow) but the wrong one here.
+ * quality bar (total_rating + total_rating_count). Deliberately NOT scoped
+ * to the user's own top genres/themes — that would structurally starve out
+ * every genre the user hasn't already engaged with, which is the wrong
+ * behavior here: coverage across every genre comes first.
  *
  * The user's taste vector (getTasteVector) is read ONLY to lightly bias
  * on-card copy (matchGenres) and result ORDER (see applyTasteOrderBias in
