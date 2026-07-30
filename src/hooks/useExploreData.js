@@ -15,9 +15,10 @@ import {
   getHotTakeReviews,
   getReviewOfWeek,
 } from '../services/reviewService'
-import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
+import { getUpcomingReleases } from '../services/igdb'
 import { getCollections } from '../services/listService'
 import { getActiveThemedDrop } from '../services/themedDropsService'
+import { getNewNotableRail } from '../services/newNotableService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -127,9 +128,14 @@ export function useNewReleases() {
   return useAsyncSection(() => getUpcomingReleases(10))
 }
 
-/** Discover page — "NEW" games carousel: recent IGDB releases newest-first. */
+/**
+ * Discover page — "New & Notable" rail: recent/anticipated releases that
+ * clear one of three notability lanes (aaa / hyped indie / anticipated —
+ * see supabase/functions/new-notable/lanes.ts), taste-ordered. Reads a
+ * cache the new-notable daily job fills; no IGDB call on view.
+ */
 export function useDiscoverGamesNew() {
-  return useAsyncSection(() => getRecentReleasesForDiscover(20))
+  return useAsyncSection(() => getNewNotableRail())
 }
 
 /** Discover page — "POPULAR" reviews feed: like-ranked, 30-day window w/ fallback. */

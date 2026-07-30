@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import DiscoverSubHeader from '../components/explore/DiscoverSubHeader'
 import CleanGameTile from '../components/explore/CleanGameTile'
-import { getRecentReleasesPage } from '../services/igdb'
+import { getNewNotablePage } from '../services/newNotableService'
 import './DiscoverNewAll.css'
 
 // Twelve rows of three on a phone — enough that the first page fills the
@@ -16,15 +16,18 @@ function SkeletonTile() {
  * DiscoverNewAll — "See all" behind the New & Notable rail.
  * Route: /discover/new
  *
- * The release calendar read backwards: strictly newest first, so
- * scrolling down walks into the past. Covers and titles only, matching
- * the rail it continues — no scores anywhere on Discover.
+ * The SAME three-lane notability gate as the rail (see
+ * supabase/functions/new-notable/lanes.ts) — this is "notable, newest
+ * first", not "every recent release". Reads new_notable_pool directly, no
+ * taste reordering (that's rail-only), no IGDB call. Covers and titles
+ * only, matching the rail it continues — no scores anywhere on Discover.
  *
- * Pages are fetched by offset as the sentinel comes into view. IGDB can
- * order same-second releases differently between two pages, so ids are
- * deduped on append; without that a game sitting on a page boundary can
- * appear twice. The offset counts rows *requested* rather than rows
- * kept, otherwise the next page would re-ask for the ones just dropped.
+ * Pages are fetched by offset as the sentinel comes into view. Two rows
+ * can share the same release timestamp and sort differently between two
+ * range() calls, so ids are deduped on append; without that a game sitting
+ * on a page boundary can appear twice. The offset counts rows *requested*
+ * rather than rows kept, otherwise the next page would re-ask for the ones
+ * just dropped.
  */
 export default function DiscoverNewAll() {
   const [games, setGames] = useState([])
@@ -44,7 +47,7 @@ export default function DiscoverNewAll() {
 
     const offset = requestedRef.current
     try {
-      const page = await getRecentReleasesPage({ limit: PAGE_SIZE, offset })
+      const page = await getNewNotablePage({ limit: PAGE_SIZE, offset })
       requestedRef.current = offset + PAGE_SIZE
 
       // A short page means IGDB has no more history to give, whether or

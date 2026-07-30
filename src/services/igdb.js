@@ -343,71 +343,12 @@ function formatUpcomingGames(games) {
   )
 }
 
-/**
- * Recent releases for the Discover "NEW" carousel.
- * Fetches games released in the past 90 days sorted newest-first; widens
- * automatically to the past year if the tighter window yields fewer than
- * half the requested limit. Cover required, real data only.
- */
-export async function getRecentReleasesForDiscover(limit = 20) {
-  const now = Math.floor(Date.now() / 1000)
-  const ninetyDaysAgo = now - 90 * 24 * 60 * 60
-
-  const query = `fields name, cover.image_id, first_release_date;
-where first_release_date >= ${ninetyDaysAgo} & first_release_date <= ${now} & cover != null;
-sort first_release_date desc;
-limit ${limit};`
-
-  try {
-    let games = await igdbRequest('games', query)
-    if (games.length < Math.ceil(limit / 2)) {
-      const oneYearAgo = now - 365 * 24 * 60 * 60
-      const fallbackQuery = `fields name, cover.image_id, first_release_date;
-where first_release_date >= ${oneYearAgo} & first_release_date <= ${now} & cover != null;
-sort first_release_date desc;
-limit ${limit};`
-      games = await igdbRequest('games', fallbackQuery)
-    }
-    return formatUpcomingGames(games)
-  } catch (err) {
-    console.error('[igdb] getRecentReleasesForDiscover failed:', err)
-    return []
-  }
-}
-
-/**
- * One page of release history, newest first — the see-all behind the
- * Discover "New & Notable" rail.
- *
- * Same filter as getRecentReleasesForDiscover (released, has a cover) with
- * no lower date bound, so the grid is that rail continued: scrolling down
- * walks backward in time instead of hitting the 90-day wall. Paged by
- * offset because IGDB sorts server-side and we want the global date order,
- * not a per-genre one. Games sharing an exact release timestamp can order
- * differently between pages, so callers must dedupe by id — cheap, and the
- * alternative (keyset on first_release_date) would silently *drop* games
- * that share the boundary second, which is common for same-day releases.
- *
- * @param {{ limit?: number, offset?: number }} [opts]
- * @returns {Promise<Array<object>>} newest-first page; shorter than `limit`
- *   means the catalog is exhausted.
- */
-export async function getRecentReleasesPage({ limit = 36, offset = 0 } = {}) {
-  const now = Math.floor(Date.now() / 1000)
-
-  const query = `fields name, cover.image_id, first_release_date;
-where first_release_date <= ${now} & cover != null;
-sort first_release_date desc;
-limit ${limit};
-offset ${offset};`
-
-  try {
-    return formatUpcomingGames(await igdbRequest('games', query))
-  } catch (err) {
-    console.error('[igdb] getRecentReleasesPage failed:', err)
-    return []
-  }
-}
+// NOTE: getRecentReleasesForDiscover / getRecentReleasesPage (the old
+// date-only "New & Notable" queries) were removed — that section is now
+// served entirely from the new_notable_pool cache table, gated by the
+// three-lane notability check in supabase/functions/new-notable/lanes.ts.
+// See src/services/newNotableService.js. Live IGDB is touched only by the
+// daily new-notable Edge Function, never on an Explore view.
 
 export async function getRecentlyReleasedGames(limit = 30) {
   const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)

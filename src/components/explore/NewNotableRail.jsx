@@ -8,13 +8,16 @@ import './SectionScaffold.css'
 /**
  * NewNotableRail — Discover slot 3.
  *
- * Recent releases, newest first, as covers and titles — no scores. A new
- * game hasn't been rated by enough people to mean anything yet, so a
- * number here would be noise pretending to be a signal.
+ * Recent + anticipated releases that clear one of three notability lanes
+ * (AAA volume, hyped indie quality, or pre-release buzz — see
+ * supabase/functions/new-notable/lanes.ts), taste-ordered, as covers and
+ * titles — still no numeric scores. Each tile carries a small lane pill
+ * ("Popular" / "Acclaimed" / "Hyped") instead: it explains WHY a game is
+ * here without turning browsing into judging.
  *
- * "See all" continues the same list backward in time at /discover/new.
- * Hides entirely when IGDB returns nothing rather than showing an empty
- * rail.
+ * "See all" continues the same gated list, newest-first, at
+ * /discover/new. Hides entirely when the cache has nothing rather than
+ * showing an empty rail.
  */
 export default function NewNotableRail() {
   const navigate = useNavigate()
@@ -32,7 +35,7 @@ export default function NewNotableRail() {
 
       <div className="explore-scroll-row">
         {games.map((game) => (
-          <CleanGameTile key={game.id} game={game} />
+          <CleanGameTile key={game.id} game={game} tag={game.tag} />
         ))}
       </div>
 
