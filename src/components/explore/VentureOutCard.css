@@ -1,0 +1,250 @@
+/* =============================================
+   VENTURE OUT CARD — generative, backlog-only
+   picks for one uncharted genre.
+   ============================================= */
+
+.venture-out-card {
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--color-border);
+}
+
+.venture-out-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.venture-out-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--map-tier-unexplored);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venture-out-card__refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--map-tier-unexplored) 16%, transparent);
+  color: var(--map-tier-unexplored);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.venture-out-card__refresh:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.venture-out-card__body {
+  margin: 10px 0 14px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+.venture-out-card__footer {
+  margin: 12px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-style: italic;
+  line-height: var(--line-height-caption);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* ── Skeleton (initial load) ── */
+
+.venture-out-card__skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.venture-out-card__skel-cover {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+}
+
+.venture-out-card__skel-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.venture-out-card__skel-line {
+  height: 10px;
+  border-radius: var(--radius-xs);
+}
+
+.venture-out-card__skel-line--title { width: 55%; }
+.venture-out-card__skel-line--meta { width: 35%; }
+
+/* ── Picks ── */
+
+.venture-out-card__slots {
+  display: flex;
+  flex-direction: column;
+}
+
+.venture-out-card__divider {
+  height: 1px;
+  margin: 12px 0;
+  background: var(--color-border);
+}
+
+.venture-out-card__pick,
+.venture-out-card__loading,
+.venture-out-card__empty-slot {
+  min-height: 48px;
+}
+
+.venture-out-card__pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.venture-out-card__pick-cover {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.venture-out-card__pick-cover img,
+.venture-out-card__pick-swatch {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.venture-out-card__pick-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.venture-out-card__pick-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venture-out-card__pick-sub {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venture-out-card__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-hover);
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Loading slot: spinner + rotating quote ── */
+
+.venture-out-card__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 4px 8px;
+}
+
+.venture-out-card__spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--map-tier-unexplored);
+  animation: venture-out-spin 0.8s linear infinite;
+}
+
+.venture-out-card__spinner--static {
+  animation: none;
+  border-top-color: var(--color-border);
+  border-right-color: var(--map-tier-unexplored);
+}
+
+@keyframes venture-out-spin {
+  to { transform: rotate(360deg); }
+}
+
+.venture-out-card__quote {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.venture-out-card__quote-caption {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.venture-out-card__empty-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px 8px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .venture-out-card__spinner {
+    animation: none;
+  }
+}

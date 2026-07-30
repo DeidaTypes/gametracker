@@ -1,0 +1,236 @@
+/* =====================================================
+   GENRE DETAIL — Your Gaming Map's per-genre poster grid
+   Route: /gaming-map/genre/:slug
+   ===================================================== */
+
+.genre-detail-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-bottom: var(--bottom-nav-safe-area, 80px);
+}
+
+.genre-detail-page--missing {
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-3xl) var(--page-padding);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* ── Header ── */
+
+.genre-detail__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--spacing-sm) var(--page-padding, 20px);
+  padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top, 0px));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg-primary);
+}
+
+.genre-detail__back {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-top: 2px;
+  border: none;
+  background: none;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.genre-detail__heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.genre-detail__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l, 24px);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-display-l);
+  color: var(--color-text-primary);
+}
+
+.genre-detail__title-icon {
+  color: var(--genre-accent);
+}
+
+.genre-detail__subtitle {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Sort chips ── */
+
+.genre-detail__chips {
+  display: flex;
+  gap: 8px;
+  padding: var(--spacing-sm) var(--page-padding, 20px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.genre-detail__chips::-webkit-scrollbar { display: none; }
+
+.genre-detail__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--bg-surface-2);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.genre-detail__chip--active {
+  background: color-mix(in srgb, var(--genre-accent) 20%, var(--bg-surface-2));
+  border-color: color-mix(in srgb, var(--genre-accent) 55%, transparent);
+  color: var(--color-text-primary);
+}
+
+/* ── Good places to start ── */
+
+.genre-detail__onramp {
+  padding: var(--spacing-sm) 0 0;
+}
+
+.genre-detail__onramp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 var(--page-padding, 20px);
+}
+
+.genre-detail__onramp-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.genre-detail__onramp-label svg {
+  color: var(--genre-accent);
+}
+
+.genre-detail__onramp-sub {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.genre-detail__onramp-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px var(--page-padding, 20px) 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.genre-detail__onramp-row::-webkit-scrollbar { display: none; }
+
+.genre-detail__onramp-item {
+  flex: 0 0 108px;
+  width: 108px;
+}
+
+/* ── "All {Genre} · sort" grid ── */
+
+.genre-detail__all-label {
+  margin: var(--spacing-lg) 0 var(--spacing-sm);
+  padding: 0 var(--page-padding, 20px);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.genre-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 12px;
+  padding: 0 var(--page-padding, 20px) var(--spacing-md);
+}
+
+.genre-detail__empty {
+  padding: var(--spacing-3xl) var(--page-padding);
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+
+.genre-detail__sentinel {
+  height: 1px;
+}
+
+.genre-detail__loading-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.genre-detail__spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-border);
+  border-top-color: var(--genre-accent);
+  animation: genre-detail-spin 0.8s linear infinite;
+}
+
+@keyframes genre-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .genre-detail__spinner {
+    animation: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .genre-detail__header,
+  .genre-detail__chips,
+  .genre-detail__onramp-head,
+  .genre-detail__onramp-row,
+  .genre-detail__all-label,
+  .genre-detail__grid {
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
+  }
+
+  .genre-detail__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

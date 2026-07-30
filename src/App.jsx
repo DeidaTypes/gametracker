@@ -45,6 +45,7 @@ import ActivityCalendar from './pages/ActivityCalendar'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
 import SmartListDetail from './pages/SmartListDetail'
 import ListDetail from './pages/ListDetail'
+import GenreDetail from './pages/GenreDetail'
 import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
 import SignUp from './pages/auth/SignUp'
@@ -419,6 +420,17 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition><Search /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Your Gaming Map — genre detail grid, opened by tapping any tile. */}
+            <Route
+              path="/gaming-map/genre/:slug"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><GenreDetail /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

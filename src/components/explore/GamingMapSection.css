@@ -1,0 +1,91 @@
+/* =============================================
+   YOUR GAMING MAP — Discover section, between
+   "Swipe to discover" and "Collections".
+   ============================================= */
+
+.gaming-map__head {
+  margin-bottom: 4px;
+}
+
+.gaming-map__subtitle {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+.gaming-map__body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.gaming-map__tier {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.map-tier-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.map-tier-label--home { color: var(--map-tier-home); }
+.map-tier-label--exploring { color: var(--map-tier-exploring); }
+.map-tier-label--horizon { color: var(--map-tier-horizon); }
+.map-tier-label--unexplored { color: var(--map-tier-unexplored); }
+
+.map-tier-label__sub {
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text-tertiary);
+}
+
+.gaming-map__grid {
+  display: grid;
+  gap: 12px;
+}
+
+.gaming-map__grid--2col {
+  grid-template-columns: 1fr 1fr;
+}
+
+.gaming-map__grid--3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ---- Skeleton (loading) ---- */
+.gaming-map__skel-title {
+  height: 22px;
+  width: 55%;
+  border-radius: var(--radius-sm);
+}
+
+.gaming-map__skel-subtitle {
+  height: 13px;
+  width: 70%;
+  margin-top: 8px;
+  border-radius: var(--radius-xs);
+}
+
+.gaming-map__skel-tile {
+  height: 84px;
+  border-radius: var(--radius-lg);
+}
+
+@media (min-width: 769px) {
+  .gaming-map__grid--2col {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .gaming-map__grid--3col {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}

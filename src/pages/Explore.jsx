@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
+import GamingMapSection from '../components/explore/GamingMapSection'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
@@ -23,9 +24,13 @@ import './Explore.css'
  *      lightly nudges card order, never which genres are eligible. Backed
  *      by the real IGDB catalog + background pagination, so it never runs
  *      out mid-session — for active browsing/decision-making (skip/backlog).
- *   2. Collections        — curated ("by Checkpoint") + popular community
+ *   2. Your gaming map     — the user's 23 formal genres grouped strictly
+ *      by tier (Home turf / Exploring / On the horizon / Haven't explored),
+ *      each tile driven by getGamingMap's real per-genre stats. Hides
+ *      entirely for a brand-new account with no map yet.
+ *   3. Collections        — curated ("by Checkpoint") + popular community
  *                            lists as mosaic cards (hidden if none qualify)
- *   3. From people you follow — "Recently": followed users' real ratings
+ *   4. From people you follow — "Recently": followed users' real ratings
  *      + reviews, each with an algorithmic taste-match strip. Falls back
  *      to broader community activity so it's never empty.
  */
@@ -84,10 +89,13 @@ function Explore() {
         <SwipeDeck />
       </section>
 
-      {/* ── 2. Collections — curated + community lists ── */}
+      {/* ── 2. Your gaming map — tiered genre bands + Venture Out ── */}
+      <GamingMapSection />
+
+      {/* ── 3. Collections — curated + community lists ── */}
       <CollectionsShelf />
 
-      {/* ── 3. From people you follow — "Recently" ratings & reviews ── */}
+      {/* ── 4. From people you follow — "Recently" ratings & reviews ── */}
       <FollowingShelf />
 
     </div>

@@ -25,8 +25,9 @@ import { igdbRequest } from './igdb'
  *     swipes. Also the only source available when viewing SOMEONE ELSE's map.
  *
  * NO IGDB ON A ROUTINE READ
- * Nothing in this file calls IGDB except fetchGenrePageLive, which exists
- * solely for scrolling PAST the cached pool. Genres come from the `game_tags`
+ * Only two functions in this file touch IGDB: fetchGenrePageLive, for
+ * scrolling PAST the cached pool, and getGenreTotalCount, which asks IGDB
+ * for a single number (never rows). Genres come from the `game_tags`
  * cache; pools come from `genre_game_pools` / `user_genre_pools`, refreshed by
  * the daily taste-engine job. A game with no cached genres is reported as
  * unresolved and queued for the job to resolve — the map never fixes that by
@@ -859,5 +860,31 @@ export async function fetchGenrePageLive(genreId, sort = 'top_rated', opts = {})
   } catch (err) {
     console.error('[gamingMap] fetchGenrePageLive crashed:', err)
     return []
+  }
+}
+
+/**
+ * getGenreTotalCount(genreId) — IGDB's own total game count for a genre.
+ *
+ * The genre detail header shows this next to the genre name. Deliberately
+ * NOT the cached pool's size (that's capped at ~100 for ranking purposes) —
+ * this is a single `games/count` call, cached for 5 minutes by igdbRequest's
+ * shared response cache like any other IGDB read. No rows are fetched or
+ * stored, which is why this is allowed on a routine page open even though
+ * it touches IGDB.
+ *
+ * @returns {Promise<number|null>} null when the genre is invalid or the
+ *   count request fails — callers should render nothing rather than a 0.
+ */
+export async function getGenreTotalCount(genreId) {
+  try {
+    const genre = genreById(genreId)
+    if (!genre) return null
+    const result = await igdbRequest('games/count', `where genres = (${genre.id});`)
+    const count = Number(result?.count)
+    return Number.isFinite(count) ? count : null
+  } catch (err) {
+    console.error('[gamingMap] getGenreTotalCount crashed:', err)
+    return null
   }
 }

@@ -45,8 +45,12 @@ const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' }
 // request can carry up to 10 sub-queries — reduces fan-out to one IGDB call
 // per refill instead of three parallel `games` calls, keeping us comfortably
 // under the ~4 req/s rate ceiling.
+//
+// `games/count` backs Your Gaming Map's genre detail header (a single
+// number, never rows) — see getGenreTotalCount in gamingMapService.js.
 const ALLOWED_ENDPOINTS = new Set([
   'games',
+  'games/count',
   'genres',
   'themes',
   'keywords',

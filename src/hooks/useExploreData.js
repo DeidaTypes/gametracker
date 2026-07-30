@@ -17,6 +17,7 @@ import {
 } from '../services/reviewService'
 import { getUpcomingReleases, getRecentReleasesForDiscover } from '../services/igdb'
 import { getCollections } from '../services/listService'
+import { getGamingMap } from '../services/gamingMapService'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
@@ -199,4 +200,17 @@ export function useCircleMostPlayed() {
  */
 export function useRecentFollowingActivity() {
   return useAsyncSection(() => getRecentFollowingActivity(10))
+}
+
+/**
+ * Discover page — "Your gaming map": the signed-in user's 23 formal IGDB
+ * genres, each already classified into a tier (home_turf / exploring /
+ * on_horizon / not_yet) with the real stats a map tile renders. Recomputed
+ * from the user's own library/backlog/sessions/ratings on every load, so a
+ * status change made elsewhere in the app is reflected the next time this
+ * section mounts or the app resumes. `data` is null when there's no signed-
+ * in user to build a map for — the section hides itself in that case.
+ */
+export function useGamingMap() {
+  return useAsyncSection(() => getGamingMap())
 }

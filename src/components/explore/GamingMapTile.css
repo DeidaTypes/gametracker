@@ -1,0 +1,131 @@
+/* =============================================
+   GAMING MAP TILE — Home turf / Exploring / On the
+   horizon / Haven't explored. One component, four
+   looks — see GamingMapTile.jsx for the branching.
+   ============================================= */
+
+.map-tile {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.map-tile__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-title);
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.map-tile__head .map-tile__title {
+  flex: 1;
+}
+
+.map-tile__horizon-body .map-tile__title {
+  -webkit-line-clamp: 1;
+}
+
+.map-tile__meta {
+  margin-top: 8px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Home turf / Exploring ---- */
+.map-tile--home {
+  background: color-mix(in srgb, var(--map-tier-home) 30%, var(--bg-surface-2));
+}
+
+.map-tile--exploring {
+  background: color-mix(in srgb, var(--map-tier-exploring) 22%, var(--bg-surface-2));
+}
+
+.map-tile__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-tile__chevron {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-text-primary);
+  opacity: 0.55;
+}
+
+/* ---- On the horizon ---- */
+.map-tile--horizon {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--color-border);
+}
+
+.map-tile__swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.map-tile__horizon-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.map-tile--horizon .map-tile__title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.map-tile--horizon .map-tile__meta {
+  margin-top: 0;
+}
+
+/* ---- Haven't explored ---- */
+.map-tile--unexplored {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 1 / 1;
+  background: transparent;
+  border: 1px dashed var(--color-border-hover);
+}
+
+.map-tile__icon {
+  color: var(--map-tier-unexplored);
+}
+
+.map-tile__label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+  text-align: center;
+  word-break: break-word;
+}

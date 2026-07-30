@@ -280,6 +280,17 @@ body[data-larger-text='true'] {
   --genre-arcade:     #DA6CDA;  /* magenta / orchid */
   --genre-default:    #7C89A8;  /* neutral slate — unchanged, never orange */
 
+  /* ---- Your Gaming Map — tier accent tokens ----
+     Semantic aliases onto existing accent tokens; no new hex introduced.
+     Home turf borrows Explore's own purple identity (--accent-journal);
+     Exploring borrows the emerald status token (shallow-but-real signal);
+     On the horizon uses the cobalt brand accent (backlog intent is itself
+     an accent action); Haven't explored stays fully neutral. */
+  --map-tier-home: var(--accent-journal);
+  --map-tier-exploring: var(--status-success);
+  --map-tier-horizon: var(--accent);
+  --map-tier-unexplored: var(--text-tertiary);
+
   /* Review / Journal button accent colors — vivid fills, bright text */
   --accent-review: #0a9e6a;
   --accent-review-text: #b6fde0;
