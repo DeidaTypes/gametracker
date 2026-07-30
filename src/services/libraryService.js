@@ -55,8 +55,7 @@ const LIST_STATUS_MAP = {
  * LOCAL word 'want', so Postgres rejected every one of them — the upsert
  * error is logged and swallowed, so this failed silently for as long as the
  * sync has existed (the live table held zero backlog rows). Any server-side
- * feature reading backlog intent — Your Gaming Map's ON THE HORIZON tier —
- * saw an empty backlog for every user.
+ * feature reading backlog intent saw an empty backlog for every user.
  */
 export const TRACKER_STATUS = Object.freeze({
   want: 'want_to_play',

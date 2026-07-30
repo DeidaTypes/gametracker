@@ -4,7 +4,6 @@ import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import ThemedDropCard from '../components/explore/ThemedDropCard'
 import NewNotableRail from '../components/explore/NewNotableRail'
-import GamingMapSection from '../components/explore/GamingMapSection'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
@@ -33,11 +32,7 @@ import './Explore.css'
  *      backward in time on its see-all.
  *   4. Collections        — curated ("by Checkpoint") + popular community
  *                            lists as mosaic cards (hidden if none qualify)
- *   5. Your gaming map     — the user's 23 formal genres grouped strictly
- *      by tier (Home turf / Exploring / On the horizon / Haven't explored),
- *      each tile driven by getGamingMap's real per-genre stats. Hides
- *      entirely for a brand-new account with no map yet.
- *   6. From people you follow — "Recently": followed users' real ratings
+ *   5. From people you follow — "Recently": followed users' real ratings
  *      + reviews, each with an algorithmic taste-match strip. Falls back
  *      to broader community activity so it's never empty.
  *
@@ -110,10 +105,7 @@ function Explore() {
       {/* ── 4. Collections — curated + community lists ── */}
       <CollectionsShelf />
 
-      {/* ── 5. Your gaming map — tiered genre bands + Venture Out ── */}
-      <GamingMapSection />
-
-      {/* ── 6. From people you follow — "Recently" ratings & reviews ── */}
+      {/* ── 5. From people you follow — "Recently" ratings & reviews ── */}
       <FollowingShelf />
 
     </div>

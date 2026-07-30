@@ -103,7 +103,7 @@ INSERT INTO public.drop_filter_types (key, label, description, param_schema, not
     'Keeps games carrying any (match=any, default) or all (match=all) of the given IGDB genre ids.',
     '{"ids": {"type": "int[]", "required": true},
       "match": {"type": "string", "required": false}}'::jsonb,
-    'Formal IGDB genre ids — see public.igdb_genres for the canonical 23. Densely populated: every game with any metadata has genres.',
+    'Formal IGDB genre ids, as carried on drop_candidate_pool.genre_ids. Densely populated: every game with any metadata has genres.',
     2
   ),
   (

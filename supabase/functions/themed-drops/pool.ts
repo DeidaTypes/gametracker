@@ -10,7 +10,7 @@
 //
 // The pool holds ONLY games already clearing the engine-wide hard floor —
 // ~4.3k rows, and it stays there. It is a pool, not a mirror of IGDB's
-// catalog, exactly like genre_game_pools.
+// catalog.
 //
 // IGDB budget per full refresh: ~4 POSTs via /multiquery (one carrying every
 // game page, three carrying the time-to-beat lookups), throttled to <=4 req/s

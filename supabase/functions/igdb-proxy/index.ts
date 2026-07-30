@@ -46,8 +46,8 @@ const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' }
 // per refill instead of three parallel `games` calls, keeping us comfortably
 // under the ~4 req/s rate ceiling.
 //
-// `games/count` backs Your Gaming Map's genre detail header (a single
-// number, never rows) — see getGenreTotalCount in gamingMapService.js.
+// `games/count` returns a single number and never rows — used by the
+// themed-drops pool refresh to size a filter's catalog before paging it.
 const ALLOWED_ENDPOINTS = new Set([
   'games',
   'games/count',

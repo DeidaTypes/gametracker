@@ -24,9 +24,8 @@ import { getAllLists } from './libraryService'
  * The RPC drops anything in the viewer's `game_trackers`, but the library's
  * primary store is localStorage (setGameStatus never writes game_trackers), so
  * the server literally cannot see most of a user's library. This module runs
- * the second pass locally — the same split gamingMapService.js lives with.
- * That is also why a drop selects more games than a shelf shows: every viewer
- * loses a different subset.
+ * the second pass locally. That is also why a drop selects more games than a
+ * shelf shows: every viewer loses a different subset.
  */
 
 const COVER_BASE = 'https://images.igdb.com/igdb/image/upload/t_cover_big'
