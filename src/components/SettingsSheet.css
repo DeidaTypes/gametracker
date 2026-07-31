@@ -1,0 +1,236 @@
+/* ============================================================
+   SettingsSheet — grouped bottom sheet for the profile "⋯" overflow
+   menu (signed-in user's own profile only). Cobalt design system:
+   icon tiles use the three accent tokens (cobalt / purple / green)
+   plus a neutral tone for Support rows — no orange/amber anywhere.
+   ============================================================ */
+.settings-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1010;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.settings-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow:
+    0 -4px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  outline: none;
+}
+
+.settings-sheet__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: 12px auto 4px;
+}
+
+.settings-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 16px;
+}
+
+.settings-sheet__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+}
+
+.settings-sheet__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-sheet__close:hover {
+  background: var(--color-surface-hover);
+}
+
+.settings-sheet__close:active {
+  background: var(--color-surface-active);
+}
+
+.settings-sheet__body {
+  padding: 0 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ============================================================
+   Group
+   ============================================================ */
+.settings-sheet__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-sheet__group-title {
+  margin: 0 4px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.settings-sheet__group-rows {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--surface-1-shadow);
+}
+
+/* ============================================================
+   Row
+   ============================================================ */
+.settings-sheet__row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 16px;
+  gap: 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease;
+}
+
+.settings-sheet__row:last-child {
+  border-bottom: 0;
+}
+
+.settings-sheet__row:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.settings-sheet__row:active:not(:disabled) {
+  background: var(--color-surface-active);
+}
+
+.settings-sheet__row--disabled,
+.settings-sheet__row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.settings-sheet__tile {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.settings-sheet__tile--cobalt {
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
+  color: var(--accent-hover);
+}
+
+.settings-sheet__tile--purple {
+  background: color-mix(in srgb, var(--accent-journal) 22%, var(--bg-surface));
+  color: var(--accent-journal);
+}
+
+.settings-sheet__tile--green {
+  background: color-mix(in srgb, var(--accent-review) 22%, var(--bg-surface));
+  color: var(--accent-review);
+}
+
+.settings-sheet__tile--neutral {
+  background: var(--color-surface);
+  color: var(--text-secondary);
+}
+
+.settings-sheet__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  color: var(--text-primary);
+}
+
+.settings-sheet__chevron {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   Log out — distinct destructive treatment, separated from the
+   grouped cards above it (no icon tile, no chevron — matches the
+   plain centered destructive row used elsewhere, e.g. Settings.css
+   .settings-row--destructive.settings-row--centered).
+   ============================================================ */
+.settings-sheet__logout {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 0 6px;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--status-danger);
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-sheet__logout:active {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-sheet-overlay,
+  .settings-sheet {
+    animation: none;
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .settings-sheet-overlay,
+body[data-reduce-motion='true'] .settings-sheet,
+body[data-reduce-motion='true'] .settings-sheet__row,
+body[data-reduce-motion='true'] .settings-sheet__close {
+  transition: none !important;
+}

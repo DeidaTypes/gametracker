@@ -82,6 +82,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Room for the sticky header when a hash deep-link (from the profile
+     Settings sheet's Privacy/Appearance/About rows) scrolls a section
+     into view. */
+  scroll-margin-top: 84px;
 }
 
 .settings-group__title {

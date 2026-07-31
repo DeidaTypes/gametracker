@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   LuChevronLeft,
   LuChevronRight,
@@ -105,9 +105,9 @@ function ColorBlindPreview({ mode }) {
 /* ============================================================
    Reusable row primitives
    ============================================================ */
-function SettingsGroup({ title, children, footer = null }) {
+function SettingsGroup({ id, title, children, footer = null }) {
   return (
-    <section className="settings-group">
+    <section id={id} className="settings-group">
       {title && <h2 className="settings-group__title">{title}</h2>}
       <div className="settings-group__rows">{children}</div>
       {footer && <p className="settings-group__footer">{footer}</p>}
@@ -162,6 +162,7 @@ function SettingsRow({
 
 function Settings() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logOut } = useAuth()
 
   const [settings, setSettings] = useState(getSettings)
@@ -192,6 +193,23 @@ function Settings() {
   useEffect(() => {
     if (cbmSheetOpen) setCbmPreview(settings.colorBlindMode)
   }, [cbmSheetOpen, settings.colorBlindMode])
+
+  // Deep-link support — the profile Settings sheet's Privacy/Appearance/
+  // About rows route here with a #settings-section-* hash so the tap
+  // lands on the relevant section instead of the generic page top.
+  useEffect(() => {
+    if (!location.hash) return
+    const id = location.hash.slice(1)
+    const el = document.getElementById(id)
+    if (!el) return
+    const t = setTimeout(() => {
+      el.scrollIntoView({
+        behavior: settings.reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      })
+    }, 80)
+    return () => clearTimeout(t)
+  }, [location.hash, settings.reduceMotion])
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])
@@ -345,6 +363,7 @@ function Settings() {
 
         {/* ─── APPEARANCE ────────────────────────────────── */}
         <SettingsGroup
+          id="settings-section-appearance"
           title="Appearance"
           footer={!hasInviteReward ? 'Invite a friend to unlock the Ambassador accent.' : null}
         >
@@ -399,7 +418,7 @@ function Settings() {
         </SettingsGroup>
 
         {/* ─── PRIVACY & SAFETY ──────────────────────────── */}
-        <SettingsGroup title="Privacy & Safety">
+        <SettingsGroup id="settings-section-privacy" title="Privacy & Safety">
           <SettingsRow
             label="Blocked users"
             onClick={() => navigate('/settings/blocked')}
@@ -430,7 +449,7 @@ function Settings() {
         </SettingsGroup>
 
         {/* ─── ABOUT ─────────────────────────────────────── */}
-        <SettingsGroup title="About">
+        <SettingsGroup id="settings-section-about" title="About">
           <SettingsRow
             label="Version"
             value={`v${APP_VERSION} (build ${APP_BUILD})`}

@@ -18,7 +18,6 @@ import {
   LuPlus,
   LuUserPen,
   LuSparkles,
-  LuSettings,
   LuMessageCircle,
   LuLink,
   LuUserX,
@@ -76,6 +75,7 @@ import { compileWrappedSummary } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
+import SettingsSheet from '../components/SettingsSheet'
 import ReportSheet from '../components/ReportSheet'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateListModal from '../components/CreateListModal'
@@ -1640,91 +1640,70 @@ function Profile() {
         </section>
 
         {/* ═════════════════════════════════════════════════════════
-            OVERFLOW SHEET (⋯) — a clean grouped action sheet, not a
-            duplicate of the Settings page. Own profile: profile
-            actions (Edit / Share / Wrapped), a divider, then a single
-            "Settings" row that opens the full grouped Settings page
-            (src/pages/Settings.jsx) — the sheet never re-implements
-            Notifications/Privacy/Appearance/Log out itself, so there
-            is exactly one source of truth for those. Visitor profile
-            keeps its own action set (Message / Share / Copy link /
-            Block / Report), styled with the same icon-tile rows.
+            OVERFLOW SHEET (⋯) — self vs visitor get entirely different
+            components. Own profile opens the grouped Settings sheet
+            (ACCOUNT / PREFERENCES / SUPPORT + Log out, matching the
+            Sprint 5 mockup). Visitor profile keeps its own flat
+            ActionSheet action set (Message / Share / Copy link /
+            Block / Report).
             ═════════════════════════════════════════════════════════ */}
-        <ActionSheet
-          isOpen={overflowSheetOpen}
-          onClose={() => setOverflowSheetOpen(false)}
-          items={
-            isOwnProfile
-              ? [
-                  {
-                    label: 'Edit profile',
-                    icon: <LuUserPen size={18} />,
-                    tone: 'cobalt',
-                    onClick: () => setShowEditModal(true),
-                  },
-                  {
-                    label: 'Share profile',
-                    icon: <LuShare2 size={18} />,
-                    tone: 'purple',
-                    onClick: handleShareProfile,
-                  },
-                  {
-                    label:
-                      wrappedSharing === 'generating'
-                        ? 'Generating…'
-                        : wrappedSharing === 'done'
-                        ? 'Shared!'
-                        : 'Your Wrapped',
-                    icon: <LuSparkles size={18} />,
-                    tone: 'green',
-                    disabled: wrappedSharing === 'generating',
-                    onClick: () => handleShareWrapped('year'),
-                  },
-                  { divider: true },
-                  {
-                    label: 'Settings',
-                    icon: <LuSettings size={18} />,
-                    tone: 'neutral',
-                    onClick: () => navigate('/settings'),
-                  },
-                ]
-              : [
-                  {
-                    label: 'Message',
-                    icon: <LuMessageCircle size={18} />,
-                    tone: 'cobalt',
-                    onClick: handleMessageUser,
-                  },
-                  {
-                    label: 'Share profile',
-                    icon: <LuShare2 size={18} />,
-                    tone: 'purple',
-                    onClick: handleShareProfile,
-                  },
-                  {
-                    label: 'Copy link',
-                    icon: <LuLink size={18} />,
-                    tone: 'green',
-                    onClick: handleCopyProfileLink,
-                  },
-                  { divider: true },
-                  {
-                    label: `Block ${profile.username || profile.displayName || 'user'}`,
-                    icon: <LuUserX size={18} />,
-                    tone: 'neutral',
-                    chevron: false,
-                    destructive: true,
-                    onClick: () => setBlockSheetOpen(true),
-                  },
-                  {
-                    label: 'Report',
-                    icon: <LuFlag size={18} />,
-                    tone: 'neutral',
-                    onClick: () => setReportProfileOpen(true),
-                  },
-                ]
-          }
-        />
+        {isOwnProfile ? (
+          <SettingsSheet
+            isOpen={overflowSheetOpen}
+            onClose={() => setOverflowSheetOpen(false)}
+            onEditProfile={() => setShowEditModal(true)}
+            onShareProfile={handleShareProfile}
+            onWrapped={() => handleShareWrapped('year')}
+            wrappedLabel={
+              wrappedSharing === 'generating'
+                ? 'Generating…'
+                : wrappedSharing === 'done'
+                ? 'Shared!'
+                : 'Your Wrapped'
+            }
+            wrappedDisabled={wrappedSharing === 'generating'}
+          />
+        ) : (
+          <ActionSheet
+            isOpen={overflowSheetOpen}
+            onClose={() => setOverflowSheetOpen(false)}
+            items={[
+              {
+                label: 'Message',
+                icon: <LuMessageCircle size={18} />,
+                tone: 'cobalt',
+                onClick: handleMessageUser,
+              },
+              {
+                label: 'Share profile',
+                icon: <LuShare2 size={18} />,
+                tone: 'purple',
+                onClick: handleShareProfile,
+              },
+              {
+                label: 'Copy link',
+                icon: <LuLink size={18} />,
+                tone: 'green',
+                onClick: handleCopyProfileLink,
+              },
+              { divider: true },
+              {
+                label: `Block ${profile.username || profile.displayName || 'user'}`,
+                icon: <LuUserX size={18} />,
+                tone: 'neutral',
+                chevron: false,
+                destructive: true,
+                onClick: () => setBlockSheetOpen(true),
+              },
+              {
+                label: 'Report',
+                icon: <LuFlag size={18} />,
+                tone: 'neutral',
+                onClick: () => setReportProfileOpen(true),
+              },
+            ]}
+          />
+        )}
 
         {/* ═════════════════════════════════════════════════════════
             TAB STRIP — Home / Reviews / Lists with sliding cobalt
