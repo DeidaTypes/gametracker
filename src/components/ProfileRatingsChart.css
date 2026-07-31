@@ -1,119 +1,136 @@
 /* ============================================================
-   ProfileRatingsChart
-   Avg + histogram for a user's review ratings. Lives inside the
-   Profile Taste card, directly below ProfileTasteDNA's genre
-   legend — no title, personality chip, or Compare affordance of
-   its own (those already live one level up).
+   ProfileRatingsChart — "How I Rate" histogram on Profile Home.
 
-   Features:
-   - Tap a bar → modal listing those games
+   Five whole-star columns: count label above each bar, a baseline
+   rule beneath them, and the real average in the header. Tapping a
+   populated bar opens a modal listing those games.
    ============================================================ */
 
 .prc-section {
-  padding: 0 16px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: 0 var(--page-padding);
 }
 
-/* ---- Optional header row: title only (hidden by default via
-   the `hideTitle` prop when nested inside the Taste card) ---- */
 .prc-header {
-  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
 }
 
 .prc-section-title {
-  font-family: var(--font-display, 'DM Serif Display', serif);
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-display);
   color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
 }
 
-/* ---- Chart area ---- */
+.prc-avg {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.prc-avg__star {
+  margin-left: 2px;
+  color: var(--star);
+}
+
+/* ---- Chart area ----
+   Each column is its own tap target: count label, bar track, axis
+   label. The baseline is the track's bottom border, so it reads as a
+   single continuous rule across all five columns. */
+
 .prc-chart {
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 52px; /* MAX_BAR_PX (48) + breathing room */
+  gap: var(--spacing-xs);
 }
 
 .prc-bar-btn {
   flex: 1;
   display: flex;
-  align-items: flex-end;
-  height: 100%;
-  background: none;
-  border: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  /* 44px minimum tap height is met by the chart body itself
+     (count label + 72px track + axis label). */
   padding: 0;
+  border: none;
+  background: none;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
-  margin: 0 -1px; /* widen tap target slightly */
 }
 
 .prc-bar-btn--active {
   cursor: pointer;
 }
 
-/* Stacking wrapper — both fills positioned relative to this */
-.prc-bar-stack {
-  position: relative;
-  width: 100%;
-  height: 100%;
+.prc-bar-count {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-align: center;
+  color: var(--text-secondary);
 }
 
-/* ---- Bar fill ---- */
+.prc-bar-btn--active .prc-bar-count {
+  color: var(--text-primary);
+}
+
+.prc-bar-stack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--prc-chart-height, 72px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .prc-bar-fill {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--accent);
-  border-radius: 3px 3px 0 0;
-  opacity: 0.2; /* inactive / empty */
-  z-index: 1;
-}
-
-.prc-bar-btn--active .prc-bar-fill {
-  opacity: 1;
+  display: block;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: linear-gradient(
+    180deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 62%, var(--accent-journal)) 100%
+  );
+  transition: height var(--transition-normal);
 }
 
 .prc-bar-btn--active:active .prc-bar-fill {
   opacity: 0.65;
 }
 
-/* Respect prefers-reduced-motion */
+.prc-bar-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.prc-bar-btn--active .prc-bar-label {
+  color: var(--text-secondary);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .prc-bar-fill {
     transition: none;
   }
-}
-
-/* ---- Axis labels ---- */
-.prc-axis-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-}
-
-.prc-axis-label {
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  line-height: 1;
-}
-
-/* ---- Personality insight line ---- */
-.prc-personality-desc {
-  font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 8px 0 0;
-  line-height: 1.45;
-}
-
-.prc-personality-desc strong {
-  color: var(--text-primary);
-  font-weight: 600;
 }
 
 /* ============================================================

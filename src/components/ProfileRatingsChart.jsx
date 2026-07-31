@@ -4,80 +4,41 @@ import CenteredModal from './CenteredModal'
 import './ProfileRatingsChart.css'
 
 /* ----------------------------------------------------------------
-   Ten buckets for half-star ratings 0.5 → 5.0.
-   Each bucket holds the raw Supabase review rows that belong to it.
+   Five whole-star buckets. Each bucket holds the raw Supabase review
+   rows that belong to it, so tapping a bar can list its games.
+
+   Half-star ratings snap to the nearest whole star — the chart reads
+   as five labelled columns rather than ten, which is only legible at
+   this width if each column carries real weight.
    ---------------------------------------------------------------- */
-const BUCKETS = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-const MAX_BAR_PX = 48
+const BUCKETS = [1, 2, 3, 4, 5]
+const CHART_HEIGHT_PX = 72
+const MIN_BAR_PX = 3
+
+// A histogram over one or two ratings describes the sample, not the
+// person. Below this the section hides rather than drawing a chart that
+// is almost entirely empty.
+const MIN_RATINGS_FOR_CHART = 3
 
 function buildBuckets(reviews) {
   const map = new Map(BUCKETS.map((b) => [b, []]))
   for (const r of reviews) {
     const rating = Number(r.rating)
-    if (!Number.isFinite(rating)) continue
-    const snapped = Math.min(5.0, Math.max(0.5, Math.round(rating * 2) / 2))
-    const key = BUCKETS.find((b) => Math.abs(b - snapped) < 0.01)
-    if (key !== undefined) map.get(key).push(r)
+    if (!Number.isFinite(rating) || rating <= 0) continue
+    const snapped = Math.min(5, Math.max(1, Math.round(rating)))
+    map.get(snapped).push(r)
   }
   return BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
 }
 
-/* ----------------------------------------------------------------
-   Personality label derived from the real distribution.
-
-   Algorithm:
-     1. Weighted mean   = Σ(rating × count) / total
-     2. Std deviation   = √(Σ(count × (rating − mean)²) / total)
-     3. Primary label   from mean thresholds
-     4. Modifier clause appended when spread is unusually high/low
-
-   Requires at least 3 reviews to be meaningful; returns null otherwise
-   so the UI can hide the label cleanly for new accounts.
-
-   Note: `label` mirrors ProfileTasteDNA's "Generous rater" persona tag
-   at the mean >= 4.0 threshold. That tag already renders once above
-   this chart, so this component only surfaces `desc`/`mean` as prose —
-   never its own duplicate chip.
-   ---------------------------------------------------------------- */
-function computePersonality(buckets) {
-  const total = buckets.reduce((s, b) => s + b.reviews.length, 0)
-  if (total < 3) return null
-
-  const mean =
-    buckets.reduce((s, b) => s + b.rating * b.reviews.length, 0) / total
-
-  const variance =
-    buckets.reduce(
-      (s, b) => s + b.reviews.length * Math.pow(b.rating - mean, 2),
-      0
-    ) / total
-  const stdDev = Math.sqrt(variance)
-
-  let baseDesc
-  if (mean >= 4.0) {
-    baseDesc = 'You tend to love most games you play'
-  } else if (mean >= 3.5) {
-    baseDesc = 'You lean toward the positive'
-  } else if (mean >= 3.0) {
-    baseDesc = 'You call it as you see it'
-  } else if (mean >= 2.5) {
-    baseDesc = 'You hold games to a high standard'
-  } else {
-    baseDesc = 'Games rarely earn your full praise'
-  }
-
-  let modifier = ''
-  if (stdDev >= 1.4) {
-    modifier = ' — your opinions are strongly felt'
-  } else if (stdDev <= 0.6 && total >= 10) {
-    modifier = ' — and remarkably consistent'
-  }
-
-  return {
-    desc: baseDesc + modifier,
-    mean: Math.round(mean * 10) / 10,
-    stdDev: Math.round(stdDev * 10) / 10,
-  }
+/** Mean of the real ratings, from the raw values rather than the
+ *  snapped buckets so the readout matches the player card's Avg ★. */
+function meanRating(reviews) {
+  const values = reviews
+    .map((r) => Number(r.rating))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  if (values.length === 0) return null
+  return values.reduce((s, n) => s + n, 0) / values.length
 }
 
 function starLabel(rating) {
@@ -147,41 +108,52 @@ function BucketModal({ bucket, onReviewTap, onClose }) {
 }
 
 /* ---- Main export ----
-   Renders the avg + histogram only — no section chrome of its own.
-   This chart lives inside the Profile Taste card, directly below
-   ProfileTasteDNA's genre legend, so it deliberately has no title,
-   no personality chip (already shown as a persona tag above it), and
-   no Compare affordance. */
-export default function ProfileRatingsChart({ reviews, onReviewTap, hideTitle = false }) {
+   "How I Rate" — the rating-distribution histogram on Profile Home.
+   Five columns with the count above each bar, a baseline under them,
+   and the real average in the section header. Tapping a bar with
+   reviews behind it opens the list of those games.
+
+   Hides itself entirely below MIN_RATINGS_FOR_CHART so a brand-new
+   account never sees a chart that is one bar and four gaps. */
+export default function ProfileRatingsChart({ reviews, onReviewTap }) {
   /* ---- ALL hooks first — React Rules of Hooks ---- */
   const [selectedBucket, setSelectedBucket] = useState(null)
 
-  /* ---- Early return for zero-review accounts — after all hooks ---- */
-  if (!reviews || reviews.length === 0) return null
-
   /* ---- Derived data ---- */
-  const buckets = buildBuckets(reviews)
-  const personality = computePersonality(buckets)
+  const rated = (reviews || []).filter((r) => Number(r.rating) > 0)
+  const avg = meanRating(rated)
 
+  /* ---- Too little data to chart — after all hooks ---- */
+  if (rated.length < MIN_RATINGS_FOR_CHART) return null
+
+  const buckets = buildBuckets(rated)
   const overallMax = Math.max(...buckets.map((b) => b.reviews.length), 1)
 
   /* ---- Render ---- */
   return (
-    <section className="prc-section" aria-label="Ratings distribution">
-      {!hideTitle && (
-        <div className="prc-header">
-          <h3 className="prc-section-title">Ratings</h3>
-        </div>
-      )}
+    <section className="prc-section" aria-label="How I rate">
+      <div className="prc-header">
+        <h3 className="prc-section-title">How I Rate</h3>
+        {avg != null && (
+          <span className="prc-avg">
+            avg {avg.toFixed(1)}
+            <span className="prc-avg__star" aria-hidden="true">★</span>
+          </span>
+        )}
+      </div>
 
-      {/* Bar chart */}
-      <div className="prc-chart" role="list" aria-label="Rating buckets">
+      <div
+        className="prc-chart"
+        role="list"
+        aria-label={`Rating distribution across ${rated.length} ratings`}
+        style={{ '--prc-chart-height': `${CHART_HEIGHT_PX}px` }}
+      >
         {buckets.map((bucket) => {
           const count = bucket.reviews.length
           const heightPx =
             count === 0
-              ? 2
-              : Math.max(4, Math.round((count / overallMax) * MAX_BAR_PX))
+              ? 0
+              : Math.max(MIN_BAR_PX, Math.round((count / overallMax) * CHART_HEIGHT_PX))
           const isClickable = count > 0
 
           return (
@@ -189,40 +161,22 @@ export default function ProfileRatingsChart({ reviews, onReviewTap, hideTitle = 
               key={bucket.rating}
               type="button"
               role="listitem"
-              className={[
-                'prc-bar-btn',
-                isClickable ? 'prc-bar-btn--active' : '',
-              ]
-                .join(' ')
-                .trim()}
+              className={`prc-bar-btn${isClickable ? ' prc-bar-btn--active' : ''}`}
               onClick={() => { if (isClickable) setSelectedBucket(bucket) }}
               disabled={!isClickable}
               aria-label={`${starLabel(bucket.rating)}: ${count} review${count !== 1 ? 's' : ''}`}
             >
-              <div className="prc-bar-stack">
-                <div
-                  className="prc-bar-fill"
-                  style={{ height: `${heightPx}px` }}
-                />
-              </div>
+              <span className="prc-bar-count" aria-hidden="true">{count}</span>
+              <span className="prc-bar-stack">
+                <span className="prc-bar-fill" style={{ height: `${heightPx}px` }} />
+              </span>
+              <span className="prc-bar-label" aria-hidden="true">
+                {bucket.rating}★
+              </span>
             </button>
           )
         })}
       </div>
-
-      {/* Axis labels */}
-      <div className="prc-axis-labels" aria-hidden="true">
-        <span className="prc-axis-label">0.5★</span>
-        <span className="prc-axis-label">5★</span>
-      </div>
-
-      {/* Personality insight — avg + prose only; the "Generous rater"
-          etc. label itself is a persona tag rendered above, not here. */}
-      {personality && (
-        <p className="prc-personality-desc">
-          Avg <strong>{personality.mean}</strong> · {personality.desc}
-        </p>
-      )}
 
       {/* Tap-through modal — lists games in the tapped bucket */}
       <CenteredModal

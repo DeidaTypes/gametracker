@@ -111,8 +111,17 @@ function computeLocalStats() {
   }
 }
 
-export function useUserStats(userId) {
+/**
+ * Same computation as `useUserStats`, plus a `loading` flag for callers
+ * that need to tell "no badges earned" apart from "counters haven't
+ * resolved yet" — rendering the former while the latter is true is what
+ * makes a badge row flash empty and then reflow.
+ *
+ * @returns {{ stats: object, loading: boolean }}
+ */
+export function useUserStatsState(userId) {
   const [stats, setStats] = useState(EMPTY_STATS)
+  const [loading, setLoading] = useState(!!userId)
   // Track the last in-flight request so we can ignore stale responses
   // when userId changes mid-load.
   const requestRef = useRef(0)
@@ -120,6 +129,9 @@ export function useUserStats(userId) {
   useEffect(() => {
     let cancelled = false
     const myRequest = ++requestRef.current
+    const settle = () => {
+      if (!cancelled && myRequest === requestRef.current) setLoading(false)
+    }
 
     async function load() {
       // Always recompute local stats — these are cheap and don't need
@@ -133,6 +145,7 @@ export function useUserStats(userId) {
         if (!cancelled && myRequest === requestRef.current) {
           setStats({ ...EMPTY_STATS, ...local })
         }
+        settle()
         return
       }
 
@@ -154,6 +167,8 @@ export function useUserStats(userId) {
         if (!cancelled && myRequest === requestRef.current) {
           setStats((prev) => ({ ...prev, ...local }))
         }
+      } finally {
+        settle()
       }
     }
 
@@ -176,7 +191,12 @@ export function useUserStats(userId) {
     }
   }, [userId])
 
-  return stats
+  return { stats, loading }
+}
+
+/** Stats only — the shape every existing badge consumer expects. */
+export function useUserStats(userId) {
+  return useUserStatsState(userId).stats
 }
 
 /**

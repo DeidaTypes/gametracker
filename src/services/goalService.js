@@ -178,6 +178,98 @@ export async function countFinishedThisYearForUsers(userIds, year = new Date().g
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   getFinishedGamesThisYear
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The actual games behind `countFinishedThisYear`'s number — the distinct
+ * set the user marked "played" during `year`, newest completion first.
+ *
+ * `countFinishedThisYear` runs the same query but discards the game ids
+ * after counting, so the challenge detail screen would otherwise have no
+ * way to show its own contents. Both read the activities table, so the
+ * list length always matches the ring's `current`.
+ *
+ * Covers aren't denormalised onto every activity row, so we backfill them
+ * from the user's tracker rows and reviews. A game with no cover on record
+ * is returned with `image: null` rather than a placeholder — the caller
+ * renders an initial instead.
+ *
+ * @param {string} userId
+ * @param {number} [year]
+ * @returns {Promise<Array<{ igdbGameId: number, title: string|null, image: string|null, completedAt: string }>>}
+ */
+export async function getFinishedGamesThisYear(userId, year = new Date().getFullYear()) {
+  if (!userId) return []
+
+  const yearStart = `${year}-01-01T00:00:00.000Z`
+  const yearEnd   = `${year + 1}-01-01T00:00:00.000Z`
+
+  const { data, error } = await supabase
+    .from('activities')
+    .select('igdb_game_id, metadata, created_at')
+    .eq('user_id', userId)
+    .eq('activity_type', 'status_changed')
+    .eq('metadata->>to_status', 'played')
+    .gte('created_at', yearStart)
+    .lt('created_at', yearEnd)
+    .not('igdb_game_id', 'is', null)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[goal] getFinishedGamesThisYear failed:', error.message)
+    return []
+  }
+
+  // Newest-first order means the first row we see per game is its most
+  // recent completion — keep that one and drop the re-marks.
+  const byGame = new Map()
+  for (const row of data || []) {
+    const id = Number(row.igdb_game_id)
+    if (byGame.has(id)) continue
+    byGame.set(id, {
+      igdbGameId: id,
+      title: row.metadata?.game_title || null,
+      image: row.metadata?.game_image || null,
+      completedAt: row.created_at,
+    })
+  }
+
+  const games = Array.from(byGame.values())
+  const needCovers = games.filter((g) => !g.image).map((g) => g.igdbGameId)
+  if (needCovers.length === 0) return games
+
+  const [trackerResult, reviewResult] = await Promise.all([
+    supabase
+      .from('game_trackers')
+      .select('igdb_game_id, game_image, game_title')
+      .eq('user_id', userId)
+      .in('igdb_game_id', needCovers),
+    supabase
+      .from('reviews')
+      .select('igdb_game_id, game_image, game_title')
+      .eq('user_id', userId)
+      .in('igdb_game_id', needCovers),
+  ])
+
+  const covers = new Map()
+  const titles = new Map()
+  for (const rows of [trackerResult.data, reviewResult.data]) {
+    for (const row of rows || []) {
+      const id = Number(row.igdb_game_id)
+      if (row.game_image && !covers.has(id)) covers.set(id, row.game_image)
+      if (row.game_title && !titles.has(id)) titles.set(id, row.game_title)
+    }
+  }
+
+  return games.map((g) =>
+    g.image
+      ? g
+      : { ...g, image: covers.get(g.igdbGameId) || null, title: g.title || titles.get(g.igdbGameId) || null }
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    getGoalProgress
    ────────────────────────────────────────────────────────────────────── */
 

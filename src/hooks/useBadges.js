@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { BADGES, TIER_RANK } from '../data/badges'
-import { useUserStats } from './useUserStats'
+import { useUserStatsState } from './useUserStats'
 
 /**
  * Sprint 5 P9 — Badge state hook.
@@ -21,9 +21,9 @@ import { useUserStats } from './useUserStats'
  * pointer-stable so the watcher's diff doesn't fire spuriously.
  */
 export function useBadges(userId) {
-  const stats = useUserStats(userId)
+  const { stats, loading } = useUserStatsState(userId)
 
-  return useMemo(() => {
+  const partitioned = useMemo(() => {
     const earned = []
     const inProgress = []
     const locked = []
@@ -53,4 +53,6 @@ export function useBadges(userId) {
 
     return { earned, inProgress, locked, stats }
   }, [stats])
+
+  return { ...partitioned, loading }
 }

@@ -80,18 +80,19 @@
    action-button row keep their own natural alignment below.
    ============================================================ */
 
+/* Identity detail below the player card: bio, social links, and the
+   visitor action row. Every child is conditional, so with none of them
+   present this collapses to zero height and the tabs sit directly under
+   the card. */
 .profile-ig-hero {
-  padding: 12px var(--page-padding) 0;
+  padding: 0 var(--page-padding);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: stretch;
 }
 
-/* When a banner is present, give the hero a top margin so it
-   sits below the banner with a clean separation. */
-.profile-ig-hero--has-banner {
-  padding-top: 16px;
+.profile-ig-hero:not(:empty) {
+  padding-top: var(--spacing-sm);
 }
 
 /* ── Row 1: Avatar ── */
@@ -203,7 +204,7 @@
   margin-top: 8px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -257,6 +258,7 @@
 
 /* Empty-bio CTA on own profile */
 .profile-ig-hero__bio-cta {
+  align-self: flex-start;
   margin-top: 8px;
   background: none;
   border: none;
@@ -273,57 +275,6 @@
 
 .profile-ig-hero__bio-cta:hover {
   color: var(--accent);
-}
-
-/* ── Row 5: Stats — one quiet inline line under the bio ── */
-
-.profile-ig-hero__stats-line {
-  margin: 10px 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 3px 6px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--text-secondary);
-}
-
-.profile-ig-hero__stat-segment {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: default;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-ig-hero__stat-segment--tappable {
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.profile-ig-hero__stat-segment--tappable:hover,
-.profile-ig-hero__stat-segment--tappable:active {
-  opacity: 0.7;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-ig-hero__stat-segment--tappable:active {
-    opacity: 1;
-  }
-}
-
-.profile-ig-hero__stat-value {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.profile-ig-hero__stat-dot {
-  color: var(--text-tertiary);
 }
 
 /* Social handles — left-aligned row of pill chips */
@@ -481,10 +432,25 @@
 .profile-tabs {
   display: flex;
   align-items: flex-end;
-  gap: var(--spacing-md);
+  justify-content: center;
+  gap: var(--spacing-lg);
   padding: 0 var(--page-padding);
-  margin-top: 24px;
+  margin-top: var(--spacing-md);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Below ~340px four centered tabs would collide; let them scroll rather
+   than wrap and break the underline's single row. */
+@media (max-width: 359px) {
+  .profile-tabs {
+    gap: var(--spacing-md);
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .profile-tabs::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .profile-tab {
@@ -587,11 +553,21 @@
    HOME TAB
    ============================================================ */
 
+/* Section rhythm. Horizontal padding lives on each section rather than
+   here so a section like the badges row can bleed its scroller to the
+   screen edge with a negative margin. */
 .profile-home {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2xl);
-  padding: 0 var(--page-padding);
+  gap: var(--spacing-lg);
+}
+
+/* Sections that don't bring their own padding (favorites, challenge,
+   pinned lists) get it from the wrapper. */
+.profile-home > .profile-home__section,
+.profile-home > .pinned-lists-section {
+  margin-left: var(--page-padding);
+  margin-right: var(--page-padding);
 }
 
 .profile-home__section {
@@ -708,8 +684,10 @@
 
 .profile-favorites-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  /* Four slots: up to four covers, or covers plus the add-slot. Matches
+     FavoritesPickerSheet's maxItems. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xs);
 }
 
 .profile-favorite-card {
@@ -1560,163 +1538,72 @@ img.profile-list-row__author-avatar {
 }
 
 /* =============================================
-   PROFILE — Two-cell bento row: Challenge | Next milestone
+   PROFILE — Yearly challenge card. Full-width and tappable: it
+   pushes the challenge detail view listing the completed games.
    ============================================= */
 
-.profile-bento-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: stretch;
+.profile-challenge-cell {
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 
-.profile-bento-row .profile-home__section {
-  gap: var(--spacing-sm);
-}
-
-/* Compact section titles inside the two-cell row — smaller than the
-   full-width section titles above them so both cells stay tidy. */
-.profile-home__section-title--compact {
-  font-size: 15px;
-}
-
-/* ── Challenge cell (green — --accent-review) ────────────────── */
-
-.profile-challenge-compact {
+.profile-challenge {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
 }
 
-.profile-challenge-compact__info {
+.profile-challenge--tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-challenge__info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
   min-width: 0;
 }
 
-.profile-challenge-compact__headline {
-  margin: 0;
+.profile-challenge__headline {
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
-.profile-challenge-compact__sub {
-  margin: 0;
+.profile-challenge__sub {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
-.profile-challenge-compact__set-goal {
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--accent-review);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-challenge-compact__circle {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  color: var(--accent-review);
-}
-
-/* ── Next milestone cell (cobalt — --accent) ─────────────────── */
-
-.profile-next-badge {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-next-badge__icon {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-full);
-  background: rgba(59, 130, 246, 0.12);
-  color: var(--accent);
-}
-
-.profile-next-badge__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.profile-next-badge__name {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-next-badge__track {
-  width: 100%;
-  height: 4px;
-  border-radius: var(--radius-full);
-  background: var(--border-subtle);
-  overflow: hidden;
-}
-
-.profile-next-badge__fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: var(--radius-full);
-  transition: width var(--transition-smooth);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-next-badge__fill { transition: none; }
-}
-
-.profile-next-badge__count {
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  color: var(--color-text-tertiary);
-}
-
-.profile-next-badge__earned-link {
+.profile-challenge__set-goal {
   align-self: flex-start;
-  margin-top: 2px;
+  min-height: 44px;
+  /* Negative block margin keeps the tap target from inflating the card. */
+  margin-block: -13px;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
+  text-align: left;
   font-family: var(--font-body);
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--accent);
   -webkit-tap-highlight-color: transparent;
 }
 
-.profile-next-badge__earned-link:hover {
-  text-decoration: underline;
+.profile-challenge__chevron {
+  flex: none;
+  color: var(--text-tertiary);
 }
 
 /* ============================================================

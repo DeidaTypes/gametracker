@@ -30,6 +30,8 @@ import Profile from './pages/Profile'
 import UserBadgesPage from './pages/UserBadgesPage'
 import UserFollowers from './pages/UserFollowers'
 import UserFollowing from './pages/UserFollowing'
+import UserActivity from './pages/UserActivity'
+import ChallengeDetail from './pages/ChallengeDetail'
 import MessagesInbox from './pages/MessagesInbox'
 import MessagesThread from './pages/MessagesThread'
 import NotificationsInbox from './pages/NotificationsInbox'
@@ -672,6 +674,61 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><UserFollowing /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/badges"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserBadgesPage /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Full activity history — the destination behind the Recent
+                activity "See all" on Profile Home. /activity below is a
+                different surface (the signed-in user's calendar). */}
+            <Route
+              path="/user/:username/activity"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserActivity /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/activity"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserActivity /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Yearly challenge detail — the games behind the ring. Takes
+                an optional ?year= so an older challenge stays linkable. */}
+            <Route
+              path="/user/:username/challenge"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ChallengeDetail /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/challenge"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><ChallengeDetail /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

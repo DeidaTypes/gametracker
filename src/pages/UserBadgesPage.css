@@ -56,6 +56,57 @@
   height: 36px;
 }
 
+/* ============================================================
+   Earned / All / Not-earned filter — pill segmented control,
+   centered under the sticky header.
+   ============================================================ */
+
+.badges-page__filters {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--page-padding) 0;
+}
+
+.badges-page__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--spacing-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.badges-page__filter:hover {
+  color: var(--text-primary);
+}
+
+.badges-page__filter--active {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text-primary);
+}
+
+.badges-page__filter-count {
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+}
+
+.badges-page__filter--active .badges-page__filter-count {
+  color: var(--accent-hover);
+}
+
 .badges-page__body {
   flex: 1;
   display: flex;
@@ -65,6 +116,13 @@
   max-width: var(--page-max-width);
   width: 100%;
   margin: 0 auto;
+}
+
+/* Matches a badge card's footprint (72px icon + two text lines) so the
+   grid doesn't reflow when real cards replace the placeholders. */
+.badges-page__card-skeleton {
+  height: 124px;
+  border-radius: var(--radius-lg);
 }
 
 .badges-page__empty {
@@ -128,8 +186,14 @@
   transform: translateY(-2px);
 }
 
+/* Dimmed enough to let earned badges dominate, but not so far that the
+   unlock condition underneath stops being readable. */
 .badge-card--locked {
-  opacity: 0.4;
+  opacity: 0.62;
+}
+
+.badge-card--locked .badge-card__icon {
+  filter: grayscale(0.7);
 }
 
 .badge-card__icon-stack {
@@ -201,6 +265,20 @@
   letter-spacing: 0.06em;
   color: var(--color-text-tertiary, var(--color-text-secondary));
   margin-top: 2px;
+}
+
+/* Unlock condition on locked cards — says what it takes rather than
+   leaving the badge a mystery. */
+.badge-card__condition {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+  max-width: 120px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

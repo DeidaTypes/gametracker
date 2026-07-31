@@ -1,92 +1,69 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { Lock } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
-import { getProfile } from '../services/profileService'
-import { getUserByUsername } from '../services/userService'
+import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { TIER_STYLES } from '../data/badges'
 import BadgeDetailModal from '../components/BadgeDetailModal'
+import Skeleton from '../components/Skeleton'
 import './UserBadgesPage.css'
 
 /**
- * Sprint 5 P9 — Full badge grid for `/user/:username/badges`.
+ * Full badge grid for `/user/:username/badges` and
+ * `/user/id/:userId/badges`.
  *
- * Three sections in fixed order: Earned, In Progress, Locked. Each
- * section is a 3-column grid of cards (icon + name). Empty sections
- * are hidden — a user with zero earned badges should never see an
- * empty "Earned" header.
+ * A filter above the grid switches between Earned / All / Not earned.
+ * "All" keeps the three-section reading order (Earned → In Progress →
+ * Locked) so prestige still sorts top-down; the other two filters render
+ * one flat grid.
  *
- * Locked cards render at opacity 0.4 with a small Lock overlay in
- * the top-right so the visual weight makes the unlocked badges pop.
- *
- * Tapping any card opens BadgeDetailModal (shared with BadgesRow).
- *
- * Resolving the user:
- *   - For the signed-in user we already have their id from useAuth and
- *     can short-circuit the network round-trip.
- *   - For anyone else, we look them up by username via getUserByUsername
- *     (the same lookup the Search Users tab uses). If the lookup fails
- *     we fall back to the signed-in user so the page never renders an
- *     error wall — the badges system is local-only this sprint, and
- *     there's nothing meaningful to show for a stranger anyway.
+ * Not-earned cards render dimmed with a Lock overlay and their unlock
+ * condition beneath the name, so a locked badge always says what it
+ * takes rather than just teasing. Tapping any card opens
+ * BadgeDetailModal (shared with BadgesRow).
  */
+
+const FILTERS = [
+  { id: 'earned', label: 'Earned' },
+  { id: 'all', label: 'All' },
+  { id: 'not-earned', label: 'Not earned' },
+]
+
 function UserBadgesPage() {
   const navigate = useNavigate()
-  const { username } = useParams()
-  const { user: authUser } = useAuth()
+  const { userId: targetUserId, resolving } = useProfileRouteUser()
 
-  const [targetUserId, setTargetUserId] = useState(authUser?.id || null)
-
-  // Resolve the user id from the URL :username param. Fast-path when
-  // it matches the signed-in user's local profile so we don't hit
-  // Supabase for the common own-profile case.
-  useEffect(() => {
-    let cancelled = false
-    async function resolve() {
-      const localProfile = getProfile()
-      const localUsername =
-        localProfile?.username || localProfile?.displayName || ''
-      const decoded = decodeURIComponent(username || '')
-      if (
-        authUser?.id &&
-        decoded &&
-        localUsername &&
-        decoded.toLowerCase() === localUsername.toLowerCase()
-      ) {
-        if (!cancelled) setTargetUserId(authUser.id)
-        return
-      }
-
-      if (!decoded) {
-        if (!cancelled) setTargetUserId(authUser?.id || null)
-        return
-      }
-
-      try {
-        const row = await getUserByUsername(decoded)
-        if (!cancelled) setTargetUserId(row?.id || authUser?.id || null)
-      } catch {
-        if (!cancelled) setTargetUserId(authUser?.id || null)
-      }
-    }
-    resolve()
-    return () => {
-      cancelled = true
-    }
-  }, [username, authUser?.id])
-
-  const { earned, inProgress, locked, stats } = useBadges(targetUserId)
+  const { earned, inProgress, locked, stats, loading } = useBadges(targetUserId)
   const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
+  const [filter, setFilter] = useState('earned')
 
-  const sections = [
-    { id: 'earned', title: 'Earned', items: earned, locked: false },
-    { id: 'in-progress', title: 'In Progress', items: inProgress, locked: false },
-    { id: 'locked', title: 'Locked', items: locked, locked: true },
-  ]
+  const notEarned = [...inProgress, ...locked]
+
+  const sections =
+    filter === 'earned'
+      ? [{ id: 'earned', title: null, items: earned, locked: false }]
+      : filter === 'not-earned'
+      ? [
+          { id: 'in-progress', title: 'In Progress', items: inProgress, locked: true },
+          { id: 'locked', title: 'Locked', items: locked, locked: true },
+        ]
+      : [
+          { id: 'earned', title: 'Earned', items: earned, locked: false },
+          { id: 'in-progress', title: 'In Progress', items: inProgress, locked: true },
+          { id: 'locked', title: 'Locked', items: locked, locked: true },
+        ]
+
+  const emptyCopy =
+    filter === 'earned'
+      ? 'No badges earned yet. Keep playing, reviewing, and building lists.'
+      : filter === 'not-earned'
+      ? 'Every badge is earned. Nothing left to unlock.'
+      : 'No badges yet.'
+
+  const isLoading = resolving || loading
 
   return (
     <div className="badges-page">
@@ -103,14 +80,46 @@ function UserBadgesPage() {
         <span className="badges-page__spacer" aria-hidden="true" />
       </header>
 
+      <div className="badges-page__filters" role="tablist" aria-label="Filter badges">
+        {FILTERS.map((f) => {
+          const count =
+            f.id === 'earned' ? earned.length : f.id === 'not-earned' ? notEarned.length : null
+          return (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === f.id}
+              className={`badges-page__filter${
+                filter === f.id ? ' badges-page__filter--active' : ''
+              }`}
+              onClick={() => setFilter(f.id)}
+            >
+              {f.label}
+              {!isLoading && count != null && (
+                <span className="badges-page__filter-count">{count}</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="badges-page__body">
-        {sections.every((s) => s.items.length === 0) ? (
-          <p className="badges-page__empty">No badges yet.</p>
+        {isLoading ? (
+          <div className="badges-page__grid" aria-busy="true">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="badges-page__card-skeleton" />
+            ))}
+          </div>
+        ) : sections.every((s) => s.items.length === 0) ? (
+          <p className="badges-page__empty">{emptyCopy}</p>
         ) : (
           sections.map((section) =>
             section.items.length === 0 ? null : (
               <section key={section.id} className="badges-page__section">
-                <h2 className="badges-page__section-title">{section.title}</h2>
+                {section.title && (
+                  <h2 className="badges-page__section-title">{section.title}</h2>
+                )}
                 <div className="badges-page__grid">
                   {section.items.map((badge) => (
                     <BadgeCard
@@ -172,10 +181,14 @@ function BadgeCard({ badge, locked, rarityPct, onClick }) {
         )}
       </div>
       <span className="badge-card__name">{badge.name}</span>
-      {rarityPct != null && (
-        <span className="badge-card__rarity" aria-label={`${rarityPct}% of players`}>
-          {rarityPct}%
-        </span>
+      {locked ? (
+        <span className="badge-card__condition">{badge.description}</span>
+      ) : (
+        rarityPct != null && (
+          <span className="badge-card__rarity" aria-label={`${rarityPct}% of players`}>
+            {rarityPct}%
+          </span>
+        )
       )}
     </button>
   )

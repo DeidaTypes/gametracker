@@ -1,0 +1,272 @@
+/* ============================================================
+   ProfilePlayerCard — contained profile header card.
+
+   The gradient is a cobalt→purple wash over the standard card
+   surface, mixed through color-mix so it inherits any accent
+   override (colour-blind modes, themes) instead of pinning hex.
+   ============================================================ */
+
+.ppc {
+  margin: 12px var(--page-padding) 0;
+  margin-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--accent-journal) 26%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 20%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 4%, transparent) 55%,
+      transparent 100%
+    ),
+    var(--bg-surface);
+  box-shadow: var(--surface-1-shadow);
+}
+
+.ppc__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+/* ── Icon buttons (back / overflow) ───────────────────────── */
+
+.ppc__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -10px -8px -10px 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.ppc__icon-btn--back {
+  margin: -10px 0 -10px -10px;
+}
+
+.ppc__icon-btn--overflow {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+.ppc__icon-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.ppc__icon-btn:active {
+  background: var(--color-surface-active);
+}
+
+/* ── Avatar ───────────────────────────────────────────────── */
+
+.ppc__avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
+  background: var(--bg-surface-2);
+  overflow: hidden;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ppc__avatar--editable {
+  cursor: pointer;
+}
+
+.ppc__avatar-img,
+.ppc__avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+/* ── Identity block ───────────────────────────────────────── */
+
+.ppc__identity {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.ppc__name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ppc__handle {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Followers · Following ────────────────────────────────── */
+
+.ppc__follows {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  /* Negative block margin keeps the 44px tap targets from inflating the
+     card's height while still giving each link a real touch area. */
+  margin-block: calc(6px - 11px) -11px;
+}
+
+.ppc__follow-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast);
+}
+
+.ppc__follow-link:hover {
+  color: var(--text-primary);
+}
+
+.ppc__follow-count {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.ppc__follow-skeleton {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.ppc__follow-dot {
+  color: var(--text-tertiary);
+}
+
+/* ── Live status ──────────────────────────────────────────── */
+
+.ppc__live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--accent-review-text);
+}
+
+.ppc__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-review);
+}
+
+/* ── Four-stat block ─────────────────────────────────────── */
+
+.ppc__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ppc__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ppc__stat-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  /* Fixed line box so swapping a skeleton for a numeral can't shift the
+     baseline of the row. */
+  height: 24px;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  line-height: 24px;
+  color: var(--text-primary);
+}
+
+.ppc__stat-suffix {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.ppc__stat-skeleton {
+  align-self: center;
+}
+
+.ppc__stat-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+@media (max-width: 359px) {
+  .ppc__avatar {
+    width: 56px;
+    height: 56px;
+  }
+  .ppc__name {
+    font-size: 20px;
+  }
+  .ppc__stat-value {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ppc__icon-btn,
+  .ppc__follow-link {
+    transition: none;
+  }
+}

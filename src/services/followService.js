@@ -168,13 +168,19 @@ export async function isFollowing(followeeId) {
 /**
  * Number of users following `userId`. Soft-fails to 0 so the stat
  * numeral on Profile never blocks rendering.
+ *
+ * Blocked users are excluded with the same filter `getFollowers` uses,
+ * so the numeral on the player card always equals the number of rows
+ * the followers list actually renders.
  */
 export async function getFollowerCount(userId) {
   if (!userId) return 0
-  const { count, error } = await supabase
+  let query = supabase
     .from('follows')
     .select('*', { count: 'exact', head: true })
     .eq('followee_id', userId)
+  query = await applyBlockFilter(query, 'follower_id')
+  const { count, error } = await query
   if (error) {
     console.error('[follows] getFollowerCount failed:', error.message)
     return 0
@@ -183,14 +189,17 @@ export async function getFollowerCount(userId) {
 }
 
 /**
- * Number of users `userId` follows. Soft-fails to 0.
+ * Number of users `userId` follows. Soft-fails to 0. Excludes blocked
+ * users to stay consistent with `getFollowing`.
  */
 export async function getFollowingCount(userId) {
   if (!userId) return 0
-  const { count, error } = await supabase
+  let query = supabase
     .from('follows')
     .select('*', { count: 'exact', head: true })
     .eq('follower_id', userId)
+  query = await applyBlockFilter(query, 'followee_id')
+  const { count, error } = await query
   if (error) {
     console.error('[follows] getFollowingCount failed:', error.message)
     return 0

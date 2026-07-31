@@ -1,0 +1,115 @@
+/* ============================================================
+   UserActivity — full activity history page. Header matches the
+   other pushed profile screens (badges, followers); the body is
+   ActivityFeed, which brings its own rows and pagination.
+   ============================================================ */
+
+.user-activity {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: var(--bottom-nav-safe-area);
+  background: transparent;
+}
+
+.user-activity__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--spacing-md) var(--page-padding);
+  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  z-index: 10;
+}
+
+.user-activity__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.user-activity__back:hover {
+  background: var(--color-surface);
+}
+
+.user-activity__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.user-activity__spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.user-activity__body {
+  flex: 1;
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-lg) 0;
+}
+
+.user-activity__empty {
+  margin: 0;
+  padding: var(--spacing-3xl) var(--page-padding);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ── Route-resolution placeholder ─────────────────────────── */
+
+.user-activity__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: 0 var(--page-padding);
+}
+
+.user-activity__row-skeleton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.user-activity__sk-dot {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+}
+
+.user-activity__sk-line {
+  flex: 1;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-activity__back {
+    transition: none;
+  }
+}

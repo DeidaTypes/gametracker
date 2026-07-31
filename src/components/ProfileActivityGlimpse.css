@@ -1,0 +1,139 @@
+/* ============================================================
+   ProfileActivityGlimpse — Recent activity section on Profile Home.
+   One line per event: colour-coded dot, sentence, timestamp.
+   ============================================================ */
+
+.pag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: 0 var(--page-padding);
+}
+
+.pag__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.pag__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+}
+
+.pag__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  /* Negative block margin keeps the 44px tap target from padding out
+     the header row. */
+  min-height: 44px;
+  margin-block: -14px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast);
+}
+
+.pag__see-all:hover {
+  color: var(--accent-hover);
+}
+
+.pag__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pag__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pag__row:disabled {
+  cursor: default;
+}
+
+.pag__row--placeholder {
+  align-items: center;
+}
+
+/* ── Event-type dot ───────────────────────────────────────── */
+
+.pag__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  /* Optically centered against the first line of the message. */
+  margin-top: 7px;
+  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
+}
+
+.pag__dot--review {
+  background: var(--accent-review);
+}
+
+.pag__dot--list {
+  background: var(--accent-journal);
+}
+
+.pag__dot--session {
+  background: var(--accent);
+}
+
+.pag__dot--placeholder {
+  margin-top: 0;
+  background: var(--skeleton-base);
+}
+
+/* ── Message + timestamp ──────────────────────────────────── */
+
+.pag__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pag__message {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.pag__when {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pag__see-all {
+    transition: none;
+  }
+}
