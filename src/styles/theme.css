@@ -317,8 +317,9 @@ body[data-larger-text='true'] {
      pulse (--grad-headline / --grad-ambient above) but scoped to
      Explore's own surfaces only. Composed from the same --accent-journal
      (purple) and --accent (cobalt) tokens as --grad-purple-blue — no new
-     hex introduced. Shared chrome (FAB, bottom-nav pill) keeps
-     --grad-brand app-wide regardless of screen. */
+     hex introduced. Shared chrome (FAB) keeps --grad-brand app-wide
+     regardless of screen; the bottom-nav pill instead uses the
+     per-screen --grad-nav-* tokens below. */
   /* Section-headline gradient text (background-clip:text) — purple to cobalt */
   --grad-explore-headline: linear-gradient(90deg, var(--accent-journal) 0%, var(--accent) 100%);
   /* Ambient wash — low-opacity purple + cobalt glows only (no green),
@@ -327,6 +328,24 @@ body[data-larger-text='true'] {
   --grad-explore-ambient:
     radial-gradient(circle at 20% 6%, color-mix(in srgb, var(--accent-journal) 18%, transparent) 0%, transparent 55%),
     radial-gradient(circle at 84% 14%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 58%);
+
+  /* ---- Bottom-nav active pill — per-screen identity ----
+     The nav bar itself (surface, border, shape, inactive icons) stays
+     identical on every screen; only the active pill's fill tints to
+     match the current tab, echoing that screen's own multi-hue accent
+     above. Composed entirely from the existing --accent / --accent-review
+     / --accent-journal tokens — no new hex, no orange/amber. See
+     src/components/BottomNav.jsx (data-tab) / BottomNav.css. */
+  --grad-nav-home: linear-gradient(135deg, var(--accent) 0%, var(--accent-review) 100%); /* blue → green */
+  --grad-nav-discover: linear-gradient(135deg, var(--accent-journal) 0%, var(--accent) 100%); /* purple → blue */
+  --grad-nav-library: linear-gradient(135deg, var(--accent-review) 0%, var(--accent) 100%); /* green → cobalt */
+  --grad-nav-profile: linear-gradient(135deg, var(--accent-journal) 0%, var(--accent) 100%); /* purple → cobalt */
+  /* Matching glow tints for the pill's drop shadow (replaces the old
+     cobalt-only shadow so the glow never clashes with a non-blue pill). */
+  --glow-nav-home: color-mix(in srgb, var(--accent-review) 40%, transparent);
+  --glow-nav-discover: color-mix(in srgb, var(--accent-journal) 40%, transparent);
+  --glow-nav-library: color-mix(in srgb, var(--accent-review) 40%, transparent);
+  --glow-nav-profile: color-mix(in srgb, var(--accent-journal) 40%, transparent);
 
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);

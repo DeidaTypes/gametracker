@@ -16,8 +16,12 @@ export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
  *
  * Four icon-only tabs (Home, Discover, Library, Profile) sit in a centered
  * pill that floats 12 px above the bottom of the viewport. The active tab
- * is highlighted with a cobalt pill that visually slides from the
- * previously-active tab via Framer Motion's `layoutId` shared element.
+ * is highlighted with a pill that visually slides from the previously-active
+ * tab via Framer Motion's `layoutId` shared element. The nav bar chrome
+ * (surface, border, shape, inactive icons) is identical on every screen —
+ * only the active pill's gradient tints per tab, via the `data-tab`
+ * attribute below driving the `--grad-nav-*` / `--glow-nav-*` tokens in
+ * BottomNav.css (see theme.css for the token definitions).
  *
  * Notes:
  *   - "Discover" merges the legacy Explore + Search tabs. The /explore and
@@ -127,6 +131,7 @@ function BottomNav() {
             to={to}
             aria-label={label}
             aria-current={active ? 'page' : undefined}
+            data-tab={id}
             className={`bottom-nav-item ${active ? 'active' : ''}`}
             onClick={() => {
               triggerHaptic()

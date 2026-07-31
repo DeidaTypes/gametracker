@@ -95,9 +95,12 @@
   color: var(--text-primary);
 }
 
-/* The cobalt pill — a single shared element across all tabs. Framer
+/* The active pill — a single shared element across all tabs. Framer
    Motion's layoutId animates its position/size from the previously
-   active tab to the new one. */
+   active tab to the new one; the fill itself tints per screen via the
+   [data-tab] overrides below, while the bar's own chrome never changes.
+   Falls back to --grad-brand if a future tab is added without its own
+   --grad-nav-* token. */
 .bottom-nav-pill {
   position: absolute;
   inset: 0;
@@ -105,7 +108,33 @@
   border-radius: 22px;
   z-index: 0;
   /* Sit just under the icon and above the tab's own background. */
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 14px var(--glow-nav-home, rgba(59, 130, 246, 0.35));
+  /* Smooths the gradient/glow swap when the pill mounts on a new tab
+     (Framer Motion already owns the position/size half of the move). */
+  transition: background 260ms ease, box-shadow 260ms ease;
+}
+
+/* ---- Per-screen active pill identity ----
+   Bar chrome (background, border, inactive icons, shape) is untouched —
+   only these two properties differ, and only on the currently-active tab. */
+.bottom-nav-item[data-tab='home'] .bottom-nav-pill {
+  background: var(--grad-nav-home);
+  box-shadow: 0 4px 14px var(--glow-nav-home);
+}
+
+.bottom-nav-item[data-tab='discover'] .bottom-nav-pill {
+  background: var(--grad-nav-discover);
+  box-shadow: 0 4px 14px var(--glow-nav-discover);
+}
+
+.bottom-nav-item[data-tab='library'] .bottom-nav-pill {
+  background: var(--grad-nav-library);
+  box-shadow: 0 4px 14px var(--glow-nav-library);
+}
+
+.bottom-nav-item[data-tab='profile'] .bottom-nav-pill {
+  background: var(--grad-nav-profile);
+  box-shadow: 0 4px 14px var(--glow-nav-profile);
 }
 
 /* Icon wrap stays above the pill so it visually rides on top of the
@@ -164,7 +193,8 @@
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav,
   .bottom-nav-item,
-  .bottom-nav-icon {
+  .bottom-nav-icon,
+  .bottom-nav-pill {
     transition: none;
   }
 }
