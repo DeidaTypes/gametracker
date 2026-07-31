@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useNavDim } from '../hooks/useNavDim'
 import { useAuth } from '../contexts/AuthContext'
 import {
   fetchActivitiesForDay,
@@ -100,6 +101,8 @@ export default function DayLogSheet({ dateKey, onClose }) {
   const { reduced } = useMotionPreference()
 
   const isOpen = !!dateKey
+
+  useNavDim(isOpen)
 
   const [activities, setActivities] = useState([])
   const [loading,    setLoading]    = useState(false)

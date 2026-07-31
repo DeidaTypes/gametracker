@@ -47,6 +47,20 @@
   pointer-events: none;
 }
 
+/* ---- Day/week activity bottom sheet open (WeekDetailSheet / DayLogSheet) ----
+   Sets body.nav-dimmed (via useNavDim, see src/hooks/useNavDim.js). The
+   sheet's own scrim sits at z-index 200, so the nav is dropped to 150 —
+   behind the scrim and the sheet panel — faded to a barely-visible 12%,
+   and stops accepting taps so nothing under the sheet is reachable. The
+   opacity change rides the same 220ms transition already declared on
+   .bottom-nav above; prefers-reduced-motion collapses it to instant via
+   the global rule in src/styles/_motion.css. */
+body.nav-dimmed .bottom-nav {
+  z-index: 150;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
 /* Mobile only — replicates the original responsive behavior. */
 @media (max-width: 768px) {
   .bottom-nav {

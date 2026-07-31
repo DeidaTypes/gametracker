@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { Gamepad2, ChevronRight } from 'lucide-react'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { useNavDim } from '../../hooks/useNavDim'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './WeekDetailSheet.css'
 
@@ -80,6 +81,8 @@ export default function WeekDetailSheet({
 }) {
   const navigate = useNavigate()
   const { reduced } = useMotionPreference()
+
+  useNavDim(isOpen)
 
   useEffect(() => {
     if (!isOpen) return

@@ -94,6 +94,10 @@
   overflow-y: auto;
   flex: 1;
   -webkit-overflow-scrolling: touch;
+  /* Extra clearance inside the scroll area itself so the last row is
+     never flush against the safe-area edge, on top of the sheet's own
+     outer bottom padding (see .dls-sheet above). */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ── Loading / empty ────────────────────────── */
