@@ -2130,26 +2130,29 @@ function HomeTab({
               type="button"
               className="profile-challenge profile-challenge--tappable"
               onClick={onOpenChallenge}
-              aria-label={`${goalProgress.year} challenge, ${goalProgress.current} of ${goalProgress.target}. View completed games.`}
+              aria-label={`${goalProgress.year} challenge, tier ${goalProgress.tier}, ${goalProgress.current} of ${goalProgress.target}${remaining === 0 ? '. Goal reached!' : ''}. View completed games.`}
             >
               <GoalRing
                 current={goalProgress.current}
                 target={goalProgress.target}
                 year={goalProgress.year}
+                tier={goalProgress.tier}
                 variant="compact"
               />
               <span className="profile-challenge__info">
                 <span className="profile-challenge__headline">
-                  {goalProgress.year} Challenge · {goalProgress.current}/{goalProgress.target}
+                  {goalProgress.year} Challenge{goalProgress.tier > 1 ? ` · Tier ${goalProgress.tier}` : ''} · {goalProgress.current}/{goalProgress.target}
                 </span>
-                <span className="profile-challenge__sub">
+                <span
+                  className={`profile-challenge__sub${remaining === 0 ? ' profile-challenge__sub--reached' : ''}`}
+                >
                   {circleRank != null && (
                     <>
                       {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle
                       {remaining > 0 ? ' · ' : ''}
                     </>
                   )}
-                  {remaining === 0 ? 'Goal reached' : `${remaining} to go`}
+                  {remaining === 0 ? 'Goal reached!' : `${remaining} to go`}
                 </span>
               </span>
               <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />

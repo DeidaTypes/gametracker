@@ -2,12 +2,18 @@ import { supabase } from './supabase'
 import { getFollowing } from './followService'
 
 /**
- * Goal Service — yearly game-count challenge.
+ * Goal Service — escalating yearly game-count challenge.
  *
  * Schema (user_goals):
- *   user_id  uuid    PK (FK → users)
- *   year     smallint PK
- *   target   integer  (1–9999)
+ *   user_id         uuid     PK (FK → users)
+ *   year            smallint PK
+ *   target          integer  (1–9999)  — current tier's absolute target
+ *   tier            smallint            — current tier, starts at 1
+ *   tier_base       integer             — cumulative-games threshold
+ *                                         where the current tier started
+ *                                         (0 for tier 1)
+ *   goal_reached_at date | null         — local date the current tier's
+ *                                         target was first reached
  *   created_at, updated_at timestamptz
  *
  * "Finished this year" is counted from the activities table:
@@ -17,7 +23,90 @@ import { getFollowing } from './followService'
  *
  * Only activities in Supabase are counted — never localStorage-only
  * data — so the number is always reproducible from real records.
+ *
+ * ── Escalating tiers ─────────────────────────────────────────────────
+ * Reaching a tier's target climbs the goal by TIER_INCREMENT for the
+ * next tier (15 -> 30 -> 45 -> 60 -> 75 -> ...), and keeps climbing
+ * through the year. `current` (the real, cumulative games-finished
+ * count) never resets — only `tier_base`/`target` move, so "progress
+ * within the tier" is `current - tier_base` against `target - tier_base`.
+ *
+ * Reaching a tier shows a green "Goal reached!" celebration for the
+ * REST of that in-app day (tracked via `goal_reached_at`). The next
+ * time the app is opened on a later day, `resolveTierState` silently
+ * advances to the next tier — no manual tap required. See
+ * `resolveTierState` for the pure state-machine and `getGoalProgress`
+ * for where it's applied + persisted.
  */
+
+export const TIER_INCREMENT = 15
+
+/**
+ * Local calendar-day stamp ('YYYY-MM-DD'), used to detect "a new in-app
+ * day has started" without any timezone/UTC surprises — this only ever
+ * gets compared against another stamp produced the same way.
+ * @param {Date} [date]
+ * @returns {string}
+ */
+export function getLocalDateStamp(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Pure tier state-machine — given the stored tier state, the user's
+ * current (cumulative) finished-games count, and today's date stamp,
+ * returns the resolved state for *today*.
+ *
+ * Rules:
+ *   - While `goalReachedAt` is set to a PAST day (not today), the tier
+ *     just-reached has already had its full celebration day — advance
+ *     to the next tier (target += TIER_INCREMENT, tierBase = old
+ *     target, goalReachedAt reset to null). Loops so a user who was
+ *     away for a while and blew through multiple tiers still lands on
+ *     the correct current tier.
+ *   - After any advances, if `current` already meets the (possibly
+ *     new) tier's target and today hasn't been recorded yet, stamp
+ *     `goalReachedAt` = today — this starts (or re-starts, for a
+ *     freshly-advanced tier) that tier's one-day celebration.
+ *
+ * @param {{ target: number, tier: number, tierBase: number, goalReachedAt: string|null }} goal
+ * @param {number} current
+ * @param {string} todayStamp
+ * @returns {{ state: { target: number, tier: number, tierBase: number, goalReachedAt: string|null }, changed: boolean }}
+ */
+export function resolveTierState(goal, current, todayStamp) {
+  let state = {
+    target: goal.target,
+    tier: goal.tier ?? 1,
+    tierBase: goal.tierBase ?? 0,
+    goalReachedAt: goal.goalReachedAt ?? null,
+  }
+  let changed = false
+
+  // A goal_reached_at from a prior day means that tier's celebration
+  // day has fully elapsed — climb to the next tier(s).
+  while (state.goalReachedAt && state.goalReachedAt !== todayStamp) {
+    state = {
+      target: state.target + TIER_INCREMENT,
+      tier: state.tier + 1,
+      tierBase: state.target,
+      goalReachedAt: null,
+    }
+    changed = true
+  }
+
+  // Newly reaching (or re-reaching, right after an advance) the
+  // current tier's target — start today's celebration.
+  if (current >= state.target && state.goalReachedAt !== todayStamp) {
+    state = { ...state, goalReachedAt: todayStamp }
+    changed = true
+  }
+
+  return { state, changed }
+}
 
 /* ──────────────────────────────────────────────────────────────────────
    getGoal
@@ -27,13 +116,13 @@ import { getFollowing } from './followService'
  * Fetch the goal row for (userId, year). Returns null when not set.
  * @param {string} userId
  * @param {number} year
- * @returns {Promise<{ userId: string, year: number, target: number } | null>}
+ * @returns {Promise<{ userId: string, year: number, target: number, tier: number, tierBase: number, goalReachedAt: string|null } | null>}
  */
 export async function getGoal(userId, year) {
   if (!userId || !year) return null
   const { data, error } = await supabase
     .from('user_goals')
-    .select('user_id, year, target')
+    .select('user_id, year, target, tier, tier_base, goal_reached_at')
     .eq('user_id', userId)
     .eq('year', year)
     .maybeSingle()
@@ -43,7 +132,14 @@ export async function getGoal(userId, year) {
     return null
   }
   if (!data) return null
-  return { userId: data.user_id, year: data.year, target: data.target }
+  return {
+    userId: data.user_id,
+    year: data.year,
+    target: data.target,
+    tier: data.tier ?? 1,
+    tierBase: data.tier_base ?? 0,
+    goalReachedAt: data.goal_reached_at ?? null,
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -51,7 +147,9 @@ export async function getGoal(userId, year) {
    ────────────────────────────────────────────────────────────────────── */
 
 /**
- * Upsert the goal for (userId, year). Overwrites target if it already exists.
+ * Upsert the goal for (userId, year). Overwrites target if it already
+ * exists, and (re)starts the escalating-tier ladder at tier 1 — this is
+ * the "start a fresh yearly challenge" action, not a mid-ladder edit.
  * @param {string} userId
  * @param {number} year
  * @param {number} target  — must be 1–9999
@@ -66,6 +164,9 @@ export async function setGoal(userId, year, target) {
       user_id: userId,
       year,
       target: clamped,
+      tier: 1,
+      tier_base: 0,
+      goal_reached_at: null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id,year' }
@@ -75,6 +176,38 @@ export async function setGoal(userId, year, target) {
     return false
   }
   return true
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   persistTierState
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Write a resolved tier state back to the goal row — called by
+ * `getGoalProgress` only when `resolveTierState` reports a change
+ * (a tier just advanced and/or today's celebration was just stamped).
+ * Best-effort: a failure here just means the next call re-resolves
+ * from the same stored state, so it's logged rather than thrown.
+ * @param {string} userId
+ * @param {number} year
+ * @param {{ target: number, tier: number, tierBase: number, goalReachedAt: string|null }} state
+ */
+async function persistTierState(userId, year, state) {
+  const { error } = await supabase
+    .from('user_goals')
+    .update({
+      target: state.target,
+      tier: state.tier,
+      tier_base: state.tierBase,
+      goal_reached_at: state.goalReachedAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('year', year)
+
+  if (error) {
+    console.error('[goal] persistTierState failed:', error.message)
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -276,18 +409,31 @@ export async function getFinishedGamesThisYear(userId, year = new Date().getFull
 /**
  * Convenience: fetch goal + current count in one call.
  *
+ * `target`/`percent` describe the CURRENT TIER only — see the
+ * "Escalating tiers" note above. Reaching a tier auto-persists that
+ * fact (`goal_reached_at`); on a later day this same call transparently
+ * advances to the next tier before computing the returned values, so
+ * callers never need to think about tiers explicitly.
+ *
  * Returns:
  *   {
- *     hasGoal:  boolean,
- *     target:   number | null,   — null when no goal is set
- *     current:  number,          — distinct Finished games this year
- *     year:     number,
- *     percent:  number,          — 0–100, capped at 100
+ *     hasGoal:       boolean,
+ *     target:        number | null,   — null when no goal is set; else
+ *                                       the CURRENT TIER's absolute target
+ *     current:       number,          — distinct Finished games this year
+ *                                       (cumulative, never resets)
+ *     year:          number,
+ *     percent:       number,          — 0–100 within the current tier
+ *     tier:          number,          — current tier (1-based)
+ *     tierBase:      number,          — threshold where this tier started
+ *     goalReachedAt: string | null,   — local date this tier's target
+ *                                       was first reached (celebration
+ *                                       shows while this equals today)
  *   }
  */
 export async function getGoalProgress(userId, year = new Date().getFullYear()) {
   if (!userId) {
-    return { hasGoal: false, target: null, current: 0, year, percent: 0 }
+    return { hasGoal: false, target: null, current: 0, year, percent: 0, tier: 1, tierBase: 0, goalReachedAt: null }
   }
 
   const [goal, current] = await Promise.all([
@@ -296,11 +442,28 @@ export async function getGoalProgress(userId, year = new Date().getFullYear()) {
   ])
 
   if (!goal) {
-    return { hasGoal: false, target: null, current, year, percent: 0 }
+    return { hasGoal: false, target: null, current, year, percent: 0, tier: 1, tierBase: 0, goalReachedAt: null }
   }
 
-  const percent = Math.min(100, Math.round((current / goal.target) * 100))
-  return { hasGoal: true, target: goal.target, current, year, percent }
+  const todayStamp = getLocalDateStamp()
+  const { state, changed } = resolveTierState(goal, current, todayStamp)
+  if (changed) {
+    await persistTierState(userId, year, state)
+  }
+
+  const tierSpan = Math.max(1, state.target - state.tierBase)
+  const percent = Math.min(100, Math.round(((current - state.tierBase) / tierSpan) * 100))
+
+  return {
+    hasGoal: true,
+    target: state.target,
+    current,
+    year,
+    percent,
+    tier: state.tier,
+    tierBase: state.tierBase,
+    goalReachedAt: state.goalReachedAt,
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────

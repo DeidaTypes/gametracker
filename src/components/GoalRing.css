@@ -37,9 +37,13 @@
   transition: none;
 }
 
-/* Completed arc — warm amber glow */
+/* Completed arc — green (--accent-review). Amber/orange is retired
+   app-wide; "goal reached" is always this one green, regardless of
+   which tier's color the ring was showing mid-climb. Actual stroke
+   color is set inline by GoalRing.jsx (fillStroke) — this is the
+   fallback if that's ever omitted. */
 .goal-ring__fill--complete {
-  stroke: var(--color-amber, #f59e0b);
+  stroke: var(--accent-review);
 }
 
 /* ── Compact variant (TodayCard, 52×52) ─────── */
@@ -173,7 +177,7 @@
 /* ── Complete animation (subtle pulse) ────────── */
 
 .goal-ring--complete .goal-ring__fill--complete {
-  filter: drop-shadow(0 0 4px var(--color-amber, #f59e0b));
+  filter: drop-shadow(0 0 4px var(--accent-review));
 }
 
 @media (prefers-reduced-motion: reduce) {
