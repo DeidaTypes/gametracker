@@ -17,6 +17,7 @@ import {
   LuArrowUpDown,
   LuPlus,
 } from 'react-icons/lu'
+import { HiOutlineHeart, HiOutlineChat } from 'react-icons/hi'
 import { PenLine, List } from 'lucide-react'
 import {
   FaInstagram,
@@ -62,6 +63,7 @@ import {
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { formatActivityDate } from '../utils/formatActivityDate'
 import { shareCard } from '../services/share'
 import { compileWrappedSummary } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
@@ -75,6 +77,7 @@ import GamePickerSheet from '../components/GamePickerSheet'
 import GoalRing from '../components/GoalRing'
 import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
+import ListCoverCluster from '../components/ListCoverCluster'
 import EmptyState from '../components/EmptyState'
 import ReorderPinsModal from '../components/ReorderPinsModal'
 import SortSheet from '../components/SortSheet'
@@ -713,6 +716,8 @@ function Profile() {
             gameCount: l.gameCount,
             previewGames: l.previewGames || [],
             games: l.games || [],
+            coverImageUrl: l.coverImageUrl || null,
+            isPinned: !!l.isPinned,
             likeCount: 0,
             commentCount: 0,
           }))
@@ -1785,9 +1790,6 @@ function Profile() {
                   displayName={profile.displayName || profile.username || ''}
                   onTapList={(id) => navigate(`/list/${id}`)}
                   onCreateList={() => setShowCreateListModal(true)}
-                  authorUsername={profile.username || profile.displayName || ''}
-                  authorAvatarUrl={avatarDisplay}
-                  authorAvatarFallback={defaultAvatar}
                   onPinList={isOwnProfile ? handlePinList : undefined}
                   onUnpinList={isOwnProfile ? handleUnpinList : undefined}
                 />
@@ -2263,8 +2265,7 @@ function ReviewsTab({
                   <ReviewCard
                     key={row.id}
                     review={rowToReviewCard(row, likeCounts, commentCounts)}
-                    variant="default"
-                    showOwnPill={!!own}
+                    variant="profilerow"
                     isOwn={!!own}
                     isPinned
                     onEdit={own ? onEditReview : undefined}
@@ -2285,8 +2286,7 @@ function ReviewsTab({
             <ReviewCard
               key={row.id}
               review={rowToReviewCard(row, likeCounts, commentCounts)}
-              variant="default"
-              showOwnPill={!!own}
+              variant="profilerow"
               isOwn={!!own}
               isPinned={false}
               onEdit={own ? onEditReview : undefined}
@@ -2312,9 +2312,6 @@ function ListsTab({
   displayName,
   onTapList,
   onCreateList,
-  authorUsername,
-  authorAvatarUrl,
-  authorAvatarFallback,
   onPinList,
   onUnpinList,
 }) {
@@ -2349,9 +2346,6 @@ function ListsTab({
             <ListRow
               list={list}
               onTap={() => onTapList(list.id)}
-              authorUsername={authorUsername}
-              authorAvatarUrl={authorAvatarUrl}
-              authorAvatarFallback={authorAvatarFallback}
               isOwnProfile={isOwnProfile}
               onPin={onPinList ? () => onPinList(list) : undefined}
               onUnpin={onUnpinList ? () => onUnpinList(list.id) : undefined}
@@ -2363,119 +2357,80 @@ function ListsTab({
   )
 }
 
-/* List row matches Musicboard reference image #2: 6-cover horizontal
-   mosaic strip on top, then list name (bold), description (1 line),
-   author row, and a like/comment/share row at the bottom.
-   Pin/unpin button appears in the meta row for the list owner. */
-function ListRow({
-  list,
-  onTap,
-  authorUsername,
-  authorAvatarUrl,
-  authorAvatarFallback,
-  isOwnProfile,
-  onPin,
-  onUnpin,
-}) {
-  const slots = Array.from({ length: 6 }, (_, i) => list.previewGames?.[i] || null)
-  const mosaicAlt = slots.filter(Boolean).length > 0
-    ? `${list.name} — covers of ${slots.filter(Boolean).map((g) => g.title).filter(Boolean).join(', ')}`
-    : `${list.name} cover`
+/* Compact list row: cover cluster left, then name, "N games · updated
+   {date}", and an engagement footer. Hairline-separated rather than
+   boxed so several lists fit on screen at once.
+   Like/comment are display-only until Sprint 6 wires list engagement;
+   the pin button is live and owner-only. */
+function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
+  const gameCount = list.gameCount || 0
+  const updated = formatActivityDate(list.updatedAt || list.createdAt)
+  const meta = [
+    `${gameCount} ${gameCount === 1 ? 'game' : 'games'}`,
+    updated && `updated ${updated}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
-    <article className="profile-list-row" onClick={onTap}>
-      {list.coverImageUrl ? (
-        <div className="profile-list-row__mosaic profile-list-row__mosaic--custom-cover">
-          <img
-            src={list.coverImageUrl}
-            alt={`${list.name} cover`}
-            className="profile-list-row__cover-img"
-            loading="lazy"
-          />
-        </div>
-      ) : (
-        <div className="profile-list-row__mosaic" role="img" aria-label={mosaicAlt}>
-          {slots.map((g, idx) => (
-            <div
-              key={g?.id || `empty-${idx}`}
-              className={`profile-list-row__cell${g ? '' : ' profile-list-row__cell--empty'}`}
-            >
-              {g?.image ? (
-                <img src={g.image} alt="" loading="lazy" />
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
+    <article
+      className="profile-list-row"
+      onClick={onTap}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onTap()
+        }
+      }}
+    >
+      <ListCoverCluster
+        games={list.previewGames}
+        coverImageUrl={list.coverImageUrl}
+        name={list.name}
+      />
 
       <div className="profile-list-row__body">
         <h3 className="profile-list-row__name">{list.name}</h3>
-        {list.description && (
-          <p className="profile-list-row__desc">{list.description}</p>
-        )}
+        <p className="profile-list-row__meta">{meta}</p>
 
-        <div className="profile-list-row__author">
-          {authorAvatarUrl ? (
-            <img
-              src={authorAvatarUrl}
-              alt=""
-              className="profile-list-row__author-avatar"
-              loading="lazy"
-            />
-          ) : (
-            <span
-              className="profile-list-row__author-avatar profile-list-row__author-avatar--fallback"
-              style={{ backgroundColor: authorAvatarFallback?.color }}
-            >
-              {authorAvatarFallback?.initials || ''}
-            </span>
-          )}
-          <span className="profile-list-row__author-name">
-            {authorUsername || 'you'}
-          </span>
-        </div>
-
-        <div className="profile-list-row__meta">
-          <span className="profile-list-row__meta-item">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
+        <div className="profile-list-row__engagement">
+          <span className="profile-list-row__stat">
+            <HiOutlineHeart aria-hidden="true" />
             {shouldShowCount(list.likeCount) && list.likeCount}
           </span>
-          <span className="profile-list-row__meta-item">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
+          <span className="profile-list-row__stat">
+            <HiOutlineChat aria-hidden="true" />
             {shouldShowCount(list.commentCount) && list.commentCount}
           </span>
-          <span className="profile-list-row__meta-item profile-list-row__meta-item--share" aria-hidden="true">
-            <LuShare2 size={14} />
-          </span>
 
-          {/* Pin / Unpin affordance — owner only */}
-          {isOwnProfile && (list.isPinned ? (
+          {isOwnProfile && (
             <button
               type="button"
-              className="profile-list-row__pin-btn profile-list-row__pin-btn--active"
-              onClick={(e) => { e.stopPropagation(); onUnpin?.() }}
-              aria-label="Unpin list from profile"
-              title="Unpin"
+              className={`profile-list-row__pin-btn${
+                list.isPinned ? ' profile-list-row__pin-btn--active' : ''
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (list.isPinned) onUnpin?.()
+                else onPin?.()
+              }}
+              aria-label={list.isPinned ? 'Unpin list from profile' : 'Pin list to profile'}
+              aria-pressed={!!list.isPinned}
+              title={list.isPinned ? 'Unpin' : 'Pin to profile'}
             >
-              <LuPin size={14} aria-hidden="true" />
+              <LuPin size={15} aria-hidden="true" />
             </button>
-          ) : (
-            <button
-              type="button"
-              className="profile-list-row__pin-btn"
-              onClick={(e) => { e.stopPropagation(); onPin?.() }}
-              aria-label="Pin list to profile"
-              title="Pin to profile"
-            >
-              <LuPin size={14} aria-hidden="true" />
-            </button>
-          ))}
+          )}
         </div>
       </div>
+
+      <LuChevronRight
+        className="profile-list-row__chevron"
+        size={18}
+        aria-hidden="true"
+      />
     </article>
   )
 }

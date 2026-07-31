@@ -1,0 +1,86 @@
+/* ============================================================
+   ListCoverCluster — square cover cluster for compact list rows.
+
+   One fixed footprint (--lcc-size) for every treatment, so rows in a
+   list keep an even left edge whether a list holds one game or eighty.
+   ============================================================ */
+
+.lcc {
+  --lcc-size: 60px;
+  position: relative;
+  flex: none;
+  width: var(--lcc-size);
+  height: var(--lcc-size);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface-2);
+}
+
+.lcc__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 0 covers ─────────────────────────────────────────────── */
+
+.lcc--empty {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+}
+
+/* ── 4+ covers: 2x2 mosaic ────────────────────────────────── */
+
+.lcc--mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.lcc__cell {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 1–3 covers: fanned stack ─────────────────────────────────
+   Plates are laid out front-first in the DOM so the covers that do
+   exist land on top; depth controls both the offset and the z-order.
+   Empty plates behind them stay as dim surface cards, which is what
+   keeps a one-game list from reading as a void. */
+
+.lcc--fan {
+  overflow: visible;
+  background: none;
+}
+
+.lcc__plate {
+  position: absolute;
+  top: 4px;
+  left: 3px;
+  width: 38px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  overflow: hidden;
+  transform-origin: bottom left;
+}
+
+.lcc__plate[data-depth='0'] {
+  z-index: 3;
+}
+
+.lcc__plate[data-depth='1'] {
+  z-index: 2;
+  transform: translateX(7px) rotate(6deg);
+}
+
+.lcc__plate[data-depth='2'] {
+  z-index: 1;
+  transform: translateX(13px) rotate(12deg);
+  opacity: 0.75;
+}

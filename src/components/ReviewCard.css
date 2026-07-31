@@ -140,15 +140,18 @@
   border-radius: var(--radius-chip);
 }
 
-/* Vibe pill — copper accent by default, nudged per vibe */
+/* Vibe pill — brand accent by default, nudged per vibe */
 .review-card__vibe-pill {
   color: var(--color-bg-primary);
   background: var(--color-brand-primary);
 }
 
-/* Per-vibe color overrides using data attribute */
+/* Per-vibe color overrides using data attribute.
+   Masterpiece reads green (--accent-review) — the amber it used to carry
+   is retired app-wide. */
 .review-card__vibe-pill[data-vibe='masterpiece'] {
-  background: #d4a544;
+  background: var(--accent-review);
+  color: var(--color-text-primary);
 }
 .review-card__vibe-pill[data-vibe='underrated'] {
   background: #5b8cf7;
@@ -467,6 +470,175 @@
 
 .review-card--gamedetail .review-card__gd-footer button[aria-pressed='true'] {
   color: var(--color-brand-primary);
+}
+
+/* =====================================================
+   VARIANT: profilerow — Profile Reviews tab
+   ---------------------------------------------------------------
+   Compact row: cover thumbnail left, title / rating / body / footer
+   stacked right. The only variant that isn't a <ReviewCardShell/>
+   card, so the surface chrome lives here: no background, no border
+   box, just a hairline between consecutive rows. Everything is
+   scoped under .review-card--profilerow so the card variants are
+   untouched.
+   ===================================================== */
+
+.review-card--profilerow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: 14px 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.review-card--profilerow + .review-card--profilerow {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---- Cover ---- */
+
+.review-card--profilerow .review-card__pr-cover {
+  flex: none;
+  width: 52px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-surface-2);
+}
+
+.review-card--profilerow .review-card__pr-cover img,
+.review-card--profilerow .review-card__pr-cover-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- Text column ---- */
+
+.review-card--profilerow .review-card__pr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.review-card--profilerow .review-card__pr-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-card--profilerow .review-card__pr-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* At row scale the shared specular glow reads as blur. Dropping the
+   filter leaves the --star gold itself untouched. */
+.review-card--profilerow .star-rating__layer--fill {
+  filter: none;
+}
+
+.review-card--profilerow .review-card__pr-sep {
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+/* Vibe label as plain green text — replaces the filled pill the card
+   variants use. Green (--accent-review), never amber. */
+.review-card--profilerow .review-card__pr-vibe {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-review);
+}
+
+.review-card--profilerow .review-card__pr-body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Quote marks are decoration around the excerpt, so they live in CSS
+   rather than being injected into the review text itself. */
+.review-card--profilerow .review-card__pr-body::before {
+  content: '\201C';
+}
+
+.review-card--profilerow .review-card__pr-body::after {
+  content: '\201D';
+}
+
+/* ---- Footer ---- */
+
+.review-card--profilerow .review-card__pr-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: 2px;
+}
+
+/* Negative block margin keeps the global 44px tap target from padding
+   out the row's height — same trick as ProfilePlayerCard's stat links. */
+.review-card--profilerow .review-card__pr-footer > button,
+.review-card--profilerow .review-card__pr-footer .review-card__kebab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-block: -10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-card--profilerow .review-card__pr-footer > button svg,
+.review-card--profilerow .review-card__pr-footer .review-card__kebab-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.review-card--profilerow .review-card__pr-footer > button[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* Pushes hours + timestamp to the right edge, per the mockup. */
+.review-card--profilerow .review-card__pr-meta {
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.review-card--profilerow .review-card__kebab-wrap {
+  margin-right: -6px;
+}
+
+.review-card--profilerow .review-card__kebab-btn {
+  color: var(--text-tertiary);
 }
 
 /* ---------------- Heart pulse animation ---------------- */

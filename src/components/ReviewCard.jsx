@@ -49,6 +49,12 @@ function extractQuote(body) {
   return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut) + '\u2026'
 }
 
+/** "42 hrs" / "1.5 hrs" — drops the decimal on whole numbers. */
+function formatHours(hours) {
+  const n = Number(hours) || 0
+  return `${n % 1 === 0 ? n : n.toFixed(1)} hrs`
+}
+
 const VIBE_LABELS = {
   masterpiece: 'Masterpiece',
   underrated:  'Underrated',
@@ -94,6 +100,16 @@ const LIFE_LABELS = {
  * Sprint 5 layout reused identically by Profile/thread/both "all reviews"
  * screens, so it is NOT reordered here; only the surrounding shell (this
  * component's root element) is shared.
+ *
+ * variant="profilerow" is the compact row used by the Profile Reviews
+ * tab. It is the only variant that is not a bounded <ReviewCardShell/>
+ * card: that tab is a dense list, so rows carry a bottom hairline and
+ * the surrounding surface belongs to the tab, not the row.
+ *   1. Cover thumbnail, left
+ *   2. Game title
+ *   3. Star rating + vibe label as green (--accent-review) inline text
+ *   4. Review body, clamped to two lines
+ *   5. Footer row — like / comment, then "hrs · time ago" right-aligned
  *
  * variant="gamedetail" is a compact, text-forward layout used only on the
  * Game Detail page's review list, where the cover/title are redundant
@@ -320,6 +336,136 @@ function ReviewCard({
   const gdTimeAgo = formatActivityDate(review.createdAt)
   const gdMeta = [review.relationship, gdTimeAgo].filter(Boolean).join(' · ')
 
+  const vibeLabel = review.vibeStamp
+    ? VIBE_LABELS[review.vibeStamp] || review.vibeStamp
+    : null
+
+  // profilerow footer: "54 hrs · 27d" — hours only when tracked, and the
+  // app-wide date rule (relative under a week, absolute from a week on).
+  const rowMeta = [
+    review.hoursPlayed > 0 ? formatHours(review.hoursPlayed) : null,
+    formatActivityDate(review.createdAt),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  // Like / comment / kebab controls are identical across every variant's
+  // footer, so they're built once here and placed per-variant below.
+  const likeButton = (
+    <Pressable
+      onClick={(e) => { e.stopPropagation(); handleLike() }}
+      aria-label={likeState.liked ? 'Unlike' : 'Like'}
+      aria-pressed={likeState.liked}
+    >
+      {likeState.liked ? (
+        <HiHeart
+          className={
+            heartPulse ? 'review-card__heart-icon pulse' : 'review-card__heart-icon'
+          }
+        />
+      ) : (
+        <HiOutlineHeart className="review-card__heart-icon" />
+      )}
+      {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
+    </Pressable>
+  )
+
+  const commentButton = (
+    <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
+      <HiOutlineChat />
+      {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
+    </Pressable>
+  )
+
+  const kebabControl = (
+    <div className="review-card__kebab-wrap" ref={kebabRef}>
+      <button
+        type="button"
+        className="review-card__kebab-btn"
+        onClick={(e) => { e.stopPropagation(); setKebabOpen((v) => !v) }}
+        aria-label="More options"
+        aria-expanded={kebabOpen}
+      >
+        <HiDotsVertical />
+      </button>
+      {kebabOpen && (
+        <div className="review-card__kebab-menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            disabled={sharingQuote}
+            onClick={(e) => { e.stopPropagation(); handleShareQuote() }}
+          >
+            <LuQuote />
+            {sharingQuote ? 'Creating card\u2026' : 'Share quote'}
+          </button>
+          {isOwn && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setKebabOpen(false)
+                  onEdit?.(review)
+                }}
+              >
+                <HiOutlinePencil />
+                Edit review
+              </button>
+              {isPinned ? (
+                onUnpin && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setKebabOpen(false)
+                      onUnpin()
+                    }}
+                  >
+                    <LuPinOff />
+                    Unpin from profile
+                  </button>
+                )
+              ) : (
+                onPin && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setKebabOpen(false)
+                      onPin()
+                    }}
+                  >
+                    <LuPin />
+                    Pin to profile
+                  </button>
+                )
+              )}
+            </>
+          )}
+          {!isOwn && (
+            <button
+              type="button"
+              role="menuitem"
+              className="review-card__kebab-menu-report"
+              onClick={(e) => {
+                e.stopPropagation()
+                setKebabOpen(false)
+                setReportSheetOpen(true)
+              }}
+            >
+              <HiOutlineFlag />
+              Report review
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
   // Shared between variants so the clamp / "Read more…" logic isn't
   // duplicated — only its position in the tree differs by variant.
   const bodyContent = (
@@ -339,26 +485,71 @@ function ReviewCard({
     </div>
   )
 
+  // profilerow is the one variant without card chrome, so it renders the
+  // motion root directly instead of through the shared shell.
+  const Root = variant === 'profilerow' ? motion.article : ReviewCardShell
+  const rootProps = {
+    ...(variant === 'profilerow' ? {} : { as: motion.article }),
+    className: [
+      'review-card',
+      variant === 'gamedetail' && 'review-card--gamedetail',
+      variant === 'profilerow' && 'review-card--profilerow',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    initial: reduced ? false : { opacity: 0 },
+    animate: reduced ? undefined : { opacity: 1 },
+    transition: { duration: 0.2 },
+    onClick: variant === 'detail' ? undefined : goToReview,
+    role: variant === 'detail' ? undefined : 'button',
+    tabIndex: variant === 'detail' ? undefined : 0,
+    onKeyDown:
+      variant === 'detail'
+        ? undefined
+        : (e) => { if (e.key === 'Enter' || e.key === ' ') goToReview() },
+  }
+
   return (
     <>
-    <ReviewCardShell
-      as={motion.article}
-      className={
-        variant === 'gamedetail' ? 'review-card review-card--gamedetail' : 'review-card'
-      }
-      initial={reduced ? false : { opacity: 0 }}
-      animate={reduced ? undefined : { opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      onClick={variant === 'detail' ? undefined : goToReview}
-      role={variant === 'detail' ? undefined : 'button'}
-      tabIndex={variant === 'detail' ? undefined : 0}
-      onKeyDown={variant === 'detail' ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') goToReview() }}
-    >
-      {showOwnPill && (
+    <Root {...rootProps}>
+      {showOwnPill && variant !== 'profilerow' && (
         <div className="review-card__own-pill">Your review</div>
       )}
 
-      {variant === 'gamedetail' ? (
+      {variant === 'profilerow' ? (
+        <>
+          <div className="review-card__pr-cover">
+            {coverThumbUrl ? (
+              <img src={coverThumbUrl} alt="" loading="lazy" />
+            ) : (
+              <span className="review-card__pr-cover-empty" aria-hidden="true" />
+            )}
+          </div>
+
+          <div className="review-card__pr-main">
+            <h3 className="review-card__pr-title">{review.game.name}</h3>
+
+            <div className="review-card__pr-rating">
+              <StarRating rating={review.rating} size={14} />
+              {vibeLabel && (
+                <>
+                  <span className="review-card__pr-sep" aria-hidden="true">·</span>
+                  <span className="review-card__pr-vibe">{vibeLabel}</span>
+                </>
+              )}
+            </div>
+
+            {review.body && <p className="review-card__pr-body">{review.body}</p>}
+
+            <div className="review-card__pr-footer">
+              {likeButton}
+              {commentButton}
+              {rowMeta && <span className="review-card__pr-meta">{rowMeta}</span>}
+              {kebabControl}
+            </div>
+          </div>
+        </>
+      ) : variant === 'gamedetail' ? (
         <>
           <ReviewCardShellHeader
             avatar={
@@ -401,28 +592,8 @@ function ReviewCard({
           {bodyContent}
 
           <div className="review-card__gd-footer">
-            <Pressable
-              onClick={(e) => { e.stopPropagation(); handleLike() }}
-              aria-label={likeState.liked ? 'Unlike' : 'Like'}
-              aria-pressed={likeState.liked}
-            >
-              {likeState.liked ? (
-                <HiHeart
-                  className={
-                    heartPulse
-                      ? 'review-card__heart-icon pulse'
-                      : 'review-card__heart-icon'
-                  }
-                />
-              ) : (
-                <HiOutlineHeart className="review-card__heart-icon" />
-              )}
-              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
-            </Pressable>
-            <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
-              <HiOutlineChat />
-              {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
-            </Pressable>
+            {likeButton}
+            {commentButton}
           </div>
         </>
       ) : (
@@ -465,10 +636,7 @@ function ReviewCard({
               className="review-card__hours-chip"
               aria-label={`${review.hoursPlayed} hours played`}
             >
-              {review.hoursPlayed % 1 === 0
-                ? review.hoursPlayed
-                : Number(review.hoursPlayed).toFixed(1)}{' '}
-              hrs
+              {formatHours(review.hoursPlayed)}
             </span>
           )}
         </div>
@@ -477,7 +645,7 @@ function ReviewCard({
           <div className="review-card__stamps">
             {review.vibeStamp && (
               <span className="review-card__vibe-pill" data-vibe={review.vibeStamp}>
-                {VIBE_LABELS[review.vibeStamp] || review.vibeStamp}
+                {vibeLabel}
               </span>
             )}
             {review.lifeContext && (
@@ -514,28 +682,8 @@ function ReviewCard({
   
         <div className="review-card__actions">
           <div className="review-card__actions-left">
-            <Pressable
-              onClick={(e) => { e.stopPropagation(); handleLike() }}
-              aria-label={likeState.liked ? 'Unlike' : 'Like'}
-              aria-pressed={likeState.liked}
-            >
-              {likeState.liked ? (
-                <HiHeart
-                  className={
-                    heartPulse
-                      ? 'review-card__heart-icon pulse'
-                      : 'review-card__heart-icon'
-                  }
-                />
-              ) : (
-                <HiOutlineHeart className="review-card__heart-icon" />
-              )}
-              {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
-            </Pressable>
-            <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
-              <HiOutlineChat />
-              {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
-            </Pressable>
+            {likeButton}
+            {commentButton}
           </div>
           <div className="review-card__actions-right">
             <Pressable
@@ -545,97 +693,12 @@ function ReviewCard({
             >
               <HiOutlineShare />
             </Pressable>
-            <div className="review-card__kebab-wrap" ref={kebabRef}>
-              <button
-                type="button"
-                className="review-card__kebab-btn"
-                onClick={(e) => { e.stopPropagation(); setKebabOpen((v) => !v) }}
-                aria-label="More options"
-                aria-expanded={kebabOpen}
-              >
-                <HiDotsVertical />
-              </button>
-              {kebabOpen && (
-                <div className="review-card__kebab-menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={sharingQuote}
-                    onClick={(e) => { e.stopPropagation(); handleShareQuote() }}
-                  >
-                    <LuQuote />
-                    {sharingQuote ? 'Creating card\u2026' : 'Share quote'}
-                  </button>
-                  {isOwn && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setKebabOpen(false)
-                          onEdit?.(review)
-                        }}
-                      >
-                        <HiOutlinePencil />
-                        Edit review
-                      </button>
-                      {isPinned ? (
-                        onUnpin && (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setKebabOpen(false)
-                              onUnpin()
-                            }}
-                          >
-                            <LuPinOff />
-                            Unpin from profile
-                          </button>
-                        )
-                      ) : (
-                        onPin && (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setKebabOpen(false)
-                              onPin()
-                            }}
-                          >
-                            <LuPin />
-                            Pin to profile
-                          </button>
-                        )
-                      )}
-                    </>
-                  )}
-                  {!isOwn && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="review-card__kebab-menu-report"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setKebabOpen(false)
-                        setReportSheetOpen(true)
-                      }}
-                    >
-                      <HiOutlineFlag />
-                      Report review
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            {kebabControl}
           </div>
         </div>
         </>
       )}
-    </ReviewCardShell>
+    </Root>
 
     <ReportSheet
       isOpen={reportSheetOpen}

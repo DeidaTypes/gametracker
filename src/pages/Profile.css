@@ -1193,10 +1193,11 @@
   padding: 0 var(--page-padding);
 }
 
+/* No gap — the rows are hairline-separated (see the profilerow variant
+   in ReviewCard.css) and carry their own vertical padding. */
 .profile-reviews__list {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
 }
 
 .profile-reviews__sentinel {
@@ -1284,171 +1285,93 @@
   padding: 0 var(--page-padding);
 }
 
+/* Hairline-separated rows rather than a gapped stack of boxes, so
+   several lists read at a glance. */
 .profile-lists__stack {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+}
+
+.profile-lists__stack li + li .profile-list-row {
+  border-top: 1px solid var(--border-subtle);
 }
 
 .profile-list-row {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 12px 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
-}
-
-.profile-list-row:hover {
-  border-color: var(--color-border-hover);
-  transform: translateY(-1px);
-}
-
-.profile-list-row__mosaic {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  width: 100%;
-  height: 100px;
-  background: var(--color-bg-tertiary);
-}
-
-.profile-list-row__cell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
-}
-
-.profile-list-row__cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.profile-list-row__cell--empty {
-  background: var(--color-bg-tertiary);
-}
-
-.profile-list-row__mosaic--custom-cover {
-  display: block;
-}
-
-.profile-list-row__cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .profile-list-row__body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--spacing-md);
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
 }
 
 .profile-list-row__name {
   margin: 0;
   font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-primary);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  color: var(--text-primary);
   overflow: hidden;
-}
-
-.profile-list-row__desc {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.profile-list-row__author {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-list-row__author-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-full);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: var(--font-weight-bold);
-  object-fit: cover;
-}
-
-.profile-list-row__author-avatar--fallback {
-  text-transform: uppercase;
-}
-
-img.profile-list-row__author-avatar {
-  object-fit: cover;
-}
-
-.profile-list-row__author-name {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-list-row__meta {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-top: 4px;
-  color: var(--color-text-tertiary);
-}
-
-.profile-list-row__meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.profile-list-row__meta-item--share {
-  margin-left: auto;
-  color: var(--color-text-secondary);
+.profile-list-row__engagement {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: 2px;
+  color: var(--text-tertiary);
 }
 
-/* Pin / Unpin button — owner-only affordance in the meta row */
+.profile-list-row__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-tertiary);
+}
+
+.profile-list-row__stat svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Pin / Unpin button — owner-only affordance in the engagement row.
+   Negative block margin keeps the global 44px tap target from padding
+   out the row's height. */
 .profile-list-row__pin-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
-  padding: 4px;
-  margin: -4px 0;
-  color: var(--color-text-tertiary);
+  padding: 0 4px;
+  margin: -10px 0 -10px -4px;
+  color: var(--text-tertiary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   -webkit-tap-highlight-color: transparent;
@@ -1456,18 +1379,23 @@ img.profile-list-row__author-avatar {
 }
 
 .profile-list-row__pin-btn--active {
-  color: var(--color-brand-primary);
+  color: var(--accent);
 }
 
 @media (hover: hover) {
   .profile-list-row__pin-btn:hover {
-    color: var(--color-brand-primary);
-    background: color-mix(in srgb, var(--color-brand-primary) 10%, transparent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 }
 
 .profile-list-row__pin-btn:active {
   opacity: 0.6;
+}
+
+.profile-list-row__chevron {
+  flex: none;
+  color: var(--text-tertiary);
 }
 
 /* ============================================================
@@ -1823,7 +1751,8 @@ img.profile-list-row__author-avatar {
   background: var(--color-brand-primary, #c9873a);
 }
 
-.profile-diary__vibe-pill[data-vibe='masterpiece'] { background: #d4a544; }
+/* Masterpiece reads green — amber is retired app-wide. */
+.profile-diary__vibe-pill[data-vibe='masterpiece'] { background: var(--accent-review); color: var(--color-text-primary); }
 .profile-diary__vibe-pill[data-vibe='underrated']  { background: #5b8cf7; color: #fff; }
 .profile-diary__vibe-pill[data-vibe='mid']         { background: var(--color-text-secondary, #94a8d4); }
 .profile-diary__vibe-pill[data-vibe='rage_quit']   { background: #e05a5a; color: #fff; }
