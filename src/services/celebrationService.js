@@ -75,6 +75,30 @@ export function getCurrentCelebration() {
   return _queue[0] || null
 }
 
+/**
+ * Merge stats onto an already-queued celebration, keyed by igdbGameId.
+ * Used for data that isn't known synchronously at queue time — e.g. the
+ * "your #Nth this year" ordinal, which can only be computed correctly
+ * AFTER the triggering status_changed activity row has actually been
+ * inserted (see libraryService.setGameStatus). A no-op if the item has
+ * already been dismissed (its year/ordinal simply never renders), which
+ * is safe: we'd rather show nothing than a stale/wrong number.
+ *
+ * @param {string|number} igdbGameId
+ * @param {object} patch
+ */
+export function updateCelebrationStats(igdbGameId, patch) {
+  if (igdbGameId == null || !patch) return
+  const id = String(igdbGameId)
+  let changed = false
+  _queue = _queue.map((item) => {
+    if (String(item.igdbGameId) !== id) return item
+    changed = true
+    return { ...item, ...patch }
+  })
+  if (changed) emit()
+}
+
 export function getQueueSnapshot() {
   return _queue
 }

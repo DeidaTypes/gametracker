@@ -1,11 +1,29 @@
 /* ============================================================
    COMPLETION CELEBRATION — full-screen first-time-Played overlay
-   Above everything (including bottom tab bar). Vertical gradient
-   backdrop using the game's extracted dominant color, plus Lottie
-   confetti and a centered cover with stats + CTAs.
+   Above everything (including bottom tab bar). A reward moment, not a
+   dialog: centered eyebrow + glowing cover + title + real playthrough
+   stats + a single Done button.
+
+   The ONE dynamic color on this whole screen is --game-accent, fed by
+   the game's own extracted-and-cached cover color (see
+   gameColorService.getOrExtractGameColor + colorExtract.normalizeAccentColor
+   in CompletionCelebration.jsx). Every other value below is a
+   pre-existing design-system token.
+
+   --finish-fallback is the single sanctioned exception to "no
+   orange/amber tokens" app-wide: a neutral gold used ONLY when a
+   game's accent hasn't resolved yet or extraction failed. It is never
+   blue, and it is scoped to this component alone.
    ============================================================ */
 
 .completion-celebration {
+  /* "R G B" triple — space-separated so rgb(var(--game-accent-rgb) / a)
+     works. Set inline by CompletionCelebration.jsx once the game's
+     cached/extracted color resolves; falls back to gold until then. */
+  --finish-fallback: 191 155 74;
+  --game-accent-rgb: var(--finish-fallback);
+  --game-accent: rgb(var(--game-accent-rgb));
+
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -14,11 +32,17 @@
   justify-content: center;
   padding: 24px 24px calc(env(safe-area-inset-bottom, 0) + 24px);
   overflow-y: auto;
-  /* Solid dark base — the inline backgroundImage (semi-transparent gradient
-     tinted with the game's dominant color) sits on top. Because we use
-     backgroundImage rather than the background shorthand, this color is never
-     reset and fully blocks the underlying page content. */
+  /* Solid dark base topped with a vertical wash of the game's accent,
+     fading to the app's own dark navy — never fully opaque at the top
+     so a very light accent still keeps white text legible there. */
   background-color: #0a0f1f;
+  background-image: linear-gradient(
+    180deg,
+    rgb(var(--game-accent-rgb) / 0.55) 0%,
+    rgb(var(--game-accent-rgb) / 0.18) 32%,
+    rgba(10, 15, 31, 0.96) 70%,
+    #0a0f1f 100%
+  );
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -36,7 +60,7 @@
   z-index: 1;
 }
 
-/* Reduced-motion fallback — static amber check ring, top-center,
+/* Reduced-motion fallback — static game-accent check ring, top-center,
    replacing the confetti. */
 .completion-celebration__static-mark {
   position: absolute;
@@ -50,7 +74,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.35));
+  filter: drop-shadow(0 0 24px rgb(var(--game-accent-rgb) / 0.35));
+}
+
+.completion-celebration__static-mark-ring-fill {
+  fill: rgb(var(--game-accent-rgb) / 0.14);
+}
+
+.completion-celebration__static-mark-ring-stroke {
+  stroke: rgb(var(--game-accent-rgb) / 0.45);
+}
+
+.completion-celebration__static-mark-check {
+  stroke: var(--game-accent);
 }
 
 .completion-celebration__content {
@@ -72,11 +108,11 @@
   line-height: 1.2;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-brand-primary);
+  color: var(--game-accent);
   margin-bottom: 24px;
 }
 
-/* Cover — 200×300, glow shadow at extracted color, 30% opacity, 60px blur */
+/* Cover — 200×300, glow shadow at the game's accent, 30% opacity, 60px blur */
 .completion-celebration__cover-wrap {
   position: relative;
   width: 200px;
@@ -90,6 +126,7 @@
   position: absolute;
   inset: -20px;
   border-radius: var(--radius-xl);
+  background: var(--game-accent);
   filter: blur(60px);
   opacity: 0.3;
   z-index: 0;
@@ -133,142 +170,92 @@
   font-weight: 400;
   line-height: 1.5;
   color: var(--color-text-secondary);
-  margin: 0 0 32px;
+  margin: 0 0 28px;
 }
 
-/* ---- Verdict card (user's own rating + snippet + hours) ---- */
-.completion-celebration__verdict {
-  width: 100%;
-  padding: 20px 16px;
-  background: rgba(255, 248, 238, 0.04);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  margin-bottom: 28px;
-  box-shadow: var(--surface-1-shadow);
+/* ---- Stat chips — real playthrough data only, missing values omitted ---- */
+.completion-celebration__stats {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-}
-
-.completion-celebration__rating-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
+  margin-bottom: 32px;
 }
 
-.completion-celebration__rating-label {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.completion-celebration__rating-value {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--star);
-  letter-spacing: -0.01em;
-}
-
-.completion-celebration__snippet {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-style: italic;
-  line-height: 1.55;
-  color: var(--color-text-secondary);
-  text-align: center;
-  margin: 0;
-  padding: 0 4px;
-  /* Cap at four lines; avoids overflow on very long reviews */
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.completion-celebration__hours {
+.completion-celebration__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--color-text-tertiary);
-  margin: 0;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  background: var(--color-surface, rgba(148, 168, 212, 0.05));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 9px 14px;
+  white-space: nowrap;
 }
 
-/* ---- CTAs ---- */
+.completion-celebration__stat-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ---- Actions ---- */
 .completion-celebration__ctas {
   display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
   gap: 12px;
   margin-top: 4px;
 }
 
-.completion-celebration__cta-primary {
-  min-width: 120px;
-  /* background, padding, and border-radius come from .form-button--primary */
-}
-
-.completion-celebration__cta-secondary {
-  min-width: 96px;
-}
-
-/* ---- Offscreen share-card host ---- */
-/* Render the 1080×1920 share card outside the visible viewport so
-   html-to-image can walk a real, painted DOM subtree without flashing
-   it on the user's screen. We use top:-100000px (not display:none)
-   because html-to-image needs computed styles + layout to capture. */
-.completion-celebration__share-host {
-  position: fixed;
-  top: 0;
-  left: 0;
-  /* The ShareCard inside is a fixed 1080×1920 canvas. A position:fixed
-     element is NOT clipped by overflow-x:hidden on html/body/#root, so
-     leaving it at its natural size pushes ~1080px past the viewport and
-     creates an app-wide horizontal scroll. Collapse the host to 0×0 and
-     clip the oversized child: html-to-image captures the .share-card node
-     by ref, so its intrinsic 1080×1920 size is preserved for the capture. */
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-}
-
-/* ---- Sprint-4 verification preview ---- */
-.completion-celebration__preview {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  width: 180px;
-  height: 320px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  background: var(--color-bg-tertiary);
-  z-index: 10001;
-  pointer-events: none;
-  border: 1px solid var(--color-border);
-}
-
-.completion-celebration__preview img {
+.completion-celebration__cta-done {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
+  min-height: 52px;
+  padding: 14px 24px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: var(--color-bg-primary);
+  background: var(--game-accent);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgb(var(--game-accent-rgb) / 0.35);
+  cursor: pointer;
+  transition: filter var(--transition-fast), transform var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.completion-celebration__cta-done:hover {
+  filter: brightness(1.06);
+}
+
+.completion-celebration__cta-done:active {
+  transform: scale(0.97);
+}
+
+.completion-celebration__cta-done:focus-visible {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 2px;
 }
 
 /* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
   .completion-celebration__cover-wrap {
     will-change: auto;
+  }
+
+  .completion-celebration__cta-done {
+    transition: none;
+  }
+
+  .completion-celebration__cta-done:active {
+    transform: none;
   }
 }

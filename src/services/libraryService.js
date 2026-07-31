@@ -5,7 +5,8 @@ import {
   logActivityEvent,
 } from './activityEventsService'
 import { getTracker } from './hoursService'
-import { queueCelebration } from './celebrationService'
+import { queueCelebration, updateCelebrationStats } from './celebrationService'
+import { countFinishedThisYear } from './goalService'
 import { supabase } from './supabase'
 import { showToast } from '../components/Toast'
 
@@ -453,11 +454,13 @@ export function setGameStatus(gameId, newStatus, game = null) {
     // First-time-Played celebration. Only fires when the row has never
     // had `playedFirstAt` set — by design, a previous Played → Playing →
     // Played re-toggle does NOT re-celebrate.
+    let justCelebrated = false
     if (newStatus === 'played' && currentStatus !== 'played') {
       const existing = getGameProgress(id)
       if (!existing.playedFirstAt) {
         const completedAt = new Date().toISOString()
         updateGameProgress(id, { playedFirstAt: completedAt })
+        justCelebrated = true
         // Pass a snapshot of the game object so the celebration can
         // render synchronously without hitting localStorage / IGDB again.
         queueCelebration({
@@ -481,7 +484,7 @@ export function setGameStatus(gameId, newStatus, game = null) {
     // Activity log — fire-and-forget AFTER the local save succeeds. The
     // service-side try/catch in logActivity prevents activity-log failures
     // from rolling back the status change.
-    logActivity({
+    const activityLogPromise = logActivity({
       activityType: 'status_changed',
       igdbGameId: gameId,
       metadata: {
@@ -490,6 +493,26 @@ export function setGameStatus(gameId, newStatus, game = null) {
         game_title: gameObj.title || null,
       },
     })
+
+    // "Your #Nth finished game of {year}" for the completion splash's stat
+    // chips. This MUST run after the status_changed row above has actually
+    // committed — countFinishedThisYear counts distinct 'played' rows in
+    // `activities`, so querying it any earlier would undercount by one
+    // (this game's own row wouldn't exist yet). The splash renders
+    // immediately without this number and fills it in once it resolves —
+    // see celebrationService.updateCelebrationStats.
+    if (justCelebrated) {
+      activityLogPromise
+        .then(async (row) => {
+          if (!row) return
+          const year = new Date(row.created_at).getFullYear()
+          const ordinal = await countFinishedThisYear(row.user_id, year)
+          if (ordinal > 0) updateCelebrationStats(id, { ordinal, ordinalYear: year })
+        })
+        .catch((err) => {
+          console.error('[library] finish-ordinal computation failed:', err)
+        })
+    }
 
     // Pulse — emit a uniform activity_events row so the follow-graph
     // feed picks the status change up. 'currently' → started, 'played'

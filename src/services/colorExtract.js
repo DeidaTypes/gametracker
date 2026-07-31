@@ -78,6 +78,75 @@ function rgbToHsl(r, g, b) {
   return { h, s, l }
 }
 
+// ── HSL → RGB helper (inverse of rgbToHsl above) ────────────────────────────
+function hslToRgb(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+
+  let r1 = 0, g1 = 0, b1 = 0
+  if (h < 60) { r1 = c; g1 = x; b1 = 0 }
+  else if (h < 120) { r1 = x; g1 = c; b1 = 0 }
+  else if (h < 180) { r1 = 0; g1 = c; b1 = x }
+  else if (h < 240) { r1 = 0; g1 = x; b1 = c }
+  else if (h < 300) { r1 = x; g1 = 0; b1 = c }
+  else { r1 = c; g1 = 0; b1 = x }
+
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255),
+  }
+}
+
+// A raw extracted swatch can be too dark or too desaturated (reads as
+// gray, not "the game's color") to double as BOTH a text color on the
+// dark app background AND a button fill behind dark-ink text. The
+// luminance a given hue needs to clear 4.5:1 (WCAG AA) varies a lot —
+// e.g. a saturated blue needs to be much lighter than a saturated
+// yellow to read the same contrast — so a single fixed lightness clamp
+// either washes out every color to the palest hue's requirement or
+// still fails AA on the worst ones (blue/red). normalizeAccentColor
+// below binary-searches lightness PER HUE instead, preserving the
+// game's actual hue/saturation and only lifting lightness as far as
+// that specific hue needs.
+const ACCENT_MIN_SATURATION = 0.40
+const AA_TARGET_CONTRAST = 4.5
+
+// The app's dark navy background AND the Done button's dark-ink text
+// (--color-bg-primary, #0a0f1f) are effectively the same luminance, so
+// one target luminance clears AA for both "accent text on navy" and
+// "dark ink on accent fill" simultaneously.
+const BG_LUMINANCE = getLuminance(10, 15, 31)
+const ACCENT_TARGET_LUMINANCE = AA_TARGET_CONTRAST * (BG_LUMINANCE + 0.05) - 0.05
+
+/**
+ * Normalize a raw extracted { r, g, b } swatch into a UI-safe accent for
+ * use as BOTH a text color (eyebrow, on dark navy) and a button fill
+ * (Done button, under dark ink text) — preserving the game's actual hue
+ * while guaranteeing WCAG AA (4.5:1) either way. Pass-through of
+ * null/undefined so callers can chain without a guard.
+ */
+export function normalizeAccentColor(rgb) {
+  if (!rgb) return null
+  const { h, s } = rgbToHsl(rgb.r, rgb.g, rgb.b)
+  const safeS = Math.max(ACCENT_MIN_SATURATION, s)
+
+  // Binary-search the minimal lightness (for this hue/saturation) that
+  // clears the target luminance. Converges in a handful of iterations;
+  // 16 is generous headroom.
+  let lo = 0
+  let hi = 1
+  for (let i = 0; i < 16; i++) {
+    const mid = (lo + hi) / 2
+    const candidate = hslToRgb(h, safeS, mid)
+    const lum = getLuminance(candidate.r, candidate.g, candidate.b)
+    if (lum < ACCENT_TARGET_LUMINANCE) lo = mid
+    else hi = mid
+  }
+  return hslToRgb(h, safeS, hi)
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
