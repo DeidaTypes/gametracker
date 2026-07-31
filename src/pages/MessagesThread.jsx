@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { LuChevronLeft } from 'react-icons/lu'
+import { LuChevronLeft, LuEllipsis, LuArrowUp } from 'react-icons/lu'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import {
@@ -15,9 +15,16 @@ import {
   sendMessage,
   markThreadAsRead,
   getSharedGame,
+  getPartnerHighlights,
 } from '../services/messageService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
+import {
+  loadBlockedIds,
+  isMutuallyBlocked,
+  blockUser,
+  unblockUser,
+} from '../services/blockService'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
@@ -26,6 +33,7 @@ import { showToast } from '../components/Toast'
 import { useReactions } from '../hooks/useReactions'
 import { useDmPresence } from '../hooks/useDmPresence'
 import ReportSheet from '../components/ReportSheet'
+import ActionSheet from '../components/ActionSheet'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -57,8 +65,27 @@ function partnerLabel(partner) {
   return partner.display_name || partner.username || 'Unknown user'
 }
 
+/** Centered "Today" / "Yesterday" / "July 12" separator between day groups. */
+function daySeparatorLabel(date) {
+  if (!date || Number.isNaN(date.getTime())) return ''
+  const now = new Date()
+  const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const diffDays = Math.round((startOf(now) - startOf(date)) / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { month: 'long', day: 'numeric' })
+  }
+  return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+// Empty-state quick replies — tapping one sends it immediately (not just a
+// prefill) so starting a conversation is a single tap.
+const QUICK_REPLIES = ['👋 Hey!', 'What are you playing?']
+
 const MAX_COMPOSER_LINES = 6
 const COMPOSER_LINE_HEIGHT = 22
+const TYPING_IDLE_MS = 3000
 
 /* ============================================================
    Page
@@ -148,6 +175,23 @@ function MessagesThread() {
   // Report sheet — holds the message being reported (incoming only).
   const [reportTarget, setReportTarget] = useState(null)
 
+  // Header overflow (⋯) sheet + the block-confirm / report-profile sheets
+  // it opens into.
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false)
+  const [blockPending, setBlockPending] = useState(false)
+  const [reportProfileOpen, setReportProfileOpen] = useState(false)
+  const [partnerBlocked, setPartnerBlocked] = useState(false)
+
+  // Empty-state identity stats ("142 games · follows you") — both parts
+  // are independently optional, see getPartnerHighlights.
+  const [partnerStats, setPartnerStats] = useState({ gamesCount: null, followsYou: false })
+
+  // Whether *we* are actively composing — re-tracked onto the presence
+  // channel below so the partner's client can render a typing indicator.
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef(null)
+
   // Bumped on app resume so the realtime effect below tears down the dead
   // (post-suspend) channel and re-subscribes onto a fresh socket — same
   // pattern as UnreadMessagesContext / NotificationsContext.
@@ -156,9 +200,41 @@ function MessagesThread() {
   const partnerId = partner?.id || null
   const currentUserId = user?.id || null
 
-  /* ── F1: DM-thread presence ────────────────────────────────── */
+  /* ── F1: DM-thread presence (+ typing) ────────────────────── */
 
-  const { partnerOnline } = useDmPresence(partnerId)
+  const { partnerOnline, partnerTyping } = useDmPresence(partnerId, isTyping)
+
+  /* ── Blocked-status + empty-state identity stats ──────────── */
+
+  useEffect(() => {
+    if (!partnerId || isSelf) {
+      setPartnerBlocked(false)
+      return
+    }
+    let cancelled = false
+    loadBlockedIds().then(() => {
+      if (!cancelled) setPartnerBlocked(isMutuallyBlocked(partnerId))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [partnerId, isSelf])
+
+  useEffect(() => {
+    if (!partnerId || isSelf) {
+      setPartnerStats({ gamesCount: null, followsYou: false })
+      return
+    }
+    let cancelled = false
+    getPartnerHighlights(partnerId)
+      .then((stats) => {
+        if (!cancelled) setPartnerStats(stats)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [partnerId, isSelf])
 
   /* ── Shared-game context ───────────────────────────────────── */
 
@@ -341,19 +417,46 @@ function MessagesThread() {
     el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
   }, [draft])
 
+  /* ── Typing indicator — broadcast onto the presence channel ──
+     Flips `isTyping` true as soon as the composer has content, and
+     back to false after a few seconds of inactivity, on send, or on
+     unmount. useDmPresence re-tracks this without rejoining. ─── */
+
+  const stopTyping = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = null
+    }
+    setIsTyping(false)
+  }, [])
+
+  const handleDraftChange = useCallback((value) => {
+    setDraft(value)
+    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current)
+    if (value.trim()) {
+      setIsTyping(true)
+      typingTimeoutRef.current = window.setTimeout(stopTyping, TYPING_IDLE_MS)
+    } else {
+      setIsTyping(false)
+    }
+  }, [stopTyping])
+
+  useEffect(() => stopTyping, [stopTyping])
+
   /* ── Send ─────────────────────────────────────────────────── */
 
   const handleSend = useCallback(
-    async (e) => {
+    async (e, overrideText) => {
       e?.preventDefault?.()
-      if (!partnerId || sending) return
-      const trimmed = draft.trim()
-      const attachment = pendingAttachment || null
+      if (!partnerId || sending || partnerBlocked) return
+      const trimmed = (overrideText ?? draft).trim()
+      const attachment = overrideText ? null : pendingAttachment || null
       if (!trimmed && !attachment) return
       if (isSelf) {
         showToast("You can't message yourself.", 'error')
         return
       }
+      stopTyping()
       setSending(true)
       // Optimistic — append a temp row so the bubble shows up the
       // instant the user taps Send. Replaced with the real row once
@@ -406,7 +509,7 @@ function MessagesThread() {
         setSending(false)
       }
     },
-    [partnerId, sending, draft, pendingAttachment, isSelf, currentUserId]
+    [partnerId, sending, partnerBlocked, draft, pendingAttachment, isSelf, currentUserId, stopTyping]
   )
 
   /* ── Header click → partner profile ───────────────────────── */
@@ -417,6 +520,30 @@ function MessagesThread() {
     if (handle) navigate(`/user/${encodeURIComponent(handle)}`)
   }, [partner, navigate])
 
+  /* ── Header overflow actions ──────────────────────────────── */
+
+  const handleToggleBlock = useCallback(async () => {
+    if (!partnerId || blockPending) return
+    setBlockPending(true)
+    try {
+      if (partnerBlocked) {
+        await unblockUser(partnerId)
+        setPartnerBlocked(false)
+        showToast('User unblocked.', 'success')
+      } else {
+        await blockUser(partnerId)
+        setPartnerBlocked(true)
+        showToast('User blocked.', 'success')
+        navigate(-1)
+      }
+    } catch (err) {
+      console.error('[MessagesThread] toggle block failed:', err)
+      showToast(err?.message || 'Could not update block status.', 'error')
+    } finally {
+      setBlockPending(false)
+    }
+  }, [partnerId, partnerBlocked, blockPending, navigate])
+
   /* ── Render ───────────────────────────────────────────────── */
 
   const headerLabel = partner ? partnerLabel(partner) : decodedUsername || 'Messages'
@@ -425,7 +552,42 @@ function MessagesThread() {
     [headerLabel]
   )
   const partnerAvatar = partner?.avatar_url || null
-  const sendDisabled = (!draft.trim() && !pendingAttachment) || sending || isSelf || !partnerId
+  const sendDisabled =
+    (!draft.trim() && !pendingAttachment) || sending || isSelf || !partnerId || partnerBlocked
+
+  // "Active now" is a real presence signal (Realtime channel); there is no
+  // persisted last-seen timestamp anywhere in the schema, so we never
+  // fabricate an "Active 2h ago" — the presence line is simply omitted
+  // when the partner isn't currently online.
+  const presenceLabel = partnerOnline ? 'Active now' : null
+
+  // "142 games · follows you" — each half independently omitted when
+  // that data isn't available (see getPartnerHighlights).
+  const statLine = useMemo(() => {
+    const parts = []
+    if (partnerStats.gamesCount != null) {
+      parts.push(`${partnerStats.gamesCount} game${partnerStats.gamesCount === 1 ? '' : 's'}`)
+    }
+    if (partnerStats.followsYou) parts.push('follows you')
+    return parts.length ? parts.join(' · ') : null
+  }, [partnerStats])
+
+  // Group messages into day buckets with a separator between each —
+  // computed once per messages-array change rather than on every render.
+  const dayItems = useMemo(() => {
+    const items = []
+    let lastDayKey = null
+    for (const m of messages) {
+      const d = new Date(m.created_at)
+      const dayKey = Number.isNaN(d.getTime()) ? 'unknown' : d.toDateString()
+      if (dayKey !== lastDayKey) {
+        items.push({ kind: 'separator', key: `sep-${dayKey}-${m.id}`, label: daySeparatorLabel(d) })
+        lastDayKey = dayKey
+      }
+      items.push({ kind: 'message', key: m.id, message: m })
+    }
+    return items
+  }, [messages])
 
   return (
     <div className="dm-thread">
@@ -464,14 +626,24 @@ function MessagesThread() {
           </div>
           <div className="dm-thread__partner-info">
             <span className="dm-thread__partner-name">{headerLabel}</span>
-            {sharedGame?.gameTitle && (
+            {presenceLabel ? (
+              <span className="dm-thread__presence-line">{presenceLabel}</span>
+            ) : sharedGame?.gameTitle ? (
               <span className="dm-thread__context-line">
                 you both played {sharedGame.gameTitle}
               </span>
-            )}
+            ) : null}
           </div>
         </button>
-        <span className="dm-thread__header-spacer" aria-hidden="true" />
+        <button
+          type="button"
+          className="dm-thread__overflow"
+          onClick={() => setOverflowOpen(true)}
+          aria-label="More options"
+          disabled={!partner || isSelf}
+        >
+          <LuEllipsis size={20} aria-hidden="true" />
+        </button>
       </header>
 
       <div className="dm-thread__scroll" ref={scrollRef}>
@@ -495,6 +667,13 @@ function MessagesThread() {
               You can&rsquo;t message yourself.
             </p>
           </div>
+        ) : partnerBlocked ? (
+          <div className="dm-thread__empty">
+            <p className="dm-thread__empty-h2">You can&rsquo;t message this user</p>
+            <p className="dm-thread__empty-sub">
+              This conversation isn&rsquo;t available.
+            </p>
+          </div>
         ) : loading ? (
           <div className="dm-thread__loading" aria-hidden="true">
             <span className="skeleton dm-thread__loading-bubble dm-thread__loading-bubble--in" />
@@ -502,22 +681,70 @@ function MessagesThread() {
             <span className="skeleton dm-thread__loading-bubble dm-thread__loading-bubble--in" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="dm-thread__empty">
-            <p className="dm-thread__empty-h2">Say hi to {headerLabel}</p>
-            <p className="dm-thread__empty-sub">
-              No messages yet — your first message starts the conversation.
+          <div className="dm-empty">
+            <div className="dm-empty__avatar">
+              {partnerAvatar ? (
+                <img src={partnerAvatar} alt="" />
+              ) : (
+                <span
+                  className="dm-empty__avatar-fallback"
+                  style={{ background: fallback.color }}
+                  aria-hidden="true"
+                >
+                  {fallback.initials}
+                </span>
+              )}
+            </div>
+            <h2 className="dm-empty__name">{headerLabel}</h2>
+            {statLine && <p className="dm-empty__stats">{statLine}</p>}
+            <p className="dm-empty__starter">
+              This is the start of your conversation with {headerLabel}.
             </p>
+            <div className="dm-empty__chips" role="group" aria-label="Quick replies">
+              {QUICK_REPLIES.map((reply) => (
+                <button
+                  key={reply}
+                  type="button"
+                  className="dm-empty__chip"
+                  onClick={() => handleSend(null, reply)}
+                  disabled={sending}
+                >
+                  {reply}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <ul className="dm-thread__list" role="list">
-            {messages.map((m) => (
-              <Bubble
-                key={m.id}
-                message={m}
-                isOutgoing={m.sender_id === currentUserId}
-                onReport={m.sender_id !== currentUserId ? setReportTarget : undefined}
-              />
-            ))}
+            {dayItems.map((item) =>
+              item.kind === 'separator' ? (
+                <li key={item.key} className="dm-day-separator" role="presentation">
+                  <span>{item.label}</span>
+                </li>
+              ) : (
+                <Bubble
+                  key={item.key}
+                  message={item.message}
+                  isOutgoing={item.message.sender_id === currentUserId}
+                  onReport={item.message.sender_id !== currentUserId ? setReportTarget : undefined}
+                />
+              )
+            )}
+            {partnerTyping && (
+              <li
+                className="dm-bubble-row dm-bubble-row--in"
+                aria-live="polite"
+                aria-label={`${headerLabel} is typing`}
+              >
+                <div className="dm-bubble-row__inner">
+                  <div className="dm-bubble dm-bubble--in dm-bubble--typing">
+                    <span className="dm-typing-dot" />
+                    <span className="dm-typing-dot" />
+                    <span className="dm-typing-dot" />
+                  </div>
+                </div>
+              </li>
+            )}
           </ul>
         )}
       </div>
@@ -527,6 +754,41 @@ function MessagesThread() {
         onClose={() => setReportTarget(null)}
         contentType="message"
         contentId={reportTarget?.id}
+      />
+
+      <ReportSheet
+        isOpen={reportProfileOpen}
+        onClose={() => setReportProfileOpen(false)}
+        contentType="profile"
+        contentId={partnerId}
+      />
+
+      <ActionSheet
+        isOpen={overflowOpen}
+        onClose={() => setOverflowOpen(false)}
+        items={[
+          { label: 'View profile', onClick: openPartnerProfile },
+          {
+            label: partnerBlocked ? `Unblock ${headerLabel}` : `Block ${headerLabel}`,
+            destructive: !partnerBlocked,
+            onClick: () => (partnerBlocked ? handleToggleBlock() : setBlockConfirmOpen(true)),
+          },
+          { label: 'Report', onClick: () => setReportProfileOpen(true) },
+        ]}
+      />
+
+      <ActionSheet
+        isOpen={blockConfirmOpen}
+        onClose={() => setBlockConfirmOpen(false)}
+        title={`Block ${headerLabel}? They won't be able to see your profile, message you, or interact with your content.`}
+        items={[
+          {
+            label: blockPending ? 'Blocking…' : `Block ${headerLabel}`,
+            destructive: true,
+            disabled: blockPending,
+            onClick: handleToggleBlock,
+          },
+        ]}
       />
 
       <form className="dm-thread__composer" onSubmit={handleSend}>
@@ -562,17 +824,19 @@ function MessagesThread() {
             ref={composerRef}
             className="dm-thread__input"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => handleDraftChange(e.target.value)}
             placeholder={
               isSelf
                 ? "You can't message yourself"
+                : partnerBlocked
+                ? "You can't message this user"
                 : pendingAttachment
                 ? 'Add a caption (optional)'
                 : `Message ${headerLabel}`
             }
             rows={1}
             maxLength={4000}
-            disabled={isSelf || !partnerId}
+            disabled={isSelf || !partnerId || partnerBlocked}
             aria-label="Message body"
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -584,8 +848,13 @@ function MessagesThread() {
             type="submit"
             className="dm-thread__send"
             disabled={sendDisabled}
+            aria-label={sending ? 'Sending message' : 'Send message'}
           >
-            {sending ? 'Sending…' : 'Send'}
+            {sending ? (
+              <span className="dm-thread__send-spinner" aria-hidden="true" />
+            ) : (
+              <LuArrowUp size={18} aria-hidden="true" />
+            )}
           </button>
         </div>
       </form>

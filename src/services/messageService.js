@@ -438,6 +438,52 @@ export async function getSharedGame(uid1, uid2) {
   }
 }
 
+/**
+ * Small identity-forward stats surfaced on the DM thread's empty state
+ * ("142 games · follows you"). Both fields are independently optional —
+ * this never fabricates a number or a relationship; a failed/absent
+ * value comes back as `null`/`false` so the caller can omit that half
+ * of the line rather than render a guess.
+ *
+ * `games_trackers` is publicly readable (mirrors the Profile stat
+ * card's `getTrackedGamesCountForUser`), and `follows` has an
+ * open SELECT policy, so both reads work for any signed-in viewer.
+ *
+ * @param {string} partnerId
+ * @returns {Promise<{ gamesCount: number|null, followsYou: boolean }>}
+ */
+export async function getPartnerHighlights(partnerId) {
+  const empty = { gamesCount: null, followsYou: false }
+  if (!partnerId) return empty
+  const userId = await getCurrentUserId()
+  if (!userId || userId === partnerId) return empty
+
+  const [gamesRes, followRes] = await Promise.all([
+    supabase
+      .from('game_trackers')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', partnerId),
+    supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('follower_id', partnerId)
+      .eq('followee_id', userId)
+      .maybeSingle(),
+  ])
+
+  if (gamesRes.error) {
+    console.error('[messages] getPartnerHighlights (games) failed:', gamesRes.error.message)
+  }
+  if (followRes.error) {
+    console.error('[messages] getPartnerHighlights (follow) failed:', followRes.error.message)
+  }
+
+  return {
+    gamesCount: gamesRes.error ? null : gamesRes.count ?? 0,
+    followsYou: !followRes.error && !!followRes.data,
+  }
+}
+
 /* ============================================================
    Cross-surface change event
    ============================================================ */
