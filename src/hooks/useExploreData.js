@@ -129,10 +129,10 @@ export function useNewReleases() {
 }
 
 /**
- * Discover page — "New & Notable" rail: recent/anticipated releases that
- * clear one of three notability lanes (aaa / hyped indie / anticipated —
- * see supabase/functions/new-notable/lanes.ts), taste-ordered. Reads a
- * cache the new-notable daily job fills; no IGDB call on view.
+ * Discover page — "New & Notable" rail: already-released recent games that
+ * clear one of two notability lanes (aaa volume / acclaimed indie — see
+ * supabase/functions/new-notable/lanes.ts), taste-ordered. Reads a cache the
+ * new-notable daily job fills; no IGDB call on view.
  */
 export function useDiscoverGamesNew() {
   return useAsyncSection(() => getNewNotableRail())

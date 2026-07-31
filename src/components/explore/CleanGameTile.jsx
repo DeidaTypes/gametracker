@@ -14,9 +14,9 @@ import './CleanGameTile.css'
  * and Discover exists for the games you haven't judged yet. Ratings live
  * on the game detail page, one tap away, where they're being asked for.
  *
- * `tag` is an optional short WORD label (e.g. "Popular" / "Acclaimed" /
- * "Hyped" from the New & Notable lane gate) — never a number, never a
- * rating. It explains *why* a game surfaced, not *how good* it is, so it
+ * `tag` is an optional short WORD label (e.g. "Popular" / "Acclaimed" from
+ * the New & Notable lane gate) — never a number, never a rating. It
+ * explains *why* a game surfaced, not *how good* it is, so it
  * doesn't reintroduce the judging-under-a-cover problem this component
  * exists to avoid. Omit it (the default) for a plain cover + title.
  *

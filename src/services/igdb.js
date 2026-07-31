@@ -346,7 +346,8 @@ function formatUpcomingGames(games) {
 // NOTE: getRecentReleasesForDiscover / getRecentReleasesPage (the old
 // date-only "New & Notable" queries) were removed — that section is now
 // served entirely from the new_notable_pool cache table, gated by the
-// three-lane notability check in supabase/functions/new-notable/lanes.ts.
+// release check + two-lane notability check in
+// supabase/functions/new-notable/lanes.ts.
 // See src/services/newNotableService.js. Live IGDB is touched only by the
 // daily new-notable Edge Function, never on an Explore view.
 

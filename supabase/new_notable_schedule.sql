@@ -5,17 +5,22 @@
 -- on its own.
 --
 -- Keeps public.new_notable_pool ahead of the clock: re-fetches the
--- recent/anticipated window from IGDB, re-classifies every game into a
--- lane (or drops it if it no longer clears any), re-curates the rail, and
--- prunes anything that fell out. Explore never touches IGDB directly — see
--- src/services/newNotableService.js.
+-- recently-RELEASED window from IGDB, re-classifies every game into one of
+-- the two notability lanes (or drops it if it clears neither), re-curates the
+-- rail, and prunes anything that fell out. Explore never touches IGDB
+-- directly — see src/services/newNotableService.js.
+--
+-- The daily tick is also what keeps the release gate honest as the clock
+-- moves: a game whose release date has passed since yesterday becomes
+-- eligible, and nothing scheduled for the future is ever fetched.
 --
 -- Time of day: 02:10 UTC, deliberately spaced from the other two daily
 -- jobs sharing the IGDB rate ceiling (taste-engine-daily 04:17,
 -- themed-drops-daily 03:41) so no two ever contend for it.
 --
 -- Prerequisites (done at deploy time, NOT committed with real values):
---   1. Run supabase/migrations/20260730160000_new_notable.sql
+--   1. Run supabase/migrations/20260730160000_new_notable.sql, then
+--      supabase/migrations/20260731110000_new_notable_released_only.sql
 --   2. Deploy the function:   supabase functions deploy new-notable
 --   3. Reuse the existing shared secret (same one taste-engine /
 --      themed-drops use) — no new secret needed if ENGINE_SECRET is

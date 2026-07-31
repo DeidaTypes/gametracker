@@ -1,6 +1,14 @@
 -- =====================================================================
 -- New & Notable — three-lane notability gate
 -- =====================================================================
+-- SUPERSEDED, in part, by 20260731110000_new_notable_released_only.sql.
+-- The table/index/RLS definitions below are still current. The LANE MODEL
+-- described here is not: Lane C ("anticipated") and the now..+120d lookahead
+-- were removed because they put unreleased games — Grand Theft Auto VI among
+-- them — in the first eight slots of a rail called "New & Notable". The
+-- current rule is RELEASED-ONLY with two lanes. Read the newer migration
+-- before relying on anything in this header.
+--
 -- RUN MANUALLY (Supabase SQL editor, or
 --   supabase db query --linked -f supabase/migrations/20260730160000_new_notable.sql
 -- ). Nothing in this file runs automatically.

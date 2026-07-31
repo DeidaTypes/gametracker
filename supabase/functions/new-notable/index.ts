@@ -11,9 +11,10 @@
 // src/services/newNotableService.js.
 //
 // Each tick:
-//   1. refresh the candidate pool from IGDB (classify into lanes, curate
-//      the rail, upsert, prune stale rows) — see pool.ts + lanes.ts
-//   2. report lane counts
+//   1. refresh the candidate pool from IGDB — released games only, then
+//      classify into the two notability lanes, curate the rail, upsert,
+//      prune stale rows — see pool.ts + lanes.ts
+//   2. report lane counts and how many rows the release gate rejected
 //
 // Auth: deployed with verify_jwt=false; requires x-engine-secret matching
 // the ENGINE_SECRET env var (same shared secret taste-engine and
@@ -174,13 +175,21 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
       payload = { pool_size: count ?? 0, last_refresh: latest?.refreshed_at ?? null }
     } else if (action === 'diagnose') {
-      // Lane counts against the CURRENT cache, plus the pre-fix date-only
-      // baseline pulled live from IGDB, so the before/after comparison is
-      // always measured against what's actually cached right now.
+      // Lane counts against the CURRENT cache, the release-gate assertion,
+      // and the pre-fix date-only baseline pulled live from IGDB — so the
+      // before/after comparison is always measured against what is actually
+      // cached right now rather than against numbers in a comment.
       const { data: rows, error } = await supabase
         .from('new_notable_pool')
-        .select('lane, total_rating_count, hypes, rail_rank')
+        .select('name, lane, release_date, total_rating_count, hypes, rail_rank')
       if (error) throw new Error(`new_notable_pool read failed: ${error.message}`)
+
+      const nowIso = new Date().toISOString()
+      const pool = rows ?? []
+      const railRows = pool.filter((r: any) => r.rail_rank != null)
+      // The acceptance check: not one unreleased game anywhere in the pool,
+      // and by extension none on the rail.
+      const unreleased = pool.filter((r: any) => !r.release_date || r.release_date > nowIso)
 
       const now = Math.floor(Date.now() / 1000)
       const dateOnlyQuery =
@@ -194,8 +203,19 @@ Deno.serve(async (req: Request) => {
 
       payload = {
         after: {
-          lanes: summarizeLanes(rows ?? []),
-          rail_size: (rows ?? []).filter((r: any) => r.rail_rank != null).length,
+          lanes: summarizeLanes(pool),
+          rail_size: railRows.length,
+          unreleased_in_pool: unreleased.length,
+          unreleased_on_rail: unreleased.filter((r: any) => r.rail_rank != null).length,
+          unreleased_examples: unreleased.slice(0, 5).map((r: any) => r.name),
+          oldest_release: pool.reduce(
+            (min: string | null, r: any) => (!min || r.release_date < min ? r.release_date : min),
+            null,
+          ),
+          newest_release: pool.reduce(
+            (max: string | null, r: any) => (!max || r.release_date > max ? r.release_date : max),
+            null,
+          ),
         },
         before_baseline: {
           description: 'Live date-only query mirroring the pre-fix getRecentReleasesForDiscover(20)',

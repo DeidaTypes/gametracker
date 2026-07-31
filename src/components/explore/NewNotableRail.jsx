@@ -8,14 +8,17 @@ import './SectionScaffold.css'
 /**
  * NewNotableRail — Discover slot 3.
  *
- * Recent + anticipated releases that clear one of three notability lanes
- * (AAA volume, hyped indie quality, or pre-release buzz — see
- * supabase/functions/new-notable/lanes.ts), taste-ordered, as covers and
- * titles — still no numeric scores. Each tile carries a small lane pill
- * ("Popular" / "Acclaimed" / "Hyped") instead: it explains WHY a game is
- * here without turning browsing into judging.
+ * ALREADY-RELEASED games from the last few months that clear one of two
+ * notability lanes (AAA volume of attention, or acclaimed-indie quality —
+ * see supabase/functions/new-notable/lanes.ts), taste-ordered, as covers and
+ * titles with no numeric scores. Nothing upcoming: "New" means out, not
+ * announced.
  *
- * "See all" continues the same gated list, newest-first, at
+ * Each tile carries a small lane pill ("Popular" / "Acclaimed") instead of a
+ * number: it explains WHY a game is here without turning browsing into
+ * judging.
+ *
+ * "See all" continues the same gated list, newest release first, at
  * /discover/new. Hides entirely when the cache has nothing rather than
  * showing an empty rail.
  */

@@ -16,11 +16,15 @@ function SkeletonTile() {
  * DiscoverNewAll — "See all" behind the New & Notable rail.
  * Route: /discover/new
  *
- * The SAME three-lane notability gate as the rail (see
- * supabase/functions/new-notable/lanes.ts) — this is "notable, newest
- * first", not "every recent release". Reads new_notable_pool directly, no
- * taste reordering (that's rail-only), no IGDB call. Covers and titles
- * only, matching the rail it continues — no scores anywhere on Discover.
+ * The SAME gates as the rail (see supabase/functions/new-notable/lanes.ts):
+ * already released, and clearing one of the two notability lanes. This is
+ * "notable releases, newest first" — not every recent release, and never an
+ * upcoming one. Sorted by release date descending, so the most recent
+ * release is the first tile and older ones follow below.
+ *
+ * Reads new_notable_pool directly, no taste reordering (that's rail-only),
+ * no IGDB call. Covers and titles only, matching the rail it continues — no
+ * scores anywhere on Discover.
  *
  * Pages are fetched by offset as the sentinel comes into view. Two rows
  * can share the same release timestamp and sort differently between two
@@ -50,7 +54,7 @@ export default function DiscoverNewAll() {
       const page = await getNewNotablePage({ limit: PAGE_SIZE, offset })
       requestedRef.current = offset + PAGE_SIZE
 
-      // A short page means IGDB has no more history to give, whether or
+      // A short page means the pool has no more history to give, whether or
       // not every row survives the dedupe below.
       setHasMore(page.length === PAGE_SIZE)
 
