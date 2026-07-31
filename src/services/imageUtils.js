@@ -4,6 +4,9 @@
 // (see igdb.js's coverUrlFromImageId / extractCoverUrl — every cover is
 // fetched at t_cover_big by default, so "downsizing" here means
 // rewriting that URL's size token, not requesting a new one).
+// Includes the square tokens so an incoming URL already carrying one can
+// still be rewritten to a cover-shaped variant; see SIZE_BREAKPOINTS for
+// why neither is ever selected as a target.
 const IGDB_SIZE_TOKENS = ['t_cover_big_2x', 't_cover_big', 't_cover_small', 't_thumb', 't_micro']
 
 // Size (px, the larger of width/height as rendered) → IGDB token.
@@ -11,9 +14,14 @@ const IGDB_SIZE_TOKENS = ['t_cover_big_2x', 't_cover_big', 't_cover_small', 't_t
 // which is the deliberate ceiling for list/grid/row cards (see below) —
 // we never request `t_cover_big_2x` just because a caller passed a big
 // number; only an already-2x URL (e.g. via imageHD) is preserved as-is.
+// `t_thumb` is deliberately absent: it is a SQUARE 90x90 center-crop, not
+// a scaled-down cover. Every caller here renders into a portrait cover
+// slot, so selecting it meant the art was cropped square by IGDB and then
+// cropped again by object-fit — covers read as zoomed-in details rather
+// than box art. `t_cover_small` is the smallest cover-shaped variant and
+// is the same 90px wide, so this costs nothing meaningful in bytes.
 const SIZE_BREAKPOINTS = [
-  { max: 70, token: 't_thumb' },        // ~90x90 — small feed/row thumbnails
-  { max: 220, token: 't_cover_small' }, // ~90x128 — compact list rows
+  { max: 220, token: 't_cover_small' }, // ~90x128 — feed/row thumbnails, compact list rows
 ]
 const DEFAULT_TOKEN = 't_cover_big' // 264x374 — grid/detail cards
 

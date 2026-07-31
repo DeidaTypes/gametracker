@@ -98,10 +98,14 @@
   border-radius: var(--radius-sm);
 }
 
+/* Sized by width + the 3:4 ratio IGDB actually serves t_cover_small at
+   (90x120 — the documented "90x128" is not what comes back), rather than
+   a rounded pixel height, so object-fit has nothing left to crop and the
+   art reads as box art instead of a zoomed detail. */
 .home-review-card__cover {
   flex-shrink: 0;
   width: 44px;
-  height: 60px;
+  aspect-ratio: 3 / 4;
   border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--color-bg-secondary);
@@ -111,7 +115,6 @@
    the cover grows and the stars render large instead. */
 .home-review-card--rating-only .home-review-card__cover {
   width: 56px;
-  height: 76px;
 }
 
 /* list_created's mosaic/fallback-icon "cover" — same footprint as a
@@ -229,7 +232,7 @@
 
 .home-review-card__mosaic img {
   width: 44px;
-  height: 58px;
+  aspect-ratio: 3 / 4;
   border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--color-bg-secondary);
