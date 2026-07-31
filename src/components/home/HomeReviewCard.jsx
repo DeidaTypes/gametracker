@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlinePlus, HiCheck } from 'react-icons/hi'
+import { HiOutlineHeart, HiHeart, HiOutlineChat, HiCheck } from 'react-icons/hi'
 import { List as ListIcon } from 'lucide-react'
 import Avatar from '../explore/Avatar'
 import StarRating from '../StarRating'
@@ -11,9 +11,8 @@ import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
 import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
-import { addGameToBacklog } from '../../services/libraryService'
 import { showToast } from '../Toast'
-import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
+import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import './HomeReviewCard.css'
@@ -26,6 +25,10 @@ import './HomeReviewCard.css'
 const EVENT_REACTION_EMOJI = '\u2764\uFE0F'
 
 const REVIEW_TYPES = new Set(['reviewed', 'rated'])
+
+// Covers shown in the list-add mosaic. getListById returns up to 6
+// previewGames, so this never has to pad the row with placeholders.
+const LIST_MOSAIC_MAX = 5
 
 /**
  * Formats `seconds` as "45m", "2h", or "2h 30m". Returns null below 60s
@@ -43,30 +46,12 @@ function formatDuration(seconds) {
 }
 
 /**
- * Trims a review body down to a single short "quoted note" for the
- * game row's secondary line — never a multi-line paragraph. Cuts at
- * the nearest word boundary (never mid-word) and only falls back to a
- * hard cut if there's no reasonable space to break on.
+ * BYLINE verb — deliberately short, fixed vocabulary, and never carries
+ * the game/list title or a star rating (those lead the card, in the game
+ * zone above). Identical for own vs. others' cards — only the subject
+ * differs ("You" vs. the author's name, handled by the caller).
  */
-function truncateQuote(body, max = 88) {
-  if (!body) return null
-  const trimmed = body.trim().replace(/\s+/g, ' ')
-  if (!trimmed) return null
-  if (trimmed.length <= max) return trimmed
-  const cut = trimmed.slice(0, max)
-  const lastSpace = cut.lastIndexOf(' ')
-  const safe = lastSpace > 40 ? cut.slice(0, lastSpace) : cut
-  return `${safe.trimEnd()}\u2026`
-}
-
-/**
- * ZONE 1 (header) verb — deliberately short, fixed vocabulary, and
- * NEVER carries the game/list title or a star rating (those live in
- * zone 2, the game row below). Identical for own vs. others' cards —
- * only the subject differs ("You" vs. the author's name, handled by
- * the caller), so no isOwn branching is needed here at all.
- */
-function headerVerb(item) {
+function bylineVerb(item) {
   switch (item.type) {
     case 'reviewed':
       return 'reviewed'
@@ -94,180 +79,168 @@ function headerVerb(item) {
 }
 
 /**
- * ZONE 2 (game row) secondary text line, per type — this is the text
- * half of the game row's second line; the star-rating half (when the
- * type carries a rating) is rendered separately in HomeCardBody so the
- * two can stack without either one needing to fabricate the other.
- * Most types render nothing here (the header verb + title already say
- * everything there is to say); only 'reviewed' (a short quoted note)
- * and 'finished' (total playtime, since the bare "finished" verb
- * doesn't carry it) add one.
+ * Status-pill label for the types whose whole content IS their status —
+ * finished / backlogged / started / played / favorited / journaled. The
+ * pill replaces the old secondary text line, and folds in the playtime a
+ * bare "Finished" would otherwise drop. Returns null for the types that
+ * lead with a rating, a review body, or a list instead.
  */
-function secondaryText(item) {
+function statusPillLabel(item) {
   switch (item.type) {
-    case 'reviewed': {
-      const quote = truncateQuote(item.body)
-      return quote ? `\u201c${quote}\u201d` : null
-    }
-    case 'listed':
-      return item.listKind === 'created' ? null : `Added to ${item._listName || 'a list'}`
+    case 'backlogged':
+      return 'Backlogged'
     case 'finished': {
       const d = formatDuration(item.durationSeconds)
-      return d ? `${d} played` : null
+      return d ? `Finished \u00b7 ${d}` : 'Finished'
     }
+    case 'started':
+      return 'Started playing'
+    case 'played': {
+      const d = formatDuration(item.durationSeconds)
+      return d ? `Played \u00b7 ${d}` : 'Session logged'
+    }
+    case 'favorited':
+      return 'Favorite'
+    case 'journaled':
+      return 'Journal entry'
     default:
       return null
   }
 }
 
 /**
- * CommentButton — icon-only comment affordance, grouped into zone 3's
- * left icon cluster for every card type (except the lightest
- * 'backlogged' type — see the no-action-row branch in the main
- * render). `review_comments` is polymorphic — it can target either a
- * review or an activity_events row (see
- * supabase/migrations/20260728140000_polymorphic_activity_comments.sql
- * + commentService.js) — so this is identical for every type, just
- * routed to the matching thread page (see goToReply). Its count is
- * rendered separately, right-aligned, by <ActionCounts/> below — never
- * inline on the icon itself.
+ * ExpandableBody — the review text, full width and free to grow. Clamped
+ * at CLAMP_LINES with an inline "more" that expands the card in place;
+ * short reviews render short (the clamp only ever removes height it would
+ * otherwise have taken, so nothing reserves empty space). "more" only
+ * renders once the text actually overflows the clamp, measured after
+ * layout rather than guessed from character count — a 6-line clamp at a
+ * fluid width can't be predicted from the string.
  */
-function CommentButton({ onClick }) {
+function ExpandableBody({ text }) {
+  const ref = useRef(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+
+  useLayoutEffect(() => {
+    if (expanded) {
+      setOverflows(false)
+      return
+    }
+    const el = ref.current
+    if (!el) return
+    setOverflows(el.scrollHeight > el.clientHeight + 1)
+  }, [text, expanded])
+
   return (
-    <Pressable
-      className="home-review-card__icon-btn home-review-card__icon-btn--social"
-      onClick={onClick}
-      aria-label="Reply"
-    >
-      <HiOutlineChat />
-    </Pressable>
+    <div className="home-review-card__body">
+      <p
+        ref={ref}
+        className={
+          expanded
+            ? 'home-review-card__body-text'
+            : 'home-review-card__body-text home-review-card__body-text--clamped'
+        }
+      >
+        {text}
+      </p>
+      {overflows && (
+        <button
+          type="button"
+          className="home-review-card__more"
+          onClick={(e) => {
+            e.stopPropagation()
+            setExpanded(true)
+          }}
+        >
+          more
+        </button>
+      )}
+    </div>
   )
 }
 
 /**
- * HeartButton — icon-only like/react affordance for zone 3's left
- * icon cluster. Interactive (a real toggle) on every non-own card;
- * read-only (a plain, non-focusable `<span>` — nothing to press, so
- * nothing pretends to be pressable) on the viewer's own cards, which
- * still show accurate fill state/engagement from others without
- * allowing self-reactions.
+ * ActionRow — like + comment, and nothing else. Each count renders
+ * beside its own icon rather than as a separate right-aligned cluster,
+ * and goes through `shouldShowCount` — the app-wide zero-state rule, so
+ * nothing here ever reads "0 likes" / "1 comment".
+ *
+ * The heart is a real toggle on other people's cards and a plain,
+ * non-focusable <span> on the viewer's own (nothing to press, so nothing
+ * pretends to be pressable) — own cards still show accurate fill state
+ * and engagement from others, just no self-likes.
  */
-function HeartButton({ active, interactive, onClick }) {
-  const icon = active ? (
+function ActionRow({ likeActive, likeInteractive, likeCount, commentCount, onLike, onComment }) {
+  const heartIcon = likeActive ? (
     <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
   ) : (
     <HiOutlineHeart className="home-review-card__heart-icon" />
   )
 
-  if (!interactive) {
-    return (
-      <span
-        className="home-review-card__icon-btn home-review-card__icon-btn--social home-review-card__icon-btn--readonly"
-        aria-label={active ? 'Liked' : 'Like'}
-      >
-        {icon}
-      </span>
-    )
-  }
-
   return (
-    <Pressable
-      className="home-review-card__icon-btn home-review-card__icon-btn--social"
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={active ? 'Remove reaction' : 'React'}
-    >
-      {icon}
-    </Pressable>
+    <div className="home-review-card__actions">
+      {likeInteractive ? (
+        <Pressable
+          className="home-review-card__action"
+          onClick={onLike}
+          aria-pressed={likeActive}
+          aria-label={likeActive ? 'Remove reaction' : 'React'}
+        >
+          {heartIcon}
+          {shouldShowCount(likeCount) && (
+            <span className="home-review-card__action-count">{likeCount}</span>
+          )}
+        </Pressable>
+      ) : (
+        <span
+          className="home-review-card__action home-review-card__action--readonly"
+          aria-label={
+            shouldShowCount(likeCount) ? `${likeCount} likes` : likeActive ? 'Liked' : 'Like'
+          }
+        >
+          {heartIcon}
+          {shouldShowCount(likeCount) && (
+            <span className="home-review-card__action-count">{likeCount}</span>
+          )}
+        </span>
+      )}
+
+      <Pressable className="home-review-card__action" onClick={onComment} aria-label="Reply">
+        <HiOutlineChat />
+        {shouldShowCount(commentCount) && (
+          <span className="home-review-card__action-count">{commentCount}</span>
+        )}
+      </Pressable>
+    </div>
   )
 }
 
 /**
- * ActionCounts — zone 3's right-aligned numerals, entirely separate
- * from the left icon cluster above. Each count goes through
- * `shouldShowCount` — the zero-state rule: a count only renders once
- * it's >= 3, otherwise it's omitted outright, so nothing here ever
- * reads "0 likes" / "1 comment". Renders nothing at all (not even the
- * wrapper) once both counts are below threshold, so it never leaves a
- * dangling gap on an otherwise-quiet card.
- */
-function ActionCounts({ likeCount, commentCount }) {
-  const parts = []
-  if (shouldShowCount(likeCount)) parts.push(String(likeCount))
-  if (shouldShowCount(commentCount)) parts.push(String(commentCount))
-  if (parts.length === 0) return null
-
-  const label = [
-    shouldShowCount(likeCount) && `${likeCount} likes`,
-    shouldShowCount(commentCount) && `${commentCount} comments`,
-  ]
-    .filter(Boolean)
-    .join(', ')
-
-  return (
-    <span className="home-review-card__counts" aria-label={label}>
-      {parts.join(' \u00b7 ')}
-    </span>
-  )
-}
-
-/**
- * BacklogAction — icon-only quick "add this game to my backlog" action.
- * Used two ways: (1) contextual, as the last icon in zone 3's left
- * cluster, on other people's cards that have a game (rating/review/
- * list-add/status events alike); (2) as the lightest card type's
- * inline trailing icon on a 'backlogged' event's game row (see
- * HomeCardBody) — mirrors the identical control Explore's Discover
- * "Recently" shelf already ships (RecentActivityCard.handleBacklog).
- * Hidden on own cards — backlogging a game you already have activity
- * on makes no sense.
- */
-function BacklogAction({ game }) {
-  const [backlogged, setBacklogged] = useState(false)
-  const [backlogging, setBacklogging] = useState(false)
-
-  const handleClick = async (e) => {
-    e.stopPropagation()
-    if (backlogging || backlogged) return
-    setBacklogging(true)
-    const added = await addGameToBacklog(game)
-    setBacklogging(false)
-    if (added) setBacklogged(true)
-  }
-
-  return (
-    <Pressable
-      className="home-review-card__icon-btn home-review-card__icon-btn--accent"
-      onClick={handleClick}
-      disabled={backlogging || backlogged}
-      aria-label={backlogged ? `${game.title} added to backlog` : `Add ${game.title} to backlog`}
-    >
-      {backlogged ? <HiCheck /> : <HiOutlinePlus />}
-    </Pressable>
-  )
-}
-
-/**
- * HomeCardBody — ZONE 2, the game row. A small cover + title, wrapping
- * up to 2 lines (never mid-word truncated) + at most one secondary
- * line underneath for every type that has a specific game, or a small
- * mosaic/list-icon "cover" + list name + game count for a list_created
- * event (which has no specific game). Every type renders through this
- * same one-row shape — that's what keeps the feed's rhythm steady per
- * type rather than each type inventing its own block.
+ * GameZone — the card's lead. Cover + game title (the most prominent
+ * text on the card) + whichever content zone the event type calls for,
+ * stacked directly beneath the title:
  *
- * The secondary line is where the star rating lives (for 'reviewed' /
- * 'rated', whenever the event carries a rating) — never in the header
- * above. When a type also has a short text line (a quoted review
- * excerpt, or total playtime), that text stacks directly beneath the
- * stars; most types have neither and the row is just cover + title.
+ *   rated (no body)  — large stars + the numeric score
+ *   reviewed         — small stars (the body carries the weight below)
+ *   listed / added   — the destination-list pill
+ *   status events    — a status pill (Finished · 4h, Backlogged, …)
+ *   listed / created — a cover mosaic in place of the game cover, with
+ *                      the list name as the title (no specific game)
  *
- * `trailing` is an optional node rendered at the end of the row itself
- * (used only by the 'backlogged' lightest-card variant's inline "+" —
- * see the main render below) so that card never needs a separate zone
- * 3 actions row at all.
+ * Deliberately flat: no background, border, or radius of its own, so
+ * the card keeps exactly one surface.
  */
-function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameCount, listCovers, trailing }) {
+function GameZone({
+  item,
+  img,
+  ratingOnly,
+  listName,
+  listGameCount,
+  listCovers,
+  onGameClick,
+  onListClick,
+}) {
   const handleImgError = (e) => {
     e.target.src = COVER_FALLBACK
   }
@@ -277,23 +250,22 @@ function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameC
     return (
       <Pressable
         as="div"
-        className="home-review-card__row"
+        className="home-review-card__game"
         onClick={onListClick}
         aria-label={`View ${listName || 'list'}`}
       >
-        <span className="home-review-card__thumb home-review-card__thumb--mosaic" aria-hidden="true">
+        <span className="home-review-card__cover home-review-card__cover--mosaic" aria-hidden="true">
           {covers.length > 0 ? (
-            covers.map((src, i) => (
-              <img key={i} src={getSizedImageUrl(src, 46)} alt="" loading="lazy" />
-            ))
+            covers.map((src, i) => <img key={i} src={getSizedImageUrl(src, 62)} alt="" loading="lazy" />)
           ) : (
-            <ListIcon size={16} />
+            <ListIcon size={18} />
           )}
         </span>
-        <span className="home-review-card__meta">
-          <span className="home-review-card__title">{listName || 'a list'}</span>
+        <span className="home-review-card__game-meta">
+          <span className="home-review-card__game-title">{listName || 'a list'}</span>
           {listGameCount != null && (
-            <span className="home-review-card__secondary">
+            <span className="home-review-card__pill home-review-card__pill--list">
+              <ListIcon size={12} aria-hidden="true" />
               {listGameCount} game{listGameCount === 1 ? '' : 's'}
             </span>
           )}
@@ -305,28 +277,53 @@ function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameC
   if (!item.game) return null
 
   const showRating = REVIEW_TYPES.has(item.type) && item.rating != null
-  const text = secondaryText({ ...item, _listName: listName })
+  // The stored rating is 0.5–5.0; the same value on the 10-point scale is
+  // exactly rating × 2 — a rescale of real data, not a second metric.
+  const score = showRating ? Math.round(Number(item.rating) * 20) / 10 : null
+  const statusLabel = statusPillLabel(item)
+  const isListAdd = item.type === 'listed' && item.listKind !== 'created'
 
   return (
     <Pressable
       as="div"
-      className="home-review-card__row"
+      className="home-review-card__game"
       onClick={onGameClick}
       aria-label={`View ${item.game.title}`}
     >
       <img
         src={img}
-        className="home-review-card__thumb"
+        className="home-review-card__cover"
         alt=""
         loading="lazy"
         onError={handleImgError}
       />
-      <span className="home-review-card__meta">
-        <span className="home-review-card__title">{item.game.title}</span>
-        {showRating && <StarRating rating={item.rating} size={12} />}
-        {text && <span className="home-review-card__secondary">{text}</span>}
+      <span className="home-review-card__game-meta">
+        <span className="home-review-card__game-title">{item.game.title}</span>
+
+        {showRating && (
+          <span className="home-review-card__rating">
+            <StarRating rating={item.rating} size={ratingOnly ? 18 : 13} />
+            {ratingOnly && <span className="home-review-card__score">{score} / 10</span>}
+          </span>
+        )}
+
+        {isListAdd && listName && (
+          <span className="home-review-card__pill home-review-card__pill--list">
+            <ListIcon size={12} aria-hidden="true" />
+            {listName}
+            {listGameCount != null && ` \u00b7 ${listGameCount} games`}
+          </span>
+        )}
+
+        {statusLabel && (
+          <span className="home-review-card__pill home-review-card__pill--status">
+            {item.type === 'backlogged' || item.type === 'finished' ? (
+              <HiCheck aria-hidden="true" />
+            ) : null}
+            {statusLabel}
+          </span>
+        )}
       </span>
-      {trailing}
     </Pressable>
   )
 }
@@ -337,55 +334,44 @@ function HomeCardBody({ item, img, onGameClick, onListClick, listName, listGameC
  * 'rated' (from `reviews`) plus 'started' / 'finished' / 'listed' /
  * 'played' / 'backlogged' / 'favorited' (from `activity_events`, for
  * both the viewer and everyone else — see getHomeFeed's doc comment) —
- * through the exact same compact THREE-ZONE shell:
+ * through the same content-forward, top-to-bottom shape:
  *
- *   Zone 1 — header: avatar (28px) + display name + short verb +
- *     timestamp pinned right, one line, never wrapping. The name
- *     ellipsizes if it's genuinely long; the verb never does (it's
- *     always short, fixed vocabulary — see headerVerb) — no star
- *     rating and no game/list title ever render here.
- *   Zone 2 — game row: small cover + title (wraps up to 2 lines) +
- *     the star rating (reviewed/rated only) and/or a short secondary
- *     text line (quote/hours), stacked tight beneath the title. This
- *     is the ONLY place stars ever render on this card.
- *   Zone 3 — actions row: a left-grouped icon cluster (heart, comment,
- *     + contextual backlog "+"), a thin top hairline, and
- *     right-aligned like/comment counts (only once >= 3 — see
- *     shouldShowCount) — never spread across the row. Skipped
- *     entirely for the lightest 'backlogged' type, which stops at the
- *     game row plus an inline "+" instead.
+ *   A. GAME ZONE — cover + game title (the largest text on the card) +
+ *      the type's content zone (large stars + score, list pill, status
+ *      pill). Flat, no inner surface. See <GameZone/>.
+ *   B. BODY — the review text at full card width, its own line height,
+ *      free to grow. Clamped only at 6 lines with an inline "more" that
+ *      expands in place. Absent entirely for types with no text, so a
+ *      bare rating is a genuinely short card. See <ExpandableBody/>.
+ *   C. BYLINE — small avatar (22px) + username in muted caption weight
+ *      + the type-colored verb + a compact timestamp. Deliberately
+ *      secondary metadata: it must never compete with the game title.
+ *   D. ACTIONS — like + comment only. See <ActionRow/>.
+ *
+ * Card height follows content: nothing is fixed-height and nothing
+ * reserves space for a zone the event doesn't have.
  *
  * Every type renders inside the identical <ReviewCardShell/> — one
  * surface, one hairline border, one radius/padding — with a 3px left
  * accent bar colored by event type (green = review/rating, purple =
- * list-add, cobalt = every other status event). Zone spacing itself
- * (header→game row, game row→actions) is tightened with scoped
- * `.home-review-card`-only overrides in HomeReviewCard.css rather than
- * touching ReviewCardShell's shared `--section-gap` token, since that
- * token is also used by other, out-of-scope surfaces (GameDetail,
- * Profile, RecentActivityCard, etc.).
+ * list-add, cobalt = every other status event). The shell's shared
+ * `--section-gap` is tightened with scoped `.home-review-card`-only
+ * overrides in HomeReviewCard.css rather than being changed globally,
+ * since that token is also used by other, out-of-scope surfaces
+ * (GameDetail, Profile, RecentActivityCard, etc.).
  *
  * Likes: 'reviewed'/'rated' use `review_likes` (via useLikeState); every
  * other type uses the generic cross-surface `reactions` table (via
- * useReactions, target_type: 'activity') — both feed the same
- * <HeartButton/>, with a single shared <ActionCounts/> reading whichever
- * count applies. Comments: `review_comments` is polymorphic (review_id
- * OR activity_event_id, exactly one set — see commentService.js) so
- * every type except 'backlogged' gets a real, counted comment
- * affordance routed to the matching thread page (see CommentButton /
- * goToReply).
+ * useReactions, target_type: 'activity') — both feed the same heart.
+ * Comments: `review_comments` is polymorphic (review_id OR
+ * activity_event_id, exactly one set — see commentService.js) so every
+ * type gets a real, counted comment affordance routed to the matching
+ * thread page (see goToReply).
  *
- * Contextual "add to backlog": any non-own card with a game gets the
- * small "+" icon in zone 3's left cluster EXCEPT 'backlogged' cards,
- * which get it inline in the game row itself instead (no zone 3 at
- * all) — that event type is deliberately the lightest card: header +
- * game row + one inline icon, nothing else.
- *
- * Own cards (`item.isOwn`, Home-is-the-hub sprint): "You" replaces the
- * author name in the header, and the heart becomes read-only (no
- * self-reactions, but engagement from others is still visible via its
- * count). The comment affordance is untouched by `isOwn`: tapping the
- * count on an own review still opens the thread, same as anyone else's.
+ * Own cards (`item.isOwn`): "You" replaces the author name in the
+ * byline, and the heart becomes read-only (no self-reactions, but
+ * engagement from others is still visible via its count). The comment
+ * affordance is untouched by `isOwn`.
  *
  * @param {{ item: object }} props  See communityService.getHomeFeed's
  *   doc comment for the full item shape. Non-review types add: listId,
@@ -406,10 +392,16 @@ export default function HomeReviewCard({ item }) {
     item.listPreviewCovers ||
     (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
 
-  const when = formatActivityDate(item.createdAt)
-  // 34x46 row thumbnail (see .home-review-card__thumb) — sized down from
-  // the full t_cover_big the game data carries, not requested at that size.
-  const img = item.game?.image ? getSizedImageUrl(item.game.image, 46) : COVER_FALLBACK
+  const when = formatActivityDate(item.createdAt, { compactAbsolute: true })
+  const body = (item.body || '').trim()
+  // A rating with no review text is the compact card — its cover grows and
+  // its stars render large, since the rating IS the whole content.
+  const ratingOnly = isReviewType && !body && item.rating != null
+  // 44x60 (or 56x76 when rating-only) cover — sized down from the full
+  // t_cover_big the game data carries, not requested at that size.
+  const img = item.game?.image
+    ? getSizedImageUrl(item.game.image, ratingOnly ? 76 : 60)
+    : COVER_FALLBACK
   const displayedLikeCount = likeState.count || item.likeCount || 0
 
   const eventReaction = eventReactions.reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)
@@ -418,6 +410,12 @@ export default function HomeReviewCard({ item }) {
 
   const heartCount = isReviewType ? displayedLikeCount : eventCount
   const heartActive = isReviewType ? likeState.liked : !item.isOwn && eventReacted
+
+  // The list-add mosaic — the destination list's other covers, so the
+  // card shows what the game was added *to*. Omitted when the preview
+  // read returned nothing rather than padded with placeholders.
+  const isListAdd = item.type === 'listed' && item.listKind !== 'created'
+  const mosaicCovers = isListAdd ? (listCovers || []).slice(0, LIST_MOSAIC_MAX) : []
 
   const goToAuthor = (e) => {
     e.stopPropagation()
@@ -479,55 +477,70 @@ export default function HomeReviewCard({ item }) {
     }
   }
 
-  // 'backlogged' is the lightest card type — header + game row + an
-  // inline "+" (for other people's cards only) is enough, per this
-  // sprint's decluttering pass. No zone 3 actions row at all.
-  const isLightBacklog = item.type === 'backlogged'
-  const showBacklogAdd = !item.isOwn && !!item.game && !isLightBacklog
-
   return (
-    <ReviewCardShell className={`home-review-card home-review-card--${item.type}`}>
-      {/* ZONE 1 — header: avatar, name, short verb, timestamp. Stars
-          never render here — see the game row below. */}
-      <ReviewCardShellHeader
-        avatar={
-          <button type="button" className="home-review-card__avatar-btn" onClick={goToAuthor}>
-            <Avatar user={item.author} size={28} />
-          </button>
-        }
-        end={<span className="home-review-card__time">{when}</span>}
-      >
-        <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
-          {item.isOwn ? 'You' : item.author.displayName}
-        </button>
-        <span className="home-review-card__verb">{headerVerb(item)}</span>
-      </ReviewCardShellHeader>
-
-      {/* ZONE 2 — game row: cover, title, stars/hours/quote. */}
-      <HomeCardBody
+    <ReviewCardShell
+      className={`home-review-card home-review-card--${item.type}${
+        ratingOnly ? ' home-review-card--rating-only' : ''
+      }`}
+    >
+      {/* A — GAME ZONE: cover + title + the type's content zone. */}
+      <GameZone
         item={item}
         img={img}
-        onGameClick={goToGame}
-        onListClick={goToList}
+        ratingOnly={ratingOnly}
         listName={listName}
         listGameCount={listGameCount}
         listCovers={listCovers}
-        trailing={
-          isLightBacklog && !item.isOwn && item.game ? <BacklogAction game={item.game} /> : null
-        }
+        onGameClick={goToGame}
+        onListClick={goToList}
       />
 
-      {/* ZONE 3 — actions row: left icon cluster, right-aligned counts. */}
-      {!isLightBacklog && (
-        <div className="home-review-card__actions">
-          <div className="home-review-card__icons">
-            <HeartButton active={heartActive} interactive={!item.isOwn} onClick={handleHeartClick} />
-            <CommentButton onClick={goToReply} />
-            {showBacklogAdd && <BacklogAction game={item.game} />}
-          </div>
-          <ActionCounts likeCount={heartCount} commentCount={item.commentCount} />
-        </div>
+      {mosaicCovers.length > 0 && (
+        <Pressable
+          as="div"
+          className="home-review-card__mosaic"
+          onClick={goToList}
+          aria-label={`View ${listName || 'list'}`}
+        >
+          {mosaicCovers.map((src, i) => (
+            <img key={i} src={getSizedImageUrl(src, 60)} alt="" loading="lazy" />
+          ))}
+        </Pressable>
       )}
+
+      {/* B — BODY: full width, expands to fit, clamps at 6 lines. */}
+      {body && <ExpandableBody text={body} />}
+
+      {/* C — BYLINE: demoted author metadata, never the headline. */}
+      <div className="home-review-card__byline">
+        <button
+          type="button"
+          className="home-review-card__avatar-btn"
+          onClick={goToAuthor}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <Avatar user={item.author} size={22} />
+        </button>
+        <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
+          {item.isOwn ? 'You' : item.author.displayName}
+        </button>
+        <span className="home-review-card__verb">{bylineVerb(item)}</span>
+        <span className="home-review-card__dot" aria-hidden="true">
+          {'\u00b7'}
+        </span>
+        <span className="home-review-card__time">{when}</span>
+      </div>
+
+      {/* D — ACTIONS: like + comment only. */}
+      <ActionRow
+        likeActive={heartActive}
+        likeInteractive={!item.isOwn}
+        likeCount={heartCount}
+        commentCount={item.commentCount}
+        onLike={handleHeartClick}
+        onComment={goToReply}
+      />
     </ReviewCardShell>
   )
 }

@@ -6,44 +6,44 @@
    same shell (background/border/radius from <ReviewCardShell/> — see
    ReviewCardShell.css) but this card tightens the shell's own
    `--section-gap` (a token shared by other, out-of-scope surfaces —
-   GameDetail, Profile, RecentActivityCard, etc.) to a snug, scoped
-   three-zone rhythm instead:
+   GameDetail, Profile, RecentActivityCard, etc.) to a scoped,
+   content-forward rhythm instead:
 
-     Zone 1 — header   (review-card-shell__header): avatar + name +
-                        short verb + timestamp, one line, no stars.
-     Zone 2 — game row (home-review-card__row): cover + title, with
-                        the star rating (when the type carries one)
-                        and/or a short secondary text line stacked
-                        tight beneath.
-     Zone 3 — actions  (home-review-card__actions): left-grouped icon
-                        cluster + right-aligned counts, separated from
-                        zone 2 by a thin hairline.
+     A. Game zone (home-review-card__game) — cover + game title, the
+        most prominent text on the card, plus the type's content zone
+        (large stars + score / list pill / status pill). FLAT: no
+        background, border, or radius, so the card keeps ONE surface.
+     B. Body (home-review-card__body) — the review text at full card
+        width, free to grow, clamped only at 6 lines with an inline
+        "more". Absent entirely when the event has no text.
+     C. Byline (home-review-card__byline) — small avatar + muted
+        username + type-colored verb + compact timestamp. Caption-sized
+        by design: it must never compete with the game title above.
+     D. Actions (home-review-card__actions) — like + comment only.
 
-   3px left accent bar + header verb color, by MEANING:
-     - green   (--accent-review)        → reviewed / rated
+   Nothing here sets a height. Card height follows content: a bare
+   rating is a short card, a long review is a tall one.
+
+   3px left accent bar + byline verb color, by MEANING:
+     - green   (--accent-review)         → reviewed / rated
      - purple  (--accent-journal[-text]) → added to a list / created a list
-     - cobalt  (--accent)               → added a journal entry
-     - neutral (--color-text-secondary) → logged a session / backlogged /
-                                           finished / started / favorited
-                                           (every other status event)
-   Like/reply icons keep the existing purple social hue on every row
-   regardless of type (see .home-review-card__icon-btn--social below)
-   — a different, deliberate use of purple from the header/accent
-   bar's per-type coloring. The contextual "add to backlog" icon uses
-   the copper --accent instead, so it never reads as a social action.
+     - cobalt  (--accent)                → every status event
+                                            (backlogged / finished /
+                                            started / played / favorited /
+                                            journaled)
+   Like/comment icons keep the existing purple social hue on every row
+   regardless of type — a different, deliberate use of purple from the
+   byline/accent bar's per-type coloring.
    ============================================================ */
 
 .home-review-card {
   position: relative;
   /* Scoped override: replace the shell's shared --section-gap (12px,
      used by other surfaces) with 0 — every inter-zone gap below is
-     instead an explicit, tight margin on the zone that follows, so
-     the three zones never double up on spacing. */
+     instead an explicit margin on the zone that follows, so a zone the
+     event doesn't have costs no space at all. */
   gap: 0;
-  /* Scoped override: the shell's shared --review-card-padding (16px)
-     is slightly roomier than this compact card wants; other surfaces
-     using <ReviewCardShell/> are untouched. */
-  padding: 13px;
+  padding: 14px;
 }
 
 .home-review-card--reviewed,
@@ -55,16 +55,13 @@
   border-left: 3px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
 }
 
-.home-review-card--journaled {
-  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
 .home-review-card--backlogged,
 .home-review-card--finished,
 .home-review-card--started,
 .home-review-card--played,
-.home-review-card--favorited {
-  border-left: 3px solid var(--color-border);
+.home-review-card--favorited,
+.home-review-card--journaled {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 /* Star fill (StarRating reads --star from its ancestors) scoped to
@@ -79,47 +76,264 @@
   filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
 }
 
-/* ── ZONE 1 — header (identical for every type) — one line, never
-   wraps. Avatar is deliberately small (28px); the verb is always
-   short (see headerVerb in the .jsx) and — unlike the shell's default
-   header-line children — is never allowed to ellipsize: only the name
-   shrinks/clips, so a long display name never costs the verb its
-   legibility. No star rating or game/list title ever renders in this
-   row (both moved to zone 2 below). A tight 8px margin separates this
-   zone from zone 2. ── */
-.home-review-card .review-card-shell__header {
-  margin-bottom: 8px;
+/* ── A — GAME ZONE: the card's lead. Cover + title, with the type's
+   content zone stacked beneath the title. Flat by rule — a nested
+   box/chip around this row would make the card two surfaces. ── */
+.home-review-card__game {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__game:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.home-review-card__cover {
+  flex-shrink: 0;
+  width: 44px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+}
+
+/* A rating with no review text has no body zone to carry weight, so
+   the cover grows and the stars render large instead. */
+.home-review-card--rating-only .home-review-card__cover {
+  width: 56px;
+  height: 76px;
+}
+
+/* list_created's mosaic/fallback-icon "cover" — same footprint as a
+   game cover so the zone's rhythm never shifts by type. */
+.home-review-card__cover--mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+
+.home-review-card__cover--mosaic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-review-card__cover--mosaic svg {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  margin: 0 auto;
+}
+
+.home-review-card__game-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* The headline of the card. Wraps at word boundaries when long — never
+   clipped mid-word — and is the only text on the card at title size. */
+.home-review-card__game-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: normal;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home-review-card__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.home-review-card__score {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Destination-list / status chips. The one place this card uses a
+   tinted fill — small, inline, and never wrapping the game row itself. */
+.home-review-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: var(--radius-chip);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-review-card__pill svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.home-review-card__pill--list {
+  background: color-mix(in srgb, var(--accent-journal) 20%, transparent);
+  color: var(--accent-journal-text);
+}
+
+.home-review-card__pill--status {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-hover);
+}
+
+/* Covers of the list a game was added TO — shows what the destination
+   actually holds. Only renders when the list preview returned covers;
+   never padded with placeholders. */
+.home-review-card__mosaic {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__mosaic img {
+  width: 44px;
+  height: 58px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+}
+
+.home-review-card__mosaic:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── B — BODY: full card width, its own line height, expands to fit.
+   The clamp only removes height the text would otherwise have taken,
+   so a two-line review renders as two lines with no reserved gap. ── */
+.home-review-card__body {
+  position: relative;
+  margin-top: 11px;
+}
+
+.home-review-card__body-text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+  color: var(--color-text-primary);
+  overflow-wrap: break-word;
+}
+
+.home-review-card__body-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Sits on the clamped text's last line rather than below it, so "more"
+   reads as part of the sentence it interrupts. The fade is the card's
+   own surface token, so it disappears into the background. */
+.home-review-card__more {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 0 0 28px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0,
+    var(--color-bg-tertiary) 24px,
+    var(--color-bg-tertiary) 100%
+  );
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__more:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── C — BYLINE: who did it, demoted to metadata. Caption-sized and
+   muted so the eye lands on the game title and the review body first.
+   One line, never wraps; only the username clips under width pressure
+   (the verb is always short, fixed vocabulary — see bylineVerb). ── */
+.home-review-card__byline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 12px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  white-space: nowrap;
 }
 
 .home-review-card__avatar-btn {
   flex-shrink: 0;
+  display: flex;
   background: none;
   border: none;
   padding: 0;
+  margin-right: 1px;
   cursor: pointer;
   border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
 }
 
-.home-review-card__avatar-btn:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-}
-
-/* Actor name gets room to breathe — only a genuinely long display name
-   (> ~55% of the header's width) actually clips; typical names/handles
-   never do. */
 .home-review-card__author-name {
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: inherit;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
   -webkit-tap-highlight-color: transparent;
-  max-width: 55%;
+  max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -133,16 +347,8 @@
   border-radius: var(--radius-sm);
 }
 
-/* Verb — short, fixed vocabulary (never a game/list title, never a
-   star rating). Overrides the shell's generic
-   `.review-card-shell__header-line > *` ellipsis rule with a more
-   specific selector so the verb NEVER truncates, even under width
-   pressure from a long author name — only the name (above) clips. */
-.home-review-card .home-review-card__verb {
+.home-review-card__verb {
   flex-shrink: 0;
-  overflow: visible;
-  text-overflow: unset;
-  min-width: max-content;
   font-weight: var(--font-weight-medium);
   color: var(--accent-review);
   white-space: nowrap;
@@ -152,219 +358,92 @@
   color: var(--accent-journal-text);
 }
 
-.home-review-card--journaled .home-review-card__verb {
-  color: var(--accent);
-}
-
 .home-review-card--backlogged .home-review-card__verb,
 .home-review-card--finished .home-review-card__verb,
 .home-review-card--started .home-review-card__verb,
 .home-review-card--played .home-review-card__verb,
-.home-review-card--favorited .home-review-card__verb {
-  color: var(--color-text-secondary);
+.home-review-card--favorited .home-review-card__verb,
+.home-review-card--journaled .home-review-card__verb {
+  color: var(--accent-hover);
 }
 
+.home-review-card__dot,
 .home-review-card__time {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
-}
-
-/* ── ZONE 2 — game row (identical shape for every type) ──
-   Small cover + title (+ star rating and/or one secondary text line).
-   This is the ONE content row every type renders through — the whole
-   point being a rating never looks bigger than a review, and a
-   list-add never grows a bespoke block of its own. Stars live here,
-   under the title — never in the header above. ── */
-.home-review-card__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.home-review-card__row:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.home-review-card__thumb {
   flex-shrink: 0;
-  width: 34px;
-  height: 46px;
-  border-radius: var(--radius-sm, 6px);
-  object-fit: cover;
-  background: var(--color-bg-secondary);
-}
-
-/* list_created's mosaic/fallback-icon "cover" — same footprint as a
-   game cover so the row's rhythm never shifts by type. */
-.home-review-card__thumb--mosaic {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 2px;
-  overflow: hidden;
-  align-items: center;
-  justify-content: center;
   color: var(--color-text-tertiary);
-}
-
-.home-review-card__thumb--mosaic img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.home-review-card__thumb--mosaic svg {
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
-  margin: 0 auto;
-}
-
-.home-review-card__meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-/* Title wraps at word boundaries when long — never clipped/truncated
-   mid-word, per this card's "wraps if long" rule. */
-.home-review-card__title {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  white-space: normal;
-  overflow-wrap: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Secondary text line — hours or a short quoted note (stars render as
-   their own flex child above this one, via StarRating, not as text).
-   Exactly one line, never a paragraph; long quotes are already
-   pre-truncated in JS at a word boundary, but this is a second safety
-   net. */
-.home-review-card__secondary {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* ── ZONE 3 — actions row (identical for every type except the
-   lightest 'backlogged' card, which skips this entirely — see .jsx).
-   A tight 9px margin + thin hairline separates it from zone 2 above
-   — the ONLY gap between these two zones (no extra shell-level gap
-   stacks on top of it, since .home-review-card sets `gap: 0` above).
-   Icons are grouped together on the left in a small, evenly-spaced
-   cluster; counts render separately, right-aligned, via
-   `margin-left: auto` — never spread apart from the icons. ── */
+/* ── D — ACTIONS: like + comment, nothing else. Each count sits beside
+   its own icon; a count below the app-wide visibility threshold (see
+   formatSocialCount) renders no numeral at all, so a quiet card shows
+   bare icons rather than "0". A thin hairline separates the row from
+   whatever zone precedes it. ── */
 .home-review-card__actions {
   display: flex;
   align-items: center;
-  margin-top: 9px;
+  gap: 4px;
+  margin-top: 10px;
   border-top: 1px solid var(--color-border);
   padding-top: 6px;
 }
 
-.home-review-card__icons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.home-review-card__counts {
-  margin-left: auto;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
-}
-
-/* ── Icon-only action buttons (like, comment, contextual "+") ──
-   Render as a small ~32px pill (icon only — its count, if any, lives
-   in .home-review-card__counts on the opposite edge of the row) but
-   keep a full 44px effective tap target via the ::after hit-slop
-   below, which extends the clickable area beyond the visible box
-   without pushing any sibling in the flex row. ── */
-.home-review-card__icon-btn {
+.home-review-card__action {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
   background: none;
   border: none;
   padding: 8px;
   margin: 0;
   border-radius: var(--radius-full);
+  color: var(--accent-journal-text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.home-review-card__icon-btn::after {
+/* Keeps a full 44px effective tap target without pushing any sibling
+   in the flex row. */
+.home-review-card__action::after {
   content: '';
   position: absolute;
   inset: -6px;
 }
 
-.home-review-card__icon-btn svg {
+.home-review-card__action svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
 }
 
-.home-review-card__icon-btn--social {
-  color: var(--accent-journal-text);
+.home-review-card__action-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
 }
 
-.home-review-card__icon-btn--accent {
-  color: var(--accent);
-}
-
-.home-review-card__icon-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.home-review-card__icon-btn:focus-visible {
+.home-review-card__action:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 1px;
+}
+
+/* Own cards: like becomes a read-only icon (no self-reactions) — its
+   accurate count still shows, so it stays full-opacity. Rendered as a
+   <span>, not a button, so removing the pointer affordance is enough to
+   communicate "not interactive"; the hit-slop pseudo-element is
+   harmless left in place since nothing listens for clicks on a span. */
+.home-review-card__action--readonly {
+  cursor: default;
 }
 
 .home-review-card__heart-icon--active {
   color: var(--accent-journal-text);
 }
 
-/* Own cards: like becomes a read-only icon (no self-reactions) — its
-   accurate count still shows via .home-review-card__counts, so it
-   stays full-opacity unlike the disabled states above. Rendered as a
-   <span>, not a button, so removing the pointer affordance is enough
-   to communicate "not interactive"; the hit-slop pseudo-element is
-   harmless left in place since nothing listens for clicks on a span. */
-.home-review-card__icon-btn--readonly {
-  cursor: default;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .home-review-card__icon-btn {
+  .home-review-card__action {
     transition: none;
   }
 }

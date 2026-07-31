@@ -20,11 +20,16 @@ const DAY = HOUR * 24
 
 /**
  * @param {string|number|Date|null|undefined} timestamp
+ * @param {{ compactAbsolute?: boolean }} [options] `compactAbsolute` swaps
+ *   the >= 7 days branch for a numeric "7/15/26" date. Opt-in so the
+ *   surfaces already reading the spelled-out form are untouched; the Home
+ *   pulse card uses it because its timestamp sits in a small byline where
+ *   "Jun 10, 2026" outweighs everything around it.
  * @returns {string} '' for missing/invalid input, otherwise a compact
- *   relative string under 7 days old, or an absolute "Mon D, YYYY" date
- *   from 7 days old onward.
+ *   relative string under 7 days old, or an absolute date from 7 days old
+ *   onward.
  */
-export function formatActivityDate(timestamp) {
+export function formatActivityDate(timestamp, options = {}) {
   if (!timestamp) return ''
   const then = new Date(timestamp)
   const thenMs = then.getTime()
@@ -42,11 +47,12 @@ export function formatActivityDate(timestamp) {
   const days = Math.floor(seconds / DAY)
   if (days < 7) return `${days}d`
 
-  return then.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return then.toLocaleDateString(
+    'en-US',
+    options.compactAbsolute
+      ? { month: 'numeric', day: 'numeric', year: '2-digit' }
+      : { month: 'short', day: 'numeric', year: 'numeric' }
+  )
 }
 
 export default formatActivityDate
