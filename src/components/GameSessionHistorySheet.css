@@ -1,0 +1,319 @@
+/* GameSessionHistorySheet — Cobalt Modern, DM Sans, CSS variables only.
+   Per-game session-history sub-screen (bottom sheet), modeled on
+   WeekDetailSheet's structure/z-index so it stacks the same way. */
+
+.gshs-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+.gshs-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 85dvh;
+}
+
+.gshs-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  align-self: center;
+  margin-bottom: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* ── Header ────────────────────────────────── */
+
+.gshs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.gshs-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  line-height: var(--line-height-display-l);
+  letter-spacing: var(--letter-spacing-display);
+}
+
+.gshs-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.gshs-close-btn:hover,
+.gshs-close-btn:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  outline: none;
+}
+
+/* ── Total-playtime hero ──────────────────────── */
+
+.gshs-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  padding: var(--spacing-sm) 0;
+}
+
+.gshs-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.gshs-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gshs-hero-hours {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: var(--letter-spacing-display);
+}
+
+.gshs-hero-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+}
+
+/* ── Add session ──────────────────────────────── */
+
+.gshs-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.gshs-add-btn:hover,
+.gshs-add-btn:focus-visible {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface-2));
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.gshs-add-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Scrollable body ──────────────────────────── */
+
+.gshs-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.gshs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl) 0;
+}
+
+.gshs-empty-icon {
+  display: flex;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.gshs-empty-text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ── Session list ──────────────────────────────── */
+
+.gshs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gshs-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 12px var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: background 0.12s ease;
+}
+
+.gshs-item:hover {
+  background: var(--bg-surface-2);
+}
+
+.gshs-item-content {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gshs-item-hours {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.gshs-item-sep {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+.gshs-item-date {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gshs-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.gshs-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.gshs-item-btn:hover,
+.gshs-item-btn:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  outline: none;
+}
+
+.gshs-item-btn--danger:hover,
+.gshs-item-btn--danger:focus-visible {
+  color: var(--status-danger);
+  background: color-mix(in srgb, var(--status-danger) 12%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gshs-add-btn,
+  .gshs-item-btn,
+  .gshs-close-btn,
+  .gshs-item {
+    transition: none;
+  }
+  .gshs-add-btn:active {
+    transform: none;
+  }
+}
+
+/* ── Delete confirm (rendered inside CenteredModal) ─────────────────── */
+
+.gshs-confirm {
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.gshs-confirm-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.gshs-confirm-body {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-lg);
+  line-height: 1.5;
+}
+
+.gshs-confirm-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.gshs-confirm-footer .form-button {
+  width: 100%;
+  justify-content: center;
+}

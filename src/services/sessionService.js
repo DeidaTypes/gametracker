@@ -446,24 +446,32 @@ async function ensureActivityForDay(userId, igdbGameId, playedOn, addedHours, me
 
 /**
  * Return the current user's manually-logged sessions for a specific game,
- * ordered newest played date first. Returns [] on error or when not signed in.
+ * ordered newest first (played_on, then created_at to disambiguate same-day
+ * entries — this is what makes `sessions[0]` a reliable "latest session").
+ * Returns [] on error or when not signed in.
+ *
+ * `limit` defaults high enough to cover a game's full session history for
+ * the per-game history sub-screen — no separate "list all" function needed
+ * since a single manually-logged game realistically never approaches it.
  *
  * @param {number|string} igdbGameId
- * @returns {Promise<Array<{ id: string, playedOn: string, minutes: number }>>}
+ * @param {{ limit?: number }} [opts]
+ * @returns {Promise<Array<{ id: string, playedOn: string, minutes: number, hours: number }>>}
  */
-export async function getManualSessionsForGame(igdbGameId) {
+export async function getManualSessionsForGame(igdbGameId, { limit = 200 } = {}) {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
     const { data, error } = await supabase
       .from('play_sessions')
-      .select('id, played_on, seconds')
+      .select('id, played_on, seconds, hours, created_at')
       .eq('user_id', user.id)
       .eq('igdb_game_id', Number(igdbGameId))
       .not('played_on', 'is', null)
       .order('played_on', { ascending: false })
-      .limit(20)
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
     if (error) {
       console.error('[session] getManualSessionsForGame failed:', error.message)
@@ -474,10 +482,70 @@ export async function getManualSessionsForGame(igdbGameId) {
       id: row.id,
       playedOn: row.played_on,
       minutes: Math.round((row.seconds || 0) / 60),
+      hours: Number(row.hours) || 0,
     }))
   } catch (err) {
     console.error('[session] getManualSessionsForGame crashed:', err)
     return []
+  }
+}
+
+// ── Update a manual session ──────────────────────────────────────────────────
+
+/**
+ * Update a manually-logged session's duration and/or date. The rollup
+ * trigger fires on this UPDATE (`hours`: old → new) and atomically applies
+ * the delta to game_trackers.hours_played — no client-side math here, so an
+ * edit can never drift out of sync with what's actually rolled up.
+ *
+ * @param {string}        sessionId
+ * @param {number|string} igdbGameId
+ * @param {{ minutes: number, playedOn: string }} updates
+ * @returns {Promise<{ id: string, playedOn: string, minutes: number, hours: number, newHours: number }|null>}
+ */
+export async function updateManualSession(sessionId, igdbGameId, { minutes, playedOn } = {}) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const hours = Math.round((Number(minutes) / 60) * 100) / 100
+    if (!(hours > 0) || !playedOn) {
+      console.warn('[session] updateManualSession called with invalid input:', { minutes, playedOn })
+      return null
+    }
+
+    const { data, error } = await supabase
+      .from('play_sessions')
+      .update({
+        hours,
+        seconds: Math.round(hours * 3600),
+        played_on: playedOn,
+      })
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .select('id, played_on, seconds, hours')
+      .single()
+
+    if (error) {
+      console.error('[session] updateManualSession failed:', error.message)
+      return null
+    }
+
+    const tracker = await getTracker(igdbGameId)
+    const newHours = Number(tracker?.hours_played) || 0
+
+    try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
+
+    return {
+      id: data.id,
+      playedOn: data.played_on,
+      minutes: Math.round((data.seconds || 0) / 60),
+      hours: Number(data.hours) || 0,
+      newHours,
+    }
+  } catch (err) {
+    console.error('[session] updateManualSession crashed:', err)
+    return null
   }
 }
 
@@ -513,6 +581,8 @@ export async function deleteManualSession(sessionId, igdbGameId, minutes) {
 
     const tracker = await getTracker(igdbGameId)
     const newHours = Number(tracker?.hours_played) || 0
+
+    try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
 
     return { removedHours: Number(minutes) / 60, newHours }
   } catch (err) {

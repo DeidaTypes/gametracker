@@ -20,7 +20,15 @@ import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import LogSessionModal from '../components/LogSessionModal'
-import { logManualSession, getManualSessionsForGame, deleteManualSession } from '../services/sessionService'
+import {
+  logManualSession,
+  getManualSessionsForGame,
+  updateManualSession,
+  deleteManualSession,
+} from '../services/sessionService'
+import { getTracker } from '../services/hoursService'
+import GameSessionRow from '../components/GameSessionRow'
+import GameSessionHistorySheet from '../components/GameSessionHistorySheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
@@ -309,19 +317,24 @@ function GameDetail() {
     }
   }, [refreshFromStore, refreshReviews, refreshRatingDistribution, refreshFollowedRatings])
 
-  // Fetch Time to Beat + manual sessions for every game, regardless of
-  // library status. Re-runs when the gameId changes (new game).
+  // Fetch Time to Beat + manual sessions + this game's rolled-up hours for
+  // every game, regardless of library status. Re-runs when the gameId
+  // changes (new game). `gameHoursPlayed` comes from game_trackers —
+  // the same rollup value the Profile "Played" stat sums across every
+  // game — never computed client-side from the sessions list.
   useEffect(() => {
     let cancelled = false
 
     async function loadTtbAndSessions() {
-      const [b, s] = await Promise.all([
+      const [b, s, tracker] = await Promise.all([
         getTimeToBeat(gameId).catch(() => null),
         getManualSessionsForGame(gameId).catch(() => []),
+        getTracker(gameId).catch(() => null),
       ])
       if (cancelled) return
       setTtb(b)
       setSessions(s)
+      setGameHoursPlayed(Number(tracker?.hours_played) || 0)
     }
 
     loadTtbAndSessions()
@@ -359,32 +372,26 @@ function GameDetail() {
   const [logSessionOpen, setLogSessionOpen] = useState(false)
   const [logSaving, setLogSaving] = useState(false)
   const [sessions, setSessions] = useState([])
+  // Editing target for LogSessionModal: null = "add" mode, a session
+  // object = "edit" mode (prefills the form, routes save → update).
+  const [editingSession, setEditingSession] = useState(null)
+  // This game's rolled-up total hours (game_trackers.hours_played) — the
+  // history sub-screen's hero. Never derived client-side from `sessions`.
+  const [gameHoursPlayed, setGameHoursPlayed] = useState(0)
+  const [sessionHistoryOpen, setSessionHistoryOpen] = useState(false)
 
   const [composeSheetOpen, setComposeSheetOpen] = useState(false)
   const [journalModalOpen, setJournalModalOpen] = useState(false)
   const [statusSheetOpen, setStatusSheetOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
 
-  // ── Session helpers ───────────────────────────────────────────────────────
-  function formatDuration(mins) {
-    const h = Math.floor(mins / 60)
-    const m = mins % 60
-    if (h > 0 && m > 0) return `${h}h ${m}m`
-    if (h > 0) return `${h}h`
-    return `${m}m`
-  }
-
-  function formatPlayedOn(dateStr) {
-    const [y, mo, d] = dateStr.split('-').map(Number)
-    return new Date(y, mo - 1, d).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    })
-  }
-
   const refreshSessions = useCallback(async () => {
-    const data = await getManualSessionsForGame(gameId).catch(() => [])
+    const [data, tracker] = await Promise.all([
+      getManualSessionsForGame(gameId).catch(() => []),
+      getTracker(gameId).catch(() => null),
+    ])
     setSessions(data)
+    setGameHoursPlayed(Number(tracker?.hours_played) || 0)
   }, [gameId])
 
   // Resume revalidation. Deliberately NOT a re-run of the mount-time
@@ -416,28 +423,56 @@ function GameDetail() {
     refreshSessions,
   ])
 
-  const handleLogSession = useCallback(async ({ totalMinutes, playedOn }) => {
+  // Single save handler for both LogSessionModal modes: routes to an
+  // update when `editingSession` is set (opened via the history sheet's
+  // edit action), otherwise inserts a new session as before.
+  const handleSaveSession = useCallback(async ({ totalMinutes, playedOn }) => {
     setLogSaving(true)
     try {
-      const result = await logManualSession(gameId, totalMinutes, playedOn, {
-        gameTitle: game?.title,
-        gameImage: game?.image,
-      })
-      if (result) {
-        await refreshSessions()
-        setLogSessionOpen(false)
+      if (editingSession) {
+        const result = await updateManualSession(editingSession.id, gameId, {
+          minutes: totalMinutes,
+          playedOn,
+        })
+        if (result) {
+          await refreshSessions()
+          setLogSessionOpen(false)
+          setEditingSession(null)
+        } else {
+          console.error('[gameDetail] failed to update session')
+        }
       } else {
-        console.error('[gameDetail] failed to log session')
+        const result = await logManualSession(gameId, totalMinutes, playedOn, {
+          gameTitle: game?.title,
+          gameImage: game?.image,
+        })
+        if (result) {
+          await refreshSessions()
+          setLogSessionOpen(false)
+        } else {
+          console.error('[gameDetail] failed to log session')
+        }
       }
     } finally {
       setLogSaving(false)
     }
-  }, [gameId, game, refreshSessions])
+  }, [gameId, game, editingSession, refreshSessions])
+
+  const openLogSessionForAdd = useCallback(() => {
+    setEditingSession(null)
+    setLogSessionOpen(true)
+  }, [])
+
+  const openLogSessionForEdit = useCallback((session) => {
+    setEditingSession(session)
+    setLogSessionOpen(true)
+  }, [])
 
   const handleDeleteSession = useCallback(async (sessionId, mins) => {
     const result = await deleteManualSession(sessionId, gameId, mins)
     if (result) {
       setSessions(prev => prev.filter(s => s.id !== sessionId))
+      setGameHoursPlayed(result.newHours)
     } else {
       console.error('[gameDetail] failed to delete session')
     }
@@ -706,9 +741,21 @@ function GameDetail() {
           variant="hidden"
           forceOpen={statusSheetOpen}
           onForceClose={() => setStatusSheetOpen(false)}
-          onLogPlay={() => setLogSessionOpen(true)}
+          onLogPlay={openLogSessionForAdd}
         />
       </div>
+
+      {/* ── Latest session row — compact, always reflects the most recent
+           logged session for this game (sessions[0], sorted newest-first).
+           Tapping it opens the per-game session-history sub-screen. Hidden
+           entirely in favor of a plain "Log a session" affordance when the
+           user has zero sessions for this game — no empty bordered box. ── */}
+      <GameSessionRow
+        latestSession={sessions[0] || null}
+        sessionCount={sessions.length}
+        onOpenHistory={() => setSessionHistoryOpen(true)}
+        onLogSession={openLogSessionForAdd}
+      />
 
       {/* ── Rating card — numeric average + whole-star histogram, built
            from every community rating for this game (not just the 20
@@ -753,33 +800,6 @@ function GameDetail() {
         </button>
       </div>
 
-
-      {/* Logged Sessions — tidy list below the card; hidden when empty */}
-      {sessions.length > 0 && (
-        <div className="gd-session-history">
-          <p className="gd-session-history-label">Logged Sessions</p>
-          <div className="gd-session-history-list">
-            {sessions.map(s => (
-              <div key={s.id} className="gd-session-item">
-                <span className="gd-session-item-date">{formatPlayedOn(s.playedOn)}</span>
-                <span className="gd-session-item-duration">{formatDuration(s.minutes)}</span>
-                <button
-                  className="gd-session-delete-btn"
-                  onClick={() => handleDeleteSession(s.id, s.minutes)}
-                  aria-label={`Delete session from ${s.playedOn}`}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── At a Glance ── decision helper card.
            Shows up when any of the three sub-rows has real IGDB data.
@@ -1150,12 +1170,29 @@ function GameDetail() {
 
       </div>
 
-      {/* ── Log Session Modal ── */}
+      {/* ── Log Session Modal — shared by "add" (status sheet's Log Play,
+           zero-state affordance, history sheet's + button) and "edit"
+           (history sheet's pencil action, via editingSession) ── */}
       <LogSessionModal
         isOpen={logSessionOpen}
-        onClose={() => setLogSessionOpen(false)}
-        onSave={handleLogSession}
+        onClose={() => { setLogSessionOpen(false); setEditingSession(null) }}
+        onSave={handleSaveSession}
         isSaving={logSaving}
+        editingSession={editingSession}
+      />
+
+      {/* ── Session-history sub-screen — per-game only; total hours here
+           is game_trackers.hours_played, the same rollup the Profile
+           "Played" stat sums across every game. ── */}
+      <GameSessionHistorySheet
+        isOpen={sessionHistoryOpen}
+        onClose={() => setSessionHistoryOpen(false)}
+        gameTitle={game.title}
+        totalHours={gameHoursPlayed}
+        sessions={sessions}
+        onAddSession={openLogSessionForAdd}
+        onEditSession={openLogSessionForEdit}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* ── Compose action sheet: Write review / Add to journal ── */}
