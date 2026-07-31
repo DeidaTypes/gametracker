@@ -347,33 +347,34 @@
   white-space: nowrap;
 }
 
-/* Primary cobalt fill — Follow on other profile */
+/* Primary gradient fill — Message only. Never a flat cobalt fill for a
+   primary button; matches the --grad-cta recipe used everywhere else
+   (dm-thread__send, list-detail es-cta, HomeFAB, GameDetail review CTA). */
 .profile-ig-btn--primary {
-  background: var(--accent);
-  color: #ffffff;
-  border: 1px solid var(--accent);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+  background: var(--grad-cta);
+  color: var(--color-on-accent);
+  border: none;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .profile-ig-btn--primary:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  filter: brightness(1.08);
   transform: translateY(-1px);
 }
 
 .profile-ig-btn--primary:active {
-  background: var(--accent-press);
-  border-color: var(--accent-press);
+  filter: brightness(0.95);
   transform: translateY(0) scale(0.98);
 }
 
 .profile-ig-btn--primary:disabled {
   cursor: default;
   opacity: 0.7;
+  filter: none;
 }
 
-/* Secondary outlined — Edit Profile, Share Profile, Message */
+/* Secondary outlined — the Follow/Following toggle is never the primary
+   gradient button, it's a bordered/surface toggle at every state. */
 .profile-ig-btn--secondary {
   background: var(--bg-surface);
   color: var(--text-primary);

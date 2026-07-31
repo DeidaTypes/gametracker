@@ -12,7 +12,10 @@ const MIN_SIGNAL_FOR_TASTE = 3
 const TOP_GENRE_COUNT = 4
 
 /**
- * ProfileTasteDNA — the "Your Taste" section on the Profile Home tab.
+ * ProfileTasteDNA — the "Your Taste" / "Their Taste" section on the
+ * Profile Home tab. Label reads "Your Taste" on your own profile and
+ * "Their Taste" when viewing someone else's — same bar, same genre
+ * tokens, only the heading changes.
  *
  * A single stacked bar of the user's top genres plus an inline legend of
  * percentages, read from the cached B1 taste vector (`getTasteVector`) —
@@ -27,9 +30,10 @@ const TOP_GENRE_COUNT = 4
  * a skeleton at the section's true height, so the sections below it don't
  * shift once the bar arrives.
  */
-export default function ProfileTasteDNA({ userId }) {
+export default function ProfileTasteDNA({ userId, isOwnProfile = true }) {
   const [vector, setVector] = useState(null)
   const [loaded, setLoaded] = useState(false)
+  const title = isOwnProfile ? 'Your Taste' : 'Their Taste'
 
   useEffect(() => {
     let alive = true
@@ -52,8 +56,8 @@ export default function ProfileTasteDNA({ userId }) {
 
   if (!loaded) {
     return (
-      <section className="ptd" aria-label="Your Taste" aria-busy="true">
-        <h3 className="ptd__title">Your Taste</h3>
+      <section className="ptd" aria-label={title} aria-busy="true">
+        <h3 className="ptd__title">{title}</h3>
         <Skeleton height={10} className="ptd__bar-skeleton" />
         <div className="ptd__legend">
           <Skeleton variant="text" width={92} height={14} />
@@ -79,8 +83,8 @@ export default function ProfileTasteDNA({ userId }) {
   const pct = (w) => Math.round((w / totalWeight) * 100)
 
   return (
-    <section className="ptd" aria-label="Your Taste">
-      <h3 className="ptd__title">Your Taste</h3>
+    <section className="ptd" aria-label={title}>
+      <h3 className="ptd__title">{title}</h3>
 
       <div
         className="ptd__bar"

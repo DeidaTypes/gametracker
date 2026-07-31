@@ -1595,46 +1595,34 @@ function Profile() {
             <ProfileTasteMatchBanner viewerId={user?.id} ownerId={targetUserId} />
           )}
 
-          {/* ── State-adaptive primary action — never more than one
-              primary button visible at once. Visitor-only: on your own
+          {/* ── Visitor action row — Follow/Following is a bordered
+              toggle, never the primary fill; Message is the one primary
+              action and always uses the blue→green gradient
+              (--grad-cta), never a flat cobalt fill. On your own
               profile, editing lives on the avatar and in the ⋯ menu, so
-              a standing Edit Profile button would just be a third door
-              to the same sheet. ── */}
+              this row doesn't render at all. ── */}
           {!isOwnProfile && (
             <div className="profile-ig-hero__actions">
-              {following ? (
-                <>
-                  <button
-                    type="button"
-                    className="profile-ig-btn profile-ig-btn--secondary profile-ig-btn--following"
-                    onClick={handleFollowToggle}
-                    disabled={followPending}
-                    aria-pressed="true"
-                    aria-label="Unfollow"
-                  >
-                    <LuCheck size={14} aria-hidden="true" /> Following
-                  </button>
-                  <button
-                    type="button"
-                    className="profile-ig-btn profile-ig-btn--primary"
-                    onClick={handleMessageUser}
-                    aria-label="Send message"
-                  >
-                    Message
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="profile-ig-btn profile-ig-btn--primary"
-                  onClick={handleFollowToggle}
-                  disabled={followPending}
-                  aria-pressed="false"
-                  aria-label="Follow"
-                >
-                  Follow
-                </button>
-              )}
+              <button
+                type="button"
+                className={`profile-ig-btn profile-ig-btn--secondary${
+                  following ? ' profile-ig-btn--following' : ''
+                }`}
+                onClick={handleFollowToggle}
+                disabled={followPending}
+                aria-pressed={following ? 'true' : 'false'}
+                aria-label={following ? 'Unfollow' : 'Follow'}
+              >
+                {following && <LuCheck size={14} aria-hidden="true" />} {following ? 'Following' : 'Follow'}
+              </button>
+              <button
+                type="button"
+                className="profile-ig-btn profile-ig-btn--primary"
+                onClick={handleMessageUser}
+                aria-label="Send message"
+              >
+                Message
+              </button>
             </div>
           )}
         </section>
@@ -2012,10 +2000,12 @@ function HomeTab({
 
   return (
     <div className="profile-home">
-      {/* YOUR TASTE — stacked genre bar + percentages from the cached B1
-          taste vector. Self-hides when the engine has too little signal
-          to describe a real taste shape. */}
-      <ProfileTasteDNA userId={targetUserId} />
+      {/* YOUR TASTE / THEIR TASTE — stacked genre bar + percentages from
+          the cached B1 taste vector. Label flips to "Their Taste" on a
+          visitor profile; same bar + genre tokens either way. Self-hides
+          when the engine has too little signal to describe a real taste
+          shape. */}
+      <ProfileTasteDNA userId={targetUserId} isOwnProfile={isOwnProfile} />
 
       {/* FAVORITE GAMES cell — covers + add slot. Hidden when empty on
           others' profiles; own profile shows an empty-state CTA. */}

@@ -77,7 +77,7 @@
   width: 64px;
   height: 64px;
   padding: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   border: 1px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
   background: var(--bg-surface-2);
   overflow: hidden;
