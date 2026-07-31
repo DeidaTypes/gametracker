@@ -13,11 +13,12 @@ import React from 'react'
 
 const STORAGE_KEY = 'gt:recents:v1'
 const TAB_LIMIT = 8
-const VALID_TABS = ['games', 'reviews', 'users', 'lists']
+const VALID_TABS = ['games', 'devs', 'reviews', 'users', 'lists']
 const CHANGE_EVENT = 'gt:recents-changed'
 
 const EMPTY_STATE = Object.freeze({
   games: [],
+  devs: [],
   reviews: [],
   users: [],
   lists: [],
@@ -33,6 +34,7 @@ function readStore() {
     // (e.g. older bundle), fill them in so callers always get an array.
     return {
       games: Array.isArray(parsed.games) ? parsed.games : [],
+      devs: Array.isArray(parsed.devs) ? parsed.devs : [],
       reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
       users: Array.isArray(parsed.users) ? parsed.users : [],
       lists: Array.isArray(parsed.lists) ? parsed.lists : [],

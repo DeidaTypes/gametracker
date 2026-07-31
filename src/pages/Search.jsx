@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
+import {
+  GiWizardStaff,
+  GiBroadsword,
+  GiChessKnight,
+  GiCompass,
+  GiPumpkinMask,
+  GiSoccerBall,
+} from 'react-icons/gi'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useSearch } from '../hooks/useSearch'
 import { useDebounce } from '../hooks/useDebounce'
@@ -37,9 +45,11 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Search.css'
 
 const TABS = [
+  { id: 'all', label: 'All' },
   { id: 'games', label: 'Games' },
-  { id: 'reviews', label: 'Reviews' },
+  { id: 'devs', label: 'Devs' },
   { id: 'users', label: 'Users' },
+  { id: 'reviews', label: 'Reviews' },
   { id: 'lists', label: 'Lists' },
 ]
 
@@ -47,47 +57,17 @@ const TABS = [
 // the user stops typing (per spec). Distinct from the 300ms search debounce.
 const REVIEWS_SUBMIT_AFTER_MS = 1500
 
+// Cobalt-system genre tiles — icon + name only, no cover photography or
+// per-genre gradients. `accentVar` must be one of the three approved accent
+// tokens (--accent / --accent-review / --accent-journal); no other hue may
+// be introduced here, and orange/amber is retired app-wide.
 const GENRE_CARDS = [
-  {
-    slug: 'rpg',
-    name: 'RPG',
-    gradient: 'linear-gradient(135deg, #3D1A6B 0%, #C8965A 100%)',
-  },
-  {
-    slug: 'action',
-    name: 'Action',
-    gradient: 'linear-gradient(135deg, #8C2200 0%, #C84E0A 100%)',
-  },
-  {
-    slug: 'strategy',
-    name: 'Strategy',
-    gradient: 'linear-gradient(135deg, #0B1E3D 0%, #1A7FA0 100%)',
-  },
-  {
-    slug: 'adventure',
-    name: 'Adventure',
-    gradient: 'linear-gradient(135deg, #0D2E1A 0%, #4A8C62 100%)',
-  },
-  {
-    slug: 'horror',
-    name: 'Horror',
-    gradient: 'linear-gradient(135deg, #6B0A14 0%, #0A0A0E 100%)',
-  },
-  {
-    slug: 'sports',
-    name: 'Sports',
-    gradient: 'linear-gradient(135deg, #0A2860 0%, #1A5CAE 100%)',
-  },
-  {
-    slug: 'puzzle',
-    name: 'Puzzle',
-    gradient: 'linear-gradient(135deg, #2A1A6B 0%, #4FA899 100%)',
-  },
-  {
-    slug: 'shooter',
-    name: 'Shooter',
-    gradient: 'linear-gradient(135deg, #1C2A1C 0%, #506B38 100%)',
-  },
+  { slug: 'rpg', name: 'RPG', Icon: GiWizardStaff, accentVar: '--accent-journal' },
+  { slug: 'action', name: 'Action', Icon: GiBroadsword, accentVar: '--accent' },
+  { slug: 'strategy', name: 'Strategy', Icon: GiChessKnight, accentVar: '--accent-review' },
+  { slug: 'adventure', name: 'Adventure', Icon: GiCompass, accentVar: '--accent' },
+  { slug: 'horror', name: 'Horror', Icon: GiPumpkinMask, accentVar: '--accent-journal' },
+  { slug: 'sports', name: 'Sports', Icon: GiSoccerBall, accentVar: '--accent-review' },
 ]
 
 function HighlightMatch({ text, query }) {
@@ -104,8 +84,175 @@ function HighlightMatch({ text, query }) {
 }
 
 /* =============================================
-   Helpers
+   Shared "no results" state — Games / Devs / Users / All tabs
    ============================================= */
+
+/**
+ * Clean "no results" message + browse-by-genre nudge, shared by every
+ * category tab so we never leave the user staring at a blank screen.
+ */
+function NoResultsState({ query, genres }) {
+  return (
+    <div className="sp-empty">
+      <EmptyState
+        variant="search"
+        title={`No results for "${query.trim()}".`}
+        body="Check your spelling, or browse by genre below."
+      />
+      {genres && genres.length > 0 && (
+        <div className="sp-section sp-empty-genres">
+          <div className="sp-genre-grid">
+            {genres.map((genre) => (
+              <GenreTile key={genre.key} genre={genre} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* =============================================
+   Shared result-row primitives — reused by their own tab AND by the
+   "All" tab's categorized preview, so the two never drift apart.
+   ============================================= */
+
+function GameResultRow({ game, query, focused, onTap }) {
+  return (
+    <button
+      className={`sp-result-row sp-result-row--game${
+        focused ? ' sp-result-row--focused' : ''
+      }`}
+      onClick={() => onTap(game)}
+      type="button"
+      role="option"
+      aria-selected={focused}
+    >
+      <div className="sp-result-cover">
+        {game.image ? (
+          <SharedCover gameId={game.id} imageSrc={game.image}>
+            <img
+              src={getSizedImageUrl(game.image, 52)}
+              alt=""
+              className="sp-result-cover__img"
+              loading="lazy"
+            />
+          </SharedCover>
+        ) : (
+          <CoverPlaceholder
+            title={game.title}
+            className="sp-result-cover__img"
+          />
+        )}
+      </div>
+      <div className="sp-result-info">
+        <span className="sp-result-title">
+          <HighlightMatch text={game.title} query={query} />
+        </span>
+        <span className="sp-result-meta">
+          {[game.year, game.developer].filter(Boolean).join(' \u00B7 ')}
+        </span>
+      </div>
+      <svg
+        className="sp-result-chevron"
+        viewBox="0 0 24 24"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+  )
+}
+
+function DevIcon() {
+  return (
+    <div className="sp-dev-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M3 21h18" />
+        <path d="M9 9h1M9 13h1M14 9h1M14 13h1" />
+        <path d="M9 21v-4h6v4" />
+      </svg>
+    </div>
+  )
+}
+
+function DevResultRow({ dev, query, onTap }) {
+  return (
+    <button
+      className="sp-result-row sp-result-row--dev"
+      onClick={() => onTap(dev.name)}
+      type="button"
+      role="option"
+      aria-selected={false}
+    >
+      <DevIcon />
+      <div className="sp-result-info">
+        <span className="sp-result-title">
+          <HighlightMatch text={dev.name} query={query} />
+        </span>
+        <span className="sp-result-meta">
+          {dev.count} {dev.count === 1 ? 'game' : 'games'}
+        </span>
+      </div>
+      <svg
+        className="sp-result-chevron"
+        viewBox="0 0 24 24"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+  )
+}
+
+function UserResultRow({ user, onTapUser, currentUserId }) {
+  const username = user.username || ''
+  const displayName = user.display_name || ''
+  return (
+    <div className="sp-user-row">
+      <button
+        type="button"
+        className="sp-user-row__main"
+        onClick={() =>
+          onTapUser({
+            id: username || user.id,
+            username,
+            displayName,
+            avatarUrl: user.avatar_url || null,
+          })
+        }
+      >
+        <UserAvatar url={user.avatar_url} name={displayName || username} />
+        <div className="sp-user-row__text">
+          <span className="sp-user-row__username">
+            {username || displayName || 'Unknown'}
+          </span>
+          {displayName && username && (
+            <span className="sp-user-row__display">{displayName}</span>
+          )}
+        </div>
+      </button>
+      <FollowButton
+        targetUserId={user.id}
+        targetLabel={username || displayName || 'user'}
+        currentUserId={currentUserId}
+      />
+    </div>
+  )
+}
 
 /** Normalize a Supabase review row into the shape ReviewCard expects. */
 function reviewRowToCard(row) {
@@ -179,6 +326,105 @@ function RemoveButton({ onClick, label }) {
     >
       <HiX />
     </button>
+  )
+}
+
+/* =============================================
+   ALL TAB — categorized preview (Games / Devs / Users) shown under
+   section headers. Reuses the exact same query results the dedicated
+   Games/Devs/Users tabs use (see useSearch + searchUsers calls in the
+   main component below) — typing once never fires duplicate requests.
+   No empty-state of its own: with no query it falls back to the same
+   Games-tab landing content (Continue/Trending/Recents + genre browse).
+   ============================================= */
+
+function AllTabResults({
+  query,
+  gameResults,
+  gamesLoading,
+  gamesError,
+  usersRows,
+  usersLoading,
+  onTapGame,
+  onTapDev,
+  onTapUser,
+  onRetry,
+  currentUserId,
+  genres,
+}) {
+  if (gamesError) {
+    return (
+      <div className="sp-section" style={{ marginTop: 16 }}>
+        <InlineErrorBanner
+          message="Search failed. Please try again."
+          onRetry={onRetry}
+        />
+      </div>
+    )
+  }
+
+  const previewGames = gameResults.games.slice(0, 3)
+  const previewDevs = gameResults.developers.slice(0, 3)
+  const previewUsers = usersRows.slice(0, 3)
+
+  const noResults =
+    !gamesLoading &&
+    !usersLoading &&
+    previewGames.length === 0 &&
+    previewDevs.length === 0 &&
+    previewUsers.length === 0
+
+  if (noResults) {
+    return <NoResultsState query={query} genres={genres} />
+  }
+
+  return (
+    <div className="sp-results" role="listbox" aria-label="Search results">
+      {(gamesLoading || previewGames.length > 0) && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Games</h3>
+          {gamesLoading ? (
+            <SearchResultSkeletonList count={3} />
+          ) : (
+            previewGames.map((game) => (
+              <GameResultRow
+                key={game.id}
+                game={game}
+                query={query.trim()}
+                focused={false}
+                onTap={onTapGame}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {(gamesLoading || previewDevs.length > 0) && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Developers</h3>
+          {gamesLoading ? (
+            <SearchResultSkeletonList count={2} />
+          ) : (
+            previewDevs.map((dev) => (
+              <DevResultRow key={dev.name} dev={dev} query={query.trim()} onTap={onTapDev} />
+            ))
+          )}
+        </div>
+      )}
+
+      {(usersLoading || previewUsers.length > 0) && (
+        <div className="sp-result-category">
+          <h3 className="sp-result-category__header">Users</h3>
+          {usersLoading ? (
+            <SearchResultSkeletonList count={3} />
+          ) : (
+            previewUsers.map((u) => (
+              <UserResultRow key={u.id} user={u} onTapUser={onTapUser} currentUserId={currentUserId} />
+            ))
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -272,12 +518,12 @@ function GamesTabEmpty({ recents, onClearAll, onTapGame, continuePlaying, trendi
       {hasRecents && (
         <section className="sp-section sp-section--carousel">
           <RecentsHeader onClear={onClearAll} />
-          <div className="sp-recent-cover-row">
+          <div className="sp-recent-cover-row sp-recent-cover-row--recents">
             {recents.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className="sp-recent-cover"
+                className="sp-recent-cover sp-recent-cover--labeled"
                 onClick={() => onTapGame(item)}
                 aria-label={item.name || 'Recent game'}
               >
@@ -296,11 +542,61 @@ function GamesTabEmpty({ recents, onClearAll, onTapGame, continuePlaying, trendi
                     className="sp-recent-cover__img"
                   />
                 )}
+                <span className="sp-recent-cover__title">{item.name}</span>
               </button>
             ))}
           </div>
         </section>
       )}
+    </>
+  )
+}
+
+/**
+ * Shared "no query yet" landing content for both the All and Games tabs —
+ * Continue/Trending/Recents + Browse by genre. All is the new default tab,
+ * but its empty state intentionally reuses this pre-existing content rather
+ * than introducing a new design (empty-state styling is out of scope here).
+ */
+function SearchLandingEmpty({
+  recents,
+  onClearAll,
+  onTapGame,
+  continuePlaying,
+  trendingGames,
+  trendingLoading,
+  onTapGenreCard,
+}) {
+  return (
+    <>
+      <GamesTabEmpty
+        recents={recents}
+        onClearAll={onClearAll}
+        onTapGame={onTapGame}
+        continuePlaying={continuePlaying}
+        trendingGames={trendingGames}
+        trendingLoading={trendingLoading}
+      />
+      {/* Browse by Genre — Cobalt surfaces + icon, no gradients. */}
+      <section className="sp-section">
+        <h2 className="sp-section-header">Browse by genre</h2>
+        <div className="sp-genre-grid">
+          {GENRE_CARDS.map((genre) => (
+            <button
+              key={genre.slug}
+              className="sp-genre-tile"
+              style={{ '--genre-tile-accent': `var(${genre.accentVar})` }}
+              onClick={() => onTapGenreCard(genre.slug)}
+              type="button"
+            >
+              <span className="sp-genre-tile__icon">
+                <genre.Icon aria-hidden="true" />
+              </span>
+              <span className="sp-genre-tile__name">{genre.name}</span>
+            </button>
+          ))}
+        </div>
+      </section>
     </>
   )
 }
@@ -312,11 +608,9 @@ function GamesTabResults({
   error,
   focusedIndex,
   onTapGame,
-  onTapDev,
   onTapGenre,
   onRetry,
   noResults,
-  onClearQuery,
   genres,
   gamesResultsRef,
   parsedFilters,
@@ -333,24 +627,7 @@ function GamesTabResults({
     )
   }
   if (noResults) {
-    return (
-      <div className="sp-empty">
-        <EmptyState
-          variant="search"
-          title={`No results for "${query.trim()}".`}
-          body="Try a different search term or browse by genre."
-        />
-        {genres && genres.length > 0 && (
-          <div className="sp-section sp-empty-genres">
-            <div className="sp-genre-grid">
-              {genres.map((genre) => (
-                <GenreTile key={genre.key} genre={genre} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
+    return <NoResultsState query={query} genres={genres} />
   }
 
   return (
@@ -388,97 +665,76 @@ function GamesTabResults({
           <h3 className="sp-result-category__header">Games</h3>
           <div ref={gamesResultsRef}>
             {results.games.map((game, i) => (
-              <button
+              <GameResultRow
                 key={game.id}
-                className={`sp-result-row sp-result-row--game${
-                  focusedIndex === i ? ' sp-result-row--focused' : ''
-                }`}
-                onClick={() => onTapGame(game)}
-                type="button"
-                role="option"
-                aria-selected={focusedIndex === i}
-              >
-                <div className="sp-result-cover">
-                  {game.image ? (
-                    <SharedCover gameId={game.id} imageSrc={game.image}>
-                      <img
-                        src={getSizedImageUrl(game.image, 52)}
-                        alt=""
-                        className="sp-result-cover__img"
-                        loading="lazy"
-                      />
-                    </SharedCover>
-                  ) : (
-                    <CoverPlaceholder
-                      title={game.title}
-                      className="sp-result-cover__img"
-                    />
-                  )}
-                </div>
-                <div className="sp-result-info">
-                  <span className="sp-result-title">
-                    <HighlightMatch text={game.title} query={query.trim()} />
-                  </span>
-                  <span className="sp-result-meta">
-                    {[game.year, game.developer].filter(Boolean).join(' \u00B7 ')}
-                  </span>
-                </div>
-                <svg
-                  className="sp-result-chevron"
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
+                game={game}
+                query={query.trim()}
+                focused={focusedIndex === i}
+                onTap={onTapGame}
+              />
             ))}
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {results.developers.length > 0 && (
-        <div className="sp-result-category">
-          <h3 className="sp-result-category__header">Developers</h3>
-          {results.developers.map((dev) => (
+/* =============================================
+   DEVS TAB
+   ============================================= */
+
+function DevsTabEmpty({ recents, onClearAll, onTapDev, onRemoveDev }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-stack">
+        {recents.map((item) => (
+          <div key={item.id} className="sp-user-row">
             <button
-              key={dev.name}
-              className="sp-result-row sp-result-row--dev"
-              onClick={() => onTapDev(dev.name)}
               type="button"
-              role="option"
-              aria-selected={false}
+              className="sp-user-row__main"
+              onClick={() => onTapDev(item.name)}
             >
-              <div className="sp-result-info">
-                <span className="sp-result-title">
-                  <HighlightMatch text={dev.name} query={query.trim()} />
-                </span>
-                <span className="sp-result-meta">
-                  {dev.count} {dev.count === 1 ? 'result' : 'results'}
-                </span>
+              <DevIcon />
+              <div className="sp-user-row__text">
+                <span className="sp-user-row__username">{item.name}</span>
               </div>
-              <svg
-                className="sp-result-chevron"
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
             </button>
-          ))}
-        </div>
-      )}
+            <RemoveButton
+              onClick={() => onRemoveDev(item.id)}
+              label={`Remove ${item.name} from recent searches`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function DevsTabResults({ query, developers, isLoading, error, onTapDev, onRetry, noResults, genres }) {
+  if (isLoading) return <SearchResultSkeletonList count={6} />
+  if (error) {
+    return (
+      <div className="sp-section" style={{ marginTop: 16 }}>
+        <InlineErrorBanner
+          message="Search failed. Please try again."
+          onRetry={onRetry}
+        />
+      </div>
+    )
+  }
+  if (noResults) {
+    return <NoResultsState query={query} genres={genres} />
+  }
+  return (
+    <div className="sp-results" role="listbox" aria-label="Developer results">
+      <div className="sp-result-category">
+        {developers.map((dev) => (
+          <DevResultRow key={dev.name} dev={dev} query={query.trim()} onTap={onTapDev} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -694,7 +950,7 @@ function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
   )
 }
 
-function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
+function UsersTabResults({ query, rows, isLoading, onTapUser, currentUserId, genres }) {
   if (isLoading) {
     return (
       <div className="sp-section">
@@ -703,49 +959,13 @@ function UsersTabResults({ rows, isLoading, onTapUser, currentUserId }) {
     )
   }
   if (!rows || rows.length === 0) {
-    return (
-      <div className="sp-section">
-        <EmptyState variant="search" title="No users found." body="Try a different search term." />
-      </div>
-    )
+    return <NoResultsState query={query} genres={genres} />
   }
   return (
     <div className="sp-section sp-recent-stack">
-      {rows.map((u) => {
-        const username = u.username || ''
-        const displayName = u.display_name || ''
-        return (
-          <div key={u.id} className="sp-user-row">
-            <button
-              type="button"
-              className="sp-user-row__main"
-              onClick={() =>
-                onTapUser({
-                  id: username || u.id,
-                  username,
-                  displayName,
-                  avatarUrl: u.avatar_url || null,
-                })
-              }
-            >
-              <UserAvatar url={u.avatar_url} name={displayName || username} />
-              <div className="sp-user-row__text">
-                <span className="sp-user-row__username">
-                  {username || displayName || 'Unknown'}
-                </span>
-                {displayName && username && (
-                  <span className="sp-user-row__display">{displayName}</span>
-                )}
-              </div>
-            </button>
-            <FollowButton
-              targetUserId={u.id}
-              targetLabel={username || displayName || 'user'}
-              currentUserId={currentUserId}
-            />
-          </div>
-        )
-      })}
+      {rows.map((u) => (
+        <UserResultRow key={u.id} user={u} onTapUser={onTapUser} currentUserId={currentUserId} />
+      ))}
     </div>
   )
 }
@@ -915,7 +1135,7 @@ function Search() {
   const scrollRef = useRef(null)
   const blurTimerRef = useRef(null)
   const reviewsSubmitTimerRef = useRef(null)
-  const [activeTab, setActiveTab] = useState('games')
+  const [activeTab, setActiveTab] = useState('all')
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [hasScrolled, setHasScrolled] = useState(false)
@@ -929,14 +1149,17 @@ function Search() {
 
   // Per-tab recents (live across this and any other Search-mounted view).
   const gamesRecents = useRecents('games')
+  const devsRecents = useRecents('devs')
   const reviewsRecents = useRecents('reviews')
   const usersRecents = useRecents('users')
   const listsRecents = useRecents('lists')
 
-  // Games tab still uses the existing useSearch hook (preserves the
-  // Sprint 1 P4 developer routing — devs only flow through here).
+  // Games/Devs/All all read from the same useSearch call (one IGDB request
+  // per query, not three) — Sprint 1 P4's developer routing still flows
+  // through here, just surfaced on its own tab now instead of inline.
+  const gameSearchActive = activeTab === 'all' || activeTab === 'games' || activeTab === 'devs'
   const { results: gameResults, isLoading: gamesLoading, error: gamesError, parsedFilters } =
-    useSearch(activeTab === 'games' ? query : '')
+    useSearch(gameSearchActive ? query : '')
 
   // Pre-type suggestions: "continue" from local library + trending from IGDB.
   const [continuePlaying, setContinuePlaying] = useState([])
@@ -974,17 +1197,22 @@ function Search() {
     return () => { cancelled = true }
   }, [resumeKey])
 
-  const totalGameResultCount =
-    gameResults.games.length +
-    gameResults.genres.length +
-    gameResults.developers.length
-
+  // Games tab now shows only games + genre pills (developers moved to
+  // their own tab), so "no results" for Games no longer factors devs in.
   const noGameResults =
     activeTab === 'games' &&
     hasQuery &&
     !gamesLoading &&
     !gamesError &&
-    totalGameResultCount === 0
+    gameResults.games.length === 0 &&
+    gameResults.genres.length === 0
+
+  const noDevResults =
+    activeTab === 'devs' &&
+    hasQuery &&
+    !gamesLoading &&
+    !gamesError &&
+    gameResults.developers.length === 0
 
   // Reviews / Users / Lists searches — async, simple debounce on the query.
   const [reviewsRows, setReviewsRows] = useState([])
@@ -1056,9 +1284,11 @@ function Search() {
     }
   }, [activeTab, debouncedQuery, resumeKey])
 
-  // Users tab — debounced search.
+  // Users tab — debounced search. Also runs for the All tab so its
+  // Users preview section shares this one query instead of firing a
+  // second lookup when the user switches from All to Users.
   useEffect(() => {
-    if (activeTab !== 'users') return
+    if (activeTab !== 'users' && activeTab !== 'all') return
     if (!debouncedQuery) {
       setUsersRows([])
       setUsersLoading(false)
@@ -1171,6 +1401,7 @@ function Search() {
   // Sprint 1 P4: developer rows MUST route to /developer/:name. Do not change.
   const handleDevTap = useCallback(
     (devName) => {
+      addRecent('devs', { id: devName.toLowerCase(), name: devName })
       navigate(`/developer/${encodeURIComponent(devName)}`)
     },
     [navigate]
@@ -1205,11 +1436,12 @@ function Search() {
     }, 150)
   }, [])
 
+  // Developers are no longer rendered inline on the Games tab (they have
+  // their own tab now), so keyboard nav here only walks games + genres.
   const flatGameResults = useMemo(
     () => [
       ...gameResults.games.map((g) => ({ type: 'game', data: g })),
       ...gameResults.genres.map((g) => ({ type: 'genre', data: g })),
-      ...gameResults.developers.map((d) => ({ type: 'developer', data: d })),
     ],
     [gameResults]
   )
@@ -1241,10 +1473,9 @@ function Search() {
         const item = flatGameResults[focusedIndex]
         if (item.type === 'game') handleGameTap(item.data)
         else if (item.type === 'genre') handleGenreTap(item.data.key)
-        else if (item.type === 'developer') handleDevTap(item.data.name)
       }
     },
-    [activeTab, flatGameResults, focusedIndex, handleGameTap, handleGenreTap, handleDevTap]
+    [activeTab, flatGameResults, focusedIndex, handleGameTap, handleGenreTap]
   )
 
   const showCancelBtn = isFocused || query.length > 0
@@ -1333,8 +1564,12 @@ function Search() {
               inputMode="search"
               enterKeyHint="search"
               placeholder={
-                activeTab === 'games'
-                  ? 'Search games, genres, developers...'
+                activeTab === 'all'
+                  ? 'Search games, developers, users...'
+                  : activeTab === 'games'
+                  ? 'Search games or genres...'
+                  : activeTab === 'devs'
+                  ? 'Search developers...'
                   : activeTab === 'reviews'
                   ? 'Search reviews...'
                   : activeTab === 'users'
@@ -1392,42 +1627,63 @@ function Search() {
 
       <SharedCoverScope duplicateIds={duplicateIds}>
         <div className="sp-tab-content">
+          {/* ALL TAB — default landing tab; empty state reuses the Games
+              tab's existing landing content (out of scope to redesign). */}
+          {activeTab === 'all' && (
+            <>
+              {!hasQuery && (
+                <SearchLandingEmpty
+                  recents={gamesRecents}
+                  onClearAll={() => clearRecents('games')}
+                  onTapGame={(item) => {
+                    addRecent('games', item)
+                    navigate(`/game/${item.id}`, {
+                      state: { coverImage: item.image ?? item.coverUrl },
+                    })
+                  }}
+                  continuePlaying={continuePlaying}
+                  trendingGames={trendingGames}
+                  trendingLoading={trendingLoading}
+                  onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
+                />
+              )}
+              {hasQuery && (
+                <AllTabResults
+                  query={query}
+                  gameResults={gameResults}
+                  gamesLoading={gamesLoading}
+                  gamesError={gamesError}
+                  usersRows={usersRows}
+                  usersLoading={usersLoading}
+                  onTapGame={handleGameTap}
+                  onTapDev={handleDevTap}
+                  onTapUser={handleUserTap}
+                  onRetry={() => setQuery((q) => q + ' ')}
+                  currentUserId={currentUserId}
+                  genres={genres}
+                />
+              )}
+            </>
+          )}
+
           {/* GAMES TAB */}
           {activeTab === 'games' && (
             <>
               {!hasQuery && (
-                <>
-                  <GamesTabEmpty
-                    recents={gamesRecents}
-                    onClearAll={() => clearRecents('games')}
-                    onTapGame={(item) => {
-                      addRecent('games', item)
-                      navigate(`/game/${item.id}`, {
-                        state: { coverImage: item.image ?? item.coverUrl },
-                      })
-                    }}
-                    continuePlaying={continuePlaying}
-                    trendingGames={trendingGames}
-                    trendingLoading={trendingLoading}
-                  />
-                  {/* Browse by Genre — kept unchanged from prior build. */}
-                  <section className="sp-section">
-                    <h2 className="sp-section-header">Browse by genre</h2>
-                    <div className="sp-genre-grid">
-                      {GENRE_CARDS.map((genre) => (
-                        <button
-                          key={genre.slug}
-                          className="sp-genre-card"
-                          style={{ background: genre.gradient }}
-                          onClick={() => navigate(`/browse/${genre.slug}`)}
-                          type="button"
-                        >
-                          <span className="sp-genre-card__name">{genre.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                </>
+                <SearchLandingEmpty
+                  recents={gamesRecents}
+                  onClearAll={() => clearRecents('games')}
+                  onTapGame={(item) => {
+                    addRecent('games', item)
+                    navigate(`/game/${item.id}`, {
+                      state: { coverImage: item.image ?? item.coverUrl },
+                    })
+                  }}
+                  continuePlaying={continuePlaying}
+                  trendingGames={trendingGames}
+                  trendingLoading={trendingLoading}
+                  onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
+                />
               )}
               {hasQuery && (
                 <GamesTabResults
@@ -1437,14 +1693,38 @@ function Search() {
                   error={gamesError}
                   focusedIndex={focusedIndex}
                   onTapGame={handleGameTap}
-                  onTapDev={handleDevTap}
                   onTapGenre={handleGenreTap}
                   onRetry={() => setQuery((q) => q + ' ')}
                   noResults={noGameResults}
-                  onClearQuery={handleCancel}
                   genres={genres}
                   gamesResultsRef={gamesResultsRef}
                   parsedFilters={parsedFilters}
+                />
+              )}
+            </>
+          )}
+
+          {/* DEVS TAB */}
+          {activeTab === 'devs' && (
+            <>
+              {!hasQuery && (
+                <DevsTabEmpty
+                  recents={devsRecents}
+                  onClearAll={() => clearRecents('devs')}
+                  onTapDev={handleDevTap}
+                  onRemoveDev={(id) => removeRecent('devs', id)}
+                />
+              )}
+              {hasQuery && (
+                <DevsTabResults
+                  query={query}
+                  developers={gameResults.developers}
+                  isLoading={gamesLoading}
+                  error={gamesError}
+                  onTapDev={handleDevTap}
+                  onRetry={() => setQuery((q) => q + ' ')}
+                  noResults={noDevResults}
+                  genres={genres}
                 />
               )}
             </>
@@ -1480,10 +1760,12 @@ function Search() {
               )}
               {hasQuery && (
                 <UsersTabResults
+                  query={query}
                   rows={usersRows}
                   isLoading={usersLoading}
                   onTapUser={handleUserTap}
                   currentUserId={currentUserId}
+                  genres={genres}
                 />
               )}
             </>

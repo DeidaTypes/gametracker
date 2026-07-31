@@ -5,7 +5,7 @@ import { getCategoryDefinitions } from '../services/browseService'
 import { parseNaturalQuery } from '../utils/parseNaturalQuery'
 import { APP_RESUMED_EVENT } from './useAppResume'
 
-const DEBOUNCE_MS = 200
+const DEBOUNCE_MS = 250
 
 /**
  * Searches the real IGDB catalog via searchService and categorises results.
@@ -15,6 +15,12 @@ const DEBOUNCE_MS = 200
  * Natural-language queries like "short co-op games" are parsed into IGDB
  * filter clauses before the API call.  If the structured search fails the
  * hook falls back to a plain full-text search automatically.
+ *
+ * Shared by the Search page's Games, Devs, and All tabs — all three read
+ * from this single hook/query so typing once never fires three separate
+ * IGDB requests. `results.games` also carries the developer used for the
+ * game-row subline, so the Devs tab (and the Devs section of All) both
+ * come "for free" from the underlying searchGames() call and its cache.
  *
  * @param {string} query — raw user input (trimming handled internally)
  * @returns {{
@@ -113,12 +119,14 @@ export function useSearch(query) {
             devMap.get(key).count++
           }
         }
+        // Sliced to 12 — enough to fill the dedicated Devs tab; the All tab
+        // and the (legacy) Games-tab dev extraction just take the first few.
         const developers = Array.from(devMap.values())
           .sort((a, b) => b.count - a.count)
-          .slice(0, 3)
+          .slice(0, 12)
 
         setResults({
-          games: games.slice(0, 5),
+          games: games.slice(0, 20),
           genres: matchingGenres,
           developers,
         })

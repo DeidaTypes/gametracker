@@ -169,8 +169,14 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
   if (isLoading) return <SearchResultSkeletonList count={8} />
   if (error) return <p className="so-error-text">Search failed. Please try again.</p>
 
+  // This overlay is a compact dropdown, not the full Search page — cap each
+  // category locally so it keeps its original size regardless of how many
+  // results useSearch() returns for the dedicated Search page's tabs.
+  const games = results.games.slice(0, 5)
+  const developers = results.developers.slice(0, 3)
+
   const hasResults =
-    results.games.length + results.genres.length + results.developers.length > 0
+    games.length + results.genres.length + developers.length > 0
 
   if (!hasResults) {
     return (
@@ -201,10 +207,10 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
           </div>
         </div>
       )}
-      {results.games.length > 0 && (
+      {games.length > 0 && (
         <div className="so-result-category">
           <h3 className="so-result-category__header">Games</h3>
-          {results.games.map((game) => (
+          {games.map((game) => (
             <button
               key={game.id}
               type="button"
@@ -240,10 +246,10 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
           ))}
         </div>
       )}
-      {results.developers.length > 0 && (
+      {developers.length > 0 && (
         <div className="so-result-category">
           <h3 className="so-result-category__header">Developers</h3>
-          {results.developers.map((dev) => (
+          {developers.map((dev) => (
             <button
               key={dev.name}
               type="button"

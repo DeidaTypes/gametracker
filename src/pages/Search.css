@@ -78,7 +78,7 @@
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--color-text-tertiary);
   pointer-events: none;
   z-index: 1;
 }
@@ -87,34 +87,30 @@
   display: block;
   width: 100%;
   height: 44px;
-  background: rgba(255, 255, 255, 0.04);
-  border: none;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 0 44px 0 46px;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--color-text-primary);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
-  line-height: 44px;
+  line-height: 42px;
   letter-spacing: var(--letter-spacing-body);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  box-shadow:
-    inset 0 1px 0 rgba(0, 0, 0, 0.28),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-  transition: background-color 200ms ease, box-shadow 200ms ease;
+  transition: background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .sp-input::placeholder {
-  color: rgba(255, 255, 255, 0.32);
+  color: var(--color-text-tertiary);
 }
 
 .sp-input:focus {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow:
-    inset 0 1px 0 rgba(0, 0, 0, 0.28),
-    inset 0 -2px 0 var(--color-brand-primary);
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -149,7 +145,7 @@
   background: transparent;
   border: none;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--color-text-tertiary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: color 120ms ease;
@@ -344,56 +340,68 @@
   color: var(--color-text-primary);
 }
 
-/* ---- Genre gradient cards (empty state) ---- */
-.sp-genre-card {
-  position: relative;
+/* ---- Genre tiles (empty state) — Cobalt surface + icon, no gradients ----
+   Colored ONLY via the three approved accent tokens (--accent,
+   --accent-review, --accent-journal), passed in per-tile as the
+   `--genre-tile-accent` custom property. No orange/amber, no hex. */
+.sp-genre-tile {
   display: flex;
-  align-items: flex-end;
-  height: 140px;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  width: 100%;
   border-radius: var(--radius-lg);
-  border: none;
-  padding: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  box-shadow: var(--surface-1-shadow);
+  padding: 0 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   text-align: left;
-  width: 100%;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
-.sp-genre-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.52) 0%, transparent 55%);
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .sp-genre-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+@media (hover: hover) {
+  .sp-genre-tile:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-hover);
   }
 }
 
-.sp-genre-card:active {
+.sp-genre-tile:active {
   transform: scale(0.97);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-.sp-genre-card__name {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
+.sp-genre-tile__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--genre-tile-accent) 16%, transparent);
+  color: var(--genre-tile-accent);
+}
+
+.sp-genre-tile__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sp-genre-tile__name {
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-display-l);
-  letter-spacing: var(--letter-spacing-display);
-  color: #ffffff;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7), 0 2px 20px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-genre-tile {
+    transition: none;
+  }
 }
 
 /* ---- Library carousel ---- */
@@ -448,7 +456,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sp-genre-card,
   .sp-chip--pill,
   .sp-library-cover {
     transition: none;
@@ -543,6 +550,7 @@
 .sp-result-row--dev {
   height: 56px;
   padding: 0 4px;
+  gap: 12px;
 }
 
 .sp-result-row--dev + .sp-result-row--dev {
@@ -673,6 +681,13 @@
   padding: 8px 0 0;
   margin-top: 12px;
   border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sp-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .sp-tab {
@@ -792,6 +807,11 @@
 
 .sp-recent-cover-row::-webkit-scrollbar {
   display: none;
+}
+
+/* Recent Searches only (Games tab) — tighter gap than Continue/Trending. */
+.sp-recent-cover-row--recents {
+  gap: 8px;
 }
 
 .sp-recent-cover {
@@ -990,6 +1010,19 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ---- Developer result-row icon (Devs tab / Developers section) ---- */
+.sp-dev-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-brand-primary) 14%, transparent);
+  color: var(--color-brand-primary);
 }
 
 .sp-user-row__text {

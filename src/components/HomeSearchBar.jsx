@@ -65,8 +65,14 @@ function HomeSearchBar() {
     [navigate, reset]
   )
 
+  // Inline dropdown, not the full Search page — cap each category locally
+  // so it keeps its original compact size regardless of how many results
+  // useSearch() now returns for the dedicated Search page's Devs/All tabs.
+  const games = results.games.slice(0, 5)
+  const developers = results.developers.slice(0, 3)
+
   const hasResults =
-    results.games.length + results.genres.length + results.developers.length > 0
+    games.length + results.genres.length + developers.length > 0
 
   return (
     <div className="home-search">
@@ -139,10 +145,10 @@ function HomeSearchBar() {
             </div>
           )}
 
-          {!isLoading && !error && results.games.length > 0 && (
+          {!isLoading && !error && games.length > 0 && (
             <div className="home-search-group">
               <h3 className="home-search-group__header">Games</h3>
-              {results.games.map((game) => (
+              {games.map((game) => (
                 <button
                   key={game.id}
                   type="button"
@@ -174,10 +180,10 @@ function HomeSearchBar() {
             </div>
           )}
 
-          {!isLoading && !error && results.developers.length > 0 && (
+          {!isLoading && !error && developers.length > 0 && (
             <div className="home-search-group">
               <h3 className="home-search-group__header">Developers</h3>
-              {results.developers.map((dev) => (
+              {developers.map((dev) => (
                 <button
                   key={dev.name}
                   type="button"
