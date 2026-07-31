@@ -274,6 +274,10 @@
   bottom: 0;
   padding: 0 0 0 28px;
   border: none;
+  /* Same 44px-minimum override as the byline buttons above — at 44px tall
+     this button's own fade would cover the line of text above it. */
+  min-width: 0;
+  min-height: 0;
   background: linear-gradient(
     90deg,
     transparent 0,
@@ -287,6 +291,12 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__more::after {
+  content: '';
+  position: absolute;
+  inset: -11px -6px -11px 0;
 }
 
 .home-review-card__more:focus-visible {
@@ -311,22 +321,40 @@
   white-space: nowrap;
 }
 
+/* index.css inflates every <button> to a 44px minimum on mobile. That is
+   right for the action row, but here it would pad the 22px avatar out to
+   a 44px box — leaving a dead gap before the username — and stretch this
+   metadata row to 44px tall. The byline's buttons keep their visual size
+   and recover the tap target through hit-slop pseudo-elements instead,
+   the same way .home-review-card__action does. */
 .home-review-card__avatar-btn {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   background: none;
   border: none;
   padding: 0;
-  margin-right: 1px;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
   cursor: pointer;
   border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
 }
 
+.home-review-card__avatar-btn::after,
+.home-review-card__author-name::after {
+  content: '';
+  position: absolute;
+  inset: -11px -3px;
+}
+
 .home-review-card__author-name {
+  position: relative;
   background: none;
   border: none;
   padding: 0;
+  min-height: 0;
   cursor: pointer;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
