@@ -19,8 +19,8 @@
 .action-sheet {
   width: 100%;
   max-width: 480px;
-  background: var(--color-bg-elevated, #1a1f2e);
-  border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   /* Surface 2 elevation */
   box-shadow:
     0 -4px 40px rgba(0, 0, 0, 0.5),
@@ -51,16 +51,26 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* ============================================================
+   Items — grouped rows with even, consistent heights. Groups
+   are separated by .action-sheet__divider (below); there is no
+   extra margin baked into individual rows, so the gap before and
+   after every divider stays identical no matter how the items
+   array is composed.
+   ============================================================ */
 .action-sheet__items {
-  padding: 8px 0;
+  padding: 4px 0 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .action-sheet__item {
   display: flex;
   align-items: center;
+  gap: 14px;
   width: 100%;
   min-height: 56px;
-  padding: 0 24px;
+  padding: 0 20px;
   background: transparent;
   border: none;
   color: var(--color-text-primary);
@@ -72,6 +82,13 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 140ms ease;
+}
+
+/* Icon-tile rows (Edit profile, Share profile, Your Wrapped, Settings,
+   etc.) get a touch more breathing room so the 40px tile has room to
+   sit comfortably centered in the row. */
+.action-sheet__item--row {
+  min-height: 68px;
 }
 
 .action-sheet__item:hover:not(:disabled) {
@@ -88,21 +105,78 @@
 }
 
 .action-sheet__item--destructive {
-  color: #a04848;
+  color: var(--status-danger);
 }
 
 .action-sheet__item--destructive:hover:not(:disabled) {
-  background: rgba(160, 72, 72, 0.1);
+  background: color-mix(in srgb, var(--status-danger) 10%, transparent);
 }
 
+/* ---- Icon tile ----
+   Tinted square housing each row's icon. Tones map onto the three
+   accent tokens (cobalt/green/purple) used app-wide — no orange/amber,
+   no hardcoded hex. "Neutral" is used for rows that sit outside the
+   colored action group (e.g. Settings), matching the muted gray icon
+   treatment on the grouped Settings page. */
+.action-sheet__icon-tile {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.action-sheet__icon-tile--cobalt {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.action-sheet__icon-tile--green {
+  background: color-mix(in srgb, var(--accent-review) 18%, transparent);
+  color: var(--accent-review);
+}
+
+.action-sheet__icon-tile--purple {
+  background: color-mix(in srgb, var(--accent-journal) 18%, transparent);
+  color: var(--accent-journal);
+}
+
+.action-sheet__icon-tile--neutral {
+  background: var(--color-surface-active);
+  color: var(--color-text-secondary);
+}
+
+.action-sheet__item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-sheet__chevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+
+/* ---- Divider ----
+   Used both between groups within .action-sheet__items and as the
+   fixed separator above the Cancel row, so every gap in the sheet
+   reads identically. */
 .action-sheet__divider {
   height: 1px;
-  background: var(--color-border, rgba(255, 255, 255, 0.1));
-  margin: 4px 0 0;
+  background: var(--color-border);
+  margin: 8px 0;
 }
 
 .action-sheet__item--cancel {
-  margin-top: 4px;
+  justify-content: center;
+  text-align: center;
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-semibold);
 }

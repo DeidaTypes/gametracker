@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
+import { LuChevronRight } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import './ActionSheet.css'
 
@@ -16,7 +17,19 @@ import './ActionSheet.css'
  *   isOpen       – boolean
  *   onClose      – () => void
  *   title        – optional string rendered as a heading above items
- *   items        – Array<{ label, onClick, destructive?, disabled? }>
+ *   items        – Array<Item>, where Item is one of:
+ *                    { divider: true }  — a thin group separator
+ *                    {
+ *                      label, onClick, disabled?, destructive?,
+ *                      icon?      – JSX rendered inside a tinted tile.
+ *                                   Rows without an icon fall back to
+ *                                   the plain text style (e.g. a lone
+ *                                   destructive confirmation action).
+ *                      tone?      – 'cobalt' | 'green' | 'purple' | 'neutral'
+ *                                   tints the icon tile. Ignored without icon.
+ *                      chevron?   – set to false to hide the trailing
+ *                                   chevron on an icon row (defaults to true).
+ *                    }
  *                  label may be a string or JSX element.
  *                  Items are rendered before the Cancel row.
  *
@@ -81,21 +94,42 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
             )}
 
             <div className="action-sheet__items" role="menu">
-              {items.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`action-sheet__item${item.destructive ? ' action-sheet__item--destructive' : ''}`}
-                  onClick={() => {
-                    onClose()
-                    item.onClick()
-                  }}
-                  disabled={item.disabled}
-                  role="menuitem"
-                >
-                  {item.label}
-                </button>
-              ))}
+              {items.map((item, idx) =>
+                item.divider ? (
+                  <div
+                    key={idx}
+                    className="action-sheet__divider"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`action-sheet__item${item.icon ? ' action-sheet__item--row' : ''}${item.destructive ? ' action-sheet__item--destructive' : ''}`}
+                    onClick={() => {
+                      onClose()
+                      item.onClick()
+                    }}
+                    disabled={item.disabled}
+                    role="menuitem"
+                  >
+                    {item.icon && (
+                      <span
+                        className={`action-sheet__icon-tile action-sheet__icon-tile--${item.tone || 'cobalt'}`}
+                        aria-hidden="true"
+                      >
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="action-sheet__item-label">{item.label}</span>
+                    {item.icon && item.chevron !== false && (
+                      <span className="action-sheet__chevron" aria-hidden="true">
+                        <LuChevronRight size={18} />
+                      </span>
+                    )}
+                  </button>
+                )
+              )}
             </div>
 
             <div className="action-sheet__divider" aria-hidden="true" />

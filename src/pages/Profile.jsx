@@ -16,6 +16,13 @@ import {
   LuPin,
   LuArrowUpDown,
   LuPlus,
+  LuUserPen,
+  LuSparkles,
+  LuSettings,
+  LuMessageCircle,
+  LuLink,
+  LuUserX,
+  LuFlag,
 } from 'react-icons/lu'
 import { HiOutlineHeart, HiOutlineChat } from 'react-icons/hi'
 import { PenLine, List } from 'lucide-react'
@@ -1633,8 +1640,15 @@ function Profile() {
         </section>
 
         {/* ═════════════════════════════════════════════════════════
-            OVERFLOW BOTTOM SHEET — replaces the old inline kebab
-            dropdown. Content differs for self vs visitor.
+            OVERFLOW SHEET (⋯) — a clean grouped action sheet, not a
+            duplicate of the Settings page. Own profile: profile
+            actions (Edit / Share / Wrapped), a divider, then a single
+            "Settings" row that opens the full grouped Settings page
+            (src/pages/Settings.jsx) — the sheet never re-implements
+            Notifications/Privacy/Appearance/Log out itself, so there
+            is exactly one source of truth for those. Visitor profile
+            keeps its own action set (Message / Share / Copy link /
+            Block / Report), styled with the same icon-tile rows.
             ═════════════════════════════════════════════════════════ */}
         <ActionSheet
           isOpen={overflowSheetOpen}
@@ -1642,32 +1656,72 @@ function Profile() {
           items={
             isOwnProfile
               ? [
-                  { label: 'Edit profile', onClick: () => setShowEditModal(true) },
-                  { label: 'Share profile', onClick: handleShareProfile },
+                  {
+                    label: 'Edit profile',
+                    icon: <LuUserPen size={18} />,
+                    tone: 'cobalt',
+                    onClick: () => setShowEditModal(true),
+                  },
+                  {
+                    label: 'Share profile',
+                    icon: <LuShare2 size={18} />,
+                    tone: 'purple',
+                    onClick: handleShareProfile,
+                  },
                   {
                     label:
                       wrappedSharing === 'generating'
                         ? 'Generating…'
                         : wrappedSharing === 'done'
                         ? 'Shared!'
-                        : 'Wrapped',
+                        : 'Your Wrapped',
+                    icon: <LuSparkles size={18} />,
+                    tone: 'green',
                     disabled: wrappedSharing === 'generating',
                     onClick: () => handleShareWrapped('year'),
                   },
                   { divider: true },
-                  { label: 'Settings', onClick: () => navigate('/settings') },
+                  {
+                    label: 'Settings',
+                    icon: <LuSettings size={18} />,
+                    tone: 'neutral',
+                    onClick: () => navigate('/settings'),
+                  },
                 ]
               : [
-                  { label: 'Message', onClick: handleMessageUser },
-                  { label: 'Share profile', onClick: handleShareProfile },
-                  { label: 'Copy link', onClick: handleCopyProfileLink },
+                  {
+                    label: 'Message',
+                    icon: <LuMessageCircle size={18} />,
+                    tone: 'cobalt',
+                    onClick: handleMessageUser,
+                  },
+                  {
+                    label: 'Share profile',
+                    icon: <LuShare2 size={18} />,
+                    tone: 'purple',
+                    onClick: handleShareProfile,
+                  },
+                  {
+                    label: 'Copy link',
+                    icon: <LuLink size={18} />,
+                    tone: 'green',
+                    onClick: handleCopyProfileLink,
+                  },
                   { divider: true },
                   {
                     label: `Block ${profile.username || profile.displayName || 'user'}`,
+                    icon: <LuUserX size={18} />,
+                    tone: 'neutral',
+                    chevron: false,
                     destructive: true,
                     onClick: () => setBlockSheetOpen(true),
                   },
-                  { label: 'Report', onClick: () => setReportProfileOpen(true) },
+                  {
+                    label: 'Report',
+                    icon: <LuFlag size={18} />,
+                    tone: 'neutral',
+                    onClick: () => setReportProfileOpen(true),
+                  },
                 ]
           }
         />
