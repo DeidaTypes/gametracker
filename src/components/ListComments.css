@@ -4,9 +4,17 @@
   /* grid → comments heading: 24px (owned entirely here — the grid's own
      container has no bottom padding of its own, see
      .list-detail-content in ListDetail.css). No divider line — sections
-     are separated by spacing only. 24px bottom padding keeps the
-     composer's hairline from sitting flush against the bottom nav. */
+     are separated by spacing only. */
   padding: 24px var(--page-padding) 24px;
+}
+
+/* The composer is a fixed bar, so the thread has to reserve its own
+   clearance or the last comment sits behind it. `.main-content` already
+   reserves the tab-bar strip the bar rests on, so this only covers the
+   bar's own height plus the 24px resting gap above it. Mirrors the
+   padding-bottom reservation in .rd-scroll / .rc-scroll. */
+.lc-section--with-composer {
+  padding-bottom: 78px;
 }
 
 .lc-heading {
@@ -120,76 +128,91 @@
   word-break: break-word;
 }
 
-/* ── Compose area ──
-   Subtle single-line composer — no filled box, no border box. Just a 1px
-   bottom hairline that brightens slightly on focus, and a text-only
-   "Post" that only appears once there's a draft to send. */
+/* ── Composer ──
+   Fixed bar above the tab bar, identical in geometry and treatment to the
+   review comment composers (.rd-composer / .rc-composer). The lift comes
+   from <KeyboardAwareView mode="composer"> — nothing here positions
+   against the keyboard itself. */
 
-.lc-compose {
+.lc-composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bottom-nav-safe-area, 80px);
+  z-index: 6;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-top: 1px solid var(--color-border);
+}
+
+.lc-composer__row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: var(--spacing-md);
-  background: transparent;
-  border-bottom: 1px solid var(--border-subtle, var(--color-border));
-  transition: border-color var(--transition-smooth);
-  /* Keeps a 16px buffer below the composer when it's brought into view
-     via scrollIntoView() on focus (see ListComments.jsx), so it doesn't
-     land flush against the lifted keyboard edge. */
-  scroll-margin-bottom: 16px;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px var(--page-padding);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.lc-compose:focus-within {
-  border-color: var(--color-brand-primary);
-}
-
-.lc-compose-input {
+/* Starts at one line and grows to ~3 via JS (see ListComments.jsx);
+   overflow-y:hidden keeps the scroll handle from flashing as it grows. */
+.lc-composer__input {
   flex: 1;
   min-width: 0;
-  min-height: 0;
-  resize: none;
-  overflow: hidden;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 10px 2px;
-  font-family: var(--font-body);
-  font-size: 13px;
+  min-height: 36px;
+  max-height: 90px;
+  padding: 8px 14px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
   color: var(--color-text-primary);
-  line-height: var(--line-height-body);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  overflow-y: hidden;
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
   -webkit-appearance: none;
 }
 
-.lc-compose-input::placeholder {
+.lc-composer__input::placeholder {
   color: var(--color-text-tertiary);
 }
 
-.lc-compose-input:focus {
-  outline: none;
+.lc-composer__input:focus {
+  border-color: var(--color-border-focus);
 }
 
-.lc-compose-submit {
+.lc-composer__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 0 2px;
-  margin: 0;
-  background: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--color-brand-primary, var(--accent));
   border: none;
-  color: var(--accent-review);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-full);
+  color: #ffffff;
   cursor: pointer;
-  transition: opacity var(--transition-smooth);
-  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+  margin-bottom: 1px;
 }
 
-.lc-compose-submit:disabled {
-  opacity: 0.45;
+.lc-composer__send:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.lc-composer__send:disabled {
+  opacity: 0.35;
   cursor: default;
-}
-
-.lc-compose-submit:not(:disabled):hover {
-  opacity: 0.8;
 }
 
 @media (min-width: 769px) {
@@ -200,9 +223,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lc-comment,
-  .lc-compose,
-  .lc-compose-submit,
-  .lc-comment-delete {
+  .lc-comment-delete,
+  .lc-composer__input,
+  .lc-composer__send {
     transition: none;
+  }
+
+  .lc-composer {
+    will-change: auto;
   }
 }

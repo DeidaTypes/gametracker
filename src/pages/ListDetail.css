@@ -9,9 +9,12 @@
   --page-padding: 16px;
 }
 
-/* Keyboard clearance for the comment composer and the description editor is
-   handled globally on `.main-content` (the app's single scroll container) in
-   src/styles/keyboard.css — this page needs no rule of its own. */
+/* Keyboard clearance for the in-flow description editor is handled globally
+   on `.main-content` (the app's single scroll container) in
+   src/styles/keyboard.css — this page needs no rule of its own. The comment
+   composer is a fixed bar that rides the keyboard via
+   <KeyboardAwareView mode="composer">; its thread clearance lives with it in
+   ListComments.css. */
 
 /* ── Ambient wash — Cobalt Modern multi-hue glow behind the top of the
    page only. Tracker lists only (custom lists are one continuous

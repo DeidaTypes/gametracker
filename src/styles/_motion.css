@@ -26,7 +26,17 @@
 
 .page-transition {
   width: 100%;
-  /* Hint the compositor to keep opacity + transform on the GPU.
-     Both properties are animated by the page-level fade/slide. */
+}
+
+/* Compositor hint for the page-level fade/slide, applied only while that
+   animation is actually running (PageTransition toggles the class off on
+   animation complete).
+   It cannot be left on permanently: `will-change: transform` makes this
+   wrapper the containing block for every position:fixed descendant, which
+   silently re-anchors the keyboard-aware composer bars to the bottom of
+   the page's content box instead of the viewport. On a tall page that
+   drops the composer hundreds of px below the fold — the wrapper has to
+   stay layout-neutral at rest, as the header above says. */
+.page-transition--animating {
   will-change: opacity, transform;
 }

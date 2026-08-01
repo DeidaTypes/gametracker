@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import SwipeBackWrapper from './SwipeBackWrapper'
@@ -27,17 +28,26 @@ export default function PageTransition({ children, swipeBack = false }) {
   const { reduced } = useMotionPreference()
   const transition = reduced ? PAGE_TRANSITION_INSTANT : PAGE_TRANSITION
 
+  // The compositor hint is carried by a class rather than the stylesheet so
+  // it can be dropped the moment the slide ends. Left on permanently, the
+  // wrapper stays a containing block for position:fixed children and the
+  // keyboard-aware composer bars anchor to the page's content box instead
+  // of the viewport. Starts true because the enter animation runs on mount.
+  const [animating, setAnimating] = useState(true)
+
   // Secondary / pushed screens opt into the native left-edge swipe-back
   // gesture. The motion.div owns the page's enter/exit fade+slide (Y);
   // SwipeBackWrapper owns the horizontal drag transform, so the two
   // transforms never fight over the same element.
   return (
     <motion.div
-      className="page-transition"
+      className={`page-transition${animating ? ' page-transition--animating' : ''}`}
       initial={PAGE_INITIAL}
       animate={PAGE_ANIMATE}
       exit={PAGE_EXIT}
       transition={transition}
+      onAnimationStart={() => setAnimating(true)}
+      onAnimationComplete={() => setAnimating(false)}
     >
       {swipeBack ? <SwipeBackWrapper>{children}</SwipeBackWrapper> : children}
     </motion.div>
