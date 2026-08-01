@@ -64,18 +64,6 @@
   border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* Star fill (StarRating reads --star from its ancestors) scoped to
-   Home only — the shared StarRating component keeps its gold fill
-   everywhere else in the app. */
-.home-review-card--reviewed,
-.home-review-card--rated {
-  --star: var(--accent-review);
-}
-
-.home-review-card .star-rating__layer--fill {
-  filter: brightness(1.1) drop-shadow(0 0 2px color-mix(in srgb, var(--accent-review) 75%, transparent));
-}
-
 /* ── A — GAME ZONE: the card's lead. Cover + title, with the type's
    content zone stacked beneath the title. Flat by rule — a nested
    box/chip around this row would make the card two surfaces. ── */
