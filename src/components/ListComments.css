@@ -4,17 +4,10 @@
   /* grid → comments heading: 24px (owned entirely here — the grid's own
      container has no bottom padding of its own, see
      .list-detail-content in ListDetail.css). No divider line — sections
-     are separated by spacing only. */
+     are separated by spacing only. The composer (below) is the last
+     in-flow child of this section — no extra bottom clearance needed
+     beyond .list-detail-page's own bottom-nav safe-area padding. */
   padding: 24px var(--page-padding) 24px;
-}
-
-/* The composer is a fixed bar, so the thread has to reserve its own
-   clearance or the last comment sits behind it. `.main-content` already
-   reserves the tab-bar strip the bar rests on, so this only covers the
-   bar's own height plus the 24px resting gap above it. Mirrors the
-   padding-bottom reservation in .rd-scroll / .rc-scroll. */
-.lc-section--with-composer {
-  padding-bottom: 78px;
 }
 
 .lc-heading {
@@ -129,32 +122,22 @@
 }
 
 /* ── Composer ──
-   Fixed bar above the tab bar, identical in geometry and treatment to the
-   review comment composers (.rd-composer / .rc-composer). The lift comes
-   from <KeyboardAwareView mode="composer"> — nothing here positions
-   against the keyboard itself. */
+   A normal in-flow element at the end of the thread — it scrolls with the
+   page like any other content. It is NOT pinned/fixed to the screen and
+   does not float above the game grid or follow the user. Bringing the
+   focused field above the keyboard uses the standard "scroll input into
+   view" behavior (KeyboardAwareView mode="scroll" reserves the room; the
+   scroll itself happens in ListComments.jsx's handleComposerFocus) rather
+   than a pin-to-bottom lift. */
 
 .lc-composer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--bottom-nav-safe-area, 80px);
-  z-index: 6;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  border-top: 1px solid var(--color-border);
+  margin-top: 14px;
 }
 
 .lc-composer__row {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding: 8px var(--page-padding);
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* Starts at one line and grows to ~3 via JS (see ListComments.jsx);
@@ -227,9 +210,5 @@
   .lc-composer__input,
   .lc-composer__send {
     transition: none;
-  }
-
-  .lc-composer {
-    will-change: auto;
   }
 }

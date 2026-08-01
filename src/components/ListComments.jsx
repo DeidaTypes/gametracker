@@ -92,21 +92,24 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
-  // Sentinel after the last comment. The composer is a fixed bar now, so
-  // the thread is scrolled to meet it rather than the other way round.
-  const threadBottomRef = useRef(null)
 
-  const scrollToBottom = useCallback(() => {
-    threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  // The composer is a normal in-flow element now (not a fixed bar), so
+  // "scroll to the bottom of the thread" and "scroll the composer into
+  // view" are the same thing — the composer IS the bottom of the thread.
+  // Scrolling the textarea itself into view is also what puts a freshly
+  // posted comment (which renders just above it) on screen.
+  const scrollComposerIntoView = useCallback(() => {
+    textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [])
 
-  // Same two-step as the review composers: scroll once right away, then
-  // again once the keyboard has actually settled, so we target where the
-  // layout ended up rather than where it was headed.
+  // Standard "scroll focused input into view above the keyboard" behavior:
+  // scroll once right away, then again once the keyboard has actually
+  // settled, so we target where the layout ended up rather than where it
+  // was headed. Same two-step the in-flow review composers use.
   const handleComposerFocus = useCallback(() => {
-    scrollToBottom()
-    whenKeyboardSettled(scrollToBottom)
-  }, [scrollToBottom])
+    scrollComposerIntoView()
+    whenKeyboardSettled(scrollComposerIntoView)
+  }, [scrollComposerIntoView])
 
   const load = useCallback(async () => {
     if (!listId) return
@@ -149,8 +152,8 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
     }
     setComments((prev) => [...prev, optimistic])
     setDraft('')
-    // Keep the just-posted comment visible above the fixed composer bar.
-    requestAnimationFrame(scrollToBottom)
+    // Keep the just-posted comment (and the composer below it) on screen.
+    requestAnimationFrame(scrollComposerIntoView)
 
     try {
       const confirmed = await postListComment({ listId, body: trimmed })
@@ -178,43 +181,41 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
   }
 
   return (
-    <>
-      <section
-        className={`lc-section${currentUserId ? ' lc-section--with-composer' : ''}`}
-        aria-label="Comments"
-      >
-        {/* Heading always renders, even at zero — only the comment count
-            itself is hidden below the zero-state threshold (< 3). */}
-        <h3 className="lc-heading">
-          Comments{shouldShowCount(comments.length) ? ` · ${comments.length}` : ''}
-        </h3>
+    <section className="lc-section" aria-label="Comments">
+      {/* Heading always renders, even at zero — only the comment count
+          itself is hidden below the zero-state threshold (< 3). */}
+      <h3 className="lc-heading">
+        Comments{shouldShowCount(comments.length) ? ` · ${comments.length}` : ''}
+      </h3>
 
-        {!loading && comments.length > 0 && (
-          <div className="lc-list">
-            {comments.map((c) => (
-              <CommentRow
-                key={c.id}
-                comment={c}
-                canDelete={
-                  !c.__optimistic &&
-                  (c.user_id === currentUserId || isOwner)
-                }
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
+      {!loading && comments.length > 0 && (
+        <div className="lc-list">
+          {comments.map((c) => (
+            <CommentRow
+              key={c.id}
+              comment={c}
+              canDelete={
+                !c.__optimistic &&
+                (c.user_id === currentUserId || isOwner)
+              }
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
 
-        <div ref={threadBottomRef} aria-hidden="true" />
-      </section>
-
-      {/* Fixed composer bar, same shared primitive as the review comment
-          composers: position:fixed above the tab bar, lifted by mode
-          "composer" so it rides the keyboard on the app-wide curve. */}
+      {/* In-flow composer — sits in its natural place at the end of the
+          thread and scrolls with the page like any other content. It is
+          NOT pinned/fixed to the screen and does not follow the user.
+          On focus, the standard "scroll focused input into view above
+          the keyboard" behavior brings it up (see handleComposerFocus);
+          KeyboardAwareView mode="scroll" reserves the room for that
+          scroll to actually happen, the same shared mechanism (not a
+          pin-to-bottom lift) used by other in-flow fields on this page. */}
       {currentUserId && (
         <KeyboardAwareView
           as="form"
-          mode="composer"
+          mode="scroll"
           className="lc-composer"
           aria-label="Comment composer"
           onSubmit={handleSubmit}
@@ -248,6 +249,6 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
           </div>
         </KeyboardAwareView>
       )}
-    </>
+    </section>
   )
 }

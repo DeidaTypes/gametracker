@@ -9,12 +9,12 @@
   --page-padding: 16px;
 }
 
-/* Keyboard clearance for the in-flow description editor is handled globally
-   on `.main-content` (the app's single scroll container) in
-   src/styles/keyboard.css — this page needs no rule of its own. The comment
-   composer is a fixed bar that rides the keyboard via
-   <KeyboardAwareView mode="composer">; its thread clearance lives with it in
-   ListComments.css. */
+/* Keyboard clearance for in-flow inputs (the description editor, and the
+   comment composer in ListComments.css) is handled globally on
+   `.main-content` (the app's single scroll container) in
+   src/styles/keyboard.css — this page needs no rule of its own. The
+   comment composer is a normal in-flow element, not a fixed bar; see
+   ListComments.jsx/.css for its scroll-into-view keyboard handling. */
 
 /* ── Ambient wash — Cobalt Modern multi-hue glow behind the top of the
    page only. Tracker lists only (custom lists are one continuous
@@ -543,9 +543,11 @@
   stroke-width: 2;
 }
 
-/* the + button ONLY — this is the screen's single gradient element */
+/* the + button ONLY — this is the screen's single gradient element.
+   Purple→cobalt, matching the Library Lists-tab FAB: a list screen keeps
+   the lists accent rather than the cobalt→green games accent. */
 .list-detail-page .icon-btn--add {
-  background: linear-gradient(100deg, #3b82f6, #5fa28d);
+  background: var(--grad-purple-blue);
   border: none;
 }
 
