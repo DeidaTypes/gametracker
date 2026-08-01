@@ -403,7 +403,16 @@ body[data-larger-text='true'] {
   /* ---- Navigation Heights ---- */
   --top-nav-height: 60px;
   --bottom-nav-height: 58px;
-  --bottom-nav-safe-area: 80px;
+  /* 80px covers the pill's own footprint (12px float + ~58px height + a
+     10px breathing gap) on a device with NO home-indicator inset. The
+     pill's own `bottom` offset also grows by env(safe-area-inset-bottom)
+     (see BottomNav.css), so anything reserving clearance against it must
+     grow by the same amount or the nav floats higher than the space this
+     token reserves — which is exactly what let the pill overlap content
+     (and the List Detail composer) on notched devices. Baked in here,
+     once, so every consumer — fixed composer bars included — automatically
+     clears the pill instead of each page re-deriving its own fix. */
+  --bottom-nav-safe-area: calc(80px + env(safe-area-inset-bottom, 0px));
   /* Alias used by modal footers for safe-area calculations */
   --tab-bar-height: var(--bottom-nav-height);
 
