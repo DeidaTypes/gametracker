@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { LuChevronRight } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import KeyboardAwareView from './KeyboardAwareView'
 import './ActionSheet.css'
 
 /**
@@ -78,6 +79,7 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
           exit={{ opacity: 0 }}
           transition={backdropTransition}
         >
+          <KeyboardAwareView mode="sheet" className="action-sheet-anchor">
           <motion.div
             ref={sheetRef}
             className="action-sheet"
@@ -143,6 +145,7 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
               Cancel
             </button>
           </motion.div>
+          </KeyboardAwareView>
         </motion.div>
       )}
     </AnimatePresence>,

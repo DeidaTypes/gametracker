@@ -14,22 +14,25 @@
   justify-content: center;
 }
 
-/* The sheet itself is positioned absolute so `bottom` can be driven
-   by the visualViewport keyboard-offset JS calculation. */
-.bio-edit-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  width: 100%;
+/* Fixed anchoring + keyboard lift come from the shared .kb-sheet-lift wrapper
+   (styles/keyboard.css), replacing this sheet's own visualViewport listener
+   and inline `bottom` style. Motion still owns `transform` here for the
+   spring entrance. */
+.bio-edit-anchor {
+  z-index: 1021;
   max-width: 480px;
   margin: 0 auto;
+}
+
+.bio-edit-sheet {
+  width: 100%;
   background: var(--color-bg-elevated, #1a1f2e);
   border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
   box-shadow:
     0 -4px 40px rgba(0, 0, 0, 0.5),
     0 -1px 0 rgba(255, 255, 255, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding-bottom: calc(var(--keyboard-safe-bottom) + 20px);
   outline: none;
 }
 

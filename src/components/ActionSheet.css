@@ -16,9 +16,19 @@
      intentionally absent so the two systems don't fight. */
 }
 
+/* Fixed anchoring + keyboard lift come from the shared .kb-sheet-lift wrapper
+   (styles/keyboard.css). This sheet has no inputs of its own, but it opens
+   over surfaces that do — the "Discard changes?" confirm from BioEditModal
+   fires while the bio keyboard is still up — so it lifts like every other
+   sheet rather than appearing behind the keyboard. */
+.action-sheet-anchor {
+  z-index: 1021;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
 .action-sheet {
   width: 100%;
-  max-width: 480px;
   background: var(--color-bg-elevated);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   /* Surface 2 elevation */
@@ -26,7 +36,7 @@
     0 -4px 40px rgba(0, 0, 0, 0.5),
     0 -1px 0 rgba(255, 255, 255, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding-bottom: calc(var(--keyboard-safe-bottom) + 12px);
   outline: none;
 }
 

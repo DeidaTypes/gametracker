@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { updateJournalEntry } from '../services/journalService'
 import { useSession } from '../contexts/SessionContext'
+import KeyboardAwareView from './KeyboardAwareView'
 import './StopSessionSheet.css'
 
 function formatHours(h) {
@@ -69,6 +70,7 @@ export default function StopSessionSheet() {
 
   return (
     <div className="sss-backdrop" onClick={handleDone} aria-modal="true" role="dialog">
+      <KeyboardAwareView mode="sheet" className="sss-anchor">
       <div
         className="sss-sheet"
         onClick={(e) => e.stopPropagation()}
@@ -121,6 +123,7 @@ export default function StopSessionSheet() {
           {saving ? 'Saving…' : 'Done'}
         </button>
       </div>
+      </KeyboardAwareView>
     </div>
   )
 }

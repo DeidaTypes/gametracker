@@ -499,12 +499,19 @@
   align-items: flex-end;
 }
 
+/* Keyboard lift + fixed anchoring come from the shared .kb-sheet-lift wrapper
+   (styles/keyboard.css); Motion owns `transform` on .tgl-sheet for the
+   spring entrance, so the two cannot share an element. */
+.tgl-sheet-anchor {
+  z-index: 301;
+}
+
 .tgl-sheet {
   width: 100%;
   background: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
   border-radius: 20px 20px 0 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--keyboard-safe-bottom);
   overflow: hidden;
 }
 

@@ -34,6 +34,7 @@ import { useReactions } from '../hooks/useReactions'
 import { useDmPresence } from '../hooks/useDmPresence'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
+import KeyboardAwareView from '../components/KeyboardAwareView'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -791,7 +792,12 @@ function MessagesThread() {
         ]}
       />
 
-      <form className="dm-thread__composer" onSubmit={handleSend}>
+      <KeyboardAwareView
+        as="form"
+        mode="composer"
+        className="dm-thread__composer"
+        onSubmit={handleSend}
+      >
         {pendingAttachment && (
           <div className="dm-composer-attachment">
             {pendingAttachment.cover_url && (
@@ -857,7 +863,7 @@ function MessagesThread() {
             )}
           </button>
         </div>
-      </form>
+      </KeyboardAwareView>
     </div>
   )
 }

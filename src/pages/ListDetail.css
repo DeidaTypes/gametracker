@@ -9,22 +9,9 @@
   --page-padding: 16px;
 }
 
-/* ── Keyboard-aware bottom clearance ──
-   `.list-detail-page` is the content root that drives the scrollable
-   height of `.main-content` (the app's single scroll container — see
-   the comment in ListDetail.jsx above the header-fade scroll listener).
-   We can't add this padding to `.main-content` itself since it's shared
-   by every page; scoping it here (like ReviewComments.css's `.rc-scroll`
-   pattern) only affects ListDetail.
-   Gated behind `body.keyboard-open` (written by main.jsx) so the page's
-   default bottom-nav-safe-area spacing is untouched until the keyboard
-   is actually up — at that point the floating nav is already hidden by
-   the same class, so this padding is the only clearance the composer
-   needs to clear the keyboard. */
-body.keyboard-open .list-detail-page {
-  padding-bottom: calc(var(--keyboard-inset, 0px) + 28px);
-  transition: padding-bottom 220ms cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Keyboard clearance for the comment composer and the description editor is
+   handled globally on `.main-content` (the app's single scroll container) in
+   src/styles/keyboard.css — this page needs no rule of its own. */
 
 /* ── Ambient wash — Cobalt Modern multi-hue glow behind the top of the
    page only. Tracker lists only (custom lists are one continuous

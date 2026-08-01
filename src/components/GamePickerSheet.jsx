@@ -73,7 +73,7 @@ function GamePickerSheet({ isOpen = true, onSelect, onCancel }) {
       onClose={onCancel}
       ariaLabel="Pick a game"
       maxWidth={480}
-      className="gps-sheet"
+      className="gps-sheet kb-modal-fill"
     >
       {/* Header */}
       <div className="gps-header">

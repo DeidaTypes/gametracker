@@ -10,15 +10,17 @@
   z-index: 200;
 }
 
-.sgs-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+/* Fixed positioning + keyboard lift live on the shared .kb-sheet-lift anchor
+   (styles/keyboard.css) that wraps this element; here we own only z-index
+   and visuals. */
+.sgs-anchor {
   z-index: 201;
+}
+
+.sgs-sheet {
   background: var(--bg-surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px));
+  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + var(--keyboard-safe-bottom));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);

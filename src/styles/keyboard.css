@@ -1,0 +1,167 @@
+/* ============================================================
+   keyboard.css — the shared keyboard-avoidance contract.
+
+   Every typable surface in the app lifts using the tokens and
+   utilities in this file, so a comment box, a DM box, a bottom
+   sheet and a search field all behave identically.
+
+   Pair with:
+     src/services/keyboardInset.js  — writes --keyboard-inset
+     src/components/KeyboardAwareView.jsx — applies these classes
+     src/hooks/useKeyboardInset.js  — JS access when needed
+
+   Do NOT hand-roll `bottom: var(--keyboard-inset)` or
+   `transition: padding-bottom` in a component stylesheet. Those
+   animate layout properties and desync from the native curve.
+   ============================================================ */
+
+:root {
+  /* Raw keyboard height, written by keyboardInset.js. Declared here so the
+     var resolves during SSR/first paint and in Storybook-less unit contexts. */
+  --keyboard-inset: 0px;
+
+  /* iOS animates the keyboard over 0.25s using UIViewAnimationCurve(7), a
+     private curve. The Capacitor plugin reads the real duration natively but
+     never forwards it to JS (its event payload is only { keyboardHeight }),
+     so we match it with the standard bezier approximation of curve 7.
+     One duration + one curve for the whole app — this is what makes every
+     surface move as a single piece with the keyboard. */
+  --keyboard-anim-duration: 0.25s;
+  --keyboard-anim-ease: cubic-bezier(0.38, 0.7, 0.125, 1);
+
+  /* How far a bottom-anchored element must travel. Elements already sitting
+     above the tab bar only need to make up the difference. Clamped at 0 so
+     nothing moves when the keyboard is down. */
+  --keyboard-lift: max(0px, calc(var(--keyboard-inset) - var(--bottom-nav-safe-area, 80px)));
+
+  /* Bottom padding for anything pinned to the viewport bottom. Clears the
+     home indicator at rest; collapses to 0 when the keyboard is up, because
+     the keyboard already covers the indicator and stacking both leaves a
+     dead gap between the field and the key rows. */
+  --keyboard-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body.keyboard-open {
+  --keyboard-safe-bottom: 0px;
+}
+
+/* ── Fixed bottom composers ──────────────────────────────────────────────
+   DM composer, review comment composers. These sit above the tab bar at
+   rest, so they lift by --keyboard-lift. transform only: it is composited,
+   so the slide never triggers layout during the keyboard animation. */
+.kb-lift {
+  transform: translate3d(0, calc(-1 * var(--keyboard-lift)), 0);
+  transition: transform var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+  will-change: transform;
+}
+
+/* ── Bottom sheets ───────────────────────────────────────────────────────
+   Anchored to the viewport bottom, so they must clear the entire keyboard.
+
+   This is an outer anchor element that owns both the fixed positioning and
+   the lift, wrapping the sheet itself. Bottom sheets animate their entrance
+   with Motion's `y`, which writes an inline `transform` — applying the lift
+   to the same element would let the two fight, with the inline style winning.
+   Separating them lets the sheet spring in while the anchor tracks the
+   keyboard, independently. Components supply only z-index and visuals. */
+.kb-sheet-lift {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: translate3d(0, calc(-1 * var(--keyboard-inset)), 0);
+  transition: transform var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+  will-change: transform;
+}
+
+/* ── Centered modals ─────────────────────────────────────────────────────
+   Shift the card up by half the keyboard height (it is centered, so half the
+   travel re-centers it in the remaining space) and cap its height so tall
+   content scrolls instead of overflowing behind the keyboard. */
+.kb-modal-lift {
+  transform: translate3d(0, calc(-1 * var(--keyboard-inset) / 2), 0);
+  transition: transform var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+  will-change: transform;
+}
+
+.kb-modal-fit {
+  max-height: min(80vh, calc(100dvh - var(--keyboard-inset) - 40px));
+}
+
+/* For modals that want to fill the available height rather than hug their
+   content (search-style pickers with a long results list). Same budget as
+   .kb-modal-fit, applied as a fixed height. */
+.kb-modal-fill {
+  height: min(80vh, calc(100dvh - var(--keyboard-inset) - 40px));
+}
+
+/* Animating a backdrop-filter'd layer forces a full-screen blur re-raster on
+   every frame, which is the most expensive thing that can happen during the
+   keyboard slide. Drop the blur for the duration of the transition; the dim
+   layer underneath keeps the modal legible so the swap is imperceptible. */
+body.keyboard-animating .kb-no-blur-while-animating {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── Scrollable / in-flow form surfaces ──────────────────────────────────
+   Reserve space at the bottom of the scroll container so the focused field
+   can actually be scrolled clear of the keyboard. WKWebView cannot do this
+   itself here: the plugin zeroes the scroll view's contentInset on every
+   keyboard event, so without reserved padding there is nowhere to scroll to.
+
+   padding-bottom is a layout property, but this one is safe to transition:
+   it changes the scrollable extent rather than moving a painted element, and
+   the content itself is translated by the browser's scroll, not by us. */
+.kb-scroll-pad {
+  padding-bottom: var(--keyboard-inset);
+  transition: padding-bottom var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+}
+
+/* Same idea for surfaces that already reserve tab-bar space at rest and only
+   need the larger of the two. */
+.kb-scroll-pad-nav {
+  padding-bottom: max(var(--bottom-nav-safe-area, 80px), var(--keyboard-inset));
+  transition: padding-bottom var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+}
+
+/* ── App-wide page scroller ──────────────────────────────────────────────
+   `.main-content` is the app's single scroll container: every route, auth
+   pages included, renders inside it. Reserving keyboard clearance here is
+   what makes in-flow inputs — sign-in, settings, list description, inline
+   comment edits, search fields and their result lists — scrollable clear of
+   the keyboard without any page needing its own rule.
+
+   Only while the keyboard is up, so each page's resting bottom spacing is
+   untouched; at that point the floating nav is hidden by the same body class,
+   so this padding is the only clearance needed. !important + the extra
+   specificity are required to beat BottomNav.css's own !important rule. */
+body.keyboard-open .main-content {
+  padding-bottom: calc(var(--keyboard-inset) + 28px) !important;
+  transition: padding-bottom var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+}
+
+/* Give every field breathing room when it is scrolled into view, so a focused
+   input never lands flush against the top edge of the keyboard. Global by
+   design: any new text field anywhere in the app inherits it, including the
+   shared form primitives in src/components/forms/. */
+input,
+textarea,
+select,
+[contenteditable='true'] {
+  scroll-margin-bottom: 24px;
+  scroll-margin-top: 24px;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────
+   Still lift (never leave an input covered — that is a correctness issue,
+   not decoration), but arrive instantly instead of animating. */
+@media (prefers-reduced-motion: reduce) {
+  .kb-lift,
+  .kb-sheet-lift,
+  .kb-modal-lift,
+  .kb-scroll-pad,
+  .kb-scroll-pad-nav {
+    transition-duration: 0.01ms;
+  }
+}

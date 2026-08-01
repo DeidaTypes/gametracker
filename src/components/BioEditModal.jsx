@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
 import { X } from 'lucide-react'
 import { updateProfile } from '../services/profileService'
 import { supabase } from '../services/supabase'
 import { showToast } from './Toast'
-import { useMotionPreference } from '../hooks/useMotionPreference'
 import ActionSheet from './ActionSheet'
+import CenteredModal from './CenteredModal'
 import './BioEditModal.css'
 
 const BIO_MAX = 160
 
 /**
  * BioEditModal — centered modal for editing the user's bio.
+ *
+ * Presentation (including keyboard avoidance) comes from the shared
+ * CenteredModal shell; this component owns only the bio-editing behaviour.
  *
  * Props:
  *   isOpen      – boolean
@@ -26,7 +27,6 @@ function BioEditModal({ isOpen, onClose, currentBio = '', onSave }) {
   const [focused, setFocused] = useState(false)
   const [discardSheetOpen, setDiscardSheetOpen] = useState(false)
   const textareaRef = useRef(null)
-  const { reduced } = useMotionPreference()
 
   // Sync textarea whenever the modal opens or currentBio changes
   useEffect(() => {
@@ -109,82 +109,59 @@ function BioEditModal({ isOpen, onClose, currentBio = '', onSave }) {
     setSaving(false)
   }
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-  const cardTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 400, damping: 30 }
-
-  return createPortal(
+  return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="bio-modal-overlay"
+      <CenteredModal
+        isOpen={isOpen}
+        onClose={handleDismiss}
+        ariaLabel="Edit bio"
+        className="bio-modal-card"
+      >
+        {/* Header */}
+        <div className="bio-modal-header">
+          <h2 className="bio-modal-title">Edit bio</h2>
+          <button
+            type="button"
+            className="bio-modal-close"
             onClick={handleDismiss}
-            aria-modal="true"
-            role="dialog"
-            aria-label="Edit bio"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={backdropTransition}
+            aria-label="Close"
           >
-            <motion.div
-              className="bio-modal-card"
-              onClick={(e) => e.stopPropagation()}
-              initial={reduced ? false : { opacity: 0, scale: 0.94, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 8 }}
-              transition={cardTransition}
-            >
-              {/* Header */}
-              <div className="bio-modal-header">
-                <h2 className="bio-modal-title">Edit bio</h2>
-                <button
-                  type="button"
-                  className="bio-modal-close"
-                  onClick={handleDismiss}
-                  aria-label="Close"
-                >
-                  <X size={24} aria-hidden="true" />
-                </button>
-              </div>
+            <X size={24} aria-hidden="true" />
+          </button>
+        </div>
 
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                className="bio-modal-textarea"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder="Tell people what you play…"
-                aria-label="Bio"
-              />
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          className="bio-modal-textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Tell people what you play…"
+          aria-label="Bio"
+        />
 
-              {/* Character counter — conditional */}
-              {showCounter && (
-                <p
-                  className={`bio-modal-counter${overLimit ? ' bio-modal-counter--over' : ''}`}
-                  aria-live="polite"
-                >
-                  {text.length}/160
-                </p>
-              )}
-
-              {/* Save button */}
-              <button
-                type="button"
-                className="bio-modal-save"
-                onClick={handleSave}
-                disabled={!isDirty || overLimit || saving}
-              >
-                Save Changes
-              </button>
-            </motion.div>
-          </motion.div>
+        {/* Character counter — conditional */}
+        {showCounter && (
+          <p
+            className={`bio-modal-counter${overLimit ? ' bio-modal-counter--over' : ''}`}
+            aria-live="polite"
+          >
+            {text.length}/160
+          </p>
         )}
-      </AnimatePresence>
+
+        {/* Save button */}
+        <button
+          type="button"
+          className="bio-modal-save"
+          onClick={handleSave}
+          disabled={!isDirty || overLimit || saving}
+        >
+          Save Changes
+        </button>
+      </CenteredModal>
 
       {/* Discard confirm sheet */}
       <ActionSheet
@@ -195,8 +172,7 @@ function BioEditModal({ isOpen, onClose, currentBio = '', onSave }) {
           { label: 'Discard', onClick: handleDiscard, destructive: true },
         ]}
       />
-    </>,
-    document.body
+    </>
   )
 }
 

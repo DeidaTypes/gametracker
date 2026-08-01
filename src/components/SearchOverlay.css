@@ -133,11 +133,13 @@
 }
 
 /* ---- Scrollable body ---- */
+/* Keyboard clearance comes from the shared .kb-scroll-pad-nav class
+   (styles/keyboard.css), applied in SearchOverlay.jsx — it takes whichever is
+   larger of the tab-bar space and the keyboard. */
 .so-body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: calc(var(--bottom-nav-safe-area) + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling: touch;
 }
 

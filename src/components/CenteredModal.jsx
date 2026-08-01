@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import '../styles/keyboard.css'
 import './CenteredModal.css'
 
 /**
@@ -12,12 +13,11 @@ import './CenteredModal.css'
  * does NOT depend on scroll position or drag gestures: it fades + scales in
  * (0.95 → 1.0, 250 ms) over a dimmed, blurred backdrop and stays centered.
  *
- * Keyboard-aware: with Capacitor's Keyboard `resize` set to `none`, the
- * WebView stays full-height and the global `--keyboard-inset` CSS variable
- * (written once in main.jsx from window.visualViewport) tells us how much
- * space the keyboard + accessory bar occupy. The overlay pads its bottom by
- * that inset so the centered card lifts above the keyboard, and the card caps
- * its height to the space that remains visible. No per-modal measurement.
+ * Keyboard-aware for free: every modal rendered through this shell adopts the
+ * shared `modal` keyboard behaviour (see src/styles/keyboard.css). The card is
+ * transform-lifted by half the keyboard height — re-centering it in the space
+ * that remains — and capped in height so overflow scrolls rather than hiding
+ * behind the keyboard. No per-modal measurement, and no per-modal CSS.
  *
  * The card itself is `overflow: hidden` + flex column; children own their
  * internal scroll regions (so e.g. a pinned header can stay fixed while a
@@ -81,27 +81,29 @@ function CenteredModal({
     <AnimatePresence onExitComplete={onExited}>
       {isOpen && (
         <motion.div
-          className="cm-overlay"
+          className="cm-overlay kb-no-blur-while-animating"
           onClick={handleBackdrop}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={backdropTransition}
         >
-          <motion.div
-            className={`cm-card ${className}`.trim()}
-            style={{ maxWidth: `${maxWidth}px` }}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={ariaLabel}
-            initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
-            animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
-            transition={cardTransition}
-          >
-            {children}
-          </motion.div>
+          <div className="cm-lift kb-modal-lift">
+            <motion.div
+              className={`cm-card kb-modal-fit ${className}`.trim()}
+              style={{ maxWidth: `${maxWidth}px` }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={ariaLabel}
+              initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              transition={cardTransition}
+            >
+              {children}
+            </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>,

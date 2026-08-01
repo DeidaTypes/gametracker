@@ -9,7 +9,6 @@
   "plugins": {
     "Keyboard": {
       "resize": "none",
-      "resizeOnFullScreen": true,
       "style": "DARK"
     }
   }

@@ -359,7 +359,7 @@ function ComposeSheet({ isOpen, onClose, onPick, currentUserId }) {
       onClose={onClose}
       ariaLabel="New message"
       maxWidth={520}
-      className="dm-compose"
+      className="dm-compose kb-modal-fill"
     >
       <header className="dm-compose__header">
         <button

@@ -115,12 +115,9 @@
   margin: 0 auto;
 }
 
-/* When the keyboard is open the composer has risen. Increase padding-bottom so
-   the last comment stays visible above the raised bar. Use max() so the padding
-   never drops below the default during the hide transition. */
-body.keyboard-open .rd-scroll {
-  padding-bottom: max(calc(120px + var(--bottom-nav-safe-area, 80px)), calc(var(--keyboard-inset, 0px) + 24px));
-}
+/* Extra clearance when the composer rises with the keyboard is added globally
+   on `.main-content` in src/styles/keyboard.css; the resting padding above
+   already covers the composer's own height. */
 
 /* ── Review skeleton ─────────────────────────────────────────────────── */
 
@@ -602,14 +599,10 @@ body.keyboard-open .rd-scroll {
  * position: fixed so the bar rides the keyboard independently of the page
  * scroll — same pattern as MessagesThread (.dm-thread__composer).
  *
- * bottom: max(--bottom-nav-safe-area, --keyboard-inset)
- *   · keyboard hidden  → max(80px, 0px)  = 80px  — parks above the pill nav
- *   · keyboard visible → max(80px, ~344px) = ~344px — rises with the keyboard
- *
- * --keyboard-inset is written by main.jsx from window.visualViewport and
- * already includes ACCESSORY_BAR_PX (44 px) for the iOS "Done" bar, so the
- * composer sits flush on the Done bar's top edge when the keyboard is open.
- * No custom offset, no touch of main.jsx or capacitor.config.json.
+ * Rest position only: parks above the pill nav. The keyboard lift comes from
+ * the shared .kb-lift class (styles/keyboard.css) applied via
+ * <KeyboardAwareView mode="composer">, so this bar, the DM composer and the
+ * review-comments composer all travel the same distance on the same curve.
  */
 .rd-composer {
   position: fixed;
@@ -621,9 +614,6 @@ body.keyboard-open .rd-scroll {
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  transform: translateY(calc(-1 * max(0px, var(--keyboard-inset, 0px) - var(--bottom-nav-safe-area, 80px))));
-  transition: transform 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
-  will-change: transform;
 }
 
 /* Optional reply-hint banner shown above the input row */

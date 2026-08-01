@@ -248,7 +248,8 @@
 
 /* Give the recipient picker room: fill available popup height. */
 .cm-card.dm-compose {
-  height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
+  /* Height budget comes from the shared .kb-modal-fill class in
+     styles/keyboard.css, applied on the element in MessagesInbox.jsx. */
 }
 
 .dm-compose__header {

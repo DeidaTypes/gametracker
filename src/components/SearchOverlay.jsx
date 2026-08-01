@@ -31,6 +31,7 @@ import { showToast } from '../components/Toast'
 import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
+import KeyboardAwareView from '../components/KeyboardAwareView'
 import './SearchOverlay.css'
 
 // ─── Static genre data ─────────────────────────────────────────────────────
@@ -717,7 +718,7 @@ function SearchOverlay() {
         </div>
 
         {/* ── Scrollable body ─────────────────────────────────── */}
-        <div className="so-body">
+        <KeyboardAwareView mode="scroll" reserveNav className="so-body">
           {!hasQuery ? (
             <>
               <RecentGamesSection
@@ -794,7 +795,7 @@ function SearchOverlay() {
               </div>
             </>
           )}
-        </div>
+        </KeyboardAwareView>
       </motion.div>
     </>
   )

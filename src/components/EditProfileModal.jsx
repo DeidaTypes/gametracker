@@ -11,6 +11,7 @@ import { AUTH_ERRORS } from '../services/auth'
 import ActionSheet from './ActionSheet'
 import FavoritesPickerSheet from './FavoritesPickerSheet'
 import BioEditModal from './BioEditModal'
+import KeyboardAwareView from './KeyboardAwareView'
 import './EditProfileModal.css'
 
 const AVATAR_MAX_FILE_MB = 10
@@ -460,7 +461,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
           </div>
 
           {/* ── Scrollable body ─────────────────────────────────── */}
-          <div className="ep-scroll-body">
+          <KeyboardAwareView mode="scroll" className="ep-scroll-body">
 
             {/* ── Banner + avatar hero ──────────────────────────── */}
             <div className="ep-hero">
@@ -724,7 +725,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
               </div>
 
             </div>{/* /ep-groups */}
-          </div>{/* /ep-scroll-body */}
+          </KeyboardAwareView>{/* /ep-scroll-body */}
 
         </div>{/* /ep-sheet */}
       </div>{/* /ep-overlay */}

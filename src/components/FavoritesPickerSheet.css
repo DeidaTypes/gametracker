@@ -6,7 +6,8 @@
 
 /* Give the picker room for the cover grid: fill available popup height. */
 .cm-card.fps-sheet {
-  height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
+  /* Height budget comes from the shared .kb-modal-fill class in
+     styles/keyboard.css, applied on the element in FavoritesPickerSheet.jsx. */
 }
 
 /* ── Header row: title + Done ───────────────────────────── */

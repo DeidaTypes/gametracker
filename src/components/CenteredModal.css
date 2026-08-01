@@ -16,14 +16,27 @@
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   backdrop-filter: blur(14px) saturate(160%);
   padding: 20px;
-  /* Lift the centered card above the keyboard using the single global inset
-     written in main.jsx. With the keyboard down this is 0 and the home-
-     indicator safe area applies instead. */
-  padding-bottom: calc(20px + max(env(safe-area-inset-bottom, 0px), var(--keyboard-inset, 0px)));
+  /* Static padding only. The keyboard lift moved to .cm-lift below, which
+     transforms instead of re-laying-out: animating padding-bottom here forced
+     a full-screen re-raster of this element's backdrop-filter on every frame
+     of the keyboard slide, which was the single biggest source of jank. */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
   box-sizing: border-box;
-  /* Smoothly track the keyboard as it slides in/out. */
-  transition: padding-bottom 0.2s ease;
+}
+
+/* ── Keyboard lift layer ──
+   A plain element between the overlay and the card, because Motion owns
+   `transform` on both of those for the fade/scale animation. Carries the
+   shared .kb-modal-lift class from styles/keyboard.css. */
+.cm-lift {
+  display: flex;
+  justify-content: center;
+  /* center, not the default stretch — otherwise the card would grow to the
+     line's cross size instead of honouring its own max-height */
+  align-items: center;
+  width: 100%;
+  min-height: 0;
 }
 
 /* ── Centered card ── */
@@ -37,10 +50,9 @@
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.4);
-  /* Stay within the space above the keyboard; never exceed ~80vh. The
-     WebView is full-height (resize: none), so the visible area is the
+  /* Height cap comes from the shared .kb-modal-fit class (styles/keyboard.css):
+     the WebView is full-height under resize:none, so the visible area is the
      viewport minus the keyboard inset and our top/bottom padding. */
-  max-height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
   display: flex;
   flex-direction: column;
   /* overflow: clip instead of hidden — same visual rounding/clipping behaviour
@@ -78,4 +90,10 @@
   .cm-overlay {
     transition: none;
   }
+}
+
+/* The overlay's own padding must stay clear of the keyboard even though the
+   card is transform-lifted, so tall cards cannot bottom out behind it. */
+body.keyboard-open .cm-overlay {
+  padding-bottom: 20px;
 }

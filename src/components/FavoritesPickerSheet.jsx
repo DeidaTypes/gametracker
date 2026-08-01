@@ -202,7 +202,7 @@ function FavoritesPickerSheet({
       onClose={onClose}
       ariaLabel="Edit favorite games"
       maxWidth={480}
-      className="fps-sheet"
+      className="fps-sheet kb-modal-fill"
     >
       {/* Header: title + Done */}
       <div className="fps-header">

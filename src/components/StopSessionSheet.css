@@ -22,6 +22,14 @@
   to   { opacity: 1; }
 }
 
+/* Keyboard lift + fixed anchoring come from the shared .kb-sheet-lift wrapper
+   (styles/keyboard.css); this owns only stacking. The lift must live on a
+   separate element because the slide-up animation below fills forwards onto
+   `transform`, which would otherwise clobber it. */
+.sss-anchor {
+  z-index: 501;
+}
+
 /* Sheet */
 .sss-sheet {
   width: 100%;
@@ -30,7 +38,7 @@
   background: var(--color-bg-elevated, #1a2240);
   border-top: 1px solid var(--color-border, rgba(148, 168, 212, 0.12));
   border-radius: 20px 20px 0 0;
-  padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding: 16px 20px calc(var(--keyboard-safe-bottom) + 20px);
   display: flex;
   flex-direction: column;
   gap: 16px;

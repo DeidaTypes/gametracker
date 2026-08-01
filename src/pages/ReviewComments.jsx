@@ -28,6 +28,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { bumpCommentsCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
+import { whenKeyboardSettled } from '../services/keyboardInset'
+import KeyboardAwareView from '../components/KeyboardAwareView'
 import './ReviewComments.css'
 
 /* ============================================================
@@ -602,15 +604,14 @@ function ReviewComments() {
     setDraft((prev) => prev.replace(/^@\S+\s*/, ''))
   }, [])
 
-  // When the textarea gains focus the keyboard slides in. After it
-  // settles (~320 ms) we either scroll the comment being edited into
-  // view (edit mode) or scroll the bottom sentinel into view (normal
-  // mode). `.rc-scroll` no longer owns its own scroll (see
-  // ReviewComments.css) — `.main-content` is the real scroll container,
-  // so we scroll via scrollIntoView() rather than setting scrollTop
-  // directly on a ref.
+  // When the textarea gains focus the keyboard slides in. Once it has
+  // actually settled we either scroll the comment being edited into view
+  // (edit mode) or scroll the bottom sentinel into view (normal mode).
+  // `.rc-scroll` no longer owns its own scroll (see ReviewComments.css) —
+  // `.main-content` is the real scroll container, so we scroll via
+  // scrollIntoView() rather than setting scrollTop directly on a ref.
   const handleComposerFocus = useCallback(() => {
-    setTimeout(() => {
+    whenKeyboardSettled(() => {
       const editing = editingCommentRef.current
       if (editing) {
         const el = document.querySelector(`[data-comment-id="${editing.id}"]`)
@@ -618,7 +619,7 @@ function ReviewComments() {
       } else {
         threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       }
-    }, 320)
+    })
   }, [])
 
   // Enter edit mode: pre-fill the pinned composer and focus it.
@@ -843,7 +844,12 @@ function ReviewComments() {
         contentId={reportTarget?.id}
       />
 
-      <form className="rc-composer" onSubmit={handleSubmit}>
+      <KeyboardAwareView
+        as="form"
+        mode="composer"
+        className="rc-composer"
+        onSubmit={handleSubmit}
+      >
         {/* Edit-mode strip — shown above the composer when editing a comment */}
         {editingComment && (
           <div className="rc-composer__edit-chip">
@@ -906,7 +912,7 @@ function ReviewComments() {
             }
           </button>
         </div>
-      </form>
+      </KeyboardAwareView>
     </div>
   )
 }

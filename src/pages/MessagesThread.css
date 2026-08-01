@@ -692,16 +692,13 @@
 
 /* ── Composer ───────────────────────────────────────────────────────── */
 
+/* Rest position only. The keyboard lift comes from the shared .kb-lift class
+   (styles/keyboard.css), applied via <KeyboardAwareView mode="composer">. */
 .dm-thread__composer {
   position: fixed;
   left: 0;
   right: 0;
-  /* Sit above the bottom nav. var(--bottom-nav-safe-area) accounts for
-     the iOS home indicator on devices with no chin. When the keyboard is
-     up the nav is hidden, so we lift to the keyboard top instead using the
-     single global --keyboard-inset (which already includes the accessory
-     bar). max() picks whichever is taller. */
-  bottom: max(var(--bottom-nav-safe-area), var(--keyboard-inset, 0px));
+  bottom: var(--bottom-nav-safe-area);
   z-index: 6;
   display: flex;
   flex-direction: column;
@@ -711,7 +708,6 @@
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  transition: bottom 0.2s ease;
 }
 
 .dm-thread__input {

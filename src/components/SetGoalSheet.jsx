@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import KeyboardAwareView from './KeyboardAwareView'
 import './SetGoalSheet.css'
 
 /**
@@ -76,63 +77,65 @@ export default function SetGoalSheet({ isOpen, onClose, onSave, year, current = 
           />
 
           {/* Sheet */}
-          <motion.div
-            className="sgs-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Set ${year} games goal`}
-            initial={reduced ? {} : { y: '100%' }}
-            animate={reduced ? {} : { y: 0 }}
-            exit={reduced ? {} : { y: '100%' }}
-            transition={springProps}
-          >
-            <div className="sgs-handle" aria-hidden="true" />
-
-            <h2 className="sgs-title">Games in {year}</h2>
-            <p className="sgs-sub">
-              How many games do you want to finish this year?
-            </p>
-
-            <div className="sgs-input-row">
-              <input
-                ref={inputRef}
-                className="sgs-input"
-                type="number"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={1}
-                max={9999}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder="e.g. 24"
-                aria-label="Target number of games"
-              />
-              <span className="sgs-input-unit">games</span>
-            </div>
-
-            {value !== '' && !valid && (
-              <p className="sgs-hint" role="alert">Enter a number between 1 and 9999.</p>
-            )}
-
-            <button
-              type="button"
-              className="sgs-save-btn"
-              onClick={handleSave}
-              disabled={!valid || saving}
-              aria-disabled={!valid || saving}
+          <KeyboardAwareView mode="sheet" className="sgs-anchor">
+            <motion.div
+              className="sgs-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Set ${year} games goal`}
+              initial={reduced ? {} : { y: '100%' }}
+              animate={reduced ? {} : { y: 0 }}
+              exit={reduced ? {} : { y: '100%' }}
+              transition={springProps}
             >
-              {saving ? 'Saving…' : current ? 'Update goal' : 'Set goal'}
-            </button>
+              <div className="sgs-handle" aria-hidden="true" />
 
-            <button
-              type="button"
-              className="sgs-cancel-btn"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-          </motion.div>
+              <h2 className="sgs-title">Games in {year}</h2>
+              <p className="sgs-sub">
+                How many games do you want to finish this year?
+              </p>
+
+              <div className="sgs-input-row">
+                <input
+                  ref={inputRef}
+                  className="sgs-input"
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min={1}
+                  max={9999}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder="e.g. 24"
+                  aria-label="Target number of games"
+                />
+                <span className="sgs-input-unit">games</span>
+              </div>
+
+              {value !== '' && !valid && (
+                <p className="sgs-hint" role="alert">Enter a number between 1 and 9999.</p>
+              )}
+
+              <button
+                type="button"
+                className="sgs-save-btn"
+                onClick={handleSave}
+                disabled={!valid || saving}
+                aria-disabled={!valid || saving}
+              >
+                {saving ? 'Saving…' : current ? 'Update goal' : 'Set goal'}
+              </button>
+
+              <button
+                type="button"
+                className="sgs-cancel-btn"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </KeyboardAwareView>
         </>
       )}
     </AnimatePresence>

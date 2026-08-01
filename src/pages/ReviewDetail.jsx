@@ -28,6 +28,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { bumpCommentsCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
+import { whenKeyboardSettled } from '../services/keyboardInset'
+import KeyboardAwareView from '../components/KeyboardAwareView'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -719,8 +721,8 @@ function ReviewDetail() {
   const handleComposerFocus = useCallback(() => {
     // Scroll immediately so the newest comments are visible above the composer
     scrollToBottom()
-    // Also scroll after the keyboard finishes animating (~300 ms on iOS)
-    window.setTimeout(scrollToBottom, 320)
+    // Then again once the keyboard has actually settled
+    whenKeyboardSettled(scrollToBottom)
   }, [scrollToBottom])
 
   /* ── Derived ──────────────────────────────────────────────── */
@@ -1050,11 +1052,14 @@ function ReviewDetail() {
       {/* ── Inline keyboard-attached composer ────── */}
       {/*
        * In-flow last child of .rd-page (position:fixed, rides keyboard).
-       * --keyboard-inset (written by main.jsx) already includes the 44 px
-       * iOS "Done" accessory bar, so this bar sits flush on the Done bar's
-       * top edge.  No custom offset or suppression of setAccessoryBarVisible.
+       * The lift comes from the shared composer mode, so this bar sits flush
+       * on the iOS "Done" accessory bar's top edge when the keyboard is up.
        */}
-      <div className="rd-composer" aria-label="Comment composer">
+      <KeyboardAwareView
+        mode="composer"
+        className="rd-composer"
+        aria-label="Comment composer"
+      >
         {replyTo && (
           <div className="rd-composer__reply-hint">
             <span>
@@ -1125,7 +1130,7 @@ function ReviewDetail() {
             <LuSend size={15} aria-hidden="true" />
           </button>
         </div>
-      </div>
+      </KeyboardAwareView>
 
       {/* ── Report: comment ──────────────────────────── */}
       <ReportSheet

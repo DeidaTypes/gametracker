@@ -102,12 +102,9 @@
   margin: 0 auto;
 }
 
-/* When the keyboard is open the composer has risen. Increase padding-bottom so
-   the last comment stays visible above the raised bar. Use max() so the padding
-   never drops below the default during the hide transition. */
-body.keyboard-open .rc-scroll {
-  padding-bottom: max(calc(120px + var(--bottom-nav-safe-area, 80px)), calc(var(--keyboard-inset, 0px) + 24px));
-}
+/* Extra clearance when the composer rises with the keyboard is added globally
+   on `.main-content` in src/styles/keyboard.css; the resting padding above
+   already covers the composer's own height. */
 
 .rc-review-wrap {
   display: block;
@@ -438,12 +435,12 @@ body.keyboard-open .rc-scroll {
 
 /* ── Composer ───────────────────────────────────────────────────────── */
 
+/* Rest position only. The keyboard lift comes from the shared .kb-lift class
+   (styles/keyboard.css), applied via <KeyboardAwareView mode="composer">. */
 .rc-composer {
   position: fixed;
   left: 0;
   right: 0;
-  /* Static rest position: always above the bottom nav bar.
-     The keyboard lift is handled by transform (GPU-composited) below. */
   bottom: var(--bottom-nav-safe-area, 80px);
   z-index: 6;
   padding: 10px var(--page-padding) 10px;
@@ -451,11 +448,6 @@ body.keyboard-open .rc-scroll {
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   border-top: 1px solid var(--color-border);
-  /* translateY runs on the GPU compositor — no layout recalc, no jank.
-     When --keyboard-inset changes the browser fires the transition automatically. */
-  transform: translateY(calc(-1 * max(0px, var(--keyboard-inset, 0px) - var(--bottom-nav-safe-area, 80px))));
-  transition: transform 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
-  will-change: transform;
 }
 
 /* Edit-mode strip — sits directly above the composer row */

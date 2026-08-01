@@ -7,6 +7,7 @@ import {
 } from '../services/listInteractionService'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { whenKeyboardSettled } from '../services/keyboardInset'
 import './ListComments.css'
 
 
@@ -193,14 +194,11 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
             rows={1}
             aria-label="Write a comment"
             onFocus={() => {
-              // Wait 50ms so main.jsx has finished writing the updated
-              // --keyboard-inset (and .list-detail-page's padding-bottom
-              // has picked it up) before we scroll — otherwise we'd
-              // scroll to where the composer *was* about to land, not
-              // where the keyboard has actually pushed the layout to.
-              setTimeout(() => {
+              // Scroll only once the keyboard has settled, so we target where
+              // the layout actually ended up rather than where it was headed.
+              whenKeyboardSettled(() => {
                 textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-              }, 50)
+              })
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {

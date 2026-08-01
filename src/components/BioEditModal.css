@@ -2,31 +2,11 @@
    BioEditModal — centered modal for inline bio editing
    ============================================================ */
 
-.bio-modal-overlay {
-  position: fixed;
-  inset: 0;
-  /* var(--bg-base) is #0a0f1f; hard-coded to allow 60% alpha */
-  background: rgba(10, 15, 31, 0.60);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 1020;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  /* Lift the centered card above the keyboard (+ accessory bar) using the
-     single global inset written in main.jsx. 0 when the keyboard is down. */
-  padding-bottom: calc(24px + var(--keyboard-inset, 0px));
-  transition: padding-bottom 0.2s ease;
-}
+/* Overlay, centering and keyboard avoidance now come from the shared
+   CenteredModal shell; this file styles the card contents only. */
 
 .bio-modal-card {
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg, 14px);
-  max-width: 360px;
-  width: 100%;
   padding: 20px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
 }
 
 /* ── Header ──────────────────────────────────────────────── */
@@ -147,17 +127,8 @@
   cursor: not-allowed;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bio-modal-overlay,
-  .bio-modal-card {
-    animation: none;
-    transition: none;
-  }
-}
-
-/* The card itself caps to the space above the keyboard so a long bio never
-   pushes the Save button behind it. */
+/* Height capping against the keyboard comes from CenteredModal's .kb-modal-fit;
+   this only allows a long bio to scroll within that budget. */
 .bio-modal-card {
-  max-height: calc(100dvh - 48px - var(--keyboard-inset, 0px));
   overflow-y: auto;
 }

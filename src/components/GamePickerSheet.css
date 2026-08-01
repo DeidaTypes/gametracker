@@ -5,7 +5,8 @@
 
 /* Give the picker room for results: fill the available popup height. */
 .cm-card.gps-sheet {
-  height: min(80vh, calc(100dvh - var(--keyboard-inset, 0px) - 40px));
+  /* Height budget comes from the shared .kb-modal-fill class in
+     styles/keyboard.css, applied on the element in GamePickerSheet.jsx. */
 }
 
 /* ---- Header ---- */

@@ -33,6 +33,7 @@ import { logManualSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
 import { showToast } from './Toast'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import KeyboardAwareView from './KeyboardAwareView'
 import './TrackerGameList.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ function LogSessionSheet({ game, isOpen, onClose, onLogged }) {
           exit={{ opacity: 0 }}
           transition={backdropTransition}
         >
+          <KeyboardAwareView mode="sheet" className="tgl-sheet-anchor">
           <motion.div
             className="tgl-sheet"
             onClick={(e) => e.stopPropagation()}
@@ -262,6 +264,7 @@ function LogSessionSheet({ game, isOpen, onClose, onLogged }) {
               Cancel
             </button>
           </motion.div>
+          </KeyboardAwareView>
         </motion.div>
       )}
     </AnimatePresence>,

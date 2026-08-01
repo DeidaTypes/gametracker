@@ -5,6 +5,7 @@ import { LuX } from 'react-icons/lu'
 import { updateProfile } from '../services/profileService'
 import { supabase } from '../services/supabase'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import KeyboardAwareView from './KeyboardAwareView'
 import './BioEditSheet.css'
 
 const BIO_MAX = 150
@@ -22,7 +23,6 @@ const BIO_MAX = 150
 function BioEditSheet({ isOpen, onClose, currentBio = '', onSave }) {
   const [text, setText] = useState(currentBio)
   const [saving, setSaving] = useState(false)
-  const [keyboardOffset, setKeyboardOffset] = useState(0)
   const textareaRef = useRef(null)
   const sheetRef = useRef(null)
   const { reduced } = useMotionPreference()
@@ -44,29 +44,6 @@ function BioEditSheet({ isOpen, onClose, currentBio = '', onSave }) {
     if (!isOpen) return
     const id = setTimeout(() => sheetRef.current?.focus(), 50)
     return () => clearTimeout(id)
-  }, [isOpen])
-
-  // iOS keyboard offset — listen to visualViewport so the sheet slides
-  // up above the software keyboard rather than being hidden behind it.
-  useEffect(() => {
-    if (!isOpen) return
-    const vv = window.visualViewport
-    if (!vv) return
-
-    const onViewportChange = () => {
-      const offset = window.innerHeight - vv.height - vv.offsetTop
-      setKeyboardOffset(Math.max(0, offset))
-    }
-
-    vv.addEventListener('resize', onViewportChange)
-    vv.addEventListener('scroll', onViewportChange)
-    onViewportChange()
-
-    return () => {
-      vv.removeEventListener('resize', onViewportChange)
-      vv.removeEventListener('scroll', onViewportChange)
-      setKeyboardOffset(0)
-    }
   }, [isOpen])
 
   // Escape key closes without saving
@@ -128,10 +105,10 @@ function BioEditSheet({ isOpen, onClose, currentBio = '', onSave }) {
           exit={{ opacity: 0 }}
           transition={backdropTransition}
         >
+          <KeyboardAwareView mode="sheet" className="bio-edit-anchor">
           <motion.div
             ref={sheetRef}
             className="bio-edit-sheet"
-            style={{ bottom: keyboardOffset }}
             onClick={(e) => e.stopPropagation()}
             tabIndex={-1}
             initial={reduced ? false : { y: '100%' }}
@@ -180,6 +157,7 @@ function BioEditSheet({ isOpen, onClose, currentBio = '', onSave }) {
               {text.length}/{BIO_MAX}
             </p>
           </motion.div>
+          </KeyboardAwareView>
         </motion.div>
       )}
     </AnimatePresence>,
