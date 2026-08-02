@@ -6,6 +6,7 @@ import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
 import ReviewCard from '../components/ReviewCard'
 import AddToListButton, { STATUS_TILES } from '../components/AddToListButton'
+import StatusChip from '../components/StatusChip'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import CommunityRatingCard from '../components/CommunityRatingCard'
 import SimilarGamesRow from '../components/SimilarGamesRow'
@@ -738,15 +739,17 @@ function GameDetail() {
           {STATUS_TILES.map((tile) => {
             const active = status === tile.key
             return (
-              <button
+              <StatusChip
                 key={tile.key}
-                className={`gd-status-tile${active ? ' gd-status-tile--active' : ''}`}
+                as="button"
+                variant="tile"
+                status={tile.key}
+                icon={tile.icon}
+                label={GD_STATUS_LABELS[tile.key] || tile.label}
+                active={active}
                 onClick={() => handleStatusPillTap(tile.key)}
                 aria-pressed={active}
-              >
-                <span className="gd-status-tile-icon">{tile.icon}</span>
-                <span className="gd-status-tile-label">{GD_STATUS_LABELS[tile.key] || tile.label}</span>
-              </button>
+              />
             )
           })}
         </div>

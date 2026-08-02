@@ -6,6 +6,7 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useNavigationType,
 } from 'react-router-dom'
 import { AnimatePresence } from 'motion/react'
 import PageTransition from './components/PageTransition'
@@ -288,16 +289,79 @@ function AppContent() {
     if (!user) clearBlockCache()
   }, [user])
 
-  // Scroll-to-top on every route change. The .main-content div persists
-  // across navigations (only its child <Routes> subtree re-mounts), so
-  // its scrollTop carries over and screens appear scrolled-down on entry.
-  // Reset it to 0 whenever the pathname changes so every screen starts at
-  // the true top, with the first header fully visible.
+  // Scroll handling on route change. The .main-content div persists across
+  // navigations (only its child <Routes> subtree re-mounts), so its
+  // scrollTop carries over and screens would otherwise appear scrolled-down
+  // on entry.
+  //
+  // Going somewhere new starts at the true top, with the first header fully
+  // visible. Going *back*, though, should return the user to the spot they
+  // left — scrolling halfway down a library, opening a game and pressing
+  // back only to land at the top again is the single most disorienting part
+  // of navigating this app. We record the offset for each history entry as
+  // it is left and put it back on a POP.
+  //
+  // Restoring is necessarily best-effort: the incoming screen has to have
+  // rendered tall enough to hold the offset before it can be applied, and
+  // a screen still waiting on data is initially short. So rather than
+  // setting scrollTop once, we keep re-applying it each frame until it
+  // sticks, giving lists a chance to fill in. The attempt is abandoned as
+  // soon as the target is reached, the user scrolls themselves, or
+  // RESTORE_WINDOW_MS passes — a screen whose data takes longer than that
+  // should stay at the top rather than lurching downward under the reader.
+  const scrollOffsetsRef = useRef(new Map())
+  const navigationType = useNavigationType()
+
   useEffect(() => {
-    if (mainContentRef.current) {
-      mainContentRef.current.scrollTop = 0
+    const el = mainContentRef.current
+    if (!el) return undefined
+    const key = location.key
+    return () => {
+      scrollOffsetsRef.current.set(key, el.scrollTop)
     }
-  }, [location.pathname])
+  }, [location.key])
+
+  useEffect(() => {
+    const el = mainContentRef.current
+    if (!el) return undefined
+
+    const saved =
+      navigationType === 'POP' ? scrollOffsetsRef.current.get(location.key) : undefined
+
+    if (!saved) {
+      el.scrollTop = 0
+      return undefined
+    }
+
+    const RESTORE_WINDOW_MS = 800
+    const deadline = performance.now() + RESTORE_WINDOW_MS
+    let frame = 0
+    let cancelled = false
+
+    const stop = () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+      el.removeEventListener('wheel', stop)
+      el.removeEventListener('touchstart', stop)
+    }
+
+    const attempt = () => {
+      if (cancelled) return
+      el.scrollTop = saved
+      // Short of the target means the content has not grown enough yet.
+      if (el.scrollTop >= saved || performance.now() > deadline) {
+        stop()
+        return
+      }
+      frame = requestAnimationFrame(attempt)
+    }
+
+    el.addEventListener('wheel', stop, { passive: true, once: true })
+    el.addEventListener('touchstart', stop, { passive: true, once: true })
+    attempt()
+
+    return stop
+  }, [location.key, navigationType])
 
   // Block the entire app until the initial Supabase session restore
   // resolves. Without this, a refresh-while-logged-in briefly renders

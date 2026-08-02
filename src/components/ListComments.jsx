@@ -8,8 +8,6 @@ import {
 } from '../services/listInteractionService'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
-import { whenKeyboardSettled } from '../services/keyboardInset'
-import KeyboardAwareView from './KeyboardAwareView'
 import './ListComments.css'
 
 
@@ -93,23 +91,20 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
 
-  // The composer is a normal in-flow element now (not a fixed bar), so
-  // "scroll to the bottom of the thread" and "scroll the composer into
-  // view" are the same thing — the composer IS the bottom of the thread.
-  // Scrolling the textarea itself into view is also what puts a freshly
-  // posted comment (which renders just above it) on screen.
+  // No focus handler here on purpose. The composer is a normal in-flow
+  // field inside `.main-content` (the app's single scroll container),
+  // which already reserves keyboard clearance globally (see
+  // body.keyboard-open .main-content in src/styles/keyboard.css) — the
+  // same mechanism the in-flow list-description editor on this page
+  // relies on with zero custom JS. Tapping the textarea lets the
+  // platform's native "scroll focused input above the keyboard"
+  // behavior do the work in lockstep with the keyboard's own show
+  // animation. A hand-rolled animated scrollIntoView() here raced that
+  // native scroll (and the padding-bottom transition) and produced the
+  // "jumps to the top / slides all over" bug — do not reintroduce one.
   const scrollComposerIntoView = useCallback(() => {
     textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [])
-
-  // Standard "scroll focused input into view above the keyboard" behavior:
-  // scroll once right away, then again once the keyboard has actually
-  // settled, so we target where the layout ended up rather than where it
-  // was headed. Same two-step the in-flow review composers use.
-  const handleComposerFocus = useCallback(() => {
-    scrollComposerIntoView()
-    whenKeyboardSettled(scrollComposerIntoView)
-  }, [scrollComposerIntoView])
 
   const load = useCallback(async () => {
     if (!listId) return
@@ -207,15 +202,13 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
       {/* In-flow composer — sits in its natural place at the end of the
           thread and scrolls with the page like any other content. It is
           NOT pinned/fixed to the screen and does not follow the user.
-          On focus, the standard "scroll focused input into view above
-          the keyboard" behavior brings it up (see handleComposerFocus);
-          KeyboardAwareView mode="scroll" reserves the room for that
-          scroll to actually happen, the same shared mechanism (not a
-          pin-to-bottom lift) used by other in-flow fields on this page. */}
+          No keyboard-lift wrapper and no focus handler: it relies purely
+          on the platform's native "scroll focused input above the
+          keyboard" behavior plus the global `.main-content` keyboard
+          padding (src/styles/keyboard.css) — the single mechanism that
+          already keeps this uniform with the keyboard's own animation. */}
       {currentUserId && (
-        <KeyboardAwareView
-          as="form"
-          mode="scroll"
+        <form
           className="lc-composer"
           aria-label="Comment composer"
           onSubmit={handleSubmit}
@@ -230,7 +223,6 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
               maxLength={2000}
               rows={1}
               aria-label="Add a comment"
-              onFocus={handleComposerFocus}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -247,7 +239,7 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
               <LuSend size={15} aria-hidden="true" />
             </button>
           </div>
-        </KeyboardAwareView>
+        </form>
       )}
     </section>
   )

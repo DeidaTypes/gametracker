@@ -360,57 +360,10 @@
   gap: 8px;
 }
 
-.gd-status-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 4px;
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.gd-status-tile-icon {
-  display: flex;
-  flex-shrink: 0;
-  color: inherit;
-}
-
-.gd-status-tile-icon svg {
-  display: block;
-  width: 22px;
-  height: 22px;
-}
-
-.gd-status-tile-label {
-  color: inherit;
-  line-height: var(--line-height-label);
-}
-
-.gd-status-tile:hover {
-  background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
-  border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
-}
-
-.gd-status-tile:active {
-  transform: scale(0.96);
-}
-
-.gd-status-tile--active {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-  color: var(--color-on-accent, #fff);
-}
+/* Status tiles moved to the shared StatusChip primitive (variant="tile")
+   — see src/components/StatusChip.css. Kept out of this file so the four
+   statuses carry their own color (via --status-* tokens) instead of a
+   single tile style everyone shares. */
 
 /* =====================================================
    RATING CARD — wraps CommunityRatingCard (numeric average +
@@ -1565,27 +1518,8 @@
   background: linear-gradient(120deg, var(--accent) 0%, var(--accent-journal) 100%);
 }
 
-/* =====================================================
-   STATUS TILE — ACTIVE STATE GRADIENT FILL OVERRIDE
-   Appended last on purpose: at equal specificity this overrides the
-   solid --color-brand-primary fill defined earlier (.gd-status-tile--active)
-   without editing or removing any of it. Inactive tiles (plain
-   .gd-status-tile) are untouched — muted surface + border — so the
-   active tile stays visually distinct.
-   Composed the same way as the contribute buttons above: the existing
-   --grad-cta token (cobalt --accent → --accent-review green).
-   ===================================================== */
-.gd-status-tile--active {
-  background: var(--grad-cta);
-  border: none;
-  color: var(--color-on-accent, #fff);
-}
-
-/* Restated because .gd-status-tile:hover (class + pseudo-class) is
-   higher specificity than the plain .gd-status-tile--active class
-   above and would otherwise overwrite the gradient with the muted
-   hover surface when the active tile is hovered. */
-.gd-status-tile--active:hover {
-  background: var(--grad-cta);
-  border-color: transparent;
-}
+/* Status tile active-state gradient override REMOVED — it painted all
+   four statuses the same --grad-cta fill, which is exactly the
+   contradiction the shared StatusChip primitive (variant="tile") now
+   fixes: each status keeps its own --status-* color when active. See
+   src/components/StatusChip.css. */

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { addReaction, removeReaction, getReactions } from '../services/reactionService'
+import {
+  addReaction,
+  removeReaction,
+  getReactions,
+  getReactionsBatch,
+} from '../services/reactionService'
 
 /**
  * useReactions — shared reaction state for all surfaces.
@@ -25,6 +30,11 @@ import { addReaction, removeReaction, getReactions } from '../services/reactionS
 
 const stateCache = new Map()
 const subscribers = new Map()
+
+// Keys covered by a batch fetch that hasn't resolved yet. Mounting hooks
+// check this so a list of N cards waits on the one batch instead of each
+// firing its own round-trip in the window before the batch lands.
+const inFlight = new Set()
 
 function cacheKey(targetType, targetId) {
   return `${targetType}::${targetId}`
@@ -70,6 +80,41 @@ export function seedReactionsBatch(targetType, batchMap) {
   }
 }
 
+/**
+ * Fetch reactions for a whole list in one round-trip and seed the cache.
+ *
+ * Call this synchronously *before* setting the state that renders the
+ * cards: the ids are marked in-flight on the synchronous path, so the
+ * hooks mounting a tick later skip their own fetch and simply wait for
+ * this batch to publish.
+ *
+ * Ids already cached are skipped. Targets with no reactions are published
+ * as empty arrays so they don't get re-fetched on the next mount.
+ *
+ * @param {string} targetType
+ * @param {Array<string>} targetIds
+ */
+export async function prefetchReactionsBatch(targetType, targetIds) {
+  if (!targetType || !targetIds || targetIds.length === 0) return
+
+  const fresh = [
+    ...new Set(
+      targetIds.filter((id) => id && !stateCache.has(cacheKey(targetType, id)))
+    ),
+  ]
+  if (fresh.length === 0) return
+
+  for (const id of fresh) inFlight.add(cacheKey(targetType, id))
+  try {
+    seedReactionsBatch(targetType, await getReactionsBatch(targetType, fresh))
+  } catch {
+    // Soft-fail — cards keep their empty array, same as a failed
+    // individual fetch.
+  } finally {
+    for (const id of fresh) inFlight.delete(cacheKey(targetType, id))
+  }
+}
+
 export function useReactions(targetType, targetId) {
   const [reactions, setReactions] = useState(() => readCache(targetType, targetId))
 
@@ -79,7 +124,8 @@ export function useReactions(targetType, targetId) {
     const unsubscribe = subscribe(targetType, targetId, setReactions)
 
     let cancelled = false
-    if (!stateCache.has(cacheKey(targetType, targetId))) {
+    const key = cacheKey(targetType, targetId)
+    if (!stateCache.has(key) && !inFlight.has(key)) {
       getReactions(targetType, targetId)
         .then((data) => {
           if (!cancelled) publishReactionState(targetType, targetId, data)

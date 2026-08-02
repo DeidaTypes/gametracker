@@ -153,20 +153,14 @@ export async function initSettings() {
     } = await supabase.auth.getUser()
     if (!user) return local
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('color_blind_mode, message_privacy, activity_privacy, presence_opt_in')
-      .eq('id', user.id)
-      .maybeSingle()
+    // activity_privacy and presence_opt_in are not column-readable by the API
+    // roles, so they come back through a definer RPC scoped to auth.uid().
+    // colorBlindMode and messagePrivacy stay local-only — those columns do not
+    // exist on users yet (supabase/user_settings_columns.sql is unapplied).
+    const { data, error } = await supabase.rpc('get_my_settings').maybeSingle()
     if (error || !data) return local
 
     const merged = { ...local }
-    if (COLOR_BLIND_MODES.includes(data.color_blind_mode)) {
-      merged.colorBlindMode = data.color_blind_mode
-    }
-    if (MESSAGE_PRIVACY.includes(data.message_privacy)) {
-      merged.messagePrivacy = data.message_privacy
-    }
     if (ACTIVITY_PRIVACY.includes(data.activity_privacy)) {
       merged.activityPrivacy = data.activity_privacy
     }

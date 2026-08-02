@@ -174,8 +174,11 @@ export async function getReactionsBatch(targetType, targetIds) {
       .eq('target_type', targetType)
       .in('target_id', targetIds)
     for (const { target_id, emoji } of mine || []) {
-      if (!reactedMap.has(target_id)) reactedMap.set(target_id, new Set())
-      reactedMap.get(target_id).add(emoji)
+      // Keyed as a string to match `tid` below, which is sliced out of
+      // the composite count key.
+      const key = String(target_id)
+      if (!reactedMap.has(key)) reactedMap.set(key, new Set())
+      reactedMap.get(key).add(emoji)
     }
   }
 

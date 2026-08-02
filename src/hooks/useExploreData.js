@@ -20,6 +20,10 @@ import { getCollections } from '../services/listService'
 import { getActiveThemedDrop } from '../services/themedDropsService'
 import { getNewNotableRail } from '../services/newNotableService'
 import { APP_RESUMED_EVENT } from './useAppResume'
+import { getSWR, peekSWR } from '../services/swrCache'
+
+/** How long a section's data is reused before the next entry revalidates it. */
+const SECTION_TTL_MS = 90 * 1000
 
 /**
  * Generic loader hook.
@@ -29,17 +33,31 @@ import { APP_RESUMED_EVENT } from './useAppResume'
  * Every loader fails soft (resolves to [] on error) and the loading flag
  * is always cleared in `finally`, so a section can never hang on a spinner.
  *
- * Pass an optional `deps` array to re-fetch whenever deps change (e.g. scope).
+ * Reads flow through the shared stale-while-revalidate cache under
+ * `cacheKey`, so leaving Discover and coming back reuses what we already
+ * have instead of refetching every section from cold. When the cached
+ * value is still present we seed state with it synchronously, which is
+ * what lets the section paint real content on the very first frame after
+ * navigation rather than flashing a spinner. `refetch()` always bypasses
+ * the cache — it exists for pull-to-refresh and resume, where the whole
+ * point is to go get new data.
+ *
+ * Pass an optional `deps` array to re-fetch whenever deps change (e.g. scope);
+ * `cacheKey` must vary with those deps or the sections will share an entry.
  * Omit `deps` (or pass null) for the classic "run once on mount" behaviour.
  */
-function useAsyncSection(loaderFn, deps = null) {
+function useAsyncSection(cacheKey, loaderFn, deps = null) {
   // Keep a ref so `doFetch` never needs loaderFn in its dep array (the
   // inline arrow passed by callers is a new identity every render).
   const loaderRef = useRef(loaderFn)
   loaderRef.current = loaderFn
 
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const keyRef = useRef(cacheKey)
+  keyRef.current = cacheKey
+
+  const cached = peekSWR(cacheKey)
+  const [data, setData] = useState(cached)
+  const [loading, setLoading] = useState(cached === undefined)
   const [error, setError] = useState(null)
 
   // Stable fetch function — safe to call from pull-to-refresh handlers.
@@ -47,7 +65,10 @@ function useAsyncSection(loaderFn, deps = null) {
     setLoading(true)
     setError(null)
     try {
-      const result = await loaderRef.current()
+      const result = await getSWR(keyRef.current, () => loaderRef.current(), {
+        ttlMs: SECTION_TTL_MS,
+        force: true,
+      })
       setData(result)
       return result
     } catch (err) {
@@ -57,23 +78,25 @@ function useAsyncSection(loaderFn, deps = null) {
     } finally {
       setLoading(false)
     }
-  }, []) // intentionally empty — uses ref internally
+  }, []) // intentionally empty — uses refs internally
 
   // When deps is null → run once on mount (legacy behaviour).
   // When deps is an array → re-run whenever deps change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const effectDeps = deps === null ? [] : deps
+  const effectDeps = deps === null ? [cacheKey] : [cacheKey, ...deps]
   useEffect(() => {
     let cancelled = false
     const _t0 = Date.now()
-    setLoading(true)
+    const warm = peekSWR(cacheKey)
+    if (warm !== undefined) setData(warm)
+    setLoading(warm === undefined)
     setError(null)
-    loaderRef.current()
+    getSWR(cacheKey, () => loaderRef.current(), { ttlMs: SECTION_TTL_MS })
       .then((result) => {
         if (!cancelled) {
           setData(result)
           setLoading(false)
-          if (import.meta.env.DEV) console.log(`[⏱ useExploreData] section resolved in ${Date.now() - _t0}ms`)
+          if (import.meta.env.DEV) console.log(`[⏱ useExploreData] ${cacheKey} resolved in ${Date.now() - _t0}ms`)
         }
       })
       .catch((err) => { if (!cancelled) { setError(err?.message || 'Failed to load'); setLoading(false) } })
@@ -93,7 +116,7 @@ function useAsyncSection(loaderFn, deps = null) {
 }
 
 export function useTrendingThisWeek() {
-  return useAsyncSection(() => getTrendingThisWeek(10))
+  return useAsyncSection('explore:trending:global', () => getTrendingThisWeek(10))
 }
 
 /**
@@ -107,6 +130,7 @@ export function useTrendingThisWeek() {
  */
 export function useTrendingByScope(scope) {
   return useAsyncSection(
+    `explore:trending:${scope || 'global'}`,
     () => {
       if (scope === 'circle') return getTrendingCircle(10)
       if (scope === 'genre')  return getTrendingByGenre(10)
@@ -117,15 +141,15 @@ export function useTrendingByScope(scope) {
 }
 
 export function useJustFinished() {
-  return useAsyncSection(() => getJustFinished(20))
+  return useAsyncSection('explore:just-finished', () => getJustFinished(20))
 }
 
 export function useRecentReviews() {
-  return useAsyncSection(() => getRecentCommunityReviews(20))
+  return useAsyncSection('explore:recent-reviews', () => getRecentCommunityReviews(20))
 }
 
 export function useNewReleases() {
-  return useAsyncSection(() => getUpcomingReleases(10))
+  return useAsyncSection('explore:new-releases', () => getUpcomingReleases(10))
 }
 
 /**
@@ -135,12 +159,12 @@ export function useNewReleases() {
  * new-notable daily job fills; no IGDB call on view.
  */
 export function useDiscoverGamesNew() {
-  return useAsyncSection(() => getNewNotableRail())
+  return useAsyncSection('explore:new-notable', () => getNewNotableRail())
 }
 
 /** Discover page — "POPULAR" reviews feed: like-ranked, 30-day window w/ fallback. */
 export function usePopularReviews() {
-  return useAsyncSection(() => getPopularReviews({ days: 30, limit: 25 }))
+  return useAsyncSection('explore:popular-reviews', () => getPopularReviews({ days: 30, limit: 25 }))
 }
 
 /**
@@ -150,12 +174,12 @@ export function usePopularReviews() {
  * section when both arrays are empty.
  */
 export function useCollections() {
-  return useAsyncSection(() => getCollections({ curatedLimit: 8, communityLimit: 12 }))
+  return useAsyncSection('explore:collections', () => getCollections({ curatedLimit: 8, communityLimit: 12 }))
 }
 
 /** Discover page — "FOLLOWING" reviews feed: newest-first from followed users. */
 export function useFollowingReviews() {
-  return useAsyncSection(async () => {
+  return useAsyncSection('explore:following-reviews', async () => {
     const result = await getReviewsFromFollowing({ page: 1, limit: 20 })
     return result.items || []
   })
@@ -166,7 +190,7 @@ export function useFollowingReviews() {
  * 60-day window, up to 10 results. Returns [] when no game has ≥ 3 reviews.
  */
 export function useHotTakes() {
-  return useAsyncSection(() => getHotTakeReviews({ days: 60, limit: 10 }))
+  return useAsyncSection('explore:hot-takes', () => getHotTakeReviews({ days: 60, limit: 10 }))
 }
 
 /**
@@ -174,7 +198,7 @@ export function useHotTakes() {
  * Returns null when no review in the window has ≥ 1 like (hides the spotlight).
  */
 export function useReviewOfWeek() {
-  return useAsyncSection(() => getReviewOfWeek())
+  return useAsyncSection('explore:review-of-week', () => getReviewOfWeek())
 }
 
 /**
@@ -183,7 +207,7 @@ export function useReviewOfWeek() {
  * Returns [] when no sessions fall in the window → section stays hidden.
  */
 export function useMostPlayedThisWeek() {
-  return useAsyncSection(() => getMostPlayedThisWeek(5))
+  return useAsyncSection('explore:most-played-week', () => getMostPlayedThisWeek(5))
 }
 
 /**
@@ -193,7 +217,7 @@ export function useMostPlayedThisWeek() {
  * Returns [] when the viewer has no follows or circle is quiet.
  */
 export function useCircleMostPlayed() {
-  return useAsyncSection(() => getMostPlayedInCircle(10))
+  return useAsyncSection('explore:circle-most-played', () => getMostPlayedInCircle(10))
 }
 
 /**
@@ -205,7 +229,7 @@ export function useCircleMostPlayed() {
  * which window it got ('following' | 'community').
  */
 export function useRecentFollowingActivity() {
-  return useAsyncSection(() => getRecentFollowingActivity(10))
+  return useAsyncSection('explore:recent-following', () => getRecentFollowingActivity(10))
 }
 
 /**
@@ -220,5 +244,5 @@ export function useRecentFollowingActivity() {
  * memoises for 5 minutes, so tapping through doesn't re-query.
  */
 export function useActiveThemedDrop() {
-  return useAsyncSection(() => getActiveThemedDrop())
+  return useAsyncSection('explore:themed-drop', () => getActiveThemedDrop())
 }

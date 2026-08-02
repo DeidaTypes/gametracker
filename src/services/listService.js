@@ -260,24 +260,35 @@ function rowToCollection(row) {
 }
 
 /**
- * Attach REAL save counts from list_saves for a batch of collections.
- * Lists with no save rows simply show 0 — counts are never fabricated.
+ * REAL save counts from list_saves, as a Map of listId → count. Lists with
+ * no save rows are absent from the map (callers read that as 0) — counts
+ * are never fabricated. Returns an empty map on error so callers degrade to
+ * "no saves" rather than failing.
  */
-async function attachSaveCounts(collections) {
-  if (!collections.length) return collections
-  const ids = collections.map((c) => c.id)
+export async function getSaveCountsForLists(listIds) {
+  if (!listIds?.length) return new Map()
   const { data, error } = await supabase
     .from('list_saves')
     .select('list_id')
-    .in('list_id', ids)
+    .in('list_id', listIds)
   if (error) {
-    console.error('[lists] attachSaveCounts failed:', error.message)
-    return collections
+    console.error('[lists] getSaveCountsForLists failed:', error.message)
+    return new Map()
   }
   const counts = new Map()
   for (const row of data || []) {
     counts.set(row.list_id, (counts.get(row.list_id) || 0) + 1)
   }
+  return counts
+}
+
+/**
+ * Attach REAL save counts from list_saves for a batch of collections.
+ * Lists with no save rows simply show 0 — counts are never fabricated.
+ */
+async function attachSaveCounts(collections) {
+  if (!collections.length) return collections
+  const counts = await getSaveCountsForLists(collections.map((c) => c.id))
   return collections.map((c) => ({ ...c, saveCount: counts.get(c.id) || 0 }))
 }
 

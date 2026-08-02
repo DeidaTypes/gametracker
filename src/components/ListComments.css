@@ -124,11 +124,15 @@
 /* ── Composer ──
    A normal in-flow element at the end of the thread — it scrolls with the
    page like any other content. It is NOT pinned/fixed to the screen and
-   does not float above the game grid or follow the user. Bringing the
-   focused field above the keyboard uses the standard "scroll input into
-   view" behavior (KeyboardAwareView mode="scroll" reserves the room; the
-   scroll itself happens in ListComments.jsx's handleComposerFocus) rather
-   than a pin-to-bottom lift. */
+   does not float above the game grid or follow the user. It carries no
+   keyboard-lift wrapper of its own: bringing the focused field above the
+   keyboard is left entirely to the platform's native "scroll focused
+   input into view" behavior plus the global `.main-content` keyboard
+   padding (src/styles/keyboard.css). Layering a second, locally-animated
+   padding/scroll on top of that (as a previous version of this file did)
+   fought the native scroll and the keyboard's own show animation, which
+   is what caused the page to visibly jump/slide on focus — don't
+   reintroduce a local keyboard-aware wrapper here. */
 
 .lc-composer {
   margin-top: 14px;

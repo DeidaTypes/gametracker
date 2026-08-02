@@ -35,6 +35,11 @@ import {
 const stateCache = new Map()
 const subscribers = new Map()
 
+// Review ids covered by a prefetch that hasn't resolved yet. Without this,
+// every card in a freshly-rendered list round-trips individually in the
+// window between the prefetch being fired and its results landing.
+const inFlight = new Set()
+
 function readCache(reviewId) {
   return stateCache.get(reviewId) || { liked: false, count: 0 }
 }
@@ -73,10 +78,11 @@ export function useLikeState(reviewId) {
     const unsubscribe = subscribe(reviewId, setState)
 
     let cancelled = false
-    // Only round-trip when the cache is cold for this review.
-    // Lists call prefetchLikeStatesForReviews up-front so this
-    // typically no-ops on timeline cards.
-    if (!stateCache.has(reviewId)) {
+    // Only round-trip when the cache is cold for this review and no
+    // batch prefetch already covers it. Lists call
+    // prefetchLikeStatesForReviews up-front so this typically no-ops
+    // on timeline cards.
+    if (!stateCache.has(reviewId) && !inFlight.has(reviewId)) {
       Promise.all([isLiked(reviewId), getLikeCount(reviewId)])
         .then(([liked, count]) => {
           if (cancelled) return
@@ -119,34 +125,43 @@ export function useLikeState(reviewId) {
 export async function prefetchLikeStatesForReviews(reviewIds) {
   if (!reviewIds || reviewIds.length === 0) return new Map()
 
-  const [counts, userResult] = await Promise.all([
-    getLikeCountsForReviews(reviewIds),
-    supabase.auth.getUser().catch(() => ({ data: { user: null } })),
-  ])
+  // Marked on the synchronous path, before the first await, so cards
+  // mounting later in the same tick defer to this batch.
+  const pending = reviewIds.filter((id) => id && !stateCache.has(id))
+  for (const id of pending) inFlight.add(id)
 
-  let likedSet = new Set()
   try {
-    const user = userResult?.data?.user
-    if (user) {
-      const { data, error } = await supabase
-        .from('review_likes')
-        .select('review_id')
-        .eq('user_id', user.id)
-        .in('review_id', reviewIds)
-      if (!error && data) {
-        likedSet = new Set(data.map((r) => r.review_id))
+    const [counts, userResult] = await Promise.all([
+      getLikeCountsForReviews(reviewIds),
+      supabase.auth.getUser().catch(() => ({ data: { user: null } })),
+    ])
+
+    let likedSet = new Set()
+    try {
+      const user = userResult?.data?.user
+      if (user) {
+        const { data, error } = await supabase
+          .from('review_likes')
+          .select('review_id')
+          .eq('user_id', user.id)
+          .in('review_id', reviewIds)
+        if (!error && data) {
+          likedSet = new Set(data.map((r) => r.review_id))
+        }
       }
+    } catch {
+      // Soft-fail — counts still seed the cache below.
     }
-  } catch {
-    // Soft-fail — counts still seed the cache below.
-  }
 
-  for (const id of reviewIds) {
-    publishLikeState(id, {
-      liked: likedSet.has(id),
-      count: counts.get(id) || 0,
-    })
-  }
+    for (const id of reviewIds) {
+      publishLikeState(id, {
+        liked: likedSet.has(id),
+        count: counts.get(id) || 0,
+      })
+    }
 
-  return counts
+    return counts
+  } finally {
+    for (const id of pending) inFlight.delete(id)
+  }
 }

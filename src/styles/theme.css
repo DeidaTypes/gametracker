@@ -351,6 +351,24 @@ body[data-larger-text='true'] {
   --accent-journal-text: #e4c2ff;
 
   /* =============================================
+     TRACKER STATUS COLOR MAP
+     ---------------------------------------------------------------
+     Single source of truth for the four mutually-exclusive tracker
+     statuses (Want to Play / Currently Playing / Played / Dropped).
+     Library's stat cells (src/pages/Library.css) originated this
+     palette; every other status chip/tile/pill (StatusChip.jsx —
+     GameDetail's status tiles, AddToListButton's sheet rows, Home's
+     byline pills) resolves its color through these four tokens
+     instead of re-deriving its own, so the same status reads as the
+     same color on every screen. No new hex — each token points at an
+     existing accent already defined above.
+     ============================================= */
+  --status-want-to-play: var(--color-accent-lavender);
+  --status-currently-playing: var(--accent);
+  --status-played: var(--accent-review);
+  --status-dropped: var(--text-secondary);
+
+  /* =============================================
      MULTI-HUE GRADIENT TOKENS
      ---------------------------------------------------------------
      Cobalt/green/purple only — no orange/amber. These compose the
@@ -774,45 +792,6 @@ h1, h2,
   color: var(--color-brand-primary);
   display: block;
   margin-bottom: 4px;
-}
-
-/* =============================================
-   STATUS BADGE
-   ============================================= */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-chip);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-}
-
-.status-badge::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.status-badge.playing {
-  color: var(--color-status-playing);
-  background: rgba(123, 166, 140, 0.12);
-}
-
-.status-badge.played {
-  color: var(--color-status-played);
-  background: rgba(74, 127, 165, 0.12);
-}
-
-.status-badge.want {
-  color: var(--color-status-want);
-  background: rgba(196, 99, 78, 0.12);
 }
 
 /* =============================================

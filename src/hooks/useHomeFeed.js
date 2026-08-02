@@ -3,9 +3,33 @@ import { useAuth } from '../contexts/AuthContext'
 import { getHomeFeed } from '../services/communityService'
 import { ACTIVITY_EVENT_LOGGED } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
+import { prefetchReactionsBatch } from './useReactions'
 import { APP_RESUMED_EVENT } from './useAppResume'
+import { getSWR, peekSWR } from '../services/swrCache'
 
 const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
+
+/**
+ * Batch-load the like and reaction state a page of cards needs, in two
+ * round-trips each instead of one per card.
+ *
+ * Must be called *before* the items are put into state: both prefetches
+ * mark their ids in-flight synchronously, which is what stops the
+ * about-to-mount cards from firing their own individual queries.
+ */
+function prefetchRowInteractions(pageItems) {
+  const reviewIds = pageItems
+    .filter((it) => REVIEW_ITEM_TYPES.has(it.type))
+    .map((it) => it.id)
+  if (reviewIds.length) prefetchLikeStatesForReviews(reviewIds).catch(() => {})
+
+  // Only non-review rows carry a reactionTargetId (see getHomeFeed).
+  const activityIds = pageItems.map((it) => it.reactionTargetId).filter(Boolean)
+  if (activityIds.length) prefetchReactionsBatch('activity', activityIds)
+}
+
+/** How long page 1 of the feed is reused before the next entry revalidates. */
+const FEED_TTL_MS = 60 * 1000
 
 /**
  * useHomeFeed — pagination + scope tracking for "The pulse", Home's
@@ -44,38 +68,53 @@ const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
  */
 export function useHomeFeed({ pageSize = 15 } = {}) {
   const { user } = useAuth()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
+
+  // Page 1 goes through the shared cache so returning to Home shows the
+  // feed the user was just looking at instead of rebuilding it from an
+  // empty list. Later pages are deliberately uncached: they're only
+  // reachable by scrolling, which means the user is already on the screen
+  // and there is no navigation flash to avoid.
+  const pageOneKey = user?.id ? `home:feed:${user.id}:${pageSize}` : null
+  const cachedPageOne = pageOneKey ? peekSWR(pageOneKey) : undefined
+
+  const [items, setItems] = useState(cachedPageOne?.items ?? [])
+  const [loading, setLoading] = useState(cachedPageOne === undefined)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [scope, setScope] = useState('following')
+  const [hasMore, setHasMore] = useState(cachedPageOne?.hasMore ?? true)
+  const [scope, setScope] = useState(cachedPageOne?.scope ?? 'following')
   const [error, setError] = useState(null)
 
-  const cursorRef = useRef(null)
-  const scopeRef = useRef(null)
+  const cursorRef = useRef(cachedPageOne?.nextCursor ?? null)
+  const scopeRef = useRef(cachedPageOne?.scope ?? null)
 
-  const refresh = useCallback(async () => {
+  const loadPageOne = useCallback(async ({ force }) => {
     if (!user?.id) {
       setItems([])
       setHasMore(false)
       setLoading(false)
       return
     }
-    setLoading(true)
+    const key = `home:feed:${user.id}:${pageSize}`
+    const warm = force ? undefined : peekSWR(key)
+    // Only show the spinner when we have nothing at all to render;
+    // a warm feed revalidates silently underneath the existing list.
+    if (warm === undefined) setLoading(true)
     setError(null)
-    cursorRef.current = null
-    scopeRef.current = null
+    if (!warm) {
+      cursorRef.current = null
+      scopeRef.current = null
+    }
     try {
-      const result = await getHomeFeed({ limit: pageSize })
+      const result = await getSWR(key, () => getHomeFeed({ limit: pageSize }), {
+        ttlMs: FEED_TTL_MS,
+        force,
+      })
+      prefetchRowInteractions(result.items)
       setItems(result.items)
       setHasMore(result.hasMore)
       setScope(result.scope)
       cursorRef.current = result.nextCursor
       scopeRef.current = result.scope
-      const reviewIds = result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
-      if (reviewIds.length) {
-        prefetchLikeStatesForReviews(reviewIds)
-      }
     } catch (err) {
       setError(err)
       setHasMore(false)
@@ -83,6 +122,10 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       setLoading(false)
     }
   }, [user?.id, pageSize])
+
+  // Pull-to-refresh and resume both mean "go get new data", so they skip
+  // the cache outright.
+  const refresh = useCallback(() => loadPageOne({ force: true }), [loadPageOne])
 
   const loadMore = useCallback(async () => {
     if (!user?.id) return
@@ -94,6 +137,7 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
         scope: scopeRef.current,
         limit: pageSize,
       })
+      prefetchRowInteractions(result.items)
       setItems((prev) => {
         const seen = new Set(prev.map((it) => it.id))
         const merged = [...prev]
@@ -104,10 +148,6 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       })
       setHasMore(result.hasMore)
       cursorRef.current = result.nextCursor
-      const reviewIds = result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
-      if (reviewIds.length) {
-        prefetchLikeStatesForReviews(reviewIds)
-      }
     } catch (err) {
       setError(err)
       setHasMore(false)
@@ -119,18 +159,22 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
   const silentRefresh = useCallback(async () => {
     if (!user?.id) return
     try {
-      const result = await getHomeFeed({ limit: pageSize })
+      // Forced through the cache rather than around it: this runs right
+      // after the user's own mutation, so the cached page 1 must end up
+      // holding the new row too — otherwise navigating away and back
+      // within the TTL would serve a page 1 that predates their action.
+      const result = await getSWR(
+        `home:feed:${user.id}:${pageSize}`,
+        () => getHomeFeed({ limit: pageSize }),
+        { ttlMs: FEED_TTL_MS, force: true }
+      )
+      prefetchRowInteractions(result.items)
       setItems((prev) => {
         const seen = new Set(prev.map((it) => it.id))
         const fresh = result.items.filter((it) => !seen.has(it.id))
         return fresh.length ? [...fresh, ...prev] : prev
       })
       setScope(result.scope)
-      if (result.items.length) {
-        prefetchLikeStatesForReviews(
-          result.items.filter((it) => REVIEW_ITEM_TYPES.has(it.type)).map((it) => it.id)
-        )
-      }
     } catch {
       // Soft-fail — the next natural refresh (mount / app resume) still
       // picks the new row up eventually.
@@ -138,8 +182,8 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
   }, [user?.id, pageSize])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    loadPageOne({ force: false })
+  }, [loadPageOne])
 
   useEffect(() => {
     function onResume() {

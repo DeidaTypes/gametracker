@@ -1,0 +1,157 @@
+/* =====================================================
+   StatusChip — shared tracker-status primitive.
+   Color is set once per instance via the --chip-color custom property
+   (StatusChip.jsx points it at one of the four --status-* tokens in
+   src/styles/theme.css); every rule below reads --chip-color rather
+   than naming a status or hardcoding a hex, so adding/adjusting a
+   status color never means touching this file.
+   Corners stay squared per the design system's --radius-chip (4px) —
+   chips are the one shape allowed to skip the app's rounder radii.
+   ===================================================== */
+
+.status-chip {
+  --chip-color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.status-chip__icon {
+  display: flex;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.status-chip__icon svg {
+  display: block;
+}
+
+.status-chip__label {
+  color: inherit;
+}
+
+/* =============================================
+   PILL — inline text pill (Home byline status pill)
+   ============================================= */
+.status-chip--pill {
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--chip-color) 18%, transparent);
+  color: var(--chip-color);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-chip--pill .status-chip__icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* =============================================
+   TILE — icon-over-label square (GameDetail status grid)
+   ============================================= */
+.status-chip--tile {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--color-border, rgba(148, 168, 212, 0.18));
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.status-chip--tile .status-chip__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (hover: hover) {
+  .status-chip--tile:not(.status-chip--active):hover {
+    background: var(--color-surface-hover, rgba(148, 168, 212, 0.09));
+    border-color: var(--color-border-hover, rgba(148, 168, 212, 0.30));
+  }
+}
+
+.status-chip--tile:active {
+  transform: scale(0.96);
+}
+
+.status-chip--tile.status-chip--active {
+  background: color-mix(in srgb, var(--chip-color) 24%, var(--color-bg-elevated));
+  border-color: var(--chip-color);
+  color: var(--chip-color);
+}
+
+/* =============================================
+   ROW — full-width icon+label(+trailing) row
+   (AddToListButton bottom-sheet status list)
+   ============================================= */
+.status-chip--row {
+  width: 100%;
+  min-height: 52px;
+  gap: var(--space-12);
+  padding: 0 var(--space-16);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.status-chip--row:not(:last-child) {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+}
+
+@media (hover: hover) {
+  .status-chip--row:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.status-chip--row:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.status-chip--row.status-chip--active {
+  color: var(--chip-color);
+}
+
+.status-chip--row .status-chip__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.status-chip--row .status-chip__label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}
+
+.status-chip--row .status-chip__trailing {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-chip--tile,
+  .status-chip--row {
+    transition: none;
+  }
+}

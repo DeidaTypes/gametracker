@@ -393,7 +393,20 @@
 }
 
 .dm-bubble {
-  max-width: 80%;
+  /* max-width is intentionally 100% here, not 80% — the 80% cap
+     already lives on the parent .dm-bubble-row__inner. Putting a
+     *percentage* max-width < 100% on this element too (a flex
+     container with no explicit width, nested inside another
+     percentage-capped flex container) hits a real browser intrinsic-
+     sizing bug: short, unbreakable single-word bubbles ("Yooo",
+     "hello") would collapse to a sliver far narrower than the text's
+     natural width and wrap mid-word, even though multi-word bubbles
+     sized fine. Capping once (on the parent) and letting this box
+     just fill up to 100% of that already-capped parent avoids the bug
+     while still correctly limiting long unbreakable strings to 80% of
+     the row. */
+  width: fit-content;
+  max-width: 100%;
   padding: 8px 12px 6px;
   border-radius: var(--radius-lg);
   display: flex;
@@ -427,7 +440,13 @@
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  /* break-word (not anywhere): still wraps a genuinely-too-long
+     unbroken string (e.g. a long URL) as a last resort, but — unlike
+     anywhere — never lowers the text's min-content size to ~1
+     character, which is what was causing short bubbles to wrap
+     mid-word instead of sizing to their own content. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .dm-bubble__time {

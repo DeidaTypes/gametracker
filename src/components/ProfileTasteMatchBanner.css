@@ -10,7 +10,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  /* Real spacing between "45% match" and the readout — flex items
+     collapse any leading/trailing whitespace baked into their text
+     content at the box edges, so the gap between items must come from
+     `gap`, never from a trailing/leading space character in the JSX. */
+  gap: 6px;
   margin-top: 16px;
   padding: 8px 12px;
   border-radius: var(--radius-md);
@@ -30,6 +34,9 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Same reasoning as `.ptmb` above — this is what fixes "lean
+     intoAdventure&RPG" collapsing together with no space. */
+  gap: 6px;
 }
 
 .ptmb__genre {

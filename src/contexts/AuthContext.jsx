@@ -20,6 +20,7 @@ import {
   migrateLocalReviewsIfNeeded,
 } from '../services/reviewService'
 import { migrateLocalListsIfNeeded } from '../services/listService'
+import { syncTrackersWithServer } from '../services/libraryService'
 import { migrateLocalLikesIfNeeded } from '../services/likeService'
 import { syncProfileFromSupabase } from '../services/profileService'
 import { loadBlockedIds, clearBlockCache } from '../services/blockService'
@@ -205,6 +206,10 @@ export function AuthProvider({ children }) {
         // blob into the new `likes` table. Idempotent per-user and
         // soft-fails so it never blocks login.
         await migrateLocalLikesIfNeeded(user.id)
+        // Reconcile the localStorage status buckets with `game_trackers`,
+        // so a status set on another device shows up in the Library
+        // dashboard and the Library / Profile counts agree.
+        await syncTrackersWithServer(user.id)
         await loadCurrentUserReviewsCache(user.id)
         if (!cancelled) {
           // Tell any mounted screens (Profile reviews tab, etc.) to refresh.

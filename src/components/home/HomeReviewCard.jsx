@@ -13,6 +13,7 @@ import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
+import StatusChip from '../StatusChip'
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import './HomeReviewCard.css'
@@ -106,6 +107,19 @@ function statusPillLabel(item) {
     default:
       return null
   }
+}
+
+/**
+ * Of the six event types statusPillLabel covers, only these three are
+ * actual tracker statuses (Want to Play / Currently Playing / Played) —
+ * the other three (session logged, favorited, journaled) are distinct
+ * activity types with no corresponding tracker status, so they keep the
+ * plain cobalt pill instead of routing through StatusChip's status map.
+ */
+const TRACKER_STATUS_BY_TYPE = {
+  backlogged: 'want',
+  started: 'currently',
+  finished: 'played',
 }
 
 /**
@@ -281,6 +295,7 @@ function GameZone({
   // exactly rating × 2 — a rescale of real data, not a second metric.
   const score = showRating ? Math.round(Number(item.rating) * 20) / 10 : null
   const statusLabel = statusPillLabel(item)
+  const trackerStatus = TRACKER_STATUS_BY_TYPE[item.type]
   const isListAdd = item.type === 'listed' && item.listKind !== 'created'
 
   return (
@@ -315,11 +330,19 @@ function GameZone({
           </span>
         )}
 
-        {statusLabel && (
-          <span className="home-review-card__pill home-review-card__pill--status">
-            {item.type === 'backlogged' || item.type === 'finished' ? (
+        {statusLabel && trackerStatus && (
+          <StatusChip
+            variant="pill"
+            status={trackerStatus}
+            label={statusLabel}
+            icon={item.type === 'backlogged' || item.type === 'finished' ? (
               <HiCheck aria-hidden="true" />
             ) : null}
+          />
+        )}
+
+        {statusLabel && !trackerStatus && (
+          <span className="home-review-card__pill home-review-card__pill--status">
             {statusLabel}
           </span>
         )}

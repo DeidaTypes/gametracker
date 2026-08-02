@@ -111,6 +111,10 @@
   padding-top: 2px;
 }
 
+/* The display name is never cut off — long names wrap onto a second
+   line (the card simply grows) instead of ellipsizing, so the full
+   name is always readable. overflow-wrap/word-break guard against a
+   single unbroken token (no spaces) still overflowing the card. */
 .ppc__name {
   margin: 0;
   font-family: var(--font-body);
@@ -118,9 +122,8 @@
   font-weight: var(--font-weight-bold);
   line-height: 1.2;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ppc__handle {

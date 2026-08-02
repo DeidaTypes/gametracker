@@ -65,6 +65,126 @@ export const TRACKER_STATUS = Object.freeze({
   dropped: 'dropped',
 })
 
+/** Inverse of TRACKER_STATUS — server vocabulary back to the local one. */
+const LOCAL_STATUS = Object.freeze(
+  Object.fromEntries(Object.entries(TRACKER_STATUS).map(([local, remote]) => [remote, local]))
+)
+
+/**
+ * Mirror one status change into `game_trackers`. Fire-and-forget: callers
+ * write localStorage first and never await this, so a failed/offline sync
+ * can't roll back or delay the optimistic local change.
+ *
+ * Without this, statuses set from the game screen only ever existed on the
+ * device that set them, while `game_trackers` (written by the backlog
+ * quick-add and session paths) held a different set — which is how the
+ * Library status cells and the Profile games numeral ended up disagreeing.
+ */
+function syncStatusToServer(gameId, localStatus, game) {
+  const remoteStatus = TRACKER_STATUS[localStatus]
+  if (!remoteStatus) return
+  ;(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.id) return
+      const { error } = await supabase.from('game_trackers').upsert(
+        {
+          user_id: user.id,
+          igdb_game_id: String(gameId),
+          status: remoteStatus,
+          game_title: game?.title || null,
+          game_image: game?.image || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,igdb_game_id' }
+      )
+      if (error) console.error('[library] status sync failed:', error.message)
+    } catch (err) {
+      console.error('[library] status sync crashed:', err)
+    }
+  })()
+}
+
+/**
+ * Reconcile localStorage status buckets with `game_trackers` for the
+ * signed-in user. Runs once per login (see AuthContext).
+ *
+ * Two-way and non-destructive, because neither side is a strict superset of
+ * the other: statuses set on another device only exist on the server, and
+ * statuses set before this sync existed only exist locally. A game the
+ * server knows about and this device doesn't is pulled into the matching
+ * bucket; a game this device knows about is pushed up. On a genuine
+ * conflict the local status wins and overwrites the server row — it's the
+ * one the user is currently looking at.
+ */
+export async function syncTrackersWithServer(userId) {
+  if (!userId) return { pulled: 0, pushed: 0, skipped: true }
+  try {
+    const { data, error } = await supabase
+      .from('game_trackers')
+      .select('igdb_game_id, status, game_title, game_image, updated_at')
+      .eq('user_id', userId)
+    if (error) {
+      console.error('[library] syncTrackersWithServer failed:', error.message)
+      return { pulled: 0, pushed: 0, error }
+    }
+
+    const library = getLibrary() || initializeLibrary()
+    const localStatuses = new Map()
+    for (const [listId, status] of Object.entries(LIST_STATUS_MAP)) {
+      for (const g of library.lists?.[listId]?.games || []) {
+        if (g?.id != null) localStatuses.set(String(g.id), { status, game: g })
+      }
+    }
+
+    let pulled = 0
+    for (const row of data || []) {
+      const id = String(row.igdb_game_id)
+      if (localStatuses.has(id)) continue
+      const listId = STATUS_LIST_MAP[LOCAL_STATUS[row.status]]
+      if (!listId) continue
+      if (!library.lists[listId]) library.lists[listId] = { ...DEFAULT_LISTS[listId], games: [] }
+      if (!library.lists[listId].games) library.lists[listId].games = []
+      library.lists[listId].games.push({
+        id,
+        title: row.game_title || '',
+        image: row.game_image || null,
+        addedAt: row.updated_at || new Date().toISOString(),
+      })
+      pulled++
+    }
+    if (pulled > 0) saveLibrary(library)
+
+    const remoteStatuses = new Map(
+      (data || []).map((row) => [String(row.igdb_game_id), row.status])
+    )
+    const toPush = []
+    for (const [id, { status, game }] of localStatuses) {
+      const remoteStatus = TRACKER_STATUS[status]
+      if (remoteStatuses.get(id) === remoteStatus) continue
+      toPush.push({
+        user_id: userId,
+        igdb_game_id: id,
+        status: remoteStatus,
+        game_title: game.title || null,
+        game_image: game.image || null,
+      })
+    }
+    if (toPush.length > 0) {
+      const { error: pushErr } = await supabase
+        .from('game_trackers')
+        .upsert(toPush, { onConflict: 'user_id,igdb_game_id' })
+      if (pushErr) console.error('[library] tracker push failed:', pushErr.message)
+    }
+
+    if (pulled > 0) window.dispatchEvent(new Event('libraryUpdated'))
+    return { pulled, pushed: toPush.length }
+  } catch (err) {
+    console.error('[library] syncTrackersWithServer crashed:', err)
+    return { pulled: 0, pushed: 0, error: err }
+  }
+}
+
 /**
  * Record that a game was cleared out of the Want-to-Play backlog.
  * Called by setGameStatus whenever a game moves away from 'want'.
@@ -446,6 +566,7 @@ export function setGameStatus(gameId, newStatus, game = null) {
     }
 
     saveLibrary(library)
+    syncStatusToServer(id, newStatus, gameObj)
 
     if (newStatus === 'currently') {
       updateGameProgress(id, { lastPlayedAt: new Date().toISOString() })
@@ -583,6 +704,22 @@ export function clearGameStatus(gameId) {
     }
 
     saveLibrary(library)
+    // Drop the server row too, otherwise the next sync pulls the status
+    // straight back onto this device.
+    ;(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user?.id) return
+        const { error } = await supabase
+          .from('game_trackers')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('igdb_game_id', id)
+        if (error) console.error('[library] clear status sync failed:', error.message)
+      } catch (err) {
+        console.error('[library] clear status sync crashed:', err)
+      }
+    })()
     window.dispatchEvent(new Event('libraryUpdated'))
     return true
   } catch (err) {

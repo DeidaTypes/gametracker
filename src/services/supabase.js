@@ -113,4 +113,79 @@ for (const [method, emptyData] of Object.entries(GUARDED_AUTH_METHODS)) {
   }
 }
 
+/* ============================================================
+   Shared-result memo on auth.getUser()
+   ============================================================ */
+
+/**
+ * `auth.getUser()` is a network call to /auth/v1/user, and roughly sixty
+ * service functions call it independently to learn "who am I?" before
+ * running their real query. Entering a screen therefore fires it many
+ * times over — and because every one of those requests targets the exact
+ * same URL, the browser will not run them concurrently: it serializes
+ * them behind whichever is already in flight. Measured on the Home feed,
+ * that turned 17 redundant identity checks into a 2.4-second serial chain
+ * during which no useful data was fetched at all.
+ *
+ * The identity being fetched is the same for all of them, so we resolve
+ * it once and share the answer:
+ *
+ *   - Calls arriving while a request is in flight get that same promise
+ *     rather than issuing another request.
+ *   - A successful result is reused for MEMO_TTL_MS, long enough to cover
+ *     one screen's burst of callers without holding a stale identity.
+ *   - Failures are never cached, so a transient error doesn't stick.
+ *
+ * Correctness comes from invalidation rather than a short TTL: any auth
+ * state change (sign-in, sign-out, token refresh, user update) drops the
+ * memo immediately, so callers can never observe a user the client has
+ * already moved on from. Calls that pass an explicit JWT bypass the memo
+ * entirely — they're asking about a *different* identity than the
+ * session's.
+ */
+const MEMO_TTL_MS = 30_000
+
+let userMemo = null
+
+/** Drop the memoized identity so the next `getUser()` is a real request. */
+export function invalidateUserMemo() {
+  userMemo = null
+}
+
+const guardedGetUser = supabase.auth.getUser.bind(supabase.auth)
+
+supabase.auth.getUser = (jwt) => {
+  if (jwt !== undefined) return guardedGetUser(jwt)
+
+  if (userMemo) {
+    const isInFlight = userMemo.settledAt === null
+    if (isInFlight || Date.now() - userMemo.settledAt < MEMO_TTL_MS) {
+      return userMemo.promise
+    }
+  }
+
+  const entry = { settledAt: null, promise: null }
+  entry.promise = guardedGetUser().then(
+    (result) => {
+      // Only a successful lookup is worth sharing; caching an error would
+      // pin every caller in the window to the same transient failure.
+      if (result?.error) userMemo = null
+      else if (userMemo === entry) entry.settledAt = Date.now()
+      return result
+    },
+    (err) => {
+      if (userMemo === entry) userMemo = null
+      throw err
+    }
+  )
+  userMemo = entry
+  return entry.promise
+}
+
+supabase.auth.onAuthStateChange(() => {
+  // Synchronous by design: supabase-js runs subscribers inside its auth
+  // lock and awaits whatever they return, so this must never be async.
+  invalidateUserMemo()
+})
+
 export default supabase

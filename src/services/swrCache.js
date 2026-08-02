@@ -124,6 +124,22 @@ export function getSWR(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } =
   return refetch(key, fetcher, ttlMs)
 }
 
+/**
+ * Read whatever is already cached for `key` without touching the network.
+ *
+ * `getSWR` is async even on a hit, so a component that only used it would
+ * still render one empty frame before the resolved promise lands — which
+ * on a screen transition reads as a flash of blank content. `peekSWR` lets
+ * a caller seed its initial state synchronously and paint real content on
+ * the first frame, while `getSWR` runs alongside to revalidate.
+ *
+ * Returns `undefined` when nothing is cached, which callers can safely
+ * treat as "we have nothing to show yet, so show a skeleton".
+ */
+export function peekSWR(key) {
+  return store.get(key)?.data
+}
+
 /** Drop a single cache entry so the next `getSWR` call for it is a real fetch. */
 export function invalidateSWR(key) {
   store.delete(key)

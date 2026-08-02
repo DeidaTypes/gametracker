@@ -6,14 +6,20 @@
 //
 // Consumers use the `useSession` hook. GameDetail, HomeFAB, and the
 // persistent SessionPill all read from this single source of truth.
+//
+// The per-second elapsed count lives in its own context (`useSessionElapsed`)
+// so that the timer only re-renders the components actually displaying it.
+// Putting it on the main context would re-render every consumer — and, since
+// this provider wraps the whole app, effectively the entire tree — once a
+// second for the length of a session.
 
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
-  useRef,
   useCallback,
+  useMemo,
 } from 'react'
 import { useAuth } from './AuthContext'
 import {
@@ -23,6 +29,7 @@ import {
 } from '../services/sessionService'
 
 const SessionContext = createContext(null)
+const SessionElapsedContext = createContext(0)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +40,53 @@ function elapsedFrom(startedAt) {
   )
 }
 
+// ── Elapsed timer ─────────────────────────────────────────────────────────────
+
+/**
+ * Owns the ticking second counter, isolated from SessionProvider so that a
+ * tick re-renders only this component and its context consumers. `children`
+ * arrives as an unchanged element reference, so React skips the subtree.
+ */
+function SessionElapsedProvider({ startedAt, children }) {
+  const [elapsed, setElapsed] = useState(() =>
+    startedAt ? elapsedFrom(startedAt) : 0
+  )
+
+  useEffect(() => {
+    if (!startedAt) {
+      setElapsed(0)
+      return undefined
+    }
+
+    const tick = () => setElapsed(elapsedFrom(startedAt))
+    tick() // immediate first tick
+
+    const id = setInterval(tick, 1000)
+
+    // Recompute from started_at rather than accumulating, so backgrounding
+    // the app and returning never desynchronises the counter.
+    const onResume = () => setElapsed(elapsedFrom(startedAt))
+    const onVisible = () => {
+      if (!document.hidden) onResume()
+    }
+
+    window.addEventListener('app:resumed', onResume)
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('app:resumed', onResume)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [startedAt])
+
+  return (
+    <SessionElapsedContext.Provider value={elapsed}>
+      {children}
+    </SessionElapsedContext.Provider>
+  )
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function SessionProvider({ children }) {
@@ -40,7 +94,6 @@ export function SessionProvider({ children }) {
 
   // Active session row + display metadata
   const [session, setSession] = useState(null)
-  const [elapsed, setElapsed] = useState(0)
 
   // In-flight flags
   const [isStarting, setIsStarting] = useState(false)
@@ -50,55 +103,15 @@ export function SessionProvider({ children }) {
   // Cleared when the sheet is dismissed.
   const [stopResult, setStopResult] = useState(null)
 
-  const tickRef = useRef(null)
-
-  // ── Timer ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!session) {
-      clearInterval(tickRef.current)
-      return
-    }
-
-    const tick = () => setElapsed(elapsedFrom(session.started_at))
-    tick() // immediate first tick
-
-    tickRef.current = setInterval(tick, 1000)
-    return () => clearInterval(tickRef.current)
-  }, [session])
-
-  // ── Foreground resume: recompute from started_at ───────────────────────────
-  useEffect(() => {
-    function onResume() {
-      if (session) setElapsed(elapsedFrom(session.started_at))
-    }
-
-    window.addEventListener('app:resumed', onResume)
-
-    function onVisible() {
-      if (!document.hidden) onResume()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-
-    return () => {
-      window.removeEventListener('app:resumed', onResume)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [session])
-
   // ── Restore orphaned session on auth ──────────────────────────────────────
   useEffect(() => {
     if (!user) {
       setSession(null)
-      setElapsed(0)
-      clearInterval(tickRef.current)
       return
     }
 
     getActiveSession().then((row) => {
-      if (row) {
-        setSession(row)
-        setElapsed(elapsedFrom(row.started_at))
-      }
+      if (row) setSession(row)
     })
   }, [user])
 
@@ -115,10 +128,7 @@ export function SessionProvider({ children }) {
       setIsStarting(true)
       try {
         const row = await svcStart(igdbGameId, meta)
-        if (row) {
-          setSession(row)
-          setElapsed(0)
-        }
+        if (row) setSession(row)
       } finally {
         setIsStarting(false)
       }
@@ -146,7 +156,6 @@ export function SessionProvider({ children }) {
 
         const capturedSession = session
         setSession(null)
-        setElapsed(0)
 
         if (result) {
           setStopResult({
@@ -173,20 +182,32 @@ export function SessionProvider({ children }) {
 
   const dismissStopResult = useCallback(() => setStopResult(null), [])
 
+  const value = useMemo(
+    () => ({
+      session,
+      isStarting,
+      isStopping,
+      stopResult,
+      startGameSession,
+      stopGameSession,
+      dismissStopResult,
+    }),
+    [
+      session,
+      isStarting,
+      isStopping,
+      stopResult,
+      startGameSession,
+      stopGameSession,
+      dismissStopResult,
+    ]
+  )
+
   return (
-    <SessionContext.Provider
-      value={{
-        session,
-        elapsed,
-        isStarting,
-        isStopping,
-        stopResult,
-        startGameSession,
-        stopGameSession,
-        dismissStopResult,
-      }}
-    >
-      {children}
+    <SessionContext.Provider value={value}>
+      <SessionElapsedProvider startedAt={session?.started_at ?? null}>
+        {children}
+      </SessionElapsedProvider>
     </SessionContext.Provider>
   )
 }
@@ -195,4 +216,12 @@ export function useSession() {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error('useSession must be used inside <SessionProvider>')
   return ctx
+}
+
+/**
+ * Seconds elapsed in the active session, updated once a second.
+ * Subscribe only where the number is actually rendered.
+ */
+export function useSessionElapsed() {
+  return useContext(SessionElapsedContext)
 }

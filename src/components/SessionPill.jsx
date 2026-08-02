@@ -6,7 +6,7 @@
 
 import React, { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSession } from '../contexts/SessionContext'
+import { useSession, useSessionElapsed } from '../contexts/SessionContext'
 import './SessionPill.css'
 
 function formatElapsed(seconds) {
@@ -16,7 +16,8 @@ function formatElapsed(seconds) {
 }
 
 export default function SessionPill() {
-  const { session, elapsed, isStopping, stopGameSession } = useSession()
+  const { session, isStopping, stopGameSession } = useSession()
+  const elapsed = useSessionElapsed()
   const navigate = useNavigate()
 
   const handleStop = useCallback(

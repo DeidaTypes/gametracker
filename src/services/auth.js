@@ -21,6 +21,14 @@ import { supabase } from './supabase'
  *   )
  */
 
+// activity_privacy and presence_opt_in are deliberately absent: the API roles
+// have no column privilege on them, so `select('*')` here would 403. Read them
+// via the get_my_settings() RPC instead (see userSettingsService).
+const PROFILE_COLUMNS =
+  'id, display_name, username, bio, avatar_url, genre_badge, platform_badge, ' +
+  'created_at, updated_at, banner_url, favorite_games, streak_share_opt_in, ' +
+  'showcase_badges, current_obsessions'
+
 /* ============================================================
    Error classification
    ============================================================ */
@@ -306,7 +314,7 @@ export async function signUp({ email, password, displayName, username }) {
     })
     const { data: profileRow, error: fetchErr } = await supabase
       .from('users')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', user.id)
       .single()
     if (fetchErr) throw fetchErr
@@ -476,7 +484,7 @@ export function onAuthStateChange(callback, onEventStart) {
 async function fetchProfile(userId) {
   const { data, error } = await supabase
     .from('users')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .maybeSingle()
   if (error) {

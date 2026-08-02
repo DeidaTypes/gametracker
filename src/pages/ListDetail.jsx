@@ -57,6 +57,10 @@ import ListComments from '../components/ListComments'
 import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { getSWR, peekSWR } from '../services/swrCache'
+
+/** How long a list's contents are reused before the next entry revalidates. */
+const LIST_TTL_MS = 60 * 1000
 import './ListDetail.css'
 
 // ── Long-press drag-to-reorder tuning ───────────────────────────────────
@@ -173,9 +177,12 @@ function ListDetail() {
   const { listId } = useParams()
   const navigate = useNavigate()
   const [gridRef] = useAutoAnimateMotion()
-  const [listInfo, setListInfo] = useState(null)
-  const [games, setGames] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Seed from the shared cache so re-opening a list the user just backed
+  // out of paints the real list on the first frame instead of a skeleton.
+  const cachedList = peekSWR(`list:${listId}`)
+  const [listInfo, setListInfo] = useState(cachedList ?? null)
+  const [games, setGames] = useState(cachedList?.games || [])
+  const [isLoading, setIsLoading] = useState(cachedList === undefined)
   const [loadError, setLoadError] = useState(false)
   const [showActionSheet, setShowActionSheet] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -183,7 +190,7 @@ function ListDetail() {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
-  const [collaborators, setCollaborators] = useState([])
+  const [collaborators, setCollaborators] = useState(cachedList?.collaborators || [])
   const [showCollaboratorSheet, setShowCollaboratorSheet] = useState(false)
 
   // ── Pagination (custom list game grid only — see GAMES_PAGE_SIZE) ────────
@@ -245,7 +252,7 @@ function ListDetail() {
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ force = true } = {}) => {
     setLoadError(false)
     if (isTracker) {
       const info = getListInfo(listId)
@@ -255,7 +262,10 @@ function ListDetail() {
       setIsLoading(false)
     } else {
       try {
-        const data = await getListById(listId)
+        const data = await getSWR(`list:${listId}`, () => getListById(listId), {
+          ttlMs: LIST_TTL_MS,
+          force,
+        })
         setListInfo(data)
         setGames(data?.games || [])
         setCollaborators(data?.collaborators || [])
@@ -274,9 +284,11 @@ function ListDetail() {
   }, [listId])
 
   useEffect(() => {
-    setIsLoading(true)
-    refresh()
-    const handler = () => refresh()
+    // Mount reads through the cache; the events below mean the list really
+    // did change, so those force a fetch.
+    if (peekSWR(`list:${listId}`) === undefined) setIsLoading(true)
+    refresh({ force: false })
+    const handler = () => refresh({ force: true })
     window.addEventListener('libraryUpdated', handler)
     // A collaborative list can change while the app is backgrounded; refresh()
     // also re-derives the owner-ratings / save-state effects downstream.
@@ -285,7 +297,7 @@ function ListDetail() {
       window.removeEventListener('libraryUpdated', handler)
       window.removeEventListener(APP_RESUMED_EVENT, handler)
     }
-  }, [refresh])
+  }, [refresh, listId])
 
   // Reveal another page of games once the sentinel below the grid comes
   // into view. Drag-reorder deliberately only ever operates on this

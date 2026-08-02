@@ -12,6 +12,7 @@ import {
   setGameStatus,
 } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import StatusChip from './StatusChip'
 import './AddToListButton.css'
 
 export const STATUS_TILES = [
@@ -244,20 +245,22 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                     {STATUS_TILES.map((tile) => {
                       const active = currentStatus === tile.key
                       return (
-                        <button
+                        <StatusChip
                           key={tile.key}
-                          className={`bs-status-row${active ? ' bs-status-row--active' : ''}`}
+                          as="button"
+                          variant="row"
+                          status={tile.key}
+                          icon={tile.icon}
+                          label={tile.label}
+                          active={active}
                           onClick={() => handleStatusTap(tile.key)}
                           aria-pressed={active}
-                        >
-                          <span className="bs-status-row-icon">{tile.icon}</span>
-                          <span className="bs-status-row-label">{tile.label}</span>
-                          {active && (
-                            <svg className="bs-status-row-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          trailing={active ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
-                          )}
-                        </button>
+                          ) : null}
+                        />
                       )
                     })}
                     {/* Log play — action row, not a status; no check state */}

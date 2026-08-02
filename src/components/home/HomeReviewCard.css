@@ -25,12 +25,22 @@
    rating is a short card, a long review is a tall one.
 
    3px left accent bar + byline verb color, by MEANING:
-     - green   (--accent-review)         → reviewed / rated
-     - purple  (--accent-journal[-text]) → added to a list / created a list
-     - cobalt  (--accent)                → every status event
-                                            (backlogged / finished /
-                                            started / played / favorited /
-                                            journaled)
+     - green    (--accent-review)          → reviewed / rated
+     - purple   (--accent-journal[-text])  → added to a list / created a list
+     - lavender (--status-want-to-play)    → backlogged (= Want to Play)
+     - cobalt   (--status-currently-playing) → started (= Currently Playing)
+     - green    (--status-played)          → finished (= Played)
+     - cobalt   (--accent)                 → played / favorited / journaled
+                                              (session log, favorite, journal
+                                              entry — real activity types, but
+                                              not one of the four tracker
+                                              statuses, so no --status-* entry)
+   The three true tracker-status types (backlogged / started / finished)
+   route through the shared StatusChip status→color map (see
+   src/components/StatusChip.jsx) so a status reads the same color here
+   as it does on Library's stat cells, GameDetail's status tiles, and
+   AddToListButton's sheet — the accent bar below matches its card's
+   StatusChip for the same reason.
    Like/comment icons keep the existing purple social hue on every row
    regardless of type — a different, deliberate use of purple from the
    byline/accent bar's per-type coloring.
@@ -55,9 +65,18 @@
   border-left: 3px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
 }
 
-.home-review-card--backlogged,
-.home-review-card--finished,
-.home-review-card--started,
+.home-review-card--backlogged {
+  border-left: 3px solid color-mix(in srgb, var(--status-want-to-play) 55%, transparent);
+}
+
+.home-review-card--started {
+  border-left: 3px solid color-mix(in srgb, var(--status-currently-playing) 55%, transparent);
+}
+
+.home-review-card--finished {
+  border-left: 3px solid color-mix(in srgb, var(--status-played) 55%, transparent);
+}
+
 .home-review-card--played,
 .home-review-card--favorited,
 .home-review-card--journaled {
@@ -199,6 +218,9 @@
   color: var(--accent-journal-text);
 }
 
+/* Only for the non-tracker-status event types (session log / favorite /
+   journal entry) — backlogged/started/finished render via StatusChip
+   (variant="pill") instead, see GameZone above. */
 .home-review-card__pill--status {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-hover);
