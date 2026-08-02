@@ -1011,6 +1011,15 @@
   display: block;
 }
 
+.sp-user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
 /* ---- Developer result-row icon (Devs tab / Developers section) ---- */
 .sp-dev-icon {
   display: flex;

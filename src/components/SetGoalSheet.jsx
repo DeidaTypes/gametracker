@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useNavDim } from '../hooks/useNavDim'
 import KeyboardAwareView from './KeyboardAwareView'
 import './SetGoalSheet.css'
 
@@ -20,6 +21,9 @@ export default function SetGoalSheet({ isOpen, onClose, onSave, year, current = 
   const inputRef = useRef(null)
   const [value, setValue] = useState(String(current || ''))
   const [saving, setSaving] = useState(false)
+
+  // Drop the bottom nav below this sheet while it's open (see BottomNav.css).
+  useNavDim(isOpen)
 
   // Reset input when sheet opens
   useEffect(() => {

@@ -41,6 +41,7 @@ import EmptyState from '../components/EmptyState'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
+import { generateDefaultAvatar } from '../services/profileService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Search.css'
 
@@ -267,11 +268,9 @@ function reviewRowToCard(row) {
     author: {
       username: row.users?.username || row.users?.display_name || 'someone',
       displayName: row.users?.display_name || 'Someone',
-      avatarUrl:
-        row.users?.avatar_url ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-          row.users?.display_name || 'U'
-        )}&background=152035&color=C8965A`,
+      // No avatar_url? Leave it null — ReviewCard already renders its own
+      // local initials fallback rather than fetching one over the network.
+      avatarUrl: row.users?.avatar_url || null,
     },
     game: {
       id: row.igdb_game_id,
@@ -280,12 +279,6 @@ function reviewRowToCard(row) {
       coverUrl: row.game_image || null,
     },
   }
-}
-
-function avatarFallback(name) {
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || 'U'
-  )}&background=152035&color=C8965A`
 }
 
 /* =============================================
@@ -802,19 +795,22 @@ function ReviewsTabResults({ rows, isLoading }) {
    ============================================= */
 
 function UserAvatar({ url, name }) {
+  const [failed, setFailed] = useState(false)
+  if (url && !failed) {
+    return (
+      <div className="sp-user-avatar">
+        <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />
+      </div>
+    )
+  }
+  const fallback = generateDefaultAvatar(name || 'U')
   return (
-    <div className="sp-user-avatar">
-      <img
-        src={url || avatarFallback(name)}
-        alt=""
-        loading="lazy"
-        onError={(e) => {
-          if (!e.currentTarget.dataset.fallback) {
-            e.currentTarget.dataset.fallback = '1'
-            e.currentTarget.src = avatarFallback(name)
-          }
-        }}
-      />
+    <div
+      className="sp-user-avatar sp-user-avatar--fallback"
+      style={{ background: fallback.color }}
+      aria-hidden="true"
+    >
+      {fallback.initials}
     </div>
   )
 }

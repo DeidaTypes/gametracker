@@ -32,12 +32,13 @@ import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
 import KeyboardAwareView from '../components/KeyboardAwareView'
+import { generateDefaultAvatar } from '../services/profileService'
 import './SearchOverlay.css'
 
 // ─── Static genre data ─────────────────────────────────────────────────────
 // Matches the same tiles in Search.jsx so genre-tap destinations are identical.
 const GENRE_CARDS = [
-  { slug: 'rpg',       name: 'RPG',       gradient: 'linear-gradient(135deg, #3D1A6B 0%, #C8965A 100%)' },
+  { slug: 'rpg',       name: 'RPG',       gradient: 'linear-gradient(135deg, #3D1A6B 0%, var(--color-brand-primary) 100%)' },
   { slug: 'action',    name: 'Action',    gradient: 'linear-gradient(135deg, #8C2200 0%, #C84E0A 100%)' },
   { slug: 'strategy',  name: 'Strategy',  gradient: 'linear-gradient(135deg, #0B1E3D 0%, #1A7FA0 100%)' },
   { slug: 'adventure', name: 'Adventure', gradient: 'linear-gradient(135deg, #0D2E1A 0%, #4A8C62 100%)' },
@@ -68,11 +69,9 @@ function reviewRowToCard(row) {
     author: {
       username: row.users?.username || row.users?.display_name || 'someone',
       displayName: row.users?.display_name || 'Someone',
-      avatarUrl:
-        row.users?.avatar_url ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-          row.users?.display_name || 'U'
-        )}&background=152035&color=C8965A`,
+      // No avatar_url? Leave it null — ReviewCard already renders its own
+      // local initials fallback rather than fetching one over the network.
+      avatarUrl: row.users?.avatar_url || null,
     },
     game: {
       id: row.igdb_game_id,
@@ -81,12 +80,6 @@ function reviewRowToCard(row) {
       coverUrl: row.game_image || null,
     },
   }
-}
-
-function avatarFallback(name) {
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || 'U'
-  )}&background=152035&color=C8965A`
 }
 
 function HighlightMatch({ text, query }) {
@@ -297,19 +290,22 @@ function ReviewsResults({ rows, isLoading }) {
 // ─── Users tab ─────────────────────────────────────────────────────────────
 
 function UserAvatar({ url, name }) {
+  const [failed, setFailed] = useState(false)
+  if (url && !failed) {
+    return (
+      <div className="so-user-avatar">
+        <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />
+      </div>
+    )
+  }
+  const fallback = generateDefaultAvatar(name || 'U')
   return (
-    <div className="so-user-avatar">
-      <img
-        src={url || avatarFallback(name)}
-        alt=""
-        loading="lazy"
-        onError={(e) => {
-          if (!e.currentTarget.dataset.fallback) {
-            e.currentTarget.dataset.fallback = '1'
-            e.currentTarget.src = avatarFallback(name)
-          }
-        }}
-      />
+    <div
+      className="so-user-avatar so-user-avatar--fallback"
+      style={{ background: fallback.color }}
+      aria-hidden="true"
+    >
+      {fallback.initials}
     </div>
   )
 }

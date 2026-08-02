@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuBell } from 'react-icons/lu'
 import { useNotifications } from '../contexts/NotificationsContext'
@@ -76,8 +76,9 @@ function entityRoute(type, entityId, actor) {
 function NotificationItem({ notification, onTap }) {
   const { type, entity_id: entityId, read, created_at: createdAt, actor } = notification
   const actorName = actor?.display_name || actor?.username || 'Someone'
-  const avatarSrc =
-    actor?.avatar_url || generateDefaultAvatar(actor?.display_name || actor?.username || '?')
+  const [avatarFailed, setAvatarFailed] = useState(false)
+  const fallback = generateDefaultAvatar(actorName)
+  const showImage = !!actor?.avatar_url && !avatarFailed
   const { action, suffix } = notificationText(type)
   const time = relativeTime(createdAt)
 
@@ -89,12 +90,23 @@ function NotificationItem({ notification, onTap }) {
       aria-label={`${actorName} ${action}${suffix}`}
     >
       <div className="notif-item__avatar-wrap">
-        <img
-          className="notif-item__avatar"
-          src={avatarSrc}
-          alt={actorName}
-          loading="lazy"
-        />
+        {showImage ? (
+          <img
+            className="notif-item__avatar"
+            src={actor.avatar_url}
+            alt={actorName}
+            loading="lazy"
+            onError={() => setAvatarFailed(true)}
+          />
+        ) : (
+          <span
+            className="notif-item__avatar notif-item__avatar--fallback"
+            style={{ background: fallback.color }}
+            aria-hidden="true"
+          >
+            {fallback.initials}
+          </span>
+        )}
       </div>
 
       <div className="notif-item__body">

@@ -33,6 +33,7 @@ import { logManualSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
 import { showToast } from './Toast'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useNavDim } from '../hooks/useNavDim'
 import KeyboardAwareView from './KeyboardAwareView'
 import './TrackerGameList.css'
 
@@ -116,6 +117,9 @@ function LogSessionSheet({ game, isOpen, onClose, onLogged }) {
   const [showCustom, setShowCustom] = useState(false)
   const [saving, setSaving] = useState(false)
   const inputRef = useRef(null)
+
+  // Drop the bottom nav below this sheet while it's open (see BottomNav.css).
+  useNavDim(isOpen)
 
   useEffect(() => {
     if (!isOpen) {

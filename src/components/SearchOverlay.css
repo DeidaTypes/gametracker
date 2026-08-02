@@ -481,6 +481,15 @@
   object-fit: cover;
 }
 
+.so-user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
 .so-user-row__text {
   display: flex;
   flex-direction: column;

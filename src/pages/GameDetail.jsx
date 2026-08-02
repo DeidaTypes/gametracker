@@ -33,6 +33,14 @@ import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { getSWR, peekSWR } from '../services/swrCache'
+
+/**
+ * Game metadata from IGDB barely changes, so it is held longer than the
+ * social data on the same page (reviews, ratings, pulse) which is
+ * deliberately left uncached and always current.
+ */
+const GAME_TTL_MS = 5 * 60 * 1000
 import './GameDetail.css'
 
 // Display-only, shorter labels for the status tile grid below the title.
@@ -161,8 +169,12 @@ function GameDetail() {
   // cover_big has loaded — keeps the flight target from being empty.
   const placeholderCover =
     location.state?.coverImage || getRecentCoverImage(gameId)
-  const [game, setGame] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Seed from the shared cache so reopening a game the user just backed out
+  // of renders the hero, title and metadata immediately rather than showing
+  // a skeleton while we re-confirm details that have not changed.
+  const cachedGame = peekSWR(`game:${gameId}`)
+  const [game, setGame] = useState(cachedGame ?? null)
+  const [loading, setLoading] = useState(cachedGame === undefined)
   const [error, setError] = useState(null)
   const [reviews, setReviews] = useState([])
   // Sprint 6 P0 — Map<reviewId, count> for the visible reviews. Drives
@@ -250,10 +262,15 @@ function GameDetail() {
   useEffect(() => {
     async function fetchGame() {
       try {
-        setLoading(true)
+        const warm = peekSWR(`game:${gameId}`)
+        // A warm game revalidates behind the already-rendered page; only a
+        // cold one is allowed to blank the screen out to a skeleton.
+        if (warm === undefined) setLoading(true)
         setError(null)
         setRatingDist(null)
-        const gameData = await getGameById(gameId)
+        const gameData = await getSWR(`game:${gameId}`, () => getGameById(gameId), {
+          ttlMs: GAME_TTL_MS,
+        })
         setGame(gameData)
 
         addViewedGame(gameId, gameData.title, gameData.image)
@@ -927,7 +944,9 @@ function GameDetail() {
                       className="gd-pulse-avatar"
                     />
                   ) : (
-                    <div key={p.userId} className="gd-pulse-avatar" />
+                    <div key={p.userId} className="gd-pulse-avatar gd-pulse-avatar--fallback">
+                      {(p.username || p.displayName || '?').charAt(0).toUpperCase()}
+                    </div>
                   )
                 )}
                 {circlePulse.activePresence.length > 5 && (

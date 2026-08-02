@@ -110,6 +110,15 @@
   background: var(--bg-surface-2);
 }
 
+.notif-item__avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+}
+
 /* ---- Body ---- */
 .notif-item__body {
   flex: 1;

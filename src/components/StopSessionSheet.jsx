@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { updateJournalEntry } from '../services/journalService'
 import { useSession } from '../contexts/SessionContext'
+import { useNavDim } from '../hooks/useNavDim'
 import KeyboardAwareView from './KeyboardAwareView'
 import './StopSessionSheet.css'
 
@@ -46,6 +47,10 @@ export default function StopSessionSheet() {
       setSaved(false)
     }
   }, [stopResult])
+
+  // Mounted globally in App.jsx, reachable from every screen — must drop
+  // the bottom nav below it while open (see BottomNav.css).
+  useNavDim(!!stopResult)
 
   if (!stopResult) return null
 
