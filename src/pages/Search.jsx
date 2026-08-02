@@ -41,7 +41,7 @@ import EmptyState from '../components/EmptyState'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
-import { generateDefaultAvatar } from '../services/profileService'
+import Avatar from '../components/Avatar'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Search.css'
 
@@ -236,7 +236,13 @@ function UserResultRow({ user, onTapUser, currentUserId }) {
           })
         }
       >
-        <UserAvatar url={user.avatar_url} name={displayName || username} />
+        <Avatar
+          avatarUrl={user.avatar_url}
+          name={displayName || username}
+          seed={user.id}
+          size="md"
+          className="sp-user-avatar"
+        />
         <div className="sp-user-row__text">
           <span className="sp-user-row__username">
             {username || displayName || 'Unknown'}
@@ -794,27 +800,6 @@ function ReviewsTabResults({ rows, isLoading }) {
    USERS TAB
    ============================================= */
 
-function UserAvatar({ url, name }) {
-  const [failed, setFailed] = useState(false)
-  if (url && !failed) {
-    return (
-      <div className="sp-user-avatar">
-        <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />
-      </div>
-    )
-  }
-  const fallback = generateDefaultAvatar(name || 'U')
-  return (
-    <div
-      className="sp-user-avatar sp-user-avatar--fallback"
-      style={{ background: fallback.color }}
-      aria-hidden="true"
-    >
-      {fallback.initials}
-    </div>
-  )
-}
-
 /**
  * Inline Follow / Following toggle used by the Users tab rows. Owns
  * its own `isFollowing` lookup on mount + listens to the global
@@ -927,7 +912,13 @@ function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
               className="sp-user-row__main"
               onClick={() => onTapUser(item)}
             >
-              <UserAvatar url={item.avatarUrl} name={item.displayName || item.username} />
+              <Avatar
+                avatarUrl={item.avatarUrl}
+                name={item.displayName || item.username}
+                seed={item.id}
+                size="md"
+                className="sp-user-avatar"
+              />
               <div className="sp-user-row__text">
                 <span className="sp-user-row__username">{item.username}</span>
                 {item.displayName && (
@@ -1032,9 +1023,11 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
             <p className="sp-list-row__desc">{list.description}</p>
           )}
           <div className="sp-list-row__author">
-            <UserAvatar
-              url={list.author?.avatarUrl}
+            <Avatar
+              avatarUrl={list.author?.avatarUrl}
               name={list.author?.displayName || list.author?.username}
+              seed={list.author?.id}
+              size="xs"
             />
             <span className="sp-list-row__author-name">
               {list.author?.username ||

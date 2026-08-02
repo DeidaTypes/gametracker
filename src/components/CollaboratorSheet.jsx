@@ -6,6 +6,7 @@ import { useMotionPreference } from '../hooks/useMotionPreference'
 import { getFollowing } from '../services/followService'
 import { addCollaborator, removeCollaborator } from '../services/listService'
 import { showToast } from './Toast'
+import Avatar from './Avatar'
 import './CollaboratorSheet.css'
 
 /**
@@ -138,9 +139,12 @@ function CollaboratorSheet({
                   <ul className="collab-sheet__user-list">
                     {collaborators.map((u) => (
                       <li key={u.userId} className="collab-sheet__user-row">
-                        <UserAvatar
+                        <Avatar
                           avatarUrl={u.avatarUrl}
                           name={u.displayName || u.username}
+                          seed={u.userId}
+                          size="md"
+                          className="collab-sheet__avatar"
                         />
                         <div className="collab-sheet__user-info">
                           <span className="collab-sheet__user-name">
@@ -188,9 +192,12 @@ function CollaboratorSheet({
                     <ul className="collab-sheet__user-list">
                       {inviteable.map((u) => (
                         <li key={u.userId} className="collab-sheet__user-row">
-                          <UserAvatar
+                          <Avatar
                             avatarUrl={u.avatarUrl}
                             name={u.displayName || u.username}
+                            seed={u.userId}
+                            size="md"
+                            className="collab-sheet__avatar"
                           />
                           <div className="collab-sheet__user-info">
                             <span className="collab-sheet__user-name">
@@ -222,22 +229,6 @@ function CollaboratorSheet({
       )}
     </AnimatePresence>,
     document.body
-  )
-}
-
-function UserAvatar({ avatarUrl, name }) {
-  const initial = (name || '?').charAt(0).toUpperCase()
-  return avatarUrl ? (
-    <img
-      src={avatarUrl}
-      alt=""
-      className="collab-sheet__avatar"
-      loading="lazy"
-    />
-  ) : (
-    <span className="collab-sheet__avatar collab-sheet__avatar--fallback" aria-hidden="true">
-      {initial}
-    </span>
   )
 }
 

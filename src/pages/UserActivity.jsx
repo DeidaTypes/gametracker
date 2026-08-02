@@ -2,7 +2,6 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
-import { generateDefaultAvatar } from '../services/profileService'
 import ActivityFeed from '../components/ActivityFeed'
 import './UserActivity.css'
 
@@ -20,7 +19,6 @@ function UserActivity() {
   const { userId, user, resolving, notFound } = useProfileRouteUser()
 
   const displayName = user?.display_name || user?.username || ''
-  const fallbackAvatar = generateDefaultAvatar(displayName || 'User')
 
   return (
     <div className="user-activity">
@@ -59,7 +57,6 @@ function UserActivity() {
             userId={userId}
             avatarUrl={user?.avatar_url || null}
             displayName={displayName}
-            avatarColor={fallbackAvatar.color}
           />
         )}
       </div>

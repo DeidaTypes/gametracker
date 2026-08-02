@@ -1,5 +1,7 @@
 // Profile Service - manages user profile data
 
+import { getAvatarFallback } from '../utils/avatarFallback'
+
 const PROFILE_KEY = 'userProfile'
 
 // Default profile data
@@ -152,23 +154,14 @@ export function isUsernameAvailable(username) {
   return pattern.test(username)
 }
 
-// Generate default avatar from display name
+// Generate default avatar from display name.
+//
+// Delegates to the single app-wide fallback system (see
+// src/utils/avatarFallback.js and src/components/Avatar.jsx) rather than
+// carrying its own copy of the palette, so every caller of this function
+// stays in sync with what the shared Avatar component renders.
 export function generateDefaultAvatar(displayName) {
-  const initials = displayName
-    .split(' ')
-    .map(word => word.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2)
-  
-  // Create a simple colored circle with initials
-  const colors = [
-    '#4A9EFF', '#5B9FFF', '#6BAFFF', '#7BBFFF',
-    '#8CCFFF', '#9DDFFF', '#AEEFFF', '#BFFFFF'
-  ]
-  const colorIndex = displayName.charCodeAt(0) % colors.length
-  const color = colors[colorIndex]
-  
+  const { initials, color } = getAvatarFallback(displayName)
   return {
     type: 'generated',
     initials,

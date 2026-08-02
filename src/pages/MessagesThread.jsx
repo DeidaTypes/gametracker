@@ -28,13 +28,13 @@ import {
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
-import { generateDefaultAvatar } from '../services/profileService'
 import { showToast } from '../components/Toast'
 import { useReactions } from '../hooks/useReactions'
 import { useDmPresence } from '../hooks/useDmPresence'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
 import KeyboardAwareView from '../components/KeyboardAwareView'
+import Avatar from '../components/Avatar'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -548,10 +548,6 @@ function MessagesThread() {
   /* ── Render ───────────────────────────────────────────────── */
 
   const headerLabel = partner ? partnerLabel(partner) : decodedUsername || 'Messages'
-  const fallback = useMemo(
-    () => generateDefaultAvatar(headerLabel),
-    [headerLabel]
-  )
   const partnerAvatar = partner?.avatar_url || null
   const sendDisabled =
     (!draft.trim() && !pendingAttachment) || sending || isSelf || !partnerId || partnerBlocked
@@ -608,19 +604,13 @@ function MessagesThread() {
           aria-label={`Open ${headerLabel}'s profile`}
         >
           <div className="dm-thread__avatar-wrap">
-            <div className="dm-thread__avatar">
-              {partnerAvatar ? (
-                <img src={partnerAvatar} alt="" />
-              ) : (
-                <span
-                  className="dm-thread__avatar-fallback"
-                  style={{ background: fallback.color }}
-                  aria-hidden="true"
-                >
-                  {fallback.initials}
-                </span>
-              )}
-            </div>
+            <Avatar
+              avatarUrl={partnerAvatar}
+              name={headerLabel}
+              seed={partner?.id}
+              size="sm"
+              className="dm-thread__avatar"
+            />
             {partnerOnline && (
               <span className="dm-thread__online-dot" aria-label="Online" />
             )}
@@ -683,19 +673,13 @@ function MessagesThread() {
           </div>
         ) : messages.length === 0 ? (
           <div className="dm-empty">
-            <div className="dm-empty__avatar">
-              {partnerAvatar ? (
-                <img src={partnerAvatar} alt="" />
-              ) : (
-                <span
-                  className="dm-empty__avatar-fallback"
-                  style={{ background: fallback.color }}
-                  aria-hidden="true"
-                >
-                  {fallback.initials}
-                </span>
-              )}
-            </div>
+            <Avatar
+              avatarUrl={partnerAvatar}
+              name={headerLabel}
+              seed={partner?.id}
+              size="xl"
+              className="dm-empty__avatar"
+            />
             <h2 className="dm-empty__name">{headerLabel}</h2>
             {statLine && <p className="dm-empty__stats">{statLine}</p>}
             <p className="dm-empty__starter">

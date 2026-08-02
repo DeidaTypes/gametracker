@@ -240,24 +240,8 @@
   align-self: flex-start;
 }
 
-.review-card__avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.review-card__avatar--fallback {
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  user-select: none;
-}
+/* Sizing + fallback color for the author avatar now live on the shared
+   Avatar component (src/components/Avatar.jsx / Avatar.css). */
 
 .review-card__username {
   color: var(--color-brand-primary);
@@ -389,12 +373,6 @@
   padding: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-.review-card--gamedetail .review-card__gd-avatar {
-  width: 32px;
-  height: 32px;
-  font-size: 13px;
 }
 
 .review-card--gamedetail .review-card__gd-name {

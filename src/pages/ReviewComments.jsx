@@ -30,6 +30,7 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import KeyboardAwareView from '../components/KeyboardAwareView'
+import Avatar from '../components/Avatar'
 import './ReviewComments.css'
 
 /* ============================================================
@@ -257,18 +258,13 @@ function CommentRow({
         disabled={!authorUsername}
         aria-label={authorUsername ? `View ${username}'s profile` : undefined}
       >
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt=""
-            className="rc-comment__avatar"
-            loading="lazy"
-          />
-        ) : (
-          <div className="rc-comment__avatar rc-comment__avatar--fallback" aria-hidden="true">
-            {username.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <Avatar
+          avatarUrl={avatarUrl}
+          name={username}
+          seed={comment.users?.id}
+          size="sm"
+          className="rc-comment__avatar"
+        />
       </button>
 
       <div className="rc-comment__body">

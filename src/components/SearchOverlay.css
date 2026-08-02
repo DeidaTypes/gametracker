@@ -466,29 +466,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.so-user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--bg-surface);
-}
-
-.so-user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.so-user-avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-}
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). Was a bespoke 36px; now
+   the "md" (40px) step of the shared scale, matching sibling user-row
+   avatars elsewhere in the app. */
 
 .so-user-row__text {
   display: flex;

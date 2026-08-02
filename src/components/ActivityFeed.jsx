@@ -7,6 +7,7 @@ import {
 } from '../services/activityService'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import EmptyState from './EmptyState'
+import Avatar from './Avatar'
 import './ActivityFeed.css'
 
 const PAGE_SIZE = 50
@@ -28,29 +29,15 @@ const TYPE_GLYPH = {
  * Renders the small avatar shown to the left of every activity row.
  * Falls back to coloured initials when no avatar URL / data is set.
  */
-function ActorAvatar({ avatarUrl, avatarData, displayName, color }) {
-  const src = avatarData || avatarUrl || null
-  if (src) {
-    return (
-      <div className="activity-feed-avatar">
-        <img src={src} alt="" loading="lazy" />
-      </div>
-    )
-  }
-  const initials = (displayName || 'U')
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+function ActorAvatar({ avatarUrl, avatarData, displayName, userId }) {
   return (
-    <div
-      className="activity-feed-avatar activity-feed-avatar--generated"
-      style={{ backgroundColor: color || 'var(--color-bg-tertiary)' }}
-      aria-hidden="true"
-    >
-      {initials}
-    </div>
+    <Avatar
+      avatarUrl={avatarData || avatarUrl || null}
+      name={displayName}
+      seed={userId}
+      size="sm"
+      className="activity-feed-avatar"
+    />
   )
 }
 
@@ -58,11 +45,11 @@ function ActorAvatar({ avatarUrl, avatarData, displayName, color }) {
  * Vertical activity timeline for the Profile → Activity tab.
  *
  * Props:
- *   userId          — UUID of the user whose activity to load
+ *   userId          — UUID of the user whose activity to load (also used
+ *                     as the avatar fallback-color seed)
  *   avatarUrl       — uploaded avatar URL (Supabase profile)
  *   avatarData      — base64 avatar (legacy local profile)
  *   displayName     — used for fallback avatar initials
- *   avatarColor     — used for fallback avatar background
  *
  * Behaviour:
  *   - Loads PAGE_SIZE (50) activities on mount.
@@ -71,7 +58,7 @@ function ActorAvatar({ avatarUrl, avatarData, displayName, color }) {
  *     `libraryUpdated` events fire (so logging a new activity makes it
  *     show up within ~one network round trip).
  */
-function ActivityFeed({ userId, avatarUrl, avatarData, displayName, avatarColor }) {
+function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
   const navigate = useNavigate()
   const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
@@ -190,7 +177,7 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName, avatarColor 
                 avatarUrl={avatarUrl}
                 avatarData={avatarData}
                 displayName={displayName}
-                color={avatarColor}
+                userId={userId}
               />
               <span
                 className="activity-feed-icon"

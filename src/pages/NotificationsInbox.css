@@ -97,26 +97,11 @@
   background: rgba(59, 130, 246, 0.1);
 }
 
-/* ---- Avatar ---- */
+/* ---- Avatar ----
+   Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). */
 .notif-item__avatar-wrap {
   flex-shrink: 0;
-}
-
-.notif-item__avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  background: var(--bg-surface-2);
-}
-
-.notif-item__avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 600;
-  font-size: 15px;
 }
 
 /* ---- Body ---- */

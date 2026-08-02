@@ -7,11 +7,11 @@ import { getInbox, MESSAGES_CHANGED_EVENT } from '../services/messageService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { searchUsers } from '../services/userService'
 import { useDebounce } from '../hooks/useDebounce'
-import { generateDefaultAvatar } from '../services/profileService'
 import { supabase } from '../services/supabase'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import EmptyState from '../components/EmptyState'
 import CenteredModal from '../components/CenteredModal'
+import Avatar from '../components/Avatar'
 import './MessagesInbox.css'
 
 /* ============================================================
@@ -251,7 +251,6 @@ function MessagesInbox() {
 
 function ConversationRow({ conversation, currentUserId, onTap }) {
   const { partner, lastMessage, unreadCount } = conversation
-  const fallback = generateDefaultAvatar(partnerLabel(partner))
 
   // Preview prefix when WE sent the latest message ("You: …") so the
   // user can scan the inbox without opening every thread to figure
@@ -267,19 +266,12 @@ function ConversationRow({ conversation, currentUserId, onTap }) {
         className={`dm-inbox-row${hasUnread ? ' dm-inbox-row--unread' : ''}`}
         onClick={onTap}
       >
-        <div className="dm-inbox-row__avatar">
-          {partner?.avatar_url ? (
-            <img src={partner.avatar_url} alt="" loading="lazy" />
-          ) : (
-            <span
-              className="dm-inbox-row__avatar-fallback"
-              style={{ background: fallback.color }}
-              aria-hidden="true"
-            >
-              {fallback.initials}
-            </span>
-          )}
-        </div>
+        <Avatar
+          user={partner}
+          name={partnerLabel(partner)}
+          size="md"
+          className="dm-inbox-row__avatar"
+        />
         <div className="dm-inbox-row__main">
           <div className="dm-inbox-row__line1">
             <span className="dm-inbox-row__name">{partnerLabel(partner)}</span>
@@ -402,9 +394,6 @@ function ComposeSheet({ isOpen, onClose, onPick, currentUserId }) {
         ) : (
           <ul role="list" className="dm-compose__list">
             {results.map((u) => {
-              const fallback = generateDefaultAvatar(
-                u.display_name || u.username || 'User'
-              )
               return (
                 <li key={u.id}>
                   <button
@@ -412,19 +401,7 @@ function ComposeSheet({ isOpen, onClose, onPick, currentUserId }) {
                     className="dm-compose-row"
                     onClick={() => onPick(u)}
                   >
-                    <div className="dm-compose-row__avatar">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" loading="lazy" />
-                      ) : (
-                        <span
-                          className="dm-compose-row__avatar-fallback"
-                          style={{ background: fallback.color }}
-                          aria-hidden="true"
-                        >
-                          {fallback.initials}
-                        </span>
-                      )}
-                    </div>
+                    <Avatar user={u} size="md" className="dm-compose-row__avatar" />
                     <div className="dm-compose-row__text">
                       <span className="dm-compose-row__name">
                         {u.display_name || u.username || 'Anonymous'}

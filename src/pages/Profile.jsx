@@ -43,7 +43,7 @@ import {
   unpinList as unpinListSvc,
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
-import { getProfile, initializeProfile, generateDefaultAvatar, updateProfile } from '../services/profileService'
+import { getProfile, initializeProfile, updateProfile } from '../services/profileService'
 import { getTrackedGamesCountForUser } from '../services/statsService'
 import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
 import { getTotalHoursForUser } from '../services/hoursService'
@@ -1420,7 +1420,6 @@ function Profile() {
 
   /* ── Display data ─────────────────────────────────────────────── */
 
-  const defaultAvatar = generateDefaultAvatar(profile.displayName || 'User')
   // Support both legacy base64 (`type: 'data'`) and new Storage URL (`type: 'url'`).
   const avatarDisplay =
     profile.avatar?.type === 'url' || profile.avatar?.type === 'data'
@@ -1493,7 +1492,7 @@ function Profile() {
           displayName={profile.displayName}
           username={profile.username}
           avatarUrl={avatarDisplay}
-          avatarFallback={defaultAvatar}
+          avatarSeed={profile.id || targetUserId}
           isOwnProfile={isOwnProfile}
           liveStatusLabel={liveStatus ? `in ${liveStatus.gameTitle} now` : null}
           followersCount={followersCount}

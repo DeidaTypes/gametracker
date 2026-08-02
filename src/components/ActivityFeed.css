@@ -45,33 +45,12 @@
   outline-offset: -2px;
 }
 
-/* ---- Avatar (left) ---- */
+/* ---- Avatar (left) ----
+   Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css); this just adds the row's
+   contrast border. */
 .activity-feed-avatar {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
   border: 1px solid var(--color-border);
-  background: var(--color-bg-tertiary);
-}
-
-.activity-feed-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.activity-feed-avatar--generated {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: 0.02em;
 }
 
 /* ---- Type-colored icon ---- */

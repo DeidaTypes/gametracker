@@ -118,25 +118,9 @@
   background: var(--color-surface-hover);
 }
 
-/* Avatar — 36×36 circle */
-.collab-sheet__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.collab-sheet__avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-surface-active, rgba(148, 168, 212, 0.13));
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  user-select: none;
-}
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). Was a bespoke 36px; now
+   the "md" (40px) step of the shared scale. */
 
 .collab-sheet__user-info {
   flex: 1;

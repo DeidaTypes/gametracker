@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import useEventWeek from '../../hooks/useEventWeek'
 import Pressable from '../Pressable'
+import Avatar from '../Avatar'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './EventWeekBanner.css'
 
@@ -72,21 +73,13 @@ function LeaderboardRow({ entry, rank }) {
       </span>
 
       <div className="ewb-lb-row__avatar-wrap">
-        {entry.avatarUrl ? (
-          <img
-            className="ewb-lb-row__avatar"
-            src={entry.avatarUrl}
-            alt=""
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        ) : (
-          <div className="ewb-lb-row__avatar ewb-lb-row__avatar--fallback" aria-hidden="true">
-            {(entry.displayName || '?')[0].toUpperCase()}
-          </div>
-        )}
+        <Avatar
+          avatarUrl={entry.avatarUrl}
+          name={entry.displayName}
+          seed={entry.userId}
+          size="sm"
+          className="ewb-lb-row__avatar"
+        />
       </div>
 
       <span className="ewb-lb-row__name">{entry.displayName}</span>

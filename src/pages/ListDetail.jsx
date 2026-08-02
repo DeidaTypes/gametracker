@@ -55,6 +55,7 @@ import {
 } from '../services/listInteractionService'
 import ListComments from '../components/ListComments'
 import TrackerGameList from '../components/TrackerGameList'
+import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
@@ -1196,13 +1197,11 @@ function ListDetail() {
           {(author || listInfo.createdAt) && (
             <div className="masthead-byline">
               {author && (
-                author.avatarUrl ? (
-                  <img src={author.avatarUrl} alt="" loading="lazy" />
-                ) : (
-                  <span className="masthead-byline-fallback" aria-hidden="true">
-                    {(author.displayName || author.username || '?').charAt(0).toUpperCase()}
-                  </span>
-                )
+                <Avatar
+                  user={author}
+                  size="xs"
+                  className="masthead-byline-avatar"
+                />
               )}
               <span>
                 {author && (

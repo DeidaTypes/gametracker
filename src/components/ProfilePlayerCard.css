@@ -89,19 +89,9 @@
   cursor: pointer;
 }
 
-.ppc__avatar-img,
-.ppc__avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  font-family: var(--font-body);
-  font-size: 22px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
+/* Avatar sizing/fallback color is owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this wrapper button just
+   supplies the accent ring + click target. */
 
 /* ── Identity block ───────────────────────────────────────── */
 
@@ -258,6 +248,14 @@
   .ppc__avatar {
     width: 56px;
     height: 56px;
+  }
+  /* Avatar defaults to size="xl" (64px); step it down to the "lg" (56px)
+     rung of the same scale to match the shrunk wrapper above, rather
+     than introducing an off-scale size. */
+  .ppc__avatar .avatar.avatar--xl {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
   }
   .ppc__name {
     font-size: 20px;

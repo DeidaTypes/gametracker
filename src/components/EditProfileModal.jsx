@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Pencil, ChevronRight } from 'lucide-react'
 import { FaInstagram, FaXTwitter, FaYoutube, FaTiktok } from 'react-icons/fa6'
-import { updateProfile, generateDefaultAvatar } from '../services/profileService'
+import { updateProfile } from '../services/profileService'
 import { updateUserProfile } from '../services/userService'
 import { uploadBanner, removeBanner, uploadAvatar, removeAvatar } from '../services/storageService'
 import { useAuth } from '../contexts/AuthContext'
@@ -12,6 +12,7 @@ import ActionSheet from './ActionSheet'
 import FavoritesPickerSheet from './FavoritesPickerSheet'
 import BioEditModal from './BioEditModal'
 import KeyboardAwareView from './KeyboardAwareView'
+import Avatar from './Avatar'
 import './EditProfileModal.css'
 
 const AVATAR_MAX_FILE_MB = 10
@@ -430,7 +431,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
   }
 
-  const defaultAvatar = generateDefaultAvatar(displayName || 'User')
   const bannerSrc = bannerPreview || bannerUrl
 
   if (!isOpen) return null
@@ -485,18 +485,13 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
               </div>
 
               <div className="ep-avatar-wrap">
-                <div className="ep-avatar">
-                  {avatarSrc ? (
-                    <img src={avatarSrc} alt="" className="ep-avatar__img" />
-                  ) : (
-                    <div
-                      className="ep-avatar__fallback"
-                      style={{ backgroundColor: defaultAvatar.color }}
-                    >
-                      {defaultAvatar.initials}
-                    </div>
-                  )}
-                </div>
+                <Avatar
+                  avatarUrl={avatarSrc}
+                  name={displayName || 'User'}
+                  seed={user?.id}
+                  size="xl"
+                  className="ep-avatar"
+                />
                 <button
                   type="button"
                   className="ep-change-btn ep-change-btn--avatar"

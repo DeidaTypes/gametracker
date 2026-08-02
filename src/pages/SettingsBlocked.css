@@ -24,30 +24,10 @@
   border-bottom: 0;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). */
 .blocked-row__avatar {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--bg-surface-2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.blocked-row__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.blocked-row__avatar-fallback {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
 }
 
 .blocked-row__meta {

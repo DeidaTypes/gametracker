@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react'
 import { LuSearch, LuX } from 'react-icons/lu'
 import { sendMessage } from '../services/messageService'
 import { searchUsers } from '../services/userService'
-import { generateDefaultAvatar } from '../services/profileService'
 import { useAuth } from '../contexts/AuthContext'
 import { useDebounce } from '../hooks/useDebounce'
 import { showToast } from './Toast'
 import CenteredModal from './CenteredModal'
+import Avatar from './Avatar'
 import './DmShareSheet.css'
 
 /**
@@ -162,7 +162,6 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
         ) : (
           <ul role="list" className="dm-share-sheet__list">
             {results.map((u) => {
-              const fallback = generateDefaultAvatar(u.display_name || u.username || 'User')
               const isSending = sending === u.id
               return (
                 <li key={u.id}>
@@ -172,19 +171,7 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
                     onClick={() => handlePick(u)}
                     disabled={!!sending}
                   >
-                    <div className="dm-share-row__avatar">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" loading="lazy" />
-                      ) : (
-                        <span
-                          className="dm-share-row__avatar-fallback"
-                          style={{ background: fallback.color }}
-                          aria-hidden="true"
-                        >
-                          {fallback.initials}
-                        </span>
-                      )}
-                    </div>
+                    <Avatar user={u} size="md" className="dm-share-row__avatar" />
                     <div className="dm-share-row__text">
                       <span className="dm-share-row__name">
                         {u.display_name || u.username || 'Anonymous'}

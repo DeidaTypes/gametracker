@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { CARD_WIDTH, CARD_HEIGHT } from '../services/share'
+import { getAvatarFallback } from '../utils/avatarFallback'
 import './BrandedShareCard.css'
 
 /**
@@ -158,11 +159,20 @@ function ProfileDnaVariant({ data }) {
     username = '',
     displayName = '',
     avatarUrl = null,
+    userId = null,
     gamesPlayed = 0,
     reviews = 0,
     following = 0,
     genres = [],
   } = data
+
+  // This 240px fixed-canvas circle is the one documented exception to the
+  // xs/sm/md/lg/xl Avatar size scale (see src/components/Avatar.jsx) — share
+  // cards render to an offscreen capture target at absolute px, not through
+  // the shared component. It still draws initials + color from the single
+  // app-wide fallback system (src/utils/avatarFallback.js) so a user's
+  // fallback color matches what they'd see anywhere else in the app.
+  const { initials, color } = getAvatarFallback(displayName || username, userId)
 
   return (
     <div className="bsc-profile">
@@ -175,8 +185,11 @@ function ProfileDnaVariant({ data }) {
             className="bsc-profile__avatar"
           />
         ) : (
-          <div className="bsc-profile__avatar bsc-profile__avatar--fallback">
-            {(displayName || username || '?').charAt(0).toUpperCase()}
+          <div
+            className="bsc-profile__avatar bsc-profile__avatar--fallback"
+            style={{ background: color }}
+          >
+            {initials}
           </div>
         )}
       </div>

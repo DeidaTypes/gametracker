@@ -611,12 +611,10 @@
   margin-top: 9px;
 }
 
-.list-detail-page .masthead-byline img {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+/* Sizing + fallback color for the byline avatar are owned by the
+   shared Avatar component (src/components/Avatar.jsx / Avatar.css). */
+.list-detail-page .masthead-byline-avatar {
   flex: 0 0 auto;
-  object-fit: cover;
 }
 
 .list-detail-page .masthead-byline span {
@@ -629,24 +627,6 @@
   color: #f0f3fa;
   font-weight: 600;
   cursor: pointer;
-}
-
-/* Supplemental — avatar-initial fallback for authors without an avatar
-   image (the literal mockup only styles a real <img>). Same footprint
-   as .masthead-byline img so it slots in identically. */
-.list-detail-page .masthead-byline-fallback {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-brand-primary);
-  color: #fff;
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
 }
 
 /* STAT LINE — one inline row, NOT a card */

@@ -30,6 +30,7 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import KeyboardAwareView from '../components/KeyboardAwareView'
+import Avatar from '../components/Avatar'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -315,13 +316,13 @@ function CommentRow({
         disabled={!authorUsername && !authorUserId}
         aria-label={authorUsername ? `View ${username}'s profile` : undefined}
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="rd-comment__avatar" loading="lazy" />
-        ) : (
-          <div className="rd-comment__avatar rd-comment__avatar--fallback" aria-hidden="true">
-            {username.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <Avatar
+          avatarUrl={avatarUrl}
+          name={username}
+          seed={comment.users?.id}
+          size="sm"
+          className="rd-comment__avatar"
+        />
       </button>
 
       <div className="rd-comment__body">
@@ -1081,21 +1082,13 @@ function ReviewDetail() {
 
         <div className="rd-composer__row">
           {/* Current-user avatar */}
-          {currentAvatarUrl ? (
-            <img
-              src={currentAvatarUrl}
-              alt=""
-              className="rd-composer__avatar"
-              loading="lazy"
-            />
-          ) : (
-            <div
-              className="rd-composer__avatar rd-composer__avatar--fallback"
-              aria-hidden="true"
-            >
-              {currentDisplayName.charAt(0).toUpperCase() || '?'}
-            </div>
-          )}
+          <Avatar
+            avatarUrl={currentAvatarUrl}
+            name={currentDisplayName}
+            seed={user?.id}
+            size="sm"
+            className="rd-composer__avatar"
+          />
 
           {/* Auto-growing textarea */}
           <textarea

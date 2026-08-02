@@ -33,6 +33,7 @@ import GameSessionHistorySheet from '../components/GameSessionHistorySheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
+import Avatar from '../components/Avatar'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 
@@ -938,20 +939,14 @@ function GameDetail() {
             <div className="gd-pulse-row">
               <div className="gd-pulse-live-dot" aria-hidden="true" />
               <div className="gd-pulse-avatars" aria-hidden="true">
-                {circlePulse.activePresence.slice(0, 5).map((p) =>
-                  p.avatarUrl ? (
-                    <img
-                      key={p.userId}
-                      src={p.avatarUrl}
-                      alt=""
-                      className="gd-pulse-avatar"
-                    />
-                  ) : (
-                    <div key={p.userId} className="gd-pulse-avatar gd-pulse-avatar--fallback">
-                      {(p.username || p.displayName || '?').charAt(0).toUpperCase()}
-                    </div>
-                  )
-                )}
+                {circlePulse.activePresence.slice(0, 5).map((p) => (
+                  <Avatar
+                    key={p.userId}
+                    user={p}
+                    size="xs"
+                    className="gd-pulse-avatar"
+                  />
+                ))}
                 {circlePulse.activePresence.length > 5 && (
                   <div className="gd-pulse-avatar-overflow">
                     +{circlePulse.activePresence.length - 5}
@@ -1086,20 +1081,14 @@ function GameDetail() {
               <p className="gd-section-label">From People You Follow</p>
               <div className="gd-follow-row">
                 <div className="gd-follow-avatars" aria-hidden="true">
-                  {followedRatings.followers.slice(0, 3).map((f) =>
-                    f.avatarUrl ? (
-                      <img
-                        key={f.userId}
-                        src={f.avatarUrl}
-                        alt=""
-                        className="gd-follow-avatar"
-                      />
-                    ) : (
-                      <div key={f.userId} className="gd-follow-avatar gd-follow-avatar--fallback">
-                        {(f.username || f.displayName || '?').charAt(0).toUpperCase()}
-                      </div>
-                    )
-                  )}
+                  {followedRatings.followers.slice(0, 3).map((f) => (
+                    <Avatar
+                      key={f.userId}
+                      user={f}
+                      size="sm"
+                      className="gd-follow-avatar"
+                    />
+                  ))}
                 </div>
                 <p className="gd-follow-text">
                   {buildFollowSentence(followedRatings.followers, followedRatings.average)}

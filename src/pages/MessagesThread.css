@@ -78,31 +78,11 @@
   flex-shrink: 0;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the
+   header's contrast border. */
 .dm-thread__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-}
-
-.dm-thread__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.dm-thread__avatar-fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: white;
-  font-weight: var(--font-weight-bold);
-  font-size: 13px;
 }
 
 /* F1: Online presence dot anchored to bottom-right of avatar */
@@ -265,33 +245,14 @@
   gap: 6px;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the empty
+   state's border + drop shadow. Was a bespoke 88px; now the "xl" (64px)
+   step of the shared scale. */
 .dm-empty__avatar {
-  width: 88px;
-  height: 88px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   margin-bottom: var(--spacing-sm);
   box-shadow: var(--shadow-md);
-}
-
-.dm-empty__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.dm-empty__avatar-fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: var(--color-on-accent);
-  font-weight: var(--font-weight-bold);
-  font-size: 30px;
 }
 
 .dm-empty__name {

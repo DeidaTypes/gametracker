@@ -317,6 +317,27 @@ body[data-larger-text='true'] {
   --color-accent-teal: #4FA899;
   --color-accent-orange: #C4634E;
 
+  /* ---- Avatar fallback palette ----
+     The single system every "no avatar image" initials circle uses
+     app-wide (see src/components/Avatar.jsx +
+     src/utils/avatarFallback.js). Consolidated from what used to be
+     five competing systems (a warm 10-color hash, this cyan 8-color
+     hash, two flat single-color fallbacks, and ui-avatars.com); this
+     one was already the most widely used, so it's the one every call
+     site was migrated onto rather than inventing a sixth. Cool blues
+     only — never the retired orange/amber/copper band. A user's color
+     is picked by hashing a stable seed (their id when available, else
+     their name), so the SAME person reads the SAME color on every
+     screen. */
+  --avatar-fallback-1: #4A9EFF;
+  --avatar-fallback-2: #5B9FFF;
+  --avatar-fallback-3: #6BAFFF;
+  --avatar-fallback-4: #7BBFFF;
+  --avatar-fallback-5: #8CCFFF;
+  --avatar-fallback-6: #9DDFFF;
+  --avatar-fallback-7: #AEEFFF;
+  --avatar-fallback-8: #BFFFFF;
+
   /* ---- Data-viz: genre tokens ----
      Categorical palette for genre-overlap visualizations (Discover →
      Recently taste-match bars, Because You Played; Profile → Taste DNA

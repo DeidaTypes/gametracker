@@ -8,33 +8,8 @@ import {
 } from '../services/listInteractionService'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import Avatar from './Avatar'
 import './ListComments.css'
-
-
-function Avatar({ user, size = 32 }) {
-  const name = user?.display_name || user?.username || '?'
-  const initial = name.charAt(0).toUpperCase()
-  if (user?.avatar_url) {
-    return (
-      <img
-        src={user.avatar_url}
-        alt=""
-        className="lc-avatar"
-        style={{ width: size, height: size }}
-        loading="lazy"
-      />
-    )
-  }
-  return (
-    <span
-      className="lc-avatar lc-avatar--fallback"
-      style={{ width: size, height: size, fontSize: size * 0.45 }}
-      aria-hidden="true"
-    >
-      {initial}
-    </span>
-  )
-}
 
 function CommentRow({ comment, canDelete, onDelete }) {
   const [deleting, setDeleting] = useState(false)
@@ -53,7 +28,7 @@ function CommentRow({ comment, canDelete, onDelete }) {
 
   return (
     <div className={`lc-comment${deleting ? ' lc-comment--deleting' : ''}`}>
-      <Avatar user={user} size={28} />
+      <Avatar user={user} size="sm" className="lc-avatar" />
       <div className="lc-comment-content">
         <div className="lc-comment-header">
           <span className="lc-comment-author">{displayName}</span>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { searchUsers } from '../services/userService'
-import { generateDefaultAvatar } from '../services/profileService'
 import {
   followUser,
   unfollowUser,
@@ -11,6 +10,7 @@ import {
 import { usePresence } from '../hooks/usePresence'
 import CenteredModal from './CenteredModal'
 import PulseDot from './PulseDot'
+import Avatar from './Avatar'
 import { showToast } from './Toast'
 import './FindFriendsModal.css'
 
@@ -270,7 +270,6 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
               const username = u.username || ''
               const displayName = u.display_name || ''
               const primary = displayName || username || 'Unknown'
-              const fallback = generateDefaultAvatar(primary)
               const isSelf = currentUserId && u.id === currentUserId
               const following = !!followingMap[u.id]
               const pending = !!pendingMap[u.id]
@@ -283,19 +282,7 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
                     aria-label={`View ${primary}'s profile`}
                   >
                     <span className="ffm-user-row__avatar-wrap">
-                      <span className="ffm-user-row__avatar">
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt="" loading="lazy" />
-                        ) : (
-                          <span
-                            className="ffm-user-row__avatar-fallback"
-                            style={{ background: fallback.color }}
-                            aria-hidden="true"
-                          >
-                            {fallback.initials}
-                          </span>
-                        )}
-                      </span>
+                      <Avatar user={u} name={primary} size="md" />
                       {liveSet.has(u.id) && (
                         <PulseDot
                           size="sm"

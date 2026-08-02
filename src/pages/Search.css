@@ -995,30 +995,8 @@
   opacity: 0.7;
 }
 
-.sp-user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--color-bg-elevated);
-  flex-shrink: 0;
-}
-
-.sp-user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.sp-user-avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
-}
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). */
 
 /* ---- Developer result-row icon (Devs tab / Developers section) ---- */
 .sp-dev-icon {
@@ -1202,11 +1180,6 @@
   align-items: center;
   gap: 8px;
   margin-top: 2px;
-}
-
-.sp-list-row__author .sp-user-avatar {
-  width: 22px;
-  height: 22px;
 }
 
 .sp-list-row__author-name {

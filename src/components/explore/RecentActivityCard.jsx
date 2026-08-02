@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat } from 'react-icons/hi'
-import Avatar from './Avatar'
+import Avatar from '../Avatar'
 import StarRating from '../StarRating'
 import SharedCover from '../SharedCover'
 import Pressable from '../Pressable'
@@ -153,7 +153,7 @@ export default function RecentActivityCard({ item }) {
       <ReviewCardShellHeader
         avatar={
           <button type="button" className="recent-activity-card__avatar-btn" onClick={goToAuthor}>
-            <Avatar user={item.actor} size={32} />
+            <Avatar user={item.actor} size="sm" />
           </button>
         }
         end={

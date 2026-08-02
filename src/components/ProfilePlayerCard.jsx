@@ -2,6 +2,7 @@ import React from 'react'
 import { HiDotsVertical } from 'react-icons/hi'
 import { LuChevronLeft } from 'react-icons/lu'
 import Skeleton from './Skeleton'
+import Avatar from './Avatar'
 import './ProfilePlayerCard.css'
 
 /**
@@ -58,7 +59,7 @@ export default function ProfilePlayerCard({
   displayName,
   username,
   avatarUrl,
-  avatarFallback,
+  avatarSeed,
   isOwnProfile,
   liveStatusLabel,
   followersCount,
@@ -101,20 +102,13 @@ export default function ProfilePlayerCard({
               : `${displayName || 'User'} profile photo`
           }
         >
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={`${displayName || 'User'} profile photo`}
-              className="ppc__avatar-img"
-            />
-          ) : (
-            <span
-              className="ppc__avatar-fallback"
-              style={{ backgroundColor: avatarFallback?.color }}
-            >
-              {avatarFallback?.initials}
-            </span>
-          )}
+          <Avatar
+            avatarUrl={avatarUrl}
+            name={displayName || 'User'}
+            seed={avatarSeed}
+            size="xl"
+            alt={`${displayName || 'User'} profile photo`}
+          />
         </button>
 
         <div className="ppc__identity">

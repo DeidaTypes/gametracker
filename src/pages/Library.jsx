@@ -8,7 +8,7 @@ import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
 import ActionSheet from '../components/ActionSheet'
 import InlineErrorBanner from '../components/InlineErrorBanner'
-import Avatar from '../components/explore/Avatar'
+import Avatar from '../components/Avatar'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -448,7 +448,7 @@ function Library() {
             onClick={() => navigate('/profile')}
             aria-label="Open your profile"
           >
-            <Avatar user={avatarUser} size={30} />
+            <Avatar user={avatarUser} size="sm" />
           </button>
         </header>
 

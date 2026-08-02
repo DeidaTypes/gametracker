@@ -135,41 +135,20 @@
 /* Avatar wrap — positioned so avatar overlaps bottom of banner */
 .ep-avatar-wrap {
   position: absolute;
-  /* avatar top = 180 - 44 = 136px (half overlap into banner) */
-  top: 136px;
+  /* avatar top = 180 - 32 = 148px (half overlap into banner, avatar
+     is the "xl" (64px) step of the shared Avatar size scale) */
+  top: 148px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
 }
 
+/* Sizing/fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the
+   accent ring + outer contrast border. */
 .ep-avatar {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
   border: 2px solid var(--accent);
-  overflow: hidden;
-  background: var(--bg-surface-2);
   box-shadow: 0 0 0 3px var(--bg-base);
-}
-
-.ep-avatar__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ep-avatar__fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.02em;
 }
 
 .ep-change-btn--avatar {

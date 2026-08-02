@@ -32,7 +32,7 @@ import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
 import KeyboardAwareView from '../components/KeyboardAwareView'
-import { generateDefaultAvatar } from '../services/profileService'
+import Avatar from '../components/Avatar'
 import './SearchOverlay.css'
 
 // ─── Static genre data ─────────────────────────────────────────────────────
@@ -289,27 +289,6 @@ function ReviewsResults({ rows, isLoading }) {
 
 // ─── Users tab ─────────────────────────────────────────────────────────────
 
-function UserAvatar({ url, name }) {
-  const [failed, setFailed] = useState(false)
-  if (url && !failed) {
-    return (
-      <div className="so-user-avatar">
-        <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />
-      </div>
-    )
-  }
-  const fallback = generateDefaultAvatar(name || 'U')
-  return (
-    <div
-      className="so-user-avatar so-user-avatar--fallback"
-      style={{ background: fallback.color }}
-      aria-hidden="true"
-    >
-      {fallback.initials}
-    </div>
-  )
-}
-
 function FollowButton({ targetUserId, targetLabel, currentUserId }) {
   const [following, setFollowing] = useState(false)
   const [pending, setPending] = useState(false)
@@ -392,7 +371,13 @@ function UsersResults({ rows, isLoading, onTapUser, currentUserId }) {
                 onTapUser({ id: username || u.id, username, displayName, avatarUrl: u.avatar_url || null })
               }
             >
-              <UserAvatar url={u.avatar_url} name={displayName || username} />
+              <Avatar
+                avatarUrl={u.avatar_url}
+                name={displayName || username}
+                seed={u.id}
+                size="md"
+                className="so-user-avatar"
+              />
               <div className="so-user-row__text">
                 <span className="so-user-row__username">
                   {username || displayName || 'Unknown'}

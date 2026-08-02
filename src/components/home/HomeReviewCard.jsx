@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat, HiCheck } from 'react-icons/hi'
 import { List as ListIcon } from 'lucide-react'
-import Avatar from '../explore/Avatar'
+import Avatar from '../Avatar'
 import StarRating from '../StarRating'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
@@ -543,7 +543,7 @@ export default function HomeReviewCard({ item }) {
           tabIndex={-1}
           aria-hidden="true"
         >
-          <Avatar user={item.author} size={22} />
+          <Avatar user={item.author} size="xs" />
         </button>
         <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
           {item.isOwn ? 'You' : item.author.displayName}

@@ -188,30 +188,10 @@
 .ewb-lb-row:nth-child(2) .ewb-lb-row__rank { color: var(--accent); opacity: 0.75; }
 .ewb-lb-row:nth-child(3) .ewb-lb-row__rank { color: var(--accent); opacity: 0.55; }
 
-/* Avatar */
+/* Avatar — sizing + fallback color owned by the shared Avatar
+   component (src/components/Avatar.jsx / Avatar.css). */
 .ewb-lb-row__avatar-wrap {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-}
-
-.ewb-lb-row__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full, 999px);
-  object-fit: cover;
-  background: var(--color-surface-raised, rgba(255, 255, 255, 0.08));
-}
-
-.ewb-lb-row__avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption, 11px);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--accent) 20%, var(--color-surface-raised, rgba(255,255,255,0.08)));
 }
 
 /* Name */

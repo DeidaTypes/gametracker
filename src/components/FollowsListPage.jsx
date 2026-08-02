@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { UserPlus, UserMinus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { getProfile, generateDefaultAvatar } from '../services/profileService'
+import { getProfile } from '../services/profileService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import {
   followUser,
@@ -19,6 +19,7 @@ import { showToast } from './Toast'
 import EmptyState from './EmptyState'
 import FindFriendsModal from './FindFriendsModal'
 import PulseDot from './PulseDot'
+import Avatar from './Avatar'
 import WindowedListItem from './WindowedListItem'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import '../pages/UserFollows.css'
@@ -506,33 +507,11 @@ function FollowsListPage({ mode }) {
 
 function FollowRow({ row, currentUserId, following, live = false, onToggle, onTap }) {
   const isSelf = currentUserId && row.id === currentUserId
-  const fallback = generateDefaultAvatar(row.displayName || row.username || 'U')
   return (
     <div className="follow-row">
       <button type="button" className="follow-row__main" onClick={onTap}>
         <div className="follow-row__avatar-wrap">
-          <div className="follow-row__avatar">
-            {row.avatarUrl ? (
-              <img src={row.avatarUrl} alt="" loading="lazy" />
-            ) : (
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  height: '100%',
-                  background: fallback.color,
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: 16,
-                }}
-                aria-hidden="true"
-              >
-                {fallback.initials}
-              </span>
-            )}
-          </div>
+          <Avatar user={row} size="md" />
           {live && (
             <PulseDot
               size="sm"

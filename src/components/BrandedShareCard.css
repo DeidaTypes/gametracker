@@ -215,17 +215,18 @@
   display: block;
 }
 
+/* background color set inline per-user from the shared avatar fallback
+   palette (src/utils/avatarFallback.js) — see ProfileDnaVariant. */
 .bsc-profile__avatar--fallback {
   width: 100%;
   height: 100%;
-  background: #1a2240;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display, Georgia, serif);
   font-size: 96px;
   font-weight: 700;
-  color: #3b82f6;
+  color: #f0f3fa;
 }
 
 .bsc-profile__name {

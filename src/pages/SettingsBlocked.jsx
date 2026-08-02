@@ -10,19 +10,9 @@ import {
 import { showToast } from '../components/Toast'
 import EmptyState from '../components/EmptyState'
 import InlineErrorBanner from '../components/InlineErrorBanner'
+import Avatar from '../components/Avatar'
 import './Settings.css'
 import './SettingsBlocked.css'
-
-function initialsOf(name) {
-  if (!name) return '?'
-  return name
-    .split(' ')
-    .map((p) => p[0])
-    .filter(Boolean)
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
-}
 
 function BlockedUserRow({ row, onUnblock }) {
   const u = row.user || {}
@@ -43,15 +33,13 @@ function BlockedUserRow({ row, onUnblock }) {
 
   return (
     <li className="blocked-row">
-      <span className="blocked-row__avatar" aria-hidden="true">
-        {u.avatar_url ? (
-          <img src={u.avatar_url} alt="" />
-        ) : (
-          <span className="blocked-row__avatar-fallback">
-            {initialsOf(display)}
-          </span>
-        )}
-      </span>
+      <Avatar
+        avatarUrl={u.avatar_url}
+        name={display}
+        seed={row.blocked_id}
+        size="md"
+        className="blocked-row__avatar"
+      />
       <span className="blocked-row__meta">
         <span className="blocked-row__name">{display}</span>
         {handle && <span className="blocked-row__handle">{handle}</span>}

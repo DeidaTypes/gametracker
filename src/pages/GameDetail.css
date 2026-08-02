@@ -515,28 +515,16 @@
   flex-shrink: 0;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the
+   stacked-circle border + overlap. */
 .gd-follow-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
   border: 2px solid var(--color-bg-primary, #0c1322);
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.12);
   flex-shrink: 0;
 }
 
 .gd-follow-avatar + .gd-follow-avatar {
   margin-left: -10px;
-}
-
-.gd-follow-avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
 }
 
 .gd-follow-text {
@@ -1386,29 +1374,17 @@
   margin-right: 4px;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the
+   stacked-circle border + overlap. */
 .gd-pulse-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
   border: 2px solid var(--color-bg-primary, #0c1322);
-  background: rgba(255, 255, 255, 0.12);
-  object-fit: cover;
   margin-left: -8px;
   flex-shrink: 0;
 }
 
 .gd-pulse-avatar:last-child {
   margin-left: 0;
-}
-
-.gd-pulse-avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
 }
 
 /* Overflow "+N" bubble in the avatar stack */

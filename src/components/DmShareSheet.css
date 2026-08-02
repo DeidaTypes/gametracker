@@ -206,32 +206,11 @@
   cursor: default;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css) — this just adds the row's
+   contrast border. */
 .dm-share-row__avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.dm-share-row__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.dm-share-row__avatar-fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: white;
-  font-weight: var(--font-weight-bold);
-  font-size: 14px;
 }
 
 .dm-share-row__text {

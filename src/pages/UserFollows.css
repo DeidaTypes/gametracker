@@ -205,20 +205,17 @@
   min-width: 0;
 }
 
-/* Wrapper lets PulseDot overflow the clipped avatar circle. */
+/* Wrapper lets PulseDot overflow the clipped avatar circle. Sizing +
+   fallback color for the avatar itself are owned by the shared Avatar
+   component (src/components/Avatar.jsx / Avatar.css). */
 .follow-row__avatar-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
 }
 
-.follow-row__avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--color-bg-tertiary);
+.follow-row__avatar-wrap .avatar {
   border: 1px solid var(--color-border);
 }
 
@@ -227,13 +224,6 @@
   bottom: -2px;
   right: -2px;
   z-index: 1;
-}
-
-.follow-row__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .follow-row__text {

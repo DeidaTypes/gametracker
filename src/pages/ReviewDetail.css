@@ -321,25 +321,8 @@
   cursor: default;
 }
 
-.rd-comment__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  display: block;
-  background: var(--color-bg-elevated);
-}
-
-.rd-comment__avatar--fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  background: var(--color-bg-elevated);
-}
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css). */
 
 .rd-comment__body {
   flex: 1;
@@ -668,25 +651,11 @@
   box-sizing: border-box;
 }
 
+/* Sizing + fallback color owned by the shared Avatar component
+   (src/components/Avatar.jsx / Avatar.css); this just aligns it with
+   the bottom of the single-line input. */
 .rd-composer__avatar {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  background: var(--color-bg-elevated);
-  /* Align with the bottom of a single-line input */
   margin-bottom: 2px;
-}
-
-.rd-composer__avatar--fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
 }
 
 /*

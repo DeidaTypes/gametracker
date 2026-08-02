@@ -126,22 +126,18 @@
   border-radius: var(--radius-sm);
 }
 
-/* ── Avatar wrapper — lets PulseDot overflow the clipped circle ── */
+/* ── Avatar wrapper — lets PulseDot overflow the clipped circle.
+   Sizing + fallback color for the avatar itself are owned by the
+   shared Avatar component (src/components/Avatar.jsx / Avatar.css). ── */
 .ffm-user-row__avatar-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
 }
 
-.ffm-user-row__avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--bg-surface);
+.ffm-user-row__avatar-wrap .avatar {
   border: 1px solid var(--border-subtle);
-  display: block;
 }
 
 .ffm-user-row__pulse {
@@ -149,25 +145,6 @@
   bottom: -2px;
   right: -2px;
   z-index: 1;
-}
-
-.ffm-user-row__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ffm-user-row__avatar-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 16px;
 }
 
 /* ── Name + handle stack ── */

@@ -14,6 +14,7 @@ import {
 import { LuPin, LuPinOff, LuQuote } from 'react-icons/lu'
 import StarRating from './StarRating'
 import Pressable from './Pressable'
+import Avatar from './Avatar'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { shareCard } from '../services/share'
@@ -558,23 +559,11 @@ function ReviewCard({
                 className="review-card__gd-avatar-btn"
                 onClick={handleAuthorClick}
               >
-                {review.author.avatarUrl ? (
-                  <img
-                    src={review.author.avatarUrl}
-                    className="review-card__avatar review-card__gd-avatar"
-                    alt=""
-                    loading="lazy"
-                  />
-                ) : (
-                  <div
-                    className="review-card__avatar review-card__avatar--fallback review-card__gd-avatar"
-                    aria-hidden="true"
-                  >
-                    {(review.author.username || review.author.displayName || '?')
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                )}
+                <Avatar
+                  user={review.author}
+                  size="sm"
+                  className="review-card__gd-avatar"
+                />
               </button>
             }
             end={<StarRating rating={gdWholeRating} size={16} />}
@@ -663,18 +652,7 @@ function ReviewCard({
           className="review-card__author"
           onClick={handleAuthorClick}
         >
-          {review.author.avatarUrl ? (
-            <img
-              src={review.author.avatarUrl}
-              className="review-card__avatar"
-              alt=""
-              loading="lazy"
-            />
-          ) : (
-            <div className="review-card__avatar review-card__avatar--fallback" aria-hidden="true">
-              {(review.author.username || review.author.displayName || '?').charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar user={review.author} size="xs" />
           <span className="review-card__username">
             {review.author.username || review.author.displayName || 'Anonymous'}
           </span>
