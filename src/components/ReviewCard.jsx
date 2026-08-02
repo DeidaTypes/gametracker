@@ -28,27 +28,8 @@ import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
+import { extractQuote } from '../utils/extractQuote'
 import './ReviewCard.css'
-
-/**
- * Pick the punchiest sentence from a review body.
- * Tries to find a sentence (ends in . ! ?) that is 40–280 chars.
- * Falls back to the first 200 chars trimmed to a word boundary.
- * Quote-selection logic (sprint 9A) is out of scope here.
- */
-function extractQuote(body) {
-  if (!body) return ''
-  const text = body.trim()
-  const sentences = text.split(/(?<=[.!?])\s+/)
-  for (const s of sentences) {
-    const t = s.trim()
-    if (t.length >= 40 && t.length <= 280) return t
-  }
-  if (text.length <= 200) return text
-  const cut = text.slice(0, 200)
-  const lastSpace = cut.lastIndexOf(' ')
-  return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut) + '\u2026'
-}
 
 /** "42 hrs" / "1.5 hrs" — drops the decimal on whole numbers. */
 function formatHours(hours) {

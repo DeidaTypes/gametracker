@@ -6,14 +6,25 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuCheck, LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
+import {
+  LuCheck,
+  LuChevronLeft,
+  LuEllipsis,
+  LuFlag,
+  LuPin,
+  LuPinOff,
+  LuQuote,
+  LuSend,
+} from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import HomeReviewCard from '../components/home/HomeReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
+import ActionSheet from '../components/ActionSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { extractQuote } from '../utils/extractQuote'
 import { getReviewById } from '../services/reviewService'
 import {
   getActivityEventForCard,
@@ -26,8 +37,15 @@ import {
   updateComment,
   deleteComment,
 } from '../services/commentService'
+import { shareCard } from '../services/share'
+import {
+  MAX_PINS,
+  getPinnedReviewIds,
+  pinReview,
+  unpinReview,
+} from '../services/pinService'
 import { useAuth } from '../contexts/AuthContext'
-import { bumpCommentsCount } from '../hooks/useUserStats'
+import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
@@ -386,8 +404,25 @@ function ReviewComments() {
   // needed on the body element itself.
   const threadBottomRef = useRef(null)
 
-  // Report sheet
+  // Report sheet — for individual comments (see CommentRow's own kebab).
   const [reportTarget, setReportTarget] = useState(null)
+
+  // Screen-level report sheet — for the review/activity item itself,
+  // opened from the header kebab (see `overflowItems` below). Kept
+  // separate from `reportTarget` so a comment report and a
+  // review/activity report can never collide on the same dialog state.
+  const [screenReport, setScreenReport] = useState(null)
+
+  // Header kebab (⋯) — restores the Share quote / Report / Pin
+  // affordances the HomeReviewCard migration dropped from this screen's
+  // card (see the overflowItems memo below for exactly which one shows
+  // and why).
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  const [sharingQuote, setSharingQuote] = useState(false)
+  // Only populated for the review branch, and only once we know the
+  // viewer owns this review — a visitor's own-pins list is meaningless
+  // here and would just be a wasted read.
+  const [pinnedReviewIds, setPinnedReviewIds] = useState(() => new Set())
 
   const isAuthed = !!user
 
@@ -547,6 +582,199 @@ function ReviewComments() {
       }),
     [review, commentCount, user]
   )
+
+  // The activity item arrives pre-shaped (with its own `isOwn`) from
+  // getActivityEventForCard; this just folds in the live comment count
+  // the same way the render path already does below.
+  const activityFeedItem = useMemo(
+    () => (activityItem ? { ...activityItem, commentCount } : null),
+    [activityItem, commentCount]
+  )
+
+  /* ── Header kebab (⋯) ──────────────────────────────────────────
+     Restores Share quote / Report / Pin, which this screen lost when
+     its review branch stopped rendering ReviewCard (variant="compact")
+     in favor of the shared HomeReviewCard — see git history on this
+     file for the migration. Those three affordances live in screen
+     chrome now, not the card, per the locked decision: HomeReviewCard
+     stays clean and identical everywhere it's used. */
+
+  // Only the review branch ever pins — Profile's "Pinned" section is a
+  // list of *reviews*, and review_pins.review_id has a NOT NULL FK to
+  // reviews. Fetched once we know the viewer owns this specific review.
+  useEffect(() => {
+    if (targetType !== 'review' || !user || !review || review.user_id !== user.id) {
+      return undefined
+    }
+    let cancelled = false
+    getPinnedReviewIds(user.id).then((ids) => {
+      if (!cancelled) setPinnedReviewIds(new Set(ids))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [targetType, user, review])
+
+  const handleShareQuote = useCallback(async () => {
+    if (sharingQuote || !reviewFeedItem) return
+    const quote = extractQuote(reviewFeedItem.body)
+    if (!quote) {
+      showToast('No quotable text in this review.', 'error')
+      return
+    }
+    setSharingQuote(true)
+    showToast('Building share card\u2026')
+    try {
+      await shareCard({
+        variant: 'quotable-review',
+        data: {
+          quote,
+          game: {
+            title: reviewFeedItem.game?.title || '',
+            coverUrl: reviewFeedItem.game?.image || null,
+          },
+          rating: reviewFeedItem.rating,
+          username: reviewFeedItem.author?.username || reviewFeedItem.author?.displayName || '',
+        },
+        target: { type: 'review', id: reviewFeedItem.id },
+        title: `Review of ${reviewFeedItem.game?.title || 'a game'} on GameTracker`,
+      })
+      bumpSharesCount(1)
+    } catch (err) {
+      console.error('[ReviewComments] shareQuote error:', err)
+      showToast('Could not create share card.', 'error')
+    } finally {
+      setSharingQuote(false)
+    }
+  }, [sharingQuote, reviewFeedItem])
+
+  // Mirrors Profile.jsx's handlePinReview/handleUnpinReview (optimistic
+  // toggle + rollback + the same PINS_FULL messaging) against the same
+  // pinService this screen doesn't otherwise touch — Profile's versions
+  // are local closures over its own `pinnedRows` list state and can't be
+  // imported directly.
+  const handleTogglePin = useCallback(async () => {
+    if (!user || targetType !== 'review' || !targetId) return
+    const currentlyPinned = pinnedReviewIds.has(targetId)
+
+    if (currentlyPinned) {
+      setPinnedReviewIds((prev) => {
+        const next = new Set(prev)
+        next.delete(targetId)
+        return next
+      })
+      try {
+        await unpinReview(targetId)
+        showToast('Removed from pinned', 'success')
+      } catch (err) {
+        console.error('[ReviewComments] unpinReview failed:', err)
+        setPinnedReviewIds((prev) => new Set(prev).add(targetId))
+        showToast("Couldn't unpin review — please try again.", 'error')
+      }
+      return
+    }
+
+    if (pinnedReviewIds.size >= MAX_PINS) {
+      showToast(`You can only pin ${MAX_PINS} reviews. Unpin one first.`, 'error')
+      return
+    }
+    setPinnedReviewIds((prev) => new Set(prev).add(targetId))
+    try {
+      await pinReview({ reviewId: targetId })
+      showToast('Pinned to profile', 'success')
+    } catch (err) {
+      console.error('[ReviewComments] pinReview failed:', err)
+      setPinnedReviewIds((prev) => {
+        const next = new Set(prev)
+        next.delete(targetId)
+        return next
+      })
+      showToast(
+        err?.code === 'PINS_FULL'
+          ? err.message
+          : "Couldn't pin review — please try again.",
+        'error'
+      )
+    }
+  }, [user, targetType, targetId, pinnedReviewIds])
+
+  /**
+   * Context-appropriate action set for the header kebab:
+   *   - Review branch, not own: Share quote + Report review.
+   *   - Review branch, own: Share quote + Pin/Unpin (never Report — you
+   *     can't report yourself; matches ReviewCard's old kebab).
+   *   - Activity branch, not own: Report user only. Share quote and Pin
+   *     never applied here even before the migration (the activity
+   *     branch has always rendered HomeReviewCard, never ReviewCard —
+   *     see git blame), and the `reports` table's content_type CHECK
+   *     constraint has no 'activity' value, so there is no content_id
+   *     we can attach a review/activity-scoped report to. Reporting the
+   *     author's profile is the closest *existing*, already-wired report
+   *     path (ReportSheet + submitReport already support
+   *     contentType="profile" — see Profile.jsx) that still makes
+   *     reporting reachable on this UGC surface without inventing new
+   *     backend support.
+   *   - Activity branch, own: nothing valid to show, so the kebab itself
+   *     is hidden for that render (see the header JSX below).
+   */
+  const overflowItems = useMemo(() => {
+    if (targetType === 'review') {
+      if (!reviewFeedItem) return []
+      const items = [
+        {
+          label: sharingQuote ? 'Creating card\u2026' : 'Share quote',
+          icon: <LuQuote size={18} aria-hidden="true" />,
+          tone: 'cobalt',
+          disabled: sharingQuote,
+          onClick: handleShareQuote,
+        },
+      ]
+      if (reviewFeedItem.isOwn) {
+        const isPinned = pinnedReviewIds.has(targetId)
+        items.push({
+          label: isPinned ? 'Unpin from profile' : 'Pin to profile',
+          icon: isPinned ? (
+            <LuPinOff size={18} aria-hidden="true" />
+          ) : (
+            <LuPin size={18} aria-hidden="true" />
+          ),
+          tone: 'cobalt',
+          onClick: handleTogglePin,
+        })
+      } else {
+        items.push({
+          label: 'Report review',
+          icon: <LuFlag size={18} aria-hidden="true" />,
+          tone: 'neutral',
+          onClick: () => setScreenReport({ contentType: 'review', contentId: targetId }),
+        })
+      }
+      return items
+    }
+
+    // Activity branch
+    if (!activityFeedItem || activityFeedItem.isOwn || !activityFeedItem.author?.id) {
+      return []
+    }
+    return [
+      {
+        label: 'Report user',
+        icon: <LuFlag size={18} aria-hidden="true" />,
+        tone: 'neutral',
+        onClick: () =>
+          setScreenReport({ contentType: 'profile', contentId: activityFeedItem.author.id }),
+      },
+    ]
+  }, [
+    targetType,
+    reviewFeedItem,
+    activityFeedItem,
+    pinnedReviewIds,
+    targetId,
+    sharingQuote,
+    handleShareQuote,
+    handleTogglePin,
+  ])
 
   /* ── Composer ───────────────────────────────────────────────── */
 
@@ -740,7 +968,18 @@ function ReviewComments() {
             {commentsLoading ? '' : shouldShowCount(commentCount) ? commentCount : ''}
           </span>
         </div>
-        <span className="rc-header__spacer" aria-hidden="true" />
+        {overflowItems.length > 0 ? (
+          <button
+            type="button"
+            className="rc-header__kebab"
+            onClick={() => setOverflowOpen(true)}
+            aria-label="More options"
+          >
+            <LuEllipsis size={20} aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="rc-header__spacer" aria-hidden="true" />
+        )}
       </header>
 
       <div className="rc-scroll">
@@ -762,12 +1001,12 @@ function ReviewComments() {
             ) : (
               <HomeReviewCard item={reviewFeedItem} />
             )
-          ) : reviewMissing || !activityItem ? (
+          ) : reviewMissing || !activityFeedItem ? (
             <div className="rc-review-missing">
               This activity is no longer available.
             </div>
           ) : (
-            <HomeReviewCard item={{ ...activityItem, commentCount }} />
+            <HomeReviewCard item={activityFeedItem} />
           )}
         </div>
 
@@ -822,6 +1061,19 @@ function ReviewComments() {
         onClose={() => setReportTarget(null)}
         contentType="comment"
         contentId={reportTarget?.id}
+      />
+
+      <ActionSheet
+        isOpen={overflowOpen}
+        onClose={() => setOverflowOpen(false)}
+        items={overflowItems}
+      />
+
+      <ReportSheet
+        isOpen={!!screenReport}
+        onClose={() => setScreenReport(null)}
+        contentType={screenReport?.contentType}
+        contentId={screenReport?.contentId}
       />
 
       <KeyboardAwareView

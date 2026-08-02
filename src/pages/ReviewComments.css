@@ -86,6 +86,30 @@
   height: 36px;
 }
 
+/* Screen-level overflow kebab — opposite the back chevron. Sized to the
+   full 44px grid column (unlike .rc-back's 36px visual box) to satisfy
+   the platform's 44px minimum tap target on its own, not just via
+   surrounding grid whitespace. */
+.rc-header__kebab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.rc-header__kebab:hover {
+  background: var(--color-surface);
+}
+
 /* ── Body ───────────────────────────────────────────────────────────────
    Not a scroll container — sizes to its own content (review block + thread)
    so a page with few comments doesn't leave dead scrollable space below
@@ -574,6 +598,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rc-back,
+  .rc-header__kebab,
   .rc-comment__action,
   .rc-comment__kebab-btn,
   .rc-comment--editing,
