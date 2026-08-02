@@ -61,6 +61,19 @@ body.nav-dimmed .bottom-nav {
   pointer-events: none;
 }
 
+/* ---- Comment composer screens (useHideNav) ----
+   Sets body.nav-hidden (via useHideNav, see src/hooks/useHideNav.js) on
+   every screen with a comment composer (Comments sub-screen, List Detail,
+   Review Detail). Unlike nav-dimmed above, this is a full removal, not a
+   fade — the composer owns the bottom strip outright, so there is no faded
+   pill underneath it to accidentally intercept a tap. `--bottom-nav-safe-area`
+   collapses to just the safe-area inset (see theme.css) so every composer/
+   page that reserves clearance against the pill automatically reserves
+   clearance against nothing instead. */
+body.nav-hidden .bottom-nav {
+  display: none;
+}
+
 /* Mobile only — replicates the original responsive behavior. */
 @media (max-width: 768px) {
   .bottom-nav {
@@ -75,6 +88,13 @@ body.nav-dimmed .bottom-nav {
      area; this just ensures any non-token page still clears the pill. */
   .main-content {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* No pill to clear — collapse the reserve to just the home-indicator
+     inset so a comment screen's content doesn't scroll into dead space
+     that used to be reserved for the (now hidden) nav. */
+  body.nav-hidden .main-content {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   }
 }
 

@@ -560,6 +560,18 @@ body[data-larger-text='true'] {
   --goal-track: #1f2937; /* unfilled track  */
 }
 
+/* Comment composer screens (Comments sub-screen, List Detail, Review
+   Detail) hide the floating nav pill outright — see body.nav-hidden in
+   BottomNav.css, set via src/hooks/useHideNav.js. With no pill left to
+   clear, every consumer of --bottom-nav-safe-area (fixed composer bars,
+   their scroll padding, page bottom padding) should reserve just the
+   home-indicator inset instead of the pill's ~80px footprint. Overriding
+   the token here — once — means every one of those call sites adapts
+   automatically instead of each needing its own nav-hidden variant. */
+body.nav-hidden {
+  --bottom-nav-safe-area: env(safe-area-inset-bottom, 0px);
+}
+
 /* =============================================
    GLOBAL RESET & BODY
    ============================================= */

@@ -42,6 +42,14 @@
   }
 }
 
+/* Comment composer screens hide the floating nav (see body.nav-hidden in
+   BottomNav.css) so the composer owns the bottom strip outright — this
+   pill floats just above the nav's footprint and would otherwise land in
+   the same space, still floating above a bar that no longer exists. */
+body.nav-hidden .session-pill {
+  display: none;
+}
+
 /* ── Info region (tap to navigate) ────────────────────────────────────────── */
 
 .session-pill__info {

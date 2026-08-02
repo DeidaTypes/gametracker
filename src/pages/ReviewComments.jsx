@@ -29,6 +29,7 @@ import { bumpCommentsCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
+import { useHideNav } from '../hooks/useHideNav'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import './ReviewComments.css'
@@ -378,6 +379,12 @@ function ReviewComments() {
   const targetId = reviewId || activityId
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // This screen always has a comment composer (pinned or disabled while
+  // signed out) — the bottom nav is hidden for the whole lifetime of the
+  // screen, not just while the composer is focused, and restored on
+  // unmount. See src/hooks/useHideNav.js.
+  useHideNav()
 
   const [review, setReview] = useState(null)
   const [activityItem, setActivityItem] = useState(null)

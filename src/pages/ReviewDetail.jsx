@@ -29,6 +29,7 @@ import { bumpCommentsCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
+import { useHideNav } from '../hooks/useHideNav'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import './ReviewDetail.css'
@@ -544,6 +545,11 @@ function ReviewDetail() {
   const { id: reviewId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // This screen always has a comment composer pinned to the bottom — hide
+  // the nav for the whole lifetime of the screen and restore it on
+  // unmount. See src/hooks/useHideNav.js.
+  useHideNav()
 
   // ── Review ─────────────────────────────────────────────────
   const [review, setReview] = useState(null)

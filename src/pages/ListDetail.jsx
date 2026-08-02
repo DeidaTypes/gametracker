@@ -54,6 +54,7 @@ import {
   unsaveList,
 } from '../services/listInteractionService'
 import ListComments from '../components/ListComments'
+import { useHideNav } from '../hooks/useHideNav'
 import TrackerGameList from '../components/TrackerGameList'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
@@ -233,6 +234,13 @@ function ListDetail() {
   const descTextareaRef = useRef(null)
 
   const isTracker = isTrackerList(listId)
+
+  // Custom lists render a comment composer (ListComments, below the game
+  // grid) — tracker lists (Want to Play/Playing/Played/Dropped) never do.
+  // Hide the nav only for the former, and only once we actually know the
+  // list is custom, so it's restored automatically on unmount/navigation.
+  // See src/hooks/useHideNav.js.
+  useHideNav(!!listInfo?.isCustom)
 
   // ── Sticky-header title fade ─────────────────────────────────────────────
   // The header title is hidden at scroll-top and only fades in once the
