@@ -4,6 +4,14 @@
 
 This is a comprehensive, mobile-first design system built with CSS variables, reusable components, and consistent spacing/typography primitives.
 
+> **This document is normative.** Every value below is the value that is
+> actually declared in `src/styles/tokens.css` / `src/styles/theme.css`. If you
+> find a disagreement between this file and the CSS, the CSS wins — and the
+> disagreement is a bug in this file, so please fix it in the same PR. (This
+> document previously documented a spacing scale, a container padding, a font
+> stack, and a color palette that the app had not used for several sprints;
+> agents and humans following it were writing non-conforming CSS by definition.)
+
 ---
 
 ## Core Principles
@@ -20,7 +28,8 @@ This is a comprehensive, mobile-first design system built with CSS variables, re
 ```
 src/
 ├── styles/
-│   └── theme.css          # Design tokens (spacing, typography, colors)
+│   ├── tokens.css         # Spacing scale (the 4px grid) — imported FIRST
+│   └── theme.css          # Typography, color, radius, shadow, motion tokens
 ├── components/
 │   ├── Container.jsx      # Horizontal padding wrapper
 │   ├── Container.css
@@ -30,56 +39,107 @@ src/
     └── [YourPage].jsx     # Use Container + Section
 ```
 
+Both token files are imported once, in order, from `src/App.jsx`.
+
 ---
 
-## Design Tokens (theme.css)
+## Design Tokens
 
-### Spacing Scale
+### Spacing Scale (tokens.css)
+
+Spacing is a **value-named 4px grid**. The token name is the pixel value, so
+there is never a question of which step a given design intends:
 
 ```css
---spacing-xs:   8px
---spacing-sm:  12px
---spacing-md:  16px
---spacing-lg:  24px
---spacing-xl:  32px
---spacing-2xl: 40px
---spacing-3xl: 48px
+--space-4:   4px
+--space-8:   8px
+--space-12: 12px
+--space-16: 16px
+--space-20: 20px
+--space-24: 24px
+--space-32: 32px
+--space-40: 40px
+--space-48: 48px
+--space-64: 64px
 ```
 
-**Usage:**
-- `xs/sm` - tight internal spacing (gaps between tags, list items)
-- `md` - standard internal spacing (margins between related elements)
-- `lg` - section spacing (between groups)
-- `xl/2xl/3xl` - major section breaks
-
-### Container Padding
+Plus one restricted step:
 
 ```css
---container-padding:    16px  /* standard mobile */
---container-padding-sm: 12px  /* <360px screens */
+--space-2:   2px   /* RESTRICTED — see below */
+```
+
+**`--space-2` is for inline icon-to-text gaps only** — the space between a glyph
+and the word it belongs to (a chevron after a link, a star before a rating
+numeral), where 4px visibly detaches the two. Roughly 130 declarations already
+do this, which is why the step exists at all. Do **not** use it for padding,
+card gaps, stack rhythm, or any block-level spacing; round up to `--space-4`.
+
+**Why value names?** The previous t-shirt scale (`xs`/`sm`/`md`/…) had no steps
+at 4, 6, 10, 14, or 20px, so ~40% of the app's spacing declarations — 855 of
+them — were written as raw px that bypassed the scale entirely. Naming the
+grid by value closes those holes and makes off-scale values obvious on sight.
+
+#### Back-compatible t-shirt aliases
+
+The old names still resolve, pointed at the grid. **Every value is identical to
+what it was before the grid existed**, so adopting the grid produced zero
+visual change:
+
+| Legacy alias | Resolves to | Value |
+|---|---|---|
+| `--spacing-xs`  | `--space-8`  | 8px |
+| `--spacing-sm`  | `--space-12` | 12px |
+| `--spacing-md`  | `--space-16` | 16px |
+| `--spacing-lg`  | `--space-24` | 24px |
+| `--spacing-xl`  | `--space-32` | 32px |
+| `--spacing-2xl` | `--space-48` | 48px |
+| `--spacing-3xl` | `--space-64` | 64px |
+
+These are not deprecated with a deadline — roughly 2,000 declarations use them
+and they are correct. New CSS should prefer `--space-*`, which says what it
+measures.
+
+### Container & Page Padding (theme.css)
+
+```css
+--container-padding:    20px  /* standard mobile  → var(--space-20) */
+--container-padding-sm: 16px  /* <360px screens   → var(--space-16) */
+--page-padding:         20px  /* → var(--space-20) */
+--page-padding-desktop: 48px  /* → var(--space-48) */
 ```
 
 ### Typography Scale
 
-The type scale is intentionally varied across six semantic roles. Each role defines
-size + line-height + weight + family + letterspacing as a single, opinionated
-"voice." Avoid creating new sizes outside of this scale — pick the role that
-matches the content's purpose instead.
+The type scale is intentionally varied across **seven** semantic roles. Each role
+defines size + line-height + weight + family + letterspacing as a single,
+opinionated "voice." Avoid creating new sizes outside of this scale — pick the
+role that matches the content's purpose instead.
 
-| Role | Token | Size | Line height | Weight | Family | Letter-spacing | Use case |
-|------|-------|------|-------------|--------|--------|----------------|----------|
-| **Display XL** | `--font-size-display-xl` | 36px | 1.05 | 700 | serif | -0.02em | Screen headers ("Currently Playing", "Your Library", "Edit Profile") |
-| **Display L**  | `--font-size-display-l`  | 28px | 1.10 | 700 | serif | -0.02em | Section headers within a screen ("Trending this week") |
-| **Title**      | `--font-size-title`      | 18px | 1.30 | 600 | sans  | 0       | Game titles in lists, card titles |
-| **Body**       | `--font-size-body`       | 15px | 1.50 | 400 | sans  | 0       | Descriptions, review text, paragraph copy |
-| **Caption**    | `--font-size-caption`    | 13px | 1.40 | 500 | sans  | 0       | Genre tags, timestamps, "X games" counts (muted) |
-| **Label**      | `--font-size-label`      | 11px | 1.20 | 600 | sans  | +0.08em | Section labels: "TRACKERS", "DETAILS", "ABOUT" (uppercase, muted) |
+Every role uses **DM Sans**; see [Font families](#font-families) below.
+
+| Role | Token | Size | Line height | Weight | Letter-spacing | Use case |
+|------|-------|------|-------------|--------|----------------|----------|
+| **Display XL** | `--font-size-display-xl` | 36px | 1.05 | 600 | -0.02em | Screen headers ("Currently Playing", "Your Library", "Edit Profile") |
+| **Display L**  | `--font-size-display-l`  | 28px | 1.10 | 600 | -0.02em | Section headers within a screen ("Trending this week") |
+| **Heading**    | `--font-size-heading`    | 22px | 1.25 | 600 | -0.01em | Bottom-sheet and modal titles, stat numerals, sub-headings inside a card |
+| **Title**      | `--font-size-title`      | 18px | 1.30 | 600 | 0       | Game titles in lists, card titles |
+| **Body**       | `--font-size-body`       | 15px | 1.50 | 400 | 0       | Descriptions, review text, paragraph copy |
+| **Caption**    | `--font-size-caption`    | 13px | 1.40 | 500 | 0       | Genre tags, timestamps, "X games" counts (muted) |
+| **Label**      | `--font-size-label`      | 11px | 1.20 | 600 | +0.08em | Section labels: "TRACKERS", "DETAILS", "ABOUT" (uppercase, muted) |
+
+**Heading (22px) is the newest role.** It exists because the scale jumped
+straight from Title (18) to Display L (28), so anything that needed to read as
+"bigger than a list title, smaller than a section header" hand-rolled a raw
+20/21/22px `font-size`. If you are reaching for a size in that gap, use
+`.text-heading` instead of inventing one.
 
 #### Letterspacing rules
 
 ```css
---letter-spacing-display: -0.02em  /* tight, premium feel for serif display */
---letter-spacing-body:    0         /* default for body and captions */
+--letter-spacing-display: -0.02em  /* tight, premium feel at display sizes */
+--letter-spacing-heading: -0.01em  /* heading — half the display tightening */
+--letter-spacing-body:    0        /* default for body and captions */
 --letter-spacing-label:   0.08em   /* wide, refined feel for small uppercase */
 ```
 
@@ -90,11 +150,62 @@ Line heights are paired with size so each role has a tuned, intrinsic rhythm:
 ```css
 --line-height-display-xl: 1.05
 --line-height-display-l:  1.1
+--line-height-heading:    1.25
 --line-height-title:      1.3
 --line-height-body:       1.5
 --line-height-caption:    1.4
 --line-height-label:      1.2
 ```
+
+#### Larger Text (accessibility)
+
+`body[data-larger-text='true']` (Settings → Larger Text) overrides the size
+tokens app-wide. Display sizes scale less aggressively so hero headers don't
+blow out on small screens:
+
+| Role | Default | Larger Text |
+|---|---|---|
+| Display XL | 36px | 40px |
+| Display L | 28px | 32px |
+| Heading | 22px | 25px |
+| Title | 18px | 20px |
+| Body | 15px | 17px |
+| Caption | 13px | 15px |
+| Label | 11px | 12px |
+
+Because the override targets the tokens, any component using the role tokens or
+`.text-*` utilities picks this up for free — another reason not to hand-roll a
+raw `font-size`.
+
+#### Share / celebration carve-out (`--share-*`)
+
+Share cards and celebration screens do **not** use the scale above, and that is
+deliberate rather than drift. They render into a fixed offscreen canvas —
+1080×1350 for `BrandedShareCard`, 1080×1920 for `celebration/ShareCard` — which
+`html-to-image` rasterises into an exported PNG. Those canvases are roughly 3×
+the width of a phone viewport, so app-scale type would export unreadably small.
+
+```css
+--share-font-size-caption:    24px   /* footer meta, QR caption */
+--share-font-size-label:      28px   /* uppercase eyebrows, stat labels */
+--share-font-size-body:       32px   /* review body, subtitles */
+--share-font-size-title:      40px   /* game title, watermark */
+--share-font-size-heading:    52px   /* card headline */
+--share-font-size-display:    80px   /* hero line */
+--share-font-size-display-xl: 96px   /* primary hero numeral / headline */
+--share-font-size-numeral:   160px   /* single giant stat (year in review) */
+```
+
+Rules:
+
+- Use `--share-*` **only** inside a fixed-canvas capture target.
+- Never use app `--font-size-*` / `--space-*` tokens inside a capture target,
+  and never use `--share-*` in on-screen UI.
+- `--share-*` is **not** scaled by Larger Text: an exported image must rasterise
+  identically no matter what accessibility settings the sharer has on, or the
+  same card would produce different PNGs on different devices.
+- The two capture-target stylesheets are exempted from the spacing lint rule for
+  the same reason (see `.stylelintrc.cjs`).
 
 #### Font weights
 
@@ -107,10 +218,24 @@ Line heights are paired with size so each role has a tuned, intrinsic rhythm:
 
 #### Font families
 
+**There is one typeface in this app: DM Sans.** No serif is installed, and
+neither Playfair Display nor Inter is a dependency — the only font package in
+`package.json` is `@fontsource/dm-sans`, imported at weights 400/500/600/700 in
+`src/main.jsx`.
+
 ```css
---font-serif: 'Playfair Display', Georgia, serif;  /* Display XL & Display L */
---font-sans:  'Inter', system-ui, sans-serif;       /* Title, Body, Caption, Label */
+--font-display: 'DM Sans', system-ui, -apple-system, sans-serif;
+--font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+
+/* Legacy aliases — historical names only, both resolve to DM Sans */
+--font-serif: var(--font-display);
+--font-sans:  var(--font-body);
 ```
+
+`--font-serif` is a **historical name, not a promise**. Do not read it as "a
+serif font is available here," and do not add `Georgia, serif` fallbacks to new
+CSS — display headers get their character from DM Sans at weight 600 with tight
+(-0.02em) tracking, not from a serif.
 
 #### Choosing the right role
 
@@ -134,21 +259,119 @@ all new code should use the canonical names above:
 | `--font-size-hero`      | `--font-size-display-l`  |
 | `--font-size-subtitle`  | `--font-size-title`      |
 | `--font-size-meta`      | `--font-size-caption`    |
-| `--letter-spacing-tight`, `--letter-spacing-normal` | `--letter-spacing-display` |
-| `--letter-spacing-wide` | `--letter-spacing-body` |
-| `--letter-spacing-wider`, `--letter-spacing-widest` | `--letter-spacing-label` |
+| `--letter-spacing-tight`  | `--letter-spacing-display` |
+| `--letter-spacing-normal` | `--letter-spacing-body` |
+| `--letter-spacing-wide`, `--letter-spacing-wider`, `--letter-spacing-widest` | `--letter-spacing-label` |
+| `--line-height-tight`   | `--line-height-display-l` |
+| `--line-height-normal`  | `--line-height-body` |
+| `--line-height-relaxed` | 1.7 (no role equivalent) |
 
 ### Colors
 
+The palette is **Deep Midnight + Cobalt Blue** — not the black/white/grey set
+this document used to list. Backgrounds are navy, text is cool-white, and the
+single interactive accent is cobalt.
+
 ```css
---color-bg-primary:     #000000
---color-bg-secondary:   #0a0a0a
---color-text-primary:   #ffffff
---color-text-secondary: #999999
---color-text-tertiary:  #666666
---color-border:         rgba(255, 255, 255, 0.06)
---color-hover-bg:       rgba(255, 255, 255, 0.03)
+/* Backgrounds — layered depth */
+--color-bg-primary:     #0a0f1f   /* deep midnight, full-page background */
+--color-bg-secondary:   #131a35   /* nav surfaces */
+--color-bg-tertiary:    #131a35   /* cards, panels */
+--color-bg-elevated:    #1a2240   /* highest elevation */
+
+/* Text — cool-white spectrum */
+--color-text-primary:   #f0f3fa   /* near-white */
+--color-text-secondary: #94a8d4   /* muted cobalt-grey */
+--color-text-tertiary:  #5c6b8a   /* dim */
+--color-text-muted:     #3a4a66   /* very dim */
+
+/* Brand — cobalt */
+--color-brand-primary:   #3b82f6
+--color-brand-secondary: #60a5fa
+--accent:                #3b82f6   /* shorthand for the interactive accent */
+
+/* Borders & surfaces — cobalt-tinted alpha, not white alpha */
+--color-border:         rgba(148, 168, 212, 0.12)
+--color-border-hover:   rgba(148, 168, 212, 0.30)
+--color-surface:        rgba(148, 168, 212, 0.05)
+--color-surface-hover:  rgba(148, 168, 212, 0.09)
+
+/* Status — distinct from the brand accent */
+--status-success: #34d399
+--status-warning: #fbbf24
+--status-danger:  #f87171
 ```
+
+`--color-hover-bg` does not exist; use `--color-surface-hover`.
+
+Shorthand aliases (`--bg-base`, `--bg-surface`, `--bg-surface-2`,
+`--text-primary`, `--text-secondary`, `--border-subtle`, …) exist alongside the
+`--color-*` names and resolve to the same values. See `theme.css` for the full
+set, including the data-viz genre palette, gradient tokens, and the per-screen
+bottom-nav tints.
+
+<a id="retired-palette"></a>
+
+### Retired palette: orange / amber / copper
+
+The app's original accent was warm copper/amber. **It is retired.** The accent
+is cobalt, and warm hues keep drifting back into component CSS one hardcoded hex
+at a time, so this is now linted rather than left as a convention — see
+[Linting](#linting).
+
+There are exactly four sanctioned warm colors, all defined as tokens in
+`theme.css` and never inlined as hex in component CSS:
+
+| Token | Value | Why it's allowed |
+|---|---|---|
+| `body[data-accent='copper'] --accent` | `#C8813A` | Opt-in Ambassador badge accent, user-unlocked |
+| `--star` | `#f5b50a` | Rating stars — deliberate exception to the all-cobalt rule |
+| `--tier-bronze` / `--tier-gold` | `#CD7F32` / `#FFD700` | Achievement tier metals, semantically fixed |
+| `--status-warning` | `#fbbf24` | Warning status, plus the color-blind-mode orange swaps |
+
+If you need a warm color for anything else, add a named token to `theme.css`
+first and justify it there. Do not inline the hex.
+
+The data-viz genre palette is also constrained: no genre token may fall in the
+~0–55° hue range, so a genre chart never reads as the retired palette. See the
+comment above `--genre-*` in `theme.css`.
+
+---
+
+<a id="linting"></a>
+
+## Linting
+
+Stylelint runs over `src/**/*.css`:
+
+```bash
+npm run lint            # all CSS
+npm run lint:css:summary # one line per warning
+```
+
+**Everything is in warning mode.** Nothing here fails a build today; the first
+pass exists to make existing drift visible and to catch new drift in review.
+Once the backlog is worked down, rules can be promoted to errors and CI can gate
+on `stylelint --max-warnings 0`.
+
+Two invariants are enforced (config: `.stylelintrc.cjs`):
+
+1. **Spacing must sit on the 4px grid.** Any off-scale px value on a
+   `margin`/`padding`/`gap`/`inset`/`top`/`right`/`bottom`/`left` declaration is
+   flagged. Border widths, font sizes, transforms, and element dimensions are
+   not touched.
+2. **No hardcoded hex outside the token files** (`color-no-hex`), plus a custom
+   rule — `gametracker/no-retired-palette`, in
+   `scripts/stylelint/no-retired-palette.cjs` — that specifically catches the
+   retired palette. It matches the known historical hexes by name *and* analyses
+   the hue of every other hex literal, flagging any saturated color in the
+   red-orange → amber-gold band (10°–58°). The hue pass is the important half:
+   it catches warm values nobody has seen before, which a fixed denylist never
+   would.
+
+Exemptions, all deliberate: `theme.css` and `tokens.css` are exempt from the
+color rules (they are where hex is supposed to live), and the two fixed-canvas
+share-card stylesheets are exempt from the spacing rule.
 
 ---
 
@@ -210,10 +433,10 @@ Provides consistent vertical spacing and borders.
 - `className` - Additional CSS classes
 
 **Spacing Mapping:**
-- `sm` → 16px vertical padding
-- `md` → 24px vertical padding
-- `lg` → 32px vertical padding
-- `xl` → 40px vertical padding
+- `sm` → 16px vertical padding (`--spacing-md`)
+- `md` → 24px vertical padding (`--spacing-lg`)
+- `lg` → 32px vertical padding (`--spacing-xl`)
+- `xl` → 48px vertical padding (`--spacing-2xl`)
 
 **Usage:**
 
@@ -251,6 +474,9 @@ applying individual tokens:
 // Display L — section headers inside a screen
 <h2 className="text-display-l">Trending this week</h2>
 
+// Heading — sheet / modal titles, sub-headings inside a card
+<h3 className="text-heading">Log a Session</h3>
+
 // Title — game titles in lists, card titles
 <h3 className="text-title">Hollow Knight: Silksong</h3>
 
@@ -283,6 +509,10 @@ Quick margin utilities:
 ```
 
 Available: `spacing-top-[xs|sm|md|lg|xl|2xl|3xl]` and `spacing-bottom-[xs|sm|md|lg|xl|2xl|3xl]`
+
+These utilities still use the t-shirt alias names. They resolve to the grid
+(`lg` → `--space-24`, `md` → `--space-16`, and so on — see the alias table
+above), so they remain correct; the names are just older than the grid.
 
 ---
 
@@ -375,15 +605,15 @@ function MyPage() {
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-lg) var(--spacing-md);
+  gap: var(--space-24) var(--space-16);
 }
 
 .stat-value {
-  font-size: var(--font-size-display);
+  font-size: var(--font-size-heading);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   line-height: 1;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--space-8);
 }
 
 .stat-label {
@@ -486,25 +716,33 @@ When creating a new page:
 1. ✅ Import `Container` and `Section`
 2. ✅ Use `Section` for vertical spacing
 3. ✅ Use `Container` for horizontal padding
-4. ✅ Use design tokens for custom styles (`var(--spacing-md)`)
-5. ✅ Use typography utilities (`text-title`, `text-body`, etc.)
-6. ✅ For horizontal scrolling: use `<Container noPadding>`
-7. ✅ Test at 320px, 375px, 414px widths
+4. ✅ Use spacing tokens for custom styles (`var(--space-16)`) — stay on the 4px grid
+5. ✅ Use typography utilities (`text-heading`, `text-title`, `text-body`, etc.)
+6. ✅ Use color tokens — no hardcoded hex, and nothing orange/amber/copper
+7. ✅ For horizontal scrolling: use `<Container noPadding>`
+8. ✅ Test at 320px, 375px, 414px widths
+9. ✅ Run `npm run lint` and don't add new warnings
 
 ---
 
-## Examples in Codebase
+## Migration status
 
-### ✅ Migrated
-- **Home.jsx** - Full design system usage
-- **GameDetail.jsx** - Container and Section integration
+Every screen now uses the token system for color and typography. What is *not*
+yet migrated is spacing: roughly 855 declarations (~40% of all spacing in the
+app) are still raw px rather than tokens, a backlog created by the holes in the
+old t-shirt scale. Those are exactly what `npm run lint` reports.
 
-### ⏳ To Migrate
-- Profile.jsx
-- Reviews.jsx
-- Library.jsx
-- Search.jsx
-- Explore.jsx
+Migrating them is intentionally a separate effort from introducing the grid, so
+that adding the grid could ship with a provable zero-pixel diff. When you touch
+a file for other reasons, converting its off-scale values is welcome — just keep
+it in its own commit so the visual diff stays reviewable.
+
+Also outstanding, and tracked as separate commits:
+
+- **Radius retune** — the approved 3→4, 6→8, 10→12, 14→16, 18→24 change
+  (`--radius-chip` stays 4px). Held back because it repaints every tokenized
+  surface in the app.
+- **Review card consolidation** — see the note in `.cursorrules`.
 
 ---
 
@@ -516,22 +754,27 @@ When creating a new page:
 | Remove padding (full-bleed) | `<Container noPadding>` |
 | Vertical spacing | `<Section spacing="lg">` |
 | Top/bottom borders | `<Section borderTop borderBottom>` |
-| Screen header | `text-display-xl` (36px serif, tight) |
-| Section header | `text-display-l` (28px serif, tight) |
-| Card / list title | `text-title` (18px sans, semibold) |
-| Body text | `text-body` (15px sans, regular) |
-| Captions / metadata | `text-caption` (13px sans, muted) |
-| Uppercase labels | `text-label` (11px sans, +0.08em tracking, muted) |
-| Tight spacing | `var(--spacing-xs)` (8px) |
-| Standard spacing | `var(--spacing-md)` (16px) |
-| Section spacing | `var(--spacing-lg)` (24px) |
-| Major breaks | `var(--spacing-2xl)` (40px) |
+| Screen header | `text-display-xl` (36px, 600, tight) |
+| Section header | `text-display-l` (28px, 600, tight) |
+| Sheet / modal title | `text-heading` (22px, 600) |
+| Card / list title | `text-title` (18px, 600) |
+| Body text | `text-body` (15px, 400) |
+| Captions / metadata | `text-caption` (13px, 500, muted) |
+| Uppercase labels | `text-label` (11px, 600, +0.08em tracking, muted) |
+| Icon-to-text gap | `var(--space-2)` (2px, restricted) |
+| Tight spacing | `var(--space-8)` (8px) |
+| Standard spacing | `var(--space-16)` (16px) |
+| Section spacing | `var(--space-24)` (24px) |
+| Major breaks | `var(--space-48)` (48px) |
+| A warm/orange color | Nothing — the palette is retired. See [Retired palette](#retired-palette). |
 
 ---
 
 ## Support
 
-- See `src/styles/theme.css` for all available tokens
+- See `src/styles/tokens.css` for the spacing grid
+- See `src/styles/theme.css` for every other token (type, color, radius, shadow, motion)
+- See `.stylelintrc.cjs` and `scripts/stylelint/no-retired-palette.cjs` for what is linted
 - See `src/components/Container.jsx` for Container API
 - See `src/components/Section.jsx` for Section API
 - See `src/pages/Home.jsx` for real-world usage examples

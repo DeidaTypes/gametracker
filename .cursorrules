@@ -16,10 +16,55 @@ A video game library and tracking app, conceptually similar to Letterboxd but fo
 - App entry: src/main.jsx → src/App.jsx
 
 ## Design system
-- Dark theme: deep navy background, warm copper/amber accent
-- Typography: serif display headers ("Currently Playing", "Your Library"), sans-serif body
-- Five bottom tabs: Home, Explore, Search, Library, Profile
-- Reference DESIGN_SYSTEM.md at the project root for color tokens and any other design-system documentation
+Tokens live in src/styles/tokens.css (spacing) and src/styles/theme.css
+(everything else). DESIGN_SYSTEM.md documents them and is kept in sync with
+the CSS — if the two ever disagree, the CSS is right and the doc is a bug.
+
+- Dark theme: deep midnight navy (#0a0f1f) background, COBALT BLUE accent
+  (#3b82f6 / --accent). Five bottom tabs: Home, Explore, Search, Library, Profile.
+- Typography: DM Sans ONLY, at weights 400/500/600/700
+  (@fontsource/dm-sans, imported in src/main.jsx). There is NO serif in this
+  app. Display headers are DM Sans 600 with -0.02em tracking. --font-serif
+  exists as a legacy alias but resolves to DM Sans — do not read it as a
+  promise of a serif, and do not add "Georgia, serif" fallbacks.
+
+### Spacing — value-named 4px grid
+--space-4, -8, -12, -16, -20, -24, -32, -40, -48, -64. The token name IS the
+pixel value. Anything off this grid is off-scale.
+- --space-2 (2px) exists but is RESTRICTED: inline icon-to-text gaps only
+  (glyph next to the word it belongs to). Never for padding, card gaps, or
+  block-level spacing — round up to --space-4.
+- The old t-shirt names (--spacing-xs/sm/md/lg/xl/2xl/3xl) are back-compat
+  aliases onto the grid and are still correct in the ~2,000 places that use
+  them. New CSS should prefer --space-*.
+- Do not hand-roll raw px for margin/padding/gap/inset. ~855 existing
+  declarations still do; that is a known backlog, not a pattern to copy.
+
+### Type — seven roles, all DM Sans
+Display XL 36 / Display L 28 / Heading 22 / Title 18 / Body 15 / Caption 13 /
+Label 11. Use the .text-* utility classes (.text-display-xl, .text-display-l,
+.text-heading, .text-title, .text-body, .text-caption, .text-label) rather than
+hand-rolling font-size. Heading (22px) exists specifically to fill the old
+18→28 gap — use it instead of inventing a 20/21/22px size.
+Share cards and celebration screens are a deliberate carve-out: they render to
+a fixed offscreen canvas (1080x1350 / 1080x1920) for image export and use the
+separate --share-* tokens. Never mix the two scales in either direction.
+
+### Retired palette — orange / amber / copper
+The warm copper/amber palette is RETIRED and must not come back. It has drifted
+back repeatedly, so it is now linted, not just a convention. Never hardcode a
+hex in component CSS, and never introduce a warm/orange/amber/copper color.
+The only sanctioned warm values are tokens already in theme.css: the opt-in
+Ambassador copper accent, --star (rating gold), --tier-bronze / --tier-gold,
+and --status-warning. If you think you need another one, add a named token to
+theme.css and say why — don't inline it.
+
+### Linting
+`npm run lint` runs Stylelint over src/**/*.css in WARNING MODE (config:
+.stylelintrc.cjs). It flags off-grid spacing values and hardcoded hex, with a
+custom rule (scripts/stylelint/no-retired-palette.cjs) that catches the retired
+palette both by known hex and by hue analysis. It does not fail builds yet, but
+do not add new warnings; run it after touching CSS.
 
 ## Domain rules
 - Game tracker statuses: Want to Play / Playing / Played / Dropped
@@ -31,6 +76,7 @@ A video game library and tracking app, conceptually similar to Letterboxd but fo
 - Use existing utility functions and components before creating new ones
 - Plain JavaScript (.js / .jsx), not TypeScript — match existing code
 - Use existing color tokens / CSS variables; do not hardcode hex colors
+- Use --space-* spacing tokens; do not hand-roll raw px for margin/padding/gap
 - Capacitor-aware: when adding interactive features (haptics, share, native menus), check if a Capacitor plugin exists before falling back to web-only APIs
 - All animations must respect `prefers-reduced-motion`
 
@@ -39,15 +85,16 @@ The repo has many .md files documenting prior work (DESIGN_SYSTEM.md, FEATURES_O
 
 ## Sprint 5 design language (Musicboard-inspired)
 Pattern source: a music-tracking app called Musicboard. We are stealing
-PATTERNS, not COLORS. GameTracker keeps deep navy + warm copper/amber,
-serif display headers, sans-serif body.
+PATTERNS, not COLORS. GameTracker keeps deep midnight navy + cobalt accent,
+DM Sans throughout (see the Design system section above — this section
+originally said "copper/amber" and "serif display headers"; both are wrong).
 Core patterns this sprint introduces:
 - ReviewCard with a "cover header" -- game cover left, title +
 developer right, tinted with the dominant color extracted from
 the cover. Horizontal gradient: dominant color (40% opacity) left
 fading to card surface right.
-- FAB (Floating Action Button): bottom-right on Home only, copper
-accent, opens a bottom sheet for quick actions.
+- FAB (Floating Action Button): bottom-right on Home only, cobalt
+accent (--grad-brand), opens a bottom sheet for quick actions.
 - Profile hero pattern: avatar + 3 stat numerals + name + bio +
 social links + Follow / Send Message + inline tabs (Home /
 Reviews / Lists).
@@ -67,12 +114,39 @@ page that says "Comments coming soon."
 - Follow button is visually present but no-op for now.
 - Send Message routes to /messages/coming-soon stub.
 Component reuse:
-- src/components/ReviewCard.jsx is the canonical review card.
-Three screens use it: Home timeline, Game detail page reviews,
-Profile Reviews tab. Do NOT fork it -- extend with props if needed.
 - Reuse the existing color extraction utility from Sprint 4 P8
 (search the repo for useDominantColor or extractColorFromImage
 before writing new code).
 - Reuse the existing bottom-sheet component for FAB sheet, sort
 filter, and any other modals (search src/components/ for
 BottomSheet, Sheet, or Modal before writing new ones).
+
+## Review card components — actual current state
+This section used to say "ReviewCard.jsx is the canonical review card, do NOT
+fork it." That was never enforced and is no longer true, so it was misleading
+agents into assuming one component when there are several. Here is reality:
+
+- src/components/reviews/ReviewCardShell.jsx is the shared layout primitive
+  (bounded box, header, truncation behavior). It is what actually guarantees
+  cards look consistent, and it IS the thing to reuse.
+- src/components/ReviewCard.jsx — the full review card. Used by Profile,
+  GameDetail, ReviewDetail, ReviewComments, Search, SearchOverlay,
+  GameReviewsAll, DiscoverReviewsAll. Built on ReviewCardShell.
+- src/components/home/HomeReviewCard.jsx — Home "pulse" feed and
+  ReviewComments. A separate implementation (it renders unified activity
+  items, not just reviews), also built on ReviewCardShell.
+- src/components/explore/RecentActivityCard.jsx — Discover "Recently" shelf,
+  via FollowingShelf. Also built on ReviewCardShell.
+
+These three are NOT going to be merged into one component; they render
+genuinely different content shapes. The rule that actually applies:
+
+  Build on ReviewCardShell. Do not create a FOURTH review surface, and do not
+  copy-paste one of the three above as a starting point — extend the one whose
+  screen you're working on, with props.
+
+Dead code, do not use as a reference or revive without a reason:
+src/components/explore/ReviewFeedRow.jsx,
+src/components/explore/ReviewOfWeekHero.jsx,
+src/components/ProfileReviewsShelf.jsx — all three are unreferenced (nothing
+imports them) and predate ReviewCardShell.
