@@ -45,7 +45,7 @@
   align-items: center;
   min-height: var(--cover-header-height);
   padding: var(--cover-header-padding);
-  border-radius: var(--cover-header-radius);
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
   text-align: left;
@@ -63,7 +63,7 @@
 .review-card__cover-thumb {
   width: var(--cover-thumb-size);
   height: var(--cover-thumb-size);
-  border-radius: var(--cover-thumb-radius);
+  border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
 }

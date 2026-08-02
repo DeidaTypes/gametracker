@@ -153,7 +153,7 @@
   display: flex;
   gap: 12px;
   background: var(--color-bg-tertiary);
-  border-radius: var(--review-card-radius, 12px);
+  border-radius: var(--radius-lg);
   padding: var(--review-card-padding, 16px);
 }
 

@@ -40,7 +40,7 @@
 .nph__cover-thumb {
   width: var(--cover-thumb-size);
   height: var(--cover-thumb-size);
-  border-radius: var(--cover-thumb-radius);
+  border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
   flex-shrink: 0;

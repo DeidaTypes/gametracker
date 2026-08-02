@@ -147,7 +147,7 @@
   width: 100%;
   max-width: 480px;
   max-height: 80vh;
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--spacing-lg) var(--spacing-lg) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;

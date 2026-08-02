@@ -7,7 +7,7 @@ import './ReviewCardShell.css'
  * Game Details, Profile Reviews tab, review detail/thread).
  *
  * Owns ONLY the bounded card chrome: --color-bg-tertiary surface,
- * hairline --color-border, --review-card-radius, --review-card-padding,
+ * hairline --color-border, --radius-lg, --review-card-padding,
  * and --section-gap between this card's direct children. It renders no
  * header/body/footer markup of its own — everything else is `children`,
  * so wildly different content (HomeReviewCard's activity rows,

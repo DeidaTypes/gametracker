@@ -7,7 +7,7 @@
 .review-card-shell {
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
-  border-radius: var(--review-card-radius);
+  border-radius: var(--radius-lg);
   padding: var(--review-card-padding);
   display: flex;
   flex-direction: column;
