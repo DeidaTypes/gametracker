@@ -8,7 +8,6 @@ import React, {
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuCheck, LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
-import ReviewCard from '../components/ReviewCard'
 import HomeReviewCard from '../components/home/HomeReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
@@ -16,7 +15,10 @@ import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { getReviewById } from '../services/reviewService'
-import { getActivityEventForCard } from '../services/communityService'
+import {
+  getActivityEventForCard,
+  homeFeedItemFromReviewRow,
+} from '../services/communityService'
 import {
   getCommentsForReview,
   getCommentsForActivityEvent,
@@ -87,40 +89,6 @@ function threadComments(rows) {
       (a, b) => new Date(a.created_at) - new Date(b.created_at)
     ),
   }))
-}
-
-/**
- * Map a Supabase review row into the canonical ReviewCard prop shape.
- * Mirrors the adapters in TimelineFeed / GameDetail / Profile — we
- * intentionally keep it inline here rather than extracting a shared
- * helper because every consumer has slightly different fallbacks
- * (compact variant, no like prefetch on this page, etc.).
- */
-function toReviewCardShape(row, commentCount) {
-  if (!row) return null
-  return {
-    id: row.id,
-    userId: row.user_id,
-    game: {
-      id: String(row.igdb_game_id || ''),
-      name: row.game_title || 'Unknown Game',
-      coverUrl: row.game_image || '',
-      developer: '',
-    },
-    author: {
-      username: row.users?.username || row.users?.display_name || 'Anonymous',
-      avatarUrl: row.users?.avatar_url || '',
-    },
-    title: null,
-    body: row.body || '',
-    rating: Number(row.rating) || 0,
-    hoursPlayed: Number(row.hours_played) || 0,
-    vibeStamp: row.vibe_stamp || null,
-    lifeContext: row.life_context || null,
-    likeCount: 0,
-    commentCount,
-    createdAt: row.created_at,
-  }
 }
 
 /* ── Spoiler parsing ────────────────────────────────────────────────── */
@@ -566,9 +534,18 @@ function ReviewComments() {
   const threaded = useMemo(() => threadComments(comments), [comments])
   const commentCount = comments.length
 
-  const reviewCardShape = useMemo(
-    () => toReviewCardShape(review, commentCount),
-    [review, commentCount]
+  // Both thread targets render the same card component at the top —
+  // reviews shape through homeFeedItemFromReviewRow, activity events
+  // arrive pre-shaped from getActivityEventForCard — so the header
+  // matches the card the viewer tapped in from, whichever surface that
+  // was (Home pulse, Profile Reviews tab, Discover, …).
+  const reviewFeedItem = useMemo(
+    () =>
+      homeFeedItemFromReviewRow(review, {
+        commentCount,
+        isOwn: !!user && review?.user_id === user.id,
+      }),
+    [review, commentCount, user]
   )
 
   /* ── Composer ───────────────────────────────────────────────── */
@@ -778,12 +755,12 @@ function ReviewComments() {
               </div>
             </div>
           ) : targetType === 'review' ? (
-            reviewMissing || !reviewCardShape ? (
+            reviewMissing || !reviewFeedItem ? (
               <div className="rc-review-missing">
                 This review is no longer available.
               </div>
             ) : (
-              <ReviewCard review={reviewCardShape} variant="compact" />
+              <HomeReviewCard item={reviewFeedItem} />
             )
           ) : reviewMissing || !activityItem ? (
             <div className="rc-review-missing">

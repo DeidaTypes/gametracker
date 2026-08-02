@@ -1263,6 +1263,34 @@ function _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn = false } 
 }
 
 /**
+ * Shape a single `reviews` row into the same Home feed item
+ * `getHomeFeed` produces, for surfaces that already hold the row and
+ * just need the canonical `<HomeReviewCard item={...}/>` shape — today
+ * that's the review-comments thread header
+ * (`/reviews/:reviewId/comments`), which is the review-side twin of
+ * what getActivityEventForCard does for `/activity/:activityId/comments`.
+ *
+ * Counts are passed as plain numbers here (the feed's Map-based batch
+ * lookups exist for pages of rows; a single row has nothing to batch).
+ *
+ * @param {object|null} row  a `reviews` row joined with the reviewer's
+ *   user fields — e.g. reviewService.getReviewById's return value
+ * @returns {object|null} same item shape as getHomeFeed's review items
+ */
+export function homeFeedItemFromReviewRow(
+  row,
+  { likeCount = 0, commentCount = 0, isOwn = false } = {}
+) {
+  if (!row) return null
+  return _homeFeedItemFromRow(
+    row,
+    new Map([[row.id, likeCount]]),
+    new Map([[row.id, commentCount]]),
+    { isOwn }
+  )
+}
+
+/**
  * Fetch a page of `activity_events` rows of the given `types`, scoped to
  * either a specific set of actors (`userIds` — followees, or `[viewerId]`
  * for the own-activity fetch) or every actor EXCEPT a set (`excludeUserIds`
