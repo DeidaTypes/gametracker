@@ -465,11 +465,11 @@ body[data-larger-text='true'] {
   --glass-border: rgba(148, 168, 212, 0.12);
 
   /* ---- Border Radius ---- */
-  --radius-xs: 3px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-2xl: 24px;
   --radius-full: 9999px;
   /* Chips only — small pill-shaped labels/filters (status chips, genre

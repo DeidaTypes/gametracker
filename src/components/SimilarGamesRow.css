@@ -28,7 +28,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -37,7 +37,7 @@
   width: 120px;
   height: 180px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: block;
   transition: opacity 0.15s ease;
 }
@@ -47,7 +47,7 @@
 }
 
 .sgr-cover-skeleton {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* Title always renders (real data — the game's own name). Clamped to a

@@ -560,7 +560,7 @@
 .sp-result-cover {
   width: 52px;
   height: 52px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);

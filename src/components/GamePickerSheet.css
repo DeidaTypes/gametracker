@@ -128,7 +128,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   transition: transform 140ms ease, box-shadow 140ms ease;
@@ -148,7 +148,7 @@
   height: 90px;
   object-fit: cover;
   display: block;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .gps-recent-cover--placeholder {
