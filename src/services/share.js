@@ -149,7 +149,7 @@ export async function captureCard({ variant, data, target }) {
  * @param {string}  [opts.filename]
  * @returns {Promise<{ method: string }>}
  */
-export async function shareImageDataUrl(dataUrl, { title = 'GameTracker', url = '', filename = 'gametracker-card.png' } = {}) {
+export async function shareImageDataUrl(dataUrl, { title = 'Checkpoint', url = '', filename = 'gametracker-card.png' } = {}) {
   // Convert data URL to File for the Web Share API
   let file = null
   try {
@@ -214,7 +214,7 @@ export async function shareCard({ variant, data, target, title }) {
   const deepLinkUrl = buildDeepLinkUrl(target)
   const dataUrl = await captureCard({ variant, data, target })
   const result = await shareImageDataUrl(dataUrl, {
-    title: title || 'GameTracker',
+    title: title || 'Checkpoint',
     url: deepLinkUrl,
     filename: `gametracker-${variant}.png`,
   })

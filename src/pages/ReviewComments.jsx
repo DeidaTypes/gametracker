@@ -645,7 +645,7 @@ function ReviewComments() {
           username: reviewFeedItem.author?.username || reviewFeedItem.author?.displayName || '',
         },
         target: { type: 'review', id: reviewFeedItem.id },
-        title: `Review of ${reviewFeedItem.game?.title || 'a game'} on GameTracker`,
+        title: `Review of ${reviewFeedItem.game?.title || 'a game'} on Checkpoint`,
       })
       bumpSharesCount(1)
     } catch (err) {

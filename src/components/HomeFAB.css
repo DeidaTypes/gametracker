@@ -65,6 +65,18 @@
   will-change: transform, opacity;
 }
 
+/* Each item is its own stacking context (will-change: transform/opacity
+   triggers this), so paint order across items otherwise follows DOM order —
+   later items' opaque buttons end up covering earlier items' label pills
+   where the arc geometry makes them overlap (e.g. Log's label sits under
+   Review's button). Reverse it: earlier items paint on top so every label
+   stays visible regardless of arc position. Purely a stacking fix — no
+   layout/position/animation change. */
+.home-fab-radial > .home-fab-item:nth-child(1) { z-index: 4; }
+.home-fab-radial > .home-fab-item:nth-child(2) { z-index: 3; }
+.home-fab-radial > .home-fab-item:nth-child(3) { z-index: 2; }
+.home-fab-radial > .home-fab-item:nth-child(4) { z-index: 1; }
+
 /* ── Label pill ───────────────────────────────────────────────────────────── */
 /*
  * Absolutely positioned to the LEFT of the 44px icon box with an 8px gap.
@@ -126,12 +138,13 @@
   outline-offset: 2px;
 }
 
-/* Per-item accent colours — session log & quest read as system cobalt,
-   review reads as review-green, list reads as journal-purple. */
-.home-fab-item__btn--log    { --item-accent: var(--accent); }
-.home-fab-item__btn--review { --item-accent: var(--accent-review); }
-.home-fab-item__btn--list   { --item-accent: var(--accent-journal); }
-.home-fab-item__btn--quest  { --item-accent: var(--accent); }
+/* Per-item accent colours — session log reads as system cobalt, review
+   reads as review-green, list & message read as journal-purple (list is
+   social/curatorial, message is social/DM — same "social" hue). */
+.home-fab-item__btn--log     { --item-accent: var(--accent); }
+.home-fab-item__btn--review  { --item-accent: var(--accent-review); }
+.home-fab-item__btn--list    { --item-accent: var(--accent-journal); }
+.home-fab-item__btn--message { --item-accent: var(--accent-journal); }
 
 /* ── Main FAB button ─────────────────────────────────────────────────────── */
 /* Primary-action gradient (--grad-cta, cobalt→green) — dark icon color

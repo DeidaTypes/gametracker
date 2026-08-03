@@ -781,7 +781,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       <ActionSheet
         isOpen={signOutSheetOpen}
         onClose={() => setSignOutSheetOpen(false)}
-        title="Sign out of GameTracker?"
+        title="Sign out of Checkpoint?"
         items={[
           { label: 'Sign out', onClick: handleLogOut, destructive: true },
         ]}

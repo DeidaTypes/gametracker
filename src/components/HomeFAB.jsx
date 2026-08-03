@@ -7,7 +7,7 @@ import {
   LuPencilLine,
   LuListPlus,
   LuClock,
-  LuSwords,
+  LuMessageCircle,
 } from 'react-icons/lu'
 import CreateListModal from './CreateListModal'
 import GamePickerSheet from './GamePickerSheet'
@@ -52,12 +52,12 @@ const RADIAL_ITEMS = [
     ariaLabel: 'Create a list',
   },
   {
-    id: 'quest',
-    Icon: LuSwords,
-    label: 'Quest',
+    id: 'message',
+    Icon: LuMessageCircle,
+    label: 'Message',
     tx: -100,
     ty: 0,
-    ariaLabel: 'Start a quest',
+    ariaLabel: 'Open messages',
   },
 ]
 
@@ -169,13 +169,12 @@ function HomeFAB() {
     setCreateListOpen(true)
   }
 
-  const handleQuest = () => {
+  const handleMessage = () => {
     closeRadial(false)
-    showToast('Quests coming soon', 'info')
-    fabRef.current?.focus()
+    navigate('/messages')
   }
 
-  const ITEM_HANDLERS = { log: handleLog, review: handleReview, list: handleList, quest: handleQuest }
+  const ITEM_HANDLERS = { log: handleLog, review: handleReview, list: handleList, message: handleMessage }
 
   // ── List creation ────────────────────────────────────────────────────────
 

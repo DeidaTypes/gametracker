@@ -212,7 +212,7 @@ function Home() {
           ──────────────────────────────────────────────────────────────── */}
           <header className="home-section home-section-padded home-header-block">
             <div className="home-header-row">
-              <span className="home-wordmark">GameTracker</span>
+              <span className="home-wordmark">Checkpoint</span>
               <div className="home-header-actions">
                 <button
                   type="button"

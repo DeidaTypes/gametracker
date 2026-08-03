@@ -121,7 +121,7 @@ function TopNav() {
     <nav className="top-nav">
       <div className="top-nav-container">
         <NavLink to="/" className="top-nav-logo">
-          <span className="logo-text">GameTracker</span>
+          <span className="logo-text">Checkpoint</span>
         </NavLink>
 
         <form className="top-nav-search" onSubmit={handleSearchSubmit}>

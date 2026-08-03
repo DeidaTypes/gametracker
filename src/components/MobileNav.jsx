@@ -33,7 +33,7 @@ function MobileNav() {
 
       <nav className={`mobile-nav ${isOpen ? 'open' : ''}`}>
         <div className="mobile-nav-header">
-          <h1>GameTracker</h1>
+          <h1>Checkpoint</h1>
           <button className="mobile-nav-close" onClick={closeNav} aria-label="Close navigation">
             ×
           </button>

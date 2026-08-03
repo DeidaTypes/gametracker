@@ -80,7 +80,7 @@ function ReportSheet({ isOpen, onClose, contentType, contentId }) {
       <div className="report-sheet__header">
         <h2 className="report-sheet__title">Report {displayType.toLowerCase()}</h2>
         <p className="report-sheet__subtitle">
-          Help us keep GameTracker safe. Reports are private.
+          Help us keep Checkpoint safe. Reports are private.
         </p>
       </div>
 

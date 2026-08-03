@@ -374,8 +374,8 @@ function FollowsListPage({ mode }) {
   const handleShareProfile = async () => {
     const url = `${window.location.origin}/user/${profilePathSegment}`
     await shareContent({
-      title: `${titleHandle} on GameTracker`,
-      text: 'Check out my GameTracker profile!',
+      title: `${titleHandle} on Checkpoint`,
+      text: 'Check out my Checkpoint profile!',
       url,
     })
   }

@@ -80,8 +80,8 @@ async function fetchUser(username) {
   })
   if (!row) return null
   return {
-    title: `${row.display_name || row.username || username} on GameTracker`,
-    description: row.bio || 'Check out their game library and reviews on GameTracker.',
+    title: `${row.display_name || row.username || username} on Checkpoint`,
+    description: row.bio || 'Check out their game library and reviews on Checkpoint.',
     image: row.avatar_url || DEFAULT_IMAGE,
     url: `${APP_ORIGIN}/user/${row.username || username}`,
   }
@@ -102,8 +102,8 @@ async function fetchList(id) {
   })
 
   return {
-    title: `${row.title || 'A list'} — by ${user?.display_name || 'GameTracker user'}`,
-    description: row.description || 'A curated list of games on GameTracker.',
+    title: `${row.title || 'A list'} — by ${user?.display_name || 'Checkpoint user'}`,
+    description: row.description || 'A curated list of games on Checkpoint.',
     image: normalizeImageUrl(row.cover_image_url) || DEFAULT_IMAGE,
     url: `${APP_ORIGIN}/list/${id}`,
   }
@@ -141,7 +141,7 @@ function buildHtml({ title, description, image, url }) {
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website" />
-  <meta property="og:site_name"   content="GameTracker" />
+  <meta property="og:site_name"   content="Checkpoint" />
   <meta property="og:title"       content="${t}" />
   <meta property="og:description" content="${d}" />
   <meta property="og:url"         content="${u}" />
@@ -187,7 +187,7 @@ export default async function handler(req, res) {
     meta = await fetchList(listMatch[1])
   } else if (gameMatch) {
     meta = {
-      title: 'GameTracker — Discover & Track Games',
+      title: 'Checkpoint — Discover & Track Games',
       description: 'Track what you play, write reviews, and discover new titles.',
       image: DEFAULT_IMAGE,
       url: `${APP_ORIGIN}${rawPath}`,
@@ -197,7 +197,7 @@ export default async function handler(req, res) {
   // Fallback for unmatched paths or Supabase errors.
   if (!meta) {
     meta = {
-      title: 'GameTracker — Your Video Game Library',
+      title: 'Checkpoint — Your Video Game Library',
       description: 'Track what you play, write reviews, and discover new titles.',
       image: DEFAULT_IMAGE,
       url: `${APP_ORIGIN}${rawPath}`,

@@ -1098,7 +1098,7 @@ function Profile() {
     const username = profile?.username || profile?.displayName || 'profile'
     const url = `${window.location.origin}/user/${encodeURIComponent(username)}`
     await shareContent({
-      title: `${profile?.displayName || username} on GameTracker`,
+      title: `${profile?.displayName || username} on Checkpoint`,
       text: profile?.bio || '',
       url,
     })
@@ -1140,7 +1140,7 @@ function Profile() {
           type: 'profile',
           username: username || user?.id || '',
         },
-        title: `My ${summary.periodLabel} in Games — GameTracker`,
+        title: `My ${summary.periodLabel} in Games — Checkpoint`,
       })
       setWrappedSharing('done')
       setTimeout(() => setWrappedSharing('idle'), 2500)

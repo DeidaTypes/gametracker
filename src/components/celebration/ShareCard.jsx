@@ -105,7 +105,7 @@ const ShareCard = forwardRef(function ShareCard(
         )}
 
         <div className="share-card__watermark">
-          <span className="share-card__watermark-mark">GameTracker</span>
+          <span className="share-card__watermark-mark">Checkpoint</span>
         </div>
       </div>
     </div>

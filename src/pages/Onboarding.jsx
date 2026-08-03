@@ -178,7 +178,7 @@ export default function Onboarding() {
         navigate('/', { replace: true })
         if (seedGames.length > 0) {
           showToast(
-            'Welcome to GameTracker. Tap any game to leave a review.',
+            'Welcome to Checkpoint. Tap any game to leave a review.',
             'success',
             5000
           )

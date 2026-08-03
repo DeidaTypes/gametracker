@@ -1,6 +1,6 @@
 {
-  "name": "GameTracker - Video Game Library",
-  "short_name": "GameTracker",
+  "name": "Checkpoint - Video Game Library",
+  "short_name": "Checkpoint",
   "description": "Track your video games, write reviews, and discover new titles",
   "start_url": "/",
   "display": "standalone",

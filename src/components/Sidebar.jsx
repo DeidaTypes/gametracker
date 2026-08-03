@@ -21,7 +21,7 @@ function Sidebar() {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <h1>GameTracker</h1>
+        <h1>Checkpoint</h1>
       </div>
       <nav className="sidebar-nav">
         {navItems.map(({ to, label, Icon, IconActive }) => (

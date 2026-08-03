@@ -60,7 +60,7 @@ const BrandedShareCard = forwardRef(function BrandedShareCard(
 
       {/* Footer: watermark left, QR + URL right */}
       <div className="bsc__footer">
-        <span className="bsc__watermark">GameTracker</span>
+        <span className="bsc__watermark">Checkpoint</span>
         <div className="bsc__qr-wrap">
           {qrDataUrl && (
             <img

@@ -257,7 +257,7 @@ function ReviewCard({
           username: review.author.username || review.author.displayName || '',
         },
         target: { type: 'review', id: review.id },
-        title: `Review of ${review.game.name || 'a game'} on GameTracker`,
+        title: `Review of ${review.game.name || 'a game'} on Checkpoint`,
       })
       bumpSharesCount(1)
     } catch (err) {

@@ -103,7 +103,7 @@ function DeleteAccountSheet({ isOpen, onClose, onConfirm, isDeleting = false }) 
 
               <p className="del-acct-sheet__body-text">
                 This will permanently remove your profile, reviews, lists, and
-                messages from GameTracker. You have{' '}
+                messages from Checkpoint. You have{' '}
                 <strong>30 days to change your mind</strong> by signing in —
                 after that, your data is gone forever.
               </p>

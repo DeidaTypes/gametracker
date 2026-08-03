@@ -242,7 +242,7 @@ function Settings() {
   const handleInviteFriends = async () => {
     const inviteUrl = buildInviteUrl(user?.id) || SHARE_URL
     const result = await shareContent({
-      title: 'GameTracker',
+      title: 'Checkpoint',
       text: 'Track what you play. Find what to play next.',
       url: inviteUrl,
       dialogTitle: 'Invite friends',
@@ -267,7 +267,7 @@ function Settings() {
   const handlePrivacyPolicy = () => openExternal(PRIVACY_URL)
   const handleTerms = () => openExternal(TERMS_URL)
   const handleFeedback = () => {
-    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('GameTracker Feedback')}`
+    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Checkpoint Feedback')}`
   }
   const handleRateApp = () => {
     window.location.href = `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}`
@@ -485,7 +485,7 @@ function Settings() {
       <ActionSheet
         isOpen={signOutSheetOpen}
         onClose={() => setSignOutSheetOpen(false)}
-        title="Sign out of GameTracker?"
+        title="Sign out of Checkpoint?"
         items={[
           {
             label: signingOut ? 'Signing out…' : 'Sign out',

@@ -67,8 +67,8 @@ function SettingsGroup({ title, children }) {
  *     screen anywhere in the app (the /notifications route is the
  *     activity inbox, a different feature). Tapping it shows a
  *     "coming soon" toast — the same pattern already used elsewhere in
- *     the app (ListDetail sort, HomeFAB quests) — instead of shipping a
- *     dead row that silently does nothing.
+ *     the app (ListDetail sort) — instead of shipping a dead row that
+ *     silently does nothing.
  */
 function SettingsSheet({
   isOpen,
@@ -112,7 +112,7 @@ function SettingsSheet({
 
   const handleHelpFeedback = () => {
     onClose()
-    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('GameTracker Feedback')}`
+    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Checkpoint Feedback')}`
   }
 
   const handlePrivacy = () => {
@@ -253,7 +253,7 @@ function SettingsSheet({
       <ActionSheet
         isOpen={logoutConfirmOpen}
         onClose={() => !loggingOut && setLogoutConfirmOpen(false)}
-        title="Log out of GameTracker?"
+        title="Log out of Checkpoint?"
         items={[
           {
             label: loggingOut ? 'Logging out…' : 'Log out',
