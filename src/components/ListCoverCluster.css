@@ -95,3 +95,71 @@
   transform: translateX(calc(var(--lcc-size) * 0.2167)) rotate(12deg);
   opacity: 0.75;
 }
+
+/* ── poster variant: true 2:3 fanned stack (Library Lists tab) ──────
+   Unlike the tile variant above, this isn't a fixed square footprint —
+   the canvas reserves its height as a proportion of its OWN width via
+   `aspect-ratio`, so any wrapper that hands it a width (the 2-up list-card
+   grid, the pinned hero's small left column) gets a stack of exactly
+   that width and a proportional, consistent height, regardless of how
+   many covers actually rendered inside it. `height: auto` is required
+   here — without it this would silently inherit the fixed 60px
+   `.lcc` height above instead of sizing off `aspect-ratio`. Covers are
+   real posters at `--cover-ratio` with `--cover-radius` corners — never
+   stretched, never letterbox-cropped. */
+
+.lcc--poster {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 0.88;
+  background: none;
+  overflow: visible;
+}
+
+.lcc--poster-empty {
+  opacity: 0.9;
+}
+
+.lcc__poster-plate {
+  position: absolute;
+  display: block;
+  width: 46%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+  overflow: hidden;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-cover);
+}
+
+/* Center — on top, largest, upright. */
+.lcc__poster-plate--center {
+  z-index: 3;
+  left: 27%;
+  top: 14%;
+}
+
+/* Outer two — smaller, behind, fanned -9deg/+9deg. */
+.lcc__poster-plate--left,
+.lcc__poster-plate--right {
+  z-index: 2;
+  width: 40%;
+  top: 22%;
+}
+
+.lcc__poster-plate--left {
+  left: 4%;
+  transform: rotate(-9deg);
+}
+
+.lcc__poster-plate--right {
+  left: 56%;
+  transform: rotate(9deg);
+}
+
+.lcc__poster-plate--placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+}

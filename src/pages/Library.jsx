@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState'
 import ActionSheet from '../components/ActionSheet'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import Avatar from '../components/Avatar'
+import ListCoverCluster from '../components/ListCoverCluster'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -268,52 +269,21 @@ function Library() {
 
   // ── Lists-tab render helpers ──────────────────────────────────────────────
 
-  // Cover collage for a list tile / hero. The grid shape adapts to how many
-  // covers actually exist so there are never blank quadrants; a list with no
-  // games falls back to its initial letter.
-  const renderMosaic = (list, limit) => {
-    const covers = (list.games || []).slice(0, limit)
-    const count = Math.min(covers.length, limit)
-
-    if (list.coverImageUrl) {
-      return (
-        <div className="lib-mosaic lib-mosaic--single">
-          <img
-            src={list.coverImageUrl}
-            alt=""
-            className="lib-mosaic-img"
-            loading="lazy"
-            draggable={false}
-          />
-        </div>
-      )
-    }
-
-    if (count === 0) {
-      return (
-        <div className="lib-mosaic lib-mosaic--single">
-          <div className="lib-mosaic-fallback">{list.name?.charAt(0) || '?'}</div>
-        </div>
-      )
-    }
-
-    return (
-      <div className={`lib-mosaic lib-mosaic--count-${count}`}>
-        {covers.map((g) => (
-          <div key={g.id} className="lib-mosaic-cell">
-            <img
-              src={g.image || COVER_FALLBACK}
-              alt=""
-              className="lib-mosaic-img"
-              loading="lazy"
-              draggable={false}
-              onError={(e) => { e.target.src = COVER_FALLBACK }}
-            />
-          </div>
-        ))}
-      </div>
-    )
-  }
+  // Fanned poster stack for a list tile / hero — ListCoverCluster's
+  // "poster" variant (true --cover-ratio plates, up to 3, center on top
+  // and larger, outer two fanned -9deg/+9deg). It takes the list's first
+  // 3 games in list order (the same `position`-ordered slice listService
+  // already returns, and the same order the old mosaic sampled), so the
+  // stack matches whatever order the list itself is kept in — reordering
+  // a list's games updates its own card stack too.
+  const renderCoverStack = (list) => (
+    <ListCoverCluster
+      games={list.games}
+      coverImageUrl={list.coverImageUrl}
+      name={list.name}
+      variant="poster"
+    />
+  )
 
   const listMeta = (list) => {
     const games = `${list.gameCount} ${list.gameCount === 1 ? 'game' : 'games'}`
@@ -330,8 +300,7 @@ function Library() {
       onClick={() => navigate(`/list/${list.id}`)}
       aria-label={`Open pinned list ${list.name} (${listMeta(list)})`}
     >
-      {renderMosaic(list, 3)}
-      <span className="lib-pin-hero-scrim" aria-hidden="true" />
+      <div className="lib-pin-hero-stack">{renderCoverStack(list)}</div>
       <span className="lib-pin-hero-body">
         <span className="lib-pin-hero-tag" aria-hidden="true">◆ Pinned</span>
         <span className="lib-pin-hero-name">{list.name}</span>
@@ -348,7 +317,7 @@ function Library() {
       onClick={() => navigate(`/list/${list.id}`)}
       aria-label={`Open list ${list.name} (${listMeta(list)})`}
     >
-      {renderMosaic(list, 4)}
+      <div className="lib-list-card-stack">{renderCoverStack(list)}</div>
       <span className="lib-list-card-body">
         <span className="lib-list-card-name">{list.name}</span>
         <span className="lib-list-card-meta">{listMeta(list)}</span>
@@ -362,7 +331,9 @@ function Library() {
         <div className="lib-lists-grid" aria-hidden="true">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="lib-list-card lib-list-card--skeleton">
-              <div className="skeleton lib-mosaic-skeleton" />
+              <div className="lib-list-card-stack">
+                <div className="skeleton lib-stack-skeleton" />
+              </div>
               <span className="lib-list-card-body">
                 <span className="skeleton lib-sk-name" />
                 <span className="skeleton lib-sk-meta" />
