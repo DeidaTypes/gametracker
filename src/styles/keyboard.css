@@ -29,10 +29,8 @@
   --keyboard-anim-duration: 0.25s;
   --keyboard-anim-ease: cubic-bezier(0.38, 0.7, 0.125, 1);
 
-  /* How far a bottom-anchored element must travel. Elements already sitting
-     above the tab bar only need to make up the difference. Clamped at 0 so
-     nothing moves when the keyboard is down. */
-  --keyboard-lift: max(0px, calc(var(--keyboard-inset) - var(--bottom-nav-safe-area, 80px)));
+  /* --keyboard-lift is deliberately NOT declared here — see .kb-lift below
+     for why it has to be declared on the lifted element instead. */
 
   /* Bottom padding for anything pinned to the viewport bottom. Clears the
      home indicator at rest; collapses to 0 when the keyboard is up, because
@@ -54,9 +52,31 @@ body.keyboard-open {
 
 /* ── Fixed bottom composers ──────────────────────────────────────────────
    DM composer, review comment composers. These sit above the tab bar at
-   rest, so they lift by --keyboard-lift. transform only: it is composited,
-   so the slide never triggers layout during the keyboard animation. */
+   rest, so they lift by the keyboard height minus the nav footprint they
+   already clear. transform only: it is composited, so the slide never
+   triggers layout during the keyboard animation.
+
+   --keyboard-lift MUST be declared here, on the lifted element, and not
+   hoisted up to :root. A custom property's var() references are substituted
+   at computed-value time on the element that declares it, and the resolved
+   value is what inherits downward. Declared on :root it would therefore bake
+   in :root's --bottom-nav-safe-area — the full nav-pill footprint (80px +
+   safe area) — and stay blind to the `body.nav-hidden` override in
+   theme.css, because body is a descendant of :root.
+   That is exactly the bug this replaces: on every comment screen the nav IS
+   hidden, so .kb-composer-bar's `bottom` correctly resolved to the 34px
+   home-indicator inset while the lift still subtracted the pill's 80px. The
+   bar landed 80px lower than the keyboard's top edge and, at 65px tall, sat
+   entirely behind the keyboard — invisible, on every comment surface.
+   (Measured on an iPhone 17 Pro Max: 318px keyboard, bar's bottom edge at
+   238px instead of 318px, so its top edge at 303px was still 15px under the
+   keyboard. After this change the bottom edge lands at exactly 318px.)
+   Declared here it resolves against the bar's own inherited
+   --bottom-nav-safe-area, which does see nav-hidden, so `bottom` and the
+   lift always reference the same number and cancel to exactly the keyboard
+   height. That is what lets this work with no per-screen offset. */
 .kb-lift {
+  --keyboard-lift: max(0px, calc(var(--keyboard-inset) - var(--bottom-nav-safe-area, 80px)));
   transform: translate3d(0, calc(-1 * var(--keyboard-lift)), 0);
   transition: transform var(--keyboard-anim-duration) var(--keyboard-anim-ease);
   will-change: transform;

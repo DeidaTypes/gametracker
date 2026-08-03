@@ -52,8 +52,10 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
 //            don't shoot up when the keyboard opens.
 //   Fix 3 — body.keyboard-animating suppresses pointer-events on fixed
 //            overlays while the keyboard slides, preventing flicker.
-//   Fix 4 — setAccessoryBarVisible adds a Done button above the keyboard so
-//            users without a physical home button can dismiss it.
+//   Fix 4 — setAccessoryBarVisible(false) suppresses the native iOS
+//            input-accessory view (prev/next chevrons + Done) so it can't
+//            render on top of the composer anchored flush above the
+//            keyboard — the app's composer is the only bar there now.
 //
 // Started before React mounts so --keyboard-inset resolves on first paint.
 initKeyboardInset()

@@ -26,9 +26,22 @@ import { Capacitor } from '@capacitor/core'
  * <KeyboardAwareView> component, or the useKeyboardInset() hook.
  */
 
-// setAccessoryBarVisible(true) adds a ~44px "Done" bar above the keyboard.
-// iOS folds this into UIKeyboardFrameEndUserInfoKey already, but browsers
-// reporting via visualViewport do not, so the web path pads for it.
+// Historically setAccessoryBarVisible(true) added a ~44px native "Done" bar
+// above the keyboard (iOS folds its height into
+// UIKeyboardFrameEndUserInfoKey, so nativeKbHeight already includes it when
+// it's on). We now keep the accessory bar OFF (see initKeyboardInset below)
+// because it renders as a floating pill (prev/next chevrons + a checkmark)
+// that sits on top of whatever is anchored flush above the keyboard — which,
+// once the comment composers were anchored there, meant it visually
+// overlapped the composer on every comment screen. The app's own composer
+// already provides its own dismiss affordance, so the native bar is
+// redundant on top of being a visual bug.
+//
+// ACCESSORY_BAR_PX stays only for the web/PWA path below: outside Capacitor
+// (setAccessoryBarVisible is a native-only no-op there), mobile Safari can
+// still show its own OS-level input accessory view that visualViewport
+// doesn't report, so that measurement still needs the pad regardless of the
+// native setting above.
 const ACCESSORY_BAR_PX = 44
 
 let keyboardVisible = false
@@ -189,8 +202,14 @@ export function initKeyboardInset() {
     try {
       const { Keyboard } = await import('@capacitor/keyboard')
 
-      // Done button above the keyboard, for devices without a home button.
-      await Keyboard.setAccessoryBarVisible({ isVisible: true })
+      // OFF: this is the native input-accessory view (prev/next chevrons +
+      // a Done checkmark) iOS shows above the keyboard for stepping between
+      // form fields. With the comment composers anchored flush above the
+      // keyboard, that native bar rendered on top of them, obscuring the
+      // app's own "Add a comment" field. The composer already has its own
+      // way to dismiss the keyboard, so there is no affordance lost by
+      // turning this off.
+      await Keyboard.setAccessoryBarVisible({ isVisible: false })
 
       await Keyboard.addListener('keyboardWillShow', (info) => {
         nativeKbHeight = (info && info.keyboardHeight) || 0
