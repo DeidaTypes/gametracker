@@ -193,6 +193,20 @@
   white-space: nowrap;
 }
 
+/* Attachment-only preview fallback (no text body) — icon + type label,
+   e.g. "Shared a game". */
+.dm-inbox-row__preview-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.dm-inbox-row__preview-icon {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
 /* When unread, lift the name + preview to primary text + medium weight
    so the row visibly demands attention without screaming. */
 .dm-inbox-row--unread .dm-inbox-row__name,

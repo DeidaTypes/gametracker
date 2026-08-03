@@ -70,6 +70,37 @@
   background: var(--color-surface-active);
 }
 
+/* ── Messages entry point (own profile only) ─────────────────
+   Sits left of ⋯. `margin-left: auto` moves here instead of onto
+   .ppc__icon-btn--overflow when this button is present, so the pair
+   sits flush right together; overflow keeps its own auto margin for
+   the (much more common) case where this button isn't rendered. */
+.ppc__icon-btn--messages {
+  position: relative;
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+.ppc__icon-btn--messages + .ppc__icon-btn--overflow {
+  margin-left: 0;
+}
+
+/* Same token + treatment as .bottom-nav-unread (BottomNav.css) — one
+   unread-DM signal across the app, not a numeric badge. */
+.ppc__messages-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning);
+  box-shadow:
+    0 0 0 2px var(--bg-surface),
+    0 0 6px color-mix(in srgb, var(--status-warning) 55%, transparent);
+  pointer-events: none;
+}
+
 /* ── Avatar ───────────────────────────────────────────────── */
 
 .ppc__avatar {

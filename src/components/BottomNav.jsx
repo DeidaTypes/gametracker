@@ -122,8 +122,12 @@ function BottomNav() {
     >
       {NAV_ITEMS.map(({ id, to, label, Icon, isActive }) => {
         const active = isActive(location.pathname)
-        // Profile tab carries the unread-DM dot until messages get their
-        // own slot (Prompt 4 will add a dedicated entry point).
+        // Profile tab carries the unread-DM dot — there's no dedicated
+        // Messages nav tab (out of scope, see BottomNav module docstring),
+        // so this is what tells a user there's something to check. The
+        // actual inbox entry point is a message-bubble icon in the
+        // profile header (ProfilePlayerCard, own profile only), which
+        // carries the same dot so the signal is consistent end to end.
         const showUnreadDot = id === 'profile' && unreadCount > 0
         return (
           <Link

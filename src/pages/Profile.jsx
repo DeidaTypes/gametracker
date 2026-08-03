@@ -33,6 +33,7 @@ import {
 } from 'react-icons/fa6'
 import { useAuth } from '../contexts/AuthContext'
 import { useSession } from '../contexts/SessionContext'
+import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import { usePresence } from '../hooks/usePresence'
 import { getSettings } from '../services/userSettingsService'
 import { getReviewsForUser } from '../services/reviewService'
@@ -345,6 +346,9 @@ function Profile() {
   const { user } = useAuth()
   const { session: activeSession } = useSession()
   const { enabled: presenceEnabled, playingNow } = usePresence()
+  // Drives the unread dot on the profile-header Messages entry point —
+  // same count/token as the Profile bottom-nav tab dot (BottomNav.jsx).
+  const { unreadCount } = useUnreadMessages()
   const reducedMotion = useReducedMotion()
 
   // ── Username → userId resolution ───────────────────────────────────────
@@ -1503,8 +1507,10 @@ function Profile() {
           reviewsCount={reviewCount}
           avgRating={avgRating}
           statsLoading={profileLoading}
+          hasUnreadMessages={isOwnProfile && unreadCount > 0}
           onBack={() => navigate(-1)}
           onOverflow={() => setOverflowSheetOpen(true)}
+          onMessages={() => navigate('/messages')}
           onAvatarClick={() => isOwnProfile && setShowEditModal(true)}
           onFollowersClick={() => navigate(`/user/${profilePathSegment}/followers`)}
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}

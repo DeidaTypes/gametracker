@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuSearch, LuX } from 'react-icons/lu'
-import { Edit3, MessageCircle, UserX } from 'lucide-react'
+import { Edit3, Gamepad2, ListChecks, MessageCircle, Star, UserX } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getInbox, MESSAGES_CHANGED_EVENT } from '../services/messageService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -49,6 +49,21 @@ function partnerHandle(partner) {
   // recipient has not set a username yet.
   if (!partner) return ''
   return partner.username || partner.id || ''
+}
+
+// Attachment-only messages (no text body) need a fallback preview line —
+// the three attachment kinds mirror ATTACHMENT_TYPE_LABELS in
+// MessagesThread.jsx / DmShareSheet.jsx (messageService.js only supports
+// 'game' | 'review' | 'list' — there is no photo/image attachment type).
+const ATTACHMENT_PREVIEW = {
+  game: { label: 'Shared a game', Icon: Gamepad2 },
+  review: { label: 'Shared a review', Icon: Star },
+  list: { label: 'Shared a list', Icon: ListChecks },
+}
+
+function attachmentPreview(attachment) {
+  if (!attachment) return null
+  return ATTACHMENT_PREVIEW[attachment.type] || { label: 'Shared an attachment', Icon: null }
 }
 
 /* ============================================================
@@ -256,8 +271,20 @@ function ConversationRow({ conversation, currentUserId, onTap }) {
   // user can scan the inbox without opening every thread to figure
   // out who sent the last reply.
   const fromMe = lastMessage.sender_id === currentUserId
-  const preview = fromMe ? `You: ${lastMessage.body}` : lastMessage.body
-  const hasUnread = unreadCount > 0 && !fromMe
+  const hasBody = !!(lastMessage.body && lastMessage.body.trim())
+  // Attachment-only messages (DmShareSheet lets you send a card with no
+  // caption) have a null body — fall back to an icon + type label
+  // instead of rendering "You: null" / an empty line.
+  const attachmentFallback = hasBody ? null : attachmentPreview(lastMessage.attachment)
+
+  // unreadCount already counts only messages sent BY the partner TO us
+  // that are still unread (see getInbox), so it's accurate regardless of
+  // who sent the *latest* message. This used to additionally require
+  // `!fromMe`, which hid the dot whenever our own message happened to be
+  // the most recent row — including the case where we shared something
+  // via DmShareSheet without opening the thread, leaving genuinely
+  // unread partner messages invisible.
+  const hasUnread = unreadCount > 0
 
   return (
     <li>
@@ -285,7 +312,23 @@ function ConversationRow({ conversation, currentUserId, onTap }) {
               )}
             </span>
           </div>
-          <p className="dm-inbox-row__preview">{preview}</p>
+          <p className="dm-inbox-row__preview">
+            {fromMe && 'You: '}
+            {hasBody ? (
+              lastMessage.body
+            ) : attachmentFallback ? (
+              <span className="dm-inbox-row__preview-attachment">
+                {attachmentFallback.Icon && (
+                  <attachmentFallback.Icon
+                    size={13}
+                    className="dm-inbox-row__preview-icon"
+                    aria-hidden="true"
+                  />
+                )}
+                {attachmentFallback.label}
+              </span>
+            ) : null}
+          </p>
         </div>
       </button>
     </li>

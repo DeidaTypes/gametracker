@@ -1,6 +1,6 @@
 import React from 'react'
 import { HiDotsVertical } from 'react-icons/hi'
-import { LuChevronLeft } from 'react-icons/lu'
+import { LuChevronLeft, LuMessageCircle } from 'react-icons/lu'
 import Skeleton from './Skeleton'
 import Avatar from './Avatar'
 import './ProfilePlayerCard.css'
@@ -51,6 +51,12 @@ function Stat({ value, label, suffix, loading }) {
  * (Games / Played hours / Reviews / Avg ★). The ⋯ button opens the
  * profile's existing overflow sheet; visitor profiles get a back chevron.
  *
+ * On your own profile, a message-bubble icon sits just left of the ⋯
+ * button — this is the app's inbox entry point (there's no dedicated
+ * Messages nav tab; see BottomNav.jsx). It carries the same unread-DM
+ * dot as the Profile bottom-nav tab (one signal, one meaning) rather
+ * than a numeric badge.
+ *
  * Every numeral here is real. A stat whose source hasn't resolved shows a
  * skeleton; a stat with no data to show at all (e.g. avg rating with zero
  * ratings) shows an em dash rather than a fabricated 0.0.
@@ -70,8 +76,10 @@ export default function ProfilePlayerCard({
   reviewsCount,
   avgRating,
   statsLoading,
+  hasUnreadMessages,
   onBack,
   onOverflow,
+  onMessages,
   onAvatarClick,
   onFollowersClick,
   onFollowingClick,
@@ -162,6 +170,20 @@ export default function ProfilePlayerCard({
             </p>
           )}
         </div>
+
+        {isOwnProfile && (
+          <button
+            type="button"
+            className="ppc__icon-btn ppc__icon-btn--messages"
+            onClick={onMessages}
+            aria-label={hasUnreadMessages ? 'Messages, unread' : 'Messages'}
+          >
+            <LuMessageCircle size={20} aria-hidden="true" />
+            {hasUnreadMessages && (
+              <span className="ppc__messages-dot" aria-hidden="true" />
+            )}
+          </button>
+        )}
 
         <button
           type="button"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
+import { APP_RESUMED_EVENT } from './useAppResume'
 
 /**
  * F1 — DM-thread online presence, extended with a `typing` flag.
@@ -20,6 +21,20 @@ import { subscribeWithRecovery } from '../services/realtimeRecovery'
  * The channel is removed and both flags reset to false when the
  * component unmounts (thread closed / navigated away).
  *
+ * Resume handling
+ * ---------------
+ * This channel is per-conversation and has exactly one mount site
+ * (MessagesThread), unlike Pulse's app-wide presence (usePresence.js),
+ * which is mounted from five places and therefore needs a ref-counted
+ * singleton so concurrent mounts share one channel and resume just
+ * re-tracks the existing join. There's nothing to ref-count here, so on
+ * `app:resumed` we follow the *other* established pattern instead — the
+ * resumeKey used by MessagesThread's own message channel and by
+ * MessagesInbox / UnreadMessagesContext: bump a counter that's a
+ * dependency of the join effect below, so the dead post-suspend channel
+ * is torn down (cleanup) and rejoined on a fresh socket, rather than
+ * left relying on a naive re-subscribe of the same dead channel object.
+ *
  * @param {string|null} partnerId  UUID of the conversation partner.
  * @param {boolean} isTyping  Whether the current user is actively
  *   composing a message — re-tracked (without rejoining the channel)
@@ -31,6 +46,15 @@ export function useDmPresence(partnerId, isTyping = false) {
   const [partnerOnline, setPartnerOnline] = useState(false)
   const [partnerTyping, setPartnerTyping] = useState(false)
   const channelRef = useRef(null)
+  // See "Resume handling" above — bumped on app resume so the join effect
+  // below tears down the dead (post-suspend) channel and rejoins fresh.
+  const [resumeKey, setResumeKey] = useState(0)
+
+  useEffect(() => {
+    const onResume = () => setResumeKey((k) => k + 1)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [])
 
   useEffect(() => {
     const myId = user?.id
@@ -79,7 +103,7 @@ export function useDmPresence(partnerId, isTyping = false) {
       setPartnerOnline(false)
       setPartnerTyping(false)
     }
-  }, [user?.id, partnerId])
+  }, [user?.id, partnerId, resumeKey])
 
   // Re-track (without rejoining) whenever our own typing state flips —
   // keeps the channel subscription stable while the composer is live.
