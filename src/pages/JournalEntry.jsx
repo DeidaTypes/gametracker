@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
+import { Pencil } from 'lucide-react'
 import { getJournalEntryById, deleteJournalEntry, getMoodMeta } from '../services/journalService'
 import { useAuth } from '../contexts/AuthContext'
 import JournalEntryModal from '../components/JournalEntryModal'
@@ -84,7 +85,7 @@ function JournalEntry() {
     <header className={`je-header${transparent ? ' je-header--transparent' : ''}`}>
       <button
         type="button"
-        className="je-back"
+        className="je-icon-btn"
         onClick={() => navigate(-1)}
         aria-label="Go back"
       >
@@ -95,11 +96,11 @@ function JournalEntry() {
         {isOwner && !transparent ? (
           <button
             type="button"
-            className="je-edit-btn"
+            className="je-icon-btn"
             onClick={() => setShowEdit(true)}
             aria-label="Edit entry"
           >
-            Edit
+            <Pencil size={18} aria-hidden="true" />
           </button>
         ) : (
           <span className="je-header__spacer" aria-hidden="true" />
@@ -187,7 +188,7 @@ function JournalEntry() {
         <header className="je-header je-header--overlay">
           <button
             type="button"
-            className="je-back je-back--glass"
+            className="je-icon-btn je-icon-btn--glass"
             onClick={() => navigate(-1)}
             aria-label="Go back"
           >
@@ -197,11 +198,11 @@ function JournalEntry() {
           {isOwner && (
             <button
               type="button"
-              className="je-edit-btn je-edit-btn--glass"
+              className="je-icon-btn je-icon-btn--glass"
               onClick={() => setShowEdit(true)}
               aria-label="Edit entry"
             >
-              Edit
+              <Pencil size={18} aria-hidden="true" />
             </button>
           )}
         </header>

@@ -119,12 +119,19 @@
   border-bottom: none;
 }
 
-.je-back {
+/* Shared circular icon-button treatment for header controls that float
+   over the hero (back chevron + edit pencil). Both are 44px — the same
+   width as the header's own grid columns below — so the visible glass
+   circle IS the full tap target, no hidden padding required to clear
+   the 44px minimum. Edit used to be a solid rounded-square text button
+   that didn't match the back chevron at all; it now shares this exact
+   class so the two header controls read as one consistent treatment. */
+.je-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   border: none;
   background: transparent;
@@ -134,7 +141,7 @@
   transition: background var(--transition-fast);
 }
 
-.je-back--glass {
+.je-icon-btn--glass {
   background: rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -142,21 +149,21 @@
   margin-top: var(--safe-area-inset-top);
 }
 
-.je-back:hover {
+.je-icon-btn:hover {
   background: var(--color-surface);
 }
 
-.je-back--glass:hover {
+.je-icon-btn--glass:hover {
   background: rgba(0, 0, 0, 0.48);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .je-back {
+  .je-icon-btn {
     transition: none;
   }
 }
 
-body[data-reduce-motion='true'] .je-back {
+body[data-reduce-motion='true'] .je-icon-btn {
   transition: none;
 }
 
@@ -180,46 +187,13 @@ body[data-reduce-motion='true'] .je-back {
 }
 
 .je-header__spacer {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: block;
 }
 
-.je-edit-btn {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--accent, #3b82f6);
-  background: none;
-  border: none;
-  padding: 6px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 120ms ease;
-}
-
-.je-edit-btn--glass {
-  color: #fff;
-  background: rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 8px;
-  padding: 6px 10px;
-  margin-top: var(--safe-area-inset-top);
-}
-
-.je-edit-btn:active {
+.je-icon-btn:active {
   opacity: 0.6;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .je-edit-btn {
-    transition: none;
-  }
-}
-
-body[data-reduce-motion='true'] .je-edit-btn {
-  transition: none;
 }
 
 /* ── Scroll body ────────────────────────────────────────────────────── */

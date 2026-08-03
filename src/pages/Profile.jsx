@@ -116,6 +116,11 @@ import './Profile.css'
 
 const PROFILE_TIMEOUT_MS = 10_000
 
+// Valid values for the `?tab=` query param — see the `activeTab` /
+// `setActiveTab` definitions below for why the active tab lives in the
+// URL instead of component state.
+const PROFILE_TAB_IDS = new Set(['home', 'reviews', 'lists', 'diary'])
+
 // How long a profile's fetched bundle (reviews/lists/activities/pins/
 // goal/journal/rivalry/like+comment counts) is served from the shared
 // swrCache without re-hitting the network. Short enough that a genuinely
@@ -487,8 +492,45 @@ function Profile() {
   // profile UX so we still source everything from localStorage here.
   const [profile, setProfile] = useState(null)
 
-  // Tabs: 'home' (default), 'reviews', 'lists'
-  const [activeTab, setActiveTab] = useState('home')
+  // Tabs: 'home' (default), 'reviews', 'lists', 'diary' — reflected in the
+  // URL's `?tab=` query param rather than plain component state. Both the
+  // header back chevron and the iOS edge-swipe-back gesture (see
+  // SwipeBackWrapper) resolve to the exact same thing: a browser history
+  // pop. Popping only restores what the URL of the previous history entry
+  // says, so if that entry's URL didn't record which tab was active, there
+  // was nothing to restore and every return trip landed on the useState
+  // default ('home') instead of the tab the user actually drilled in from.
+  // Storing the tab in `?tab=` — and always REPLACING the current history
+  // entry when it changes rather than pushing a new one — fixes that for
+  // every detail screen this page links out to, keeps this profile route
+  // out of the back-stack entirely (so back-navigating away from /profile
+  // never has to step through past tab selections), and comes with a
+  // refresh-survives-it and copy/paste-the-link-survives-it bonus that
+  // component state could never give us. Works identically for the
+  // signed-in user's own profile (/profile) and any visitor profile
+  // (/user/:username, /user/id/:userId) since both render this same
+  // component and derive the tab from `location.search` the same way.
+  const tabParam = new URLSearchParams(location.search).get('tab')
+  const activeTab = PROFILE_TAB_IDS.has(tabParam) ? tabParam : 'home'
+
+  const setActiveTab = useCallback(
+    (tabId) => {
+      const nextParams = new URLSearchParams(location.search)
+      if (tabId === 'home') {
+        // Keep the default tab out of the URL so plain /profile and
+        // /user/:username links stay clean.
+        nextParams.delete('tab')
+      } else {
+        nextParams.set('tab', tabId)
+      }
+      const nextSearch = nextParams.toString()
+      navigate(
+        { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' },
+        { replace: true }
+      )
+    },
+    [navigate, location.pathname, location.search]
+  )
 
   // Modals / sheets
   const [showEditModal, setShowEditModal] = useState(false)
@@ -896,9 +938,14 @@ function Profile() {
     if (!isOwnProfile) return
     if (location.state?.openEditModal) {
       setShowEditModal(true)
-      navigate(location.pathname, { replace: true, state: null })
+      // Preserve `?tab=` (if any) — this only clears the one-shot
+      // navigation state, not which profile tab is active.
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null }
+      )
     }
-  }, [isOwnProfile, location.state, location.pathname, navigate])
+  }, [isOwnProfile, location.state, location.pathname, location.search, navigate])
 
   // When the signed-in user follows / unfollows ANYONE (eg. via the
   // Search Users tab), refresh the count on the currently-viewed
