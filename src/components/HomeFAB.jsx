@@ -14,8 +14,6 @@ import GamePickerSheet from './GamePickerSheet'
 import HomeLogSessionModal from './home/HomeLogSessionModal'
 import Pressable from './Pressable'
 import { createList, addGameToList } from '../services/listService'
-import { getGamesFromList } from '../services/libraryService'
-import { useSession } from '../contexts/SessionContext'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import './HomeFAB.css'
@@ -88,20 +86,6 @@ function makeItemVariants(reduced) {
   }
 }
 
-// ── Smart-default game ────────────────────────────────────────────────────
-// Priority: active timed session → first "currently playing" game → null.
-function useSmartDefaultGame(session) {
-  if (session) {
-    return {
-      id: session.igdb_game_id,
-      title: session.game_title,
-      image: session.game_image,
-    }
-  }
-  const playing = getGamesFromList('currently-playing')
-  return playing.length > 0 ? playing[0] : null
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HomeFAB() {
@@ -113,11 +97,8 @@ function HomeFAB() {
   const [gamePickerOpen, setGamePickerOpen] = useState(false)
   const fabRef = useRef(null)
   const navigate = useNavigate()
-  const { session } = useSession()
   const { reduced } = useMotionPreference()
   const itemVariants = makeItemVariants(reduced)
-
-  const defaultGame = useSmartDefaultGame(session)
 
   // Close radial when Escape pressed
   useEffect(() => {
@@ -139,14 +120,20 @@ function HomeFAB() {
 
   // ── Item handlers ────────────────────────────────────────────────────────
 
+  // Global FAB → "Log a session" must NEVER assume a game. The user hasn't
+  // indicated one yet, so this always opens the search step (GamePickerSheet)
+  // regardless of any active session or "currently playing" state — those are
+  // ambient/persisted signals, not an explicit choice, and pre-attaching from
+  // them is what caused the FAB to skip search on devices with that state
+  // (e.g. a lingering active session or a locally-cached "currently playing"
+  // game) while the browser — with no such local state — showed search as
+  // expected. Contrast with Home's Now Playing hero and Game Detail's own
+  // "Log a session", which pre-attach because the user tapped a control tied
+  // to a specific, visible game.
   const handleLog = () => {
     closeRadial(false)
-    if (defaultGame) {
-      setLogSessionGame(defaultGame)
-      setLogSessionOpen(true)
-    } else {
-      setLogGamePickerOpen(true)
-    }
+    setLogSessionGame(null)
+    setLogGamePickerOpen(true)
   }
 
   const handleLogGamePicked = (picked) => {
@@ -266,6 +253,7 @@ function HomeFAB() {
         isOpen={logSessionOpen}
         onClose={() => {
           setLogSessionOpen(false)
+          setLogSessionGame(null)
           setTimeout(() => fabRef.current?.focus(), 60)
         }}
         game={logSessionGame}
