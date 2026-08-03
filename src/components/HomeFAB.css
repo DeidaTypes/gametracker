@@ -79,15 +79,20 @@
 
 /* ── Label pill ───────────────────────────────────────────────────────────── */
 /*
- * Absolutely positioned to the LEFT of the 44px icon box with an 8px gap.
- * "right: calc(100% + 8px)" means: label's right edge = item's left edge − 8px.
- * Vertically centered relative to the icon box.
+ * Anchored to the icon box's top-left corner (right edge = item's left edge
+ * − 8px, bottom edge = item's top edge − 8px) so the pill sits up-and-left
+ * of its icon rather than vertically centered beside it. The quarter-circle
+ * arc packs items only ~13–50px apart vertically (tightest between the two
+ * topmost items), which is less than one label's height — a centered label
+ * reaches straight into the next item's icon. Anchoring to the corner keeps
+ * every label fully clear of every neighboring icon (verified against the
+ * actual arc geometry) without changing any tx/ty position or the 8px gap
+ * convention.
  */
 .home-fab-item__label {
   position: absolute;
   right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: calc(100% + 8px);
   font-size: 12px;
   font-weight: var(--font-weight-semibold, 600);
   color: #fff;
