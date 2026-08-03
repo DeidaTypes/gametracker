@@ -14,6 +14,14 @@ import { getDominantColor } from './colorExtract'
  * ever finishes that game. The first finish (by anyone, on any device)
  * extracts and persists the color; every finish after that reads the
  * cached row and never re-runs the canvas extraction.
+ *
+ * Writes go through the upsert_game_color RPC (see
+ * supabase/migrations/20260803000700_lock_game_colors_writes.sql), not a
+ * direct table write — game_colors has no INSERT/UPDATE policy for
+ * authenticated anymore, since "any signed-in user can overwrite any game's
+ * cached color" was an open write path with no ownership check possible
+ * (the table has no owner column). The RPC is SECURITY DEFINER and validates
+ * the payload server-side before upserting.
  */
 
 const TABLE = 'game_colors'
@@ -82,14 +90,10 @@ export async function getOrExtractGameColor(igdbGameId, imageUrl) {
   memCache.set(key, extracted)
 
   try {
-    const { error } = await supabase.from(TABLE).upsert(
-      {
-        igdb_game_id: Number(igdbGameId),
-        dominant_color: toRgbTriple(extracted),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'igdb_game_id' }
-    )
+    const { error } = await supabase.rpc('upsert_game_color', {
+      p_igdb_game_id: Number(igdbGameId),
+      p_dominant_color: toRgbTriple(extracted),
+    })
     if (error) console.error('[gameColor] write failed:', error.message)
   } catch (err) {
     console.error('[gameColor] write crashed:', err)
