@@ -32,8 +32,8 @@
   padding: 0 8px 0 4px;
   flex-shrink: 0;
   background: var(--bg-base);
-  padding-top: env(safe-area-inset-top, 0px);
-  height: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: var(--safe-area-inset-top);
+  height: calc(56px + var(--safe-area-inset-top));
 }
 
 /* ---- Back / close button ---- */

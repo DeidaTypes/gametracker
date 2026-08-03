@@ -99,7 +99,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
-  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
@@ -139,7 +139,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #fff;
-  margin-top: env(safe-area-inset-top, 0px);
+  margin-top: var(--safe-area-inset-top);
 }
 
 .je-back:hover {
@@ -205,7 +205,7 @@ body[data-reduce-motion='true'] .je-back {
   -webkit-backdrop-filter: blur(8px);
   border-radius: 8px;
   padding: 6px 10px;
-  margin-top: env(safe-area-inset-top, 0px);
+  margin-top: var(--safe-area-inset-top);
 }
 
 .je-edit-btn:active {

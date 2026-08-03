@@ -513,6 +513,17 @@ body[data-larger-text='true'] {
   /* Alias used by modal footers for safe-area calculations */
   --tab-bar-height: var(--bottom-nav-height);
 
+  /* Top counterpart of --bottom-nav-safe-area. There's no top nav pill to
+     clear, so this is just the raw inset (the notch/Dynamic Island's own
+     height) rather than a fixed footprint — every top-anchored control
+     (back chevrons, header kebabs, screen titles, floating close buttons)
+     adds this to its own breathing-room offset instead of each hardcoding
+     a top position that only clears a device with no inset at all. Falls
+     back to 0px on non-notched devices/browsers, so nothing gets an
+     artificial gap where there is no inset to clear. Requires
+     viewport-fit=cover in index.html or this resolves to 0px everywhere. */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+
   /* ---- Page Layout ---- */
   --page-padding: var(--space-20);
   --page-padding-desktop: var(--space-48);

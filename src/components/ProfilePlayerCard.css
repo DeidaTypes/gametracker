@@ -8,7 +8,7 @@
 
 .ppc {
   margin: 12px var(--page-padding) 0;
-  margin-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  margin-top: calc(var(--safe-area-inset-top) + 12px);
   padding: var(--spacing-md);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-subtle);

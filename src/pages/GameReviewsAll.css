@@ -17,7 +17,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-sm) var(--page-padding, 20px);
-  padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-sm) + var(--safe-area-inset-top));
   position: sticky;
   top: 0;
   z-index: 50;

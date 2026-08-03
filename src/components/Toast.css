@@ -1,6 +1,6 @@
 .toast-container {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  top: calc(var(--safe-area-inset-top) + 16px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 10000;

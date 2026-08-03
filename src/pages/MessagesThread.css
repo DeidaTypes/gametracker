@@ -25,7 +25,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-md) var(--page-padding);
-  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));

@@ -22,7 +22,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-2xl) var(--container-padding);
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--spacing-2xl));
+  padding-top: calc(var(--safe-area-inset-top) + var(--spacing-2xl));
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-2xl));
   background: var(--color-bg-primary);
 }

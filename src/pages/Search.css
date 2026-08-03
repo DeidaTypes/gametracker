@@ -28,7 +28,7 @@
   top: 0;
   z-index: 100;
   padding: 16px;
-  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-top: calc(16px + var(--safe-area-inset-top));
   background: var(--color-bg-primary);
   border-bottom: 1px solid transparent;
   transition: border-color 150ms ease;

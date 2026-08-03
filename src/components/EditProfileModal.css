@@ -30,8 +30,8 @@
   align-items: center;
   justify-content: space-between;
   /* Pad the top for the notch/Dynamic Island on iOS */
-  padding: env(safe-area-inset-top, 0px) 16px 0;
-  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding: var(--safe-area-inset-top) 16px 0;
+  height: calc(52px + var(--safe-area-inset-top));
   flex-shrink: 0;
   background: var(--bg-surface);
   border-bottom: 0.5px solid var(--border-subtle);

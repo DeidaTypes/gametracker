@@ -160,7 +160,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-top: calc(16px + var(--safe-area-inset-top));
   z-index: 10;
 }
 
@@ -686,7 +686,10 @@
 
 .gd-lightbox-close {
   position: absolute;
-  top: 20px;
+  /* The lightbox backdrop legitimately goes full-bleed under the status
+     bar (it's a full-screen photo viewer), but this control still needs
+     to clear the notch/Dynamic Island rather than render into it. */
+  top: calc(20px + var(--safe-area-inset-top));
   right: 20px;
   width: 40px;
   height: 40px;

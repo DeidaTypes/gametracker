@@ -13,7 +13,7 @@
 
 .cp-page-header {
   padding: var(--spacing-lg) var(--container-padding) var(--spacing-xl);
-  padding-top: calc(var(--spacing-lg) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-lg) + var(--safe-area-inset-top));
   border-bottom: 1px solid var(--color-border);
   max-width: var(--page-max-width);
   margin: 0 auto;

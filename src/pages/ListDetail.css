@@ -41,7 +41,7 @@
 /* Header bar placeholder */
 .ld-sk-header-bar {
   width: 100%;
-  height: calc(52px + env(safe-area-inset-top, 0px));
+  height: calc(52px + var(--safe-area-inset-top));
   background: var(--glass-bg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -273,7 +273,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
-  padding-top: calc(var(--spacing-md) + env(safe-area-inset-top, 0px));
+  padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
   /* Fully opaque (not --glass-bg) — the hero/title scroll directly behind
      this bar, and a translucent background let the big title ghost/bleed
      through as it passed underneath instead of being cleanly hidden. */
@@ -478,6 +478,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px;
+  /* Custom-list header sits flush with the top of the viewport (it's the
+     first thing rendered on the page, unlike the tracker-list header bar
+     above which is reached via .list-detail-header-bar) — without this it
+     rendered the back chevron and ⋯/+ controls straight into the status
+     bar / Dynamic Island on notched devices. */
+  padding-top: calc(14px + var(--safe-area-inset-top));
   background: linear-gradient(to bottom, rgba(10, 15, 31, .96), rgba(10, 15, 31, .7) 70%, transparent);
 }
 

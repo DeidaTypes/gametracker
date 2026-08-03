@@ -96,7 +96,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px var(--page-padding) 0;
-  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding-top: calc(14px + var(--safe-area-inset-top));
 }
 
 .lib-title {

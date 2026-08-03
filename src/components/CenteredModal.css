@@ -21,7 +21,7 @@
      a full-screen re-raster of this element's backdrop-filter on every frame
      of the keyboard slide, which was the single biggest source of jank. */
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-top: calc(20px + var(--safe-area-inset-top));
   box-sizing: border-box;
 }
 

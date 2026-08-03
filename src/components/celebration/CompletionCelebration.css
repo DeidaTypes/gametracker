@@ -64,7 +64,7 @@
    replacing the confetti. */
 .completion-celebration__static-mark {
   position: absolute;
-  top: max(env(safe-area-inset-top, 0), 32px);
+  top: max(var(--safe-area-inset-top), 32px);
   left: 50%;
   transform: translateX(-50%);
   width: 96px;
