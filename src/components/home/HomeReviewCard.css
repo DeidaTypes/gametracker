@@ -108,12 +108,14 @@
 /* Sized by width + the 3:4 ratio IGDB actually serves t_cover_small at
    (90x120 — the documented "90x128" is not what comes back), rather than
    a rounded pixel height, so object-fit has nothing left to crop and the
-   art reads as box art instead of a zoomed detail. */
+   art reads as box art instead of a zoomed detail. DELIBERATE exception to
+   --cover-ratio — see --cover-ratio-thumb in theme.css — do not change to
+   the poster ratio, it would introduce a crop that doesn't exist today. */
 .home-review-card__cover {
   flex-shrink: 0;
   width: 44px;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio-thumb);
+  border-radius: var(--cover-radius);
   object-fit: cover;
   background: var(--color-bg-secondary);
 }
@@ -242,8 +244,8 @@
 
 .home-review-card__mosaic img {
   width: 44px;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio-thumb);
+  border-radius: var(--cover-radius);
   object-fit: cover;
   background: var(--color-bg-secondary);
 }

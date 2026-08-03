@@ -17,10 +17,12 @@ import {
   LuSend,
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
+import { MessageCircle } from 'lucide-react'
 import HomeReviewCard from '../components/home/HomeReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
+import EmptyState from '../components/EmptyState'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
@@ -50,6 +52,7 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { useHideNav } from '../hooks/useHideNav'
+import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import './ReviewComments.css'
@@ -395,6 +398,11 @@ function ReviewComments() {
   const [editingComment, setEditingComment] = useState(null)
   const [posting, setPosting] = useState(false)
   const composerInputRef = useRef(null)
+  // Auto-grow textarea — shared with List Comments / Review Detail (see
+  // src/hooks/useAutoGrowTextarea.js) so the grow-then-cap behavior can
+  // never drift between composers. Cap matches .rc-composer__input's
+  // max-height in ReviewComments.css.
+  useAutoGrowTextarea(composerInputRef, draft, 90)
   // Keep a ref in sync with editingComment so handleComposerFocus can
   // read the current value without being a stale closure.
   const editingCommentRef = useRef(null)
@@ -1018,9 +1026,7 @@ function ReviewComments() {
               <div className="skeleton rc-thread__line" style={{ width: '60%' }} />
             </div>
           ) : threaded.length === 0 ? (
-            <div className="rc-thread__empty">
-              No comments yet — be the first to start the conversation.
-            </div>
+            <EmptyState icon={MessageCircle} size="compact" body="No comments yet — be the first to start the conversation." />
           ) : (
               threaded.map((c) => (
               <div key={c.id} className="rc-thread__group">
@@ -1079,7 +1085,7 @@ function ReviewComments() {
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="rc-composer"
+        className="kb-composer-bar rc-composer"
         onSubmit={handleSubmit}
       >
         {/* Edit-mode strip — shown above the composer when editing a comment */}
@@ -1134,13 +1140,13 @@ function ReviewComments() {
           />
           <button
             type="submit"
-            className={`rc-composer__send${editingComment ? ' rc-composer__send--save' : ''}`}
+            className="rc-composer__send"
             disabled={!isAuthed || posting || !draft.trim()}
             aria-label={editingComment ? 'Save edit' : 'Send comment'}
           >
             {editingComment
-              ? <LuCheck size={15} aria-hidden="true" />
-              : <LuSend size={15} aria-hidden="true" />
+              ? <LuCheck size={18} aria-hidden="true" />
+              : <LuSend size={18} aria-hidden="true" />
             }
           </button>
         </div>

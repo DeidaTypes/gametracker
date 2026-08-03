@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { shouldShowCount } from '../../utils/formatSocialCount'
+import StarRatingDisplay from '../StarRatingDisplay'
 import './ReviewOfWeekHero.css'
 
-/** Half-star aware rating display: "★★★★☆  4.0" */
+/**
+ * Rating display: stars + numeric value, e.g. "★★★★·  4.0".
+ * Previously rendered its own Unicode-glyph stars snapped to the
+ * nearest half; now shares StarRatingDisplay's renderer (true
+ * fractional fill) so this reads identically to every other screen.
+ */
 function RatingDisplay({ rating }) {
   const val = Number(rating) || 0
-  const full = Math.floor(val)
-  const half = val - full >= 0.5 ? 1 : 0
-  const empty = 5 - full - half
   return (
-    <span className="rotw-stars" aria-label={`${val.toFixed(1)} out of 5 stars`}>
-      {'★'.repeat(full)}
-      {half ? '½' : ''}
-      {'☆'.repeat(empty)}
+    <span className="rotw-stars">
+      <StarRatingDisplay rating={val} size="sm" />
       <span className="rotw-rating-num">{val.toFixed(1)}</span>
     </span>
   )

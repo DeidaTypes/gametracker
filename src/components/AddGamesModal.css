@@ -133,10 +133,6 @@
   color: var(--status-danger);
 }
 
-.agm-status--hint {
-  font-style: italic;
-}
-
 /* ── Results list container ── */
 .agm-results-list {
   display: flex;

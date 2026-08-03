@@ -78,8 +78,8 @@
 
 .ttb-card__cover {
   width: 100%;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-surface-raised, rgba(255, 255, 255, 0.04));
   flex-shrink: 0;
@@ -141,13 +141,6 @@
 }
 
 /* ── Empty state ────────────────────────────────────────────── */
-
-.ttb-empty {
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  padding: 8px 0;
-}
 
 /* ── Desktop (769px+) ───────────────────────────────────────── */
 

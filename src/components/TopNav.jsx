@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { HiOutlineSearch } from 'react-icons/hi'
+import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
+import EmptyState from './EmptyState'
 import './TopNav.css'
 
 function TopNav() {
@@ -172,9 +174,7 @@ function TopNav() {
                   </div>
                 ))
               ) : (
-                <div className="suggestion-item no-results">
-                  <span>No games found for "{searchValue}"</span>
-                </div>
+                <EmptyState icon={SearchX} size="inline" body={`No games found for "${searchValue}"`} />
               )}
             </div>
           )}

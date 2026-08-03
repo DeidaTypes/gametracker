@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { StarRating } from '../components/forms'
+import { StarRatingInput } from '../components/forms'
 import GamePickerSheet from '../components/GamePickerSheet'
 import CenteredModal from '../components/CenteredModal'
 import IOSSwitch from '../components/IOSSwitch'
@@ -353,10 +353,10 @@ function ReviewNew() {
 
         {/* ── PRIMARY: Star rating ─────────────────────────────────────── */}
         <div className="rnc-rating-block">
-          <StarRating
+          <StarRatingInput
             value={rating}
             onChange={setRating}
-            size="md"
+            size="xl"
             aria-label="Your rating out of 5"
             className="rnc-stars"
           />

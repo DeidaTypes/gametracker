@@ -199,17 +199,6 @@
 }
 
 .suggestion-item.loading,
-.suggestion-item.no-results {
-  cursor: default;
-  justify-content: center;
-  padding: var(--spacing-md);
-  color: var(--color-text-tertiary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-}
-
 .suggestion-image {
   width: 36px;
   height: 50px;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
+import { SearchX } from 'lucide-react'
 import {
   GiWizardStaff,
   GiBroadsword,
@@ -97,7 +98,7 @@ function NoResultsState({ query, genres }) {
   return (
     <div className="sp-empty">
       <EmptyState
-        variant="search"
+        icon={SearchX}
         title={`No results for "${query.trim()}".`}
         body="Check your spelling, or browse by genre below."
       />
@@ -781,7 +782,8 @@ function ReviewsTabResults({ rows, isLoading }) {
     return (
       <div className="sp-section">
         <EmptyState
-          variant="search"
+          icon={SearchX}
+          size="compact"
           title="No reviews match this search."
           body="Try a different search term."
         />
@@ -1054,7 +1056,7 @@ function ListsTabResults({ rows, isLoading, onTapList }) {
   if (!rows || rows.length === 0) {
     return (
       <div className="sp-section">
-        <EmptyState variant="search" title="No lists found." body="Try a different search term." />
+        <EmptyState icon={SearchX} size="compact" title="No lists found." body="Try a different search term." />
       </div>
     )
   }

@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, X, Check } from 'lucide-react'
+import { Pencil, X, Check, Award } from 'lucide-react'
 import { useShowcaseBadges } from '../hooks/useShowcaseBadges'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { BADGES, TIER_STYLES } from '../data/badges'
+import EmptyState from './EmptyState'
 import './BadgeShowcase.css'
 
 const MAX_PINS = 3
@@ -203,9 +204,7 @@ function ShowcasePicker({ earned, currentIds, onSave, onClose }) {
         </p>
 
         {earned.length === 0 ? (
-          <p className="badge-picker-modal__empty">
-            Earn some badges to start a showcase!
-          </p>
+          <EmptyState icon={Award} size="compact" body="Earn some badges to start a showcase!" />
         ) : (
           <ul className="badge-picker-modal__list" role="listbox" aria-multiselectable="true">
             {earned.map((badge) => {

@@ -8,6 +8,8 @@ import React, {
 import { useNavigate, useParams } from 'react-router-dom'
 import { LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
 import { HiOutlineFlag, HiHeart, HiOutlineHeart } from 'react-icons/hi'
+import { MessageCircle } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
 import ReviewCard from '../components/ReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
@@ -30,6 +32,7 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { useHideNav } from '../hooks/useHideNav'
+import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import './ReviewDetail.css'
@@ -707,13 +710,11 @@ function ReviewDetail() {
   }, [reviewId, resumeKey])
 
   /* ── Auto-grow textarea ───────────────────────────────────── */
-
-  useEffect(() => {
-    const el = inputRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 90)}px`
-  }, [draft])
+  // Shared with List Comments / Review Comments (see
+  // src/hooks/useAutoGrowTextarea.js) so the grow-then-cap behavior can
+  // never drift between composers. Cap matches .rd-composer__input's
+  // max-height in ReviewDetail.css.
+  useAutoGrowTextarea(inputRef, draft, 90)
 
   /* ── Scroll helpers ───────────────────────────────────────── */
 
@@ -1031,8 +1032,8 @@ function ReviewDetail() {
               <div className="skeleton rd-thread__line" style={{ width: '60%' }} />
             </div>
           ) : threaded.length === 0 ? (
-            <div className="rd-thread__empty" role="status">
-              No comments yet — start the conversation.
+            <div role="status">
+              <EmptyState icon={MessageCircle} size="compact" body="No comments yet — start the conversation." />
             </div>
           ) : (
             threaded.map((c) => (
@@ -1064,7 +1065,7 @@ function ReviewDetail() {
        */}
       <KeyboardAwareView
         mode="composer"
-        className="rd-composer"
+        className="kb-composer-bar rd-composer"
         aria-label="Comment composer"
       >
         {replyTo && (
@@ -1126,7 +1127,7 @@ function ReviewDetail() {
             disabled={!draft.trim() || posting}
             aria-label="Send comment"
           >
-            <LuSend size={15} aria-hidden="true" />
+            <LuSend size={18} aria-hidden="true" />
           </button>
         </div>
       </KeyboardAwareView>

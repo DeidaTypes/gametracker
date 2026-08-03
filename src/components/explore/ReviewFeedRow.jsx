@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from './Avatar'
-import StarRating from '../StarRating'
+import StarRatingDisplay from '../StarRatingDisplay'
 import SharedCover from '../SharedCover'
 import SpoilerOverlay from '../SpoilerOverlay'
 import { useAuth } from '../../contexts/AuthContext'
@@ -122,7 +122,7 @@ function ReviewFeedRow({ review }) {
         <div className="review-feed-row__foot">
           {v.rating > 0 && (
             <span className="review-feed-row__stars">
-              <StarRating rating={v.rating} size={12} />
+              <StarRatingDisplay rating={v.rating} size="xs" />
             </span>
           )}
           <span className="review-feed-row__time">{timeAgo(v.timestamp)}</span>

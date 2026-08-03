@@ -50,8 +50,8 @@
 .cp-cover-wrap {
   position: relative;
   width: 140px;
-  height: 196px;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   margin-bottom: var(--spacing-xs);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);

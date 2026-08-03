@@ -7,6 +7,7 @@ import { useNavDim } from '../hooks/useNavDim'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import CenteredModal from './CenteredModal'
 import { DestructiveButton, SecondaryButton } from './forms'
+import EmptyState from './EmptyState'
 import './GameSessionHistorySheet.css'
 
 function playedOnToDate(playedOn) {
@@ -145,12 +146,7 @@ function GameSessionHistorySheet({
 
             <div className="gshs-body">
               {isEmpty && (
-                <div className="gshs-empty">
-                  <span className="gshs-empty-icon" aria-hidden="true">
-                    <Clock size={28} />
-                  </span>
-                  <p className="gshs-empty-text">No sessions logged for this game yet.</p>
-                </div>
+                <EmptyState icon={Clock} size="compact" body="No sessions logged for this game yet." />
               )}
 
               {!isEmpty && (

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PenLine } from 'lucide-react'
 import { getReviewsForUser } from '../services/reviewService'
 import { useAuth } from '../contexts/AuthContext'
-import StarRating from '../components/StarRating'
+import StarRatingDisplay from '../components/StarRatingDisplay'
 import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 import './Reviews.css'
 
 function Reviews() {
@@ -78,9 +80,14 @@ function Reviews() {
           ))}
         </div>
       ) : reviews.length === 0 ? (
-        <div className="empty-reviews content-fade-in">
-          <h2>No reviews yet</h2>
-          <p>Start reviewing games to share your thoughts!</p>
+        <div className="content-fade-in">
+          <EmptyState
+            icon={PenLine}
+            title="No reviews yet"
+            body="Start reviewing games to share your thoughts!"
+            cta="Find a game to review"
+            onCta={() => navigate('/search')}
+          />
         </div>
       ) : (
         <div className="reviews-grid content-fade-in">
@@ -106,7 +113,7 @@ function Reviews() {
                 <div className="review-box-footer">
                   <div className="review-box-rating">
                     <label className="rating-label">Rating</label>
-                    <StarRating rating={parseFloat(review.rating)} size={20} />
+                    <StarRatingDisplay rating={parseFloat(review.rating)} size="md" />
                   </div>
                 </div>
               </div>

@@ -394,15 +394,13 @@
 }
 
 /* Star rating — restrained, flat, right-aligned in the header.
-   Overrides are scoped here only; StarRating.css's own rules
-   (used by every other variant) are left untouched. */
+   Overrides are scoped here only; StarRatingDisplay.css's own rules
+   (used by every other variant) are left untouched. Sizing is set via
+   the `size` prop (shared scale), not overridden here — this used to
+   hardcode 13px via CSS, a hidden 9th ad-hoc size the `size` prop
+   couldn't see; that's now consolidated into the size="xs" (12px) step. */
 .review-card--gamedetail .star-rating-display {
   flex-shrink: 0;
-}
-
-.review-card--gamedetail .star-rating-display svg {
-  width: 13px;
-  height: 13px;
 }
 
 /* Kill the shared component's specular-highlight glow
@@ -477,11 +475,15 @@
 
 /* ---- Cover ---- */
 
+/* DELIBERATE exception to --cover-ratio (see --cover-ratio-thumb in
+   theme.css) — matches HomeReviewCard's activity-row thumb, sized to
+   IGDB's native t_cover_small ratio so nothing gets cropped. Do not
+   change to the poster ratio. */
 .review-card--profilerow .review-card__pr-cover {
   flex: none;
   width: 52px;
-  aspect-ratio: 3 / 4;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio-thumb);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--bg-surface-2);
 }

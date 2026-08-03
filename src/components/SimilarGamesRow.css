@@ -23,21 +23,21 @@
 .sgr-cover-btn {
   display: block;
   width: 120px;
-  height: 180px;
+  aspect-ratio: var(--cover-ratio);
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
 .sgr-cover-img {
-  width: 120px;
-  height: 180px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
   display: block;
   transition: opacity 0.15s ease;
 }
@@ -47,7 +47,7 @@
 }
 
 .sgr-cover-skeleton {
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
 }
 
 /* Title always renders (real data — the game's own name). Clamped to a

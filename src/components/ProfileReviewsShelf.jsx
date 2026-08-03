@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronRight } from 'react-icons/lu'
-import StarRating from './StarRating'
+import StarRatingDisplay from './StarRatingDisplay'
 import './HomeShelf.css'
 import './ProfileReviewsShelf.css'
 
@@ -74,7 +74,7 @@ function ProfileReviewsShelf({ reviews, onSeeAll }) {
               <span className="shelf-cover-title">{review.game?.name}</span>
               {review.rating > 0 && (
                 <div className="prs-stars" aria-hidden="true">
-                  <StarRating rating={review.rating} size={11} />
+                  <StarRatingDisplay rating={review.rating} size="xs" />
                 </div>
               )}
             </button>

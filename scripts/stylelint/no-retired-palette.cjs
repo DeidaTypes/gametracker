@@ -16,11 +16,20 @@
  *      has seen before — the whole point of linting this instead of
  *      writing it down as a convention.
  *
- * Legitimate exceptions (the Ambassador copper accent, rating-star gold,
- * tier bronze/gold, the color-blind-mode orange) all live in
- * src/styles/theme.css, which the config exempts from this rule. If you
- * need a warm color, define it as a token there rather than inlining a
- * hex in component CSS.
+ * The Ambassador copper accent theme has been retired — there is no
+ * longer an "opt-in" warm accent anywhere in the app. With it gone, the
+ * only remaining justified ORANGE is the accessibility exception in the
+ * deutan/protan color-blind blocks (--status-want-to-play: #f97316),
+ * which substitutes for the red/green axis those color-blindness types
+ * can't distinguish. Rating-star gold (--star) and tier bronze/gold
+ * (--tier-bronze / --tier-gold) are separate, unrelated warm exceptions
+ * (gold/bronze, not orange) that remain flagged for their own future
+ * palette decision — see DESIGN_SYSTEM.md#retired-palette. All of the
+ * above live in src/styles/theme.css, which the config exempts from
+ * this rule since token files are where hex literals are supposed to
+ * live. If you need a new warm color anywhere else, define it as a
+ * token there and justify it rather than inlining a hex in component
+ * CSS.
  */
 
 const stylelint = require('stylelint')

@@ -68,8 +68,7 @@
 }
 
 .category-results-loading,
-.category-results-error,
-.category-results-empty {
+.category-results-error {
   display: flex;
   flex-direction: column;
   align-items: center;

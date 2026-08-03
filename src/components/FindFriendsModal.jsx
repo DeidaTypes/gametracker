@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { UserX } from 'lucide-react'
 import { searchUsers } from '../services/userService'
 import {
   followUser,
@@ -12,6 +13,7 @@ import CenteredModal from './CenteredModal'
 import PulseDot from './PulseDot'
 import Avatar from './Avatar'
 import { showToast } from './Toast'
+import EmptyState from './EmptyState'
 import './FindFriendsModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -259,9 +261,7 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
         )}
 
         {showNoResults && (
-          <p className="ffm-status ffm-status--hint">
-            No people found for &ldquo;{searchTerm.trim()}&rdquo;.
-          </p>
+          <EmptyState icon={UserX} size="inline" body={`No people found for "${searchTerm.trim()}".`} />
         )}
 
         {results.length > 0 && (

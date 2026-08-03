@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuSearch, LuX } from 'react-icons/lu'
-import { Edit3, MessageCircle } from 'lucide-react'
+import { Edit3, MessageCircle, UserX } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getInbox, MESSAGES_CHANGED_EVENT } from '../services/messageService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -390,7 +390,7 @@ function ComposeSheet({ isOpen, onClose, onPick, currentUserId }) {
             <span className="skeleton dm-compose__loading-row" />
           </div>
         ) : results.length === 0 ? (
-          <p className="dm-compose__hint">No users match "{query}".</p>
+          <EmptyState icon={UserX} size="inline" body={`No users match "${query}".`} />
         ) : (
           <ul role="list" className="dm-compose__list">
             {results.map((u) => {

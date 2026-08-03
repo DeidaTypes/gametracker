@@ -23,9 +23,9 @@
 .game-card-image-container {
   position: relative;
   width: 100%;
-  padding-bottom: 135%;
+  aspect-ratio: var(--cover-ratio);
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
@@ -37,12 +37,6 @@
     /* Existing depth shadow + warm amber outer glow */
     box-shadow: var(--shadow-xl), var(--shadow-glow), 0 4px 16px rgba(59, 130, 246, 0.15);
     border-color: var(--color-border-hover);
-  }
-}
-
-@media (min-width: 769px) {
-  .game-card-image-container {
-    padding-bottom: 130%;
   }
 }
 
@@ -136,7 +130,7 @@
   opacity: 0;
   transition: opacity var(--transition-smooth);
   z-index: 3;
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
 }
 
 @media (hover: hover) {
@@ -181,10 +175,6 @@
 @media (max-width: 768px) {
   .game-card-hover-overlay {
     display: none;
-  }
-
-  .game-card-image-container {
-    padding-bottom: 133%;
   }
 }
 

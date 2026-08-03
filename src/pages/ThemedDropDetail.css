@@ -41,19 +41,10 @@
   white-space: nowrap;
 }
 
-.tdd-empty-text {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  color: var(--text-secondary);
-  margin: 24px auto 0;
-  text-align: center;
-  max-width: 280px;
-}
-
 .tdd-sk-cover {
   width: 100%;
   aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-lg);
+  border-radius: var(--cover-radius);
 }
 
 @media (min-width: 769px) {

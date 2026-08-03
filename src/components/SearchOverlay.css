@@ -568,8 +568,7 @@
   color: var(--text-tertiary);
 }
 
-/* ---- Empty / error states ---- */
-.so-noresults-text,
+/* ---- Error state (no-results states render through EmptyState) ---- */
 .so-error-text {
   padding: 24px 16px;
   font-size: var(--font-size-body);

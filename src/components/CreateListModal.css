@@ -602,9 +602,9 @@
 
 .selected-game-thumb__img {
   width: 90px;
-  height: 135px;
+  aspect-ratio: var(--cover-ratio);
   object-fit: cover;
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   display: block;

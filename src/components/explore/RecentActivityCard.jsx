@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat } from 'react-icons/hi'
 import Avatar from '../Avatar'
-import StarRating from '../StarRating'
+import StarRatingDisplay from '../StarRatingDisplay'
 import SharedCover from '../SharedCover'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
@@ -158,7 +158,7 @@ export default function RecentActivityCard({ item }) {
         }
         end={
           <>
-            {item.rating != null && <StarRating rating={item.rating} size={12} />}
+            {item.rating != null && <StarRatingDisplay rating={item.rating} size="xs" />}
             <span className="recent-activity-card__time">{timeAgo(item.timestamp)}</span>
           </>
         }

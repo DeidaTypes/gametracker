@@ -690,6 +690,12 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* Deliberately taller than the review/list comment composers'
+   min-height:36/max-height:90 (ListComments.css, ReviewDetail.css,
+   ReviewComments.css): DMs are full back-and-forth messages rather than
+   short comments, so the rest height and growth cap are both larger. Same
+   pill radius and token palette otherwise — this is the one intentional
+   size difference between the four composers, not silent drift. */
 .dm-thread__input {
   flex: 1;
   min-height: 44px;
@@ -722,7 +728,11 @@
 
 /* Gradient (blue → green) send button — circular icon button that sits
    beside the pill input. Dims rather than recolors when disabled so the
-   gradient identity stays recognizable at rest. */
+   gradient identity stays recognizable at rest. This is the app-wide
+   canonical send-button treatment: List Comments, Review Detail and
+   Review/Activity Comments all mirror this 44x44 / --grad-cta / box-shadow
+   recipe on their own *-composer__send classes rather than the old 34px
+   flat-color button. */
 .dm-thread__send {
   flex-shrink: 0;
   width: 44px;

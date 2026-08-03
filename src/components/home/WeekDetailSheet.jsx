@@ -6,6 +6,7 @@ import { Gamepad2, ChevronRight } from 'lucide-react'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { useNavDim } from '../../hooks/useNavDim'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import EmptyState from '../EmptyState'
 import './WeekDetailSheet.css'
 
 /**
@@ -171,12 +172,7 @@ export default function WeekDetailSheet({
               )}
 
               {isEmpty && (
-                <div className="wds-empty">
-                  <span className="wds-empty-icon" aria-hidden="true">
-                    <Gamepad2 size={28} />
-                  </span>
-                  <p className="wds-empty-text">No sessions logged this week yet.</p>
-                </div>
+                <EmptyState icon={Gamepad2} size="compact" body="No sessions logged this week yet." />
               )}
 
               {!loading && sessions.length > 0 && (

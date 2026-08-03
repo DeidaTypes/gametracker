@@ -74,9 +74,9 @@
   right: -10px;
   height: 85%;
   width: auto;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: var(--cover-ratio);
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--cover-radius);
   transform: rotate(12deg);
   box-shadow: -3px 3px 14px rgba(0, 0, 0, 0.55);
   z-index: 1;

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
+import { Gamepad2 } from 'lucide-react'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import AppShell from '../components/AppShell'
 import SharedCover from '../components/SharedCover'
+import EmptyState from '../components/EmptyState'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getDominantColor } from '../services/colorExtract'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -126,20 +128,13 @@ function CurrentlyPlaying() {
         </header>
 
         {games.length === 0 ? (
-          <div className="cp-page-empty">
-            <span className="cp-page-empty-icon">🎮</span>
-            <h2 className="cp-page-empty-title">No games in progress</h2>
-            <p className="cp-page-empty-body">
-              Start playing a game and it will appear here so you can track your
-              progress.
-            </p>
-            <button
-              className="cta-button"
-              onClick={() => navigate('/search')}
-            >
-              Find Games
-            </button>
-          </div>
+          <EmptyState
+            icon={Gamepad2}
+            title="No games in progress"
+            body="Start playing a game and it will appear here so you can track your progress."
+            cta="Find Games"
+            onCta={() => navigate('/search')}
+          />
         ) : (
           <div className="cp-page-list" ref={listRef}>
             {games.map((game) => (

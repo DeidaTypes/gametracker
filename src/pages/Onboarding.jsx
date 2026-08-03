@@ -12,6 +12,7 @@ import {
   Search,
   X,
   Check,
+  SearchX,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { searchGames } from '../services/igdb'
@@ -24,6 +25,7 @@ import { updateProfile } from '../services/profileService'
 import { completeOnboarding } from '../services/onboardingService'
 import { setOnboarded } from '../services/userPreferences'
 import { showToast } from '../components/Toast'
+import EmptyState from '../components/EmptyState'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import './Onboarding.css'
 
@@ -542,9 +544,9 @@ function GamePickerSlide({
         )}
 
         {!loading && !error && query.trim() && results.length === 0 && (
-          <p className="ob-picker__state" aria-live="polite">
-            No games found for &ldquo;{query}&rdquo;
-          </p>
+          <div aria-live="polite">
+            <EmptyState icon={SearchX} size="inline" body={`No games found for "${query}"`} />
+          </div>
         )}
 
         {!query.trim() && !loading && (

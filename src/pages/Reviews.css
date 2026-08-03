@@ -160,41 +160,6 @@
 }
 
 /* ---- Empty State ---- */
-.empty-reviews {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--spacing-3xl) var(--page-padding);
-  gap: var(--spacing-md);
-  min-height: 320px;
-}
-
-.empty-reviews::before {
-  content: '⭐';
-  font-size: 48px;
-  opacity: 0.25;
-  margin-bottom: var(--spacing-sm);
-}
-
-.empty-reviews h2 {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-primary);
-  margin: 0;
-}
-
-.empty-reviews p {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  max-width: 260px;
-}
-
 /* ---- Responsive ---- */
 @media (min-width: 600px) {
   .reviews-grid {

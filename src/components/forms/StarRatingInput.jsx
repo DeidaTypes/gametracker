@@ -1,22 +1,28 @@
 import React, { useState, useCallback, useEffect, useRef, useId } from 'react'
+import { STAR_ICON_PATH, resolveStarRatingSize } from '../starRatingConfig'
 import './forms.css'
 
 const STARS = [1, 2, 3, 4, 5]
 
 /**
- * Interactive star rating with half-star support, hover preview,
+ * Interactive star rating input with half-star support, hover preview,
  * and a brief scale punch animation on the just-selected star.
+ *
+ * (Formerly `forms/StarRating.jsx` — renamed to disambiguate it from the
+ * read-only `StarRatingDisplay.jsx`, which has a different job. They
+ * share the same size scale via `starRatingConfig.js`.)
  *
  * Props:
  *   value: number (0–5, halves allowed)
  *   onChange: (next: number) => void
- *   size: 'sm' | 'md' | 'lg' (default 'md')
+ *   size: 'xs'|'sm'|'md'|'lg'|'xl'|'xxl' | number(px) — shared scale with
+ *         StarRatingDisplay, see starRatingConfig.js (default 'xl', 32px)
  *   readOnly: boolean
  */
-function StarRating({
+function StarRatingInput({
   value = 0,
   onChange,
-  size = 'md',
+  size = 'xl',
   readOnly = false,
   className = '',
   'aria-label': ariaLabel = 'Rating',
@@ -25,6 +31,7 @@ function StarRating({
   const [hover, setHover] = useState(0)
   const [punchIndex, setPunchIndex] = useState(null)
   const punchTimerRef = useRef(null)
+  const px = resolveStarRatingSize(size)
 
   useEffect(() => {
     return () => {
@@ -87,11 +94,11 @@ function StarRating({
           </defs>
           <path
             className="form-star__outline"
-            d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+            d={STAR_ICON_PATH}
           />
           <path
             className="form-star__fill"
-            d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+            d={STAR_ICON_PATH}
             clipPath={half ? `url(#${clipId})` : undefined}
           />
         </svg>
@@ -124,12 +131,12 @@ function StarRating({
     <div
       className={[
         'form-stars',
-        `form-stars--${size}`,
         readOnly ? 'form-stars--readonly' : '',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
+      style={{ '--star-rating-size': `${px}px` }}
       role={readOnly ? 'img' : 'group'}
       aria-label={readOnly ? `${value} out of 5 stars` : ariaLabel}
       onPointerLeave={readOnly ? undefined : () => setHover(0)}
@@ -139,4 +146,4 @@ function StarRating({
   )
 }
 
-export default StarRating
+export default StarRatingInput

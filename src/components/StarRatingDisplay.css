@@ -1,5 +1,5 @@
 /*
- * StarRating display component — overlay technique.
+ * StarRatingDisplay — overlay technique. (Formerly StarRating.css.)
  *
  * Structure:
  *   .star-rating-display          (inline-flex, relative, establishes stacking context)

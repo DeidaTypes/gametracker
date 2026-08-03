@@ -1,6 +1,8 @@
 import React from 'react'
+import { Sparkles } from 'lucide-react'
 import DiscoverSubHeader from '../components/explore/DiscoverSubHeader'
 import CleanGameTile from '../components/explore/CleanGameTile'
+import EmptyState from '../components/EmptyState'
 import { useActiveThemedDrop } from '../hooks/useExploreData'
 import { nextDropLabel } from '../utils/dropSchedule'
 import './ThemedDropDetail.css'
@@ -38,9 +40,7 @@ export default function ThemedDropDetail() {
             {Array.from({ length: 9 }, (_, i) => <SkeletonTile key={i} />)}
           </div>
         ) : !isLive ? (
-          <p className="tdd-empty-text">
-            This drop has ended — a new one lands soon.
-          </p>
+          <EmptyState icon={Sparkles} body="This drop has ended — a new one lands soon." />
         ) : (
           <>
             <div className="tdd-intro">

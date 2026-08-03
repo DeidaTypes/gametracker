@@ -83,10 +83,6 @@
   color: var(--status-danger);
 }
 
-.ffm-status--hint {
-  font-style: italic;
-}
-
 /* ── Results list ── */
 .ffm-results-list {
   display: flex;

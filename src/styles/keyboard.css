@@ -39,6 +39,13 @@
      the keyboard already covers the indicator and stacking both leaves a
      dead gap between the field and the key rows. */
   --keyboard-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* How much bottom clearance every comment screen's scroll content
+     reserves so its last item never sits behind the fixed composer bar
+     (see .kb-composer-bar below). One shared number for every comment
+     screen — List Detail, Review Detail, Review/Activity Comments — so
+     the reserve can never drift out of sync with the bar it is clearing. */
+  --comment-composer-clearance: 120px;
 }
 
 body.keyboard-open {
@@ -53,6 +60,34 @@ body.keyboard-open {
   transform: translate3d(0, calc(-1 * var(--keyboard-lift)), 0);
   transition: transform var(--keyboard-anim-duration) var(--keyboard-anim-ease);
   will-change: transform;
+}
+
+/* ── Comment composer bar — shared rest position + chrome ────────────────
+   The ONE positioning rule every comment composer shares (List Detail,
+   Review Detail, Review/Activity Comments): anchored to the viewport
+   bottom, resting at --bottom-nav-safe-area. On every one of these
+   screens the bottom nav is hidden (body.nav-hidden, via useHideNav),
+   which collapses that token to just the home-indicator inset instead of
+   the tab bar's ~80px footprint (see theme.css) — so this bar sits flush
+   above the safe area, not the nav.
+   The keyboard lift itself is layered on top via .kb-lift, applied
+   alongside this class through <KeyboardAwareView mode="composer">; this
+   class only owns the rest position and the glass chrome. Apply it via
+   `className="kb-composer-bar <screen>-composer"` and put screen-specific
+   padding/sizing on the second class — do NOT re-declare `position: fixed`
+   / `bottom: var(--bottom-nav-safe-area)` per screen. That duplication is
+   exactly what let the List Detail composer drift back to an in-flow
+   layout while Review Detail and Review Comments stayed pinned. */
+.kb-composer-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--bottom-nav-safe-area, 80px);
+  z-index: 6;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border-top: 1px solid var(--color-border);
 }
 
 /* ── Bottom sheets ───────────────────────────────────────────────────────

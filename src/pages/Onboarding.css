@@ -554,8 +554,8 @@
 .ob-grid__cover {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: calc(var(--radius-sm) - 2px);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   display: flex;
   align-items: flex-end;

@@ -94,22 +94,6 @@
   color: var(--color-text-secondary);
 }
 
-.dm-inbox__empty-h2 {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.dm-inbox__empty-sub {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  max-width: 280px;
-}
-
 .dm-inbox__list {
   list-style: none;
   margin: 0;

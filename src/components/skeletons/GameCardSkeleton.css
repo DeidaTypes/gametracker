@@ -14,8 +14,8 @@
 /* 2:3 cover rectangle */
 .gcs-cover {
   width: 100%;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
 /* Title placeholder — 60% wide, 14px tall */

@@ -64,16 +64,19 @@
   padding: 0;
   border: none;
   background: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
+/* DELIBERATE exception to --cover-ratio (see --cover-ratio-banner in
+   theme.css) — this is a wide activity banner, not a poster crop; do not
+   force it onto the poster ratio. */
 .recent-activity-card__cover {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 7;
+  aspect-ratio: var(--cover-ratio-banner);
   object-fit: cover;
   object-position: center 25%;
 }

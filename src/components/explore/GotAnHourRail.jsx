@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Pressable from '../Pressable'
+import EmptyState from '../EmptyState'
 import { getBestImageUrl } from '../../services/imageUtils'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './GotAnHourRail.css'
@@ -141,7 +142,7 @@ function GotAnHourRail({ games, loading }) {
   if (!games || games.length === 0) {
     return (
       <div className="explore-section__pad">
-        <p className="ttb-empty">No games in this time range right now — try another.</p>
+        <EmptyState size="inline" body="No games in this time range right now — try another." />
       </div>
     )
   }

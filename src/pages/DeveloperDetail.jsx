@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGamesByDeveloper } from '../services/igdb'
+import { Building2 } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import EmptyState from '../components/EmptyState'
@@ -81,8 +82,8 @@ function DeveloperDetail() {
       {!loading && !error && games.length === 0 && (
         <div className="dev-detail-status">
           <EmptyState
-            variant="developer"
-            copy={`No games on file for ${company?.name || displayName}`}
+            icon={Building2}
+            title={`No games on file for ${company?.name || displayName}`}
             cta="Search games"
             onCta={() => navigate('/search')}
           />

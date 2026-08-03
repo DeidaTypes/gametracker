@@ -16,23 +16,6 @@
    - status green collides with red for deutan/protan, so we
      swap to teal-blue / orange for both
    ===================================================== */
-/* =====================================================
-   ACCENT COLOR: AMBASSADOR (COPPER)
-   ---------------------------------------------------------------
-   Unlocked when the user earns the Ambassador invite badge.
-   Overrides the cobalt accent with a warm copper/amber palette
-   that matches the design system's secondary tones.
-   Applied by userSettingsService.applySettingsToDom when
-   settings.accentColor === 'copper'.
-   ===================================================== */
-body[data-accent='copper'] {
-  --accent:             #C8813A;
-  --accent-hover:       #D4924F;
-  --accent-press:       #A8622A;
-  --color-brand-primary:   #C8813A;
-  --color-brand-secondary: #D4924F;
-}
-
 body[data-cbm='deutan'] {
   --accent: #2563eb;
   --accent-hover: #3b82f6;
@@ -41,15 +24,24 @@ body[data-cbm='deutan'] {
   --color-brand-secondary: #3b82f6;
   --status-success: #06b6d4;
   --status-danger: #f97316;
-  --color-status-playing: #06b6d4;
-  --color-status-want: #f97316;
+  /* Currently Playing (cobalt) vs Want to Play (lavender) collapse into
+     near-identical blues once red perception drops out, so both tracker
+     statuses get pulled onto the same teal-vs-orange (blue/yellow axis)
+     split the old sage/rust pair used — that axis survives deutan/protan
+     loss, unlike red-green. --status-want-to-play is the one exception to
+     "no orange": there is no non-orange hue on this axis that stays
+     legible against teal for red-green color blindness, so accessibility
+     wins here. Flagged, not silently reused elsewhere. */
+  --status-currently-playing: #06b6d4;
+  --status-want-to-play: #f97316;
 }
 
 body[data-cbm='protan'] {
   --status-success: #06b6d4;
   --status-danger: #f97316;
-  --color-status-playing: #06b6d4;
-  --color-status-want: #f97316;
+  /* See deutan block above — same collision, same justified orange exception. */
+  --status-currently-playing: #06b6d4;
+  --status-want-to-play: #f97316;
 }
 
 body[data-cbm='tritan'] {
@@ -304,8 +296,12 @@ body[data-larger-text='true'] {
   /* Alias — shorthand brand-gradient token used for active-state fills
      (e.g. bottom-nav pill) that want the cobalt brand gradient by name. */
   --grad-brand: var(--color-brand-gradient);
-  /* Legacy alias — keeps RatingsHistogram working without JSX edit */
-  --accent-copper: var(--color-brand-primary);
+  /* Alias for call sites that want "the brand accent" by name rather
+     than the raw --color-brand-primary token (e.g. chip/label accents
+     that conceptually track whatever the accent color is). Resolves
+     to cobalt — it is NOT a warm color despite the name some of its
+     consumers used to have for it. */
+  --accent-brand: var(--color-brand-primary);
 
   /* Accent palette */
   --color-accent-sage: #7BA68C;
@@ -315,7 +311,6 @@ body[data-larger-text='true'] {
   --color-accent-purple: #8B7BAF;
   --color-accent-pink: #C4637B;
   --color-accent-teal: #4FA899;
-  --color-accent-orange: #C4634E;
 
   /* ---- Avatar fallback palette ----
      The single system every "no avatar image" initials circle uses
@@ -523,18 +518,36 @@ body[data-larger-text='true'] {
   --page-padding-desktop: var(--space-48);
   --page-max-width: 1000px;
 
-  /* ---- Cover Aspect Ratio ---- */
+  /* ---- Cover Geometry ----
+     --cover-ratio is AUTHORITATIVE for every poster-shaped game cover
+     (grid tiles, rail cards, hero covers, list rows) — see
+     DESIGN_SYSTEM.md. Do not hardcode 3/4, 135%, or any other ratio on
+     a poster cover; reference this token so the same cover art crops
+     identically everywhere it appears.
+     --cover-radius is the single radius applied to every poster cover,
+     aliased onto the scale (not a new hardcoded value) so it retunes
+     automatically if the scale ever moves. Chosen as --radius-md: it's
+     already the plurality value across cover call sites pre-consolidation,
+     and it matches the radius most grid-card containers use for their
+     outer border, so the cover's corner doesn't step in from the card's.
+     ---- Deliberate non-poster exceptions (do NOT use for poster covers) ----
+     --cover-ratio-thumb: activity/review-row cover thumbnails (HomeReviewCard,
+     ReviewCard profile row) are intentionally 3/4, not 2/3 — IGDB's
+     t_cover_small actually serves 90x120 (3/4), and sizing the thumb to
+     that native ratio means object-fit has nothing to crop, so the art
+     reads as unretouched box art instead of a zoomed detail. This is a
+     documented exception, not drift; do not "fix" it onto --cover-ratio.
+     --cover-ratio-banner: wide hero banners (RecentActivityCard's game
+     banner) are legitimately not poster-shaped — 16/7 landscape crop is
+     the intended treatment for a full-width activity banner. */
   --cover-ratio: 2 / 3;
+  --cover-ratio-thumb: 3 / 4;
+  --cover-ratio-banner: 16 / 7;
+  --cover-radius: var(--radius-md);
 
   /* ---- Skeleton ---- */
   --skeleton-base: rgba(148, 168, 212, 0.05);
   --skeleton-shimmer: rgba(148, 168, 212, 0.10);
-
-  /* ---- Status Colors ---- */
-  --color-status-playing: #7BA68C;
-  --color-status-played: #4A7FA5;
-  --color-status-want: #C4634E;
-  --color-status-review: #3b82f6;
 
   /* ---- Sprint 5: Review Card & Cover Header ----
      Radii collapsed onto the scale (--radius-lg / --radius-md / --radius-sm)
@@ -834,42 +847,6 @@ h1, h2,
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-/* =============================================
-   EMPTY STATE
-   ============================================= */
-.empty-state-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--spacing-3xl) var(--page-padding);
-  gap: var(--spacing-md);
-}
-
-.empty-state-icon {
-  font-size: 40px;
-  opacity: 0.25;
-  margin-bottom: var(--spacing-sm);
-}
-
-.empty-state-title {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.empty-state-body {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  max-width: 260px;
 }
 
 /* =============================================

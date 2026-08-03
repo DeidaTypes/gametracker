@@ -361,8 +361,8 @@ body[data-reduce-motion='true'] .jnc-save-spinner {
 }
 
 .jnc-mood-btn--active {
-  background: color-mix(in srgb, var(--accent-copper, #d4955a) 15%, var(--bg-surface, #131a35));
-  border-color: var(--accent-copper, #d4955a);
+  background: color-mix(in srgb, var(--accent-brand) 15%, var(--bg-surface, #131a35));
+  border-color: var(--accent-brand);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -392,7 +392,7 @@ body[data-reduce-motion='true'] .jnc-mood-btn {
 }
 
 .jnc-mood-btn--active .jnc-mood-label {
-  color: var(--accent-copper, #d4955a);
+  color: var(--accent-brand);
 }
 
 /* ── Hours played ────────────────────────────────────────────────────────── */

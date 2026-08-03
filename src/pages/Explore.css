@@ -140,13 +140,6 @@
 }
 
 /* ---- Section empty state (small inline message) ---- */
-.explore-section-empty {
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  padding: 8px 0;
-}
-
 /* ---- Review feed (vertical) ---- */
 .explore-review-feed {
   display: flex;
@@ -173,8 +166,8 @@
 
 .explore-review-skel-cover {
   width: 56px;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
 .explore-review-skel-body {
@@ -226,8 +219,8 @@
   flex: 0 0 144px;
   width: 144px;
   min-width: 144px;
-  aspect-ratio: 2 / 3;
-  border-radius: 14px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   scroll-snap-align: start;
 }
 
@@ -237,35 +230,6 @@
   width: 144px;
   min-width: 144px;
   scroll-snap-align: start;
-}
-
-/* ---- Empty state ---- */
-.explore-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  text-align: center;
-  padding: var(--spacing-3xl) var(--container-padding);
-  gap: var(--spacing-md);
-}
-
-.explore-empty-state__title {
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.explore-empty-state__body {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  max-width: 260px;
 }
 
 /* ---- Error banner ---- */
@@ -419,62 +383,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .discover-slash-toggle__btn {
-    transition: none;
-  }
-}
-
-/* =============================================
-   DISCOVER — empty "Following" state with CTA
-   ============================================= */
-
-.discover-empty-following {
-  padding: 32px 16px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  text-align: center;
-}
-
-.discover-empty-following__msg {
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-  margin: 0;
-  max-width: 260px;
-}
-
-/* Purple→blue gradient fill (--grad-purple-blue) — an Explore accent
-   moment for the primary CTA, parallel to Home's gradient-fill CTAs
-   (--grad-cta). Hover/press use a brightness filter since the fill is
-   a gradient rather than a single solid color. */
-.discover-empty-following__cta {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-body);
-  color: var(--color-bg-primary, #0c1221);
-  background: var(--grad-purple-blue);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: 10px 22px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: filter 150ms ease;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.discover-empty-following__cta:hover {
-  filter: brightness(1.08);
-}
-
-.discover-empty-following__cta:active {
-  filter: brightness(0.92);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .discover-empty-following__cta {
     transition: none;
   }
 }

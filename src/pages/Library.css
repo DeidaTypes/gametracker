@@ -399,8 +399,8 @@
      against .lib-grid3 and stretches over the whole grid. */
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   border: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
   background: var(--bg-surface-2);
@@ -434,32 +434,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.lib-grid-empty {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-tertiary);
-  text-align: center;
-  padding: var(--spacing-2xl) var(--page-padding);
-  margin: 0;
-}
-
-/* Empty-state density — scoped to this page only (EmptyState is shared and
-   keeps its more spacious default elsewhere). */
-.lib-grid-section .es-root {
-  padding: 24px 20px;
-  gap: 12px;
-}
-
-.lib-grid-section .es-cta {
-  background: var(--grad-cta);
-  border: none;
-  color: #ffffff;
-  height: auto;
-  padding: 11px 24px;
-  font-size: 13.5px;
 }
 
 .lib-loadmore {

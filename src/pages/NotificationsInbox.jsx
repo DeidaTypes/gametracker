@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LuChevronLeft, LuBell } from 'react-icons/lu'
+import { LuChevronLeft } from 'react-icons/lu'
+import { Bell } from 'lucide-react'
 import { useNotifications } from '../contexts/NotificationsContext'
 import AppShell from '../components/AppShell'
 import Avatar from '../components/Avatar'
+import EmptyState from '../components/EmptyState'
 import './NotificationsInbox.css'
 
 /* ============================================================
@@ -150,13 +152,11 @@ function NotificationsInbox() {
         {/* List */}
         <div className="notif-inbox__list" role="list">
           {notifications.length === 0 ? (
-            <div className="notif-inbox__empty">
-              <LuBell className="notif-inbox__empty-icon" aria-hidden="true" />
-              <p className="notif-inbox__empty-text">No notifications yet</p>
-              <p className="notif-inbox__empty-sub">
-                You'll see follows, reactions, comments, and friend activity here.
-              </p>
-            </div>
+            <EmptyState
+              icon={Bell}
+              title="No notifications yet"
+              body="You'll see follows, reactions, comments, and friend activity here."
+            />
           ) : (
             notifications.map((n) => (
               <div key={n.id} role="listitem">

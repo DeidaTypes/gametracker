@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
 import {
   getGamesFromList,
@@ -13,6 +14,7 @@ import {
 } from '../services/listService'
 import CenteredModal from './CenteredModal'
 import { showToast } from './Toast'
+import EmptyState from './EmptyState'
 import './AddGamesModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -394,9 +396,7 @@ function AddGamesModal({
           searchTerm.trim() === lastCompletedQuery &&
           searchResults.length === 0 &&
           !searchError && (
-            <p className="agm-status agm-status--hint">
-              No games found for &ldquo;{searchTerm}&rdquo;.
-            </p>
+            <EmptyState icon={SearchX} size="inline" body={`No games found for "${searchTerm}".`} />
           )}
 
         {/* ── In this list section ── */}

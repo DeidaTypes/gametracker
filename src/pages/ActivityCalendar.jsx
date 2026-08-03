@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
+import { CalendarDays } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getCachedActivityCalendar,
@@ -10,6 +11,7 @@ import {
   invalidateActivityCache,
 } from '../services/statsService'
 import DayLogSheet from '../components/DayLogSheet'
+import EmptyState from '../components/EmptyState'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './ActivityCalendar.css'
 
@@ -194,12 +196,12 @@ export default function ActivityCalendar() {
             <div className="skeleton ac-skel-grid" />
           </div>
         ) : !hasActivity ? (
-          <div className="ac-empty" role="status">
-            <div className="ac-empty-icon" aria-hidden="true">📅</div>
-            <p className="ac-empty-title">No activity logged yet</p>
-            <p className="ac-empty-body">
-              Log a game to start your calendar.
-            </p>
+          <div role="status">
+            <EmptyState
+              icon={CalendarDays}
+              title="No activity logged yet"
+              body="Log a game to start your calendar."
+            />
           </div>
         ) : (
           <>

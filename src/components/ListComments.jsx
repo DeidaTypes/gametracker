@@ -6,9 +6,12 @@ import {
   postListComment,
   deleteListComment,
 } from '../services/listInteractionService'
+import { whenKeyboardSettled } from '../services/keyboardInset'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import Avatar from './Avatar'
+import KeyboardAwareView from './KeyboardAwareView'
 import './ListComments.css'
 
 function CommentRow({ comment, canDelete, onDelete }) {
@@ -65,21 +68,20 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
+  // Sentinel just past the last comment — scrolled into view after posting
+  // and once the keyboard has settled on focus, so the thread (not the
+  // composer, which is now pinned via .kb-composer-bar/.kb-lift and always
+  // on screen) stays visible above the raised bar. Same pattern as
+  // ReviewComments'/ReviewDetail's threadBottomRef.
+  const listBottomRef = useRef(null)
 
-  // No focus handler here on purpose. The composer is a normal in-flow
-  // field inside `.main-content` (the app's single scroll container),
-  // which already reserves keyboard clearance globally (see
-  // body.keyboard-open .main-content in src/styles/keyboard.css) — the
-  // same mechanism the in-flow list-description editor on this page
-  // relies on with zero custom JS. Tapping the textarea lets the
-  // platform's native "scroll focused input above the keyboard"
-  // behavior do the work in lockstep with the keyboard's own show
-  // animation. A hand-rolled animated scrollIntoView() here raced that
-  // native scroll (and the padding-bottom transition) and produced the
-  // "jumps to the top / slides all over" bug — do not reintroduce one.
-  const scrollComposerIntoView = useCallback(() => {
-    textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  const scrollListIntoView = useCallback(() => {
+    listBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [])
+
+  const handleComposerFocus = useCallback(() => {
+    whenKeyboardSettled(scrollListIntoView)
+  }, [scrollListIntoView])
 
   const load = useCallback(async () => {
     if (!listId) return
@@ -93,13 +95,11 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
     load()
   }, [load])
 
-  // Auto-grow textarea
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 90) + 'px'
-  }, [draft])
+  // Auto-grow textarea — shared with Review Detail / Review Comments so the
+  // grow-then-cap behavior can never drift between composers (see
+  // src/hooks/useAutoGrowTextarea.js). Cap matches .lc-composer__input's
+  // max-height in ListComments.css.
+  useAutoGrowTextarea(textareaRef, draft, 90)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -122,8 +122,8 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
     }
     setComments((prev) => [...prev, optimistic])
     setDraft('')
-    // Keep the just-posted comment (and the composer below it) on screen.
-    requestAnimationFrame(scrollComposerIntoView)
+    // Keep the just-posted comment visible above the pinned composer.
+    requestAnimationFrame(scrollListIntoView)
 
     try {
       const confirmed = await postListComment({ listId, body: trimmed })
@@ -174,17 +174,22 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
         </div>
       )}
 
-      {/* In-flow composer — sits in its natural place at the end of the
-          thread and scrolls with the page like any other content. It is
-          NOT pinned/fixed to the screen and does not follow the user.
-          No keyboard-lift wrapper and no focus handler: it relies purely
-          on the platform's native "scroll focused input above the
-          keyboard" behavior plus the global `.main-content` keyboard
-          padding (src/styles/keyboard.css) — the single mechanism that
-          already keeps this uniform with the keyboard's own animation. */}
+      {/* Sentinel: scrolled into view after posting and once the keyboard
+          has settled on focus, so the thread stays visible above the
+          pinned composer below. */}
+      <div ref={listBottomRef} aria-hidden="true" />
+
+      {/* Viewport-anchored composer — shares its rest position/chrome with
+          every other comment screen via .kb-composer-bar, and its keyboard
+          lift via <KeyboardAwareView mode="composer"> (.kb-lift), exactly
+          like ReviewComments/ReviewDetail. It never scrolls with the page;
+          .lc-section's own bottom padding (ListComments.css) reserves the
+          clearance this bar needs so it never covers the last comment. */}
       {currentUserId && (
-        <form
-          className="lc-composer"
+        <KeyboardAwareView
+          as="form"
+          mode="composer"
+          className="kb-composer-bar lc-composer"
           aria-label="Comment composer"
           onSubmit={handleSubmit}
         >
@@ -198,6 +203,7 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
               maxLength={2000}
               rows={1}
               aria-label="Add a comment"
+              onFocus={handleComposerFocus}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -211,10 +217,10 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
               disabled={submitting || !draft.trim()}
               aria-label="Post comment"
             >
-              <LuSend size={15} aria-hidden="true" />
+              <LuSend size={18} aria-hidden="true" />
             </button>
           </div>
-        </form>
+        </KeyboardAwareView>
       )}
     </section>
   )

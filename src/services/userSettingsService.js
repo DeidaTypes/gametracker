@@ -41,9 +41,6 @@ const DEFAULT_SETTINGS = Object.freeze({
   // (no DB sync needed since it controls what YOU see, not what you
   // broadcast). Defaults true so opted-in users get pings out of the box.
   presencePingsOptIn: true,
-  // Invite reward: users who earn the Ambassador badge unlock the
-  // 'copper' accent. Stored locally; no Supabase sync needed.
-  accentColor: 'default',
 })
 
 /* ============================================================
@@ -54,7 +51,13 @@ function readRaw() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    // The Ambassador 'copper' accent-color feature was retired; strip any
+    // stale accentColor key left over from before so it doesn't linger in
+    // storage. Nothing reads this key anymore, so this is a no-op for
+    // anyone who never had it set.
+    if (parsed && 'accentColor' in parsed) delete parsed.accentColor
+    return parsed
   } catch {
     return null
   }
@@ -125,12 +128,6 @@ export function applySettingsToDom(settings) {
     body.setAttribute('data-larger-text', 'true')
   } else {
     body.removeAttribute('data-larger-text')
-  }
-
-  if (settings.accentColor && settings.accentColor !== 'default') {
-    body.setAttribute('data-accent', settings.accentColor)
-  } else {
-    body.removeAttribute('data-accent')
   }
 }
 
@@ -297,23 +294,6 @@ export function setPresencePingsOptIn(value) {
   return next
 }
 
-const ACCENT_COLORS = Object.freeze(['default', 'copper'])
-
-/**
- * Set the accent color unlock earned via the Ambassador invite badge.
- * Stored in localStorage only — no cross-device sync required since it's
- * a cosmetic preference tied to a local badge state.
- */
-export function setAccentColor(color) {
-  if (!ACCENT_COLORS.includes(color)) return
-  const current = getSettings()
-  const next = { ...current, accentColor: color }
-  writeRaw(next)
-  applySettingsToDom(next)
-  emitChange(next)
-  return next
-}
-
 /* ============================================================
    Public option lists for UI sub-sheets
    ============================================================ */
@@ -335,10 +315,4 @@ export const ACTIVITY_PRIVACY_OPTIONS = [
   { value: 'everyone', label: 'Everyone' },
   { value: 'followers', label: 'Followers only' },
   { value: 'me', label: 'Only me' },
-]
-
-/** Accent color options — 'copper' is gated behind the Ambassador invite badge. */
-export const ACCENT_COLOR_OPTIONS = [
-  { value: 'default', label: 'Default', description: 'Cobalt blue — the classic look' },
-  { value: 'copper', label: 'Ambassador', description: 'Warm copper — unlocked by inviting friends', locked: true },
 ]

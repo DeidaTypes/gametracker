@@ -83,10 +83,6 @@
   color: var(--status-danger);
 }
 
-.tsm-status--hint {
-  font-style: italic;
-}
-
 /* ── Results list ── */
 .tsm-results-list {
   display: flex;

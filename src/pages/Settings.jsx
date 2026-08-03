@@ -3,9 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   LuChevronLeft,
   LuChevronRight,
-  LuLock,
   LuLogOut,
-  LuPalette,
   LuShare2,
   LuStar,
 } from 'react-icons/lu'
@@ -23,16 +21,13 @@ import {
   setLargerText,
   setMessagePrivacy,
   setActivityPrivacy,
-  setAccentColor,
   COLOR_BLIND_OPTIONS,
   MESSAGE_PRIVACY_OPTIONS,
   ACTIVITY_PRIVACY_OPTIONS,
-  ACCENT_COLOR_OPTIONS,
   applySettingsToDom,
   SETTINGS_CHANGED_EVENT,
 } from '../services/userSettingsService'
 import { buildInviteUrl } from '../services/inviteService'
-import { useUserStats } from '../hooks/useUserStats'
 import { shareContent } from '../utils/share'
 import packageJson from '../../package.json'
 import './Settings.css'
@@ -169,7 +164,6 @@ function Settings() {
   const [cbmSheetOpen, setCbmSheetOpen] = useState(false)
   const [msgSheetOpen, setMsgSheetOpen] = useState(false)
   const [actSheetOpen, setActSheetOpen] = useState(false)
-  const [accentSheetOpen, setAccentSheetOpen] = useState(false)
   const [signOutSheetOpen, setSignOutSheetOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
@@ -179,10 +173,6 @@ function Settings() {
   // onto <body> in real time and snap back to `settings.colorBlindMode`
   // if the user cancels.
   const [cbmPreview, setCbmPreview] = useState(settings.colorBlindMode)
-
-  // Invite stats — used to gate the Ambassador accent unlock in the UI.
-  const inviteStats = useUserStats(user?.id)
-  const hasInviteReward = (inviteStats.invitesCount || 0) >= 1
 
   useEffect(() => {
     const onChange = () => setSettings(getSettings())
@@ -194,8 +184,8 @@ function Settings() {
     if (cbmSheetOpen) setCbmPreview(settings.colorBlindMode)
   }, [cbmSheetOpen, settings.colorBlindMode])
 
-  // Deep-link support — the profile Settings sheet's Privacy/Appearance/
-  // About rows route here with a #settings-section-* hash so the tap
+  // Deep-link support — the profile Settings sheet's Privacy/About
+  // rows route here with a #settings-section-* hash so the tap
   // lands on the relevant section instead of the generic page top.
   useEffect(() => {
     if (!location.hash) return
@@ -260,16 +250,6 @@ function Settings() {
     if (result?.method === 'clipboard') {
       showToast('Link copied', 'success')
     }
-  }
-
-  const handleAccentApply = (color) => {
-    if (color === 'copper' && !hasInviteReward) return
-    setAccentColor(color)
-    showToast(
-      color === 'copper' ? 'Ambassador accent applied' : 'Accent reset',
-      'success',
-      1800
-    )
   }
 
   const openExternal = (url) => {
@@ -358,33 +338,6 @@ function Settings() {
             label="Delete account"
             onClick={() => setDeleteSheetOpen(true)}
             destructive
-          />
-        </SettingsGroup>
-
-        {/* ─── APPEARANCE ────────────────────────────────── */}
-        <SettingsGroup
-          id="settings-section-appearance"
-          title="Appearance"
-          footer={!hasInviteReward ? 'Invite a friend to unlock the Ambassador accent.' : null}
-        >
-          <SettingsRow
-            label="Accent color"
-            value={
-              settings.accentColor === 'copper' ? 'Ambassador' : 'Default'
-            }
-            onClick={hasInviteReward ? () => setAccentSheetOpen(true) : undefined}
-            trailing={
-              !hasInviteReward ? (
-                <span className="settings-row__icon settings-row__icon--locked" aria-label="Locked">
-                  <LuLock size={15} />
-                </span>
-              ) : (
-                <span className="settings-row__icon" aria-label="Accent color">
-                  <LuPalette size={18} />
-                </span>
-              )
-            }
-            disabled={!hasInviteReward}
           />
         </SettingsGroup>
 
@@ -548,20 +501,6 @@ function Settings() {
         onClose={() => !isDeleting && setDeleteSheetOpen(false)}
         onConfirm={handleDeleteAccount}
         isDeleting={isDeleting}
-      />
-
-      <SettingsPickerSheet
-        isOpen={accentSheetOpen}
-        onClose={() => setAccentSheetOpen(false)}
-        title="Accent color"
-        description="Personalize your app accent. The Ambassador copper palette is unlocked by inviting friends."
-        value={settings.accentColor || 'default'}
-        options={ACCENT_COLOR_OPTIONS.map((o) => ({
-          value: o.value,
-          label: o.label,
-          description: o.description,
-        }))}
-        onApply={handleAccentApply}
       />
     </div>
   )

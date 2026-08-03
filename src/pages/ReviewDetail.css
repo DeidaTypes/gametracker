@@ -109,7 +109,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  padding: var(--spacing-lg) var(--page-padding) calc(120px + var(--bottom-nav-safe-area));
+  padding: var(--spacing-lg) var(--page-padding) calc(var(--comment-composer-clearance) + var(--bottom-nav-safe-area));
   max-width: var(--page-max-width);
   width: 100%;
   margin: 0 auto;
@@ -215,15 +215,6 @@
 .rd-thread__line {
   height: 14px;
   border-radius: var(--radius-sm);
-}
-
-.rd-thread__empty {
-  padding: var(--spacing-2xl) var(--spacing-md);
-  text-align: center;
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-body);
-  font-family: var(--font-body);
-  line-height: 1.5;
 }
 
 .rd-thread__group {
@@ -587,17 +578,10 @@
  * <KeyboardAwareView mode="composer">, so this bar, the DM composer and the
  * review-comments composer all travel the same distance on the same curve.
  */
-.rd-composer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--bottom-nav-safe-area, 80px);
-  z-index: 6;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  border-top: 1px solid var(--color-border);
-}
+/* Rest position + chrome (fixed to the viewport bottom, glass background,
+   border) come from the shared .kb-composer-bar class (styles/keyboard.css),
+   applied alongside this one in the JSX (kept as a hook for any
+   ReviewDetail-specific composer styling). */
 
 /* Optional reply-hint banner shown above the input row */
 .rd-composer__reply-hint {
@@ -692,33 +676,37 @@
   max-height: 90px;
 }
 
-/* Send button — copper accent; always visible, dims when empty */
+/* Gradient send button — app-wide canonical treatment (see
+   MessagesThread.css's .dm-thread__send, the original of this recipe).
+   44x44 meets the minimum tap target and reuses the same --grad-cta
+   primary-action language as every other CTA in the app; always visible,
+   dims when empty. */
 .rd-composer__send {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  background: var(--color-brand-primary, var(--accent));
+  background: var(--grad-cta);
   border: none;
   border-radius: var(--radius-full);
-  color: #ffffff;
+  color: var(--color-on-accent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: filter var(--transition-fast), opacity var(--transition-fast);
-  /* Align with bottom of the input */
-  margin-bottom: 1px;
 }
 
 .rd-composer__send:hover:not(:disabled) {
-  filter: brightness(1.12);
+  filter: brightness(1.08);
 }
 
 .rd-composer__send:disabled {
-  opacity: 0.35;
-  cursor: default;
+  opacity: 0.4;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 /* ── Inline edit styles (used inside CommentRow, keep these) ─────────── */
@@ -780,17 +768,12 @@
   .rd-comment__action-btn,
   .rd-comment__kebab-btn,
   .rd-thread__replies-toggle,
-  .rd-composer,
   .rd-composer__input,
   .rd-composer__send,
   .rd-composer__reply-cancel,
   .rd-modal-textarea,
   .rd-modal-post {
     transition: none;
-  }
-
-  .rd-composer {
-    will-change: auto;
   }
 
   .rd-comment__like-icon--pulse {

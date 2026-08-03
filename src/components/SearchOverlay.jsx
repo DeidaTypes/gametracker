@@ -6,7 +6,7 @@ import React, {
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import { ChevronLeft, Search, X } from 'lucide-react'
+import { ChevronLeft, Search, X, SearchX } from 'lucide-react'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import { useSearch } from '../hooks/useSearch'
 import { useDebounce } from '../hooks/useDebounce'
@@ -34,6 +34,7 @@ import ReviewCard from '../components/ReviewCard'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import ListCoverCluster from './ListCoverCluster'
+import EmptyState from './EmptyState'
 import './SearchOverlay.css'
 
 // ─── Static genre data ─────────────────────────────────────────────────────
@@ -175,9 +176,7 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
 
   if (!hasResults) {
     return (
-      <p className="so-noresults-text">
-        No games found for &ldquo;{query.trim()}&rdquo;
-      </p>
+      <EmptyState icon={SearchX} size="inline" body={`No games found for "${query.trim()}"`} />
     )
   }
 
@@ -277,7 +276,7 @@ function GamesResults({ query, results, isLoading, error, onTapGame, onTapDev, o
 function ReviewsResults({ rows, isLoading }) {
   if (isLoading) return <SearchResultSkeletonList count={4} />
   if (!rows || rows.length === 0) {
-    return <p className="so-noresults-text">No reviews match this search yet.</p>
+    return <EmptyState size="inline" body="No reviews match this search yet." />
   }
   return (
     <div className="so-section so-reviews-results">
@@ -356,7 +355,7 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
 function UsersResults({ rows, isLoading, onTapUser, currentUserId }) {
   if (isLoading) return <SearchResultSkeletonList count={5} />
   if (!rows || rows.length === 0) {
-    return <p className="so-noresults-text">No users found.</p>
+    return <EmptyState size="inline" body="No users found." />
   }
   return (
     <div className="so-section so-user-list">
@@ -405,7 +404,7 @@ function UsersResults({ rows, isLoading, onTapUser, currentUserId }) {
 function ListsResults({ rows, isLoading, onTapList }) {
   if (isLoading) return <SearchResultSkeletonList count={4} />
   if (!rows || rows.length === 0) {
-    return <p className="so-noresults-text">No lists found.</p>
+    return <EmptyState size="inline" body="No lists found." />
   }
   return (
     <div className="so-section so-list-results">

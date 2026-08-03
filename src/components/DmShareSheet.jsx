@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { LuSearch, LuX } from 'react-icons/lu'
+import { UserX } from 'lucide-react'
 import { sendMessage } from '../services/messageService'
 import { searchUsers } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +8,7 @@ import { useDebounce } from '../hooks/useDebounce'
 import { showToast } from './Toast'
 import CenteredModal from './CenteredModal'
 import Avatar from './Avatar'
+import EmptyState from './EmptyState'
 import './DmShareSheet.css'
 
 /**
@@ -158,7 +160,7 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
             <span className="skeleton dm-share-sheet__loading-row" />
           </div>
         ) : results.length === 0 ? (
-          <p className="dm-share-sheet__hint">No users match &ldquo;{query}&rdquo;.</p>
+          <EmptyState icon={UserX} size="inline" body={`No users match "${query}".`} />
         ) : (
           <ul role="list" className="dm-share-sheet__list">
             {results.map((u) => {

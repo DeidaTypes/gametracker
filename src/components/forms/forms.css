@@ -1,7 +1,7 @@
 /* ============================================================
    FORM SYSTEM — Editorial / Recessed Fill
    Used by TextField, TextArea, NumericField, SubmitButton,
-   SecondaryButton, StarRating.
+   SecondaryButton, StarRatingInput.
    ============================================================ */
 
 /* Shared screen-reader-only utility (form context) */
@@ -469,13 +469,16 @@
 }
 
 /* ============================================================
-   StarRating
+   StarRatingInput
    ============================================================ */
 .form-stars {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   user-select: none;
+  /* Size comes from the shared t-shirt scale (starRatingConfig.js),
+     set inline by the component as --star-rating-size. */
+  --star-rating-size: 32px;
 }
 
 .form-stars--readonly {
@@ -488,6 +491,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: var(--star-rating-size);
+  height: var(--star-rating-size);
   background: transparent;
   border: none;
   padding: 0;
@@ -560,11 +565,6 @@
   50% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
-
-/* Sizes */
-.form-stars--sm .form-star { width: 20px; height: 20px; }
-.form-stars--md .form-star { width: 32px; height: 32px; }
-.form-stars--lg .form-star { width: 40px; height: 40px; }
 
 /* ============================================================
    Reduced motion

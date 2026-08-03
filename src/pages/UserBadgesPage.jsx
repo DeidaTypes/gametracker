@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
-import { Lock } from 'lucide-react'
+import { Lock, Award } from 'lucide-react'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { TIER_STYLES } from '../data/badges'
 import BadgeDetailModal from '../components/BadgeDetailModal'
 import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 import './UserBadgesPage.css'
 
 /**
@@ -112,7 +113,7 @@ function UserBadgesPage() {
             ))}
           </div>
         ) : sections.every((s) => s.items.length === 0) ? (
-          <p className="badges-page__empty">{emptyCopy}</p>
+          <EmptyState icon={Award} body={emptyCopy} />
         ) : (
           sections.map((section) =>
             section.items.length === 0 ? null : (

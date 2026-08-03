@@ -1,10 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { Search, X, SearchX } from 'lucide-react'
 import { useSearch } from '../hooks/useSearch'
 import { addRecent } from '../utils/recentSearches'
 import { getSizedImageUrl } from '../services/imageUtils'
 import CoverPlaceholder from './explore/CoverPlaceholder'
+import EmptyState from './EmptyState'
 import './HomeSearchBar.css'
 
 /**
@@ -120,9 +121,7 @@ function HomeSearchBar() {
           )}
 
           {!isLoading && !error && !hasResults && (
-            <p className="home-search-status">
-              No results for &ldquo;{trimmed}&rdquo;
-            </p>
+            <EmptyState icon={SearchX} size="inline" body={`No results for "${trimmed}"`} />
           )}
 
           {!isLoading && !error && results.genres.length > 0 && (

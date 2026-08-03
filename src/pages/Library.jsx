@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Search as SearchIcon, List, ChevronDown, Check, Plus } from 'lucide-react'
+import { Search as SearchIcon, List, ChevronDown, Check, Plus, FilterX } from 'lucide-react'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
@@ -533,13 +533,24 @@ function Library() {
               {combinedGames.length === 0 ? (
                 <EmptyState
                   icon={List}
+                  size="compact"
                   title="No games tracked yet."
                   body="Search for a game and set a status to start your library."
                   cta="Find games"
                   onCta={() => navigate('/search')}
                 />
               ) : sortedGames.length === 0 ? (
-                <p className="lib-grid-empty">No games match this filter.</p>
+                <EmptyState
+                  icon={FilterX}
+                  size="compact"
+                  body="No games match this filter."
+                  cta="Clear filter"
+                  ctaVariant="secondary"
+                  onCta={() => {
+                    setActiveStatus(null)
+                    setSearchQuery('')
+                  }}
+                />
               ) : (
                 <>
                   <div className="lib-grid3" ref={gridRef}>

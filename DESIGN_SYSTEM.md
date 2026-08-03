@@ -319,15 +319,17 @@ is cobalt, and warm hues keep drifting back into component CSS one hardcoded hex
 at a time, so this is now linted rather than left as a convention — see
 [Linting](#linting).
 
-There are exactly four sanctioned warm colors, all defined as tokens in
-`theme.css` and never inlined as hex in component CSS:
+The Ambassador copper accent theme (`body[data-accent='copper']`) that used to
+be the one opt-in exception has been retired and removed — there is no longer
+an opt-in warm accent anywhere in the app. There are exactly three sanctioned
+warm colors left, all defined as tokens in `theme.css` and never inlined as
+hex in component CSS:
 
 | Token | Value | Why it's allowed |
 |---|---|---|
-| `body[data-accent='copper'] --accent` | `#C8813A` | Opt-in Ambassador badge accent, user-unlocked |
 | `--star` | `#f5b50a` | Rating stars — deliberate exception to the all-cobalt rule |
-| `--tier-bronze` / `--tier-gold` | `#CD7F32` / `#FFD700` | Achievement tier metals, semantically fixed |
-| `--status-warning` | `#fbbf24` | Warning status, plus the color-blind-mode orange swaps |
+| `--tier-bronze` / `--tier-gold` | `#CD7F32` / `#FFD700` | Achievement tier metals, semantically fixed — flagged for a future palette decision since bronze/gold sit in the warm band |
+| `--status-warning` | `#fbbf24` | Warning status, plus the color-blind-mode orange swap (`--status-want-to-play: #f97316` in the deutan/protan blocks) — the only remaining justified *orange* |
 
 If you need a warm color for anything else, add a named token to `theme.css`
 first and justify it there. Do not inline the hex.
@@ -458,6 +460,67 @@ import Section from '../components/Section'
   </Container>
 </Section>
 ```
+
+---
+
+### EmptyState
+
+`src/components/EmptyState.jsx` is the single shared "nothing here yet"
+surface for the whole app — every empty collection, empty search result, and
+empty section (~85 call sites across ~55 files as of the Sprint 6 empty-state
+consolidation) renders through this component instead of a bespoke block, so
+icon language, copy rhythm, and CTA styling stay consistent everywhere.
+
+**Props:**
+- `icon` — lucide-react component. One icon language app-wide; there is no
+  emoji or inline-SVG path any more. Optional — many inline/search-result
+  empties render text only.
+- `title` — headline string (`default`/`compact` sizes only).
+- `body` — supporting copy. Works alone (no title) for single-line empties
+  like search-result misses.
+- `cta` / `onCta` — CTA button label + handler. Both must be set to render
+  the button.
+- `ctaVariant` — `'primary'` (default) | `'secondary'`.
+  - `primary` is the app's gradient CTA fill (`--grad-cta`) — use for the
+    main "go create/find content" action. **Never** a solid-cobalt fill.
+  - `secondary` is an outlined ghost button (transparent fill, `--accent`
+    text, `--border-subtle` border) — use for lower-emphasis, non-content-
+    creating actions embedded in a compact/inline empty state (e.g. "Clear
+    filter"). This is the one documented alternative to the gradient fill;
+    there is no third CTA treatment.
+- `size` — `'default'` (full page / full section, e.g. an empty Library or
+  empty Followers list) | `'compact'` (in-page section or bottom-sheet
+  empty, e.g. a card's empty sub-list) | `'inline'` (single-line, e.g. "No
+  results for '…'" inside a search dropdown or modal list).
+- `compact` — boolean back-compat alias for `size="compact"`.
+
+**Usage:**
+
+```jsx
+import EmptyState from '../components/EmptyState'
+import { List } from 'lucide-react'
+
+<EmptyState
+  icon={List}
+  title="No lists yet."
+  body="Create themed collections — cozy games, RPGs, anything."
+  cta="Create your first list"
+  onCta={onCreateList}
+/>
+
+// In-section, lower-emphasis utility action
+<EmptyState
+  size="compact"
+  body="No games match this filter."
+  cta="Clear filter"
+  ctaVariant="secondary"
+  onCta={clearFilter}
+/>
+```
+
+Empty states either say what's missing and offer a real next action, or they
+render text-only with no CTA — never fabricated placeholder content (no
+sample games, no fake counts).
 
 ---
 

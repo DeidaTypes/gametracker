@@ -21,7 +21,10 @@ import {
   ChevronDown,
   MoveRight,
   Trash2,
+  FilterX,
+  List as ListIcon,
 } from 'lucide-react'
+import EmptyState from './EmptyState'
 import { supabase } from '../services/supabase'
 import {
   getGameProgress,
@@ -849,20 +852,14 @@ function TrackerGameList({ listId, games }) {
       {/* Game list */}
       <div className="tgl-list" role="list">
         {sortedGames.length === 0 ? (
-          <div className="tgl-empty">
-            <p className="tgl-empty-text">
-              {filterBy !== 'all' ? 'No games match this filter.' : 'No games here yet.'}
-            </p>
-            {filterBy !== 'all' && (
-              <button
-                type="button"
-                className="tgl-empty-clear"
-                onClick={() => setFilterBy('all')}
-              >
-                Clear filter
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon={filterBy !== 'all' ? FilterX : ListIcon}
+            size="compact"
+            body={filterBy !== 'all' ? 'No games match this filter.' : 'No games here yet.'}
+            cta={filterBy !== 'all' ? 'Clear filter' : undefined}
+            ctaVariant="secondary"
+            onCta={filterBy !== 'all' ? () => setFilterBy('all') : undefined}
+          />
         ) : (
           <>
             {visibleGames.map((game) => (

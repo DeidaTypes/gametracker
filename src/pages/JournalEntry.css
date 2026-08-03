@@ -277,9 +277,9 @@ body[data-reduce-motion='true'] .je-edit-btn {
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-copper, #d4955a);
-  background: color-mix(in srgb, var(--accent-copper, #d4955a) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-copper, #d4955a) 30%, transparent);
+  color: var(--accent-brand);
+  background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-brand) 30%, transparent);
   border-radius: var(--radius-chip);
   padding: 3px 10px 3px 8px;
   line-height: 1.4;

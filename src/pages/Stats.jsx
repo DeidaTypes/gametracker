@@ -7,6 +7,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { HiArrowLeft } from 'react-icons/hi'
+import EmptyState from '../components/EmptyState'
 import { useAuth } from '../contexts/AuthContext'
 import { getProfile, initializeProfile } from '../services/profileService'
 import {
@@ -123,10 +124,11 @@ function HoursByGenreDonut({ hoursByGenre }) {
 
   if (data.length === 0) {
     return (
-      <div className="stats-card stats-empty-card">
-        <p className="stats-empty-copy">
-          Log hours on a Played game to start mapping your time across genres.
-        </p>
+      <div className="stats-card">
+        <EmptyState
+          size="inline"
+          body="Log hours on a Played game to start mapping your time across genres."
+        />
       </div>
     )
   }
@@ -202,11 +204,11 @@ function MostPlayedBars({ topByHours, onGameClick }) {
 
   if (top10.length === 0) {
     return (
-      <div className="stats-card stats-empty-card">
-        <p className="stats-empty-copy">
-          No hours logged yet — open any game and log time played to see your
-          top 10 here.
-        </p>
+      <div className="stats-card">
+        <EmptyState
+          size="inline"
+          body="No hours logged yet — open any game and log time played to see your top 10 here."
+        />
       </div>
     )
   }

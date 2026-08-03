@@ -171,9 +171,9 @@
 /* ---- Cover thumbnail ---- */
 .mpr-row__cover {
   width: 44px;
-  height: 60px;
+  aspect-ratio: var(--cover-ratio);
   object-fit: cover;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--cover-radius);
   flex-shrink: 0;
   background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
 }
@@ -234,8 +234,8 @@
 
 .mpr-skel__cover {
   width: 44px;
-  height: 60px;
-  border-radius: var(--radius-sm, 6px);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
 .mpr-skel__info {
@@ -278,6 +278,5 @@
 
   .mpr-row__cover {
     width: 52px;
-    height: 70px;
   }
 }

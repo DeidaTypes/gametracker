@@ -7,11 +7,13 @@ import React, {
 } from 'react'
 import { Reorder } from 'motion/react'
 import { LuX, LuSearch, LuCheck } from 'react-icons/lu'
+import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/igdb'
 import { getGamesFromList } from '../services/libraryService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
 import CenteredModal from './CenteredModal'
+import EmptyState from './EmptyState'
 import './FavoritesPickerSheet.css'
 
 const MAX_FAVORITES = 4
@@ -376,12 +378,9 @@ function FavoritesPickerSheet({
 
         {/* No results */}
         {query.trim() && !loading && !error && results.length === 0 && (
-          <p
-            className="fps-state-row fps-state-row--empty"
-            aria-live="polite"
-          >
-            No games found for &ldquo;{query}&rdquo;
-          </p>
+          <div aria-live="polite">
+            <EmptyState icon={SearchX} size="inline" body={`No games found for "${query}"`} />
+          </div>
         )}
 
         {/* Section label when showing library */}
@@ -391,9 +390,7 @@ function FavoritesPickerSheet({
 
         {/* Empty library state */}
         {!query.trim() && libraryGames.length === 0 && (
-          <p className="fps-state-row fps-state-row--empty">
-            Add games to your library and they&rsquo;ll appear here.
-          </p>
+          <EmptyState size="inline" body="Add games to your library and they'll appear here." />
         )}
 
         {/* 2-column cover grid */}

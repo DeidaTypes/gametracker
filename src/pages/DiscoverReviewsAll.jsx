@@ -5,7 +5,9 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Sparkles, Users } from 'lucide-react'
 import ReviewCard from '../components/ReviewCard'
+import EmptyState from '../components/EmptyState'
 import {
   getPopularReviews,
   getReviewsFromFollowing,
@@ -291,7 +293,7 @@ export default function DiscoverReviewsAll() {
           ) : popularError ? (
             <p className="dra-empty-text">Could not load reviews.</p>
           ) : popularReady && popularReviews.length === 0 ? (
-            <p className="dra-empty-text">No popular reviews yet — check back later.</p>
+            <EmptyState icon={Sparkles} size="compact" body="No popular reviews yet — check back later." />
           ) : (
             popularReviews.map((r) => (
               <ReviewCard
@@ -311,9 +313,9 @@ export default function DiscoverReviewsAll() {
               <SkeletonCard />
             </>
           ) : followEmpty ? (
-            <p className="dra-empty-text">Follow people to see their reviews here.</p>
+            <EmptyState icon={Users} size="compact" body="Follow people to see their reviews here." />
           ) : followReady && followReviews.length === 0 ? (
-            <p className="dra-empty-text">No reviews yet — be the first to write one.</p>
+            <EmptyState icon={Sparkles} size="compact" body="No reviews yet — be the first to write one." />
           ) : (
             <>
               {followReviews.map((r) => (

@@ -117,7 +117,7 @@
   min-width: 0;
   max-width: 74px;
   aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-bg-tertiary);
 }
@@ -137,7 +137,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--cover-radius);
   border: 1px dashed var(--border-strong);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);

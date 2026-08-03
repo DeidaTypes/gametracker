@@ -114,39 +114,6 @@
 
 /* ── Empty state ── */
 
-.gra-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 48px 0;
-}
-
-.gra-empty-text {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-body);
-  margin: 0;
-  text-align: center;
-}
-
-.gra-empty-cta {
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: 10px 24px;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.gra-empty-cta:hover,
-.gra-empty-cta:focus-visible {
-  opacity: 0.88;
-}
-
 /* ── Skeleton card ── */
 
 .gra-skeleton-card {

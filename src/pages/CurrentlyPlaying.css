@@ -129,9 +129,8 @@
 .cp-page-card-cover {
   flex: 0 0 72px;
   width: 72px;
-  /* ~30% taller than original 100px */
-  height: 130px;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
@@ -276,46 +275,12 @@
 
 /* ── Empty state ── */
 
-.cp-page-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--spacing-3xl) var(--container-padding);
-  gap: var(--spacing-sm);
-}
-
-.cp-page-empty-icon {
-  font-size: 48px;
-  opacity: 0.3;
-}
-
-.cp-page-empty-title {
-  font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.cp-page-empty-body {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-  max-width: 280px;
-}
-
 /* ── Responsive ── */
 
 @media (min-width: 480px) {
   .cp-page-card-cover {
     flex: 0 0 88px;
     width: 88px;
-    height: 122px;
   }
 }
 

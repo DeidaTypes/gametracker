@@ -50,7 +50,7 @@ export default function RatingsHistogram({ ratings }) {
               height={barH}
               rx={2}
               ry={2}
-              fill="var(--accent-copper)"
+              fill="var(--accent-brand)"
               opacity={count > 0 ? 1 : 0.15}
             />
           )

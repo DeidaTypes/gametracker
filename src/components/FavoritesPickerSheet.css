@@ -111,8 +111,8 @@
 .fps-fav-cover {
   position: relative;
   width: 68px;
-  height: 90px;
-  border-radius: var(--radius-sm);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: visible; /* needed so the X badge isn't clipped */
   background: var(--bg-surface, #131a35);
   border: 2px solid var(--accent, #3b82f6);
@@ -124,7 +124,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 6px;
+  border-radius: var(--cover-radius);
 }
 
 .fps-fav-cover__fallback {
@@ -136,7 +136,7 @@
   font-size: 22px;
   font-weight: 700;
   color: var(--color-text-tertiary, #5c6b8a);
-  border-radius: 6px;
+  border-radius: var(--cover-radius);
 }
 
 /* Remove (X) badge — top-right corner of each favorite cover */
@@ -403,11 +403,6 @@
   color: var(--color-text-secondary, #94a8d4);
 }
 
-.fps-state-row--empty {
-  display: block;
-  text-align: center;
-}
-
 /* Loading spinner */
 .fps-spinner {
   display: inline-block;
@@ -474,8 +469,8 @@
 .fps-grid-cover {
   position: relative;
   width: 100%;
-  aspect-ratio: var(--cover-ratio, 2/3);
-  border-radius: var(--radius-md, 10px);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--bg-surface, #131a35);
   border: 2px solid transparent;

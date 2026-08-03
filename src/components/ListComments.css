@@ -4,10 +4,15 @@
   /* grid → comments heading: 24px (owned entirely here — the grid's own
      container has no bottom padding of its own, see
      .list-detail-content in ListDetail.css). No divider line — sections
-     are separated by spacing only. The composer (below) is the last
-     in-flow child of this section — no extra bottom clearance needed
-     beyond .list-detail-page's own bottom-nav safe-area padding. */
-  padding: 24px var(--page-padding) 24px;
+     are separated by spacing only. The composer itself is viewport-
+     anchored (see .lc-composer below), not an in-flow child, so this
+     section's own bottom padding is what keeps the last comment clear of
+     it — same --comment-composer-clearance reserve every comment screen
+     uses (ReviewComments/ReviewDetail), plus this page's own
+     --bottom-nav-safe-area (which body.nav-hidden collapses to just the
+     home-indicator inset while this screen is open). */
+  padding: 24px var(--page-padding)
+    calc(var(--comment-composer-clearance) + var(--bottom-nav-safe-area));
 }
 
 .lc-heading {
@@ -109,26 +114,29 @@
 }
 
 /* ── Composer ──
-   A normal in-flow element at the end of the thread — it scrolls with the
-   page like any other content. It is NOT pinned/fixed to the screen and
-   does not float above the game grid or follow the user. It carries no
-   keyboard-lift wrapper of its own: bringing the focused field above the
-   keyboard is left entirely to the platform's native "scroll focused
-   input into view" behavior plus the global `.main-content` keyboard
-   padding (src/styles/keyboard.css). Layering a second, locally-animated
-   padding/scroll on top of that (as a previous version of this file did)
-   fought the native scroll and the keyboard's own show animation, which
-   is what caused the page to visibly jump/slide on focus — don't
-   reintroduce a local keyboard-aware wrapper here. */
+   Viewport-anchored, matching every other comment screen: rest position
+   and glass chrome come from the shared .kb-composer-bar class
+   (styles/keyboard.css), the keyboard lift from the shared .kb-lift class
+   via <KeyboardAwareView mode="composer"> (ListComments.jsx). This class
+   only adds this composer's own padding on top of that shared bar — do
+   not add position/background/border here, and do not go back to an
+   in-flow layout; that divergence from ReviewComments/ReviewDetail was
+   the bug this screen is fixed against. */
 
 .lc-composer {
-  margin-top: 14px;
+  padding: 10px var(--page-padding) 10px;
 }
 
+/* Centers within the same max-width every other comment screen's composer
+   row uses (ReviewComments/ReviewDetail), so the bar's content doesn't
+   stretch edge-to-edge on wide viewports even though the bar itself
+   (.kb-composer-bar) spans the full width. */
 .lc-composer__row {
   display: flex;
   align-items: flex-end;
   gap: 10px;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 /* Starts at one line and grows to ~3 via JS (see ListComments.jsx);
@@ -162,35 +170,44 @@
   border-color: var(--color-border-focus);
 }
 
+/* Gradient send button — app-wide canonical treatment (see
+   MessagesThread.css's .dm-thread__send, the original of this recipe).
+   44x44 meets the minimum tap target and reuses the same --grad-cta
+   primary-action language as every other CTA in the app. */
 .lc-composer__send {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  background: var(--color-brand-primary, var(--accent));
+  background: var(--grad-cta);
   border: none;
   border-radius: var(--radius-full);
-  color: #ffffff;
+  color: var(--color-on-accent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: filter var(--transition-fast), opacity var(--transition-fast);
-  margin-bottom: 1px;
 }
 
 .lc-composer__send:hover:not(:disabled) {
-  filter: brightness(1.12);
+  filter: brightness(1.08);
 }
 
 .lc-composer__send:disabled {
-  opacity: 0.35;
-  cursor: default;
+  opacity: 0.4;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 @media (min-width: 769px) {
   .lc-section {
+    padding-inline: var(--page-padding-desktop);
+  }
+
+  .lc-composer {
     padding-inline: var(--page-padding-desktop);
   }
 }

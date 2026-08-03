@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Clock, PlayCircle, Star } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import SharedCover from '../components/SharedCover'
+import EmptyState from '../components/EmptyState'
 import { getBestImageUrl } from '../services/imageUtils'
 import { getMostPlayed, getUnfinished, getTopRated } from '../services/smartListService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -13,6 +15,7 @@ const LIST_CONFIG = {
     title: 'Most Played',
     fetch: () => getMostPlayed(50),
     badge: (g) => `${g.hoursPlayed}h`,
+    emptyIcon: Clock,
     emptyMsg: 'Log hours in your reviews to populate this list.',
   },
   unfinished: {
@@ -21,6 +24,7 @@ const LIST_CONFIG = {
     fetch: () => getUnfinished(50),
     badge: (g) =>
       g.progressPercent > 0 ? `${g.progressPercent}%` : 'Not started',
+    emptyIcon: PlayCircle,
     emptyMsg: 'Add games to "Currently Playing" to see them here.',
   },
   'top-rated': {
@@ -28,6 +32,7 @@ const LIST_CONFIG = {
     title: 'Top Rated',
     fetch: () => getTopRated(50),
     badge: (g) => `★ ${g.userRating.toFixed(1)}`,
+    emptyIcon: Star,
     emptyMsg: 'Rate games in your reviews to populate this list.',
   },
 }
@@ -71,9 +76,7 @@ function SmartListDetail() {
         </header>
 
         {games.length === 0 ? (
-          <div className="sld-empty">
-            <p>{config.emptyMsg}</p>
-          </div>
+          <EmptyState icon={config.emptyIcon} body={config.emptyMsg} />
         ) : (
           <ul className="sld-list">
             {games.map((game, idx) => {

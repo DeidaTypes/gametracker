@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { NotebookText } from 'lucide-react'
 import {
   getJournalEntriesForGame,
   deleteJournalEntry,
 } from '../services/journalService'
 import { showToast } from './Toast'
+import EmptyState from './EmptyState'
 import './GameJournalSection.css'
 
 /**
@@ -123,9 +125,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
           <div className="gjs-skeleton gjs-skeleton--line gjs-skeleton--short" />
         </div>
       ) : entries.length === 0 ? (
-        <p className="gjs-empty">
-          No journal entries yet — jot a note as you play.
-        </p>
+        <EmptyState icon={NotebookText} size="inline" body="No journal entries yet — jot a note as you play." />
       ) : (
         <ul className="gjs-list" aria-label="Journal entries">
           {entries.map((entry) => {

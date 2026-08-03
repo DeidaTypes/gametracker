@@ -62,8 +62,8 @@
 
 .hts-sk-cover {
   width: 100%;
-  aspect-ratio: var(--cover-ratio, 3/4);
-  border-radius: var(--radius-lg, 12px);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
 .hts-sk-label {

@@ -18,7 +18,7 @@ function CoverSkeleton() {
   )
 }
 
-export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [] }) {
+export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], onSeeAll }) {
   const navigate = useNavigate()
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +48,22 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [] }
     <>
       <div className="gd-divider" />
       <div className="gd-section">
-        <p className="gd-section-label">More Like This</p>
+        <div className="gd-section-header-row">
+          <p className="gd-section-label">More Like This</p>
+          {onSeeAll && (
+            <button
+              type="button"
+              className="gd-see-all-link"
+              onClick={onSeeAll}
+              aria-label="See all similar games"
+            >
+              See all
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          )}
+        </div>
         <div className="sgr-scroll" role="list" aria-label="More like this">
           {loading
             ? Array.from({ length: 8 }).map((_, i) => (

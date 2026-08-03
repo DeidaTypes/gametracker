@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Globe, Lock, ChevronLeft, Plus, Check, X } from 'lucide-react'
+import { Globe, Lock, ChevronLeft, Plus, Check, X, SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
 import CenteredModal from './CenteredModal'
+import EmptyState from './EmptyState'
 import './CreateListModal.css'
 
 const NAME_MAX = 60
@@ -342,7 +343,7 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
               searchTerm.trim() === lastQuery &&
               searchResults.length === 0 &&
               !searchError && (
-                <p className="clm-status">No games found for &ldquo;{searchTerm}&rdquo;.</p>
+                <EmptyState icon={SearchX} size="inline" body={`No games found for "${searchTerm}".`} />
               )}
 
             {/* Results — row list: cover + title + year/dev + add/added toggle */}

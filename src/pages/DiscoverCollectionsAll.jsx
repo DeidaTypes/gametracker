@@ -1,6 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Layers } from 'lucide-react'
 import CollectionCard from '../components/explore/CollectionCard'
+import EmptyState from '../components/EmptyState'
 import { useCollections } from '../hooks/useExploreData'
 import './DiscoverCollectionsAll.css'
 
@@ -66,7 +68,7 @@ export default function DiscoverCollectionsAll() {
             <SkeletonTile />
           </div>
         ) : isEmpty ? (
-          <p className="dca-empty-text">No collections yet — check back later.</p>
+          <EmptyState icon={Layers} body="No collections yet — check back later." />
         ) : (
           <>
             {curated.length > 0 && (

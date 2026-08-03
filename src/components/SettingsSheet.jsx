@@ -10,7 +10,6 @@ import {
   LuSparkles,
   LuBell,
   LuLock,
-  LuPalette,
   LuCircleHelp,
   LuInfo,
 } from 'react-icons/lu'
@@ -57,11 +56,11 @@ function SettingsGroup({ title, children }) {
  * below — it's the map of what's real vs. placeholder):
  *   - Edit profile, Share profile, Your Wrapped — real. Wired to the
  *     exact same handlers the old flat sheet used.
- *   - Privacy, Appearance, About — real. None of these have their own
- *     dedicated screen; they route to the full /settings page (which
- *     already has "Privacy & Safety", "Appearance", and "About"
- *     sections) and deep-link to that section via a hash anchor so the
- *     tap actually lands somewhere useful instead of a generic page top.
+ *   - Privacy, About — real. Neither has its own dedicated screen; they
+ *     route to the full /settings page (which already has "Privacy &
+ *     Safety" and "About" sections) and deep-link to that section via a
+ *     hash anchor so the tap actually lands somewhere useful instead of
+ *     a generic page top.
  *   - Help & feedback — real. Opens the same feedback mailto the full
  *     Settings page uses.
  *   - Notifications — PLACEHOLDER. There is no notification-preferences
@@ -119,11 +118,6 @@ function SettingsSheet({
   const handlePrivacy = () => {
     onClose()
     navigate('/settings#settings-section-privacy')
-  }
-
-  const handleAppearance = () => {
-    onClose()
-    navigate('/settings#settings-section-appearance')
   }
 
   const handleAbout = () => {
@@ -225,12 +219,6 @@ function SettingsSheet({
                     tone="cobalt"
                     label="Privacy"
                     onClick={handlePrivacy}
-                  />
-                  <SettingsRow
-                    icon={<LuPalette size={18} />}
-                    tone="cobalt"
-                    label="Appearance"
-                    onClick={handleAppearance}
                   />
                 </SettingsGroup>
 

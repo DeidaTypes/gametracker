@@ -85,14 +85,6 @@
   gap: 20px 14px;
 }
 
-.dca-empty-text {
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-  margin: 24px auto 0;
-  text-align: center;
-  max-width: 280px;
-}
-
 /* ── Skeleton ── */
 
 .dca-skeleton-tile {

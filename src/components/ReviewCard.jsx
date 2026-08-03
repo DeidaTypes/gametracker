@@ -12,7 +12,7 @@ import {
   HiOutlineFlag,
 } from 'react-icons/hi'
 import { LuPin, LuPinOff, LuQuote } from 'react-icons/lu'
-import StarRating from './StarRating'
+import StarRatingDisplay from './StarRatingDisplay'
 import Pressable from './Pressable'
 import Avatar from './Avatar'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
@@ -308,13 +308,11 @@ function ReviewCard({
   const displayedLikeCount = likeState.count || review.likeCount || 0
   const displayedCommentCount = review.commentCount || 0
 
-  // gamedetail variant: whole stars only (no half-star glyphs), and a
-  // "relationship · time ago" meta line — relationship is read from the
-  // review data when present, otherwise the line falls back to just the
-  // relative time.
-  const gdWholeRating = Math.round(
-    Math.max(0, Math.min(5, Number(review.rating) || 0))
-  )
+  // gamedetail variant: "relationship · time ago" meta line —
+  // relationship is read from the review data when present, otherwise
+  // the line falls back to just the relative time. The star rating here
+  // used to be pre-rounded to a whole number; it now renders true
+  // fractional fill like every other screen (see StarRatingDisplay.jsx).
   const gdTimeAgo = formatActivityDate(review.createdAt)
   const gdMeta = [review.relationship, gdTimeAgo].filter(Boolean).join(' · ')
 
@@ -512,7 +510,7 @@ function ReviewCard({
             <h3 className="review-card__pr-title">{review.game.name}</h3>
 
             <div className="review-card__pr-rating">
-              <StarRating rating={review.rating} size={14} />
+              <StarRatingDisplay rating={review.rating} size="sm" />
               {vibeLabel && (
                 <>
                   <span className="review-card__pr-sep" aria-hidden="true">·</span>
@@ -547,7 +545,7 @@ function ReviewCard({
                 />
               </button>
             }
-            end={<StarRating rating={gdWholeRating} size={16} />}
+            end={<StarRatingDisplay rating={review.rating} size="xs" />}
           >
             <button
               type="button"
@@ -600,7 +598,7 @@ function ReviewCard({
         )}
   
         <div className="review-card__rating-row">
-          <StarRating rating={review.rating} size={24} />
+          <StarRatingDisplay rating={review.rating} size="lg" />
           {review.hoursPlayed > 0 && (
             <span
               className="review-card__hours-chip"

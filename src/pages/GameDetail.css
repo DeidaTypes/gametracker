@@ -213,8 +213,8 @@
 
 .gd-hero-cover {
   width: 180px;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.6),
@@ -296,7 +296,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  /* No top margin — this now sits directly under its own "Genres"
+     .gd-section-label, which already carries the 14px label-to-content
+     gap every other section uses. */
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -418,34 +420,37 @@
   margin-bottom: 0;
 }
 
-/* Serif display title used for the "Top Reviews" section header —
-   matches the "Currently Playing" / "Your Library" typography pattern. */
-.gd-section-display-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  letter-spacing: var(--letter-spacing-display);
-  line-height: var(--line-height-display-l);
-  margin: 0;
-}
-
-/* Chevron-right button that navigates to the all-reviews page */
-.gd-see-all-btn {
+/* "See all" — text + chevron affordance for any section-label row whose
+   section has more content than fits inline (Top Reviews, More Like This).
+   Same treatment app-wide: --accent text, --space-2 icon-to-text gap (the
+   one sanctioned use of --space-2 — an inline glyph next to its word). */
+.gd-see-all-link {
   background: none;
   border: none;
-  padding: 6px;
+  padding: 4px 0;
   cursor: pointer;
-  color: var(--color-text-tertiary);
   display: inline-flex;
   align-items: center;
-  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--transition-fast);
 }
 
-.gd-see-all-btn:hover,
-.gd-see-all-btn:focus-visible {
-  color: var(--color-text-primary);
+.gd-see-all-link svg {
+  flex-shrink: 0;
+}
+
+.gd-see-all-link:hover,
+.gd-see-all-link:focus-visible {
+  color: var(--accent-hover);
 }
 
 /* Vertical stack of ReviewCards — shared shell gap, consistent with
@@ -454,40 +459,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
-}
-
-/* Empty-state block when no reviews exist and the current user hasn't reviewed */
-.gd-reviews-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 32px 0;
-}
-
-.gd-reviews-empty-text {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-body);
-  margin: 0;
-  text-align: center;
-}
-
-.gd-reviews-empty-cta {
-  background: var(--color-brand-primary);
-  color: var(--color-bg-primary);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: 10px 24px;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.gd-reviews-empty-cta:hover,
-.gd-reviews-empty-cta:focus-visible {
-  opacity: 0.88;
 }
 
 .gd-divider {
@@ -791,8 +762,8 @@
 /* Cover poster — 2:3 ratio, centered */
 .gd-sk-cover {
   width: 120px;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   flex-shrink: 0;
   margin-bottom: var(--spacing-md);
 }

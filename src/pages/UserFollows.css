@@ -147,15 +147,6 @@
   gap: 8px;
 }
 
-.follows-page__empty {
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  text-align: center;
-  padding: var(--spacing-3xl) 0;
-  margin: 0;
-}
-
 .follows-page__error {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);

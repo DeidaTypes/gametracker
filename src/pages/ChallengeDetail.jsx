@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
+import { Trophy } from 'lucide-react'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { getFinishedGamesThisYear, getGoalProgress } from '../services/goalService'
 import GoalRing from '../components/GoalRing'
 import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 import './ChallengeDetail.css'
 
 function formatCompletedAt(iso) {
@@ -149,11 +151,15 @@ function ChallengeDetail() {
                 ))}
               </ul>
             ) : games.length === 0 ? (
-              <p className="challenge-detail__empty">
-                {isOwnProfile
-                  ? `Nothing finished yet in ${year}. Mark a game as Played and it'll show up here.`
-                  : `${displayName || 'This player'} hasn't finished a game in ${year} yet.`}
-              </p>
+              <EmptyState
+                icon={Trophy}
+                size="compact"
+                body={
+                  isOwnProfile
+                    ? `Nothing finished yet in ${year}. Mark a game as Played and it'll show up here.`
+                    : `${displayName || 'This player'} hasn't finished a game in ${year} yet.`
+                }
+              />
             ) : (
               <ul className="challenge-detail__list">
                 {games.map((game) => (

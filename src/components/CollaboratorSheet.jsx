@@ -7,6 +7,7 @@ import { getFollowing } from '../services/followService'
 import { addCollaborator, removeCollaborator } from '../services/listService'
 import { showToast } from './Toast'
 import Avatar from './Avatar'
+import EmptyState from './EmptyState'
 import './CollaboratorSheet.css'
 
 /**
@@ -170,10 +171,7 @@ function CollaboratorSheet({
                   </ul>
                 </section>
               ) : (
-                <div className="collab-sheet__empty-collab">
-                  <Users size={28} aria-hidden="true" />
-                  <p>No co-editors yet</p>
-                </div>
+                <EmptyState icon={Users} size="compact" body="No co-editors yet" />
               )}
 
               {/* Invite from Following — owner only */}
@@ -183,11 +181,14 @@ function CollaboratorSheet({
                   {loadingFollowing ? (
                     <div className="collab-sheet__loading">Loading…</div>
                   ) : inviteable.length === 0 ? (
-                    <div className="collab-sheet__empty-following">
-                      {following.length === 0
-                        ? "You're not following anyone yet."
-                        : 'Everyone you follow is already a co-editor.'}
-                    </div>
+                    <EmptyState
+                      size="inline"
+                      body={
+                        following.length === 0
+                          ? "You're not following anyone yet."
+                          : 'Everyone you follow is already a co-editor.'
+                      }
+                    />
                   ) : (
                     <ul className="collab-sheet__user-list">
                       {inviteable.map((u) => (

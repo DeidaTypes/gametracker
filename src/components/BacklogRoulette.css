@@ -114,10 +114,10 @@
   overflow: hidden;
   border-radius: var(--radius-md);
   position: relative;
-  /* Copper glow during spin */
+  /* Want-to-Play glow during spin */
   box-shadow:
-    0 0 0 2px var(--color-status-want, #c4634e),
-    0 0 28px rgba(196, 99, 78, 0.45);
+    0 0 0 2px var(--status-want-to-play),
+    0 0 28px color-mix(in srgb, var(--status-want-to-play) 45%, transparent);
 }
 
 /* Fade masks — hide strip overflowing the window edges */
@@ -221,8 +221,8 @@
   background: var(--color-bg-elevated);
   box-shadow:
     var(--shadow-cover, 0 8px 24px rgba(0,0,0,0.5)),
-    0 0 0 2px var(--color-status-want, #c4634e),
-    0 0 32px rgba(196, 99, 78, 0.35);
+    0 0 0 2px var(--status-want-to-play),
+    0 0 32px color-mix(in srgb, var(--status-want-to-play) 35%, transparent);
   flex-shrink: 0;
 }
 
@@ -259,7 +259,7 @@
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-status-want, #c4634e);
+  color: var(--status-want-to-play);
   margin: 0;
 }
 
@@ -339,13 +339,13 @@
 }
 
 .roulette-btn--primary {
-  background: var(--color-status-want, #c4634e);
+  background: var(--status-want-to-play);
   color: #fff;
 }
 
 @media (hover: hover) {
   .roulette-btn--primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-status-want, #c4634e) 82%, #fff);
+    background: color-mix(in srgb, var(--status-want-to-play) 82%, #fff);
   }
 }
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Heart } from 'lucide-react'
 import GameCard from '../components/GameCard'
+import EmptyState from '../components/EmptyState'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Wishlist.css'
 
@@ -37,10 +39,11 @@ function Wishlist() {
       </div>
 
       {wishlistGames.length === 0 ? (
-        <div className="empty-wishlist">
-          <h2>Your wishlist is empty</h2>
-          <p>Start adding games you want to play!</p>
-        </div>
+        <EmptyState
+          icon={Heart}
+          title="Your wishlist is empty"
+          body="Start adding games you want to play!"
+        />
       ) : (
         <div className="wishlist-content">
           <div className="games-grid">

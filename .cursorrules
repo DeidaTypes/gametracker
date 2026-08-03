@@ -54,10 +54,14 @@ separate --share-* tokens. Never mix the two scales in either direction.
 The warm copper/amber palette is RETIRED and must not come back. It has drifted
 back repeatedly, so it is now linted, not just a convention. Never hardcode a
 hex in component CSS, and never introduce a warm/orange/amber/copper color.
-The only sanctioned warm values are tokens already in theme.css: the opt-in
-Ambassador copper accent, --star (rating gold), --tier-bronze / --tier-gold,
-and --status-warning. If you think you need another one, add a named token to
-theme.css and say why — don't inline it.
+The Ambassador copper accent theme (body[data-accent='copper']) that used to be
+the one sanctioned exception has itself been removed — there is no opt-in warm
+accent anywhere in the app anymore. The only remaining sanctioned warm values
+are tokens already in theme.css: --star (rating gold), --tier-bronze /
+--tier-gold (flagged for a future palette decision — bronze/gold sit in the
+warm band), --status-warning, and the color-blind-mode orange
+(--status-want-to-play, deutan/protan only). If you think you need another
+one, add a named token to theme.css and say why — don't inline it.
 
 ### Linting
 `npm run lint` runs Stylelint over src/**/*.css in WARNING MODE (config:

@@ -9,12 +9,13 @@
   --page-padding: 16px;
 }
 
-/* Keyboard clearance for in-flow inputs (the description editor, and the
-   comment composer in ListComments.css) is handled globally on
-   `.main-content` (the app's single scroll container) in
-   src/styles/keyboard.css — this page needs no rule of its own. The
-   comment composer is a normal in-flow element, not a fixed bar; see
-   ListComments.jsx/.css for its scroll-into-view keyboard handling. */
+/* Keyboard clearance for the in-flow description editor is handled
+   globally on `.main-content` (the app's single scroll container) in
+   src/styles/keyboard.css — this page needs no rule of its own for that
+   field. The comment composer (ListComments.jsx/.css) is a viewport-
+   anchored fixed bar, matching ReviewComments/ReviewDetail — it lifts via
+   the shared .kb-lift class instead, and .lc-section reserves its own
+   scroll clearance so it never covers the last comment. */
 
 /* ── Ambient wash — Cobalt Modern multi-hue glow behind the top of the
    page only. Tracker lists only (custom lists are one continuous
@@ -99,9 +100,9 @@
 /* Thumbnail — 2:3 cover mini */
 .ld-sk-game-thumb {
   width: 44px;
-  height: 60px;
+  aspect-ratio: var(--cover-ratio);
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
 }
 
 .ld-sk-game-meta {
@@ -842,8 +843,8 @@
 
 .list-detail-page .game-cover {
   width: 100%;
-  aspect-ratio: 2/3;
-  border-radius: var(--radius-xs);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(255, 255, 255, .07);

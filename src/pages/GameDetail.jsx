@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { PenLine } from 'lucide-react'
 import { getGameById } from '../services/igdb'
+import EmptyState from '../components/EmptyState'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
 import ReviewCard from '../components/ReviewCard'
@@ -984,7 +986,7 @@ function GameDetail() {
       {/* ── Content Area ── */}
       <div className="gd-content">
 
-        {/* About + genre chips */}
+        {/* About */}
         <div className="gd-section">
           <p className="gd-section-label">About</p>
           <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
@@ -995,23 +997,29 @@ function GameDetail() {
             className="gd-read-more-btn"
             onClick={() => setDescExpanded(v => !v)}
           >
-            {descExpanded ? 'Less' : 'More'}
+            {descExpanded ? 'Show less' : 'Read more'}
           </button>
+        </div>
 
-          {game.genres.length > 0 && (
+        {/* Genres — single canonical chip set for the whole page. The "At a
+             glance" vibe tags above (IGDB themes) are a separate, deliberately
+             distinct concept and never duplicate these. */}
+        {game.genres.length > 0 && (
+          <div className="gd-section">
+            <p className="gd-section-label">Genres</p>
             <div className="gd-genre-row">
               {game.genres.map((genre) => (
                 <button
                   key={genre}
                   className="gd-genre-pill"
-                  onClick={() => navigate(`/search?genre=${genreToSlug(genre)}`)}
+                  onClick={() => navigate(`/browse/${genreToSlug(genre)}`)}
                 >
                   {genre}
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="gd-divider" />
 
@@ -1103,13 +1111,14 @@ function GameDetail() {
         {/* Reviews — promoted here per the new section order */}
         <div className="gd-section">
           <div className="gd-section-header-row">
-            <h2 className="gd-section-display-title">Top Reviews</h2>
+            <p className="gd-section-label">Top Reviews</p>
             <button
-              className="gd-see-all-btn"
+              className="gd-see-all-link"
               onClick={() => navigate(`/game/${gameId}/reviews`)}
               aria-label="See all reviews"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              See all
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
@@ -1128,15 +1137,13 @@ function GameDetail() {
 
             if (!ownReview && othersTop.length === 0) {
               return (
-                <div className="gd-reviews-empty">
-                  <p className="gd-reviews-empty-text">Be the first to review this game</p>
-                  <button
-                    className="gd-reviews-empty-cta"
-                    onClick={() => setComposeSheetOpen(true)}
-                  >
-                    Write a review
-                  </button>
-                </div>
+                <EmptyState
+                  icon={PenLine}
+                  size="compact"
+                  title="Be the first to review this game"
+                  cta="Write a review"
+                  onCta={() => setComposeSheetOpen(true)}
+                />
               )
             }
 
@@ -1172,11 +1179,19 @@ function GameDetail() {
           })()}
         </div>
 
-        {/* More Like This — SimilarGamesRow self-fetches in parallel; renders null (incl. header/divider) if no results */}
+        {/* More Like This — SimilarGamesRow self-fetches in parallel; renders null (incl. header/divider) if no results.
+             "See all" reuses the same /browse/:categoryKey destination as the Genres chips above (CategoryResults) —
+             there is no dedicated "all similar games" page today, so this is the closest real destination rather
+             than a dead link. */}
         <SimilarGamesRow
           gameId={gameId}
           genreIds={game.genreIds || []}
           themeIds={game.themeIds || []}
+          onSeeAll={
+            game.genres.length > 0
+              ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
+              : undefined
+          }
         />
 
       </div>

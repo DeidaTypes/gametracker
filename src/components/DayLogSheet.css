@@ -110,28 +110,6 @@
   color: var(--color-text-tertiary);
 }
 
-.dls-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xl) 0;
-}
-
-.dls-empty-icon {
-  font-size: 32px;
-  line-height: 1;
-  opacity: 0.5;
-}
-
-.dls-empty-text {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  text-align: center;
-}
-
 /* ── Activity list ──────────────────────────── */
 
 .dls-list {

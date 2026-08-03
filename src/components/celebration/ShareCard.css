@@ -121,7 +121,7 @@
   color: #5c6b8a;
 }
 
-/* Two-layer star row (same technique as StarRating.jsx) */
+/* Two-layer star row (same technique as StarRatingDisplay.jsx) */
 .share-card__stars-wrap {
   position: relative;
   display: flex;
@@ -149,7 +149,7 @@
 }
 
 /* Prevent the gold SVGs from compressing when the clipping container is
-   narrower than the full 5-star row width.  Same fix as StarRating.css —
+   narrower than the full 5-star row width.  Same fix as StarRatingDisplay.css —
    overflow:hidden clips at fillPct%; flex-shrink:0 ensures stars stay at
    their natural 32 px width rather than squishing together. */
 .share-card__stars-fill > svg {

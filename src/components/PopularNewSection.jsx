@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { fetchPopularThisWeek, fetchNewThisWeek } from '../services/igdb'
+import EmptyState from './EmptyState'
 import './PopularNewSection.css'
 
 /**
@@ -111,7 +112,7 @@ function PopularNewSection() {
           : games.length === 0
             ? (
               <div className="pn-empty">
-                Nothing to show yet.
+                <EmptyState size="inline" body="Nothing to show yet." />
               </div>
             )
             : games.map((g) => (

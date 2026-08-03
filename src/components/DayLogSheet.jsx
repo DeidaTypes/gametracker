@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Gamepad2 } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useNavDim } from '../hooks/useNavDim'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,7 +11,8 @@ import {
   formatActivityMessage,
   getActivityHref,
 } from '../services/activityService'
-import StarRating from './StarRating'
+import StarRatingDisplay from './StarRatingDisplay'
+import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import './DayLogSheet.css'
 
@@ -197,10 +198,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
               )}
 
               {!loading && activities.length === 0 && (
-                <div className="dls-empty">
-                  <span className="dls-empty-icon" aria-hidden="true">🎮</span>
-                  <p className="dls-empty-text">No activity logged this day.</p>
-                </div>
+                <EmptyState icon={Gamepad2} size="compact" body="No activity logged this day." />
               )}
 
               {!loading && activities.length > 0 && (
@@ -242,7 +240,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
                                   {act.gameTitle || 'Untitled game'}
                                 </span>
                                 {act.activityType === 'review_posted' && act.reviewRating != null ? (
-                                  <StarRating rating={act.reviewRating} size={12} />
+                                  <StarRatingDisplay rating={act.reviewRating} size="xs" />
                                 ) : act.activityType === 'game_added_to_list' ? (
                                   <span className="dls-item-list-target">
                                     → {act.listName || 'a list'}

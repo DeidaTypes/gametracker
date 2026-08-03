@@ -103,12 +103,6 @@
   gap: var(--spacing-md);
 }
 
-.dev-detail-empty {
-  font-size: var(--font-size-body);
-  color: var(--color-text-tertiary);
-  margin: 0;
-}
-
 /* Desktop */
 @media (min-width: 769px) {
   .dev-detail-header {

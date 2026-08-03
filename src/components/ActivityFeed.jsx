@@ -6,6 +6,7 @@ import {
   getActivityHref,
 } from '../services/activityService'
 import { formatActivityDate } from '../utils/formatActivityDate'
+import { Activity } from 'lucide-react'
 import EmptyState from './EmptyState'
 import Avatar from './Avatar'
 import './ActivityFeed.css'
@@ -140,8 +141,8 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
   if (activities.length === 0) {
     return (
       <EmptyState
-        variant="activity"
-        copy="Your activity will show up here as you play, review, and curate."
+        icon={Activity}
+        body="Your activity will show up here as you play, review, and curate."
       />
     )
   }

@@ -122,8 +122,8 @@
 
 .pn-card__cover-wrap {
   width: 120px;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-bg-tertiary);
   box-shadow: var(--shadow-sm);

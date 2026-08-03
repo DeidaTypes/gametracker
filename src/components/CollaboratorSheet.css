@@ -199,8 +199,6 @@
 }
 
 /* Empty / loading states */
-.collab-sheet__empty-collab,
-.collab-sheet__empty-following,
 .collab-sheet__loading {
   display: flex;
   flex-direction: column;
@@ -210,10 +208,6 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-caption, 13px);
   text-align: center;
-}
-
-.collab-sheet__empty-collab {
-  padding: 24px 20px 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {

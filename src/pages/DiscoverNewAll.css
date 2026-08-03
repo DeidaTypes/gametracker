@@ -34,7 +34,7 @@
 .dna-sk-cover {
   width: 100%;
   aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-lg);
+  border-radius: var(--cover-radius);
 }
 
 @media (min-width: 769px) {

@@ -24,7 +24,7 @@ import {
   LuFlag,
 } from 'react-icons/lu'
 import { HiOutlineHeart, HiOutlineChat } from 'react-icons/hi'
-import { PenLine, List } from 'lucide-react'
+import { PenLine, List, BookOpen, Plus } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -2041,14 +2041,13 @@ function HomeTab({
             </div>
           </div>
           {favoriteGames.length === 0 ? (
-            <button
-              type="button"
-              className="profile-home__fav-empty-cta"
-              onClick={onEditFavorites}
-              aria-label="Add favorite games"
-            >
-              + Add favorite games
-            </button>
+            <EmptyState
+              icon={Plus}
+              size="inline"
+              cta="Add favorite games"
+              ctaVariant="secondary"
+              onCta={onEditFavorites}
+            />
           ) : (
             <div className="profile-favorites-row" role="list">
               {favoriteGames.slice(0, MAX_FAVORITE_SLOTS).map((g) => (
@@ -2515,12 +2514,12 @@ function DiaryTab({ userId, entries, lifeReviews = [], onEntryClick, onReviewCli
   if (merged.length === 0) {
     return (
       <div className="profile-diary">
-        <div className="profile-diary__empty">
-          <p className="profile-diary__empty-text">No diary entries yet.</p>
-          <p className="profile-diary__empty-sub">
-            Add journal notes while playing, or tag a review with a life moment.
-          </p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          size="compact"
+          title="No diary entries yet."
+          body="Add journal notes while playing, or tag a review with a life moment."
+        />
       </div>
     )
   }

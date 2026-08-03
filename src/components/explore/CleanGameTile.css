@@ -27,7 +27,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: var(--cover-ratio);
-  border-radius: var(--radius-lg);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-bg-tertiary);
   box-shadow: var(--shadow-cover);

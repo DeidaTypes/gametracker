@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { LuX, LuSearch } from 'react-icons/lu'
+import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/igdb'
 import { getGamesFromList } from '../services/libraryService'
 import CenteredModal from './CenteredModal'
+import EmptyState from './EmptyState'
 import './GamePickerSheet.css'
 
 /**
@@ -160,9 +162,9 @@ function GamePickerSheet({ isOpen = true, onSelect, onCancel }) {
             )}
 
             {!loading && !error && results.length === 0 && (
-              <p className="gps-state-row gps-state-row--empty" aria-live="polite">
-                No games found for &ldquo;{query}&rdquo;
-              </p>
+              <div aria-live="polite">
+                <EmptyState icon={SearchX} size="inline" body={`No games found for "${query}"`} />
+              </div>
             )}
 
             {!loading && !error && results.length > 0 && (

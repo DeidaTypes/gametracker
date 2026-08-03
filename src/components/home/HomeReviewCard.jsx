@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat, HiCheck } from 'react-icons/hi'
 import { List as ListIcon } from 'lucide-react'
 import Avatar from '../Avatar'
-import StarRating from '../StarRating'
+import StarRatingDisplay from '../StarRatingDisplay'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getSizedImageUrl } from '../../services/imageUtils'
@@ -317,7 +317,7 @@ function GameZone({
 
         {showRating && (
           <span className="home-review-card__rating">
-            <StarRating rating={item.rating} size={ratingOnly ? 18 : 13} />
+            <StarRatingDisplay rating={item.rating} size={ratingOnly ? 'md' : 'xs'} />
             {ratingOnly && <span className="home-review-card__score">{score} / 10</span>}
           </span>
         )}

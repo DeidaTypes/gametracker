@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
 import {
   setGameStatus,
@@ -6,6 +7,7 @@ import {
 } from '../services/libraryService'
 import CenteredModal from './CenteredModal'
 import { showToast } from './Toast'
+import EmptyState from './EmptyState'
 import './TrackerSearchModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -189,9 +191,7 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
         )}
 
         {showNoResults && (
-          <p className="tsm-status tsm-status--hint">
-            No games found for &ldquo;{searchTerm.trim()}&rdquo;.
-          </p>
+          <EmptyState icon={SearchX} size="inline" body={`No games found for "${searchTerm.trim()}".`} />
         )}
 
         {results.length > 0 && (

@@ -31,7 +31,7 @@
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent-copper, #C4634E);
+  color: var(--accent-brand);
   margin: 0;
   text-align: center;
 }
@@ -124,7 +124,7 @@
 .session-end-pick__why {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--accent-copper, #C4634E);
+  color: var(--accent-brand);
   margin: 2px 0 0;
   line-height: 1.35;
   overflow: hidden;
@@ -165,7 +165,7 @@
 }
 
 .session-end-pick__primary {
-  background: var(--accent-copper, #C4634E);
+  background: var(--accent-brand);
   color: #fff;
 }
 

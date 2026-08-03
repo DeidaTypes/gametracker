@@ -1,5 +1,8 @@
 /* ============================================
-   EMPTY STATE — intentional empty state
+   EMPTY STATE — the app's single shared "nothing here yet" surface.
+   Three sizes (default / compact / inline) and two CTA treatments
+   (primary gradient / secondary outline) cover every call site — see
+   EmptyState.jsx for the full prop reference.
    ============================================ */
 
 .es-root {
@@ -8,16 +11,21 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--spacing-2xl) var(--spacing-xl);
-  gap: 24px;
+  padding: var(--space-48) var(--space-32);
+  gap: var(--space-24);
 }
 
 .es-root--compact {
-  padding: var(--spacing-xl) var(--spacing-lg);
-  gap: 16px;
+  padding: var(--space-32) var(--space-24);
+  gap: var(--space-16);
 }
 
-/* ---- Lucide icon (new API) ---- */
+.es-root--inline {
+  padding: var(--space-24) var(--space-16);
+  gap: var(--space-8);
+}
+
+/* ---- Icon — lucide-react only, one icon language app-wide ---- */
 .es-icon {
   color: var(--color-text-tertiary);
   display: flex;
@@ -25,24 +33,7 @@
   justify-content: center;
 }
 
-/* ---- SVG illustration (legacy API) ---- */
-.es-illustration {
-  color: var(--color-brand-primary);
-  opacity: 0.88;
-}
-
-.es-svg {
-  width: 72px;
-  height: 72px;
-  display: block;
-}
-
-.es-root--compact .es-svg {
-  width: 56px;
-  height: 56px;
-}
-
-/* ---- Title (new API) ---- */
+/* ---- Title ---- */
 .es-title {
   font-family: var(--font-body);
   font-size: 16px;
@@ -56,7 +47,7 @@
   font-size: 14px;
 }
 
-/* ---- Body (new API) ---- */
+/* ---- Body ---- */
 .es-body {
   font-family: var(--font-body);
   font-size: 13px;
@@ -71,40 +62,36 @@
   font-size: 12px;
 }
 
-/* ---- Legacy copy ---- */
-.es-copy {
+/* Inline empties are usually body-only (no title) single-line misses —
+   e.g. "No results for '\u2026'" inside a search dropdown or modal list —
+   so body reads at the standard body size/color rather than the smaller
+   compact treatment. */
+.es-root--inline .es-body {
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-body);
   color: var(--color-text-tertiary);
-  margin: 0;
-  max-width: 250px;
+  max-width: 320px;
 }
 
-.es-root--compact .es-copy {
-  font-size: var(--font-size-caption);
-  max-width: 220px;
-}
-
-/* ---- CTA button — cobalt fill ---- */
+/* ---- CTA — primary: the app's gradient fill (--grad-cta). Never a
+   solid-cobalt fill; that reads as a second, competing brand color. ---- */
 .es-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--spacing-xl);
+  padding: 0 var(--space-32);
   height: 40px;
   max-width: 240px;
   width: 100%;
-  background: var(--color-brand-primary);
-  color: #ffffff;
+  background: var(--grad-cta);
+  color: var(--color-on-accent);
   border: none;
-  border-radius: var(--radius-md, 10px);
+  border-radius: var(--radius-full);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   font-family: var(--font-body);
   cursor: pointer;
   transition: filter var(--transition-fast), transform var(--transition-fast);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.28);
+  box-shadow: var(--shadow-glow);
   letter-spacing: 0.1px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -118,9 +105,28 @@
   filter: brightness(0.95);
 }
 
-.es-root--compact .es-cta {
+.es-root--compact .es-cta,
+.es-root--inline .es-cta {
   height: 36px;
   font-size: var(--font-size-caption);
+}
+
+/* ---- CTA — secondary: outlined ghost, for lower-emphasis / utility
+   actions embedded in a compact or inline empty state (e.g. "Clear
+   filter", "Retry") rather than the state's main "go create content"
+   action. This is the one documented alternative to the gradient fill —
+   there is no third CTA treatment. ---- */
+.es-cta--secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+
+.es-cta--secondary:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

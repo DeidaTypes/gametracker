@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { SearchX } from 'lucide-react'
 import { fetchCategoryGames, getCategoryDefinitions } from '../services/browseService'
 import GameCard from '../components/GameCard'
+import EmptyState from '../components/EmptyState'
 import { GameCardSkeletonGrid } from '../components/skeletons/GameCardSkeleton'
 import './CategoryResults.css'
 
@@ -68,9 +70,7 @@ function CategoryResults() {
       )}
 
       {!loading && !error && games.length === 0 && (
-        <div className="category-results-empty">
-          <p>No games found for this category.</p>
-        </div>
+        <EmptyState icon={SearchX} body="No games found for this category." />
       )}
 
       {!loading && !error && games.length > 0 && (

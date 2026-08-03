@@ -5,7 +5,9 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { PenLine } from 'lucide-react'
 import ReviewCard from '../components/ReviewCard'
+import EmptyState from '../components/EmptyState'
 import { getGameById } from '../services/igdb'
 import { getReviewsForGamePaginated } from '../services/reviewService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
@@ -269,15 +271,12 @@ export default function GameReviewsAll() {
             <SkeletonCard />
           </>
         ) : reviews.length === 0 ? (
-          <div className="gra-empty">
-            <p className="gra-empty-text">No reviews yet.</p>
-            <button
-              className="gra-empty-cta"
-              onClick={openReviewComposer}
-            >
-              Be the first to review
-            </button>
-          </div>
+          <EmptyState
+            icon={PenLine}
+            title="No reviews yet."
+            cta="Be the first to review"
+            onCta={openReviewComposer}
+          />
         ) : (
           reviews.map((row) => {
             const shaped = toReviewCardShape(

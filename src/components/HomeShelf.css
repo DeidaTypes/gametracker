@@ -87,9 +87,9 @@
   height: 28px;
   padding: 0 10px;
   border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--color-status-want, #c4634e) 35%, transparent);
-  background: color-mix(in srgb, var(--color-status-want, #c4634e) 12%, transparent);
-  color: var(--color-status-want, #c4634e);
+  border: 1px solid color-mix(in srgb, var(--status-want-to-play) 35%, transparent);
+  background: color-mix(in srgb, var(--status-want-to-play) 12%, transparent);
+  color: var(--status-want-to-play);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
@@ -102,7 +102,7 @@
 
 @media (hover: hover) {
   .shelf-spin-btn:hover {
-    background: color-mix(in srgb, var(--color-status-want, #c4634e) 22%, transparent);
+    background: color-mix(in srgb, var(--status-want-to-play) 22%, transparent);
   }
 }
 
@@ -187,8 +187,8 @@
 .shelf-cover-wrap {
   position: relative;
   width: 92px;
-  height: 138px;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-bg-elevated);
   box-shadow: var(--shadow-cover);
@@ -314,7 +314,6 @@
     width: 104px;
   }
 
-  .shelf-cover-wrap,
   .shelf-add-tile {
     height: 156px;
   }
@@ -503,8 +502,8 @@
 .backlog-peek-cover {
   position: relative;
   width: 84px;
-  height: 126px; /* 2:3 */
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   background: var(--color-bg-elevated);
   box-shadow: var(--shadow-cover);

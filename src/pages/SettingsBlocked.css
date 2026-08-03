@@ -134,29 +134,3 @@
   text-align: center;
 }
 
-.blocked-empty__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(148, 168, 212, 0.08);
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-.blocked-empty__title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.blocked-empty__body {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-tertiary);
-  max-width: 320px;
-  line-height: 1.4;
-}
