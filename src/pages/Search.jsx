@@ -42,6 +42,7 @@ import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../componen
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
 import Avatar from '../components/Avatar'
+import ListCoverCluster from '../components/ListCoverCluster'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Search.css'
 
@@ -961,49 +962,6 @@ function UsersTabResults({ query, rows, isLoading, onTapUser, currentUserId, gen
    LISTS TAB
    ============================================= */
 
-function ListMosaic({ games, coverImageUrl, listName }) {
-  if (coverImageUrl) {
-    return (
-      <div className="sp-list-mosaic sp-list-mosaic--custom-cover">
-        <img
-          src={coverImageUrl}
-          alt={listName ? `${listName} cover` : 'List cover'}
-          className="sp-list-cover-img"
-          loading="lazy"
-        />
-      </div>
-    )
-  }
-
-  const slots = Array.from({ length: 6 })
-  const filledGames = (games || []).filter((g) => g?.image)
-  const mosaicAlt = filledGames.length > 0
-    ? `${listName ?? 'List'} — covers of ${filledGames.map((g) => g.title).filter(Boolean).join(', ')}`
-    : `${listName ?? 'List'} cover`
-
-  return (
-    <div className="sp-list-mosaic" role="img" aria-label={mosaicAlt}>
-      {slots.map((_, idx) => {
-        const game = games?.[idx]
-        if (game?.image) {
-          return (
-            <div key={idx} className="sp-list-mosaic__cell">
-              <img src={game.image} alt="" loading="lazy" />
-            </div>
-          )
-        }
-        return (
-          <div
-            key={idx}
-            className="sp-list-mosaic__cell sp-list-mosaic__cell--empty"
-            aria-hidden="true"
-          />
-        )
-      })}
-    </div>
-  )
-}
-
 function ListRow({ list, onTap, onRemove, removeLabel }) {
   return (
     <article className="sp-list-row">
@@ -1012,10 +970,11 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
         className="sp-list-row__main"
         onClick={() => onTap(list)}
       >
-        <ListMosaic
+        <ListCoverCluster
           games={list.previewGames || list.games}
           coverImageUrl={list.coverImageUrl}
-          listName={list.name}
+          name={list.name}
+          size="lg"
         />
         <div className="sp-list-row__body">
           <h3 className="sp-list-row__title">{list.name}</h3>

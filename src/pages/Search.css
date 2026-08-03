@@ -816,8 +816,8 @@
 .sp-recent-cover {
   flex: 0 0 auto;
   width: 90px;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-md);
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
   overflow: hidden;
   border: none;
   padding: 0;
@@ -856,8 +856,9 @@
 }
 
 .sp-recent-cover--labeled .sp-recent-cover__img {
-  height: 110px;
-  border-radius: var(--radius-sm);
+  height: auto;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
 .sp-recent-cover__title {
@@ -875,7 +876,7 @@
 /* Skeleton placeholder for trending covers while loading */
 .sp-recent-cover--skeleton {
   background: var(--color-bg-elevated);
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
   animation: sp-skeleton-pulse 1.4s ease-in-out infinite;
   pointer-events: none;
 }
@@ -1092,10 +1093,11 @@
 .sp-list-row__main {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
   background: none;
   border: none;
-  padding: 0;
+  padding: var(--space-12);
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
@@ -1106,52 +1108,13 @@
   opacity: 0.85;
 }
 
-.sp-list-mosaic {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  width: 100%;
-  height: 80px;
-}
-
-.sp-list-mosaic__cell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: var(--color-bg-elevated);
-  overflow: hidden;
-}
-
-.sp-list-mosaic__cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.sp-list-mosaic__cell--empty {
-  background: linear-gradient(
-    180deg,
-    var(--color-bg-elevated) 0%,
-    var(--color-bg-tertiary) 100%
-  );
-}
-
-.sp-list-mosaic--custom-cover {
-  display: block;
-}
-
-.sp-list-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
 .sp-list-row__body {
-  padding: 12px 14px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-4);
 }
 
 .sp-list-row__title {

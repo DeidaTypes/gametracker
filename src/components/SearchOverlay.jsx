@@ -33,6 +33,7 @@ import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRo
 import ReviewCard from '../components/ReviewCard'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
+import ListCoverCluster from './ListCoverCluster'
 import './SearchOverlay.css'
 
 // ─── Static genre data ─────────────────────────────────────────────────────
@@ -401,41 +402,6 @@ function UsersResults({ rows, isLoading, onTapUser, currentUserId }) {
 
 // ─── Lists tab ─────────────────────────────────────────────────────────────
 
-function ListMosaic({ games, coverImageUrl, listName }) {
-  if (coverImageUrl) {
-    return (
-      <div className="so-list-mosaic so-list-mosaic--custom-cover">
-        <img
-          src={coverImageUrl}
-          alt={listName ? `${listName} cover` : 'List cover'}
-          className="so-list-cover-img"
-          loading="lazy"
-        />
-      </div>
-    )
-  }
-
-  const filledGames = (games || []).filter((g) => g?.image)
-  const mosaicAlt = filledGames.length > 0
-    ? `${listName ?? 'List'} — covers of ${filledGames.map((g) => g.title).filter(Boolean).join(', ')}`
-    : `${listName ?? 'List'} cover`
-
-  return (
-    <div className="so-list-mosaic" role="img" aria-label={mosaicAlt}>
-      {Array.from({ length: 4 }).map((_, idx) => {
-        const game = games?.[idx]
-        return game?.image ? (
-          <div key={idx} className="so-list-mosaic__cell">
-            <img src={game.image} alt="" loading="lazy" />
-          </div>
-        ) : (
-          <div key={idx} className="so-list-mosaic__cell so-list-mosaic__cell--empty" aria-hidden="true" />
-        )
-      })}
-    </div>
-  )
-}
-
 function ListsResults({ rows, isLoading, onTapList }) {
   if (isLoading) return <SearchResultSkeletonList count={4} />
   if (!rows || rows.length === 0) {
@@ -450,7 +416,7 @@ function ListsResults({ rows, isLoading, onTapList }) {
           className="so-list-row"
           onClick={() => onTapList(list)}
         >
-          <ListMosaic games={list.games} coverImageUrl={list.coverImageUrl} listName={list.name} />
+          <ListCoverCluster games={list.games} coverImageUrl={list.coverImageUrl} name={list.name} />
           <div className="so-list-row__body">
             <h3 className="so-list-row__title">{list.name}</h3>
             {list.description && (

@@ -3,6 +3,10 @@
 
    One fixed footprint (--lcc-size) for every treatment, so rows in a
    list keep an even left edge whether a list holds one game or eighty.
+
+   --lcc-size drives every internal measurement (fan plate size, offsets,
+   rotation anchor) as a proportion, so the `lcc--lg` size variant below
+   is a pure scale-up — same fan/mosaic/empty treatment, no forked logic.
    ============================================================ */
 
 .lcc {
@@ -14,6 +18,13 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-surface-2);
+}
+
+/* Larger footprint for rows with more surrounding chrome (a bordered
+   card rather than a hairline-separated row). Still just --lcc-size —
+   every fan/mosaic measurement below scales with it. */
+.lcc--lg {
+  --lcc-size: var(--space-64);
 }
 
 .lcc__fill {
@@ -59,10 +70,10 @@
 
 .lcc__plate {
   position: absolute;
-  top: 4px;
-  left: 3px;
-  width: 38px;
-  height: 52px;
+  top: calc(var(--lcc-size) * 0.0667);
+  left: calc(var(--lcc-size) * 0.05);
+  width: calc(var(--lcc-size) * 0.6333);
+  height: calc(var(--lcc-size) * 0.8667);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface-2);
@@ -76,11 +87,11 @@
 
 .lcc__plate[data-depth='1'] {
   z-index: 2;
-  transform: translateX(7px) rotate(6deg);
+  transform: translateX(calc(var(--lcc-size) * 0.1167)) rotate(6deg);
 }
 
 .lcc__plate[data-depth='2'] {
   z-index: 1;
-  transform: translateX(13px) rotate(12deg);
+  transform: translateX(calc(var(--lcc-size) * 0.2167)) rotate(12deg);
   opacity: 0.75;
 }

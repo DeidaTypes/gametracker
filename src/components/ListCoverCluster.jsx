@@ -19,8 +19,14 @@ const FAN_PLATES = 3
  *
  * `coverImageUrl` (a list's custom uploaded cover) always wins and fills
  * the whole square.
+ *
+ * `size` picks the footprint: 'md' (60px, the default — Profile's list
+ * rows) or 'lg' (--space-64, for rows with more surrounding chrome, e.g.
+ * a bordered card). Every internal measurement (fan plate size, offsets,
+ * rotation anchor) is proportional to --lcc-size, so both sizes get the
+ * same fan/mosaic/empty treatment at a different scale — nothing forks.
  */
-function ListCoverCluster({ games = [], coverImageUrl = null, name = '' }) {
+function ListCoverCluster({ games = [], coverImageUrl = null, name = '', size = 'md' }) {
   // A game can exist in a list without artwork, so count usable covers
   // rather than games — that's what decides the treatment.
   const covers = games
@@ -29,10 +35,11 @@ function ListCoverCluster({ games = [], coverImageUrl = null, name = '' }) {
     .slice(0, MOSAIC_COVERS)
 
   const label = name ? `${name} cover` : 'List cover'
+  const sizeClass = size === 'lg' ? ' lcc--lg' : ''
 
   if (coverImageUrl) {
     return (
-      <div className="lcc lcc--single">
+      <div className={`lcc lcc--single${sizeClass}`}>
         <img src={coverImageUrl} alt={label} className="lcc__fill" loading="lazy" />
       </div>
     )
@@ -40,7 +47,7 @@ function ListCoverCluster({ games = [], coverImageUrl = null, name = '' }) {
 
   if (covers.length === 0) {
     return (
-      <div className="lcc lcc--empty" role="img" aria-label={label}>
+      <div className={`lcc lcc--empty${sizeClass}`} role="img" aria-label={label}>
         <LuLayers size={20} aria-hidden="true" />
       </div>
     )
@@ -48,7 +55,7 @@ function ListCoverCluster({ games = [], coverImageUrl = null, name = '' }) {
 
   if (covers.length >= MOSAIC_COVERS) {
     return (
-      <div className="lcc lcc--mosaic" role="img" aria-label={label}>
+      <div className={`lcc lcc--mosaic${sizeClass}`} role="img" aria-label={label}>
         {covers.map((src, i) => (
           <img key={src || i} src={src} alt="" className="lcc__cell" loading="lazy" />
         ))}
@@ -58,7 +65,7 @@ function ListCoverCluster({ games = [], coverImageUrl = null, name = '' }) {
 
   // Front plate first so the covers we do have are the ones on top.
   return (
-    <div className="lcc lcc--fan" role="img" aria-label={label}>
+    <div className={`lcc lcc--fan${sizeClass}`} role="img" aria-label={label}>
       {Array.from({ length: FAN_PLATES }, (_, i) => (
         <span key={i} className="lcc__plate" data-depth={i}>
           {covers[i] ? (

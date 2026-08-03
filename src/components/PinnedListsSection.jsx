@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronRight } from 'react-icons/lu'
+import ListCoverCluster from './ListCoverCluster'
 import './PinnedListsSection.css'
 
 /**
@@ -8,8 +9,8 @@ import './PinnedListsSection.css'
  *
  * For each pinned list (is_pinned = true, ordered by pinned_at DESC,
  * cap 5) renders a pressable row containing:
- *   - List title as a header
- *   - A tight, overlapping horizontal strip of game covers
+ *   - A ListCoverCluster cover cluster
+ *   - List title + game count
  *
  * Tapping a row navigates to /list/:id.
  * Hidden entirely (returns null) when pinnedLists is empty.
@@ -37,39 +38,28 @@ function PinnedListsSection({ pinnedLists, onSeeAll }) {
       </div>
 
       <div className="pinned-lists-section__rows">
-        {pinnedLists.map((list) => {
-          const covers = (list.previewGames || []).filter((g) => g?.image)
-          return (
-            <button
-              key={list.id}
-              type="button"
-              className="pinned-list-row"
-              onClick={() => navigate(`/list/${list.id}`)}
-              aria-label={list.name}
-            >
+        {pinnedLists.map((list) => (
+          <button
+            key={list.id}
+            type="button"
+            className="pinned-list-row"
+            onClick={() => navigate(`/list/${list.id}`)}
+            aria-label={list.name}
+          >
+            <ListCoverCluster
+              games={list.previewGames}
+              coverImageUrl={list.coverImageUrl}
+              name={list.name}
+              size="lg"
+            />
+            <span className="pinned-list-row__body">
               <span className="pinned-list-row__name">{list.name}</span>
-
-              {covers.length > 0 ? (
-                <div className="pinned-list-row__strip" aria-hidden="true">
-                  {covers.slice(0, 7).map((game, idx) => (
-                    <div key={game.id || idx} className="pinned-list-row__cover">
-                      <img src={game.image} alt="" loading="lazy" />
-                    </div>
-                  ))}
-                  {list.gameCount > 7 && (
-                    <div className="pinned-list-row__cover pinned-list-row__cover--overflow">
-                      +{list.gameCount - 7}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="pinned-list-row__empty">
-                  {list.gameCount > 0 ? `${list.gameCount} games` : 'Empty list'}
-                </p>
-              )}
-            </button>
-          )
-        })}
+              <span className="pinned-list-row__meta">
+                {list.gameCount > 0 ? `${list.gameCount} ${list.gameCount === 1 ? 'game' : 'games'}` : 'Empty list'}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
     </section>
   )
