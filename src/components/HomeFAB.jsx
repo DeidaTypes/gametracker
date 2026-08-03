@@ -24,13 +24,12 @@ import './HomeFAB.css'
 // Quarter-circle arc: 0° (straight up) → 90° (straight left), radius 100px.
 // tx = -r·sin(θ),  ty = -r·cos(θ)  where θ=0 is straight up, increasing CCW.
 // Items are evenly spaced at 30° so chord ≈ 52px > 44px button — no overlap.
-// The icon CENTER lands at (tx, ty); labels are rendered to the left of the
-// icon (always inward from the screen right edge).
+// The icon CENTER lands at (tx, ty). Icon-only — no visible label pill; each
+// button still carries a descriptive aria-label for screen readers.
 const RADIAL_ITEMS = [
   {
     id: 'log',
     Icon: LuClock,
-    label: 'Log',
     tx: 0,
     ty: -100,
     ariaLabel: 'Log a session',
@@ -38,7 +37,6 @@ const RADIAL_ITEMS = [
   {
     id: 'review',
     Icon: LuPencilLine,
-    label: 'Review',
     tx: -50,
     ty: -87,
     ariaLabel: 'Write a review',
@@ -46,7 +44,6 @@ const RADIAL_ITEMS = [
   {
     id: 'list',
     Icon: LuListPlus,
-    label: 'List',
     tx: -87,
     ty: -50,
     ariaLabel: 'Create a list',
@@ -54,7 +51,6 @@ const RADIAL_ITEMS = [
   {
     id: 'message',
     Icon: LuMessageCircle,
-    label: 'Message',
     tx: -100,
     ty: 0,
     ariaLabel: 'Open messages',
@@ -224,18 +220,13 @@ function HomeFAB() {
           variants={containerVariants}
           aria-hidden={!isOpen}
         >
-          {RADIAL_ITEMS.map(({ id, Icon, label, tx, ty, ariaLabel }) => (
+          {RADIAL_ITEMS.map(({ id, Icon, tx, ty, ariaLabel }) => (
             <motion.div
               key={id}
               className="home-fab-item"
               variants={itemVariants}
               custom={{ tx, ty }}
             >
-              {/* Label pill — always to the left of the icon button */}
-              <span className={`home-fab-item__label home-fab-item__label--${id}`} aria-hidden="true">
-                {label}
-              </span>
-
               {/* Icon button */}
               <button
                 type="button"

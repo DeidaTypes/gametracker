@@ -51,8 +51,7 @@
  * transform origin (the FAB center). Framer Motion then translates by (tx, ty)
  * which moves the icon CENTER to the desired arc position.
  *
- * The label is absolutely positioned to the LEFT of this box, so it always
- * opens inward — away from the right screen edge regardless of arc angle.
+ * Icon-only — no label pill, so no cross-item stacking/overlap concerns.
  */
 .home-fab-item {
   position: absolute;
@@ -63,52 +62,6 @@
   overflow: visible;
   pointer-events: auto;
   will-change: transform, opacity;
-}
-
-/* Each item is its own stacking context (will-change: transform/opacity
-   triggers this), so paint order across items otherwise follows DOM order —
-   later items' opaque buttons end up covering earlier items' label pills
-   where the arc geometry makes them overlap (e.g. Log's label sits under
-   Review's button). Reverse it: earlier items paint on top so every label
-   stays visible regardless of arc position. Purely a stacking fix — no
-   layout/position/animation change. */
-.home-fab-radial > .home-fab-item:nth-child(1) { z-index: 4; }
-.home-fab-radial > .home-fab-item:nth-child(2) { z-index: 3; }
-.home-fab-radial > .home-fab-item:nth-child(3) { z-index: 2; }
-.home-fab-radial > .home-fab-item:nth-child(4) { z-index: 1; }
-
-/* ── Label pill ───────────────────────────────────────────────────────────── */
-/*
- * Absolutely positioned to the LEFT of the 44px icon box with an 8px gap.
- * "right: calc(100% + 8px)" means: label's right edge = item's left edge − 8px.
- * Vertically centered relative to the icon box.
- */
-.home-fab-item__label {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold, 600);
-  color: #fff;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  padding: 4px 10px;
-  border-radius: 20px;
-  white-space: nowrap;
-  line-height: 1.2;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Log sits directly above Review with only ~13px of vertical separation
-   between their icon centers — less than one label's height — so a
-   centered label reaches into Review's button below it. Lift Log's label
-   just enough to clear it; every other label keeps the default centered
-   position since their neighbors already have enough clearance. */
-.home-fab-item__label--log {
-  top: calc(50% - 24px);
 }
 
 /* ── Icon button ─────────────────────────────────────────────────────────── */
