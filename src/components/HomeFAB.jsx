@@ -232,7 +232,7 @@ function HomeFAB() {
               custom={{ tx, ty }}
             >
               {/* Label pill — always to the left of the icon button */}
-              <span className="home-fab-item__label" aria-hidden="true">
+              <span className={`home-fab-item__label home-fab-item__label--${id}`} aria-hidden="true">
                 {label}
               </span>
 
