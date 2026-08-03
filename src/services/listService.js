@@ -260,24 +260,27 @@ function rowToCollection(row) {
 }
 
 /**
- * REAL save counts from list_saves, as a Map of listId → count. Lists with
- * no save rows are absent from the map (callers read that as 0) — counts
- * are never fabricated. Returns an empty map on error so callers degrade to
- * "no saves" rather than failing.
+ * REAL save counts, as a Map of listId → count. Lists with no save rows are
+ * absent from the map (callers read that as 0) — counts are never fabricated.
+ * Returns an empty map on error so callers degrade to "no saves" rather than
+ * failing.
+ *
+ * Goes through get_list_save_counts() rather than selecting from list_saves:
+ * that table is owner-only since 20260803000000 (who saved what is a private
+ * signal), and the RPC returns tallies without the saver identities.
  */
 export async function getSaveCountsForLists(listIds) {
   if (!listIds?.length) return new Map()
-  const { data, error } = await supabase
-    .from('list_saves')
-    .select('list_id')
-    .in('list_id', listIds)
+  const { data, error } = await supabase.rpc('get_list_save_counts', {
+    p_list_ids: listIds,
+  })
   if (error) {
     console.error('[lists] getSaveCountsForLists failed:', error.message)
     return new Map()
   }
   const counts = new Map()
   for (const row of data || []) {
-    counts.set(row.list_id, (counts.get(row.list_id) || 0) + 1)
+    counts.set(row.list_id, row.save_count || 0)
   }
   return counts
 }

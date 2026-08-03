@@ -21,12 +21,13 @@ import { supabase } from './supabase'
  *   )
  */
 
-// activity_privacy and presence_opt_in are deliberately absent: the API roles
-// have no column privilege on them, so `select('*')` here would 403. Read them
-// via the get_my_settings() RPC instead (see userSettingsService).
+// activity_privacy, presence_opt_in and streak_share_opt_in are deliberately
+// absent: the API roles have no column privilege on them, so `select('*')` here
+// would 403. Read them via the get_my_settings() RPC instead (see
+// userSettingsService).
 const PROFILE_COLUMNS =
   'id, display_name, username, bio, avatar_url, genre_badge, platform_badge, ' +
-  'created_at, updated_at, banner_url, favorite_games, streak_share_opt_in, ' +
+  'created_at, updated_at, banner_url, favorite_games, ' +
   'showcase_badges, current_obsessions'
 
 /* ============================================================
@@ -144,18 +145,37 @@ async function clearLocalSession() {
    ============================================================ */
 
 // True when a Postgres unique-violation is on the username index rather
-// than the primary key (id). A pkey clash means "row already exists from a
-// retry" (recoverable); a username clash means the handle is taken.
+// than the primary key (id). A pkey clash means the row already exists; a
+// username clash means the handle is taken.
 function isUsernameConflict(error) {
   const haystack = `${error?.message || ''} ${error?.details || ''}`
   return /users_username_key|\busername\b/i.test(haystack)
 }
 
-async function insertProfileRowWithRetry({ id, displayName, username }, attempts = 3) {
-  // Supabase doesn't expose multi-statement transactions to the JS client,
-  // so we approximate atomicity via retry-on-failure. If all retries fail
-  // we still surface the error so the caller can decide what to do (we
-  // currently keep the auth user but flag the broken state to the UI).
+/**
+ * Ensure the profile row for a brand-new account carries the name and handle
+ * the user actually chose.
+ *
+ * The `on_auth_user_created` trigger creates the row inside the auth.users
+ * insert, so it always wins this race and our INSERT below normally comes back
+ * 23505 on users_pkey. This function used to treat that conflict as success and
+ * return, which silently discarded the chosen display_name and username — the
+ * reason every account created since the trigger landed has username NULL and a
+ * display_name equal to its email local-part.
+ *
+ * signUp() now forwards both values through `options.data`, so the trigger
+ * writes them itself and the UPDATE below is a no-op reconciliation. It still
+ * matters for accounts whose metadata never reached the trigger, and for
+ * databases where the trigger is absent (the INSERT path).
+ */
+async function ensureProfileRow({ id, displayName, username }, attempts = 3) {
+  const usernameTaken = (cause) =>
+    new AuthError(
+      AUTH_ERRORS.USERNAME_TAKEN,
+      'That username is already taken. Please choose another.',
+      cause
+    )
+
   let lastErr = null
   for (let i = 0; i < attempts; i++) {
     const { error } = await supabase.from('users').insert({
@@ -173,19 +193,25 @@ async function insertProfileRowWithRetry({ id, displayName, username }, attempts
     })
     if (!error) return
     lastErr = error
-    // 23505 = unique_violation. A username clash must surface to the user
-    // (the handle is taken); a primary-key clash means the row already
-    // exists from a prior attempt whose response was lost — treat as success.
+
     if (error.code === '23505') {
-      if (isUsernameConflict(error)) {
-        throw new AuthError(
-          AUTH_ERRORS.USERNAME_TAKEN,
-          'That username is already taken. Please choose another.',
-          error
-        )
+      if (isUsernameConflict(error)) throw usernameTaken(error)
+
+      // Primary-key clash: the trigger already created the row. Reconcile it
+      // to the chosen values instead of walking away from them.
+      const patch = { display_name: displayName }
+      if (username) patch.username = username
+      const { error: updateErr } = await supabase
+        .from('users')
+        .update(patch)
+        .eq('id', id)
+      if (!updateErr) return
+      if (updateErr.code === '23505' && isUsernameConflict(updateErr)) {
+        throw usernameTaken(updateErr)
       }
-      return
+      throw updateErr
     }
+
     // Don't bother retrying validation errors (4xx-ish on PostgREST).
     if (error.code && /^[24]/.test(error.code)) break
     // Backoff: 200ms, 600ms, 1200ms.
@@ -195,11 +221,11 @@ async function insertProfileRowWithRetry({ id, displayName, username }, attempts
 }
 
 /**
- * Best-effort check that a username isn't already taken. Relies on the
- * `users_select_all` RLS policy (readable by anon) so it can run *before*
- * the auth user is created — avoiding an orphaned auth account when the
- * handle is unavailable. The DB unique index is still the source of truth;
- * this is just for a clean pre-flight error.
+ * Best-effort check that a username isn't already taken. Reads the
+ * `public_profiles` view, which is the one relation anon may still select from,
+ * so this can run *before* the auth user exists — avoiding an orphaned auth
+ * account when the handle is unavailable. The DB unique index is still the
+ * source of truth; this is just for a clean pre-flight error.
  *
  * @returns {Promise<boolean>} true when the handle appears available
  */
@@ -207,7 +233,7 @@ export async function isUsernameAvailableRemote(username) {
   const handle = normalizeUsername(username)
   if (!handle) return true
   const { data, error } = await supabase
-    .from('users')
+    .from('public_profiles')
     .select('id')
     .ilike('username', handle)
     .maybeSingle()
@@ -227,12 +253,15 @@ export async function isUsernameAvailableRemote(username) {
 /**
  * Create an auth user and a matching `users` row.
  *
- * Two-step process:
- *   1. supabase.auth.signUp({ email, password })
- *   2. insert into public.users with the same id + display_name
+ *   1. supabase.auth.signUp(), with display_name/username in options.data
+ *   2. the on_auth_user_created trigger creates public.users from that metadata,
+ *      inside the same transaction as the auth.users insert
+ *   3. ensureProfileRow() reconciles, for the cases where step 2 did not run or
+ *      did not see the metadata
  *
- * If step 2 fails after retries, the auth user IS already created. We can't
- * delete it from the client (admin API only), so we throw with a specific
+ * The profile row is the trigger's job, so step 3 is a safety net rather than
+ * the primary path. If it still fails, the auth user IS already created. We
+ * can't delete it from the client (admin API only), so we throw with a specific
  * code and the caller should surface "your account was partially created,
  * please contact support" rather than silently leaving a half-baked user.
  *
@@ -275,7 +304,21 @@ export async function signUp({ email, password, displayName, username }) {
 
   let authData
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // display_name / username go through options.data so they land in
+    // auth.users.raw_user_meta_data, where the on_auth_user_created trigger
+    // reads them. The trigger runs inside the auth.users insert and therefore
+    // creates the profile row before any client code can — without this the
+    // row it creates falls back to the email local-part and a NULL handle.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: trimmedDisplayName,
+          ...(normalizedUsername ? { username: normalizedUsername } : {}),
+        },
+      },
+    })
     if (error) {
       throw new AuthError(classifySignUpError(error), error.message, error)
     }
@@ -307,7 +350,7 @@ export async function signUp({ email, password, displayName, username }) {
   // does not, which leaves them in a broken state.
   let profile
   try {
-    await insertProfileRowWithRetry({
+    await ensureProfileRow({
       id: user.id,
       displayName: trimmedDisplayName,
       username: normalizedUsername || null,

@@ -143,24 +143,41 @@ export async function deleteListComment(commentId) {
 /**
  * Returns the save count + whether the current user has saved the list.
  *
+ * Two round trips rather than one: list_saves is owner-only since
+ * 20260803000000, so the total comes from get_list_save_counts() (a tally, no
+ * saver identities) and the "did I save it" flag comes from the caller's own
+ * row, which RLS still lets them read.
+ *
  * @param {string} listId
  * @param {string|null} userId  Current user's id (or null when signed-out)
  * @returns {Promise<{ count: number, saved: boolean }>}
  */
 export async function getListSaveState(listId, userId) {
   if (!listId) return { count: 0, saved: false }
-  const { data, error } = await supabase
-    .from('list_saves')
-    .select('user_id')
-    .eq('list_id', listId)
-  if (error) {
-    console.error('[list-interactions] getListSaveState failed:', error.message)
+
+  const [countRes, mineRes] = await Promise.all([
+    supabase.rpc('get_list_save_counts', { p_list_ids: [listId] }),
+    userId
+      ? supabase
+          .from('list_saves')
+          .select('user_id')
+          .eq('list_id', listId)
+          .eq('user_id', userId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  if (countRes.error) {
+    console.error(
+      '[list-interactions] getListSaveState failed:',
+      countRes.error.message
+    )
     return { count: 0, saved: false }
   }
-  const rows = data || []
+
   return {
-    count: rows.length,
-    saved: userId ? rows.some((r) => r.user_id === userId) : false,
+    count: countRes.data?.[0]?.save_count || 0,
+    saved: !!mineRes.data,
   }
 }
 

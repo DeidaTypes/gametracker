@@ -32,7 +32,7 @@ export async function searchUsers(query, limit = 20) {
   if (!trimmed) return []
   const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
   let q = supabase
-    .from('users')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .or(`username.ilike.%${escaped}%,display_name.ilike.%${escaped}%`)
     .limit(limit)
@@ -54,7 +54,7 @@ export async function getUserByUsername(username) {
   const trimmed = (username || '').trim()
   if (!trimmed) return null
   const { data, error } = await supabase
-    .from('users')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions')
     .ilike('username', trimmed)
     .maybeSingle()
@@ -77,7 +77,7 @@ export async function getUserById(userId) {
   const trimmed = (userId || '').trim()
   if (!trimmed) return null
   const { data, error } = await supabase
-    .from('users')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions')
     .eq('id', trimmed)
     .maybeSingle()
@@ -276,11 +276,13 @@ export async function getFollowingFavorites(userId, limit = 12) {
 
     const followeeIds = followRows.map((r) => r.followee_id)
 
+    // No deleted_at filter: public.users has no such column, so the filter this
+    // query used to carry made PostgREST reject it (42703) and the function
+    // returned [] every time.
     const { data, error } = await supabase
-      .from('users')
+      .from('public_profiles')
       .select('id, username, display_name, avatar_url, favorite_games')
       .in('id', followeeIds)
-      .is('deleted_at', null)
 
     if (error) {
       console.error('[users] getFollowingFavorites failed:', error.message)
