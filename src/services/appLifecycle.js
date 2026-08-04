@@ -67,6 +67,20 @@ function handleAppUrl(url) {
     const ref = parsed.searchParams.get('ref')
     if (ref) capturePendingReferral(ref)
 
+    // Password recovery arrives as checkpoint://reset-password#access_token=…
+    // (see services/passwordReset.js). detectSessionInUrl can't help here: the
+    // WebView's own location is capacitor://localhost and this URL is handed to
+    // us by appUrlOpen long after the Supabase client initialised, so the
+    // session has to be established explicitly before we route.
+    //
+    // Note the pathname of a custom-scheme URL is often empty — the host
+    // carries what looks like the path — so both are checked.
+    const target = `${parsed.host || ''}${parsed.pathname || ''}`
+    if (/reset-password/.test(target)) {
+      handleRecoveryUrl(url, parsed)
+      return
+    }
+
     // Broadcast deep-link path so App.jsx can navigate the SPA router.
     const path = parsed.pathname + parsed.search + parsed.hash
     if (path && path !== '/' && typeof window !== 'undefined') {
@@ -76,6 +90,35 @@ function handleAppUrl(url) {
     }
   } catch {
     // Malformed URL — ignore.
+  }
+}
+
+/**
+ * Establish the recovery session from a reset-link URL, then route to the
+ * set-password screen.
+ *
+ * Routed either way. If the token is bad, ResetPassword.jsx finds no session
+ * and renders its own "link no longer valid" state with a path to request a
+ * fresh one — which is a better outcome than silently dropping the tap.
+ */
+async function handleRecoveryUrl(rawUrl, parsedUrl) {
+  try {
+    const { parseRecoveryParams, establishRecoverySession } = await import(
+      './passwordReset'
+    )
+    const params = parseRecoveryParams(rawUrl)
+    if (params) await establishRecoverySession(params)
+  } catch (err) {
+    console.warn('[appLifecycle] recovery deep link failed:', err?.message)
+  }
+
+  if (typeof window !== 'undefined') {
+    // Route without the fragment — the tokens are spent, and the screen reads
+    // the session rather than the URL from here on.
+    const query = parsedUrl?.search || ''
+    window.dispatchEvent(
+      new CustomEvent('app:deeplink', { detail: { path: `/reset-password${query}` } })
+    )
   }
 }
 

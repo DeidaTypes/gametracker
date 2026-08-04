@@ -8,6 +8,7 @@ import { uploadBanner, removeBanner, uploadAvatar, removeAvatar } from '../servi
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from './Toast'
 import { AUTH_ERRORS } from '../services/auth'
+import { normalizeUsername, validateUsername } from '../services/usernameRules'
 import ActionSheet from './ActionSheet'
 import FavoritesPickerSheet from './FavoritesPickerSheet'
 import BioEditModal from './BioEditModal'
@@ -281,11 +282,13 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       newErrors.displayName = `Display name must be ${DISPLAY_NAME_MAX} characters or less`
     }
 
+    // Shared rules — this screen used to validate against [a-zA-Z0-9_] and save
+    // the raw input, which is how a case-variant of an existing handle could be
+    // claimed past the (then case-sensitive) unique index. See
+    // services/usernameRules.js.
     if (username.trim()) {
-      const usernamePattern = /^[a-zA-Z0-9_]{3,20}$/
-      if (!usernamePattern.test(username)) {
-        newErrors.username = 'Username must be 3–20 characters (letters, numbers, underscores)'
-      }
+      const check = validateUsername(username)
+      if (!check.valid) newErrors.username = check.message
     }
 
     if (bio.length > BIO_MAX) {
@@ -298,7 +301,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
 
     const trimmedName = displayName.trim()
-    const trimmedUsername = username.trim() || null
+    const trimmedUsername = normalizeUsername(username) || null
 
     setSaving(true)
 
@@ -546,9 +549,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
                         className="ep-row__input"
                         value={username}
                         onChange={(e) => {
-                          setUsername(
-                            e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
-                          )
+                          setUsername(normalizeUsername(e.target.value))
                           if (errors.username) setErrors({ ...errors, username: null })
                         }}
                         onFocus={() => setFocusedField('username')}

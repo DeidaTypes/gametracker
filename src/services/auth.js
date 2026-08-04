@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { clearAllLocalUserData, syncLocalDataOwner } from './localUserData'
+import { normalizeUsername, validateUsername } from './usernameRules'
 
 /**
  * Auth service — wraps Supabase auth + profile-row bootstrap.
@@ -46,18 +47,18 @@ export const AUTH_ERRORS = Object.freeze({
   UNKNOWN: 'unknown',
 })
 
-// Handle format mirrored from EditProfileModal / profileService so the
-// signup-time rule and the edit-profile rule never drift apart.
-export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
-
-/** Lowercase + strip a leading @ and any disallowed characters. */
-export function normalizeUsername(input) {
-  return (input || '')
-    .trim()
-    .toLowerCase()
-    .replace(/^@+/, '')
-    .replace(/[^a-z0-9_]/g, '')
-}
+// Username rules now live in one place — services/usernameRules.js — because
+// signup, Edit Profile and the DB CHECK constraints all have to agree, and they
+// previously did not (Edit Profile accepted uppercase, which the case-sensitive
+// unique index then let collide). Re-exported here so existing importers of
+// `normalizeUsername` / `USERNAME_PATTERN` from this module keep working.
+export {
+  USERNAME_PATTERN,
+  USERNAME_HINT,
+  normalizeUsername,
+  validateUsername,
+  isUsernameValid,
+} from './usernameRules'
 
 function isNetworkError(err) {
   if (!err) return false
@@ -84,6 +85,36 @@ function classifySignInError(err) {
   return AUTH_ERRORS.UNKNOWN
 }
 
+/**
+ * True when signUp() failed because the on_auth_user_created trigger raised.
+ *
+ * Verified against this project: GoTrue forwards the Postgres error verbatim,
+ * so a lost username race arrives as
+ *
+ *   HTTP 500 {"code":"23505","message":"username_taken","detail":"..."}
+ *
+ * The sentinel messages the trigger raises (username_taken / username_invalid)
+ * are therefore readable directly. Older/self-hosted GoTrue builds collapse
+ * trigger failures into "Database error saving new user" instead, so that shape
+ * is matched too and signUp() falls back to re-checking availability.
+ */
+function isProvisioningTriggerFailure(err) {
+  const msg = err?.message || ''
+  return (
+    err?.code === 'unexpected_failure' ||
+    /database error saving new user/i.test(msg) ||
+    /username_taken|username_invalid/i.test(msg)
+  )
+}
+
+/** The specific rule the trigger rejected, when it told us. */
+function triggerRejectionReason(err) {
+  const haystack = `${err?.message || ''} ${err?.details || ''}`
+  if (/username_taken/i.test(haystack)) return 'taken'
+  if (/username_invalid/i.test(haystack)) return 'invalid'
+  return null
+}
+
 function classifySignUpError(err) {
   if (!err) return null
   if (isNetworkError(err)) return AUTH_ERRORS.NETWORK
@@ -96,6 +127,9 @@ function classifySignUpError(err) {
   ) {
     return AUTH_ERRORS.EMAIL_TAKEN
   }
+  // Checked before the generic /password/i test below, which would otherwise
+  // swallow "Database error saving new user" responses on a password field.
+  if (isProvisioningTriggerFailure(err)) return AUTH_ERRORS.PROFILE_BOOTSTRAP_FAILED
   if (err.code === 'weak_password' || /password/i.test(msg)) {
     return AUTH_ERRORS.WEAK_PASSWORD
   }
@@ -150,7 +184,7 @@ async function clearLocalSession() {
 // username clash means the handle is taken.
 function isUsernameConflict(error) {
   const haystack = `${error?.message || ''} ${error?.details || ''}`
-  return /users_username_key|\busername\b/i.test(haystack)
+  return /users_username_lower_key|users_username_key|\busername\b/i.test(haystack)
 }
 
 /**
@@ -222,29 +256,38 @@ async function ensureProfileRow({ id, displayName, username }, attempts = 3) {
 }
 
 /**
- * Best-effort check that a username isn't already taken. Reads the
- * `public_profiles` view, which is the one relation anon may still select from,
- * so this can run *before* the auth user exists — avoiding an orphaned auth
- * account when the handle is unavailable. The DB unique index is still the
- * source of truth; this is just for a clean pre-flight error.
+ * Check that a username isn't already taken, case-insensitively.
+ *
+ * Runs against the is_username_available() RPC (see migration
+ * 20260804000100). It replaced a `public_profiles ... ilike(username)` lookup
+ * that reported false positives two ways: public_profiles hides users blocked
+ * in either direction, so their handles read as AVAILABLE, and the query used
+ * .maybeSingle(), which errors on more than one match — and the error path here
+ * soft-fails open. Both meant "available" for a handle the insert would reject.
+ *
+ * The RPC is SECURITY DEFINER, so this works before the auth user exists and
+ * the signup screen can pre-flight anonymously rather than discovering the
+ * clash after creating an account.
+ *
+ * Still advisory. users_username_lower_key is the authority, and signUp()
+ * handles the case where someone claims the handle between this call and the
+ * insert.
  *
  * @returns {Promise<boolean>} true when the handle appears available
  */
 export async function isUsernameAvailableRemote(username) {
   const handle = normalizeUsername(username)
   if (!handle) return true
-  const { data, error } = await supabase
-    .from('public_profiles')
-    .select('id')
-    .ilike('username', handle)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('is_username_available', {
+    candidate: handle,
+  })
   if (error) {
     // Soft-fail open: if the check itself errors we let the unique index
     // be the backstop rather than blocking a legitimate signup.
     console.warn('[auth] username availability check failed:', error.message)
     return true
   }
-  return !data
+  return data === true
 }
 
 /* ============================================================
@@ -291,13 +334,14 @@ export async function signUp({ email, password, displayName, username }) {
   }
 
   // Normalize + validate the optional username up front so we never create
-  // an auth user for an obviously-invalid handle.
+  // an auth user for an obviously-invalid handle. Same rule set the DB CHECK
+  // constraints enforce — see services/usernameRules.js.
   const normalizedUsername = normalizeUsername(username)
-  if (normalizedUsername && !USERNAME_PATTERN.test(normalizedUsername)) {
-    throw new AuthError(
-      AUTH_ERRORS.USERNAME_INVALID,
-      'Username must be 3–20 characters (letters, numbers, underscores).'
-    )
+  if (normalizedUsername) {
+    const check = validateUsername(normalizedUsername)
+    if (!check.valid) {
+      throw new AuthError(AUTH_ERRORS.USERNAME_INVALID, check.message)
+    }
   }
 
   // Pre-flight availability check (before the auth user exists) so a taken
@@ -330,6 +374,34 @@ export async function signUp({ email, password, displayName, username }) {
       },
     })
     if (error) {
+      // RACE: the trigger rejected the handle between our pre-flight check and
+      // the insert. Because the trigger raises, the auth.users insert rolls
+      // back with it — there is no half-made account to clean up, and the user
+      // just needs a different handle.
+      if (normalizedUsername && isProvisioningTriggerFailure(error)) {
+        const reason =
+          triggerRejectionReason(error) ||
+          // Older GoTrue builds hide the message behind a generic 500. Ask the
+          // database which rule was broken rather than guessing, so a genuine
+          // provisioning fault isn't mislabelled as a taken username.
+          ((await isUsernameAvailableRemote(normalizedUsername)) ? null : 'taken')
+
+        if (reason === 'taken') {
+          throw new AuthError(
+            AUTH_ERRORS.USERNAME_TAKEN,
+            'That username was just taken. Please choose another.',
+            error
+          )
+        }
+        if (reason === 'invalid') {
+          throw new AuthError(
+            AUTH_ERRORS.USERNAME_INVALID,
+            validateUsername(normalizedUsername).message ||
+              'That username isn’t allowed. Please choose another.',
+            error
+          )
+        }
+      }
       throw new AuthError(classifySignUpError(error), error.message, error)
     }
     authData = data

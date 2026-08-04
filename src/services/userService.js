@@ -4,12 +4,8 @@ import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
 } from './activityEventsService'
-import {
-  AUTH_ERRORS,
-  AuthError,
-  USERNAME_PATTERN,
-  normalizeUsername,
-} from './auth'
+import { AUTH_ERRORS, AuthError } from './auth'
+import { normalizeUsername, validateUsername } from './usernameRules'
 
 /**
  * Lightweight user lookups used by the Search screen's Users tab and
@@ -109,11 +105,11 @@ export async function updateUserProfile(userId, { displayName, username, bio, av
   }
   if (username !== undefined) {
     const handle = normalizeUsername(username)
-    if (handle && !USERNAME_PATTERN.test(handle)) {
-      throw new AuthError(
-        AUTH_ERRORS.USERNAME_INVALID,
-        'Username must be 3–20 characters (letters, numbers, underscores).'
-      )
+    if (handle) {
+      const check = validateUsername(handle)
+      if (!check.valid) {
+        throw new AuthError(AUTH_ERRORS.USERNAME_INVALID, check.message)
+      }
     }
     patch.username = handle || null
   }

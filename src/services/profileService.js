@@ -159,13 +159,11 @@ export function updateAvatar(avatar) {
   return updateProfile({ avatar })
 }
 
-// Check if username is available (for future reserved handles)
-export function isUsernameAvailable(username) {
-  // For now, just check basic format
-  if (!username) return true
-  const pattern = /^[a-zA-Z0-9_]{3,20}$/
-  return pattern.test(username)
-}
+// Removed: isUsernameAvailable(). It was unreferenced, and despite the name it
+// only checked format — against [a-zA-Z0-9_], which now contradicts the real
+// rules on three counts (case, reserved words, separator placement). Use
+// validateUsername() from services/usernameRules.js for format and
+// isUsernameAvailableRemote() from services/auth.js for actual availability.
 
 // Generate default avatar from display name.
 //

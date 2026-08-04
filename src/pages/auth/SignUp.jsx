@@ -4,12 +4,13 @@ import { Flag, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
+import { AUTH_ERRORS, isUsernameAvailableRemote } from '../../services/auth'
 import {
-  AUTH_ERRORS,
-  USERNAME_PATTERN,
   normalizeUsername,
-  isUsernameAvailableRemote,
-} from '../../services/auth'
+  validateUsername,
+  USERNAME_HINT,
+  USERNAME_MAX_LENGTH,
+} from '../../services/usernameRules'
 import {
   isPasswordComposedCorrectly,
   isPasswordBreached,
@@ -20,9 +21,6 @@ import { syncProfileFromSupabase } from '../../services/profileService'
 import { convertReferral } from '../../services/inviteService'
 import './Auth.css'
 import './SignUp.css'
-
-const USERNAME_MAX = 20
-const USERNAME_HINT = '3–20 characters: letters, numbers, underscores.'
 
 function SignUp() {
   const navigate = useNavigate()
@@ -39,6 +37,9 @@ function SignUp() {
 
   // 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
   const [usernameStatus, setUsernameStatus] = useState('idle')
+  // Which rule an invalid handle broke, so the hint can name it instead of
+  // repeating the generic format line.
+  const [usernameIssue, setUsernameIssue] = useState(null)
   // 'idle' | 'checking' | 'clear' | 'breached'
   const [breachStatus, setBreachStatus] = useState('idle')
 
@@ -51,12 +52,18 @@ function SignUp() {
     const handle = normalizeUsername(debouncedUsername)
     if (!handle) {
       setUsernameStatus('idle')
+      setUsernameIssue(null)
       return
     }
-    if (!USERNAME_PATTERN.test(handle)) {
+    // Structural rules are checked locally first — there's no point spending a
+    // round trip asking whether "_bob" is available when it can never be legal.
+    const check = validateUsername(handle)
+    if (!check.valid) {
       setUsernameStatus('invalid')
+      setUsernameIssue(check.message)
       return
     }
+    setUsernameIssue(null)
     let cancelled = false
     setUsernameStatus('checking')
     isUsernameAvailableRemote(handle).then((available) => {
@@ -104,12 +111,9 @@ function SignUp() {
     if (submitting) return
 
     const trimmedUsername = normalizeUsername(username)
-    if (!trimmedUsername) {
-      setFormError('Please choose a username.')
-      return
-    }
-    if (!USERNAME_PATTERN.test(trimmedUsername)) {
-      setFormError(USERNAME_HINT)
+    const usernameCheck = validateUsername(trimmedUsername)
+    if (!usernameCheck.valid) {
+      setFormError(usernameCheck.message)
       return
     }
     if (usernameStatus === 'taken') {
@@ -216,7 +220,10 @@ function SignUp() {
     )
     usernameFieldClass = 'auth-field--invalid'
   } else if (usernameStatus === 'invalid') {
-    usernameHintNode = <span className="su-status su-status--bad">{USERNAME_HINT}</span>
+    usernameHintNode = (
+      <span className="su-status su-status--bad">{usernameIssue || USERNAME_HINT}</span>
+    )
+    usernameFieldClass = 'auth-field--invalid'
   }
 
   let confirmHintNode = null
@@ -272,13 +279,9 @@ function SignUp() {
           <TextField
             label="Username"
             value={username}
-            onChange={(e) =>
-              setUsername(
-                e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
-              )
-            }
+            onChange={(e) => setUsername(normalizeUsername(e.target.value))}
             placeholder="username"
-            maxLength={USERNAME_MAX}
+            maxLength={USERNAME_MAX_LENGTH}
             autoComplete="username"
             autoCorrect="off"
             autoCapitalize="none"

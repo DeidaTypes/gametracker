@@ -54,6 +54,7 @@ import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
 import SignUp from './pages/auth/SignUp'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 // Dev-only visual harnesses. Lazily imported and only registered when
 // import.meta.env.DEV is true so they're stripped from production bundles.
 const ReviewCardDemo = import.meta.env.DEV
@@ -95,7 +96,16 @@ if (typeof document !== 'undefined') {
   applySettingsToDom(getSettings())
 }
 
-const PUBLIC_PATHS = new Set(['/login', '/signup', '/forgot-password'])
+// /reset-password is public in the sense that matters here — it must not be
+// gated on being logged out, and it must not trigger the onboarding redirect.
+// Consuming a recovery link SIGNS THE USER IN, so this screen is the one auth
+// route that is routinely reached with a live session.
+const PUBLIC_PATHS = new Set([
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+])
 
 /**
  * Animated route outlet. Wraps <Routes> in a single motion.div whose
@@ -408,6 +418,16 @@ function AppContent() {
                 <RedirectIfAuthed>
                   <PageTransition><ForgotPassword /></PageTransition>
                 </RedirectIfAuthed>
+              }
+            />
+            {/* Deliberately NOT wrapped in RedirectIfAuthed: the recovery link
+                establishes a session before this screen renders, so guarding it
+                on being logged out would bounce the user off the one screen
+                that can complete the reset. */}
+            <Route
+              path="/reset-password"
+              element={
+                <PageTransition><ResetPassword /></PageTransition>
               }
             />
 
