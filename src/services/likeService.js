@@ -191,6 +191,23 @@ export async function getLikeCountsForReviews(reviewIds) {
    ============================================================ */
 
 /**
+ * Drop the legacy like blob and its migration marker.
+ *
+ * As with reviews and lists, the marker is a shared key holding the
+ * last-migrated user id, so leaving the pair behind lets the next account to
+ * sign in on this device inherit the previous account's likes.
+ */
+export function clearLegacyLikesData() {
+  for (const key of [LIKES_LS_KEY, LIKES_MIGRATED_KEY]) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+/**
  * Migrates the legacy localStorage like blob (`gt:likes:v1`, written
  * by the now-deleted src/utils/likes.js) into the Supabase `likes`
  * table for the signed-in user.

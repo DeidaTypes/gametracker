@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { clearAllLocalUserData, syncLocalDataOwner } from './localUserData'
 
 /**
  * Auth service — wraps Supabase auth + profile-row bootstrap.
@@ -272,6 +273,15 @@ export async function signUp({ email, password, displayName, username }) {
   // Must happen before anything else — see clearLocalSession() for why.
   await clearLocalSession()
 
+  // A brand-new account must start empty, so wipe unconditionally rather
+  // than comparing owner stamps: whatever is on this device cannot belong
+  // to a user that does not exist yet. This has to run BEFORE the account
+  // is created, because AuthContext reacts to the resulting sign-in by
+  // running syncTrackersWithServer() — which pushes the local library up to
+  // `game_trackers` for the new user and would otherwise hand them the
+  // previous account's entire library.
+  clearAllLocalUserData()
+
   const trimmedDisplayName = (displayName || '').trim()
   if (!trimmedDisplayName) {
     throw new AuthError(
@@ -362,6 +372,9 @@ export async function signUp({ email, password, displayName, username }) {
       .single()
     if (fetchErr) throw fetchErr
     profile = profileRow
+    // Claim the (now empty) device for this account so a later sign-in by
+    // the same user is recognised as a match and doesn't wipe their work.
+    syncLocalDataOwner(user.id)
   } catch (err) {
     // A taken username is a normal, user-correctable condition — surface
     // it as-is rather than collapsing it into the generic bootstrap error.
@@ -405,12 +418,24 @@ export async function logIn({ email, password }) {
     throw new AuthError(AUTH_ERRORS.UNKNOWN, err.message || 'Login failed', err)
   }
 
+  // Strict reconcile: wipe unless this device is already stamped as
+  // belonging to the account that just signed in. Unstamped data is of
+  // unknown provenance here — the previous user may never have signed out
+  // cleanly — so it is treated as someone else's and dropped. Everything
+  // discarded is either re-pulled from Supabase (library, reviews, lists,
+  // profile) or device-local and non-authoritative.
+  syncLocalDataOwner(data.user.id)
+
   const profile = await fetchProfile(data.user.id)
   return { user: data.user, session: data.session, profile }
 }
 
 export async function logOut() {
   const { error } = await supabase.auth.signOut()
+  // Erase the account's local footprint even if the network sign-out
+  // failed: the tokens are gone locally either way, and leaving the data
+  // behind is precisely what let the next account inherit it.
+  syncLocalDataOwner(null)
   if (error) {
     if (isNetworkError(error)) {
       throw new AuthError(AUTH_ERRORS.NETWORK, error.message, error)
@@ -433,6 +458,13 @@ export async function getCurrentUser() {
   if (sessionErr) return null
   const session = sessionData?.session
   if (!session?.user) return null
+
+  // Boot-time restore is the one place unstamped data can be adopted: the
+  // device is resuming the very session that wrote it. Without this, the
+  // first launch after this fix shipped would wipe every existing user's
+  // local-only state (progress percentages, swipe history, recents) for no
+  // reason. A stamp that names a *different* user still wipes.
+  syncLocalDataOwner(session.user.id, { adoptUnstamped: true })
 
   const profile = await fetchProfile(session.user.id)
   return { user: session.user, profile }

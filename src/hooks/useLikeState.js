@@ -44,6 +44,19 @@ function readCache(reviewId) {
   return stateCache.get(reviewId) || { liked: false, count: 0 }
 }
 
+// `liked` is the *viewer's* flag, so this cache is account-scoped and must
+// not outlive a user switch. localUserData's teardown broadcasts rather than
+// importing this module, so a plain service never pulls a React hook into
+// its import graph. Mounted cards are notified so they repaint unliked
+// immediately instead of waiting for a refetch.
+if (typeof window !== 'undefined') {
+  window.addEventListener('gt:user-data-cleared', () => {
+    stateCache.clear()
+    inFlight.clear()
+    subscribers.forEach((subs) => subs.forEach((cb) => cb({ liked: false, count: 0 })))
+  })
+}
+
 /**
  * Push a new like state for `reviewId` into the cache and notify
  * all mounted hooks watching it. Used both for fetched values and

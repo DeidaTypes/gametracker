@@ -75,6 +75,19 @@ export function saveProfile(profile) {
   }
 }
 
+/**
+ * Drop the mirrored profile blob. The authoritative row lives in Supabase
+ * and is re-mirrored by syncProfileFromSupabase() on the next sign-in, so
+ * this only discards a copy — never the source of truth.
+ */
+export function clearProfile() {
+  try {
+    localStorage.removeItem(PROFILE_KEY)
+  } catch {
+    // best-effort
+  }
+}
+
 // Update profile fields
 export function updateProfile(updates) {
   const profile = getProfile() || initializeProfile()

@@ -80,6 +80,29 @@ export function getSettings() {
   }
 }
 
+/**
+ * Reset the settings that belong to an *account* back to their defaults,
+ * leaving the ones that belong to this *device* alone.
+ *
+ * Privacy and presence are stored on the `users` row and re-hydrate from
+ * get_my_settings() after sign-in, so carrying one account's choices into
+ * another's session is both wrong and briefly misleading (a new account
+ * appearing to have "nobody can message me" set). Accessibility prefs
+ * (colorBlindMode, reduceMotion, largerText) are deliberately preserved:
+ * they describe the person holding the phone, not the account, and wiping
+ * them on every sign-out would be a genuine accessibility regression.
+ */
+export function clearAccountScopedSettings() {
+  const stored = readRaw()
+  if (!stored) return
+  writeRaw({
+    ...stored,
+    messagePrivacy: DEFAULT_SETTINGS.messagePrivacy,
+    activityPrivacy: DEFAULT_SETTINGS.activityPrivacy,
+    presenceOptIn: DEFAULT_SETTINGS.presenceOptIn,
+  })
+}
+
 /* ============================================================
    Legacy key migration: spec asked us to honor a localStorage key
    "gametracker.colorBlindMode" too. Read it once on first load and

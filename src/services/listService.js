@@ -772,6 +772,24 @@ export async function unpinList(listId) {
 // ── One-time localStorage → Supabase migration ───────────────────────────────
 
 /**
+ * Drop the lists migration marker.
+ *
+ * The marker is a single shared key whose *value* is the last-migrated user
+ * id, so it only ever suppresses a re-run for that one account. Any other
+ * account signing in on this device fails the `marker === userId` check and
+ * migrates the leftover `gameLibrary.customLists` blob into ITS own account.
+ * Callers clear this alongside the blob itself (see libraryService's
+ * clearLibrary) so neither half can resurrect the other.
+ */
+export function clearListsMigrationMarker() {
+  try {
+    localStorage.removeItem(MIGRATED_KEY)
+  } catch {
+    // best-effort
+  }
+}
+
+/**
  * If the device has customLists in localStorage and we haven't migrated for
  * this user yet, bulk-insert into lists + list_games. Idempotent per-user.
  *

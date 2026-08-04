@@ -236,6 +236,31 @@ export function saveLibrary(library) {
   localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(library))
 }
 
+/**
+ * Drop the local tracker library, per-game progress and backlog-clear log.
+ *
+ * This is the store that leaked accounts into each other: `gameLibrary` is a
+ * single un-namespaced key, and syncTrackersWithServer() PUSHES whatever it
+ * finds there to `game_trackers` under the currently-signed-in user. Left in
+ * place across a user switch, it doesn't just render the previous account's
+ * library — it writes it into the new account server-side. The authoritative
+ * copy is `game_trackers`, which the same sync pulls back down, so clearing
+ * here costs a signed-in user nothing.
+ */
+export function clearLibrary() {
+  for (const key of [
+    LIBRARY_STORAGE_KEY,
+    PROGRESS_STORAGE_KEY,
+    BACKLOG_CLEARS_KEY,
+  ]) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      // best-effort
+    }
+  }
+}
+
 // Get games from a specific list
 export function getGamesFromList(listId) {
   const library = getLibrary() || initializeLibrary()

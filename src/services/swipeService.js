@@ -263,6 +263,21 @@ export function getSwipes() {
   return readStore().swipes
 }
 
+/**
+ * Clear only the on-device swipe history, leaving the server mirror alone.
+ *
+ * This is the variant the sign-out / user-switch teardown wants: it must be
+ * synchronous and must never issue a Supabase call, both because the teardown
+ * runs from inside the auth-state-change listener (see the DEADLOCK HAZARD
+ * note in services/auth.js) and because deleting `user_swipe_signals` there
+ * would destroy the *outgoing* account's taste data rather than just
+ * forgetting it locally.
+ */
+export function clearLocalSwipes() {
+  writeStore({ version: 1, swipes: {} })
+  window.dispatchEvent(new CustomEvent('gt:swipe-cleared'))
+}
+
 /** Clear all swipes — Settings "reset discovery" affordance. Also clears the
  * server mirror, so "reset discovery" genuinely resets the taste signal instead
  * of leaving the engine reading swipes the user thinks they deleted. */

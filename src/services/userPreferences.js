@@ -34,6 +34,21 @@ export function savePreferences(preferences) {
   localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences))
 }
 
+/**
+ * Drop preferences, search history and viewed-games history. All three are
+ * account-shaped and live only on this device, so they must not survive a
+ * user switch.
+ */
+export function clearPreferences() {
+  for (const key of [PREFERENCES_KEY, SEARCH_HISTORY_KEY, VIEWED_GAMES_KEY]) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      // best-effort
+    }
+  }
+}
+
 // Update onboarding status
 export function setOnboarded(onboarded = true) {
   const prefs = getPreferences() || initializePreferences()

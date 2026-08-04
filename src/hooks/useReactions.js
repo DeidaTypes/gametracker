@@ -44,6 +44,18 @@ function readCache(targetType, targetId) {
   return stateCache.get(cacheKey(targetType, targetId)) || []
 }
 
+// Each entry records whether the *viewer* reacted, so this cache is
+// account-scoped and must not survive a user switch. See the matching
+// listener in useLikeState.js for why the teardown broadcasts instead of
+// importing this module.
+if (typeof window !== 'undefined') {
+  window.addEventListener('gt:user-data-cleared', () => {
+    stateCache.clear()
+    inFlight.clear()
+    subscribers.forEach((subs) => subs.forEach((cb) => cb([])))
+  })
+}
+
 export function publishReactionState(targetType, targetId, next) {
   const key = cacheKey(targetType, targetId)
   // Collapse zero-count entries before storing so every subscriber

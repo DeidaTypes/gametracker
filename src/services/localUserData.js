@@ -2,32 +2,37 @@
  * Local User Data — single source of truth for "wipe every local trace of
  * the previously-signed-in account from this device."
  *
- * Background (fix attempt #3 for the "sign out, then sign up as a new
- * email, still lands on the previous account" bug):
+ * Background (the "sign up as a new email, still see the previous account's
+ * library" bug):
  *
- * Attempts #1/#2 fixed the *Supabase auth session* race (see auth.js —
+ * Earlier fixes addressed the *Supabase auth session* race (see auth.js —
  * clearLocalSession(), and AuthContext.jsx's explicit-op authority window).
- * That work is correct and necessary, but it only ever touched the
- * Supabase client's own session/token. Auditing every localStorage/
- * sessionStorage key in the app turned up a second, independent problem:
- * GameTracker's local-first architecture caches a lot of account-shaped
- * data — profile (name/avatar/bio/favorites), the tracker library (Want to
- * Play/Playing/Played/Dropped), reviews/likes/lists migration blobs,
- * badges, swipe/taste history, search history, stats counters — in plain,
- * un-namespaced keys (e.g. `userProfile`, `gameLibrary`) that are NEVER
- * cleared on sign-out and are read directly (synchronously, before any
- * Supabase round trip) by screens like Profile.jsx and Home.jsx. Signing
- * out never touched any of it, so the very next signUp()/logIn() on the
- * same device inherited the previous account's name, avatar, bio, favorite
- * games, and entire game library — indistinguishable, from the user's
- * perspective, from "landing on the previous account," even though the
- * actual authenticated Supabase user was in fact the newly created one.
+ * That work is correct and necessary, but it only ever touched the Supabase
+ * client's own session/token. The auth identity was in fact switching
+ * correctly: a new signup got a new auth.users row and a new uuid.
  *
- * This module is the single place that knows about every such key so
- * future additions don't reintroduce the bug piecemeal. Call
- * `clearAllLocalUserData()` from every place an account's local footprint
- * must be erased: on sign-out (auth.js logOut()) and, as a defense-in-depth
- * backstop, at the start of every fresh signUp()/logIn() (clearLocalSession()).
+ * The remaining problem was local-first state. GameTracker caches a lot of
+ * account-shaped data — profile, the tracker library, reviews/likes/lists
+ * migration blobs, badges, swipe/taste history, search history, stats
+ * counters — in plain, un-namespaced keys (`userProfile`, `gameLibrary`)
+ * that were never cleared on sign-out and are read synchronously, before
+ * any Supabase round trip, by screens like Profile and Home.
+ *
+ * That made it more than a display bug. `syncTrackersWithServer()` PUSHES
+ * the local `gameLibrary` to `game_trackers` for whoever is signed in, and
+ * the reviews/lists/likes migrations only skip when their marker matches the
+ * *current* user id — so a brand-new account didn't just render the previous
+ * account's data, it had that data written into it server-side. A verified
+ * instance copied all 43 of the previous account's trackers into a new
+ * account 1.1s after signup.
+ *
+ * This module is the single place that knows about every such key, so future
+ * additions don't reintroduce the bug piecemeal. Ownership is tracked with a
+ * stamp (`OWNER_KEY`) holding the user id the on-device data belongs to;
+ * `syncLocalDataOwner()` compares that stamp to whoever just authenticated
+ * and wipes when they disagree. Everything here is synchronous and issues no
+ * Supabase calls, so it is safe to run from inside the auth-state-change
+ * listener (see the DEADLOCK HAZARD note in services/auth.js).
  */
 
 import { clearProfile } from './profileService'
@@ -36,8 +41,17 @@ import { clearListsMigrationMarker } from './listService'
 import { clearLegacyLikesData } from './likeService'
 import { clearReviewCache, clearLocalReviewsLegacyData } from './reviewService'
 import { clearPreferences } from './userPreferences'
-import { clearSwipes } from './swipeService'
+import { clearLocalSwipes } from './swipeService'
 import { clearBlockCache } from './blockService'
+import { clearSWRCache } from './swrCache'
+import { invalidateActivityCache } from './statsService'
+import { clearAccountScopedSettings } from './userSettingsService'
+
+/**
+ * User id whose data currently sits on this device. Absent means "unknown
+ * provenance" — see syncLocalDataOwner() for how that case is resolved.
+ */
+const OWNER_KEY = 'gt:local-data-owner:v1'
 
 // Keys owned by hook/component files rather than a service module. Cleared
 // by literal key here (instead of importing the owning React
@@ -56,23 +70,43 @@ const RAW_LOCAL_STORAGE_KEYS = [
 
 const RAW_SESSION_STORAGE_KEYS = [
   'gt:swipe-deck-state:v1', // src/components/explore/SwipeDeck.jsx
+  'gt:swipe-session-adds:v1', // src/services/swipeService.js — per-session backlog add count
 ]
+
+// Deliberately NOT cleared:
+//   gt:milestone-seen:v1:{userId}:*  (streakMilestoneService)
+//   gt:nudge-seen:v1:{userId}:*      (useProgressNudges)
+//     Both already carry the user id in the key, so they cannot bleed
+//     between accounts.
+//   gt:pending-ref:v1                (inviteService)
+//     Referral attribution for the signup that is about to happen — wiping
+//     it here would drop the referrer on the very flow it exists to serve.
+//   Game/IGDB caches (search_cache_v1, gt:ttb:v2, gameColorCache_v1, ...)
+//     Not account data; re-fetching them would only cost bandwidth.
 
 /**
  * Synchronously wipe every local-first cache that mirrors account data.
  * Safe to call even when some keys are already absent. Never throws —
- * sign-out/sign-up must never fail because a cleanup step hiccuped.
+ * sign-out/sign-in must never fail because a cleanup step hiccuped.
  */
 export function clearAllLocalUserData() {
+  // Persisted, account-shaped state.
   clearProfile()
   clearLibrary()
   clearListsMigrationMarker()
   clearLegacyLikesData()
   clearLocalReviewsLegacyData()
-  clearReviewCache()
   clearPreferences()
-  clearSwipes()
+  clearLocalSwipes()
+  clearAccountScopedSettings()
+
+  // In-memory caches. These outlive a React unmount, so a user switch
+  // inside one app session would otherwise keep serving the old account
+  // from module scope even after storage was cleared.
+  clearReviewCache()
   clearBlockCache()
+  clearSWRCache()
+  invalidateActivityCache()
 
   for (const key of RAW_LOCAL_STORAGE_KEYS) {
     try {
@@ -88,4 +122,68 @@ export function clearAllLocalUserData() {
       // best-effort
     }
   }
+
+  // Module-scope caches inside hook files (like/reaction state) clear
+  // themselves off this event. Broadcasting keeps the teardown central
+  // without dragging React hooks into a plain service's import graph.
+  try {
+    window.dispatchEvent(new Event('gt:user-data-cleared'))
+  } catch {
+    // best-effort
+  }
+}
+
+function readOwner() {
+  try {
+    return localStorage.getItem(OWNER_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeOwner(userId) {
+  try {
+    if (userId) localStorage.setItem(OWNER_KEY, userId)
+    else localStorage.removeItem(OWNER_KEY)
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Reconcile the on-device data against whoever just authenticated, wiping
+ * it when they don't match.
+ *
+ * @param {string|null} userId  the newly-authoritative user, or null for signed-out
+ * @param {{ adoptUnstamped?: boolean }} [options]
+ *   `adoptUnstamped` claims existing unstamped data for `userId` instead of
+ *   wiping it. Pass it only where the data provably belongs to `userId`
+ *   already — boot-time session restore, where the device is simply resuming
+ *   the session that wrote the data in the first place. Without this, the
+ *   first launch after this fix ships would wipe every existing user's
+ *   local-only state (progress percentages, swipe history, recents) for no
+ *   reason. Explicit sign-in/sign-up must NOT pass it: there, unstamped data
+ *   is of unknown provenance and the safe assumption is that it is someone
+ *   else's.
+ * @returns {boolean} whether a wipe occurred
+ */
+export function syncLocalDataOwner(userId, { adoptUnstamped = false } = {}) {
+  const owner = readOwner()
+
+  if (!userId) {
+    clearAllLocalUserData()
+    writeOwner(null)
+    return true
+  }
+
+  if (owner === userId) return false
+
+  if (owner === null && adoptUnstamped) {
+    writeOwner(userId)
+    return false
+  }
+
+  clearAllLocalUserData()
+  writeOwner(userId)
+  return true
 }
