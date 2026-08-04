@@ -32,6 +32,7 @@ import {
   clearGameStatus,
 } from '../services/libraryService'
 import { getCachedUserReviews } from '../services/reviewService'
+import { hapticImpact } from '../utils/haptics'
 import { logManualSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
 import { showToast } from './Toast'
@@ -699,6 +700,7 @@ function TrackerGameList({ listId, games }) {
   // ── Bulk actions ────────────────────────────────────────────────────────────
 
   const handleBulkMove = (targetStatus) => {
+    hapticImpact('Medium')
     let moved = 0
     for (const id of selectedIds) {
       const game = games.find((g) => String(g.id) === id)

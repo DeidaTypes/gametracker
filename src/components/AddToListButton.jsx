@@ -12,6 +12,7 @@ import {
   setGameStatus,
 } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { hapticImpact } from '../utils/haptics'
 import StatusChip from './StatusChip'
 import './AddToListButton.css'
 
@@ -129,6 +130,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
   const handleStatusTap = (statusKey) => {
     if (!game) return
     if (currentStatus === statusKey) return
+    hapticImpact('Medium')
     setGameStatus(game.id, statusKey, game)
     refresh()
     window.dispatchEvent(new Event('libraryUpdated'))

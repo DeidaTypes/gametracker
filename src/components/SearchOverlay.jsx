@@ -16,6 +16,7 @@ import {
   clearRecents,
   useRecents,
 } from '../utils/recentSearches'
+import { hapticImpact } from '../utils/haptics'
 import { searchReviewsByText } from '../services/reviewService'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { searchUsers } from '../services/userService'
@@ -323,6 +324,7 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
     e.stopPropagation()
     if (!targetUserId || !currentUserId || isSelf || pending) return
     const was = following
+    hapticImpact('Light')
     setFollowing(!was)
     setPending(true)
     try {

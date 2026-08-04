@@ -12,6 +12,7 @@ import { addGameToBacklog } from '../../services/libraryService'
 import { genreColorVar } from '../../utils/genreColors'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import { shouldShowCount } from '../../utils/formatSocialCount'
+import { hapticImpact } from '../../utils/haptics'
 import './RecentActivityCard.css'
 
 const ACTION_LABEL = { reviewed: 'reviewed', rated: 'rated' }
@@ -123,6 +124,7 @@ export default function RecentActivityCard({ item }) {
     if (!canReact) return
     const prev = likeState
     const wasLiked = prev.liked
+    hapticImpact('Light')
     publishLikeState(item.reviewId, {
       liked: !wasLiked,
       count: wasLiked ? Math.max(0, prev.count - 1) : prev.count + 1,

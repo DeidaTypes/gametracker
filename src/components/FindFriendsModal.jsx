@@ -9,6 +9,7 @@ import {
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
 import { usePresence } from '../hooks/usePresence'
+import { hapticImpact } from '../utils/haptics'
 import CenteredModal from './CenteredModal'
 import PulseDot from './PulseDot'
 import Avatar from './Avatar'
@@ -171,6 +172,7 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
       if (!userId || !currentUserId || userId === currentUserId) return
       if (pendingMap[userId]) return
       const wasFollowing = !!followingMap[userId]
+      hapticImpact('Light')
       setFollowingMap((prev) => ({ ...prev, [userId]: !wasFollowing }))
       setPendingMap((prev) => ({ ...prev, [userId]: true }))
       try {

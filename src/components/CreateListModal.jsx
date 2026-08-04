@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Globe, Lock, ChevronLeft, Plus, Check, X, SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
+import { hapticImpact } from '../utils/haptics'
 import CenteredModal from './CenteredModal'
 import EmptyState from './EmptyState'
 import './CreateListModal.css'
@@ -153,6 +154,7 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
     setSubmitError(null)
     try {
       await onCreate(trimmedName, description.trim(), selectedGames, isPublic)
+      hapticImpact('Medium')
       onClose()
     } catch (err) {
       console.error('[CreateListModal] onCreate failed:', err)

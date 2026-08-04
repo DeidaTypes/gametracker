@@ -29,6 +29,7 @@ import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
 import { extractQuote } from '../utils/extractQuote'
+import { hapticImpact } from '../utils/haptics'
 import './ReviewCard.css'
 
 /** "42 hrs" / "1.5 hrs" — drops the decimal on whole numbers. */
@@ -185,6 +186,7 @@ function ReviewCard({
   const handleLike = async () => {
     const prev = likeState
     const wasLiked = prev.liked
+    hapticImpact('Light')
     // Optimistic flip — push the new state into the shared cache so
     // every mounted ReviewCard rendering this review id updates in
     // lockstep (Home timeline + Profile Reviews tab, etc.).

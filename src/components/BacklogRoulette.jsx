@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Shuffle, ChevronRight, X } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './BacklogRoulette.css'
 
 /**
@@ -23,19 +24,6 @@ import './BacklogRoulette.css'
 const COVER_H = 138   // px — matches shelf-cover-wrap height
 const STRIP_LEN = 22  // covers in the animated strip, last = winner
 const ITEM_H = COVER_H  // each strip slot is exactly one cover height
-
-async function haptic(type) {
-  try {
-    const { Haptics, ImpactStyle, NotificationType } = await import('@capacitor/haptics')
-    if (type === 'success') {
-      await Haptics.notification({ type: NotificationType.SUCCESS })
-    } else if (type === 'medium') {
-      await Haptics.impact({ style: ImpactStyle.MEDIUM })
-    } else {
-      await Haptics.impact({ style: ImpactStyle.LIGHT })
-    }
-  } catch {}
-}
 
 function buildStrip(games, winner) {
   const out = []
@@ -105,13 +93,13 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
     setWinner(picked)
     if (r) {
       setPhase('done')
-      haptic('success')
+      hapticSuccess()
       return
     }
     setStrip(buildStrip(g, picked))
     setSpinKey((k) => k + 1)
     setPhase('spinning')
-    haptic('medium')
+    hapticImpact('Medium')
   }
 
   const handleSpinAgain = useCallback(() => {
@@ -122,7 +110,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
   const handleAnimationComplete = useCallback(() => {
     if (phase === 'spinning') {
       setPhase('done')
-      haptic('success')
+      hapticSuccess()
     }
   }, [phase])
 

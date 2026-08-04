@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getFollowing } from './followService'
+import { hapticSuccess } from '../utils/haptics'
 
 /**
  * Goal Service — escalating yearly game-count challenge.
@@ -449,6 +450,13 @@ export async function getGoalProgress(userId, year = new Date().getFullYear()) {
   const { state, changed } = resolveTierState(goal, current, todayStamp)
   if (changed) {
     await persistTierState(userId, year, state)
+    // Fire only on the transition into a freshly-reached tier (not on a
+    // silent tier-advance with no new reach) — one-shot per tier, since
+    // a later call this same day will already see goalReachedAt === today
+    // and skip the `changed` branch entirely.
+    if (state.goalReachedAt === todayStamp) {
+      hapticSuccess()
+    }
   }
 
   const tierSpan = Math.max(1, state.target - state.tierBase)

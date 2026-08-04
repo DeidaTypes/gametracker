@@ -29,6 +29,7 @@ import {
 } from '../services/userSettingsService'
 import { buildInviteUrl } from '../services/inviteService'
 import { shareContent } from '../utils/share'
+import { hapticImpact } from '../utils/haptics'
 import packageJson from '../../package.json'
 import './Settings.css'
 
@@ -222,10 +223,12 @@ function Settings() {
   }
 
   const handleReduceMotionToggle = (next) => {
+    hapticImpact('Light')
     setReduceMotion(next)
   }
 
   const handleLargerTextToggle = (next) => {
+    hapticImpact('Light')
     setLargerText(next)
   }
 

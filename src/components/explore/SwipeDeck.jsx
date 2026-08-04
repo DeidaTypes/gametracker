@@ -13,6 +13,7 @@ import {
   incrementSessionAddCount,
   SWIPE_ACTIONS,
 } from '../../services/swipeService'
+import { hapticImpact } from '../../utils/haptics'
 import './SwipeDeck.css'
 
 // sessionStorage key used to preserve deck state when the user taps a card
@@ -300,6 +301,7 @@ export function SwipeDeck() {
 
   const handleSwipeRight = useCallback(
     (game) => {
+      hapticImpact('Light')
       // Positive signal (local) + cross-device backlog write.
       recordSwipe(game, SWIPE_ACTIONS.BACKLOG)
       // Real backlog add — counts toward the "N added tonight" payoff
@@ -340,6 +342,7 @@ export function SwipeDeck() {
 
   const handleSwipeLeft = useCallback(
     (game) => {
+      hapticImpact('Light')
       // Negative signal — recorded locally so the taste signal down-weights it.
       if (game) recordSwipe(game, SWIPE_ACTIONS.SKIP)
       advance()

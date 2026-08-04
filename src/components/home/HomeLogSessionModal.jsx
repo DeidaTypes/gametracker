@@ -3,6 +3,7 @@ import { LuClock, LuMinus, LuPlus, LuX } from 'react-icons/lu'
 import CenteredModal from '../CenteredModal'
 import { logSession } from '../../services/sessionService'
 import { showToast } from '../Toast'
+import { hapticImpact } from '../../utils/haptics'
 import './HomeLogSessionModal.css'
 
 const MIN_HOURS = 0.25
@@ -38,6 +39,7 @@ async function submitLoggedSession({ game, hours, notes }) {
   })
 
   if (result) {
+    hapticImpact('Medium')
     showToast(`Logged ${formatHours(hours)} of ${game.title}`, 'success')
   } else {
     showToast('Could not log session — try again', 'error', 5000, {

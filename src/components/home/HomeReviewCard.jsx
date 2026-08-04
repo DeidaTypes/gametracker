@@ -16,6 +16,7 @@ import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import StatusChip from '../StatusChip'
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { formatActivityDate } from '../../utils/formatActivityDate'
+import { hapticImpact } from '../../utils/haptics'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
@@ -476,6 +477,7 @@ export default function HomeReviewCard({ item }) {
     e.stopPropagation()
     const prev = likeState
     const wasLiked = prev.liked
+    hapticImpact('Light')
     publishLikeState(item.id, {
       liked: !wasLiked,
       count: wasLiked ? Math.max(0, prev.count - 1) : prev.count + 1,

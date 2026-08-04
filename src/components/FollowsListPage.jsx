@@ -15,6 +15,7 @@ import {
 } from '../services/followService'
 import { usePresence } from '../hooks/usePresence'
 import { shareContent } from '../utils/share'
+import { hapticImpact } from '../utils/haptics'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
 import FindFriendsModal from './FindFriendsModal'
@@ -332,6 +333,7 @@ function FollowsListPage({ mode }) {
     async (rowUserId) => {
       if (!rowUserId || !currentUserId || rowUserId === currentUserId) return
       const wasFollowing = !!followingMap[rowUserId]
+      hapticImpact('Light')
       setFollowingMap((prev) => ({ ...prev, [rowUserId]: !wasFollowing }))
       try {
         if (wasFollowing) {

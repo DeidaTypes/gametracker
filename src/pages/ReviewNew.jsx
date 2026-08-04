@@ -9,6 +9,7 @@ import { postReview, updateReview } from '../services/reviewService'
 import { setGameStatus } from '../services/libraryService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
+import { hapticImpact } from '../utils/haptics'
 import './ReviewNew.css'
 
 function ReviewNew() {
@@ -158,6 +159,7 @@ function ReviewNew() {
         }
       }
 
+      hapticImpact('Medium')
       window.dispatchEvent(new Event('reviewAdded'))
       showToast(isEditMode ? 'Review updated!' : 'Review saved!', 'success')
       closeWith(() => navigate(-1))

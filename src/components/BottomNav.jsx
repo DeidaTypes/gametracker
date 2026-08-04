@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { House, Compass, BookCopy, User } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
+import { hapticImpact } from '../utils/haptics'
 import './BottomNav.css'
 
 // Fired by ListDetail's long-press drag-to-reorder interaction so this
@@ -76,17 +77,6 @@ const NAV_ITEMS = [
   },
 ]
 
-// Light haptic on tab change. Mirrors src/utils/share.js — dynamic import
-// + try/catch so missing-plugin / web builds quietly no-op.
-async function triggerHaptic() {
-  try {
-    const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
-    await Haptics.impact({ style: ImpactStyle.Light })
-  } catch {
-    /* no-op on web or when the plugin isn't available */
-  }
-}
-
 function BottomNav() {
   const location = useLocation()
   const reduced = useReducedMotion()
@@ -138,7 +128,7 @@ function BottomNav() {
             data-tab={id}
             className={`bottom-nav-item ${active ? 'active' : ''}`}
             onClick={() => {
-              triggerHaptic()
+              hapticImpact('Light')
             }}
           >
             {active && (

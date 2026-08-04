@@ -28,6 +28,7 @@ import { showToast } from '../components/Toast'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
 import { LIST_REORDER_DRAG_EVENT } from '../components/BottomNav'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import {
   getListInfo,
   getGamesFromList,
@@ -79,27 +80,6 @@ const REMOVE_ANIM_MS = 200
 // — see commitReorder, which re-appends the not-yet-revealed tail
 // unchanged after the reordered visible games.
 const GAMES_PAGE_SIZE = 60
-
-// Capacitor Haptics — dynamic import + try/catch so the web build (and
-// any environment without the native plugin) is a silent no-op. Same
-// pattern as BottomNav.jsx / BacklogRoulette.jsx elsewhere in the app.
-async function hapticImpact(style) {
-  try {
-    const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
-    await Haptics.impact({ style: ImpactStyle[style] })
-  } catch {
-    /* no-op on web or when the plugin isn't available */
-  }
-}
-
-async function hapticSuccess() {
-  try {
-    const { Haptics, NotificationType } = await import('@capacitor/haptics')
-    await Haptics.notification({ type: NotificationType.Success })
-  } catch {
-    /* no-op on web or when the plugin isn't available */
-  }
-}
 
 // Returns the index of the grid slot (from a snapshot of rects taken at
 // drag start) whose bounds contain (x, y), or -1 if the point isn't over
@@ -412,6 +392,7 @@ function ListDetail() {
   const handleSaveToggle = async () => {
     if (!currentUserId) return
     const wasSaved = isSaved
+    hapticImpact('Light')
     setIsSaved(!wasSaved)
     setSaveCount((c) => (wasSaved ? c - 1 : c + 1))
     try {
@@ -878,6 +859,7 @@ function ListDetail() {
     setEditingDesc(false)
     try {
       await updateList(listId, { description: trimmed })
+      hapticImpact('Medium')
       showToast('Description updated', 'success')
     } catch {
       setListInfo((l) => ({ ...l, description: prev }))

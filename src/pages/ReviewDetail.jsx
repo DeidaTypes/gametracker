@@ -16,6 +16,7 @@ import ReportSheet from '../components/ReportSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { hapticImpact } from '../utils/haptics'
 import { getReviewById } from '../services/reviewService'
 import {
   getCommentsForReview,
@@ -789,6 +790,7 @@ function ReviewDetail() {
   const handlePost = useCallback(async () => {
     const trimmed = draft.trim()
     if (!trimmed || posting) return
+    hapticImpact('Medium')
     setPosting(true)
 
     const optimisticId = `opt-${Date.now()}`

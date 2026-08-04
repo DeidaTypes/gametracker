@@ -5,6 +5,7 @@ import {
   getReactions,
   getReactionsBatch,
 } from '../services/reactionService'
+import { hapticImpact } from '../utils/haptics'
 
 /**
  * useReactions — shared reaction state for all surfaces.
@@ -161,13 +162,8 @@ export function useReactions(targetType, targetId) {
       const existing = prev.find((r) => r.emoji === emoji)
       const wasReacted = existing?.reacted ?? false
 
-      // Haptic feedback (Capacitor) — fire-and-forget, never blocks
-      try {
-        const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
-        Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
-      } catch {
-        // plugin unavailable on web
-      }
+      // Haptic feedback — fire-and-forget, never blocks
+      hapticImpact('Light')
 
       // Optimistic update
       let optimistic

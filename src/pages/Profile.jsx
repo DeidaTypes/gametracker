@@ -69,6 +69,7 @@ import {
   PIN_CHANGED_EVENT,
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
+import { hapticImpact } from '../utils/haptics'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import { shareCard } from '../services/share'
@@ -1201,6 +1202,7 @@ function Profile() {
   const handleFollowToggle = useCallback(async () => {
     if (!targetUserId || isOwnProfile || followPending) return
     const wasFollowing = following
+    hapticImpact('Light')
 
     // Optimistic toggle — flip the button label and bump the follower
     // numeral immediately so the UI feels instant.

@@ -21,6 +21,7 @@ import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { hapticImpact } from '../utils/haptics'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import LogSessionModal from '../components/LogSessionModal'
 import {
@@ -456,6 +457,7 @@ function GameDetail() {
           playedOn,
         })
         if (result) {
+          hapticImpact('Medium')
           await refreshSessions()
           setLogSessionOpen(false)
           setEditingSession(null)
@@ -468,6 +470,7 @@ function GameDetail() {
           gameImage: game?.image,
         })
         if (result) {
+          hapticImpact('Medium')
           await refreshSessions()
           setLogSessionOpen(false)
         } else {
@@ -514,6 +517,7 @@ function GameDetail() {
   // the sheet stay in sync via the one unchanged status store.
   const handleStatusPillTap = useCallback((statusKey) => {
     if (!game || status === statusKey) return
+    hapticImpact('Medium')
     setGameStatus(game.id, statusKey, game)
     refreshFromStore()
     window.dispatchEvent(new Event('libraryUpdated'))

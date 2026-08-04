@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { TIER_STYLES } from '../data/badges'
+import { hapticSuccess } from '../utils/haptics'
 import './BadgeReveal.css'
 
 const AUTO_DISMISS_MS = 4200
@@ -17,8 +18,8 @@ const AUTO_DISMISS_MS = 4200
  *   Normal motion   — spring scale 0.82→1 + opacity fade
  *   Reduced motion  — opacity fade only (0.18s), no Lottie, no scale
  *
- * Haptics: heavy notification pulse via Capacitor (dynamic import so the
- * web build is a no-op when the plugin is absent).
+ * Haptics: success notification pulse via the shared Capacitor Haptics
+ * integration (src/utils/haptics.js) — a no-op on web.
  */
 export default function BadgeReveal() {
   const reducedMotion = useReducedMotion()
@@ -50,11 +51,7 @@ export default function BadgeReveal() {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(dismiss, AUTO_DISMISS_MS)
 
-    import('@capacitor/haptics')
-      .then(({ Haptics, NotificationType }) =>
-        Haptics.notification({ type: NotificationType.Success })
-      )
-      .catch(() => {})
+    hapticSuccess()
   }, [current, dismiss])
 
   useEffect(() => () => clearTimeout(timerRef.current), [])

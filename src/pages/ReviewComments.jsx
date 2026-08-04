@@ -40,6 +40,7 @@ import {
   deleteComment,
 } from '../services/commentService'
 import { shareCard } from '../services/share'
+import { hapticImpact } from '../utils/haptics'
 import {
   MAX_PINS,
   getPinnedReviewIds,
@@ -906,6 +907,7 @@ function ReviewComments() {
         body: trimmed,
         parentCommentId: replyTo?.id || null,
       })
+      hapticImpact('Medium')
       // Optimistically append — the realtime echo will be deduped by id.
       setComments((prev) => {
         if (prev.some((c) => c.id === inserted.id)) return prev
