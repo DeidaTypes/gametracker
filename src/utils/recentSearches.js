@@ -3,8 +3,12 @@ import React from 'react'
 /**
  * Per-tab recent searches store, persisted to localStorage under
  * 'gt:recents:v1'. Capped at 8 items per tab. Adding a duplicate (same id
- * or — for the reviews tab — same query string) bumps it to the top
+ * or — for the query tabs — same query string) bumps it to the top
  * instead of duplicating.
+ *
+ * The 'queries' tab holds the search terms themselves and backs the
+ * Recent Searches list on the Search screen's pre-search state; the other
+ * four hold the entities a given tab surfaces.
  *
  * Sprint 5 owns this. Sprint 6 will swap the underlying transport (e.g.
  * server-side recents synced across devices) without changing the public
@@ -13,11 +17,11 @@ import React from 'react'
 
 const STORAGE_KEY = 'gt:recents:v1'
 const TAB_LIMIT = 8
-const VALID_TABS = ['games', 'devs', 'reviews', 'users', 'lists']
+const VALID_TABS = ['queries', 'devs', 'reviews', 'users', 'lists']
 const CHANGE_EVENT = 'gt:recents-changed'
 
 const EMPTY_STATE = Object.freeze({
-  games: [],
+  queries: [],
   devs: [],
   reviews: [],
   users: [],
@@ -33,7 +37,7 @@ function readStore() {
     // Defensive coalesce — if a previously-stored shape is missing tabs
     // (e.g. older bundle), fill them in so callers always get an array.
     return {
-      games: Array.isArray(parsed.games) ? parsed.games : [],
+      queries: Array.isArray(parsed.queries) ? parsed.queries : [],
       devs: Array.isArray(parsed.devs) ? parsed.devs : [],
       reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
       users: Array.isArray(parsed.users) ? parsed.users : [],

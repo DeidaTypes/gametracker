@@ -14,7 +14,6 @@ import { getContinuePlayingGames, getGamesFromList } from '../services/librarySe
 import { getFollowingCount } from '../services/followService'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
-import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './Home.css'
 
@@ -96,7 +95,6 @@ function HomeSkeleton() {
 function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { open: openSearchOverlay } = useSearchOverlay()
   const [loading, setLoading] = useState(true)
   const [continuePlaying, setContinuePlaying] = useState([])
   const [backlogGame, setBacklogGame] = useState(null)
@@ -127,9 +125,15 @@ function Home() {
   // refresh here can trigger that refetch without lifting the hook up.
   const pulseFeedRef = useRef(null)
 
-  const loadHomeData = useCallback(() => {
+  // `background: true` updates the same state in place without dropping the
+  // page back to its skeleton. Every caller other than the initial mount is
+  // a refresh over content the user is already looking at — pull-to-refresh,
+  // a library write, app resume — and none of them should blank the screen.
+  // The reads here are synchronous localStorage anyway, so there is nothing
+  // for a loading state to cover.
+  const loadHomeData = useCallback(({ background = false } = {}) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       setContinuePlaying(getContinuePlayingGames())
       setLoggedGamesCount(
         getGamesFromList('currently-playing').length +
@@ -153,7 +157,7 @@ function Home() {
   useEffect(() => {
     loadHomeData()
 
-    const handleUpdate = () => loadHomeData()
+    const handleUpdate = () => loadHomeData({ background: true })
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener('reviewAdded', handleUpdate)
     window.addEventListener('storage', handleUpdate)
@@ -186,7 +190,7 @@ function Home() {
   // a live localStorage read, nothing to bypass), the follow count, and
   // force the pulse feed's own swrCache-bypassing refetch, in parallel.
   const handlePullToRefresh = useCallback(async () => {
-    loadHomeData()
+    loadHomeData({ background: true })
     const tasks = [pulseFeedRef.current?.refresh?.()]
     if (user?.id) {
       tasks.push(
@@ -230,7 +234,7 @@ function Home() {
         <div className="home-body">
 
           {/* ── a. Header — compact single row ────────────────────────────
-              Wordmark left, search icon (opens the search-to-log overlay)
+              Wordmark left, search icon (routes to the Search screen)
               + notification bell right. No greeting.
           ──────────────────────────────────────────────────────────────── */}
           <header className="home-section home-section-padded home-header-block">
@@ -240,8 +244,8 @@ function Home() {
                 <button
                   type="button"
                   className="home-search-btn"
-                  onClick={openSearchOverlay}
-                  aria-label="Search games to log"
+                  onClick={() => navigate('/search')}
+                  aria-label="Search"
                 >
                   <Search size={20} aria-hidden="true" />
                 </button>

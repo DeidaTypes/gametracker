@@ -8,7 +8,7 @@ import './ReorderTrashTarget.css'
  * dragged on ListDetail (custom lists, owner/collaborator only).
  *
  * Rendered via a portal straight to document.body — same reasoning as
- * ToastHost/SearchOverlay: `position: fixed` here must resolve against
+ * ToastHost: `position: fixed` here must resolve against
  * the real viewport, not whatever transformed ancestor a PageTransition
  * ancestor happens to be at rest (Framer Motion leaves a `transform`
  * style on its motion.div even after the enter animation finishes,

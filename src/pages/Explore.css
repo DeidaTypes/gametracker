@@ -69,17 +69,6 @@
   opacity: 0.6;
 }
 
-/* The inner motion.div carries layoutId="search-bar" for the morph
-   animation. It needs to fill the button so the starting bounding box
-   for the transition matches the tap target. */
-.explore-search-btn__inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
 @media (min-width: 769px) {
   .explore-header {
     padding-left: 48px;

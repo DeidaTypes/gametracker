@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { SwipeDeck } from '../components/explore/SwipeDeck'
 import ThemedDropCard from '../components/explore/ThemedDropCard'
@@ -7,7 +7,6 @@ import NewNotableRail from '../components/explore/NewNotableRail'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
 import PullToRefresh from '../components/PullToRefresh'
-import { useSearchOverlay } from '../contexts/SearchOverlayContext'
 import { refetchAllExploreSections } from '../hooks/useExploreData'
 import {
   getSessionAddCount,
@@ -44,8 +43,7 @@ import './Explore.css'
  * hasn't judged yet; ratings live on the game detail page, one tap in.
  */
 function Explore() {
-  const { isOpen, open } = useSearchOverlay()
-  const reduced = useReducedMotion()
+  const navigate = useNavigate()
 
   // "N added tonight" payoff indicator — real backlog adds from the swipe
   // deck this session (see swipeService.incrementSessionAddCount). Hidden
@@ -76,20 +74,10 @@ function Explore() {
         <button
           type="button"
           className="explore-search-btn"
-          onClick={open}
+          onClick={() => navigate('/search')}
           aria-label="Search"
         >
-          <motion.div
-            layoutId={isOpen ? undefined : 'search-bar'}
-            className="explore-search-btn__inner"
-            transition={
-              reduced
-                ? { duration: 0 }
-                : { type: 'spring', stiffness: 380, damping: 30 }
-            }
-          >
-            <Search size={22} aria-hidden="true" />
-          </motion.div>
+          <Search size={22} aria-hidden="true" />
         </button>
       </div>
 

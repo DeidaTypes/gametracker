@@ -11,7 +11,7 @@ const POSTER_PLATES = 3
  * Cover cluster for a list, in one of two variants.
  *
  * `variant="tile"` (default) — square cluster for compact list rows
- * (Profile's ListRow, PinnedListsSection, Search, SearchOverlay). The
+ * (Profile's ListRow, PinnedListsSection, Search). The
  * treatment scales to how many covers the list actually has, so a
  * one-game list never renders as a mostly-empty tile:
  *   0 covers   → a single plate with a layers glyph

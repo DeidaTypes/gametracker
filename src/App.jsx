@@ -8,7 +8,6 @@ import {
   useLocation,
   useNavigationType,
 } from 'react-router-dom'
-import { AnimatePresence } from 'motion/react'
 import PageTransition from './components/PageTransition'
 import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
@@ -73,9 +72,7 @@ import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
 import { NotificationsProvider } from './contexts/NotificationsContext'
 import { NudgesProvider } from './contexts/NudgesContext'
-import { SearchOverlayProvider, useSearchOverlay } from './contexts/SearchOverlayContext'
 import { SessionProvider } from './contexts/SessionContext'
-import SearchOverlay from './components/SearchOverlay'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
@@ -214,7 +211,6 @@ function AppContent() {
   const { user, profile, loading: authLoading } = useAuth()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const mainContentRef = useRef(null)
-  const { isOpen: searchOpen } = useSearchOverlay()
 
   // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
   // earning a badge anywhere in the app surfaces a celebratory toast.
@@ -1005,13 +1001,6 @@ function AppContent() {
 
       {/* Stop-session confirmation sheet — appears after stopGameSession(). */}
       <StopSessionSheet />
-
-      {/* Search overlay — rendered outside .main-content to avoid fixed-
-          positioning being clipped by any transformed ancestor. AnimatePresence
-          drives the enter/exit animations declared inside SearchOverlay. */}
-      <AnimatePresence>
-        {showNav && searchOpen && <SearchOverlay key="search-overlay" />}
-      </AnimatePresence>
     </div>
   )
 }
@@ -1031,7 +1020,6 @@ function App() {
                 any future chrome consumers can all read/write the current game's
                 extracted swatch palette. */}
             <GameColorProvider>
-              <SearchOverlayProvider>
               {/* SessionProvider sits inside AuthProvider (needs user) and
                   outside AppContent so the pill/sheet render outside routes. */}
               <SessionProvider>
@@ -1059,7 +1047,6 @@ function App() {
               <BadgeReveal />
               </NudgesProvider>
               </SessionProvider>
-              </SearchOverlayProvider>
             </GameColorProvider>
           </NotificationsProvider>
           </UnreadMessagesProvider>

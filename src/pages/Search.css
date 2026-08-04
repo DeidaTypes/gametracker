@@ -249,96 +249,6 @@
   opacity: 0.6;
 }
 
-/* ---- Unified chips (recent + trending) ---- */
-.sp-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* Chip container — for chips with a label + remove button */
-.sp-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  border-radius: var(--radius-chip);
-  background: var(--color-bg-elevated);
-  box-shadow:
-    inset 0 1px 0 rgba(0, 0, 0, 0.25),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-}
-
-/* Standalone pill chip (no remove button — used for trending) */
-.sp-chip--pill {
-  height: 36px;
-  border-radius: var(--radius-chip);
-  background: var(--color-bg-elevated);
-  box-shadow:
-    inset 0 1px 0 rgba(0, 0, 0, 0.25),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
-  border: none;
-  padding: 0 16px;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  min-height: 44px;
-  white-space: nowrap;
-  transition: background-color 120ms ease;
-}
-
-.sp-chip--pill:hover {
-  background: var(--color-bg-tertiary);
-}
-
-.sp-chip--pill:active {
-  background: var(--color-bg-secondary);
-}
-
-.sp-chip__label {
-  background: none;
-  border: none;
-  padding: 0 8px 0 14px;
-  height: 100%;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-caption);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  white-space: nowrap;
-  min-height: 44px;
-}
-
-.sp-chip__label:active {
-  opacity: 0.7;
-}
-
-.sp-chip__remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  min-width: 44px;
-  min-height: 44px;
-  height: 100%;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sp-chip__remove:active {
-  color: var(--color-text-primary);
-}
-
 /* ---- Genre tiles (empty state) — Cobalt surface + icon, no gradients ----
    Colored ONLY via the three approved accent tokens (--accent,
    --accent-review, --accent-journal), passed in per-tile as the
@@ -455,7 +365,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sp-chip--pill,
   .sp-library-cover {
     transition: none;
   }
@@ -792,7 +701,7 @@
 }
 
 /* =============================================
-   GAMES tab — recent cover row
+   Landing — "Continue where you left off" cover row
    ============================================= */
 .sp-recent-cover-row {
   display: flex;
@@ -806,11 +715,6 @@
 
 .sp-recent-cover-row::-webkit-scrollbar {
   display: none;
-}
-
-/* Recent Searches only (Games tab) — tighter gap than Continue/Trending. */
-.sp-recent-cover-row--recents {
-  gap: 8px;
 }
 
 .sp-recent-cover {
@@ -847,7 +751,7 @@
   display: block;
 }
 
-/* Cover with a title label underneath (trending / continue) */
+/* Cover with a title label underneath */
 .sp-recent-cover--labeled {
   height: auto;
   flex-direction: column;
@@ -871,26 +775,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Skeleton placeholder for trending covers while loading */
-.sp-recent-cover--skeleton {
-  background: var(--color-bg-elevated);
-  border-radius: var(--cover-radius);
-  animation: sp-skeleton-pulse 1.4s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes sp-skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.45; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sp-recent-cover--skeleton {
-    animation: none;
-    opacity: 0.55;
-  }
 }
 
 /* Active filter chips shown above search results */
@@ -919,7 +803,7 @@
 }
 
 /* =============================================
-   REVIEWS tab — query chips
+   Query chips — Recent Searches (landing) + Reviews tab
    ============================================= */
 .sp-recent-chip-row {
   display: flex;

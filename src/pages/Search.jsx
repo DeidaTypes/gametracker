@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
 import { SearchX, Building2, Users, PenLine, Layers } from 'lucide-react'
 import {
@@ -21,7 +21,6 @@ import {
 } from '../utils/recentSearches'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { fetchBrowseCategories } from '../services/browseService'
-import { fetchPopularThisWeek } from '../services/igdb'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { searchReviewsByText } from '../services/reviewService'
@@ -39,7 +38,7 @@ import GenreTile from '../components/explore/GenreTile'
 import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import EmptyState from '../components/EmptyState'
-import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
+import SharedCover from '../components/SharedCover'
 import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRowSkeleton'
 import ReviewCard from '../components/ReviewCard'
 import Avatar from '../components/Avatar'
@@ -56,9 +55,14 @@ const TABS = [
   { id: 'lists', label: 'Lists' },
 ]
 
-// Submit-on-pause window for the Reviews tab — adds to recents 1.5s after
-// the user stops typing (per spec). Distinct from the 300ms search debounce.
-const REVIEWS_SUBMIT_AFTER_MS = 1500
+// Submit-on-pause window. A term only counts as something the user
+// actually searched — and so only earns a place in Recent Searches — once
+// they have stopped typing for this long. Distinct from the 300ms search
+// debounce that drives the results themselves.
+const SUBMIT_AFTER_MS = 1500
+
+// Single characters are almost always mid-word, so they never become a recent.
+const MIN_RECENT_QUERY_LENGTH = 2
 
 // Cobalt-system genre tiles — icon + name only, no cover photography or
 // per-genre gradients. `accentVar` must be one of the three approved accent
@@ -433,151 +437,102 @@ function AllTabResults({
    GAMES TAB
    ============================================= */
 
-function GamesTabEmpty({ recents, onClearAll, onTapGame, continuePlaying, trendingGames, trendingLoading }) {
-  const hasContinue = continuePlaying && continuePlaying.length > 0
-  const hasTrending = trendingGames && trendingGames.length > 0
-  const hasRecents  = recents && recents.length > 0
-
-  if (!hasContinue && !hasTrending && !hasRecents) return null
-
+function ContinuePlayingSection({ games, onTapGame }) {
+  if (!games || games.length === 0) return null
   return (
-    <>
-      {hasContinue && (
-        <section className="sp-section sp-section--carousel">
-          <h2 className="sp-section-header">Continue where you left off</h2>
-          <div className="sp-recent-cover-row">
-            {continuePlaying.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="sp-recent-cover sp-recent-cover--labeled"
-                onClick={() => onTapGame({ id: item.id, title: item.title ?? item.name, image: item.image ?? item.coverUrl ?? null })}
-                aria-label={item.title ?? item.name ?? 'Game'}
-              >
-                {(item.image || item.coverUrl) ? (
-                  <img
-                    src={item.image ?? item.coverUrl}
-                    alt=""
-                    className="sp-recent-cover__img"
-                    loading="lazy"
-                  />
-                ) : (
-                  <CoverPlaceholder
-                    title={item.title ?? item.name}
-                    className="sp-recent-cover__img"
-                  />
-                )}
-                <span className="sp-recent-cover__title">{item.title ?? item.name}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(hasTrending || trendingLoading) && (
-        <section className="sp-section sp-section--carousel">
-          <h2 className="sp-section-header">Trending this week</h2>
-          {trendingLoading ? (
-            <div className="sp-recent-cover-row">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="sp-recent-cover sp-recent-cover--skeleton" aria-hidden="true" />
-              ))}
-            </div>
-          ) : (
-            <div className="sp-recent-cover-row">
-              {trendingGames.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="sp-recent-cover sp-recent-cover--labeled"
-                  onClick={() => onTapGame(item)}
-                  aria-label={item.title ?? item.name ?? 'Trending game'}
-                >
-                  {(item.image || item.coverUrl) ? (
-                    <SharedCover gameId={item.id} imageSrc={item.image ?? item.coverUrl}>
-                      <img
-                        src={item.image ?? item.coverUrl}
-                        alt=""
-                        className="sp-recent-cover__img"
-                        loading="lazy"
-                      />
-                    </SharedCover>
-                  ) : (
-                    <CoverPlaceholder
-                      title={item.title ?? item.name}
-                      className="sp-recent-cover__img"
-                    />
-                  )}
-                  <span className="sp-recent-cover__title">{item.title ?? item.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {hasRecents && (
-        <section className="sp-section sp-section--carousel">
-          <RecentsHeader onClear={onClearAll} />
-          <div className="sp-recent-cover-row sp-recent-cover-row--recents">
-            {recents.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="sp-recent-cover sp-recent-cover--labeled"
-                onClick={() => onTapGame(item)}
-                aria-label={item.name || 'Recent game'}
-              >
-                {item.coverUrl ? (
-                  <SharedCover gameId={item.id} imageSrc={item.coverUrl}>
-                    <img
-                      src={item.coverUrl}
-                      alt=""
-                      className="sp-recent-cover__img"
-                      loading="lazy"
-                    />
-                  </SharedCover>
-                ) : (
-                  <CoverPlaceholder
-                    title={item.name}
-                    className="sp-recent-cover__img"
-                  />
-                )}
-                <span className="sp-recent-cover__title">{item.name}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-    </>
+    <section className="sp-section sp-section--carousel">
+      <h2 className="sp-section-header">Continue where you left off</h2>
+      <div className="sp-recent-cover-row">
+        {games.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="sp-recent-cover sp-recent-cover--labeled"
+            onClick={() =>
+              onTapGame({
+                id: item.id,
+                title: item.title ?? item.name,
+                image: item.image ?? item.coverUrl ?? null,
+              })
+            }
+            aria-label={item.title ?? item.name ?? 'Game'}
+          >
+            {(item.image || item.coverUrl) ? (
+              <SharedCover gameId={item.id} imageSrc={item.image ?? item.coverUrl}>
+                <img
+                  src={item.image ?? item.coverUrl}
+                  alt=""
+                  className="sp-recent-cover__img"
+                  loading="lazy"
+                />
+              </SharedCover>
+            ) : (
+              <CoverPlaceholder
+                title={item.title ?? item.name}
+                className="sp-recent-cover__img"
+              />
+            )}
+            <span className="sp-recent-cover__title">{item.title ?? item.name}</span>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 
 /**
- * Shared "no query yet" landing content for both the All and Games tabs —
- * Continue/Trending/Recents + Browse by genre. All is the new default tab,
- * but its empty state intentionally reuses this pre-existing content rather
- * than introducing a new design (empty-state styling is out of scope here).
+ * Recent Searches — the terms the user has actually searched, newest first.
+ * Tapping one re-runs it rather than only refilling the field. Absent, not
+ * empty, until there is something real to show.
+ */
+function RecentSearchesSection({ recents, onTapQuery, onRemoveQuery, onClearAll }) {
+  if (!recents || recents.length === 0) return null
+  return (
+    <section className="sp-section">
+      <RecentsHeader onClear={onClearAll} />
+      <div className="sp-recent-stack">
+        {recents.map((item) => (
+          <div key={item.id} className="sp-recent-chip-row">
+            <button
+              type="button"
+              className="sp-recent-chip"
+              onClick={() => onTapQuery(item.query)}
+            >
+              {item.query}
+            </button>
+            <RemoveButton
+              onClick={() => onRemoveQuery(item.id)}
+              label={`Remove "${item.query}" from recent searches`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Shared "no query yet" landing content for both the All and Games tabs:
+ * Continue where you left off, Browse by genre, then Recent Searches.
+ *
+ * There is deliberately no popularity rail here. The old "Trending this
+ * week" section was sourced from IGDB's all-time popularity, so it showed
+ * the same handful of evergreen titles every week regardless of what the
+ * community was actually playing — a label the data could not back up.
  */
 function SearchLandingEmpty({
-  recents,
-  onClearAll,
+  queryRecents,
+  onClearQueries,
+  onTapQuery,
+  onRemoveQuery,
   onTapGame,
   continuePlaying,
-  trendingGames,
-  trendingLoading,
   onTapGenreCard,
 }) {
   return (
     <>
-      <GamesTabEmpty
-        recents={recents}
-        onClearAll={onClearAll}
-        onTapGame={onTapGame}
-        continuePlaying={continuePlaying}
-        trendingGames={trendingGames}
-        trendingLoading={trendingLoading}
-      />
+      <ContinuePlayingSection games={continuePlaying} onTapGame={onTapGame} />
+
       {/* Browse by Genre — Cobalt surfaces + icon, no gradients. */}
       <section className="sp-section">
         <h2 className="sp-section-header">Browse by genre</h2>
@@ -598,6 +553,13 @@ function SearchLandingEmpty({
           ))}
         </div>
       </section>
+
+      <RecentSearchesSection
+        recents={queryRecents}
+        onTapQuery={onTapQuery}
+        onRemoveQuery={onRemoveQuery}
+        onClearAll={onClearQueries}
+      />
     </>
   )
 }
@@ -1128,14 +1090,17 @@ function ListsTabResults({ rows, isLoading, onTapList }) {
 
 function Search() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const currentUserId = user?.id || null
   const inputRef = useRef(null)
   const scrollRef = useRef(null)
   const blurTimerRef = useRef(null)
-  const reviewsSubmitTimerRef = useRef(null)
+  const submitTimerRef = useRef(null)
   const [activeTab, setActiveTab] = useState('all')
-  const [query, setQuery] = useState('')
+  // Entry points that already know what the user is looking for (the desktop
+  // TopNav field, a shared /search?q= link) hand the term over in the URL.
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const [isFocused, setIsFocused] = useState(false)
   const [hasScrolled, setHasScrolled] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -1147,7 +1112,7 @@ function Search() {
   const debouncedQuery = useDebounce(trimmedQuery, 300)
 
   // Per-tab recents (live across this and any other Search-mounted view).
-  const gamesRecents = useRecents('games')
+  const queryRecents = useRecents('queries')
   const devsRecents = useRecents('devs')
   const reviewsRecents = useRecents('reviews')
   const usersRecents = useRecents('users')
@@ -1160,10 +1125,8 @@ function Search() {
   const { results: gameResults, isLoading: gamesLoading, error: gamesError, parsedFilters } =
     useSearch(gameSearchActive ? query : '')
 
-  // Pre-type suggestions: "continue" from local library + trending from IGDB.
+  // Pre-type suggestion: "continue" from the local library.
   const [continuePlaying, setContinuePlaying] = useState([])
-  const [trendingGames, setTrendingGames] = useState([])
-  const [trendingLoading, setTrendingLoading] = useState(true)
 
   // Bumped on resume and threaded through the dependency array of every fetch
   // on this page. The WebView isn't remounted when the app returns to the
@@ -1177,23 +1140,9 @@ function Search() {
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [])
 
-  // Load once on mount — both are cheap (library = sync, trending = single IGDB call).
+  // Load once on mount — reads straight from the local library, no network.
   useEffect(() => {
     setContinuePlaying(getContinuePlayingGames(5))
-  }, [resumeKey])
-
-  useEffect(() => {
-    let cancelled = false
-    setTrendingLoading(true)
-    fetchPopularThisWeek()
-      .then((games) => {
-        if (!cancelled) setTrendingGames(games)
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setTrendingLoading(false)
-      })
-    return () => { cancelled = true }
   }, [resumeKey])
 
   // Games tab now shows only games + genre pills (developers moved to
@@ -1329,26 +1278,41 @@ function Search() {
     }
   }, [activeTab, debouncedQuery, resumeKey])
 
-  // Reviews tab "submit on pause" — 1.5s after the user stops typing,
-  // record the query as a recent. Independent of the 300ms search debounce.
+  /**
+   * Record a term the user has actually searched. Writes to the shared
+   * 'queries' list behind Recent Searches, plus the Reviews tab's own
+   * chip list when that is where the search happened.
+   */
+  const commitRecentQuery = useCallback(
+    (text) => {
+      const t = (text || '').trim()
+      if (t.length < MIN_RECENT_QUERY_LENGTH) return
+      const item = { id: t.toLowerCase(), query: t }
+      addRecent('queries', item)
+      if (activeTab === 'reviews') addRecent('reviews', item)
+    },
+    [activeTab]
+  )
+
+  // "Submit on pause" — 1.5s after the user stops typing, the term counts
+  // as searched. Independent of the 300ms search debounce, and the only
+  // path that catches mobile users who never press the return key.
   useEffect(() => {
-    if (reviewsSubmitTimerRef.current) {
-      clearTimeout(reviewsSubmitTimerRef.current)
-      reviewsSubmitTimerRef.current = null
+    if (submitTimerRef.current) {
+      clearTimeout(submitTimerRef.current)
+      submitTimerRef.current = null
     }
-    if (activeTab !== 'reviews') return
-    const t = trimmedQuery
-    if (!t) return
-    reviewsSubmitTimerRef.current = setTimeout(() => {
-      addRecent('reviews', { id: t.toLowerCase(), query: t })
-    }, REVIEWS_SUBMIT_AFTER_MS)
+    if (!trimmedQuery) return
+    submitTimerRef.current = setTimeout(() => {
+      commitRecentQuery(trimmedQuery)
+    }, SUBMIT_AFTER_MS)
     return () => {
-      if (reviewsSubmitTimerRef.current) {
-        clearTimeout(reviewsSubmitTimerRef.current)
-        reviewsSubmitTimerRef.current = null
+      if (submitTimerRef.current) {
+        clearTimeout(submitTimerRef.current)
+        submitTimerRef.current = null
       }
     }
-  }, [activeTab, trimmedQuery])
+  }, [trimmedQuery, commitRecentQuery])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -1367,27 +1331,19 @@ function Search() {
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault()
-      const t = query.trim()
-      if (!t) return
-      // Reviews tab: Enter immediately commits the query as a recent.
-      if (activeTab === 'reviews') {
-        addRecent('reviews', { id: t.toLowerCase(), query: t })
-      }
+      if (!query.trim()) return
+      commitRecentQuery(query)
       inputRef.current?.blur()
     },
-    [query, activeTab]
+    [query, commitRecentQuery]
   )
 
   const handleGameTap = useCallback(
     (game) => {
-      addRecent('games', {
-        id: game.id,
-        name: game.title,
-        coverUrl: game.image || null,
-      })
+      commitRecentQuery(trimmedQuery)
       navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
     },
-    [navigate]
+    [navigate, commitRecentQuery, trimmedQuery]
   )
 
   const handleGenreTap = useCallback(
@@ -1401,9 +1357,10 @@ function Search() {
   const handleDevTap = useCallback(
     (devName) => {
       addRecent('devs', { id: devName.toLowerCase(), name: devName })
+      commitRecentQuery(trimmedQuery)
       navigate(`/developer/${encodeURIComponent(devName)}`)
     },
-    [navigate]
+    [navigate, commitRecentQuery, trimmedQuery]
   )
 
   const handleClear = useCallback(() => {
@@ -1479,19 +1436,19 @@ function Search() {
 
   const showCancelBtn = isFocused || query.length > 0
 
-  // Reviews recents tap → re-run the search.
-  const handleReviewChipTap = useCallback(
+  /**
+   * Tapping a recent search re-runs it. Setting the query drives exactly
+   * the same debounced fetch a keystroke would, so results arrive without
+   * the user retyping or pressing return. The field is left unfocused so
+   * the on-screen keyboard doesn't immediately cover those results.
+   */
+  const handleRecentQueryTap = useCallback(
     (queryText) => {
       setQuery(queryText)
-      inputRef.current?.focus()
-      // Don't double-add — addRecent dedupes by query so re-tapping just
-      // bumps it to the top, which is fine.
-      addRecent('reviews', {
-        id: queryText.toLowerCase(),
-        query: queryText,
-      })
+      // addRecent dedupes, so this just bumps the term back to the top.
+      commitRecentQuery(queryText)
     },
-    []
+    [commitRecentQuery]
   )
 
   const handleUserTap = useCallback(
@@ -1502,13 +1459,14 @@ function Search() {
         displayName: item.displayName,
         avatarUrl: item.avatarUrl || null,
       })
+      commitRecentQuery(trimmedQuery)
       if (item.username) {
         navigate(`/user/${encodeURIComponent(item.username)}`)
       } else if (item.id) {
         navigate(`/user/id/${encodeURIComponent(item.id)}`)
       }
     },
-    [navigate]
+    [navigate, commitRecentQuery, trimmedQuery]
   )
 
   const handleListTap = useCallback(
@@ -1520,16 +1478,10 @@ function Search() {
         author: list.author || null,
         previewGames: (list.games || list.previewGames || []).slice(0, 6),
       })
+      commitRecentQuery(trimmedQuery)
       navigate(`/list/${list.id}`)
     },
-    [navigate]
-  )
-
-  // Duplicate ids for SharedCover (avoid layoutId collisions when a
-  // recent cover and a search result render the same game side by side).
-  const duplicateIds = useMemo(
-    () => findDuplicateGameIds(gamesRecents, gameResults.games),
-    [gamesRecents, gameResults.games]
+    [navigate, commitRecentQuery, trimmedQuery]
   )
 
   /* ── Render ─────────────────────────────────────────────────── */
@@ -1624,174 +1576,170 @@ function Search() {
         </div>
       </div>
 
-      <SharedCoverScope duplicateIds={duplicateIds}>
-        <div className="sp-tab-content">
-          {/* ALL TAB — default landing tab; empty state reuses the Games
-              tab's existing landing content (out of scope to redesign). */}
-          {activeTab === 'all' && (
-            <>
-              {!hasQuery && (
-                <SearchLandingEmpty
-                  recents={gamesRecents}
-                  onClearAll={() => clearRecents('games')}
-                  onTapGame={(item) => {
-                    addRecent('games', item)
-                    navigate(`/game/${item.id}`, {
-                      state: { coverImage: item.image ?? item.coverUrl },
-                    })
-                  }}
-                  continuePlaying={continuePlaying}
-                  trendingGames={trendingGames}
-                  trendingLoading={trendingLoading}
-                  onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
-                />
-              )}
-              {hasQuery && (
-                <AllTabResults
-                  query={query}
-                  gameResults={gameResults}
-                  gamesLoading={gamesLoading}
-                  gamesError={gamesError}
-                  usersRows={usersRows}
-                  usersLoading={usersLoading}
-                  onTapGame={handleGameTap}
-                  onTapDev={handleDevTap}
-                  onTapUser={handleUserTap}
-                  onRetry={() => setQuery((q) => q + ' ')}
-                  currentUserId={currentUserId}
-                  genres={genres}
-                />
-              )}
-            </>
-          )}
+      <div className="sp-tab-content">
+        {/* ALL TAB — default landing tab; empty state reuses the Games
+            tab's existing landing content (out of scope to redesign). */}
+        {activeTab === 'all' && (
+          <>
+            {!hasQuery && (
+              <SearchLandingEmpty
+                queryRecents={queryRecents}
+                onClearQueries={() => clearRecents('queries')}
+                onTapQuery={handleRecentQueryTap}
+                onRemoveQuery={(id) => removeRecent('queries', id)}
+                onTapGame={(item) =>
+                  navigate(`/game/${item.id}`, {
+                    state: { coverImage: item.image ?? item.coverUrl },
+                  })
+                }
+                continuePlaying={continuePlaying}
+                onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
+              />
+            )}
+            {hasQuery && (
+              <AllTabResults
+                query={query}
+                gameResults={gameResults}
+                gamesLoading={gamesLoading}
+                gamesError={gamesError}
+                usersRows={usersRows}
+                usersLoading={usersLoading}
+                onTapGame={handleGameTap}
+                onTapDev={handleDevTap}
+                onTapUser={handleUserTap}
+                onRetry={() => setQuery((q) => q + ' ')}
+                currentUserId={currentUserId}
+                genres={genres}
+              />
+            )}
+          </>
+        )}
 
-          {/* GAMES TAB */}
-          {activeTab === 'games' && (
-            <>
-              {!hasQuery && (
-                <SearchLandingEmpty
-                  recents={gamesRecents}
-                  onClearAll={() => clearRecents('games')}
-                  onTapGame={(item) => {
-                    addRecent('games', item)
-                    navigate(`/game/${item.id}`, {
-                      state: { coverImage: item.image ?? item.coverUrl },
-                    })
-                  }}
-                  continuePlaying={continuePlaying}
-                  trendingGames={trendingGames}
-                  trendingLoading={trendingLoading}
-                  onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
-                />
-              )}
-              {hasQuery && (
-                <GamesTabResults
-                  query={query}
-                  results={gameResults}
-                  isLoading={gamesLoading}
-                  error={gamesError}
-                  focusedIndex={focusedIndex}
-                  onTapGame={handleGameTap}
-                  onTapGenre={handleGenreTap}
-                  onRetry={() => setQuery((q) => q + ' ')}
-                  noResults={noGameResults}
-                  genres={genres}
-                  gamesResultsRef={gamesResultsRef}
-                  parsedFilters={parsedFilters}
-                />
-              )}
-            </>
-          )}
+        {/* GAMES TAB */}
+        {activeTab === 'games' && (
+          <>
+            {!hasQuery && (
+              <SearchLandingEmpty
+                queryRecents={queryRecents}
+                onClearQueries={() => clearRecents('queries')}
+                onTapQuery={handleRecentQueryTap}
+                onRemoveQuery={(id) => removeRecent('queries', id)}
+                onTapGame={(item) =>
+                  navigate(`/game/${item.id}`, {
+                    state: { coverImage: item.image ?? item.coverUrl },
+                  })
+                }
+                continuePlaying={continuePlaying}
+                onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
+              />
+            )}
+            {hasQuery && (
+              <GamesTabResults
+                query={query}
+                results={gameResults}
+                isLoading={gamesLoading}
+                error={gamesError}
+                focusedIndex={focusedIndex}
+                onTapGame={handleGameTap}
+                onTapGenre={handleGenreTap}
+                onRetry={() => setQuery((q) => q + ' ')}
+                noResults={noGameResults}
+                genres={genres}
+                gamesResultsRef={gamesResultsRef}
+                parsedFilters={parsedFilters}
+              />
+            )}
+          </>
+        )}
 
-          {/* DEVS TAB */}
-          {activeTab === 'devs' && (
-            <>
-              {!hasQuery && (
-                <DevsTabEmpty
-                  recents={devsRecents}
-                  onClearAll={() => clearRecents('devs')}
-                  onTapDev={handleDevTap}
-                  onRemoveDev={(id) => removeRecent('devs', id)}
-                />
-              )}
-              {hasQuery && (
-                <DevsTabResults
-                  query={query}
-                  developers={gameResults.developers}
-                  isLoading={gamesLoading}
-                  error={gamesError}
-                  onTapDev={handleDevTap}
-                  onRetry={() => setQuery((q) => q + ' ')}
-                  noResults={noDevResults}
-                  genres={genres}
-                />
-              )}
-            </>
-          )}
+        {/* DEVS TAB */}
+        {activeTab === 'devs' && (
+          <>
+            {!hasQuery && (
+              <DevsTabEmpty
+                recents={devsRecents}
+                onClearAll={() => clearRecents('devs')}
+                onTapDev={handleDevTap}
+                onRemoveDev={(id) => removeRecent('devs', id)}
+              />
+            )}
+            {hasQuery && (
+              <DevsTabResults
+                query={query}
+                developers={gameResults.developers}
+                isLoading={gamesLoading}
+                error={gamesError}
+                onTapDev={handleDevTap}
+                onRetry={() => setQuery((q) => q + ' ')}
+                noResults={noDevResults}
+                genres={genres}
+              />
+            )}
+          </>
+        )}
 
-          {/* REVIEWS TAB */}
-          {activeTab === 'reviews' && (
-            <>
-              {!hasQuery && (
-                <ReviewsTabEmpty
-                  recents={reviewsRecents}
-                  onClearAll={() => clearRecents('reviews')}
-                  onTapChip={handleReviewChipTap}
-                  onRemoveChip={(id) => removeRecent('reviews', id)}
-                />
-              )}
-              {hasQuery && (
-                <ReviewsTabResults rows={reviewsRows} isLoading={reviewsLoading} />
-              )}
-            </>
-          )}
+        {/* REVIEWS TAB */}
+        {activeTab === 'reviews' && (
+          <>
+            {!hasQuery && (
+              <ReviewsTabEmpty
+                recents={reviewsRecents}
+                onClearAll={() => clearRecents('reviews')}
+                onTapChip={handleRecentQueryTap}
+                onRemoveChip={(id) => removeRecent('reviews', id)}
+              />
+            )}
+            {hasQuery && (
+              <ReviewsTabResults rows={reviewsRows} isLoading={reviewsLoading} />
+            )}
+          </>
+        )}
 
-          {/* USERS TAB */}
-          {activeTab === 'users' && (
-            <>
-              {!hasQuery && (
-                <UsersTabEmpty
-                  recents={usersRecents}
-                  onClearAll={() => clearRecents('users')}
-                  onTapUser={handleUserTap}
-                  onRemoveUser={(id) => removeRecent('users', id)}
-                />
-              )}
-              {hasQuery && (
-                <UsersTabResults
-                  query={query}
-                  rows={usersRows}
-                  isLoading={usersLoading}
-                  onTapUser={handleUserTap}
-                  currentUserId={currentUserId}
-                  genres={genres}
-                />
-              )}
-            </>
-          )}
+        {/* USERS TAB */}
+        {activeTab === 'users' && (
+          <>
+            {!hasQuery && (
+              <UsersTabEmpty
+                recents={usersRecents}
+                onClearAll={() => clearRecents('users')}
+                onTapUser={handleUserTap}
+                onRemoveUser={(id) => removeRecent('users', id)}
+              />
+            )}
+            {hasQuery && (
+              <UsersTabResults
+                query={query}
+                rows={usersRows}
+                isLoading={usersLoading}
+                onTapUser={handleUserTap}
+                currentUserId={currentUserId}
+                genres={genres}
+              />
+            )}
+          </>
+        )}
 
-          {/* LISTS TAB */}
-          {activeTab === 'lists' && (
-            <>
-              {!hasQuery && (
-                <ListsTabEmpty
-                  recents={listsRecents}
-                  onClearAll={() => clearRecents('lists')}
-                  onTapList={handleListTap}
-                  onRemoveList={(id) => removeRecent('lists', id)}
-                />
-              )}
-              {hasQuery && (
-                <ListsTabResults
-                  rows={listsRows}
-                  isLoading={listsLoading}
-                  onTapList={handleListTap}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </SharedCoverScope>
+        {/* LISTS TAB */}
+        {activeTab === 'lists' && (
+          <>
+            {!hasQuery && (
+              <ListsTabEmpty
+                recents={listsRecents}
+                onClearAll={() => clearRecents('lists')}
+                onTapList={handleListTap}
+                onRemoveList={(id) => removeRecent('lists', id)}
+              />
+            )}
+            {hasQuery && (
+              <ListsTabResults
+                rows={listsRows}
+                isLoading={listsLoading}
+                onTapList={handleListTap}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
