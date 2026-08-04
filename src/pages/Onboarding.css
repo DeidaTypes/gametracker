@@ -408,37 +408,86 @@
   color: var(--color-text-secondary);
 }
 
-/* Selected games horizontal strip */
-.ob-selected-strip {
-  display: flex;
+/* ── "Your 3 picks" row — always-visible, exactly 3 slots ───────────
+   Replaces the old strip that only existed once the first game was
+   picked. Empty slots show a dashed "+" placeholder; filled slots reuse
+   the colorful genre-token cover treatment from the results grid. */
+.ob-picks {
+  margin-bottom: 4px;
+}
+
+.ob-picks__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+}
+
+.ob-picks__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 12px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  margin-bottom: 14px;
 }
 
-.ob-selected-strip::-webkit-scrollbar {
-  display: none;
+.ob-picks__slot {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
 }
 
-.ob-selected-item {
-  flex-shrink: 0;
+.ob-picks__slot--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+  color: var(--color-text-tertiary);
+}
+
+.ob-picks__slot--filled {
+  position: relative;
+}
+
+.ob-picks__slot--filled .ob-selected-cover {
+  width: 100%;
+  height: 100%;
 }
 
 /* Selected cover — colorful gradient tile (genre-token driven), matches
-   the Favorites mockup's pinned selection strip. */
+   the Favorites mockup's slot treatment. */
 .ob-selected-cover {
   position: relative;
-  width: 52px;
-  height: 70px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--cover-radius);
   overflow: visible;
   background: linear-gradient(
     165deg,
     var(--ob-tile-color) 0%,
     color-mix(in srgb, var(--ob-tile-color) 40%, var(--color-bg-primary)) 100%
   );
+}
+
+/* Zero-state hint card — compact, anchored directly under the 3 slots
+   instead of floating alone lower on the screen. */
+.ob-hint-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+}
+
+.ob-hint-card__icon {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
 }
 
 .ob-selected-remove {
@@ -485,14 +534,6 @@
 
 .ob-picker__state--error {
   color: var(--status-danger);
-}
-
-.ob-picker__hint {
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-caption);
-  text-align: center;
-  padding: 28px 0;
-  margin: 0;
 }
 
 /* Loading spinner */
@@ -624,12 +665,13 @@
 .ob-picker__count-hint {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-muted);
   text-align: center;
   margin: 0 0 10px;
+  transition: color 0.15s;
 }
 
-.ob-picker__count-hint--ready {
+.ob-picker__count-hint--active {
   color: var(--accent-review);
 }
 
@@ -646,25 +688,31 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.12s;
+  transition: opacity 0.15s, transform 0.12s, background 0.15s, box-shadow 0.15s, border-color 0.15s;
   border: none;
 }
 
-.ob-picker__btn--ghost {
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  flex: 0 0 auto;
-  padding-left: 20px;
-  padding-right: 20px;
+.ob-picker__btn--full {
+  width: 100%;
 }
 
-.ob-picker__btn--ghost:hover {
+/* Muted state — 0 games selected. Surface fill, dim text, no shadow;
+   still fully clickable (acts as "Done = skip"), just visually
+   de-emphasized until the user has picked something. */
+.ob-picker__btn--muted {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1.5px solid var(--color-border);
+  box-shadow: none;
+}
+
+.ob-picker__btn--muted:hover:not(:disabled) {
   background: var(--color-surface-hover);
 }
 
-/* Done CTA — cobalt -> review (green) gradient, distinct from the flat
-   single-accent CTAs used on steps 1-2. */
+/* Done CTA — cobalt -> review (green) gradient, the same treatment used
+   for primary CTAs app-wide (sign-up, sign-in). Active from 1 pick
+   through 3/3. */
 .ob-picker__btn--primary {
   background: linear-gradient(120deg, var(--accent) 0%, var(--accent-review) 100%);
   color: #fff;
@@ -682,13 +730,8 @@
   transform: scale(0.98);
 }
 
-.ob-picker__btn--disabled {
-  opacity: 0.38;
-  cursor: not-allowed;
-}
-
 .ob-picker__btn:disabled {
-  opacity: 0.38;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

@@ -11,6 +11,7 @@ import {
   List,
   Search,
   X,
+  Plus,
   Check,
   SearchX,
 } from 'lucide-react'
@@ -274,9 +275,9 @@ export default function Onboarding() {
     exit: (dir) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
   }
 
-  // Done is enabled when the user has picked 3+ games OR none at all
-  // (picking 0 acts as a "Done = skip" pathway).
-  const canDone = selectedGames.length === 0 || selectedGames.length >= 3
+  // Done is always actionable — at 0 picks it's a "Done = skip" pathway
+  // (muted styling signals that), at 1+ it saves whatever's selected (no
+  // minimum of 3 required). Visual state alone communicates progress.
   const remaining = Math.max(0, 3 - selectedGames.length)
 
   return (
@@ -360,9 +361,7 @@ export default function Onboarding() {
                 isPicked={isPicked}
                 toggleGame={toggleGame}
                 removeSelected={removeSelected}
-                canDone={canDone}
                 remaining={remaining}
-                onSkip={handleSkip}
                 onDone={handleDone}
                 submitting={submitting}
               />
@@ -444,9 +443,7 @@ function GamePickerSlide({
   isPicked,
   toggleGame,
   removeSelected,
-  canDone,
   remaining,
-  onSkip,
   onDone,
   submitting,
 }) {
@@ -454,6 +451,14 @@ function GamePickerSlide({
     onQueryChange({ target: { value: '' } })
     inputRef.current?.focus()
   }, [onQueryChange, inputRef])
+
+  const pickedCount = selectedGames.length
+  const picksLabel =
+    pickedCount === 0
+      ? 'Your 3 picks'
+      : pickedCount >= 3
+        ? 'Your 3 picks — ready!'
+        : `Your 3 picks — ${remaining} more to go`
 
   return (
     <div className="ob-picker">
@@ -493,36 +498,64 @@ function GamePickerSlide({
           )}
         </div>
 
-        {/* Selected games strip */}
-        {selectedGames.length > 0 && (
+        {/* Your 3 picks — always-visible, exactly 3 slots. Empty slots show
+            a dashed "+" placeholder; filled slots show the same colorful
+            cover treatment as the results grid, with a remove button. */}
+        <div className="ob-picks">
+          <p className="ob-picks__label">{picksLabel}</p>
           <div
-            className="ob-selected-strip"
+            className="ob-picks__row"
             role="list"
-            aria-label="Selected games"
+            aria-label="Your 3 picks"
           >
-            {selectedGames.map((g) => (
-              <div
-                key={g.id}
-                className="ob-selected-item"
-                role="listitem"
-              >
-                <div
-                  className="ob-selected-cover"
-                  style={{ '--ob-tile-color': tileColorVar(g.id) }}
-                >
-                  <button
-                    type="button"
-                    className="ob-selected-remove"
-                    onClick={() => removeSelected(g.id)}
-                    aria-label={`${g.title}, selected, tap to remove`}
+            {[0, 1, 2].map((slotIndex) => {
+              const game = selectedGames[slotIndex]
+              if (game) {
+                return (
+                  <div
+                    key={game.id}
+                    className="ob-picks__slot ob-picks__slot--filled"
+                    role="listitem"
                   >
-                    <X size={9} strokeWidth={3} />
-                  </button>
+                    <div
+                      className="ob-selected-cover"
+                      style={{ '--ob-tile-color': tileColorVar(game.id) }}
+                    >
+                      <button
+                        type="button"
+                        className="ob-selected-remove"
+                        onClick={() => removeSelected(game.id)}
+                        aria-label={`${game.title}, selected, tap to remove`}
+                      >
+                        <X size={9} strokeWidth={3} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div
+                  key={`empty-${slotIndex}`}
+                  className="ob-picks__slot ob-picks__slot--empty"
+                  role="listitem"
+                  aria-hidden="true"
+                >
+                  <Plus size={18} strokeWidth={2} />
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
-        )}
+
+          {/* Zero-state hint — compact card anchored right under the
+              slots, replacing the old text that floated alone lower on
+              the screen. */}
+          {pickedCount === 0 && (
+            <div className="ob-hint-card">
+              <Search size={15} className="ob-hint-card__icon" aria-hidden="true" />
+              <span>Search above to find your favorites</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Scrollable results */}
@@ -547,12 +580,6 @@ function GamePickerSlide({
           <div aria-live="polite">
             <EmptyState icon={SearchX} size="inline" body={`No games found for "${query}"`} />
           </div>
-        )}
-
-        {!query.trim() && !loading && (
-          <p className="ob-picker__hint">
-            Search above to find your favorites.
-          </p>
         )}
 
         {!loading && !error && results.length > 0 && (
@@ -596,37 +623,28 @@ function GamePickerSlide({
         )}
       </div>
 
-      {/* Bottom: count hint + Skip / Done */}
+      {/* Bottom: status text + Done. Skip lives only in the top header now. */}
       <div className="ob-picker__bottom">
-        {selectedGames.length > 0 && remaining > 0 && (
-          <p className="ob-picker__count-hint" aria-live="polite">
-            {remaining} more to go
-          </p>
-        )}
-        {selectedGames.length >= 3 && (
-          <p className="ob-picker__count-hint ob-picker__count-hint--ready" aria-live="polite">
-            {selectedGames.length} selected — ready!
-          </p>
-        )}
+        <p
+          className={
+            'ob-picker__count-hint' +
+            (pickedCount > 0 ? ' ob-picker__count-hint--active' : '')
+          }
+          aria-live="polite"
+        >
+          {pickedCount} of 3 selected
+        </p>
         <div className="ob-picker__actions">
           <button
             type="button"
-            className="ob-picker__btn ob-picker__btn--ghost"
-            onClick={onSkip}
-            disabled={submitting}
-            aria-label="Skip onboarding"
-          >
-            Skip
-          </button>
-          <button
-            type="button"
             className={
-              'ob-picker__btn ob-picker__btn--primary' +
-              (!canDone ? ' ob-picker__btn--disabled' : '')
+              'ob-picker__btn ob-picker__btn--full' +
+              (pickedCount === 0
+                ? ' ob-picker__btn--muted'
+                : ' ob-picker__btn--primary')
             }
-            onClick={canDone ? onDone : undefined}
-            disabled={!canDone || submitting}
-            aria-disabled={!canDone}
+            onClick={onDone}
+            disabled={submitting}
           >
             {submitting ? 'Saving…' : 'Done'}
           </button>
