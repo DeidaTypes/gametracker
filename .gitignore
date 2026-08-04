@@ -34,6 +34,9 @@ dist-ssr
 build
 *.cache
 
+# Security testing harness — never commit (touches live data, reads creds from env)
+scripts/rls-pentest/
+
 # OS files
 Thumbs.db
 .DS_Store

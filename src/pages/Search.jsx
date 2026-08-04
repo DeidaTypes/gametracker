@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
-import { SearchX } from 'lucide-react'
+import { SearchX, Building2, Users, PenLine, Layers } from 'lucide-react'
 import {
   GiWizardStaff,
   GiBroadsword,
@@ -685,8 +685,24 @@ function GamesTabResults({
    DEVS TAB
    ============================================= */
 
+/* Every per-tab "no query yet" state below falls back to an EmptyState that
+   says what this tab searches, rather than returning null — the Games/All
+   tabs have Trending + Browse by genre to fill the space, but these four
+   have nothing global to show and left the screen blank under the tab bar
+   for anyone without search history (i.e. every new account). */
 function DevsTabEmpty({ recents, onClearAll, onTapDev, onRemoveDev }) {
-  if (!recents || recents.length === 0) return null
+  if (!recents || recents.length === 0) {
+    return (
+      <div className="sp-section">
+        <EmptyState
+          icon={Building2}
+          size="compact"
+          title="Search a studio."
+          body="Look up a developer or publisher to see everything they've made."
+        />
+      </div>
+    )
+  }
   return (
     <section className="sp-section">
       <RecentsHeader onClear={onClearAll} />
@@ -745,7 +761,18 @@ function DevsTabResults({ query, developers, isLoading, error, onTapDev, onRetry
    ============================================= */
 
 function ReviewsTabEmpty({ recents, onClearAll, onTapChip, onRemoveChip }) {
-  if (!recents || recents.length === 0) return null
+  if (!recents || recents.length === 0) {
+    return (
+      <div className="sp-section">
+        <EmptyState
+          icon={PenLine}
+          size="compact"
+          title="Read what people wrote."
+          body="Search a game or a phrase to pull up reviews."
+        />
+      </div>
+    )
+  }
   return (
     <section className="sp-section">
       <RecentsHeader onClear={onClearAll} />
@@ -903,7 +930,18 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
 }
 
 function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
-  if (!recents || recents.length === 0) return null
+  if (!recents || recents.length === 0) {
+    return (
+      <div className="sp-section">
+        <EmptyState
+          icon={Users}
+          size="compact"
+          title="Find your people."
+          body="Search a username to see what they're playing."
+        />
+      </div>
+    )
+  }
   return (
     <section className="sp-section">
       <RecentsHeader onClear={onClearAll} />
@@ -1026,7 +1064,18 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
 }
 
 function ListsTabEmpty({ recents, onClearAll, onTapList, onRemoveList }) {
-  if (!recents || recents.length === 0) return null
+  if (!recents || recents.length === 0) {
+    return (
+      <div className="sp-section">
+        <EmptyState
+          icon={Layers}
+          size="compact"
+          title="Find a list to play through."
+          body="Search for themed collections — cozy games, RPGs, anything."
+        />
+      </div>
+    )
+  }
   return (
     <section className="sp-section">
       <RecentsHeader onClear={onClearAll} />

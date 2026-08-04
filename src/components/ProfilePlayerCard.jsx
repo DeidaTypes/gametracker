@@ -201,11 +201,16 @@ export default function ProfilePlayerCard({
           label="Games"
           loading={statsLoading || gamesCount == null}
         />
+        {/* An unresolved hours total is an em dash, not an endless
+            skeleton: getTotalHoursForUser returns 0 for a user with no
+            tracker rows, so null here means the query failed or timed
+            out, and the old `hoursPlayed == null` skeleton had nothing
+            left to wait for. */}
         <Stat
-          value={formatHours(hoursPlayed)}
-          suffix="h"
+          value={hoursPlayed == null ? '—' : formatHours(hoursPlayed)}
+          suffix={hoursPlayed == null ? undefined : 'h'}
           label="Played"
-          loading={statsLoading || hoursPlayed == null}
+          loading={statsLoading}
         />
         <Stat value={reviewsCount ?? 0} label="Reviews" loading={statsLoading} />
         <Stat

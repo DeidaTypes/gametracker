@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Sparkles, WifiOff } from 'lucide-react'
 import DiscoverSubHeader from '../components/explore/DiscoverSubHeader'
 import CleanGameTile from '../components/explore/CleanGameTile'
+import EmptyState from '../components/EmptyState'
 import { getNewNotablePage } from '../services/newNotableService'
 import './DiscoverNewAll.css'
 
@@ -38,6 +40,10 @@ export default function DiscoverNewAll() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  // Only a thrown request sets this. An empty first page is a real (if
+  // unlikely) state of the pool and gets its own copy below — telling the
+  // user loading failed when it succeeded and returned nothing sends them
+  // off to retry something that isn't broken.
   const [failed, setFailed] = useState(false)
 
   const sentinelRef = useRef(null)
@@ -64,7 +70,6 @@ export default function DiscoverNewAll() {
         return true
       })
       if (fresh.length > 0) setGames((prev) => [...prev, ...fresh])
-      if (offset === 0 && page.length === 0) setFailed(true)
     } catch {
       if (offset === 0) setFailed(true)
       setHasMore(false)
@@ -74,6 +79,15 @@ export default function DiscoverNewAll() {
       setLoadingMore(false)
     }
   }, [])
+
+  const retry = useCallback(() => {
+    requestedRef.current = 0
+    seenIdsRef.current = new Set()
+    setFailed(false)
+    setHasMore(true)
+    setInitialLoading(true)
+    fetchNextPage()
+  }, [fetchNextPage])
 
   useEffect(() => {
     fetchNextPage()
@@ -106,7 +120,20 @@ export default function DiscoverNewAll() {
             {Array.from({ length: 12 }, (_, i) => <SkeletonTile key={i} />)}
           </div>
         ) : failed ? (
-          <p className="dna-empty-text">Could not load new releases.</p>
+          <EmptyState
+            icon={WifiOff}
+            title="Couldn't load new releases."
+            body="Check your connection and try again."
+            cta="Try again"
+            ctaVariant="secondary"
+            onCta={retry}
+          />
+        ) : games.length === 0 ? (
+          <EmptyState
+            icon={Sparkles}
+            title="No new releases right now."
+            body="Notable launches land here as they come out — check back soon."
+          />
         ) : (
           <>
             <div className="clean-tile-grid">

@@ -359,8 +359,8 @@ export async function sendMessage({ recipientId, body, attachment = null }) {
     // catches blocks already reflected in our locally-cached block set.
     // If the partner blocked us (or we blocked them) on another device
     // since our cache last hydrated, the insert reaches Postgres and the
-    // dm_insert_self RLS policy (20260801010205 / hardened further in
-    // 20260803000200) rejects it with 42501 (insufficient_privilege —
+    // dm_insert_self RLS policy (block check added in 20260801010205)
+    // rejects it with 42501 (insufficient_privilege —
     // PostgREST's shape for a WITH CHECK failure). Map that to the same
     // friendly copy as the pre-check instead of surfacing the raw
     // "new row violates row-level security policy" text in the toast.

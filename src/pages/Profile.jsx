@@ -77,6 +77,7 @@ import { compileWrappedSummary } from '../services/dnaService'
 import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
+import PullToRefresh from '../components/PullToRefresh'
 import SettingsSheet from '../components/SettingsSheet'
 import ReportSheet from '../components/ReportSheet'
 import EditProfileModal from '../components/EditProfileModal'
@@ -753,7 +754,25 @@ function Profile() {
             force,
           })
 
-        if (gp) setGoalProgress(gp)
+        // A null `gp` means safeWithTimeout gave up on the goal query, and
+        // the challenge cell reads null as "still resolving" — so leaving it
+        // null parked that cell on a skeleton with nothing left to wait for.
+        // Settle it on the same shape getGoalProgress returns for a user
+        // with no goal row: the cell falls back to its "Set a goal" prompt,
+        // which is both the truth for a brand-new account and a live action
+        // for anyone whose fetch merely stalled.
+        setGoalProgress(
+          gp || {
+            hasGoal: false,
+            target: null,
+            current: 0,
+            year: new Date().getFullYear(),
+            percent: 0,
+            tier: 1,
+            tierBase: 0,
+            goalReachedAt: null,
+          }
+        )
         if (rd) setRivalryData(rd)
         setTrackedGamesCount(trackedGames ?? 0)
         setHoursPlayed(hours)
@@ -930,6 +949,15 @@ function Profile() {
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [loadFollowState])
+
+  // Pull-to-refresh: the same two loads the resume listeners above
+  // already run in parallel — loadProfileData force-bypasses the shared
+  // swrCache bundle (reviews/lists/activities/pins/goal/journal/etc.),
+  // loadFollowState re-hits the (uncached) follower/following counts.
+  const handlePullToRefresh = useCallback(
+    () => Promise.all([loadProfileData({ force: true }), loadFollowState()]),
+    [loadProfileData, loadFollowState]
+  )
 
   // Sprint 7 — open the Edit Profile modal when this page is reached
   // via the /edit-profile redirect (Settings page deep link). Replace
@@ -1521,6 +1549,7 @@ function Profile() {
   const favoriteGames = profile.favoriteGames || []
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
+      <PullToRefresh onRefresh={handlePullToRefresh}>
       <div className="profile-page">
         {/* Banner — full-bleed strip above the player card. Sprint 7
             preserved; the card sits below it. */}
@@ -2002,6 +2031,7 @@ function Profile() {
           />
         )}
       </div>
+      </PullToRefresh>
     </SharedCoverScope>
   )
 }
@@ -2438,7 +2468,11 @@ function ListsTab({
 
 /* Compact list row: cover cluster left, then name, "N games · updated
    {date}", and an engagement footer. Hairline-separated rather than
-   boxed so several lists fit on screen at once.
+   boxed so several lists fit on screen at once. The cluster is
+   ListCoverCluster's "poster" variant — the same true --cover-ratio
+   fanned stack Library's Lists tab uses — so every row gets one
+   consistent cluster treatment regardless of cover count, instead of
+   forking between a fan and a 2x2 mosaic.
    Like/comment are display-only until Sprint 6 wires list engagement;
    the pin button is live and owner-only. */
 function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
@@ -2464,11 +2498,14 @@ function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
         }
       }}
     >
-      <ListCoverCluster
-        games={list.previewGames}
-        coverImageUrl={list.coverImageUrl}
-        name={list.name}
-      />
+      <div className="profile-list-row__stack">
+        <ListCoverCluster
+          games={list.previewGames}
+          coverImageUrl={list.coverImageUrl}
+          name={list.name}
+          variant="poster"
+        />
+      </div>
 
       <div className="profile-list-row__body">
         <h3 className="profile-list-row__name">{list.name}</h3>

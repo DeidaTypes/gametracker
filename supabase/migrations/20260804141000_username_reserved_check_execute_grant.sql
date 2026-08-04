@@ -1,0 +1,28 @@
+-- Let the API roles evaluate the username_not_reserved CHECK.
+--
+-- 20260804000100_username_uniqueness.sql added
+--
+--   alter table public.users add constraint username_not_reserved
+--     check (username is null or not private.is_username_reserved(username));
+--
+-- and then revoked EXECUTE on that function from anon and authenticated. A
+-- CHECK constraint is evaluated with the privileges of the role performing the
+-- write — not the table owner's, and not through any SECURITY DEFINER shield —
+-- so revoking EXECUTE did not merely hide the helper, it made every
+-- client-side INSERT and UPDATE on public.users fail with
+--
+--   42501: permission denied for function is_username_reserved
+--
+-- regardless of which columns the write touched. That took out the whole
+-- profile write path: signup's ensureProfileRow() reconcile (so every new
+-- account landed on "your account was created, but we could not finish setting
+-- up your profile"), completeOnboarding(), and every Edit Profile field
+-- including bio and avatar.
+--
+-- Granting EXECUTE gives nothing away: the reserved list is a hardcoded array
+-- of route names that also ships to the browser in
+-- src/services/usernameRules.js, and the function is immutable with no table
+-- access. Uniqueness and validity are still enforced by
+-- users_username_lower_key, the username_format CHECK, and this constraint.
+
+grant execute on function private.is_username_reserved(text) to anon, authenticated;

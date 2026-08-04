@@ -27,10 +27,16 @@ import { normalizeUsername, validateUsername } from './usernameRules'
 // absent: the API roles have no column privilege on them, so `select('*')` here
 // would 403. Read them via the get_my_settings() RPC instead (see
 // userSettingsService).
+//
+// onboarded_at IS selected: App.jsx's onboarding gate reads
+// `profile?.onboarded_at`, and leaving the column out of this list made that
+// check permanently undefined — the localStorage mirror was the only thing
+// keeping a returning user out of the onboarding flow (see migration
+// 20260804140000, which added the column and its grants).
 const PROFILE_COLUMNS =
   'id, display_name, username, bio, avatar_url, genre_badge, platform_badge, ' +
   'created_at, updated_at, banner_url, favorite_games, ' +
-  'showcase_badges, current_obsessions'
+  'showcase_badges, current_obsessions, onboarded_at'
 
 /* ============================================================
    Error classification

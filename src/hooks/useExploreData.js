@@ -26,6 +26,28 @@ import { getSWR, peekSWR } from '../services/swrCache'
 const SECTION_TTL_MS = 90 * 1000
 
 /**
+ * Every currently-mounted `useAsyncSection`'s `doFetch`, so pull-to-refresh
+ * on the Explore page can force-refetch every visible section without
+ * Explore.jsx needing to call each of these hooks itself (which would
+ * double up the fetch machinery every section component already runs).
+ * Sections register on mount / unregister on unmount, mirroring the
+ * resume-listener effect right below.
+ */
+const activeSectionRefetchers = new Set()
+
+/**
+ * Force-refetch every section hook currently mounted on the page (i.e.
+ * every rail actually rendered on Explore right now). Each `doFetch`
+ * already bypasses the cache (`force: true`), so this is the pull-to-
+ * refresh entry point — pass it straight to `<PullToRefresh onRefresh>`.
+ */
+export function refetchAllExploreSections() {
+  return Promise.all(
+    Array.from(activeSectionRefetchers).map((fn) => fn().catch(() => {}))
+  )
+}
+
+/**
  * Generic loader hook.
  *
  * Loads once on mount and exposes a `refetch()` function that returns a
@@ -110,6 +132,14 @@ function useAsyncSection(cacheKey, loaderFn, deps = null) {
     const onResume = () => { doFetch().catch(() => {}) }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [doFetch])
+
+  // Register this section's force-refetch for the page-level pull-to-
+  // refresh gesture (see `refetchAllExploreSections` above) for exactly
+  // as long as it's mounted.
+  useEffect(() => {
+    activeSectionRefetchers.add(doFetch)
+    return () => activeSectionRefetchers.delete(doFetch)
   }, [doFetch])
 
   return { data, loading, error, refetch: doFetch }

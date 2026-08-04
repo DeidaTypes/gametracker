@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuBell } from 'react-icons/lu'
 import { Search, ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import HomeFAB from '../components/HomeFAB'
+import PullToRefresh from '../components/PullToRefresh'
 import HomeWeekRow from '../components/home/HomeWeekRow'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import HomeLogSessionModal from '../components/home/HomeLogSessionModal'
@@ -121,6 +122,11 @@ function Home() {
 
   const { unreadCount: notifUnread } = useNotifications()
 
+  // The pulse feed owns its own useHomeFeed() call (and the swrCache-
+  // bypassing `refresh` it exposes) — this ref is only so pull-to-
+  // refresh here can trigger that refetch without lifting the hook up.
+  const pulseFeedRef = useRef(null)
+
   const loadHomeData = useCallback(() => {
     try {
       setLoading(true)
@@ -176,6 +182,22 @@ function Home() {
     return () => { cancelled = true }
   }, [user?.id])
 
+  // Pull-to-refresh: reload the local tracker/backlog snapshot (already
+  // a live localStorage read, nothing to bypass), the follow count, and
+  // force the pulse feed's own swrCache-bypassing refetch, in parallel.
+  const handlePullToRefresh = useCallback(async () => {
+    loadHomeData()
+    const tasks = [pulseFeedRef.current?.refresh?.()]
+    if (user?.id) {
+      tasks.push(
+        getFollowingCount(user.id)
+          .then((count) => setFollowCount(Number(count) || 0))
+          .catch(() => {})
+      )
+    }
+    await Promise.all(tasks)
+  }, [loadHomeData, user?.id])
+
   const pageReady = !loading && followCount !== null
   const isNewUser = pageReady && followCount === 0 && loggedGamesCount === 0
   // Always show for anyone with account history — even a zero-session week
@@ -203,6 +225,7 @@ function Home() {
 
   return (
     <AppShell>
+      <PullToRefresh onRefresh={handlePullToRefresh}>
       <div className="home">
         <div className="home-body">
 
@@ -287,11 +310,12 @@ function Home() {
               proof), with a "Find people to follow" row alongside it.
           ──────────────────────────────────────────────────────────────── */}
           <section className="home-section home-section--feed">
-            <HomePulseFeed />
+            <HomePulseFeed ref={pulseFeedRef} />
           </section>
 
         </div>
       </div>
+      </PullToRefresh>
 
       <HomeFAB />
 

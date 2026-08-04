@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
 import ActionSheet from '../components/ActionSheet'
+import PullToRefresh from '../components/PullToRefresh'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
@@ -112,6 +113,15 @@ function Library() {
       setIsLoadingLists(false)
     }
   }, [user?.id])
+
+  // Pull-to-refresh: re-run both loaders for both tabs regardless of which
+  // is active. Neither goes through swrCache — tracker lists are a plain
+  // localStorage read and custom lists always hit the network directly —
+  // so there's no cache to bypass, just a fresh round-trip.
+  const handlePullToRefresh = useCallback(async () => {
+    loadTrackerLists()
+    await loadCustomLists()
+  }, [loadTrackerLists, loadCustomLists])
 
   useEffect(() => {
     loadTrackerLists()
@@ -395,6 +405,7 @@ function Library() {
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
+      <PullToRefresh onRefresh={handlePullToRefresh}>
       <div className="library-page">
         {/* Ambient wash — behind the top 300px only, themed per tab. Purely
             decorative: never intercepts taps, never washes over cards.
@@ -615,6 +626,7 @@ function Library() {
           }))}
         />
       </div>
+      </PullToRefresh>
     </SharedCoverScope>
   )
 }

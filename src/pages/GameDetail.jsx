@@ -631,6 +631,16 @@ function GameDetail() {
   // Weekend read badge — null when normallySeconds is absent (omit, don't guess)
   const weekendBadge = weekendReadBadge(ttb)
 
+  // IGDB coverage varies per game; both of these sections are label-plus-
+  // content with nothing to fall back on, so they hide when their content
+  // is missing rather than rendering a titled blank.
+  const hasDescription = !!(game.description || '').trim()
+  const hasDetails =
+    game.developers.length > 0 ||
+    game.publishers.length > 0 ||
+    game.platforms.length > 0 ||
+    !!game.year
+
   const effectiveColor = getEffectiveColor(dominantColor)
 
   // Small poster glow — radial bloom directly behind the cover art
@@ -990,20 +1000,24 @@ function GameDetail() {
       {/* ── Content Area ── */}
       <div className="gd-content">
 
-        {/* About */}
-        <div className="gd-section">
-          <p className="gd-section-label">About</p>
-          <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
-            <p className="gd-description">{game.description}</p>
-            {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
+        {/* About — hidden outright when IGDB has no summary for this game,
+             which used to leave an "About" label over a blank fade and a
+             "Read more" button with nothing to expand. */}
+        {hasDescription && (
+          <div className="gd-section">
+            <p className="gd-section-label">About</p>
+            <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
+              <p className="gd-description">{game.description}</p>
+              {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
+            </div>
+            <button
+              className="gd-read-more-btn"
+              onClick={() => setDescExpanded(v => !v)}
+            >
+              {descExpanded ? 'Show less' : 'Read more'}
+            </button>
           </div>
-          <button
-            className="gd-read-more-btn"
-            onClick={() => setDescExpanded(v => !v)}
-          >
-            {descExpanded ? 'Show less' : 'Read more'}
-          </button>
-        </div>
+        )}
 
         {/* Genres — single canonical chip set for the whole page. The "At a
              glance" vibe tags above (IGDB themes) are a separate, deliberately
@@ -1025,6 +1039,11 @@ function GameDetail() {
           </div>
         )}
 
+        {/* Details — every row is conditional, so the label and its grid
+             follow suit rather than sitting over an empty grid for the
+             sparser IGDB records. The divider goes with them. */}
+        {hasDetails && (
+          <>
         <div className="gd-divider" />
 
         <div className="gd-section">
@@ -1056,6 +1075,8 @@ function GameDetail() {
             )}
           </div>
         </div>
+          </>
+        )}
 
         {/* Screenshots — scroll-snap + lightbox */}
         {game.screenshots && game.screenshots.length > 0 && (
@@ -1116,16 +1137,21 @@ function GameDetail() {
         <div className="gd-section">
           <div className="gd-section-header-row">
             <p className="gd-section-label">Top Reviews</p>
-            <button
-              className="gd-see-all-link"
-              onClick={() => navigate(`/game/${gameId}/reviews`)}
-              aria-label="See all reviews"
-            >
-              See all
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
+            {/* No "See all" until there's a second page worth of reviews to
+                see — on an unreviewed game it only led to another empty
+                state. */}
+            {reviews.length > 0 && (
+              <button
+                className="gd-see-all-link"
+                onClick={() => navigate(`/game/${gameId}/reviews`)}
+                aria-label="See all reviews"
+              >
+                See all
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {(() => {

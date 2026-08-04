@@ -16,24 +16,39 @@ import './RecentActivityCard.css'
  * Never empty when the platform has any qualifying activity — falls back
  * to broader community ratings/reviews when the viewer follows no one or
  * their circle has been quiet (see communityService.getRecentFollowingActivity).
+ *
+ * The heading follows that fallback. It used to read "From people you
+ * follow" unconditionally, which for a viewer with zero follows labelled
+ * strangers' activity as their circle's — and the subtitle underneath
+ * contradicted it. While the scope is still unresolved the heading stays
+ * on the shelf's neutral name so the load never asserts either one.
  */
 export default function FollowingShelf() {
   const { data, loading } = useRecentFollowingActivity()
   const items = data?.items || []
   const scope = data?.scope || 'following'
+  const isCommunity = scope === 'community'
 
   if (!loading && items.length === 0) return null
 
+  const heading = loading
+    ? 'Recently'
+    : isCommunity
+      ? 'Recently in the community'
+      : 'From people you follow'
+
   return (
-    <section className="explore-section shelf-scaffold" aria-label="From people you follow">
+    <section className="explore-section shelf-scaffold" aria-label={heading}>
       <div className="explore-section__pad shelf-scaffold__head">
         <div>
-          <h2 className="discover-section-title">From people you follow</h2>
-          <p className="shelf-scaffold__subtitle">
-            {scope === 'community'
-              ? 'Recently: ratings & reviews from the community'
-              : 'Recently: ratings & reviews from your circle'}
-          </p>
+          <h2 className="discover-section-title">{heading}</h2>
+          {!loading && (
+            <p className="shelf-scaffold__subtitle">
+              {isCommunity
+                ? 'Recently: ratings & reviews from the community'
+                : 'Recently: ratings & reviews from your circle'}
+            </p>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,48 @@
+/* =============================================
+   PULL TO REFRESH — shared gesture indicator
+   One spinner treatment reused by every primary feed (Home pulse,
+   Explore, Library, Profile tabs). Deliberately mirrors the canonical
+   `.loading-spinner` ring from theme.css (2px border, cobalt
+   --color-brand-primary top edge, spin keyframe already defined
+   globally there — not redeclared here).
+   ============================================= */
+
+.pull-to-refresh__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.pull-to-refresh__spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-brand-primary);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  flex: 0 0 auto;
+}
+
+.pull-to-refresh__indicator--active .pull-to-refresh__spinner,
+.pull-to-refresh__indicator--active-static .pull-to-refresh__spinner {
+  opacity: 1;
+}
+
+/* Only the continuous spin is gated on motion preference — the height
+   reveal itself is a direct, finger-tied reflection of the gesture, not
+   a free-running animation. `--active-static` is used instead of
+   `--active` whenever the in-app "Reduce motion" toggle or the OS
+   preference is on (see useMotionPreference), so the spinner still
+   reads as "working" without spinning. */
+.pull-to-refresh__indicator--active .pull-to-refresh__spinner {
+  animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-to-refresh__indicator--active .pull-to-refresh__spinner {
+    animation: none;
+  }
+}

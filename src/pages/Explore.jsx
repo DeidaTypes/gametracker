@@ -6,7 +6,9 @@ import ThemedDropCard from '../components/explore/ThemedDropCard'
 import NewNotableRail from '../components/explore/NewNotableRail'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
 import FollowingShelf from '../components/explore/FollowingShelf'
+import PullToRefresh from '../components/PullToRefresh'
 import { useSearchOverlay } from '../contexts/SearchOverlayContext'
+import { refetchAllExploreSections } from '../hooks/useExploreData'
 import {
   getSessionAddCount,
   SESSION_ADD_COUNT_CHANGED_EVENT,
@@ -58,6 +60,14 @@ function Explore() {
   }, [])
 
   return (
+    // Pull-to-refresh force-refetches every rail below (New & Notable,
+    // Collections, Following/Recently, the themed drop — see
+    // refetchAllExploreSections) by bypassing the swrCache the same way
+    // resume already does. The swipe deck deliberately sits outside this:
+    // it's a full-catalog IGDB queue with its own background pagination,
+    // not a cached "feed" — resetting an in-progress deck of un-swiped
+    // cards on every pull would be destructive, not refreshing.
+    <PullToRefresh onRefresh={refetchAllExploreSections}>
     <div className="explore-page">
 
       {/* ── Page header ── */}
@@ -109,6 +119,7 @@ function Explore() {
       <FollowingShelf />
 
     </div>
+    </PullToRefresh>
   )
 }
 

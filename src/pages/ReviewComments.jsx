@@ -15,6 +15,7 @@ import {
   LuPinOff,
   LuQuote,
   LuSend,
+  LuShare2,
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
@@ -40,6 +41,7 @@ import {
   deleteComment,
 } from '../services/commentService'
 import { shareCard } from '../services/share'
+import { shareContent } from '../utils/share'
 import { hapticImpact } from '../utils/haptics'
 import {
   MAX_PINS,
@@ -708,12 +710,36 @@ function ReviewComments() {
   }, [user, targetType, targetId, pinnedReviewIds])
 
   /**
-   * Context-appropriate action set for the header kebab:
+   * Share the activity thread's deep link — the activity-branch
+   * equivalent of handleShareQuote below. Activity events (backlogged /
+   * started / finished / listed / played / favorited / journaled) have
+   * no review body to quote, so this shares the plain thread link via
+   * the existing native/web/clipboard cascade (src/utils/share.js)
+   * instead of building a quote card. Kept as a plain link share rather
+   * than a captured BrandedShareCard image — that variant set
+   * (src/services/share.js) is review/game/profile/list scoped and
+   * this action's only job is to keep the kebab non-empty, not to
+   * introduce a new share-card design.
+   */
+  const handleShareActivity = useCallback(() => {
+    if (!targetId) return
+    shareContent({
+      title: 'Checkpoint',
+      url: `${window.location.origin}/activity/${targetId}/comments`,
+    })
+  }, [targetId])
+
+  /**
+   * Context-appropriate action set for the header kebab. The kebab is
+   * always rendered on BOTH route branches once the target has loaded —
+   * both are UGC surfaces (App Store Guideline 1.2), so the overflow
+   * must be reachable consistently rather than only showing up when a
+   * "report" action happens to apply:
    *   - Review branch, not own: Share quote + Report review.
    *   - Review branch, own: Share quote + Pin/Unpin (never Report — you
    *     can't report yourself; matches ReviewCard's old kebab).
-   *   - Activity branch, not own: Report user only. Share quote and Pin
-   *     never applied here even before the migration (the activity
+   *   - Activity branch, not own: Share + Report user. Share quote and
+   *     Pin never applied here even before the migration (the activity
    *     branch has always rendered HomeReviewCard, never ReviewCard —
    *     see git blame), and the `reports` table's content_type CHECK
    *     constraint has no 'activity' value, so there is no content_id
@@ -723,8 +749,10 @@ function ReviewComments() {
    *     contentType="profile" — see Profile.jsx) that still makes
    *     reporting reachable on this UGC surface without inventing new
    *     backend support.
-   *   - Activity branch, own: nothing valid to show, so the kebab itself
-   *     is hidden for that render (see the header JSX below).
+   *   - Activity branch, own: used to return [] and hide the kebab
+   *     entirely (nothing to report on your own content) — that's what
+   *     made the header inconsistent between the two branches. Now
+   *     falls back to Share so the kebab is never empty here either.
    */
   const overflowItems = useMemo(() => {
     if (targetType === 'review') {
@@ -762,18 +790,25 @@ function ReviewComments() {
     }
 
     // Activity branch
-    if (!activityFeedItem || activityFeedItem.isOwn || !activityFeedItem.author?.id) {
-      return []
-    }
-    return [
+    if (!activityFeedItem) return []
+    const items = [
       {
+        label: 'Share',
+        icon: <LuShare2 size={18} aria-hidden="true" />,
+        tone: 'cobalt',
+        onClick: handleShareActivity,
+      },
+    ]
+    if (!activityFeedItem.isOwn && activityFeedItem.author?.id) {
+      items.push({
         label: 'Report user',
         icon: <LuFlag size={18} aria-hidden="true" />,
         tone: 'neutral',
         onClick: () =>
           setScreenReport({ contentType: 'profile', contentId: activityFeedItem.author.id }),
-      },
-    ]
+      })
+    }
+    return items
   }, [
     targetType,
     reviewFeedItem,
@@ -782,6 +817,7 @@ function ReviewComments() {
     targetId,
     sharingQuote,
     handleShareQuote,
+    handleShareActivity,
     handleTogglePin,
   ])
 

@@ -1254,6 +1254,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Fixed-width column for the poster-stack cover cluster (ListCoverCluster's
+   "poster" variant sizes itself off this width via padding-top, so this is
+   the one place that actually sets the cluster's footprint). 60px matches
+   the row's old square cluster width, and lands the stack's ~53px reserved
+   height close to the Diary tab's 54px single-cover rows just below it. */
+.profile-list-row__stack {
+  flex: none;
+  width: 60px;
+}
+
 .profile-list-row__body {
   display: flex;
   flex-direction: column;
