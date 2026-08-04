@@ -1,10 +1,18 @@
+/* ============================================
+   ERROR BOUNDARY — illustrated "dropped a frame" fallback.
+   Single shared error surface for the whole app (see App.jsx — every
+   route wraps its page in this component). Purple-only illustration
+   (unplugged TV + controller), collapsed two-line copy, gradient primary
+   CTA / outlined secondary CTA, demoted monospace debug line.
+   ============================================ */
+
 .error-boundary {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100svh;
   min-height: 100vh; /* fallback */
-  padding: 24px;
+  padding: var(--space-24);
   background: var(--bg-base);
 }
 
@@ -14,48 +22,185 @@
   align-items: center;
   text-align: center;
   max-width: 320px;
-  gap: 12px;
+  width: 100%;
 }
 
-.error-boundary__icon {
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  margin-bottom: 4px;
+/* ---- Illustration scene ---- */
+
+.error-boundary__scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 164px;
+  margin-bottom: var(--space-16);
 }
+
+.error-boundary__glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-journal) 32%, transparent) 0%, transparent 70%);
+  filter: blur(28px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.error-boundary__illustration {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.error-boundary__shadow {
+  fill: color-mix(in srgb, var(--accent-journal) 20%, transparent);
+  filter: blur(2px);
+}
+
+.error-boundary__antenna {
+  stroke: var(--accent-journal-text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.error-boundary__antenna-tip {
+  fill: var(--accent-journal-text);
+}
+
+.error-boundary__stand {
+  fill: var(--bg-surface-2);
+}
+
+.error-boundary__tv-body {
+  fill: var(--bg-surface);
+  stroke: var(--accent-journal-text);
+  stroke-width: 2.5;
+}
+
+.error-boundary__tv-screen {
+  fill: var(--bg-base);
+}
+
+/* Static bars — shimmer through the purple ramp in sequence (light → deep
+   → mid), staggered per bar so they never all flash in unison. */
+.error-boundary__bar {
+  animation: error-boundary-static 2.4s ease-in-out infinite;
+}
+
+.error-boundary__bar--1 {
+  animation-delay: 0s;
+}
+
+.error-boundary__bar--2 {
+  animation-delay: 0.3s;
+}
+
+.error-boundary__bar--3 {
+  animation-delay: 0.6s;
+}
+
+@keyframes error-boundary-static {
+  0%,
+  100% {
+    fill: var(--accent-journal-text);
+  }
+  33% {
+    fill: var(--accent-journal-deep);
+  }
+  66% {
+    fill: var(--accent-journal);
+  }
+}
+
+/* Controller — gentle float loop, unplugged in front of the TV. */
+.error-boundary__controller {
+  animation: error-boundary-bob 2.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.error-boundary__controller-body {
+  fill: var(--bg-surface);
+  stroke: var(--accent-journal-text);
+  stroke-width: 2;
+}
+
+.error-boundary__controller-detail {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.error-boundary__controller-detail[r] {
+  fill: var(--accent-journal-text);
+  stroke: none;
+}
+
+@keyframes error-boundary-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Spark — the disconnected cable end, flickering near the controller. */
+.error-boundary__spark {
+  fill: var(--star);
+  animation: error-boundary-flicker 1.8s ease-in-out infinite;
+}
+
+@keyframes error-boundary-flicker {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---- Copy — two lines only, generous spacing, nothing else between ---- */
 
 .error-boundary__title {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary, #e8eaf6);
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  line-height: var(--line-height-heading);
+  letter-spacing: var(--letter-spacing-heading);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
   margin: 0;
 }
 
 .error-boundary__body {
-  font-size: 14px;
-  line-height: 1.55;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   color: var(--text-secondary);
-  margin: 0;
+  margin: var(--space-8) 0 0;
 }
+
+/* ---- Actions ---- */
 
 .error-boundary__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-12);
   width: 100%;
-  margin-top: 8px;
+  margin-top: var(--space-32);
 }
 
 .error-boundary__btn {
   width: 100%;
-  padding: 13px 20px;
-  border-radius: 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
+  padding: var(--space-12) var(--space-20);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease, filter 0.15s ease;
 }
 
 .error-boundary__btn:active {
@@ -63,36 +208,59 @@
 }
 
 .error-boundary__btn--primary {
-  background: var(--accent, #3b82f6);
-  color: #ffffff;
+  background: var(--grad-error-cta);
+  border: none;
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
 }
 
 .error-boundary__btn--primary:hover {
-  opacity: 0.9;
+  filter: brightness(1.06);
 }
 
 .error-boundary__btn--secondary {
-  background: var(--bg-surface-2, #1a2240);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
 }
 
 .error-boundary__btn--secondary:hover {
-  opacity: 0.85;
+  border-color: var(--accent-journal-text);
+  background: color-mix(in srgb, var(--accent-journal) 6%, transparent);
 }
 
+/* ---- Debug — demoted technical error text, well below the buttons ---- */
+
 .error-boundary__debug {
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
   color: var(--text-tertiary);
-  margin: 4px 0 0;
+  margin: var(--space-32) 0 0;
   word-break: break-word;
-  text-align: left;
+  text-align: center;
   width: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .error-boundary__bar {
+    animation: none;
+    fill: var(--accent-journal);
+  }
+
+  .error-boundary__controller {
+    animation: none;
+  }
+
+  .error-boundary__spark {
+    animation: none;
+    opacity: 0.85;
+  }
+
   .error-boundary__btn {
     transition: none;
   }
+
   .error-boundary__btn:active {
     transform: none;
   }

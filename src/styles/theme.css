@@ -410,6 +410,19 @@ body[data-larger-text='true'] {
      cobalt accent tokens — no new hex introduced. */
   --grad-purple-blue: linear-gradient(135deg, var(--accent-journal) 0%, var(--accent) 100%);
 
+  /* Deeper purple, derived from --accent-journal via color-mix (no new
+     hex). Gives the purple ramp a third, darker stop for treatments that
+     want light → mid → deep purple without introducing cobalt or green
+     (e.g. the error-state illustration/CTA below). */
+  --accent-journal-deep: color-mix(in srgb, var(--accent-journal) 70%, black);
+
+  /* Purple-only three-stop CTA fill — light → mid → deep purple, all three
+     stops derived from --accent-journal-text / --accent-journal / the
+     --accent-journal-deep token above. Used by the error-state "Try
+     again" button (src/components/ErrorBoundary.jsx) where the whole
+     illustration is purple-only and a blue stop would clash. */
+  --grad-error-cta: linear-gradient(135deg, var(--accent-journal-text) 0%, var(--accent-journal) 55%, var(--accent-journal-deep) 100%);
+
   /* ---- Explore (Discover) screen identity — purple → blue ----
      Explore's own multi-hue treatment, parallel to Home's blue→green
      pulse (--grad-headline / --grad-ambient above) but scoped to
