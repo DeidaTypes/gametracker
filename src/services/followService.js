@@ -104,6 +104,15 @@ export async function followUser(followeeId) {
       return
     }
     console.error('[follows] followUser failed:', error.message)
+    // follows_insert_self (migration 20260803000200) ANDs a block check onto
+    // the insert's WITH CHECK, so following someone who has blocked you (or
+    // whom you've blocked) reaches Postgres and comes back 42501
+    // (insufficient_privilege). Map that to friendly copy instead of
+    // surfacing the raw "new row violates row-level security policy" text —
+    // same treatment as messageService.sendMessage's 42501 handling.
+    if (error.code === '42501') {
+      throw new Error("You can't follow this user.")
+    }
     throw new Error(error.message)
   }
 

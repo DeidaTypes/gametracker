@@ -77,6 +77,15 @@ export async function likeReview(reviewId) {
   if (error) {
     if (error.code === '23505') return
     console.error('[likes] likeReview failed:', error.message)
+    // review_likes_insert_own (migration 20260803000200) ANDs a block check
+    // onto the insert's WITH CHECK, so liking a review whose author has
+    // blocked you (or whom you've blocked) reaches Postgres and comes back
+    // 42501 (insufficient_privilege). Map that to friendly copy instead of
+    // surfacing the raw RLS violation text — same treatment as
+    // messageService.sendMessage's 42501 handling.
+    if (error.code === '42501') {
+      throw new Error("You can't like this review.")
+    }
     throw new Error(error.message)
   }
 }

@@ -872,7 +872,7 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
         setFollowing(wasFollowing)
         console.error('[search] follow toggle failed:', err)
         showToast(
-          "Couldn't update follow status. Tap to retry.",
+          err?.message || "Couldn't update follow status. Tap to retry.",
           'error',
           4000,
           { label: 'Retry', onClick: () => handleClick(e) }

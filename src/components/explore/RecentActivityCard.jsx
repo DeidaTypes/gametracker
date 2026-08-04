@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat } from 'react-icons/hi'
 import Avatar from '../Avatar'
@@ -13,6 +13,7 @@ import { genreColorVar } from '../../utils/genreColors'
 import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShell'
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { hapticImpact } from '../../utils/haptics'
+import { showToast } from '../Toast'
 import './RecentActivityCard.css'
 
 const ACTION_LABEL = { reviewed: 'reviewed', rated: 'rated' }
@@ -102,6 +103,9 @@ export default function RecentActivityCard({ item }) {
   const likeState = useLikeState(item.reviewId)
   const [backlogged, setBacklogged] = useState(false)
   const [backlogging, setBacklogging] = useState(false)
+  // Guards against a double-tap firing a second like/unlike write before
+  // the first round-trip resolves — mirrors ReviewCard's handleLike guard.
+  const likeInFlightRef = useRef(false)
 
   const canReact = !!item.reviewId
   const img = item.game.image || COVER_FALLBACK
@@ -122,6 +126,9 @@ export default function RecentActivityCard({ item }) {
   const handleReact = async (e) => {
     e.stopPropagation()
     if (!canReact) return
+    if (likeInFlightRef.current) return
+    likeInFlightRef.current = true
+
     const prev = likeState
     const wasLiked = prev.liked
     hapticImpact('Light')
@@ -132,8 +139,15 @@ export default function RecentActivityCard({ item }) {
     try {
       if (wasLiked) await unlikeReview(item.reviewId)
       else await likeReview(item.reviewId)
-    } catch {
+    } catch (err) {
       publishLikeState(item.reviewId, prev)
+      showToast(
+        err?.message ||
+          (wasLiked ? "Couldn't unlike — please try again." : "Couldn't like — please try again."),
+        'error'
+      )
+    } finally {
+      likeInFlightRef.current = false
     }
   }
 

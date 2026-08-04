@@ -232,6 +232,9 @@ function CommentRow({
   const [localLike, setLocalLike] = useState(likeState || { liked: false, count: 0 })
   const [pulse, setPulse] = useState(false)
   const kebabRef = useRef(null)
+  // Guards against a double-tap firing a second like/unlike write before
+  // the first round-trip resolves — mirrors ReviewCard's handleLike guard.
+  const likeInFlightRef = useRef(false)
 
   // Keep local like in sync when the parent re-seeds likeState (e.g. on
   // initial load). After first paint we own the optimistic state.
@@ -270,8 +273,12 @@ function CommentRow({
   }
 
   const handleLike = async () => {
+    if (likeInFlightRef.current) return
+    likeInFlightRef.current = true
+
     const prev = localLike
     const wasLiked = prev.liked
+    hapticImpact('Light')
     const next = {
       liked: !wasLiked,
       count: wasLiked ? Math.max(0, prev.count - 1) : prev.count + 1,
@@ -282,9 +289,13 @@ function CommentRow({
       window.setTimeout(() => setPulse(false), 280)
     }
     try {
+      // onLike (handleCommentLike below) already shows a friendly toast
+      // and rethrows on failure — this just owns the local rollback.
       await onLike(comment.id, wasLiked)
     } catch {
       setLocalLike(prev)
+    } finally {
+      likeInFlightRef.current = false
     }
   }
 

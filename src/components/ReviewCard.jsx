@@ -135,6 +135,11 @@ function ReviewCard({
   const [dmShareOpen, setDmShareOpen] = useState(false)
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
+  // Guards against a double-tap/rapid-toggle firing a second like/unlike
+  // write before the first round-trip resolves — likeReview/unlikeReview
+  // are idempotent, but overlapping requests can still race and land the
+  // cache in the wrong final state.
+  const likeInFlightRef = useRef(false)
 
   // Sized once at 64px — the cover header's actual on-screen footprint
   // (--cover-thumb-size) — so the <img> below and getDominantColor
@@ -184,6 +189,9 @@ function ReviewCard({
   }, [kebabOpen])
 
   const handleLike = async () => {
+    if (likeInFlightRef.current) return
+    likeInFlightRef.current = true
+
     const prev = likeState
     const wasLiked = prev.liked
     hapticImpact('Light')
@@ -212,11 +220,14 @@ function ReviewCard({
       // The service has already logged the underlying cause.
       publishLikeState(review.id, prev)
       showToast(
-        wasLiked
-          ? "Couldn't unlike — please try again."
-          : "Couldn't like — please try again.",
+        err?.message ||
+          (wasLiked
+            ? "Couldn't unlike — please try again."
+            : "Couldn't like — please try again."),
         'error'
       )
+    } finally {
+      likeInFlightRef.current = false
     }
   }
 

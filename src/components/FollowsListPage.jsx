@@ -68,6 +68,10 @@ function FollowsListPage({ mode }) {
   // come in so each Follow button can render its initial state without
   // an N+1 spinner storm.
   const [followingMap, setFollowingMap] = useState({})
+  // Per-row "mutation in flight" set — guards a double-tap/rapid-toggle
+  // from firing a second follow/unfollow write before the first resolves.
+  // Mirrors the pendingMap guard in FindFriendsModal.jsx.
+  const [pendingSet, setPendingSet] = useState(() => new Set())
 
   // Find Friends user-search popup (replaces the old "go to Explore" CTA).
   const [findFriendsOpen, setFindFriendsOpen] = useState(false)
@@ -332,9 +336,11 @@ function FollowsListPage({ mode }) {
   const toggleFollow = useCallback(
     async (rowUserId) => {
       if (!rowUserId || !currentUserId || rowUserId === currentUserId) return
+      if (pendingSet.has(rowUserId)) return
       const wasFollowing = !!followingMap[rowUserId]
       hapticImpact('Light')
       setFollowingMap((prev) => ({ ...prev, [rowUserId]: !wasFollowing }))
+      setPendingSet((prev) => new Set(prev).add(rowUserId))
       try {
         if (wasFollowing) {
           await unfollowUser(rowUserId)
@@ -345,14 +351,20 @@ function FollowsListPage({ mode }) {
         setFollowingMap((prev) => ({ ...prev, [rowUserId]: wasFollowing }))
         console.error('[follows-page] toggle failed:', err)
         showToast(
-          "Couldn't update follow status. Tap to retry.",
+          err?.message || "Couldn't update follow status. Tap to retry.",
           'error',
           4000,
           { label: 'Retry', onClick: () => toggleFollow(rowUserId) }
         )
+      } finally {
+        setPendingSet((prev) => {
+          const next = new Set(prev)
+          next.delete(rowUserId)
+          return next
+        })
       }
     },
-    [currentUserId, followingMap]
+    [currentUserId, followingMap, pendingSet]
   )
 
   /* ── Render ───────────────────────────────────────────────── */
@@ -475,6 +487,7 @@ function FollowsListPage({ mode }) {
                   row={row}
                   currentUserId={currentUserId}
                   following={!!followingMap[row.id]}
+                  pending={pendingSet.has(row.id)}
                   live={liveSet.has(row.id)}
                   onToggle={() => toggleFollow(row.id)}
                   onTap={() => {
@@ -507,7 +520,7 @@ function FollowsListPage({ mode }) {
   )
 }
 
-function FollowRow({ row, currentUserId, following, live = false, onToggle, onTap }) {
+function FollowRow({ row, currentUserId, following, pending = false, live = false, onToggle, onTap }) {
   const isSelf = currentUserId && row.id === currentUserId
   return (
     <div className="follow-row">
@@ -542,6 +555,7 @@ function FollowRow({ row, currentUserId, following, live = false, onToggle, onTa
             e.stopPropagation()
             onToggle()
           }}
+          disabled={pending}
           aria-pressed={following}
           aria-label={
             following

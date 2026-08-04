@@ -37,6 +37,12 @@ const subscribers = new Map()
 // firing its own round-trip in the window before the batch lands.
 const inFlight = new Set()
 
+// Keys with a toggle() mutation currently in flight. Separate from the
+// batch-fetch `inFlight` above (different lifecycle) — this guards a
+// double-tap/rapid-toggle from firing a second add/removeReaction write
+// for the same target+emoji before the first one resolves.
+const mutationInFlight = new Set()
+
 function cacheKey(targetType, targetId) {
   return `${targetType}::${targetId}`
 }
@@ -158,6 +164,12 @@ export function useReactions(targetType, targetId) {
     async (emoji) => {
       if (!emoji || !targetType || !targetId) return
 
+      // Guard against a double-tap/rapid-toggle on the same emoji firing a
+      // second add/removeReaction write before the first resolves.
+      const mutationKey = `${cacheKey(targetType, targetId)}::${emoji}`
+      if (mutationInFlight.has(mutationKey)) return
+      mutationInFlight.add(mutationKey)
+
       const prev = readCache(targetType, targetId)
       const existing = prev.find((r) => r.emoji === emoji)
       const wasReacted = existing?.reacted ?? false
@@ -195,6 +207,8 @@ export function useReactions(targetType, targetId) {
         // Roll back
         publishReactionState(targetType, targetId, prev)
         console.error('[useReactions] toggle failed, rolled back:', err.message)
+      } finally {
+        mutationInFlight.delete(mutationKey)
       }
     },
     [targetType, targetId]

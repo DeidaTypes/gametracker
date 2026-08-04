@@ -330,9 +330,9 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
     try {
       if (was) await unfollowUser(targetUserId)
       else await followUser(targetUserId)
-    } catch {
+    } catch (err) {
       setFollowing(was)
-      showToast("Couldn't update follow status.", 'error', 4000)
+      showToast(err?.message || "Couldn't update follow status.", 'error', 4000)
     } finally {
       setPending(false)
     }

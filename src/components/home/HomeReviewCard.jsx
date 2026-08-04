@@ -408,6 +408,10 @@ export default function HomeReviewCard({ item }) {
   const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
   const eventReactions = useReactions('activity', item.reactionTargetId)
+  // Guards the review_likes path against a double-tap firing a second
+  // like/unlike write before the first resolves. The activity-reactions
+  // path (eventReactions.toggle) is guarded inside useReactions itself.
+  const likeInFlightRef = useRef(false)
 
   const listPreview = useListPreview(item.type === 'listed' ? item.listId : null)
   const listName = item.listName || listPreview?.name || null
@@ -475,6 +479,9 @@ export default function HomeReviewCard({ item }) {
 
   const handleReviewReact = async (e) => {
     e.stopPropagation()
+    if (likeInFlightRef.current) return
+    likeInFlightRef.current = true
+
     const prev = likeState
     const wasLiked = prev.liked
     hapticImpact('Light')
@@ -485,12 +492,15 @@ export default function HomeReviewCard({ item }) {
     try {
       if (wasLiked) await unlikeReview(item.id)
       else await likeReview(item.id)
-    } catch {
+    } catch (err) {
       publishLikeState(item.id, prev)
       showToast(
-        wasLiked ? "Couldn't unreact — please try again." : "Couldn't react — please try again.",
+        err?.message ||
+          (wasLiked ? "Couldn't unreact — please try again." : "Couldn't react — please try again."),
         'error'
       )
+    } finally {
+      likeInFlightRef.current = false
     }
   }
 

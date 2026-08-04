@@ -404,6 +404,15 @@ export async function likeComment(commentId) {
   if (error) {
     if (error.code === '23505') return
     console.error('[comments] likeComment failed:', error.message)
+    // comment_likes_insert_own (migration 20260803000200) ANDs a block check
+    // onto the insert's WITH CHECK, so liking a comment whose author has
+    // blocked you (or whom you've blocked) reaches Postgres and comes back
+    // 42501 (insufficient_privilege). Map that to friendly copy instead of
+    // surfacing the raw RLS violation text — same treatment as
+    // messageService.sendMessage's 42501 handling.
+    if (error.code === '42501') {
+      throw new Error("You can't like this comment.")
+    }
     throw new Error(error.message)
   }
 }

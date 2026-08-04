@@ -1222,7 +1222,7 @@ function Profile() {
       setFollowersCount((c) => Math.max(0, c + (wasFollowing ? 1 : -1)))
       console.error('[profile] follow toggle failed:', err)
       showToast(
-        "Couldn't update follow status. Tap to retry.",
+        err?.message || "Couldn't update follow status. Tap to retry.",
         'error',
         4000,
         { label: 'Retry', onClick: () => handleFollowToggle() }
