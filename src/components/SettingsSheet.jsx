@@ -10,13 +10,15 @@ import {
   LuSparkles,
   LuBell,
   LuLock,
-  LuCircleHelp,
+  LuMail,
   LuInfo,
 } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from './Toast'
 import ActionSheet from './ActionSheet'
+import { buildFeedbackMailto } from '../services/feedbackService'
+import { openMailto } from '../utils/mailto'
 import './SettingsSheet.css'
 
 const FEEDBACK_EMAIL = 'feedback@gametracker.app'
@@ -61,8 +63,12 @@ function SettingsGroup({ title, children }) {
  *     Safety" and "About" sections) and deep-link to that section via a
  *     hash anchor so the tap actually lands somewhere useful instead of
  *     a generic page top.
- *   - Help & feedback — real. Opens the same feedback mailto the full
- *     Settings page uses.
+ *   - Send feedback — real. Opens a mailto to the support address with
+ *     a diagnostic block (app version/build, iOS version, device model,
+ *     user id — never email or other personal data) pre-filled in the
+ *     body. If no mail client picks up the mailto: link (e.g. Mail was
+ *     deleted from the device), falls back to an action sheet with the
+ *     address so the user can copy it instead of tapping into nothing.
  *   - Notifications — PLACEHOLDER. There is no notification-preferences
  *     screen anywhere in the app (the /notifications route is the
  *     activity inbox, a different feature). Tapping it shows a
@@ -80,11 +86,12 @@ function SettingsSheet({
   wrappedDisabled = false,
 }) {
   const navigate = useNavigate()
-  const { logOut } = useAuth()
+  const { user, logOut } = useAuth()
   const { reduced } = useMotionPreference()
   const sheetRef = useRef(null)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [feedbackFallbackOpen, setFeedbackFallbackOpen] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
@@ -110,9 +117,20 @@ function SettingsSheet({
     showToast('Notification settings coming soon', 'info')
   }
 
-  const handleHelpFeedback = () => {
+  const handleSendFeedback = async () => {
     onClose()
-    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Checkpoint Feedback')}`
+    const mailtoUrl = await buildFeedbackMailto(FEEDBACK_EMAIL, user?.id)
+    const opened = await openMailto(mailtoUrl)
+    if (!opened) setFeedbackFallbackOpen(true)
+  }
+
+  const handleCopyFeedbackEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(FEEDBACK_EMAIL)
+      showToast('Email address copied', 'success')
+    } catch {
+      showToast(FEEDBACK_EMAIL, 'info', 4000)
+    }
   }
 
   const handlePrivacy = () => {
@@ -224,10 +242,10 @@ function SettingsSheet({
 
                 <SettingsGroup title="Support">
                   <SettingsRow
-                    icon={<LuCircleHelp size={18} />}
+                    icon={<LuMail size={18} />}
                     tone="neutral"
-                    label="Help & feedback"
-                    onClick={handleHelpFeedback}
+                    label="Send feedback"
+                    onClick={handleSendFeedback}
                   />
                   <SettingsRow
                     icon={<LuInfo size={18} />}
@@ -260,6 +278,18 @@ function SettingsSheet({
             onClick: handleLogout,
             destructive: true,
             disabled: loggingOut,
+          },
+        ]}
+      />
+
+      <ActionSheet
+        isOpen={feedbackFallbackOpen}
+        onClose={() => setFeedbackFallbackOpen(false)}
+        title="No mail app found"
+        items={[
+          {
+            label: `Copy ${FEEDBACK_EMAIL}`,
+            onClick: handleCopyFeedbackEmail,
           },
         ]}
       />
