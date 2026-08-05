@@ -150,6 +150,26 @@ body.keyboard-open {
   height: min(80vh, calc(100dvh - var(--keyboard-inset) - 40px));
 }
 
+/* ── Full-screen pages that own their own internal scroll ────────────────
+   For a route that is a fixed-height shell rather than a scrolling document
+   — a header, a scroll region, and a pinned action bar, all sized by flex.
+   Locking the shell to the space the keyboard leaves behind is what lets the
+   inner scroll region be the only thing that scrolls: its flex-basis shrinks
+   with the viewport, so its content stays fully reachable above the keyboard
+   instead of extending underneath it.
+
+   Not transitioned, deliberately: this is a height on a flex shell that
+   reflows a whole page of content, so animating it would relayout every
+   frame of the keyboard slide. Same reasoning as .kb-modal-fit /
+   .kb-modal-fill above, which also snap.
+
+   Pairs with the `.main-content` opt-out further down — a page that has
+   already sized itself around the keyboard must not also inherit the
+   scroller's keyboard reserve. */
+.kb-viewport-fit {
+  height: calc(100dvh - var(--keyboard-inset));
+}
+
 /* Animating a backdrop-filter'd layer forces a full-screen blur re-raster on
    every frame, which is the most expensive thing that can happen during the
    keyboard slide. Drop the blur for the duration of the transition; the dim
@@ -194,6 +214,15 @@ body.keyboard-animating .kb-no-blur-while-animating {
 body.keyboard-open .main-content {
   padding-bottom: calc(var(--keyboard-inset) + 28px) !important;
   transition: padding-bottom var(--keyboard-anim-duration) var(--keyboard-anim-ease);
+}
+
+/* …except when the page inside is a .kb-viewport-fit shell. That page is
+   already sized to the space above the keyboard and scrolls internally, so
+   the reserve has nothing to reveal — it only makes this scroller taller
+   than its own viewport, which is exactly the "scrolling the parent" the
+   fixed shell exists to avoid. */
+body.keyboard-open .main-content:has(.kb-viewport-fit) {
+  padding-bottom: 0 !important;
 }
 
 /* Give every field breathing room when it is scrolled into view, so a focused

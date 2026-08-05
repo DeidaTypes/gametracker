@@ -6,8 +6,12 @@
 
 /* ── Page shell ─────────────────────────────────────── */
 
+/* Height comes from .kb-viewport-fit (src/styles/keyboard.css): the page is
+   a fixed shell locked to the viewport minus the keyboard, and the results
+   list inside it is the only thing that scrolls. Do not re-add a height or
+   min-height here — a 100dvh floor would win over the fit and push the
+   results back under the keyboard. */
 .ob-page {
-  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-primary);
@@ -391,8 +395,14 @@
   color: var(--color-text-tertiary);
 }
 
-/* Clear button */
+/* Clear button. The global 44px minimum tap target (src/index.css) applies
+   to every button on mobile, and this one only exists once there is a query
+   — so left in flow it grew the search row by 23px on the first keystroke,
+   shoving the results down exactly when they need the space. The target is
+   kept, just moved off the box and onto a pseudo-element so it no longer
+   sets the row's height. */
 .ob-search-clear {
+  position: relative;
   background: none;
   border: none;
   color: var(--color-text-tertiary);
@@ -402,16 +412,32 @@
   align-items: center;
   transition: color 0.15s;
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ob-search-clear::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-12));
 }
 
 .ob-search-clear:hover {
   color: var(--color-text-secondary);
 }
 
-/* ── "Your 3 picks" row — always-visible, exactly 3 slots ───────────
-   Replaces the old strip that only existed once the first game was
-   picked. Empty slots show a dashed "+" placeholder; filled slots reuse
-   the colorful genre-token cover treatment from the results grid. */
+/* ── Collapsible region ─────────────────────────────────────────────
+   Wrapper for anything that gives up its space while the user is
+   searching (the intro copy, the picks area). Motion animates the
+   height between 0 and auto; overflow:hidden is what keeps the content
+   clipped rather than spilling during the transition. */
+.ob-collapse {
+  overflow: hidden;
+}
+
+/* ── "Your 3 picks" row — exactly 3 slots, shown when not searching ──
+   Empty slots show a dashed "+" placeholder; filled slots reuse the
+   colorful genre-token cover treatment from the results grid. */
 .ob-picks {
   margin-bottom: 4px;
 }
@@ -480,12 +506,19 @@
   color: var(--color-text-tertiary);
 }
 
+/* min-width/min-height 0 opt out of the global 44px tap target
+   (src/index.css), which was inflating this 18px badge to 44px and covering
+   most of the cover it sits on. The target itself is preserved on the
+   pseudo-element below, which extends the hit area past the badge without
+   affecting its painted size. */
 .ob-selected-remove {
   position: absolute;
   top: -6px;
   right: -6px;
   width: 18px;
   height: 18px;
+  min-width: 0;
+  min-height: 0;
   border-radius: 50%;
   background: var(--color-text-primary);
   color: var(--color-bg-primary);
@@ -498,16 +531,96 @@
   transition: background 0.15s;
 }
 
+.ob-selected-remove::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-12));
+}
+
 .ob-selected-remove:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* ── Compact picks strip — the searching state ──────────────────────
+   Replaces the three full-size slots while a query is active, so the
+   results own that space.
+   Fixed height rather than min-height: the thumbs are taller than the
+   count text, so an intrinsic height would grow by 12px on the first pick
+   and nudge the whole results list down mid-search. 54 = the 42px thumb
+   plus the 12px gap below it. */
+.ob-picks-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 54px;
+  padding-bottom: var(--space-12);
+}
+
+.ob-picks-strip__thumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Same cover geometry as every other poster in the app, just smaller —
+   ratio and radius come from the authoritative tokens, and the genre
+   gradient is the backdrop the art loads over. */
+.ob-picks-strip__thumb {
+  position: relative;
+  display: block;
+  width: 28px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(
+    165deg,
+    var(--ob-tile-color) 0%,
+    color-mix(in srgb, var(--ob-tile-color) 40%, var(--color-bg-primary)) 100%
+  );
+  animation: ob-thumb-pop 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Confirms a pick made from the results without pulling focus away from
+   the search field. */
+@keyframes ob-thumb-pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+}
+
+.ob-picks-strip__count {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.ob-picks-strip__count strong {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* Same "you've started picking" green as the bottom count hint, so the
+   two readouts of the same number never disagree visually. */
+.ob-picks-strip__count--active strong {
+  color: var(--accent-review);
 }
 
 /* ── Scrollable results ─────────────────────────────── */
 
 .ob-picker__body {
   flex: 1;
+  /* Flex children default to a content-sized floor; without this the list
+     refuses to shrink and pushes the action bar off the bottom instead of
+     scrolling. */
+  min-height: 0;
   overflow-y: auto;
+  /* The results are the only scroller on this screen — keep the momentum
+     here rather than chaining out to the app's document scroller. */
+  overscroll-behavior-y: contain;
   padding: 4px 20px 8px;
   -webkit-overflow-scrolling: touch;
 }
@@ -657,9 +770,13 @@
 
 /* ── Bottom action bar ──────────────────────────────── */
 
+/* --keyboard-safe-bottom is the home-indicator inset at rest and collapses
+   to 0 while the keyboard is up (src/styles/keyboard.css) — stacking both
+   would leave ~34px of dead space between the Done button and the top of
+   the keyboard, taken straight out of the results list. */
 .ob-picker__bottom {
   flex-shrink: 0;
-  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding: 12px 20px calc(var(--keyboard-safe-bottom) + 20px);
   background: linear-gradient(
     to bottom,
     transparent,
@@ -678,6 +795,14 @@
 
 .ob-picker__count-hint--active {
   color: var(--accent-review);
+}
+
+/* Searching: the compact picks strip shows this count visually, so this
+   copy drops to screen-reader-only via .ob-sr-only. Only the margin needs
+   overriding — .ob-sr-only is declared above this rule, so its own margin
+   would otherwise lose to the base hint's and leave a 10px gap. */
+.ob-picker__count-hint.ob-sr-only {
+  margin: 0;
 }
 
 .ob-picker__actions {
@@ -756,6 +881,13 @@
   .ob-spinner {
     animation: none;
     border-top-color: var(--accent);
+  }
+
+  /* The thumb still appears instantly — only the scale-in is dropped. The
+     collapse/expand between the two picks states is Motion-driven and is
+     zeroed in Onboarding.jsx via useMotionPreference. */
+  .ob-picks-strip__thumb {
+    animation: none;
   }
 }
 

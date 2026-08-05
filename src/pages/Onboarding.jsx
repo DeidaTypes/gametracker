@@ -29,6 +29,7 @@ import { setOnboarded } from '../services/userPreferences'
 import { showToast } from '../components/Toast'
 import EmptyState from '../components/EmptyState'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useKeyboardOpen } from '../hooks/useKeyboardInset'
 import './Onboarding.css'
 
 /**
@@ -282,7 +283,11 @@ export default function Onboarding() {
   const remaining = Math.max(0, 3 - selectedGames.length)
 
   return (
-    <div className="ob-page" role="main">
+    // kb-viewport-fit: this page is a fixed shell (header / scroll region /
+    // action bar) whose results list is the only scroller, so it sizes to the
+    // space the keyboard leaves rather than extending underneath it. See
+    // src/styles/keyboard.css.
+    <div className="ob-page kb-viewport-fit" role="main">
       {/* Screen-reader live region — announces each screen's title on mount */}
       <span
         ref={announceRef}
@@ -365,6 +370,7 @@ export default function Onboarding() {
                 remaining={remaining}
                 onDone={handleDone}
                 submitting={submitting}
+                reduced={reduced}
               />
             </motion.div>
           )}
@@ -466,6 +472,15 @@ function PickerCoverArt({ game }) {
   )
 }
 
+/**
+ * Collapse/expand used by everything that gives up its space while the user
+ * is searching. Animating height (not opacity alone) is what makes the
+ * results list actually grow into the freed space rather than sit under a
+ * transparent hole.
+ */
+const COLLAPSED = { height: 0, opacity: 0 }
+const EXPANDED = { height: 'auto', opacity: 1 }
+
 function GamePickerSlide({
   query,
   onQueryChange,
@@ -480,6 +495,7 @@ function GamePickerSlide({
   remaining,
   onDone,
   submitting,
+  reduced,
 }) {
   const clearQuery = useCallback(() => {
     onQueryChange({ target: { value: '' } })
@@ -494,15 +510,51 @@ function GamePickerSlide({
         ? 'Your 3 picks — ready!'
         : `Your 3 picks — ${remaining} more to go`
 
+  // The picks area has two layouts, never both at once (a results list
+  // layered over the picks grid reads as a rendering glitch). Typing swaps
+  // the three full-size slots for one compact strip; clearing the field
+  // swaps them back, now holding whatever was chosen.
+  const searching = query.trim().length > 0
+
+  // The intro copy answers "what is this screen", which is a question the
+  // user has stopped asking by the time the keyboard is up. It also has to
+  // go: with the keyboard open and the slots at full size the step is ~66px
+  // taller than the space above the keyboard, and the thing that falls off
+  // the bottom is the Done button. Keyed on the keyboard rather than on
+  // focus because picking a game moves focus to the tile — a focus-keyed
+  // rule would expand this again mid-selection, under a keyboard that never
+  // went away.
+  const keyboardOpen = useKeyboardOpen()
+  const showIntro = !searching && !keyboardOpen
+
+  // ~200ms end to end in both directions. The intro collapses over the full
+  // duration while the picks swap runs as two half-length legs (old out, new
+  // in) under AnimatePresence's `wait`, so everything settles together.
+  const introTransition = { duration: reduced ? 0 : 0.2, ease: 'easeInOut' }
+  const swapTransition = { duration: reduced ? 0 : 0.1, ease: 'easeInOut' }
+
   return (
-    <div className="ob-picker">
+    <div className="ob-picker" aria-label="Add 3 favorite games">
       {/* Top section: title + subtitle + search */}
       <div className="ob-picker__top">
-        <h1 className="ob-vp__title">Add 3 favorite games</h1>
-        <p className="ob-vp__body">
-          Start with what you love — we&rsquo;ll use this to personalize your
-          feed.
-        </p>
+        <AnimatePresence initial={false}>
+          {showIntro && (
+            <motion.div
+              key="intro"
+              className="ob-collapse"
+              initial={COLLAPSED}
+              animate={EXPANDED}
+              exit={COLLAPSED}
+              transition={introTransition}
+            >
+              <h1 className="ob-vp__title">Add 3 favorite games</h1>
+              <p className="ob-vp__body">
+                Start with what you love — we&rsquo;ll use this to personalize
+                your feed.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Search input */}
         <div className="ob-search-row">
@@ -532,63 +584,112 @@ function GamePickerSlide({
           )}
         </div>
 
-        {/* Your 3 picks — always-visible, exactly 3 slots. Empty slots show
-            a dashed "+" placeholder; filled slots show the same colorful
-            cover treatment as the results grid, with a remove button. */}
-        <div className="ob-picks">
-          <p className="ob-picks__label">{picksLabel}</p>
-          <div
-            className="ob-picks__row"
-            role="list"
-            aria-label="Your 3 picks"
-          >
-            {[0, 1, 2].map((slotIndex) => {
-              const game = selectedGames[slotIndex]
-              if (game) {
-                return (
-                  <div
-                    key={game.id}
-                    className="ob-picks__slot ob-picks__slot--filled"
-                    role="listitem"
-                  >
-                    <div
-                      className="ob-selected-cover"
-                      style={{ '--ob-tile-color': tileColorVar(game.id) }}
-                    >
-                      <PickerCoverArt game={game} />
-                      <button
-                        type="button"
-                        className="ob-selected-remove"
-                        onClick={() => removeSelected(game.id)}
-                        aria-label={`${game.title}, selected, tap to remove`}
+        {/* Picks area — exactly one of two states occupies this space.
+            Idle: three full-size slots, empty (dashed "+" placeholder) or
+            holding a chosen cover. Searching: a one-line strip that keeps
+            the progress count and thumbnails of what's already picked
+            visible, so the space goes to the results instead. */}
+        <AnimatePresence initial={false} mode="wait">
+          {searching ? (
+            <motion.div
+              key="picks-strip"
+              className="ob-collapse"
+              initial={COLLAPSED}
+              animate={EXPANDED}
+              exit={COLLAPSED}
+              transition={swapTransition}
+            >
+              <div className="ob-picks-strip">
+                {pickedCount > 0 && (
+                  <div className="ob-picks-strip__thumbs" aria-hidden="true">
+                    {selectedGames.map((game) => (
+                      <span
+                        key={game.id}
+                        className="ob-picks-strip__thumb"
+                        style={{ '--ob-tile-color': tileColorVar(game.id) }}
                       >
-                        <X size={9} strokeWidth={3} />
-                      </button>
-                    </div>
+                        <PickerCoverArt game={game} />
+                      </span>
+                    ))}
                   </div>
-                )
-              }
-              return (
-                <div
-                  key={`empty-${slotIndex}`}
-                  className="ob-picks__slot ob-picks__slot--empty"
-                  role="listitem"
-                  aria-hidden="true"
+                )}
+                <p
+                  className={
+                    'ob-picks-strip__count' +
+                    (pickedCount > 0 ? ' ob-picks-strip__count--active' : '')
+                  }
                 >
-                  <Plus size={18} strokeWidth={2} />
+                  <strong>{pickedCount}</strong> of 3 selected
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="picks-slots"
+              className="ob-collapse"
+              initial={COLLAPSED}
+              animate={EXPANDED}
+              exit={COLLAPSED}
+              transition={swapTransition}
+            >
+              <div className="ob-picks">
+                <p className="ob-picks__label">{picksLabel}</p>
+                <div
+                  className="ob-picks__row"
+                  role="list"
+                  aria-label="Your 3 picks"
+                >
+                  {[0, 1, 2].map((slotIndex) => {
+                    const game = selectedGames[slotIndex]
+                    if (game) {
+                      return (
+                        <div
+                          key={game.id}
+                          className="ob-picks__slot ob-picks__slot--filled"
+                          role="listitem"
+                        >
+                          <div
+                            className="ob-selected-cover"
+                            style={{ '--ob-tile-color': tileColorVar(game.id) }}
+                          >
+                            <PickerCoverArt game={game} />
+                            <button
+                              type="button"
+                              className="ob-selected-remove"
+                              onClick={() => removeSelected(game.id)}
+                              aria-label={`${game.title}, selected, tap to remove`}
+                            >
+                              <X size={9} strokeWidth={3} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div
+                        key={`empty-${slotIndex}`}
+                        className="ob-picks__slot ob-picks__slot--empty"
+                        role="listitem"
+                        aria-hidden="true"
+                      >
+                        <Plus size={18} strokeWidth={2} />
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
-          </div>
 
-          {/* Zero-state hint — plain muted text, never boxed like an input
-              (there is exactly one search field on this screen, above).
-              Hidden as soon as the user types, so it never competes with
-              the results list. */}
-          {pickedCount === 0 && !query.trim() && (
-            <p className="ob-picks__hint">Search above to find your favorites</p>
+                {/* Zero-state hint — plain muted text, never boxed like an
+                    input (there is exactly one search field on this screen,
+                    above). */}
+                {pickedCount === 0 && (
+                  <p className="ob-picks__hint">
+                    Search above to find your favorites
+                  </p>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       {/* Scrollable results */}
@@ -658,10 +759,16 @@ function GamePickerSlide({
 
       {/* Bottom: status text + Done. Skip lives only in the top header now. */}
       <div className="ob-picker__bottom">
+        {/* While searching the compact strip already shows this count, so
+            the visible copy collapses to avoid saying it twice in one view.
+            It stays mounted rather than unmounting: it is the live region
+            that announces each selection, and that must keep working when a
+            game is picked from the results. */}
         <p
           className={
             'ob-picker__count-hint' +
-            (pickedCount > 0 ? ' ob-picker__count-hint--active' : '')
+            (pickedCount > 0 ? ' ob-picker__count-hint--active' : '') +
+            (searching ? ' ob-sr-only' : '')
           }
           aria-live="polite"
         >
