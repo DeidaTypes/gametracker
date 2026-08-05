@@ -8,7 +8,7 @@ import React, {
 import { Reorder } from 'motion/react'
 import { LuX, LuSearch, LuCheck } from 'react-icons/lu'
 import { SearchX } from 'lucide-react'
-import { searchGames } from '../services/igdb'
+import { searchGames } from '../services/searchService'
 import { getGamesFromList } from '../services/libraryService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'

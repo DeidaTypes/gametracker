@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { LuX, LuSearch } from 'react-icons/lu'
 import { SearchX } from 'lucide-react'
-import { searchGames } from '../services/igdb'
+import { searchGames } from '../services/searchService'
 import { getGamesFromList } from '../services/libraryService'
 import CenteredModal from './CenteredModal'
 import EmptyState from './EmptyState'

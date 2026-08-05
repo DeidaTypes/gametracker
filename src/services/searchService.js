@@ -11,7 +11,11 @@ import { searchGames as igdbSearchGames } from './igdb'
 
 // ─── Cache configuration ──────────────────────────────────────────────────────
 
-const CACHE_KEY     = 'search_cache_v1'
+// v2: the v1 store is abandoned rather than reused. It was filled by the old
+// `search "…"` query, which returned nothing for most partial terms — and an
+// empty result set was cached like any other, so every user who typed "cyber"
+// before this fix would keep getting nothing from cache for 24 hours after it.
+const CACHE_KEY     = 'search_cache_v2'
 const CACHE_TTL_MS  = 24 * 60 * 60 * 1000 // 24 hours — adjust here to change TTL
 const CACHE_MAX     = 50                    // max entries before oldest is evicted
 
@@ -96,20 +100,40 @@ const NON_CANONICAL_TERMS = [
  * Deterministic client-side re-ranking of a Game[].
  * Apply after deduplication, before rendering.
  *
- * Scoring per result
- * ──────────────────
- *  +1000  exact title match          (case-insensitive, normalised)
- *  +700   title startsWith query     (normalised)
- *  +500   every query token present as a whole word in the title
- *  +250   title contains the query as a substring
- *  0–50   popularity bonus           rating on 0–5 scale × 10 (optional)
+ * Match quality (best single band applies)
+ * ────────────────────────────────────────
+ *  +700   exact title match             (case-insensitive, normalised)
+ *  +500   title startsWith query
+ *  +450   query starts a word in title  ("zeld" → "The Legend of Zelda: …")
+ *  +350   every query token starts a word in the title  ("zelda wild" → BOTW)
+ *  +350   an alternative name contains the query        ("ff7", "botw", "gta")
+ *  +250   query appears anywhere in the title as a substring
+ *  +100   matched on something IGDB saw but we can't attribute
+ *
+ * Popularity
+ * ──────────
+ *  0–550  log10(1 + total_rating_count) × 150
+ *  0–40   rating on the 0–5 scale × 8
+ *
+ * The popularity term is deliberately large enough to outweigh one match
+ * band. That is the whole point of it: "hollow" should return Hollow Knight
+ * (word match, 2.2k ratings) above the obscure indie literally called
+ * "Hollow" (exact match, no ratings). It is log-scaled so the difference
+ * between 2k and 5k ratings stays small while the difference between 0 and
+ * 200 stays decisive.
  *
  * Penalties
  * ─────────
  *  −300   non-canonical term found as a whole word in title
  *         (mod / randomizer / multiplayer / romhack / pack / dlc /
  *          beta / demo / trainer / cheat)
- *  −100   title is > 5 words longer than query (noise signal)
+ *
+ * There is deliberately no "long title" penalty. A −100 for titles more than
+ * five words longer than the query used to stand in for "this is noise", and
+ * it is exactly wrong for franchises: it pushed "The Legend of Zelda: Breath
+ * of the Wild" (8 words, 2,958 ratings) below "The Legend of Zelda" (4 words,
+ * 730 ratings) on the query "zeld". Popularity is the honest version of that
+ * signal, and it is already in the score.
  *
  * Tie-breakers (applied when scores are equal)
  * ────────────────────────────────────────────
@@ -125,48 +149,52 @@ export function rankGames(query, games) {
 
   const q = normalize(query)
   const qWords = q.split(/\s+/).filter(w => w.length > 0)
+  const startsWord = (haystack, word) =>
+    new RegExp(`\\b${escapeRegex(word)}`).test(haystack)
 
   const scored = games.map(game => {
     const title = game.title ?? ''
     const titleNorm = normalize(title)
-    const titleWords = titleNorm.split(/\s+/).filter(w => w.length > 0)
 
     let score = 0
 
-    // +1000 — exact title match
     if (titleNorm === q) {
-      score += 1000
-    }
-    // +700 — title starts with the full query string
-    else if (titleNorm.startsWith(q)) {
       score += 700
-    }
-    // +500 — every query token appears as a whole word inside the title
-    else if (
-      qWords.length > 0 &&
-      qWords.every(w => new RegExp(`\\b${escapeRegex(w)}\\b`, 'i').test(title))
-    ) {
+    } else if (titleNorm.startsWith(q)) {
       score += 500
-    }
-    // +250 — query appears as a substring anywhere in the normalised title
-    else if (titleNorm.includes(q)) {
+    } else if (startsWord(titleNorm, q)) {
+      score += 450
+    } else if (qWords.length > 1 && qWords.every(w => startsWord(titleNorm, w))) {
+      score += 350
+    } else if (
+      // Word-start, not substring: an abbreviation begins a word ("ff7" in
+      // "FFVII"). A plain includes() also matches "ff" inside "Mass Effect 1",
+      // which handed Mass Effect the abbreviation bonus on the query "ff" and
+      // pushed Final Fantasy VII off the top.
+      (game.altNames ?? []).some(name => startsWord(normalize(name), q))
+    ) {
+      score += 350
+    } else if (titleNorm.includes(q)) {
       score += 250
+    } else {
+      score += 100
     }
-    // 0 — partial / fuzzy overlap: no positive boost, rely on IGDB order
 
-    // Optional popularity bonus: rating stored as "4.2" on a 0–5 scale → max +50
+    // Popularity — IGDB's total_rating_count, log-scaled.
+    const popularity = Number(game.popularity)
+    if (Number.isFinite(popularity) && popularity > 0) {
+      score += Math.log10(1 + popularity) * 150
+    }
+
+    // Quality nudge: rating stored as "4.2" on a 0–5 scale → max +40
     const rating = parseFloat(game.rating)
-    if (!isNaN(rating)) score += rating * 10
+    if (!isNaN(rating)) score += rating * 8
 
     // −300 — non-canonical term present as a whole word
     const hasNonCanonical = NON_CANONICAL_TERMS.some(term =>
       new RegExp(`\\b${escapeRegex(term)}\\b`, 'i').test(title)
     )
     if (hasNonCanonical) score -= 300
-
-    // −100 — title is more than 5 words longer than the query (noise signal)
-    const extraWords = titleWords.length - qWords.length
-    if (extraWords > 5) score -= 100
 
     return { score, game }
   })
@@ -223,7 +251,9 @@ export async function searchGames(searchTerm, limit = 30) {
 
     // Only cache full searches so that autocomplete results (limit <= 6) don't
     // silently fill the cache with truncated lists before a full search runs.
-    if (limit >= 20) {
+    // Empty results are never cached — "no match" is far more likely to be a
+    // transient API problem than a fact worth remembering for a day.
+    if (limit >= 20 && result.length > 0) {
       cacheSet(cacheKey, result)
     }
 

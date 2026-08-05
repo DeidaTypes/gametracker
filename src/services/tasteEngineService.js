@@ -33,6 +33,7 @@ export const SIGNAL_LABELS = Object.freeze({
   finished: 'games you finished',
   rating: 'your ratings',
   review: 'reviews you wrote',
+  favorite: 'your favorite games',
   list: 'games you listed',
   backlog: 'your backlog',
   swipe_right: 'games you swiped right on',
@@ -206,21 +207,66 @@ export async function getTasteMatch(userA, userB) {
       console.error('[tasteEngine] getTasteMatch RPC error:', error.message)
       return null
     }
-    // Below threshold → the RPC returns enough_data:false. Surface null so
-    // callers render an honest "not enough data" state, not a fake percent.
-    if (!data || data.enough_data !== true || data.score == null) return null
-
-    return {
-      score: Number(data.score),
-      confidence: Number(data.confidence) || 0,
-      sharedGenreCount: data.shared_genre_count || 0,
-      genres: Array.isArray(data.genres)
-        ? data.genres.map((g) => ({ genre: g.genre, strength: Number(g.strength) || 0 }))
-        : [],
-    }
+    return shapeTasteMatch(data)
   } catch (err) {
     console.error('[tasteEngine] getTasteMatch crashed:', err)
     return null
+  }
+}
+
+/**
+ * getTasteMatchBatch(viewer, [actorA, actorB, ...]) — the same answer for a
+ * whole shelf in one round-trip.
+ *
+ * The Discover "Recently" shelf annotates every card with the viewer↔actor
+ * match, and was issuing one RPC per distinct actor — up to ten on a single
+ * screen entry. Scoring still lives in `get_taste_match`; the batch RPC just
+ * loops over it server-side (see the 20260804150000 migration), so the two
+ * paths can't drift.
+ *
+ * Falls back to per-pair calls if the batch RPC isn't deployed yet, so an
+ * un-migrated environment degrades to the old cost rather than a blank shelf.
+ *
+ * @param {string} userA
+ * @param {string[]} userBs
+ * @returns {Promise<Map<string, object|null>>} keyed by userB id
+ */
+export async function getTasteMatchBatch(userA, userBs) {
+  const targets = [...new Set((userBs || []).filter((id) => id && id !== userA))]
+  const out = new Map()
+  if (!userA || targets.length === 0) return out
+
+  try {
+    const { data, error } = await supabase.rpc('get_taste_match_batch', {
+      user_a: userA,
+      user_bs: targets,
+    })
+    if (error) throw new Error(error.message)
+    for (const id of targets) out.set(id, shapeTasteMatch(data?.[id]))
+    return out
+  } catch (err) {
+    console.warn('[tasteEngine] getTasteMatchBatch unavailable, falling back:', err)
+    const pairs = await Promise.all(
+      targets.map(async (id) => [id, await getTasteMatch(userA, id)])
+    )
+    for (const [id, match] of pairs) out.set(id, match)
+    return out
+  }
+}
+
+/**
+ * Below threshold the RPC returns `enough_data: false`. Surface null so
+ * callers render an honest "not enough data" state, not a fake percent.
+ */
+function shapeTasteMatch(data) {
+  if (!data || data.enough_data !== true || data.score == null) return null
+  return {
+    score: Number(data.score),
+    confidence: Number(data.confidence) || 0,
+    sharedGenreCount: data.shared_genre_count || 0,
+    genres: Array.isArray(data.genres)
+      ? data.genres.map((g) => ({ genre: g.genre, strength: Number(g.strength) || 0 }))
+      : [],
   }
 }
 

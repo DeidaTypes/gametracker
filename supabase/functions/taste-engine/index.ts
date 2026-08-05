@@ -53,6 +53,13 @@
 //                                          Only swipe-left is treated as
 //                                          negative preference.
 //   review      2.5 (+0.5 longform)  — strong engagement; writing costs effort.
+//   favorite    1.5  — naming a game as one of your four favorites is an
+//                      explicit, deliberate statement of taste, so it counts.
+//                      But it is only a statement: it carries no evidence the
+//                      user ever played the thing, which is why it sits well
+//                      below `finished` and cannot substitute for it. Kept as
+//                      its own kind so "we recommended this because you
+//                      favorited it" never gets reported as "you finished it".
 //   list        1.2  — curation signal.
 //   backlog     0.8  — intent only, and intent is cheap. Deliberately well
 //                      below `finished` so completion beats intent.
@@ -107,6 +114,7 @@ const REVIEW_POINTS = 2.5
 const REVIEW_LONGFORM_BONUS = 0.5       // body ≥ REVIEW_LONGFORM_CHARS
 const REVIEW_LONGFORM_CHARS = 280
 const FINISHED_POINTS = 3.0             // completion beats intent
+const FAVORITE_POINTS = 1.5             // explicit taste, but no evidence of play
 const BACKLOG_POINTS = 0.8              // intent only — deliberately << FINISHED_POINTS
 const LIST_POINTS = 1.2                 // curation
 const SWIPE_RIGHT_POINTS = 0.5          // light positive
@@ -495,6 +503,7 @@ function buildUserSignals(sources: {
   listGames: any[]
   events: any[]
   swipes: any[]
+  favorites: any[]
 }): Map<string, UserSignal> {
   const users = new Map<string, UserSignal>()
 
@@ -745,6 +754,38 @@ function buildUserSignals(sources: {
     })
   }
 
+  // ── Favorites: explicit taste, zero evidence of play ───────────────────────
+  // Truth comes from users.favorite_games (the list as it stands right now, so
+  // un-favoriting actually removes the signal); the 'favorited' activity_event
+  // only supplies a date, exactly as 'completed' does for finished games.
+  //
+  // Note what this block does NOT do: it never sets g.finished and never
+  // touches finishedGames. Favorites used to reach the vector by way of
+  // onboarding writing status='played', which made them indistinguishable
+  // from completions here.
+  const favoritedAt = new Map<string, number | null>()
+  for (const e of sources.events) {
+    const uid = e.actor_user_id
+    if (!uid || typeof e.entity_id !== 'string' || !/^\d+$/.test(e.entity_id)) continue
+    if (String(e.type || '').toLowerCase() !== 'favorited') continue
+    const key = `${uid}:${idOf(e.entity_id)}`
+    favoritedAt.set(key, latest(favoritedAt.get(key) ?? null, ts(e.created_at)))
+  }
+  for (const row of sources.favorites) {
+    const uid = row?.id
+    if (!uid || !Array.isArray(row.favorite_games)) continue
+    for (const fav of row.favorite_games) {
+      const gid = idOf(fav?.id)
+      if (!gid) continue
+      const g = game(uid, gid, fav?.title ?? null)
+      g.contributions.push({
+        kind: 'favorite',
+        points: FAVORITE_POINTS,
+        at: favoritedAt.get(`${uid}:${gid}`) ?? null,
+      })
+    }
+  }
+
   // ── Swipes: light positive / light negative ────────────────────────────────
   // Read from the user_swipe_signals mirror — swipe history is device-local
   // (gt:swipes:v1) and would otherwise be invisible to a server-side job.
@@ -839,7 +880,10 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
   const only = (q: any) => (opts.userId ? q.eq('user_id', opts.userId) : q)
   const nowMs = Date.now()
 
-  const [reviews, trackers, sessions, lists, events, swipes] = await Promise.all([
+  // 'completed' dates the finished signal, 'favorited' dates the favorite one.
+  const datingEventTypes = ['completed', 'favorited']
+
+  const [reviews, trackers, sessions, lists, events, swipes, favorites] = await Promise.all([
     fetchAll(() => only(db.from('reviews').select(
       'user_id, igdb_game_id, rating, body, hours_played, game_title, created_at, updated_at')), 'reviews'),
     fetchAll(() => only(db.from('game_trackers').select(
@@ -849,11 +893,16 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
     fetchAll(() => only(db.from('lists').select('id, user_id, created_at')), 'lists'),
     fetchAll(() => (opts.userId
       ? db.from('activity_events').select('actor_user_id, type, entity_id, metadata, created_at')
-          .eq('actor_user_id', opts.userId).eq('type', 'completed')
+          .eq('actor_user_id', opts.userId).in('type', datingEventTypes)
       : db.from('activity_events').select('actor_user_id, type, entity_id, metadata, created_at')
-          .eq('type', 'completed')), 'activity_events'),
+          .in('type', datingEventTypes)), 'activity_events'),
     fetchAll(() => only(db.from('user_swipe_signals').select(
       'user_id, igdb_game_id, action, genre_names, theme_names, swiped_at')), 'user_swipe_signals'),
+    // users is keyed by `id`, not `user_id`, so it can't use the `only` helper.
+    fetchAll(() => {
+      const q = db.from('users').select('id, favorite_games')
+      return opts.userId ? q.eq('id', opts.userId) : q
+    }, 'users'),
   ])
 
   // list_games has no user_id — it inherits ownership from its parent list, so
@@ -870,7 +919,7 @@ async function refresh(db: any, opts: { userId?: string; limit?: number }) {
   }
 
   const users = buildUserSignals({
-    reviews, trackers, sessions, lists, listGames, events, swipes,
+    reviews, trackers, sessions, lists, listGames, events, swipes, favorites,
   })
   let userList = Array.from(users.values())
   if (opts.limit && opts.limit > 0) userList = userList.slice(0, opts.limit)

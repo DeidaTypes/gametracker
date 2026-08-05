@@ -58,6 +58,12 @@
  * @property {string[]}       tags               - Tag names
  * @property {number[]}       tagIds             - Tag IDs (for similarity matching)
  *
+ * ── Relevance ───────────────────────────────────────────────────────────────
+ * Populated only by the search path (igdb.js searchGames), consumed only by
+ * searchService.rankGames(). Null / empty on games from every other source.
+ * @property {number|null}    popularity         - IGDB total_rating_count (how widely rated)
+ * @property {string[]}       altNames           - IGDB alternative names ("FF7", "BOTW", …)
+ *
  * ── Provenance ──────────────────────────────────────────────────────────────
  * @property {GameSource}     source             - Which API this game originates from
  * @property {RawIds}         rawIds             - Original API identifiers for cross-referencing
@@ -102,6 +108,9 @@ export function createEmptyGame() {
     keywords: [],
     tags: [],
     tagIds: [],
+    // Relevance
+    popularity: null,
+    altNames: [],
     // Provenance
     source: 'unknown',
     rawIds: {},

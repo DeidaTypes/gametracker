@@ -98,6 +98,8 @@ export function normalizeGame(raw, source = 'unknown') {
       keywords: [],
       tags: [],
       tagIds: [],
+      popularity: null,
+      altNames: [],
       source: 'unknown',
       rawIds: {},
     }
@@ -184,6 +186,10 @@ export function normalizeGame(raw, source = 'unknown') {
     tags: Array.isArray(raw.tags) ? raw.tags.filter(Boolean) : [],
     tagIds: Array.isArray(raw.tagIds) ? raw.tagIds.filter(id => id != null) : [],
 
+    // Relevance (search only — null/[] everywhere else)
+    popularity: raw.popularity ?? null,
+    altNames: Array.isArray(raw.altNames) ? raw.altNames.filter(Boolean) : [],
+
     // Provenance
     source: source || 'unknown',
     rawIds,
@@ -265,6 +271,11 @@ function mergeGames(base, other) {
     keywords:           mergeArr(base.keywords, other.keywords),
     tags:               mergeArr(base.tags, other.tags),
     tagIds:             [...new Set([...base.tagIds, ...other.tagIds])],
+
+    // Relevance — search results arrive popularity-ordered, so `base` (the
+    // first-seen duplicate) already carries the highest count.
+    popularity: base.popularity ?? other.popularity,
+    altNames:   mergeArr(base.altNames, other.altNames),
 
     // Provenance — merge rawIds (base wins on key conflicts); keep base source
     source:  base.source,

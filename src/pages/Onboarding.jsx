@@ -16,14 +16,10 @@ import {
   SearchX,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { searchGames } from '../services/igdb'
+import { searchGames } from '../services/searchService'
 import { getBestImageUrl } from '../services/imageUtils'
-import {
-  setGameStatus,
-  initializeLibrary,
-  updateGameProgress,
-} from '../services/libraryService'
 import { updateProfile } from '../services/profileService'
+import { updateUserProfile } from '../services/userService'
 import { completeOnboarding } from '../services/onboardingService'
 import { setOnboarded } from '../services/userPreferences'
 import { showToast } from '../components/Toast'
@@ -154,20 +150,29 @@ export default function Onboarding() {
       if (submitting) return
       setSubmitting(true)
       try {
-        // Seed favorites (up to 4) and mark each as "Played" in the
-        // local tracker so the library is pre-populated on first open.
+        // Picks are FAVORITES, nothing more. They go to the same store the
+        // Profile "Favorite games" row reads from — localStorage for the
+        // owner's own profile, users.favorite_games for everyone else — and
+        // updateUserProfile emits one 'favorited' event per new pick.
+        //
+        // They deliberately do NOT set a tracker status. This used to write
+        // setGameStatus(id, 'played'), which is a different claim entirely:
+        // it upserted game_trackers.status='played', logged a
+        // 'status_changed' activity, and emitted a 'completed' Pulse event.
+        // The result was a brand-new account whose games-played count, 2026
+        // Challenge ring and taste vector were all seeded from games the
+        // user had only said they liked.
         if (seedGames.length > 0) {
-          updateProfile({ favoriteGames: seedGames.slice(0, 4) })
-          initializeLibrary()
-          const seededAt = new Date().toISOString()
-          for (const game of seedGames) {
-            // Pre-stamp playedFirstAt so setGameStatus's celebration guard
-            // sees a non-null value and skips queueCelebration. Without this
-            // the three "Played" writes each enqueue a CompletionCelebration,
-            // which fires on top of Home and can route the user into the
-            // review composer instead of landing on the dashboard.
-            updateGameProgress(game.id, { playedFirstAt: seededAt })
-            setGameStatus(game.id, 'played', game)
+          const favorites = seedGames.slice(0, 4)
+          updateProfile({ favoriteGames: favorites })
+          if (user?.id) {
+            try {
+              await updateUserProfile(user.id, { favoriteGames: favorites })
+            } catch (err) {
+              // Favorites are already saved locally; a failed sync must not
+              // trap the user on onboarding.
+              console.error('[Onboarding] favorites sync failed:', err)
+            }
           }
         }
 
@@ -181,7 +186,7 @@ export default function Onboarding() {
         navigate('/', { replace: true })
         if (seedGames.length > 0) {
           showToast(
-            'Welcome to Checkpoint. Tap any game to leave a review.',
+            'Welcome to Checkpoint. Your favorites are on your profile.',
             'success',
             5000
           )

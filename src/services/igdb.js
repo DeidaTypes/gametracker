@@ -470,29 +470,35 @@ function shapeForCoverRow(games) {
 // pay for a full "look up the id" round-trip before the actual games
 // query could even start. Caching the id collapses that back down to a
 // single hop after the first lookup.
+//
+// The per-NAME lookup that used to back this cache cost one `/genres`
+// request per distinct name, so a cold browse-category fan-out spent five
+// round-trips just resolving ids before any games query could start. Both
+// resolvers now read the whole catalog once (localStorage, 7-day TTL — the
+// same list the discovery deck already relies on) and answer every
+// subsequent name from memory.
 const genreIdCache = new Map()
 const themeIdCache = new Map()
 
+function indexByLowerName(rows, cache) {
+  for (const row of rows || []) {
+    if (row && row.id && row.name) cache.set(row.name.toLowerCase(), row.id)
+  }
+}
+
 async function resolveGenreId(genreName) {
-  if (genreIdCache.has(genreName)) return genreIdCache.get(genreName)
-  const genreQuery = `fields id;
-where name = "${genreName}";`
-  const genres = await igdbRequest('genres', genreQuery)
-  if (genres.length === 0) return null
-  const id = genres[0].id
-  genreIdCache.set(genreName, id)
-  return id
+  const key = String(genreName || '').toLowerCase()
+  if (genreIdCache.has(key)) return genreIdCache.get(key)
+  const catalog = await fetchIgdbGenres()
+  indexByLowerName(catalog.length ? catalog : FALLBACK_GENRES, genreIdCache)
+  return genreIdCache.has(key) ? genreIdCache.get(key) : null
 }
 
 async function resolveThemeId(themeName) {
-  if (themeIdCache.has(themeName)) return themeIdCache.get(themeName)
-  const themeQuery = `fields id;
-where name = "${themeName}";`
-  const themes = await igdbRequest('themes', themeQuery)
-  if (themes.length === 0) return null
-  const id = themes[0].id
-  themeIdCache.set(themeName, id)
-  return id
+  const key = String(themeName || '').toLowerCase()
+  if (themeIdCache.has(key)) return themeIdCache.get(key)
+  indexByLowerName(await fetchIgdbThemes(), themeIdCache)
+  return themeIdCache.has(key) ? themeIdCache.get(key) : null
 }
 
 /**
@@ -542,6 +548,100 @@ limit ${limit};`
   } catch (error) {
     console.error(`Error fetching games for genre ${genreName}:`, error)
     return []
+  }
+}
+
+/**
+ * Every bucket the browse grid needs, in ONE IGDB request.
+ *
+ * The browse fan-out used to be `popular + recent + one query per genre`
+ * issued in parallel, each genre paying an extra id-resolution round-trip
+ * first — thirteen requests against a ~1s proxy before Search could paint
+ * its category tiles. Genre ids now come from the cached catalog and the
+ * remaining reads ride a single /multiquery.
+ *
+ * Falls back to the original per-bucket functions if the proxy rejects
+ * multiquery (older deployments do), so the worst case is what we had
+ * before rather than an empty grid.
+ *
+ * @param {Array<{name: string, limit: number}>} genreSpecs
+ * @returns {Promise<{popular: Array, recent: Array, byGenre: Record<string, Array>}>}
+ */
+export async function fetchBrowseBuckets(genreSpecs = []) {
+  const fiveYearsAgo = Math.floor(Date.now() / 1000) - (5 * 31536000)
+  const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
+  const oneYearAgo = Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60)
+  const now = Math.floor(Date.now() / 1000)
+
+  const runFallback = async () => {
+    const [popularResult, recentResult, ...genreResults] = await Promise.allSettled([
+      getPopularGames(30),
+      getRecentlyReleasedGames(10),
+      ...genreSpecs.map((g) => getGamesByGenre(g.name, g.limit)),
+    ])
+    const byGenre = {}
+    genreSpecs.forEach((g, i) => {
+      byGenre[g.name] = genreResults[i]?.status === 'fulfilled' ? genreResults[i].value : []
+    })
+    return {
+      popular: popularResult.status === 'fulfilled' ? popularResult.value : [],
+      recent: recentResult.status === 'fulfilled' ? recentResult.value : [],
+      byGenre,
+    }
+  }
+
+  if (!isMultiQuerySupported()) return runFallback()
+
+  try {
+    const genreIds = await Promise.all(genreSpecs.map((g) => resolveGenreId(g.name)))
+
+    const blocks = [
+      {
+        endpoint: 'games',
+        name: 'popular',
+        body: `fields name, cover.image_id, genres.name, rating, rating_count, summary, first_release_date;
+where cover != null & rating != null & rating_count != null & first_release_date >= ${fiveYearsAgo} & rating_count > 10;
+sort rating_count desc;
+limit 30;`,
+      },
+      {
+        endpoint: 'games',
+        name: 'recent',
+        body: `fields name, cover.image_id, genres.name, rating, rating_count, first_release_date;
+where first_release_date >= ${oneYearAgo} & first_release_date <= ${now} & cover != null & rating != null;
+sort first_release_date desc;
+limit 10;`,
+      },
+    ]
+
+    genreSpecs.forEach((spec, i) => {
+      if (genreIds[i] == null) return
+      blocks.push({
+        endpoint: 'games',
+        name: `genre_${i}`,
+        body: `fields name, cover.image_id, rating, rating_count, first_release_date;
+where genres = ${genreIds[i]} & cover != null & rating != null & first_release_date >= ${sevenYearsAgo};
+sort rating_count desc;
+limit ${spec.limit};`,
+      })
+    })
+
+    const results = await igdbMultiQuery(blocks)
+    const byName = new Map(results.map((r) => [r.name, r.result || []]))
+
+    const byGenre = {}
+    genreSpecs.forEach((spec, i) => {
+      byGenre[spec.name] = formatGames(byName.get(`genre_${i}`) || [])
+    })
+
+    return {
+      popular: formatGames(byName.get('popular') || []),
+      recent: formatGames(byName.get('recent') || []),
+      byGenre,
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[igdb] fetchBrowseBuckets multiquery failed, falling back', err)
+    return runFallback()
   }
 }
 
@@ -595,30 +695,112 @@ function filterOutDLC(games) {
   })
 }
 
-// Search games — returns IGDB's natural relevance order.
-// Ranking / re-ordering is handled entirely by searchService.rankGames().
+// ─── Game search — the single query every entry point ultimately runs ────────
+//
+// IGDB's `search "…"` operator looks like the obvious tool here, and it was
+// what this function used. It is not: `search` matches whole indexed tokens,
+// so partial terms silently miss the game the user is typing towards.
+// Measured against the live API:
+//
+//   search "cyber"  → 199 rows, Cyberpunk 2077 NOT among them
+//   search "zeld"   → 0 rows
+//
+// `where name ~ *"…"*` is a case-insensitive infix match, which is what
+// as-you-type search actually needs. It also accepts `sort`, which `search`
+// does not — IGDB rejects the combination outright with a 406 ("Your query
+// has both search and sort"), so `search` can never be popularity-ordered and
+// its relevance order puts shovelware above the obvious answer. Sorting the
+// infix match by total_rating_count means the well-known game is already at
+// the top before rankGames() ever sees it.
+//
+// The `alternative_names` half is what makes abbreviations work: IGDB stores
+// "FF7", "BOTW" and "GTA" as alternative names, none of which are substrings
+// of the real title.
+//
+// `search` is deliberately not used as a fallback: it has no typo tolerance
+// either (search "cyberpnk" → 0 rows), so a second request would buy nothing.
+// One IGDB request per search, same as before.
+
+const SEARCH_FIELDS =
+  'fields name, cover.image_id, genres.name, rating, rating_count, ' +
+  'total_rating_count, summary, involved_companies.company.name, ' +
+  'first_release_date, alternative_names.name;'
+
+function escapeIgdbString(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
+/**
+ * Build the name-matching half of a search `where` clause.
+ *
+ * Multi-word queries AND their tokens rather than matching the phrase, so
+ * "zelda wild" still finds "The Legend of Zelda: Breath of the Wild" — an
+ * infix match on the whole phrase would need the words to be adjacent.
+ * The alternative-names arm keeps matching the phrase, because that is how
+ * abbreviations are stored ("FF7", not "FF" + "7").
+ */
+function buildNameMatchClause(term) {
+  const phrase = escapeIgdbString(term)
+  const tokens = term.split(/\s+/).filter(Boolean).map(escapeIgdbString)
+
+  const nameClause =
+    tokens.length > 1
+      ? `(${tokens.map((t) => `name ~ *"${t}"*`).join(' & ')})`
+      : `name ~ *"${phrase}"*`
+
+  return `(${nameClause} | alternative_names.name ~ *"${phrase}"*)`
+}
+
+/**
+ * Order cover-art results ahead of art-less ones without dropping the latter.
+ *
+ * A missing cover is a gap in IGDB's art, not a signal that the game is not
+ * what the user asked for, so excluding those rows outright (which this used
+ * to do) can make a legitimately-searched game unfindable. Every search
+ * surface renders a placeholder for a null image already.
+ */
+function coversFirst(games) {
+  const withCover = []
+  const withoutCover = []
+  for (const game of games) {
+    if (game.cover && (game.cover.image_id || game.cover.url)) withCover.push(game)
+    else withoutCover.push(game)
+  }
+  return [...withCover, ...withoutCover]
+}
+
+/**
+ * Whether the user's own query is asking for the kind of title filterOutDLC
+ * strips. Someone typing "phantom liberty" or "expansion pass" means it, and
+ * returning nothing would be worse than returning an expansion.
+ */
+function queryTargetsDLC(term) {
+  return /\b(dlc|expansion|edition|season pass|battle pass|pack|bundle|episode|chapter)\b/i.test(term)
+}
+
+// Search games — returns games in popularity order.
+// Relevance ranking is handled entirely by searchService.rankGames().
 export async function searchGames(searchTerm, limit = 30) {
   if (!searchTerm || !searchTerm.trim()) {
     return []
   }
 
-  const escapedTerm = searchTerm.trim()
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
+  const term = searchTerm.trim()
 
-  const fetchLimit = Math.min(limit * 4, 200)
-  const query = `fields name, cover.image_id, genres.name, rating, rating_count, summary, involved_companies.company.name, first_release_date;
-search "${escapedTerm}";
+  // Over-fetch so rankGames() has enough material to promote the right title;
+  // IGDB returns these popularity-ordered, so the tail we cut is the obscure end.
+  const fetchLimit = Math.min(Math.max(limit * 4, 60), 200)
+  const query = `${SEARCH_FIELDS}
+where ${buildNameMatchClause(term)} & version_parent = null;
+sort total_rating_count desc;
 limit ${fetchLimit};`
 
   try {
     const games = await igdbRequest('games', query)
 
-    const gamesWithCovers = games.filter(game => game.cover && (game.cover.image_id || game.cover.url))
+    const baseGames = queryTargetsDLC(term) ? games : filterOutDLC(games)
 
-    const baseGames = filterOutDLC(gamesWithCovers)
-
-    return formatGamesRaw(baseGames.slice(0, limit * 2))
+    return formatGamesRaw(coversFirst(baseGames))
   } catch (error) {
     console.error('❌ Error in searchGames:', error)
     throw error
@@ -629,10 +811,15 @@ limit ${fetchLimit};`
  * Search games combining an optional free-text term with IGDB where-clause
  * fragments produced by parseNaturalQuery.
  *
- * When `term` is non-empty the IGDB `search "…"` endpoint is used; the
- * extra where fragments narrow results (cover required is always added).
- * When `term` is empty the query becomes a pure filter with
- * `sort rating_count desc` so you get popular matching games.
+ * Uses the same infix name matching as searchGames() — see the note there for
+ * why IGDB's `search` operator is unusable here — with the caller's fragments
+ * ANDed on top. When `term` is empty the query is a pure filter.
+ *
+ * Note there is no rating / rating_count floor. This used to require
+ * `rating != null & rating_count > 3`, which is a notability gate borrowed
+ * from the curated rails: it silently hid any game the user searched by name
+ * that happened to be niche, brand new, or simply under-rated on IGDB.
+ * Popularity belongs in the sort, not in the filter.
  *
  * Falls back to plain searchGames(term) on any API error so the caller
  * never has to handle a structured-search failure itself.
@@ -643,42 +830,32 @@ limit ${fetchLimit};`
  * @returns {Promise<Array>}
  */
 export async function searchGamesWithFilters(term, whereFragments, limit = 30) {
-  const hasTerm = Boolean(term && term.trim())
+  const trimmed = (term || '').trim()
+  const hasTerm = Boolean(trimmed)
   const hasWhere = whereFragments && whereFragments.length > 0
 
   if (!hasTerm && !hasWhere) return []
 
   const combinedWhere = [
     ...(hasWhere ? whereFragments : []),
-    'cover != null',
-    'rating != null',
-    'rating_count > 3',
+    ...(hasTerm ? [buildNameMatchClause(trimmed)] : []),
+    'version_parent = null',
   ].join(' & ')
 
-  const fields =
-    'fields name, cover.image_id, genres.name, rating, rating_count, summary, involved_companies.company.name, first_release_date;'
+  const fetchLimit = Math.min(Math.max(limit * 4, 60), 200)
 
-  const fetchLimit = Math.min(limit * 4, 200)
-
-  let query
-  if (hasTerm) {
-    const escaped = term.trim()
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-    query = `${fields}\nsearch "${escaped}";\nwhere ${combinedWhere};\nlimit ${fetchLimit};`
-  } else {
-    query = `${fields}\nwhere ${combinedWhere};\nsort rating_count desc;\nlimit ${fetchLimit};`
-  }
+  const query = `${SEARCH_FIELDS}
+where ${combinedWhere};
+sort total_rating_count desc;
+limit ${fetchLimit};`
 
   try {
     const games = await igdbRequest('games', query)
-    const filtered = filterOutDLC(
-      games.filter((g) => g.cover && (g.cover.image_id || g.cover.url))
-    )
-    return formatGamesRaw(filtered.slice(0, limit * 2))
+    const baseGames = hasTerm && queryTargetsDLC(trimmed) ? games : filterOutDLC(games)
+    return formatGamesRaw(coversFirst(baseGames))
   } catch (err) {
     console.warn('[igdb] searchGamesWithFilters failed, falling back to plain search:', err)
-    if (hasTerm) return searchGames(term, limit)
+    if (hasTerm) return searchGames(trimmed, limit)
     return []
   }
 }
@@ -1388,6 +1565,43 @@ async function fetchIgdbGenres() {
   return []
 }
 
+const IGDB_THEMES_CACHE_KEY = 'gt:igdb-themes:v1'
+
+/**
+ * Themes counterpart to `fetchIgdbGenres`. Same 7-day localStorage cache —
+ * the theme list is static reference data, and resolving a theme name one
+ * request at a time was costing a round-trip per browse category that
+ * happens to be theme-backed (Horror, Sci-fi).
+ */
+async function fetchIgdbThemes() {
+  try {
+    const raw = localStorage.getItem(IGDB_THEMES_CACHE_KEY)
+    if (raw) {
+      const cached = JSON.parse(raw)
+      if (Date.now() < cached.expiresAt && Array.isArray(cached.themes) && cached.themes.length > 0) {
+        return cached.themes
+      }
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const themes = await igdbRequest('themes', `fields id, name; limit 50;`)
+    if (Array.isArray(themes) && themes.length > 0) {
+      const toCache = themes
+        .filter((t) => t && t.id && t.name)
+        .map((t) => ({ id: t.id, name: t.name }))
+      try {
+        localStorage.setItem(
+          IGDB_THEMES_CACHE_KEY,
+          JSON.stringify({ themes: toCache, expiresAt: Date.now() + IGDB_GENRES_CACHE_TTL })
+        )
+      } catch { /* storage full — ignore */ }
+      return toCache
+    }
+  } catch { /* network/proxy failure — caller falls back to no theme filter */ }
+  return []
+}
+
 // Fallback genre set when the IGDB genres endpoint is unavailable.
 const FALLBACK_GENRES = [
   { id: 12, name: 'Role-playing (RPG)' },
@@ -1794,20 +2008,33 @@ export async function fetchBroadDiscoveryBatch({
     }
   }
 
-  for (const chunk of chunks) {
-    try {
-      const multi = await igdbMultiQuery(chunk)
-      const byName = new Map(multi.map((r) => [r.name, r.result || []]))
-      for (const block of chunk) applyChunkResult(block, byName.get(block.name))
-    } catch (err) {
-      // Multiquery unsupported/failed — fall back to parallel per-genre
-      // calls for just this chunk so one bad chunk doesn't sink the batch.
-      if (import.meta.env.DEV) console.warn('[broadDiscovery] multiquery chunk failed, falling back', err)
-      const settled = await Promise.allSettled(chunk.map((b) => igdbRequest('games', b.body)))
-      settled.forEach((r, i) => {
-        applyChunkResult(chunk[i], r.status === 'fulfilled' ? r.value : [])
-      })
-    }
+  // The chunks are independent, so they go out together. Awaiting them one
+  // at a time serialised three ~1s proxy round-trips into a ~3s stall before
+  // the deck could paint. Three concurrent requests still sits inside the
+  // 4 req/s ceiling that throttleIgdb() enforces.
+  const chunkOutcomes = await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const multi = await igdbMultiQuery(chunk)
+        const byName = new Map(multi.map((r) => [r.name, r.result || []]))
+        return chunk.map((block) => [block, byName.get(block.name)])
+      } catch (err) {
+        // Multiquery unsupported/failed — fall back to parallel per-genre
+        // calls for just this chunk so one bad chunk doesn't sink the batch.
+        if (import.meta.env.DEV) console.warn('[broadDiscovery] multiquery chunk failed, falling back', err)
+        const settled = await Promise.allSettled(chunk.map((b) => igdbRequest('games', b.body)))
+        return chunk.map((block, i) => [
+          block,
+          settled[i].status === 'fulfilled' ? settled[i].value : [],
+        ])
+      }
+    })
+  )
+
+  // Applied after the fan-out so cursor advancement stays deterministic —
+  // it must follow genre order, not whichever request happened to land first.
+  for (const outcome of chunkOutcomes) {
+    for (const [block, rows] of outcome) applyChunkResult(block, rows)
   }
 
   // Format + de-dupe + exclude, per genre bucket — kept separate so the
@@ -2220,6 +2447,11 @@ function formatGamesRaw(games) {
           image: coverUrl,
           description: game.summary || '',
           releaseDate,
+          // Relevance inputs for searchService.rankGames(). popularity is
+          // IGDB's total_rating_count — how many people rated it at all,
+          // which tracks "well known" far better than the score itself.
+          popularity: game.total_rating_count ?? null,
+          altNames: game.alternative_names?.map((a) => a.name).filter(Boolean) || [],
         }
       }),
     'igdb'
