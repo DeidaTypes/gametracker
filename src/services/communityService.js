@@ -3,10 +3,11 @@ import { applyBlockFilter } from './blockService'
 import { getRecentCommunityReviews } from './reviewService'
 import { getGamesByIds, getGamesByGenre } from './igdb'
 import { getCircleActivityEvents, getRecentGlobalActivityEvents } from './activityEventsService'
-import { getTasteMatch } from './tasteEngineService'
+import { getTasteMatchBatch } from './tasteEngineService'
 import { getLikeCountsForReviews } from './likeService'
 import { getCommentCountsForReviews, getCommentCountsForEvents } from './commentService'
 import { getFlaggedContentIds } from './reportService'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * Community Service — REAL cross-user activity for the Explore/Discover page.
@@ -34,6 +35,11 @@ let _followeeCacheUid = null
 let _followeeCacheTime = 0
 const FOLLOWEE_CACHE_TTL = 60_000
 
+// The TTL check below is not atomic with the fetch that follows it, so a
+// screen whose sections all ask for the followee set in the same tick used
+// to send one identical `follows` request per caller (measured: 3-4 on Home
+// and Game Detail). dedupeInFlight collapses the concurrent misses into one
+// request without retaining anything past resolution.
 async function _getCurrentUserFollowees() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -46,14 +52,16 @@ async function _getCurrentUserFollowees() {
     ) {
       return _followeeCache
     }
-    const { data } = await supabase
-      .from('follows')
-      .select('followee_id')
-      .eq('follower_id', user.id)
-    _followeeCache = (data || []).map((r) => r.followee_id)
-    _followeeCacheUid = user.id
-    _followeeCacheTime = now
-    return _followeeCache
+    return dedupeInFlight(`followees:${user.id}`, async () => {
+      const { data } = await supabase
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', user.id)
+      _followeeCache = (data || []).map((r) => r.followee_id)
+      _followeeCacheUid = user.id
+      _followeeCacheTime = Date.now()
+      return _followeeCache
+    })
   } catch {
     return []
   }
@@ -764,8 +772,8 @@ function _activityCardFromEvent(event) {
  * `getTasteMatch(viewer, actor)` result (overall score + per-genre
  * breakdown), or `null` when the engine doesn't have enough signal for
  * that pair yet. Callers must hide the taste-match UI on `null` rather
- * than inventing a percentage. Lookups are de-duplicated per actor so a
- * followee with several recent rows only costs one RPC call.
+ * than inventing a percentage. Every actor on the shelf is resolved in a
+ * single batched RPC rather than one call apiece.
  *
  * Both `getCircleActivityEvents` and `getRecentGlobalActivityEvents`
  * already exclude blocked users (`applyBlockFilter`) and use the explicit
@@ -800,10 +808,7 @@ export async function getRecentFollowingActivity(limit = 10) {
     const uniqueActorIds = Array.from(
       new Set(items.map((it) => it.actor.id).filter(Boolean))
     )
-    const matchPairs = await Promise.all(
-      uniqueActorIds.map(async (actorId) => [actorId, await getTasteMatch(viewerId, actorId)])
-    )
-    const matchByActor = new Map(matchPairs)
+    const matchByActor = await getTasteMatchBatch(viewerId, uniqueActorIds)
 
     return {
       scope,

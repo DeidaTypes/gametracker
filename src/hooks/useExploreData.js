@@ -82,9 +82,19 @@ function useAsyncSection(cacheKey, loaderFn, deps = null) {
   const [loading, setLoading] = useState(cached === undefined)
   const [error, setError] = useState(null)
 
+  // doFetch has an empty dep array (it works off refs), so it needs this to
+  // see whether the section currently has anything on screen.
+  const dataRef = useRef(data)
+  dataRef.current = data
+
   // Stable fetch function — safe to call from pull-to-refresh handlers.
   const doFetch = useCallback(async () => {
-    setLoading(true)
+    // Both callers — pull-to-refresh and app resume — run over content the
+    // user is already looking at. Flipping `loading` there replaced every
+    // rail on the page with its skeleton mid-gesture, which reads as the
+    // page reloading rather than refreshing. Only a section with nothing
+    // to show is allowed to render a skeleton.
+    if (dataRef.current === undefined) setLoading(true)
     setError(null)
     try {
       const result = await getSWR(keyRef.current, () => loaderRef.current(), {

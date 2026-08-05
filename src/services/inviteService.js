@@ -28,6 +28,18 @@ import { supabase } from './supabase'
  */
 
 const PENDING_REF_KEY = 'gt:pending-ref:v1'
+
+// The `referrals` table ships with supabase/invite_referrals.sql, a manual-run
+// file that is not applied in every environment. Where it is absent, Profile
+// was paying a 404 round-trip per visit (twice, once per useUserStats caller).
+// Latch the absence for the session rather than re-asking.
+let _referralsTableMissing = false
+
+function isMissingRelation(error) {
+  if (!error) return false
+  return error.code === 'PGRST205' || error.code === '42P01' ||
+    /does not exist|could not find the table/i.test(error.message || '')
+}
 const BASE_URL = 'https://gametracker.app'
 
 /**
@@ -134,12 +146,18 @@ export async function convertReferral(inviteeId) {
  */
 export async function getInviteStats(userId) {
   if (!userId) return 0
+  if (_referralsTableMissing) return 0
   try {
     const { count, error } = await supabase
       .from('referrals')
       .select('id', { count: 'exact', head: true })
       .eq('inviter_id', userId)
     if (error) {
+      if (isMissingRelation(error)) {
+        _referralsTableMissing = true
+        console.warn('[inviteService] referrals table is not deployed — invite stats disabled')
+        return 0
+      }
       console.warn('[inviteService] getInviteStats failed:', error.message)
       return 0
     }

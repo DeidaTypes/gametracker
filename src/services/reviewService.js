@@ -7,6 +7,7 @@ import {
 import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
 import { getLikeCountsForReviews } from './likeService'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * Review Service — Supabase-backed.
@@ -152,19 +153,23 @@ export function getCachedUserReviews() {
  */
 export async function getReviewsForUser(userId) {
   if (!userId) return []
-  const { data, error } = await supabase
-    .from('reviews')
-    .select(
-      'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at, users!reviews_user_id_fkey(username, display_name, avatar_url)'
-    )
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(200)
-  if (error) {
-    console.error('[reviews] getReviewsForUser failed:', error.message)
-    return []
-  }
-  return data || []
+  // Profile's own bundle and the BadgesRow's useUserStats both want this on
+  // the same mount, so the two identical requests overlapped every time.
+  return dedupeInFlight(`reviews:forUser:${userId}`, async () => {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(
+        'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at, users!reviews_user_id_fkey(username, display_name, avatar_url)'
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (error) {
+      console.error('[reviews] getReviewsForUser failed:', error.message)
+      return []
+    }
+    return data || []
+  })
 }
 
 /**

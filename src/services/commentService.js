@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * Comment Service — Supabase-backed.
@@ -151,12 +152,17 @@ export async function getCommentCountsForReviews(reviewIds) {
   if (!reviewIds || reviewIds.length === 0) return counts
   for (const id of reviewIds) counts.set(id, 0)
 
-  let query = supabase
-    .from('review_comments')
-    .select('review_id')
-    .in('review_id', reviewIds)
-  query = await applyBlockFilter(query, 'user_id')
-  const { data, error } = await query
+  const { data, error } = await dedupeInFlight(
+    `comments:counts:${reviewIds.slice().sort().join(',')}`,
+    async () => {
+      let query = supabase
+        .from('review_comments')
+        .select('review_id')
+        .in('review_id', reviewIds)
+      query = await applyBlockFilter(query, 'user_id')
+      return query
+    }
+  )
 
   if (error) {
     console.error(

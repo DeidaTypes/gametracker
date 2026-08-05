@@ -18,10 +18,15 @@ const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
  * about-to-mount cards from firing their own individual queries.
  */
 function prefetchRowInteractions(pageItems) {
-  const reviewIds = pageItems
-    .filter((it) => REVIEW_ITEM_TYPES.has(it.type))
-    .map((it) => it.id)
-  if (reviewIds.length) prefetchLikeStatesForReviews(reviewIds).catch(() => {})
+  const reviewRows = pageItems.filter((it) => REVIEW_ITEM_TYPES.has(it.type))
+  const reviewIds = reviewRows.map((it) => it.id)
+  if (reviewIds.length) {
+    // getHomeFeed already batched these counts onto every item, so handing
+    // them over avoids re-running the identical `review_likes` count query
+    // the feed just finished.
+    const knownCounts = new Map(reviewRows.map((it) => [it.id, it.likeCount || 0]))
+    prefetchLikeStatesForReviews(reviewIds, { knownCounts }).catch(() => {})
+  }
 
   // Only non-review rows carry a reactionTargetId (see getHomeFeed).
   const activityIds = pageItems.map((it) => it.reactionTargetId).filter(Boolean)

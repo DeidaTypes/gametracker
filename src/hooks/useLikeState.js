@@ -134,8 +134,17 @@ export function useLikeState(reviewId) {
  *
  * Signed-out callers still get accurate counts; the liked-set is
  * just empty.
+ *
+ * Pass `knownCounts` when the caller already has the counts in hand —
+ * the Home feed, for instance, batches them server-side and puts them on
+ * every item, so re-asking here was a second identical query against the
+ * same review ids on every page load. With counts supplied this makes a
+ * single request (the liked-set) instead of two.
+ *
+ * @param {string[]} reviewIds
+ * @param {{ knownCounts?: Map<string, number> }} [options]
  */
-export async function prefetchLikeStatesForReviews(reviewIds) {
+export async function prefetchLikeStatesForReviews(reviewIds, { knownCounts } = {}) {
   if (!reviewIds || reviewIds.length === 0) return new Map()
 
   // Marked on the synchronous path, before the first await, so cards
@@ -145,7 +154,7 @@ export async function prefetchLikeStatesForReviews(reviewIds) {
 
   try {
     const [counts, userResult] = await Promise.all([
-      getLikeCountsForReviews(reviewIds),
+      knownCounts || getLikeCountsForReviews(reviewIds),
       supabase.auth.getUser().catch(() => ({ data: { user: null } })),
     ])
 

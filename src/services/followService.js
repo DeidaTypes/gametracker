@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * Follow Service — Supabase-backed.
@@ -156,22 +157,83 @@ export async function unfollowUser(followeeId) {
  */
 export async function isFollowing(followeeId) {
   if (!followeeId) return false
-  const userId = await getCurrentUserId()
-  if (!userId) return false
-  if (userId === followeeId) return false
+  const set = await enqueueFollowCheck(followeeId)
+  return set.has(followeeId)
+}
 
-  const { data, error } = await supabase
-    .from('follows')
-    .select('follower_id')
-    .eq('follower_id', userId)
-    .eq('followee_id', followeeId)
-    .maybeSingle()
+/**
+ * Which of `followeeIds` the signed-in user already follows, as a Set.
+ * Use this when the whole set of ids is known up front; `isFollowing`
+ * batches to the same query when it isn't.
+ *
+ * @param {string[]} followeeIds
+ * @returns {Promise<Set<string>>}
+ */
+export async function getFollowingSet(followeeIds) {
+  const ids = [...new Set((followeeIds || []).filter(Boolean))]
+  if (ids.length === 0) return new Set()
+  return resolveFollowBatch(ids)
+}
 
-  if (error) {
-    console.error('[follows] isFollowing failed:', error.message)
-    return false
+/* ── Follow-status batching ───────────────────────────────────────────
+   Every list that renders a follow button asked one row at a time:
+   Search's Users tab runs a per-row effect, while FollowsListPage and
+   FindFriendsModal map over ids with Promise.all. All three spent one
+   auth lookup plus one `follows` SELECT per row, so a page of 20 results
+   cost 40 requests.
+
+   Batching lives here rather than in each caller so all three are fixed
+   without restructuring their components, and so any future list gets it
+   for free. Calls made in the same tick share one query; nothing is
+   retained after it resolves, so a caller can never read a follow state
+   that was already stale when it asked. */
+
+let _pendingFollowBatch = null
+
+function enqueueFollowCheck(followeeId) {
+  if (!_pendingFollowBatch) {
+    const batch = { ids: new Set() }
+    // A macrotask, not a microtask: sibling row effects resolve their own
+    // awaits in microtasks, so a microtask flush would close the batch
+    // before most of the list had joined it.
+    batch.promise = new Promise((resolve) => {
+      setTimeout(() => {
+        if (_pendingFollowBatch === batch) _pendingFollowBatch = null
+        resolve(resolveFollowBatch([...batch.ids]))
+      }, 0)
+    })
+    _pendingFollowBatch = batch
   }
-  return !!data
+  _pendingFollowBatch.ids.add(followeeId)
+  return _pendingFollowBatch.promise
+}
+
+async function resolveFollowBatch(ids) {
+  if (!ids || ids.length === 0) return new Set()
+  const userId = await getCurrentUserId()
+  if (!userId) return new Set()
+
+  // Self never counts as followed — matches the old per-row contract, and
+  // keeps the id out of the query.
+  const targets = ids.filter((id) => id && id !== userId)
+  if (targets.length === 0) return new Set()
+
+  return dedupeInFlight(
+    `follows:set:${userId}:${targets.slice().sort().join(',')}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', userId)
+        .in('followee_id', targets)
+
+      if (error) {
+        console.error('[follows] follow-status batch failed:', error.message)
+        return new Set()
+      }
+      return new Set((data || []).map((r) => r.followee_id))
+    }
+  )
 }
 
 /**
@@ -184,17 +246,19 @@ export async function isFollowing(followeeId) {
  */
 export async function getFollowerCount(userId) {
   if (!userId) return 0
-  let query = supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('followee_id', userId)
-  query = await applyBlockFilter(query, 'follower_id')
-  const { count, error } = await query
-  if (error) {
-    console.error('[follows] getFollowerCount failed:', error.message)
-    return 0
-  }
-  return count || 0
+  return dedupeInFlight(`follows:followerCount:${userId}`, async () => {
+    let query = supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('followee_id', userId)
+    query = await applyBlockFilter(query, 'follower_id')
+    const { count, error } = await query
+    if (error) {
+      console.error('[follows] getFollowerCount failed:', error.message)
+      return 0
+    }
+    return count || 0
+  })
 }
 
 /**
@@ -203,17 +267,19 @@ export async function getFollowerCount(userId) {
  */
 export async function getFollowingCount(userId) {
   if (!userId) return 0
-  let query = supabase
-    .from('follows')
-    .select('*', { count: 'exact', head: true })
-    .eq('follower_id', userId)
-  query = await applyBlockFilter(query, 'followee_id')
-  const { count, error } = await query
-  if (error) {
-    console.error('[follows] getFollowingCount failed:', error.message)
-    return 0
-  }
-  return count || 0
+  return dedupeInFlight(`follows:followingCount:${userId}`, async () => {
+    let query = supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId)
+    query = await applyBlockFilter(query, 'followee_id')
+    const { count, error } = await query
+    if (error) {
+      console.error('[follows] getFollowingCount failed:', error.message)
+      return 0
+    }
+    return count || 0
+  })
 }
 
 /**

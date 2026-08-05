@@ -339,30 +339,6 @@ function GameDetail() {
     }
   }, [refreshFromStore, refreshReviews, refreshRatingDistribution, refreshFollowedRatings])
 
-  // Fetch Time to Beat + manual sessions + this game's rolled-up hours for
-  // every game, regardless of library status. Re-runs when the gameId
-  // changes (new game). `gameHoursPlayed` comes from game_trackers —
-  // the same rollup value the Profile "Played" stat sums across every
-  // game — never computed client-side from the sessions list.
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadTtbAndSessions() {
-      const [b, s, tracker] = await Promise.all([
-        getTimeToBeat(gameId).catch(() => null),
-        getManualSessionsForGame(gameId).catch(() => []),
-        getTracker(gameId).catch(() => null),
-      ])
-      if (cancelled) return
-      setTtb(b)
-      setSessions(s)
-      setGameHoursPlayed(Number(tracker?.hours_played) || 0)
-    }
-
-    loadTtbAndSessions()
-    return () => { cancelled = true }
-  }, [gameId])
-
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
     return () => {
@@ -415,6 +391,23 @@ function GameDetail() {
     setSessions(data)
     setGameHoursPlayed(Number(tracker?.hours_played) || 0)
   }, [gameId])
+
+  // Time to Beat + manual sessions + this game's rolled-up hours, for every
+  // game regardless of library status. `gameHoursPlayed` comes from
+  // game_trackers — the same rollup the Profile "Played" stat sums across
+  // every game — never computed client-side from the sessions list.
+  //
+  // Sessions and tracker go through refreshSessions rather than being
+  // fetched separately here: the mount path and the resume/mutation path
+  // had drifted into issuing the same pair of queries independently.
+  useEffect(() => {
+    let cancelled = false
+    getTimeToBeat(gameId)
+      .catch(() => null)
+      .then((b) => { if (!cancelled) setTtb(b) })
+    refreshSessions()
+    return () => { cancelled = true }
+  }, [gameId, refreshSessions])
 
   // Resume revalidation. Deliberately NOT a re-run of the mount-time
   // fetchGame(): the IGDB metadata it loads (title, cover, summary) can't have

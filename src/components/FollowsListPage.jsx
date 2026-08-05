@@ -8,7 +8,7 @@ import { getUserByUsername, getUserById } from '../services/userService'
 import {
   followUser,
   unfollowUser,
-  isFollowing as fetchIsFollowing,
+  getFollowingSet,
   getFollowers,
   getFollowing,
   FOLLOW_CHANGED_EVENT,
@@ -234,10 +234,10 @@ function FollowsListPage({ mode }) {
             .map((r) => r.id)
             .filter((id) => id && id !== currentUserId && !(id in followingMap))
           if (ids.length > 0) {
-            const results = await Promise.all(ids.map((id) => fetchIsFollowing(id)))
+            const followed = await getFollowingSet(ids)
             const nextMap = {}
-            ids.forEach((id, i) => {
-              nextMap[id] = results[i]
+            ids.forEach((id) => {
+              nextMap[id] = followed.has(id)
             })
             setFollowingMap((prev) => ({ ...prev, ...nextMap }))
           }

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * Like Service — Supabase-backed.
@@ -179,10 +180,17 @@ export async function getLikeCountsForReviews(reviewIds) {
   if (!reviewIds || reviewIds.length === 0) return counts
   for (const id of reviewIds) counts.set(id, 0)
 
-  const { data, error } = await supabase
-    .from('review_likes')
-    .select('review_id')
-    .in('review_id', reviewIds)
+  // Several surfaces ask for the same page of ids in the same tick —
+  // DiscoverReviewsAll requests them twice inside one Promise.all, once
+  // directly and once via prefetchLikeStatesForReviews.
+  const { data, error } = await dedupeInFlight(
+    `likes:counts:${reviewIds.slice().sort().join(',')}`,
+    () =>
+      supabase
+        .from('review_likes')
+        .select('review_id')
+        .in('review_id', reviewIds)
+  )
 
   if (error) {
     console.error('[likes] getLikeCountsForReviews failed:', error.message)

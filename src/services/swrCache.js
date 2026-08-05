@@ -28,10 +28,13 @@
 // see src/services/resumeSequence.js) and `libraryUpdated` (the
 // existing cross-app "something in the library/activity graph changed"
 // event, dispatched from src/services/libraryService.js and friends).
-// On either event every cached entry is invalidated, so the very next
-// read for any key is a real network fetch — this is what satisfies the
-// "revalidate on resume" requirement without every consuming page having
-// to remember to wire its own resume listener into this cache.
+// `app:resumed` invalidates everything. `libraryUpdated` invalidates
+// everything a write can reach, which is every key except the handful
+// backed purely by the IGDB catalog — see WRITE_IMMUNE_KEY_PREFIXES for
+// why that exclusion is safe. Either way the next read for an invalidated
+// key is a real network fetch, which satisfies the "revalidate on resume"
+// requirement without every consuming page having to wire its own resume
+// listener into this cache.
 //
 // Callers that have their OWN more specific "this exact data changed"
 // events (e.g. Profile already listens for `reviewAdded`,
@@ -152,12 +155,104 @@ export function invalidateSWRPrefix(prefix) {
   }
 }
 
-/** Drop the entire cache. Called automatically on resume / library updates. */
+/** Drop the entire cache. Called on app resume and on account teardown. */
 export function clearSWRCache() {
   store.clear()
 }
 
+/**
+ * Key prefixes whose fetcher issues NO Supabase read — pure IGDB catalog
+ * data. These are the only entries allowed to survive `libraryUpdated`.
+ *
+ * The invariant is what makes the narrowing safe, so it is worth stating
+ * plainly: a prefix may appear here ONLY if nothing it fetches can be
+ * changed by anything a user does in this app. `libraryUpdated` is
+ * dispatched from 21 write paths (tracker status, progress, hours,
+ * sessions, list membership, list metadata, pins, bulk moves). Not one of
+ * them can alter a game's IGDB title, cover, summary, genre tags, or which
+ * games IGDB considers popular / upcoming. Every other key still gets
+ * cleared exactly as before, so no write path can end up under-invalidated
+ * — the narrowing removes work, never invalidation.
+ *
+ *   game:<igdbId>            → getGameById            (IGDB /games)
+ *   search:browse-categories → fetchBrowseBuckets     (IGDB /multiquery)
+ *   explore:new-releases     → getUpcomingReleases    (IGDB /games)
+ *
+ * Deliberately NOT here, even though it is tempting: the rest of
+ * `explore:*`. Those rails read reviews, trackers, lists and
+ * activity_events, all of which the write paths above do change.
+ */
+const WRITE_IMMUNE_KEY_PREFIXES = [
+  'game:',
+  'search:browse-categories',
+  'explore:new-releases',
+]
+
+function isWriteImmune(key) {
+  return WRITE_IMMUNE_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))
+}
+
+/**
+ * Invalidate everything a write could have touched.
+ *
+ * Previously this was a full `store.clear()`, which meant setting a game's
+ * status also threw away that game's IGDB metadata and the browse
+ * categories — data the write cannot affect, and which then cost a fresh
+ * fan-out of IGDB requests on the very next navigation.
+ */
+export function invalidateAfterWrite() {
+  for (const key of store.keys()) {
+    if (!isWriteImmune(key)) store.delete(key)
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   In-flight request coalescing
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Share one in-flight promise between concurrent callers asking for the
+ * same thing.
+ *
+ * This is deliberately NOT a cache: the entry is dropped the moment the
+ * promise settles, so a later call always goes to the network and no
+ * caller can ever observe a value that was already stale when it asked.
+ * That makes it safe to wrap read paths that sit behind writes, which is
+ * why it exists separately from `getSWR` rather than as a shorter TTL on
+ * it.
+ *
+ * It exists because several independent consumers legitimately need the
+ * same data on the same mount — Profile's bundle and its BadgesRow both
+ * want the user's reviews, every review card and the feed both want like
+ * counts — and each was issuing its own identical request in the same
+ * tick. Measured on entry, roughly 40% of the app's requests were exact
+ * duplicates already in flight.
+ *
+ * @template T
+ * @param {string} key
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+const inFlight = new Map()
+
+export function dedupeInFlight(key, fn) {
+  const existing = inFlight.get(key)
+  if (existing) return existing
+
+  const promise = Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      inFlight.delete(key)
+    })
+
+  inFlight.set(key, promise)
+  return promise
+}
+
 if (typeof window !== 'undefined') {
+  // Resume still clears everything: the app was suspended for an unknown
+  // length of time, so even the IGDB-backed entries are worth re-reading,
+  // and this is not a path the user is waiting on a navigation for.
   window.addEventListener('app:resumed', clearSWRCache)
-  window.addEventListener('libraryUpdated', clearSWRCache)
+  window.addEventListener('libraryUpdated', invalidateAfterWrite)
 }

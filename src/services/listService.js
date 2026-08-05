@@ -5,6 +5,7 @@ import {
   logActivityEvent,
 } from './activityEventsService'
 import { applyBlockFilter, filterBlockedRows } from './blockService'
+import { dedupeInFlight } from './swrCache'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -134,16 +135,20 @@ function notifyPinChange() {
  */
 export async function getListsForUser(userId) {
   if (!userId) return []
-  const { data, error } = await supabase
-    .from('lists')
-    .select('*, is_pinned, pinned_at, list_games(igdb_game_id, game_title, game_image, position, added_at)')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
-  if (error) {
-    console.error('[lists] getListsForUser failed:', error.message)
-    return []
-  }
-  return (data || []).map(rowToList)
+  // Same overlap as getReviewsForUser: Profile's bundle, its Lists tab, and
+  // useUserStats all ask on the same mount.
+  return dedupeInFlight(`lists:forUser:${userId}`, async () => {
+    const { data, error } = await supabase
+      .from('lists')
+      .select('*, is_pinned, pinned_at, list_games(igdb_game_id, game_title, game_image, position, added_at)')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+    if (error) {
+      console.error('[lists] getListsForUser failed:', error.message)
+      return []
+    }
+    return (data || []).map(rowToList)
+  })
 }
 
 /**

@@ -34,6 +34,21 @@ const AUTO_HIDE_THRESHOLD = 5
 const FLAGGED_CACHE_TTL = 2 * 60 * 1000 // 2 minutes
 const _flaggedCache = new Map() // contentType → { ids: Set<string>, expiresAt: number }
 
+// flagged_content_view is not deployed in every environment (it ships with
+// supabase/reports.sql, which is a manual-run file). When it is absent every
+// feed read paid a 404 round-trip on entry, because the error path below
+// returned early without populating the TTL cache — so the miss repeated on
+// every single navigation. Latch the absence for the session instead.
+let _flaggedViewMissing = false
+
+// PostgREST reports an unknown relation as PGRST205 / 42P01 depending on
+// version; treat either as "this environment doesn't have the view".
+function isMissingRelation(error) {
+  if (!error) return false
+  return error.code === 'PGRST205' || error.code === '42P01' ||
+    /does not exist|could not find the table/i.test(error.message || '')
+}
+
 async function getCurrentUserId() {
   const {
     data: { user },
@@ -124,6 +139,8 @@ export async function hasReported(contentId) {
  * Fails soft — returns an empty Set on error so the feed still loads.
  */
 export async function getFlaggedContentIds(contentType) {
+  if (_flaggedViewMissing) return new Set()
+
   const cached = _flaggedCache.get(contentType)
   if (cached && Date.now() < cached.expiresAt) {
     if (import.meta.env.DEV) console.log(`[⏱ explore] getFlaggedContentIds(${contentType}): cache HIT`)
@@ -139,6 +156,11 @@ export async function getFlaggedContentIds(contentType) {
 
   if (import.meta.env.DEV) console.log(`[⏱ explore] getFlaggedContentIds(${contentType}): ${Date.now() - _t0}ms`)
   if (error) {
+    if (isMissingRelation(error)) {
+      _flaggedViewMissing = true
+      console.warn('[reports] flagged_content_view is not deployed — auto-hide filtering disabled')
+      return new Set()
+    }
     console.error('[reports] getFlaggedContentIds failed:', error.message)
     return new Set()
   }

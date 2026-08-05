@@ -29,7 +29,7 @@ import { shouldShowCount } from '../utils/formatSocialCount'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { showToast } from '../components/Toast'
-import { useReactions } from '../hooks/useReactions'
+import { useReactions, prefetchReactionsBatch } from '../hooks/useReactions'
 import { useDmPresence } from '../hooks/useDmPresence'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
@@ -259,6 +259,15 @@ function MessagesThread() {
     setLoading(true)
     try {
       const rows = await getThread(partnerId)
+      // Seed every bubble's reactions from one batched read. Without this
+      // each Bubble's useReactions fires its own pair of queries, so a
+      // thread cost two round-trips per message.
+      //
+      // Deliberately not awaited: the prefetch marks its ids in-flight on
+      // the synchronous path, which is already enough to stop the
+      // about-to-mount hooks from racing it, and awaiting would hold the
+      // messages off screen for a round-trip they don't depend on.
+      prefetchReactionsBatch('dm_message', rows.map((r) => r.id).filter(Boolean))
       setMessages(rows)
     } catch (err) {
       console.error('[MessagesThread] load failed:', err)

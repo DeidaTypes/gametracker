@@ -92,7 +92,10 @@ function Library() {
     setTrackerLists(snap)
   }, [])
 
-  const loadCustomLists = useCallback(async () => {
+  // `background: true` refreshes in place. Pull-to-refresh, library writes
+  // and app resume all run over lists the user is already looking at, and
+  // flipping the loading flag there swapped them for skeletons mid-gesture.
+  const loadCustomLists = useCallback(async ({ background = false } = {}) => {
     if (!user?.id) {
       setCustomLists([])
       setSaveCounts(new Map())
@@ -100,7 +103,7 @@ function Library() {
       setErrorLists(false)
       return
     }
-    setIsLoadingLists(true)
+    if (!background) setIsLoadingLists(true)
     setErrorLists(false)
     try {
       const lists = await getListsForUser(user.id)
@@ -120,7 +123,7 @@ function Library() {
   // so there's no cache to bypass, just a fresh round-trip.
   const handlePullToRefresh = useCallback(async () => {
     loadTrackerLists()
-    await loadCustomLists()
+    await loadCustomLists({ background: true })
   }, [loadTrackerLists, loadCustomLists])
 
   useEffect(() => {
@@ -128,7 +131,7 @@ function Library() {
     loadCustomLists()
     const handleUpdate = () => {
       loadTrackerLists()
-      loadCustomLists()
+      loadCustomLists({ background: true })
     }
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
@@ -587,7 +590,7 @@ function Library() {
             `position: fixed` descendant, so the FAB would be pinned to the
             (tall, scrollable) page instead of the viewport and drift
             off-screen as the page scrolls. Same reasoning already
-            documented in App.jsx for SessionPill/SearchOverlay. */}
+            documented in App.jsx for SessionPill. */}
         {createPortal(
           <button
             type="button"

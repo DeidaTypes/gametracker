@@ -3,6 +3,7 @@ import {
   getRecentlyReleasedGames,
   getGamesByGenre,
   getGamesByTheme,
+  fetchBrowseBuckets,
 } from './igdb'
 import { getSWR } from './swrCache'
 
@@ -71,24 +72,19 @@ export async function fetchBrowseCategories() {
   })
 }
 
-async function fetchBrowseCategoriesUncached() {
-  const [popularResult, recentResult, ...genreResults] = await Promise.allSettled([
-    getPopularGames(30),
-    getRecentlyReleasedGames(10),
-    getGamesByGenre('Shooter', 10),
-    getGamesByGenre('Role-playing (RPG)', 10),
-    getGamesByGenre('Sport', 10),
-    getGamesByGenre('Adventure', 10),
-    getGamesByGenre('Indie', 20),
-  ])
+const BROWSE_GENRE_SPECS = [
+  { name: 'Shooter', limit: 10 },
+  { name: 'Role-playing (RPG)', limit: 10 },
+  { name: 'Sport', limit: 10 },
+  { name: 'Adventure', limit: 10 },
+  { name: 'Indie', limit: 20 },
+]
 
-  const popular = popularResult.status === 'fulfilled' ? popularResult.value : []
-  const recent = recentResult.status === 'fulfilled' ? recentResult.value : []
-  const genreMap = {}
-  const genreNames = ['Shooter', 'Role-playing (RPG)', 'Sport', 'Adventure', 'Indie']
-  genreNames.forEach((name, i) => {
-    genreMap[name] = genreResults[i].status === 'fulfilled' ? genreResults[i].value : []
-  })
+async function fetchBrowseCategoriesUncached() {
+  const buckets = await fetchBrowseBuckets(BROWSE_GENRE_SPECS)
+  const popular = buckets.popular || []
+  const recent = buckets.recent || []
+  const genre = (name) => buckets.byGenre?.[name] || []
 
   const topRated = [...popular]
     .sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))
@@ -99,14 +95,14 @@ async function fetchBrowseCategoriesUncached() {
   const categoryGames = {
     'top-rated':     topRated,
     'new-releases':  recent,
-    'action':        genreMap['Shooter'],
-    'rpg':           genreMap['Role-playing (RPG)'],
-    'multiplayer':   genreMap['Sport'],
-    'hidden-gems':   genreMap['Indie'].slice(0, 10),
+    'action':        genre('Shooter'),
+    'rpg':           genre('Role-playing (RPG)'),
+    'multiplayer':   genre('Sport'),
+    'hidden-gems':   genre('Indie').slice(0, 10),
     'classic-hits':  classicHits,
     'most-reviewed': popular.slice(0, 10),
-    'open-world':    genreMap['Adventure'],
-    'indie':         genreMap['Indie'].slice(0, 10),
+    'open-world':    genre('Adventure'),
+    'indie':         genre('Indie').slice(0, 10),
   }
 
   const categories = CATEGORY_META.map((meta) => {

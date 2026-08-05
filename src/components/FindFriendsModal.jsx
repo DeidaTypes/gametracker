@@ -5,7 +5,7 @@ import { searchUsers } from '../services/userService'
 import {
   followUser,
   unfollowUser,
-  isFollowing as fetchIsFollowing,
+  getFollowingSet,
   FOLLOW_CHANGED_EVENT,
 } from '../services/followService'
 import { usePresence } from '../hooks/usePresence'
@@ -115,13 +115,11 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
             .map((u) => u.id)
             .filter((id) => id && id !== currentUserId)
           if (ids.length > 0) {
-            const states = await Promise.all(
-              ids.map((id) => fetchIsFollowing(id))
-            )
+            const followed = await getFollowingSet(ids)
             if (callId !== searchCallIdRef.current) return
             const next = {}
-            ids.forEach((id, i) => {
-              next[id] = states[i]
+            ids.forEach((id) => {
+              next[id] = followed.has(id)
             })
             setFollowingMap((prev) => ({ ...prev, ...next }))
           }
