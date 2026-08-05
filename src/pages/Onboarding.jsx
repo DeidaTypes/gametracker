@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { searchGames } from '../services/igdb'
+import { getBestImageUrl } from '../services/imageUtils'
 import {
   setGameStatus,
   initializeLibrary,
@@ -31,13 +32,13 @@ import { useMotionPreference } from '../hooks/useMotionPreference'
 import './Onboarding.css'
 
 /**
- * Deterministic, colorful gradient-tile background per search result —
- * hashed from the game's IGDB id across the app's --genre-* jewel-tone
- * palette (cobalt / teal / purple / rose / steel only — orange/amber is
- * retired app-wide, see src/styles/theme.css). Deliberately id-based
- * rather than genre-based so visually similar games (e.g. a franchise
- * that's all RPG) still read as distinct tiles, matching the Favorites
- * mockup. Tokens only — no hardcoded hex.
+ * Deterministic gradient used ONLY as the cover fallback — behind a
+ * loading cover, and as the final placeholder for a game IGDB has no
+ * art for. Hashed from the game's IGDB id across the app's --genre-*
+ * jewel-tone palette (cobalt / teal / purple / rose / steel only —
+ * orange/amber is retired app-wide, see src/styles/theme.css). Id-based
+ * rather than genre-based so adjacent placeholders in the same franchise
+ * still read as distinct. Tokens only — no hardcoded hex.
  */
 const TILE_COLOR_TOKENS = [
   '--genre-action', '--genre-rpg', '--genre-adventure', '--genre-strategy',
@@ -432,6 +433,39 @@ function ValuePropSlide({ screen, onNext }) {
 
 // ── Game-picker slide (screen 3) ────────────────────────────────────────
 
+/**
+ * Cover art for a picker tile. Renders the real IGDB cover the same way
+ * the rest of the app does (getBestImageUrl at t_cover_big for a
+ * poster-sized grid slot, matching the Library grid and ListCoverCluster);
+ * only games IGDB has no art for — or whose image 404s — fall back to the
+ * titled gradient placeholder. Caller supplies the sized, ratio'd,
+ * radius'd container.
+ */
+function PickerCoverArt({ game }) {
+  const [failed, setFailed] = useState(false)
+  const url = failed ? null : getBestImageUrl(game, 240)
+
+  if (!url) {
+    return (
+      <>
+        <span className="ob-cover-scrim" aria-hidden="true" />
+        <span className="ob-cover-title">{game.title}</span>
+      </>
+    )
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className="ob-cover-img"
+      loading="lazy"
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 function GamePickerSlide({
   query,
   onQueryChange,
@@ -521,6 +555,7 @@ function GamePickerSlide({
                       className="ob-selected-cover"
                       style={{ '--ob-tile-color': tileColorVar(game.id) }}
                     >
+                      <PickerCoverArt game={game} />
                       <button
                         type="button"
                         className="ob-selected-remove"
@@ -546,14 +581,12 @@ function GamePickerSlide({
             })}
           </div>
 
-          {/* Zero-state hint — compact card anchored right under the
-              slots, replacing the old text that floated alone lower on
-              the screen. */}
-          {pickedCount === 0 && (
-            <div className="ob-hint-card">
-              <Search size={15} className="ob-hint-card__icon" aria-hidden="true" />
-              <span>Search above to find your favorites</span>
-            </div>
+          {/* Zero-state hint — plain muted text, never boxed like an input
+              (there is exactly one search field on this screen, above).
+              Hidden as soon as the user types, so it never competes with
+              the results list. */}
+          {pickedCount === 0 && !query.trim() && (
+            <p className="ob-picks__hint">Search above to find your favorites</p>
           )}
         </div>
       </div>
@@ -597,6 +630,7 @@ function GamePickerSlide({
                     type="button"
                     role="option"
                     aria-selected={picked}
+                    aria-label={game.title}
                     className={
                       'ob-grid__tile' + (picked ? ' ob-grid__tile--picked' : '')
                     }
@@ -604,8 +638,7 @@ function GamePickerSlide({
                     onClick={() => toggleGame(game)}
                   >
                     <div className="ob-grid__cover">
-                      <span className="ob-grid__cover-scrim" aria-hidden="true" />
-                      <span className="ob-grid__cover-title">{game.title}</span>
+                      <PickerCoverArt game={game} />
                       {picked && (
                         <span
                           className="ob-grid__check"

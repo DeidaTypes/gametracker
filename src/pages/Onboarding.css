@@ -457,8 +457,9 @@
   height: 100%;
 }
 
-/* Selected cover — colorful gradient tile (genre-token driven), matches
-   the Favorites mockup's slot treatment. */
+/* Selected cover — real IGDB art, with the genre-token gradient behind it
+   as the load/no-art fallback. overflow stays visible so the remove button
+   can overhang the corner; the art clips itself via its own radius. */
 .ob-selected-cover {
   position: relative;
   border-radius: var(--cover-radius);
@@ -470,23 +471,12 @@
   );
 }
 
-/* Zero-state hint card — compact, anchored directly under the 3 slots
-   instead of floating alone lower on the screen. */
-.ob-hint-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-tertiary);
+/* Zero-state hint — plain muted text. Deliberately NOT boxed/bordered:
+   as a bordered surface row it read as a second search input. */
+.ob-picks__hint {
+  margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-}
-
-.ob-hint-card__icon {
-  flex-shrink: 0;
   color: var(--color-text-tertiary);
 }
 
@@ -587,11 +577,11 @@
   border-color: var(--accent);
 }
 
-/* Result cover — colorful gradient tile driven by --ob-tile-color (one of
-   the app's --genre-* jewel-tone tokens, hashed per game id in JS so the
-   color varies by game rather than being decorative). No orange/amber is
-   ever possible here since the genre palette already excludes that hue
-   range app-wide. */
+/* Result cover — poster slot at the authoritative cover ratio/radius. The
+   --ob-tile-color gradient is the backdrop the real art loads over, and
+   the visible treatment for the rare game IGDB has no cover for. No
+   orange/amber is possible here since the genre palette already excludes
+   that hue range app-wide. */
 .ob-grid__cover {
   position: relative;
   width: 100%;
@@ -607,9 +597,23 @@
   );
 }
 
-.ob-grid__cover-scrim {
+/* Real IGDB cover art — fills the poster slot in both the results grid
+   and the picks slots. */
+.ob-cover-img {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* ── Cover-less fallback: scrim + title over the gradient ── */
+
+.ob-cover-scrim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: linear-gradient(
     180deg,
     transparent 40%,
@@ -617,17 +621,18 @@
   );
 }
 
-.ob-grid__cover-title {
-  position: relative;
+.ob-cover-title {
+  position: absolute;
+  inset: auto 0 0 0;
   z-index: 1;
-  width: 100%;
   padding: 0 6px 6px;
   font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   line-height: 1.3;
-  text-shadow: 0 1px 3px color-mix(in srgb, black 65%, transparent);
+  text-align: left;
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--color-bg-primary) 80%, transparent);
   /* Clamp to 2 lines */
   display: -webkit-box;
   -webkit-line-clamp: 2;
