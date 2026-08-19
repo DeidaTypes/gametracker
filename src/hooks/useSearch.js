@@ -54,6 +54,9 @@ export function useSearch(query) {
 
     const trimmed = (query || '').trim()
     if (!trimmed) {
+      // Invalidate any in-flight request so a late response cannot
+      // repopulate results after the user has cleared the field.
+      abortRef.current += 1
       setResults({ games: [], genres: [], developers: [] })
       setIsLoading(false)
       setError(null)

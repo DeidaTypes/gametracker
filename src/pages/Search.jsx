@@ -12,6 +12,7 @@ import {
 } from 'react-icons/gi'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useSearch } from '../hooks/useSearch'
+import SearchField from '../components/SearchField'
 import { useDebounce } from '../hooks/useDebounce'
 import {
   addRecent,
@@ -1110,6 +1111,10 @@ function Search() {
   const trimmedQuery = query.trim()
   const hasQuery = trimmedQuery.length > 0
   const debouncedQuery = useDebounce(trimmedQuery, 300)
+  // An empty field must win immediately. Otherwise the 300ms debounce
+  // keeps serving the previous term and a late Reviews/Users/Lists
+  // response can repopulate the list after the user tapped ✕.
+  const committedQuery = hasQuery ? debouncedQuery : ''
 
   // Per-tab recents (live across this and any other Search-mounted view).
   const queryRecents = useRecents('queries')
@@ -1213,14 +1218,14 @@ function Search() {
   // Reviews tab — debounced search.
   useEffect(() => {
     if (activeTab !== 'reviews') return
-    if (!debouncedQuery) {
+    if (!committedQuery) {
       setReviewsRows([])
       setReviewsLoading(false)
       return
     }
     let cancelled = false
     setReviewsLoading(true)
-    searchReviewsByText(debouncedQuery, 20)
+    searchReviewsByText(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setReviewsRows(rows)
       })
@@ -1230,21 +1235,21 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery, resumeKey])
+  }, [activeTab, committedQuery, resumeKey])
 
   // Users tab — debounced search. Also runs for the All tab so its
   // Users preview section shares this one query instead of firing a
   // second lookup when the user switches from All to Users.
   useEffect(() => {
     if (activeTab !== 'users' && activeTab !== 'all') return
-    if (!debouncedQuery) {
+    if (!committedQuery) {
       setUsersRows([])
       setUsersLoading(false)
       return
     }
     let cancelled = false
     setUsersLoading(true)
-    searchUsers(debouncedQuery, 20)
+    searchUsers(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setUsersRows(rows)
       })
@@ -1254,19 +1259,19 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery, resumeKey])
+  }, [activeTab, committedQuery, resumeKey])
 
   // Lists tab — debounced search.
   useEffect(() => {
     if (activeTab !== 'lists') return
-    if (!debouncedQuery) {
+    if (!committedQuery) {
       setListsRows([])
       setListsLoading(false)
       return
     }
     let cancelled = false
     setListsLoading(true)
-    searchPublicLists(debouncedQuery, 20)
+    searchPublicLists(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setListsRows(rows)
       })
@@ -1276,7 +1281,7 @@ function Search() {
     return () => {
       cancelled = true
     }
-  }, [activeTab, debouncedQuery, resumeKey])
+  }, [activeTab, committedQuery, resumeKey])
 
   /**
    * Record a term the user has actually searched. Writes to the shared
@@ -1363,19 +1368,32 @@ function Search() {
     [navigate, commitRecentQuery, trimmedQuery]
   )
 
+  /**
+   * Empty the field and drop every piece of results state. Does not
+   * touch persisted recent-searches — that's the separate "Clear all"
+   * control. Tab reset is the ✕ path only (fresh-entry empty state).
+   */
+  const resetResultsState = useCallback(() => {
+    setQuery('')
+    setReviewsRows([])
+    setReviewsLoading(false)
+    setUsersRows([])
+    setUsersLoading(false)
+    setListsRows([])
+    setListsLoading(false)
+    setFocusedIndex(-1)
+  }, [])
+
   const handleClear = useCallback(() => {
-    if (query.length > 0) {
-      setQuery('')
-      inputRef.current?.focus()
-    } else {
-      inputRef.current?.blur()
-    }
-  }, [query])
+    resetResultsState()
+    setActiveTab('all')
+    inputRef.current?.focus()
+  }, [resetResultsState])
 
   const handleCancel = useCallback(() => {
-    setQuery('')
+    resetResultsState()
     inputRef.current?.blur()
-  }, [])
+  }, [resetResultsState])
 
   const handleFocus = useCallback(() => {
     if (blurTimerRef.current) {
@@ -1405,7 +1423,7 @@ function Search() {
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Escape') {
-        setQuery('')
+        resetResultsState()
         inputRef.current?.blur()
         return
       }
@@ -1431,7 +1449,7 @@ function Search() {
         else if (item.type === 'genre') handleGenreTap(item.data.key)
       }
     },
-    [activeTab, flatGameResults, focusedIndex, handleGameTap, handleGenreTap]
+    [activeTab, flatGameResults, focusedIndex, handleGameTap, handleGenreTap, resetResultsState]
   )
 
   const showCancelBtn = isFocused || query.length > 0
@@ -1491,63 +1509,29 @@ function Search() {
       {/* Sticky header — search input + cancel button (UNCHANGED structure). */}
       <div className={`sp-header${hasScrolled ? ' sp-header--bordered' : ''}`}>
         <form onSubmit={handleSubmit} className="sp-form" role="search">
-          <div className="sp-input-wrap">
-            <svg
-              className="sp-input-icon"
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              ref={inputRef}
-              type="search"
-              role="searchbox"
-              aria-label="Search"
-              inputMode="search"
-              enterKeyHint="search"
-              placeholder={
-                activeTab === 'all'
-                  ? 'Search games, developers, users...'
-                  : activeTab === 'games'
-                  ? 'Search games or genres...'
-                  : activeTab === 'devs'
-                  ? 'Search developers...'
-                  : activeTab === 'reviews'
-                  ? 'Search reviews...'
-                  : activeTab === 'users'
-                  ? 'Search users...'
-                  : 'Search lists...'
-              }
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              onKeyDown={handleKeyDown}
-              className="sp-input"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck="false"
-            />
-            {query.length > 0 && (
-              <button
-                type="button"
-                className="sp-clear-btn"
-                onClick={handleClear}
-                aria-label="Clear search"
-              >
-                <HiX />
-              </button>
-            )}
-          </div>
+          <SearchField
+            ref={inputRef}
+            aria-label="Search"
+            placeholder={
+              activeTab === 'all'
+                ? 'Search games, developers, users...'
+                : activeTab === 'games'
+                ? 'Search games or genres...'
+                : activeTab === 'devs'
+                ? 'Search developers...'
+                : activeTab === 'reviews'
+                ? 'Search reviews...'
+                : activeTab === 'users'
+                ? 'Search users...'
+                : 'Search lists...'
+            }
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onClear={handleClear}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+          />
           {showCancelBtn && (
             <button
               type="button"
