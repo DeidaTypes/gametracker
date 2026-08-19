@@ -20,9 +20,10 @@ import './HomeWeekRow.css'
  *      activity tracker. The "Calendar" link inside the card is the kept
  *      entry point into the full /activity calendar screen.
  *   2. "{year} goal" (HomeGoalCard) — reuses goalService/GoalRing from the
- *      existing yearly-challenge feature (Profile). Renders nothing at all
- *      when no goal is set — this row never invites the user to set one;
- *      that CTA already lives on Profile.
+ *      existing yearly-challenge feature (Profile). Tapping the card opens
+ *      the same `/user/.../challenge` detail as Profile (via ChallengeCard).
+ *      Renders nothing at all when no goal is set — this row never invites
+ *      the user to set one; that CTA already lives on Profile.
  *
  * When there's no goal, the grid collapses to a single full-width "This
  * week" card rather than leaving an empty second cell.

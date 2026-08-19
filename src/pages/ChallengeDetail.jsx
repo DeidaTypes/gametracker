@@ -1,30 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
+import { LuChevronLeft } from 'react-icons/lu'
 import { Trophy } from 'lucide-react'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { getFinishedGamesThisYear, getGoalProgress } from '../services/goalService'
 import GoalRing from '../components/GoalRing'
+import SharedCover from '../components/SharedCover'
+import Pressable from '../components/Pressable'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import './ChallengeDetail.css'
-
-function formatCompletedAt(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
 /**
  * Yearly-challenge detail for `/user/:username/challenge` and
  * `/user/id/:userId/challenge` — the destination behind the challenge
- * card on Profile Home.
+ * card on Home and Profile.
  *
  * Lists the games the user actually finished during the challenge year,
- * newest first, from the same activities rows the ring counts. The list
- * length therefore always equals the ring's `current`.
+ * newest first, from `getFinishedGamesThisYear` — the same function the
+ * ring numerator uses via `countFinishedThisYear`. The list length
+ * therefore always equals the ring's `current`.
  *
  * `?year=` overrides the year so an older challenge stays linkable; it
  * defaults to the current calendar year.
@@ -46,11 +42,15 @@ function ChallengeDetail() {
     let cancelled = false
     setLoading(true)
 
-    Promise.all([getGoalProgress(userId, year), getFinishedGamesThisYear(userId, year)])
-      .then(([gp, rows]) => {
+    // One activities query for the completed set. Progress then reuses
+    // that length as `current` so the header cannot drift from the grid.
+    getFinishedGamesThisYear(userId, year)
+      .then(async (rows) => {
         if (cancelled) return
-        setProgress(gp)
+        const gp = await getGoalProgress(userId, year, { current: rows.length })
+        if (cancelled) return
         setGames(rows)
+        setProgress(gp)
       })
       .catch((err) => {
         console.error('[challenge] load failed:', err)
@@ -67,6 +67,8 @@ function ChallengeDetail() {
 
   const showSkeleton = resolving || loading
   const displayName = user?.display_name || user?.username || ''
+  const current = progress?.hasGoal ? progress.current : games.length
+  const target = progress?.hasGoal ? progress.target : null
   const remaining =
     progress?.hasGoal && progress.target != null
       ? Math.max(0, progress.target - progress.current)
@@ -83,7 +85,14 @@ function ChallengeDetail() {
         >
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
-        <h1 className="challenge-detail__title">{year} Challenge</h1>
+        <div className="challenge-detail__heading">
+          <h1 className="challenge-detail__title">{year} Challenge</h1>
+          {!showSkeleton && !notFound && (
+            <p className="challenge-detail__header-count">
+              {target != null ? `${current} of ${target}` : `${games.length} finished`}
+            </p>
+          )}
+        </div>
         <span className="challenge-detail__spacer" aria-hidden="true" />
       </header>
 
@@ -105,9 +114,6 @@ function ChallengeDetail() {
                 </>
               ) : (
                 <>
-                  {/* Only ring a real goal — with no target set, GoalRing
-                      renders its "set a goal" affordance, which isn't this
-                      screen's job. */}
                   {progress?.hasGoal && (
                     <GoalRing
                       current={progress.current}
@@ -134,22 +140,12 @@ function ChallengeDetail() {
               )}
             </section>
 
-            <h2 className="challenge-detail__section-title">
-              Completed
-              {!showSkeleton && games.length > 0 && (
-                <span className="challenge-detail__section-count">{games.length}</span>
-              )}
-            </h2>
-
             {showSkeleton ? (
-              <ul className="challenge-detail__list" aria-busy="true">
-                {Array.from({ length: 4 }, (_, i) => (
-                  <li key={i} className="challenge-detail__row challenge-detail__row--placeholder">
-                    <Skeleton className="challenge-detail__cover-skeleton" />
-                    <Skeleton variant="text" width="55%" height={16} />
-                  </li>
+              <div className="challenge-detail__grid" aria-busy="true">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={i} className="challenge-detail__cover-skeleton" />
                 ))}
-              </ul>
+              </div>
             ) : games.length === 0 ? (
               <EmptyState
                 icon={Trophy}
@@ -161,46 +157,37 @@ function ChallengeDetail() {
                 }
               />
             ) : (
-              <ul className="challenge-detail__list">
+              <div className="challenge-detail__grid" aria-label="Completed games">
                 {games.map((game) => (
-                  <li key={game.igdbGameId} className="challenge-detail__item">
-                    <button
-                      type="button"
-                      className="challenge-detail__row"
-                      onClick={() =>
-                        navigate(
-                          `/game/${game.igdbGameId}`,
-                          game.image ? { state: { coverImage: game.image } } : undefined
-                        )
-                      }
-                      aria-label={`Open ${game.title || 'game'}`}
-                    >
-                      <span className="challenge-detail__cover">
-                        {game.image ? (
-                          <img src={game.image} alt="" loading="lazy" />
-                        ) : (
-                          <span className="challenge-detail__cover-fallback" aria-hidden="true">
-                            {(game.title || '?').charAt(0)}
-                          </span>
-                        )}
-                      </span>
-                      <span className="challenge-detail__info">
-                        <span className="challenge-detail__game">
-                          {game.title || `Game #${game.igdbGameId}`}
-                        </span>
-                        <span className="challenge-detail__date">
-                          Finished {formatCompletedAt(game.completedAt)}
-                        </span>
-                      </span>
-                      <LuChevronRight
-                        size={16}
-                        className="challenge-detail__chevron"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </li>
+                  <Pressable
+                    key={game.igdbGameId}
+                    className="challenge-detail__poster"
+                    onClick={() =>
+                      navigate(
+                        `/game/${game.igdbGameId}`,
+                        game.image ? { state: { coverImage: game.image } } : undefined
+                      )
+                    }
+                    aria-label={game.title ? `Open ${game.title}` : 'Open game'}
+                  >
+                    <div className="challenge-detail__cover">
+                      <SharedCover gameId={game.igdbGameId} imageSrc={game.image || COVER_FALLBACK}>
+                        <img
+                          src={game.image || COVER_FALLBACK}
+                          alt=""
+                          className="challenge-detail__cover-img"
+                          loading="lazy"
+                          draggable={false}
+                          onError={(e) => { e.target.src = COVER_FALLBACK }}
+                        />
+                      </SharedCover>
+                    </div>
+                    {game.title ? (
+                      <span className="challenge-detail__poster-title">{game.title}</span>
+                    ) : null}
+                  </Pressable>
                 ))}
-              </ul>
+              </div>
             )}
           </>
         )}

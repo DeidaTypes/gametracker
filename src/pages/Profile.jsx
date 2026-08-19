@@ -85,6 +85,7 @@ import CreateListModal from '../components/CreateListModal'
 import FavoritesPickerSheet from '../components/FavoritesPickerSheet'
 import GamePickerSheet from '../components/GamePickerSheet'
 import GoalRing from '../components/GoalRing'
+import ChallengeCard from '../components/ChallengeCard'
 import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
 import ListCoverCluster from '../components/ListCoverCluster'
@@ -1846,11 +1847,7 @@ function Profile() {
                   onNavigate={navigate}
                   onSeeAllActivity={() => navigate(`/user/${profilePathSegment}/activity`)}
                   onSeeMoreBadges={() => navigate(`/user/${profilePathSegment}/badges`)}
-                  onOpenChallenge={() =>
-                    navigate(
-                      `/user/${profilePathSegment}/challenge?year=${goalProgress?.year ?? thisYear}`
-                    )
-                  }
+                  profilePathSegment={profilePathSegment}
                   user={user}
                   targetUserId={targetUserId}
                   isOwnProfile={isOwnProfile}
@@ -2047,7 +2044,7 @@ function HomeTab({
   onNavigate,
   onSeeAllActivity,
   onSeeMoreBadges,
-  onOpenChallenge,
+  profilePathSegment,
   user,
   targetUserId,
   isOwnProfile,
@@ -2209,11 +2206,13 @@ function HomeTab({
               </div>
             </div>
           ) : hasGoal ? (
-            <button
-              type="button"
+            <ChallengeCard
               className="profile-challenge profile-challenge--tappable"
-              onClick={onOpenChallenge}
-              aria-label={`${goalProgress.year} challenge, tier ${goalProgress.tier}, ${goalProgress.current} of ${goalProgress.target}${remaining === 0 ? '. Goal reached!' : ''}. View completed games.`}
+              year={goalProgress.year}
+              current={goalProgress.current}
+              target={goalProgress.target}
+              profilePathSegment={profilePathSegment}
+              ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
             >
               <GoalRing
                 current={goalProgress.current}
@@ -2239,7 +2238,7 @@ function HomeTab({
                 </span>
               </span>
               <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
-            </button>
+            </ChallengeCard>
           ) : (
             <div className="profile-challenge">
               <GoalRing

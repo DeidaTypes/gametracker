@@ -233,16 +233,41 @@ export async function deleteGoal(userId, year) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   finished-this-year query (single source)
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Calendar-year bounds + the activity filter that defines "finished
+ * this year". The ring numerator and the challenge detail list both
+ * go through `getFinishedGamesThisYear`, which is the only function
+ * that materializes this set for a single user. The batch helper
+ * below applies the same filter so rivalry counts cannot drift.
+ */
+function challengeYearBounds(year) {
+  return {
+    yearStart: `${year}-01-01T00:00:00.000Z`,
+    yearEnd: `${year + 1}-01-01T00:00:00.000Z`,
+  }
+}
+
+function applyFinishedThisYearFilters(query, year) {
+  const { yearStart, yearEnd } = challengeYearBounds(year)
+  return query
+    .eq('activity_type', 'status_changed')
+    .eq('metadata->>to_status', 'played')
+    .gte('created_at', yearStart)
+    .lt('created_at', yearEnd)
+    .not('igdb_game_id', 'is', null)
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    countFinishedThisYear
    ────────────────────────────────────────────────────────────────────── */
 
 /**
  * Count DISTINCT games the user marked as "played" (Finished) in a
- * given calendar year, using the activities table.
- *
- * A game is counted once even if the user toggled Played → Playing →
- * Played multiple times in the same year — we only need the distinct
- * igdb_game_id set, not the event count.
+ * given calendar year. Delegates to `getFinishedGamesThisYear` so the
+ * ring's numerator is the length of the same set the detail view lists.
  *
  * @param {string} userId
  * @param {number} year   — defaults to current calendar year
@@ -250,8 +275,8 @@ export async function deleteGoal(userId, year) {
  */
 export async function countFinishedThisYear(userId, year = new Date().getFullYear()) {
   if (!userId) return 0
-  const counts = await countFinishedThisYearForUsers([userId], year)
-  return counts.get(userId) || 0
+  const games = await getFinishedGamesThisYear(userId, year, { withCovers: false })
+  return games.length
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -276,18 +301,13 @@ export async function countFinishedThisYearForUsers(userIds, year = new Date().g
   const ids = Array.from(new Set((userIds || []).filter(Boolean)))
   if (!ids.length) return new Map()
 
-  const yearStart = `${year}-01-01T00:00:00.000Z`
-  const yearEnd   = `${year + 1}-01-01T00:00:00.000Z`
-
-  const { data, error } = await supabase
-    .from('activities')
-    .select('user_id, igdb_game_id')
-    .in('user_id', ids)
-    .eq('activity_type', 'status_changed')
-    .eq('metadata->>to_status', 'played')
-    .gte('created_at', yearStart)
-    .lt('created_at', yearEnd)
-    .not('igdb_game_id', 'is', null)
+  const { data, error } = await applyFinishedThisYearFilters(
+    supabase
+      .from('activities')
+      .select('user_id, igdb_game_id')
+      .in('user_id', ids),
+    year
+  )
 
   if (error) {
     console.error('[goal] countFinishedThisYearForUsers failed:', error.message)
@@ -319,10 +339,8 @@ export async function countFinishedThisYearForUsers(userIds, year = new Date().g
  * The actual games behind `countFinishedThisYear`'s number — the distinct
  * set the user marked "played" during `year`, newest completion first.
  *
- * `countFinishedThisYear` runs the same query but discards the game ids
- * after counting, so the challenge detail screen would otherwise have no
- * way to show its own contents. Both read the activities table, so the
- * list length always matches the ring's `current`.
+ * `countFinishedThisYear` is this function's `.length` — one completed
+ * set, used by both the ring numerator and the challenge detail list.
  *
  * Covers aren't denormalised onto every activity row, so we backfill them
  * from the user's tracker rows and reviews. A game with no cover on record
@@ -331,24 +349,21 @@ export async function countFinishedThisYearForUsers(userIds, year = new Date().g
  *
  * @param {string} userId
  * @param {number} [year]
+ * @param {{ withCovers?: boolean }} [options]  — cover backfill is for the
+ *   detail list only; the ring count skips it (`withCovers: false`).
  * @returns {Promise<Array<{ igdbGameId: number, title: string|null, image: string|null, completedAt: string }>>}
  */
-export async function getFinishedGamesThisYear(userId, year = new Date().getFullYear()) {
+export async function getFinishedGamesThisYear(userId, year = new Date().getFullYear(), options = {}) {
   if (!userId) return []
+  const { withCovers = true } = options
 
-  const yearStart = `${year}-01-01T00:00:00.000Z`
-  const yearEnd   = `${year + 1}-01-01T00:00:00.000Z`
-
-  const { data, error } = await supabase
-    .from('activities')
-    .select('igdb_game_id, metadata, created_at')
-    .eq('user_id', userId)
-    .eq('activity_type', 'status_changed')
-    .eq('metadata->>to_status', 'played')
-    .gte('created_at', yearStart)
-    .lt('created_at', yearEnd)
-    .not('igdb_game_id', 'is', null)
-    .order('created_at', { ascending: false })
+  const { data, error } = await applyFinishedThisYearFilters(
+    supabase
+      .from('activities')
+      .select('igdb_game_id, metadata, created_at')
+      .eq('user_id', userId),
+    year
+  ).order('created_at', { ascending: false })
 
   if (error) {
     console.error('[goal] getFinishedGamesThisYear failed:', error.message)
@@ -370,6 +385,7 @@ export async function getFinishedGamesThisYear(userId, year = new Date().getFull
   }
 
   const games = Array.from(byGame.values())
+  if (!withCovers) return games
   const needCovers = games.filter((g) => !g.image).map((g) => g.igdbGameId)
   if (needCovers.length === 0) return games
 
@@ -410,6 +426,9 @@ export async function getFinishedGamesThisYear(userId, year = new Date().getFull
 /**
  * Convenience: fetch goal + current count in one call.
  *
+ * Pass `{ current }` when the caller already has the completed set from
+ * `getFinishedGamesThisYear` so this does not re-query activities.
+ *
  * `target`/`percent` describe the CURRENT TIER only — see the
  * "Escalating tiers" note above. Reaching a tier auto-persists that
  * fact (`goal_reached_at`); on a later day this same call transparently
@@ -432,14 +451,19 @@ export async function getFinishedGamesThisYear(userId, year = new Date().getFull
  *                                       shows while this equals today)
  *   }
  */
-export async function getGoalProgress(userId, year = new Date().getFullYear()) {
+export async function getGoalProgress(userId, year = new Date().getFullYear(), options = {}) {
   if (!userId) {
     return { hasGoal: false, target: null, current: 0, year, percent: 0, tier: 1, tierBase: 0, goalReachedAt: null }
   }
 
+  const currentPromise =
+    options.current != null
+      ? Promise.resolve(options.current)
+      : countFinishedThisYear(userId, year)
+
   const [goal, current] = await Promise.all([
     getGoal(userId, year),
-    countFinishedThisYear(userId, year),
+    currentPromise,
   ])
 
   if (!goal) {

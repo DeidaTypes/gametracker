@@ -1,5 +1,8 @@
 import React from 'react'
+import { useAuth } from '../../contexts/AuthContext'
+import { getProfile } from '../../services/profileService'
 import GoalRing from '../GoalRing'
+import ChallengeCard, { challengePathSegment } from '../ChallengeCard'
 import './HomeGoalCard.css'
 
 /**
@@ -7,14 +10,17 @@ import './HomeGoalCard.css'
  * "This week" card. Reuses the existing GoalRing component (Sprint 4) and
  * goalService's real Supabase-backed count — never a fabricated number.
  *
- * Renders null entirely when no goal is set for the year (per spec: hide,
- * don't prompt) — Profile already owns the "Set a goal" flow.
+ * Tap is owned by ChallengeCard (same destination as Profile). Renders
+ * null entirely when no goal is set for the year (per spec: hide, don't
+ * prompt) — Profile already owns the "Set a goal" flow.
  *
  * Props:
  *   goalProgress {{ hasGoal, target, current, year } | null}  null = still loading
  *   loading      {boolean}
  */
 function HomeGoalCard({ goalProgress, loading = false }) {
+  const { user, profile } = useAuth()
+
   if (loading || goalProgress === null) {
     return (
       <div className="hgc-card" aria-hidden="true">
@@ -31,9 +37,19 @@ function HomeGoalCard({ goalProgress, loading = false }) {
 
   const { current, target, year } = goalProgress
   const remaining = Math.max(0, target - current)
+  const profilePathSegment = challengePathSegment({
+    username: profile?.username || getProfile()?.username,
+    userId: user?.id,
+  })
 
   return (
-    <div className="hgc-card" aria-label={`${year} goal: ${current} of ${target} games`}>
+    <ChallengeCard
+      className="hgc-card"
+      year={year}
+      current={current}
+      target={target}
+      profilePathSegment={profilePathSegment}
+    >
       <GoalRing current={current} target={target} year={year} variant="compact" />
       <div className="hgc-info">
         <span className="hgc-headline">{current}/{target}</span>
@@ -41,7 +57,7 @@ function HomeGoalCard({ goalProgress, loading = false }) {
           {current >= target ? 'Goal reached!' : `${remaining} to go`}
         </span>
       </div>
-    </div>
+    </ChallengeCard>
   )
 }
 

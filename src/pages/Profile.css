@@ -1453,6 +1453,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.profile-challenge--tappable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .profile-challenge__info {
   display: flex;
   flex-direction: column;
