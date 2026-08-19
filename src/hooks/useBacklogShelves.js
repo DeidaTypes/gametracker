@@ -1,4 +1,4 @@
-// useBacklogShelves — categorises a Want-to-Play game array into mood shelves
+// useBacklogShelves — categorises a backlog game array into mood shelves
 // using real IGDB attributes (themes.id, game_modes.id, genres.id) and TTB data.
 //
 // Shelf definitions mirror the MOOD_CHIPS in igdb.js so the same IGDB entity

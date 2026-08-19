@@ -9,6 +9,7 @@ import { queueCelebration, updateCelebrationStats } from './celebrationService'
 import { countFinishedThisYear } from './goalService'
 import { supabase } from './supabase'
 import { showToast } from '../components/Toast'
+import { STATUS_META } from '../components/StatusChip'
 
 // Map tracker status → Pulse activity_event type. 'want' maps to
 // 'backlogged' — Home-hub sprint: this is surfaced on the viewer's own
@@ -27,10 +28,10 @@ const PROGRESS_STORAGE_KEY = 'gameProgress'
 const BACKLOG_CLEARS_KEY = 'backlogClears_v1'
 
 const DEFAULT_LISTS = {
-  'currently-playing': { name: 'Currently Playing', games: [] },
-  'played': { name: 'Played', games: [] },
-  'want-to-play': { name: 'Want to Play', games: [] },
-  'dropped': { name: 'Dropped', games: [] },
+  'currently-playing': { name: STATUS_META.currently.label, games: [] },
+  'played': { name: STATUS_META.played.label, games: [] },
+  'want-to-play': { name: STATUS_META.want.label, games: [] },
+  'dropped': { name: STATUS_META.dropped.label, games: [] },
 }
 
 const STATUS_LIST_MAP = {
@@ -186,7 +187,7 @@ export async function syncTrackersWithServer(userId) {
 }
 
 /**
- * Record that a game was cleared out of the Want-to-Play backlog.
+ * Record that a game was cleared out of the backlog.
  * Called by setGameStatus whenever a game moves away from 'want'.
  */
 export function recordBacklogClear(gameId) {
@@ -311,7 +312,7 @@ export function addGameToList(listId, game) {
 }
 
 /**
- * Add a game to the Want to Play backlog from a passive discovery surface
+ * Add a game to the backlog from a passive discovery surface
  * (Discover → Recently activity cards, Because You Played rail). Mirrors
  * SwipeDeck's swipe-right contract:
  *   1. Optimistic local want-to-play list write (always).
@@ -385,7 +386,7 @@ export async function addGameToBacklog(game) {
   }
 
   showToast(
-    added ? `Added "${game.title}" to Backlog` : `"${game.title}" is already in your backlog`,
+    added ? `Added "${game.title}" to backlog` : `"${game.title}" is already in your backlog`,
     added ? 'success' : 'error',
     2500
   )
@@ -478,13 +479,17 @@ export function renameCustomList(listId, newName) {
 // Get all lists (default + custom)
 export function getAllLists() {
   const library = getLibrary() || initializeLibrary()
-  
-  const allLists = {
-    ...library.lists,
+
+  const trackerLists = {}
+  for (const [listId, list] of Object.entries(library.lists || {})) {
+    const label = STATUS_META[LIST_STATUS_MAP[listId]]?.label
+    trackerLists[listId] = label ? { ...list, name: label } : list
+  }
+
+  return {
+    ...trackerLists,
     ...library.customLists,
   }
-  
-  return allLists
 }
 
 // Check if game is in a list
@@ -500,7 +505,7 @@ export function getListInfo(listId) {
   if (library.lists[listId]) {
     return {
       id: listId,
-      name: library.lists[listId].name,
+      name: STATUS_META[LIST_STATUS_MAP[listId]]?.label || library.lists[listId].name,
       isCustom: false,
     }
   }

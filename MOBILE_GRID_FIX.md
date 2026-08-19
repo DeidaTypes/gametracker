@@ -121,7 +121,7 @@ For Home page "Popular This Week" and Explore page:
 ### ✅ Consistent Grid Behavior Across All Pages
 - Search
 - Wishlist
-- Profile (Want to Play, Currently Playing, Played)
+- Profile (Backlog, Currently Playing, Played)
 - All use same responsive grid system
 
 ### ✅ Text Clamps Properly

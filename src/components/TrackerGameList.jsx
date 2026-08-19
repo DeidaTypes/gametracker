@@ -39,15 +39,16 @@ import { showToast } from './Toast'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useNavDim } from '../hooks/useNavDim'
 import KeyboardAwareView from './KeyboardAwareView'
+import { STATUS_META } from './StatusChip'
 import './TrackerGameList.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TRACKER_LABELS = {
-  'currently-playing': 'Currently Playing',
-  played: 'Played',
-  'want-to-play': 'Want to Play',
-  dropped: 'Dropped',
+  'currently-playing': STATUS_META.currently.label,
+  played: STATUS_META.played.label,
+  'want-to-play': STATUS_META.want.label,
+  dropped: STATUS_META.dropped.label,
 }
 
 const SORT_OPTIONS = [
@@ -66,9 +67,9 @@ const FILTER_OPTIONS = [
 ]
 
 const MOVE_TARGETS = [
-  { id: 'currently', label: 'Currently Playing' },
-  { id: 'played', label: 'Played' },
-  { id: 'want', label: 'Want to Play' },
+  { id: 'currently', label: STATUS_META.currently.label },
+  { id: 'played', label: STATUS_META.played.label },
+  { id: 'want', label: STATUS_META.want.label },
   { id: 'dropped', label: 'Drop' },
 ]
 

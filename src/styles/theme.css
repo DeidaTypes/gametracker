@@ -370,7 +370,7 @@ body[data-larger-text='true'] {
      TRACKER STATUS COLOR MAP
      ---------------------------------------------------------------
      Single source of truth for the four mutually-exclusive tracker
-     statuses (Want to Play / Currently Playing / Played / Dropped).
+     statuses (Backlog / Currently Playing / Played / Dropped).
      Library's stat cells (src/pages/Library.css) originated this
      palette; every other status chip/tile/pill (StatusChip.jsx —
      GameDetail's status tiles, AddToListButton's sheet rows, Home's

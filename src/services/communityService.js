@@ -1133,7 +1133,7 @@ const HOME_FEED_SPARSE_THRESHOLD = 5
 //   'listed'     → metadata.kind 'list_created' (created a list) or
 //                  'game_added_to_list' (added a game to a list)
 //   'completed'  → rendered as HomeReviewCard's 'finished' type
-//   'backlogged' → added to the Want to Play backlog (see
+//   'backlogged' → added to the backlog (see
 //                  libraryService.STATUS_TO_EVENT_TYPE) — also surfaced
 //                  for other users now, see OTHER_FEED_EVENT_TYPES below
 //   'started'    → moved a game to Currently Playing

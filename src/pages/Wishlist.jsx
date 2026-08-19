@@ -42,7 +42,7 @@ function Wishlist() {
         <EmptyState
           icon={Heart}
           title="Your wishlist is empty"
-          body="Start adding games you want to play!"
+          body="Start adding games to your wishlist!"
         />
       ) : (
         <div className="wishlist-content">

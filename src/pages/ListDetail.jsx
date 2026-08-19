@@ -121,7 +121,7 @@ const TRACKER_EMPTY = {
   'want-to-play': {
     icon: Bookmark,
     title: 'Your backlog is empty.',
-    body: 'Save games you want to play later.',
+    body: 'Save games to your backlog.',
     cta: 'Find games',
     useAddGames: false,
   },
@@ -216,7 +216,7 @@ function ListDetail() {
   const isTracker = isTrackerList(listId)
 
   // Custom lists render a comment composer (ListComments, below the game
-  // grid) — tracker lists (Want to Play/Playing/Played/Dropped) never do.
+  // grid) — tracker lists (Backlog/Playing/Played/Dropped) never do.
   // Hide the nav only for the former, and only once we actually know the
   // list is custom, so it's restored automatically on unmount/navigation.
   // See src/hooks/useHideNav.js.
@@ -977,7 +977,7 @@ function ListDetail() {
     )
   }
 
-  // ── Tracker lists (Want to Play / Playing / Played / Dropped) ────────────
+  // ── Tracker lists (Backlog / Playing / Played / Dropped) ────────────
   // Left completely untouched — same header, same rich row-list content,
   // no masthead/mockup markup below applies to this branch at all.
   if (isTracker) {

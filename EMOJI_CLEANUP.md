@@ -42,7 +42,7 @@ Game Detail:
 Add to List:
 ├── 🎮 Currently Playing
 ├── ✅ Played
-├── ⭐ Want to Play
+├── ⭐ Backlog
 └── 📋 Custom List
 
 Similar Games
@@ -64,7 +64,7 @@ Game Detail:
 Add to List:
 ├── Currently Playing
 ├── Played
-├── Want to Play
+├── Backlog
 └── Custom List
 
 Similar Games

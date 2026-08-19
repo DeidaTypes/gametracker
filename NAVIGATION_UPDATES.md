@@ -62,7 +62,7 @@ Profile
 Profile
 ├── Reviews (tab)
 └── Lists (tab)
-    ├── Want to Play
+    ├── Backlog
     ├── Currently Playing
     └── Played
 ```

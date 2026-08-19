@@ -9,7 +9,7 @@ import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './BacklogRoulette.css'
 
 /**
- * BacklogRoulette — randomly picks one Want-to-Play game.
+ * BacklogRoulette — randomly picks one backlog game.
  *
  * Slot-pull animation (22-item vertical strip decelerates to land on winner).
  * Reduced-motion: instant reveal, no animation.
@@ -18,7 +18,7 @@ import './BacklogRoulette.css'
  * Props:
  *   isOpen   boolean
  *   onClose  () => void
- *   games    array of Want-to-Play game objects
+ *   games    array of backlog game objects
  */
 
 const COVER_H = 138   // px — matches shelf-cover-wrap height

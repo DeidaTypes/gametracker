@@ -140,7 +140,7 @@ function Home() {
         getGamesFromList('played').length +
         getGamesFromList('dropped').length
       )
-      // Most-recently-added Want to Play game — the hero's fallback #2.
+      // Most-recently-added backlog game — the hero's fallback #2.
       const backlog = getGamesFromList('want-to-play')
       setBacklogGame(
         backlog.length

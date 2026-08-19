@@ -8,7 +8,7 @@ import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
 import ReviewCard from '../components/ReviewCard'
 import AddToListButton, { STATUS_TILES } from '../components/AddToListButton'
-import StatusChip from '../components/StatusChip'
+import StatusChip, { STATUS_META } from '../components/StatusChip'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import CommunityRatingCard from '../components/CommunityRatingCard'
 import SimilarGamesRow from '../components/SimilarGamesRow'
@@ -52,10 +52,10 @@ import './GameDetail.css'
 // STATUS_TILES.label itself is left untouched — it still drives the fuller
 // wording used inside AddToListButton's bottom sheet.
 const GD_STATUS_LABELS = {
-  want: 'Backlog',
+  want: STATUS_META.want.label,
   currently: 'Playing',
-  played: 'Played',
-  dropped: 'Dropped',
+  played: STATUS_META.played.label,
+  dropped: STATUS_META.dropped.label,
 }
 
 // ── Dominant-color helpers ──────────────────────────────────────────────────

@@ -112,7 +112,7 @@ function statusPillLabel(item) {
 
 /**
  * Of the six event types statusPillLabel covers, only these three are
- * actual tracker statuses (Want to Play / Currently Playing / Played) —
+ * actual tracker statuses (Backlog / Currently Playing / Played) —
  * the other three (session logged, favorited, journaled) are distinct
  * activity types with no corresponding tracker status, so they keep the
  * plain cobalt pill instead of routing through StatusChip's status map.

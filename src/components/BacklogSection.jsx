@@ -15,8 +15,8 @@ import './HomeShelf.css'
  * from Home to keep the feed high on the page.
  *
  * Props:
- *   games      array of Want-to-Play games
- *   onAddGame  () => void — opens the focused "add to Want to Play" popup
+ *   games      array of backlog games
+ *   onAddGame  () => void — opens the focused "add to backlog" popup
  */
 function BacklogSection({ games = [], onAddGame }) {
   const navigate = useNavigate()
@@ -33,7 +33,7 @@ function BacklogSection({ games = [], onAddGame }) {
           <EmptyState
             icon={Bookmark}
             title="Nothing waiting yet."
-            body="Add games you want to play next and they'll line up here."
+            body="Add games to your backlog and they'll line up here."
             cta="Add a game"
             onCta={onAddGame}
             compact
@@ -65,7 +65,7 @@ function BacklogSection({ games = [], onAddGame }) {
                 state: { selectedListId: 'want-to-play' },
               })
             }
-            aria-label="Open your Want to Play list"
+            aria-label="Open your backlog"
           >
             <ChevronRight size={20} aria-hidden="true" />
           </button>

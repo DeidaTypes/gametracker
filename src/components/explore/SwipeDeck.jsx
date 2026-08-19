@@ -334,7 +334,7 @@ export function SwipeDeck() {
           .catch((err) => console.error('[SwipeDeck] game_trackers upsert failed:', err))
       }
 
-      showToast(`Added "${game.title}" to Backlog`, 'success', 2500)
+      showToast(`Added "${game.title}" to backlog`, 'success', 2500)
       advance()
     },
     [user, advance]

@@ -15,6 +15,7 @@ import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../componen
 import { showToast } from '../components/Toast'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { initializeLibrary, getGamesFromList } from '../services/libraryService'
+import { STATUS_META } from '../components/StatusChip'
 import { getProfile } from '../services/profileService'
 import {
   getListsForUser,
@@ -30,10 +31,10 @@ import './Library.css'
 // `listId` is the localStorage tracker bucket (see libraryService.DEFAULT_LISTS)
 // and `key` is the status tag carried on each combined game as `_status`.
 const STATUS_CELLS = [
-  { key: 'want', label: 'Want', listId: 'want-to-play' },
+  { key: 'want', label: STATUS_META.want.label, listId: 'want-to-play' },
   { key: 'currently', label: 'Playing', listId: 'currently-playing' },
-  { key: 'played', label: 'Played', listId: 'played' },
-  { key: 'dropped', label: 'Dropped', listId: 'dropped' },
+  { key: 'played', label: STATUS_META.played.label, listId: 'played' },
+  { key: 'dropped', label: STATUS_META.dropped.label, listId: 'dropped' },
 ]
 
 // Sort options — only sorts backed by a real field on every game.

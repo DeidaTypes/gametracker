@@ -1515,7 +1515,7 @@ function Profile() {
     : otherUserBannerUrl
 
   const reviewCount = allReviews.length
-  // Games stat — total tracked games across every status (Want to Play /
+  // Games stat — total tracked games across every status (Backlog /
   // Playing / Played / Dropped), counted from `game_trackers` for own and
   // visitor profiles alike so both views agree. The own-profile path used
   // to read a localStorage-derived total, which drifted out of sync with

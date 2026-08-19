@@ -14,6 +14,7 @@ import {
 import StarRatingDisplay from './StarRatingDisplay'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { STATUS_META } from './StatusChip'
 import './DayLogSheet.css'
 
 /**
@@ -41,10 +42,10 @@ const ACTIVITY_ICONS = {
 }
 
 const STATUS_TAG_LABEL = {
-  want: 'Want to Play',
+  want: STATUS_META.want.label,
   currently: 'Playing',
-  played: 'Played',
-  dropped: 'Dropped',
+  played: STATUS_META.played.label,
+  dropped: STATUS_META.dropped.label,
 }
 
 /**

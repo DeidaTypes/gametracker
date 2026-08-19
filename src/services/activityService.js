@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { applyBlockFilter, isMutuallyBlocked, loadBlockedIds } from './blockService'
 import { updateStreak } from './streakMilestoneService'
 import { dispatchStreakUpdated } from '../components/MilestoneCelebration'
+import { STATUS_META } from '../components/StatusChip'
 
 /**
  * Activity Service — Supabase-backed activity feed.
@@ -261,10 +262,10 @@ export async function getActivitiesForUser(userId, { limit = 50, offset = 0 } = 
    ============================================================ */
 
 const STATUS_DISPLAY = {
-  want: 'Want to Play',
+  want: STATUS_META.want.label,
   currently: 'Playing',
-  played: 'Played',
-  dropped: 'Dropped',
+  played: STATUS_META.played.label,
+  dropped: STATUS_META.dropped.label,
 }
 
 function statusDisplay(value) {
@@ -290,6 +291,7 @@ export function formatActivityMessage(activity) {
     case 'status_changed': {
       const to = meta.to_status
       if (to === 'dropped') return `Dropped ${gameTitle}`
+      if (to === 'want') return `Added ${gameTitle} to backlog`
       return `Marked ${gameTitle} as ${statusDisplay(to)}`
     }
     case 'review_posted': {

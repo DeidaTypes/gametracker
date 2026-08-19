@@ -14,6 +14,7 @@ import { ReviewCardShell, ReviewCardShellHeader } from '../reviews/ReviewCardShe
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { hapticImpact } from '../../utils/haptics'
 import { showToast } from '../Toast'
+import { BACKLOG_COPY } from '../StatusChip'
 import './RecentActivityCard.css'
 
 const ACTION_LABEL = { reviewed: 'reviewed', rated: 'rated' }
@@ -209,7 +210,7 @@ export default function RecentActivityCard({ item }) {
           disabled={backlogging || backlogged}
           aria-label={`Add ${item.game.title} to backlog`}
         >
-          {backlogged ? 'Added to Backlog' : '+ Add to Backlog'}
+          {backlogged ? BACKLOG_COPY.added : BACKLOG_COPY.add}
         </Pressable>
         {canReact && (
           <div className="recent-activity-card__icon-actions">

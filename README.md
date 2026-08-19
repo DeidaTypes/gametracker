@@ -7,7 +7,7 @@ A video game tracking app similar to Goodreads with a Spotify-like UI. Track you
 - 🎮 Beautiful Spotify-inspired UI with Circular font
 - 🔍 Search games using IGDB API
 - 📚 Your Library - Save games to your personal collection
-- ⭐ Wishlist - Keep track of games you want to play
+- ⭐ Wishlist - Keep track of games in your wishlist
 - 📝 Reviews - Review and rate games
 - 🌐 Full navigation between all pages
 - 📊 Real-time game data from IGDB API
@@ -62,7 +62,7 @@ npm run build
   - `Home.jsx` - Main home page with featured games from IGDB
   - `Search.jsx` - Search games using IGDB API
   - `Library.jsx` - Your personal game library
-  - `Wishlist.jsx` - Games you want to play
+  - `Wishlist.jsx` - Games on your wishlist
   - `Reviews.jsx` - Your game reviews
 
 - `src/components/` - Reusable components
@@ -87,7 +87,7 @@ The app includes full navigation between all pages:
 - **Home** - Browse featured, recent, RPG, and indie games
 - **Search** - Search for games using the IGDB database
 - **Your Library** - View games you've added to your collection
-- **Wishlist** - Manage games you want to play
+- **Wishlist** - Manage games on your wishlist
 - **Reviews** - View and manage your game reviews
 
 ## API Setup

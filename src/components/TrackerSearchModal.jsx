@@ -8,13 +8,14 @@ import {
 import CenteredModal from './CenteredModal'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
+import { STATUS_META, BACKLOG_COPY } from './StatusChip'
 import './TrackerSearchModal.css'
 
 const SEARCH_DEBOUNCE_MS = 300
 
 /**
  * TrackerSearchModal — focused, centered search popup for adding a game to a
- * tracker (Currently Playing / Want to Play / Played).
+ * tracker (Currently Playing / Backlog / Played).
  *
  * Replaces the old "navigate to Explore" behaviour: the user stays on the
  * current screen, types a game, taps a result, and it is added to the given
@@ -32,10 +33,10 @@ const SEARCH_DEBOUNCE_MS = 300
  *   status   'want' | 'currently' | 'played' — the tracker to add into
  */
 const STATUS_LABELS = {
-  want: 'Want to Play',
-  currently: 'Currently Playing',
-  played: 'Played',
-  dropped: 'Dropped',
+  want: STATUS_META.want.label,
+  currently: STATUS_META.currently.label,
+  played: STATUS_META.played.label,
+  dropped: STATUS_META.dropped.label,
 }
 
 function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
@@ -50,6 +51,10 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
   const searchCallIdRef = useRef(0)
 
   const label = STATUS_LABELS[status] || 'Library'
+  const isBacklog = status === 'want'
+  const addAction = isBacklog ? BACKLOG_COPY.add : `Add to ${label}`
+  const addedToast = isBacklog ? BACKLOG_COPY.added : `Added to ${label}`
+  const alreadyToast = isBacklog ? 'Already in your backlog' : `Already in ${label}`
 
   // Reset on close; autofocus on open (short delay lets the card animate in).
   useEffect(() => {
@@ -111,14 +116,14 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
   const handleAdd = (game) => {
     const already = getGameStatus(game.id) === status
     if (already) {
-      showToast(`Already in ${label}`, 'success', 1600)
+      showToast(alreadyToast, 'success', 1600)
       onClose?.()
       return
     }
 
     const ok = setGameStatus(game.id, status, game)
     if (ok) {
-      showToast(`Added to ${label}`, 'success', 1800)
+      showToast(addedToast, 'success', 1800)
     } else {
       showToast('Couldn’t add game. Please try again.', 'error')
     }
@@ -136,7 +141,7 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
     <CenteredModal
       isOpen={isOpen}
       onClose={onClose}
-      ariaLabel={`Add a game to ${label}`}
+      ariaLabel={isBacklog ? 'Add a game to backlog' : `Add a game to ${label}`}
       maxWidth={400}
       className="tsm-card"
     >
@@ -165,8 +170,8 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
             className="tsm-search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={`Add to ${label}…`}
-            aria-label={`Search games to add to ${label}`}
+            placeholder={`${addAction}…`}
+            aria-label={isBacklog ? 'Search games to add to backlog' : `Search games to add to ${label}`}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"

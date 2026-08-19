@@ -41,7 +41,7 @@
 ### 📚 **Library Management**
 - ✅ **Your Library**
   - Add games to collection
-  - Filter by status (Playing, Completed, Want to Play, Dropped)
+  - Filter by status (Playing, Completed, Backlog, Dropped)
   - Sort by: Date Added, Title, Rating, Release Date
   - Visual status badges
   - Grid view with cover art

@@ -2,7 +2,7 @@
 --
 -- Gap found while broadening Home's feed beyond reviews-only (see
 -- communityService.getHomeFeed): there is no event type for "added a
--- game to the Want to Play backlog". `libraryService.STATUS_TO_EVENT_TYPE`
+-- game to the backlog". `libraryService.STATUS_TO_EVENT_TYPE`
 -- deliberately left the `want` status unmapped — "adding a game to the
 -- wishlist is a browsing signal, not Pulse-worthy activity" (see the
 -- comment above that map). This sprint's Home spec explicitly asks for

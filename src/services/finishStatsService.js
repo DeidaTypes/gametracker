@@ -20,7 +20,7 @@ import { supabase } from './supabase'
  * vocabulary), so the splash can show a real "started → finished" span.
  *
  * Returns null when no such transition was ever logged for this game —
- * e.g. the user marked it Played directly from Want to Play, or the
+ * e.g. the user marked it Played directly from Backlog, or the
  * transition happened before activity logging existed. The caller must
  * omit the time-span chip in that case, never invent a start date.
  *

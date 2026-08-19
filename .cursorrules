@@ -71,7 +71,7 @@ palette both by known hex and by hue analysis. It does not fail builds yet, but
 do not add new warnings; run it after touching CSS.
 
 ## Domain rules
-- Game tracker statuses: Want to Play / Playing / Played / Dropped
+- Game tracker statuses: Backlog / Currently Playing / Played / Dropped
 - A game has at most one status at a time (mutually exclusive); do not implement as separate booleans
 - All status changes must be optimistic — update UI immediately, then sync to store
 

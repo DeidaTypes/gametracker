@@ -13,14 +13,14 @@ import {
 } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { hapticImpact } from '../utils/haptics'
-import StatusChip from './StatusChip'
+import StatusChip, { STATUS_META } from './StatusChip'
 import './AddToListButton.css'
 
 export const STATUS_TILES = [
   {
     key: 'want',
     listId: 'want-to-play',
-    label: 'Want to Play',
+    label: STATUS_META.want.label,
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -30,7 +30,7 @@ export const STATUS_TILES = [
   {
     key: 'currently',
     listId: 'currently-playing',
-    label: 'Currently Playing',
+    label: STATUS_META.currently.label,
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -44,7 +44,7 @@ export const STATUS_TILES = [
   {
     key: 'played',
     listId: 'played',
-    label: 'Finished Playing',
+    label: STATUS_META.played.label,
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -55,7 +55,7 @@ export const STATUS_TILES = [
   {
     key: 'dropped',
     listId: 'dropped',
-    label: 'Dropped',
+    label: STATUS_META.dropped.label,
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
