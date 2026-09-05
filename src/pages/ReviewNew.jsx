@@ -6,7 +6,7 @@ import CenteredModal from '../components/CenteredModal'
 import IOSSwitch from '../components/IOSSwitch'
 import { getGameById } from '../services/igdb'
 import { postReview, updateReview } from '../services/reviewService'
-import { setGameStatus } from '../services/libraryService'
+import { logActivity, ACTIVITY_TYPES } from '../services/activityService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import { hapticImpact } from '../utils/haptics'
@@ -154,8 +154,25 @@ function ReviewNew() {
           deadline,
         ])
 
+        // "Mark as completed" records the Challenge-eligible finish
+        // event directly (the same `activities` shape
+        // goalService.applyFinishedThisYearFilters reads: activity_type
+        // 'status_changed' + metadata.to_status 'played') WITHOUT going
+        // through setGameStatus. Decoupling fix: a review for a game the
+        // user does not track must never create/modify a game_trackers
+        // row — logActivity only ever writes to `activities`, so this is
+        // exactly as safe for an untracked game as the toggle being off.
+        // Fire-and-forget, same as setGameStatus's own activity write.
         if (markCompleted) {
-          setGameStatus(game.id, 'played', game)
+          logActivity({
+            activityType: ACTIVITY_TYPES.STATUS_CHANGED,
+            igdbGameId: game.id,
+            metadata: {
+              from_status: null,
+              to_status: 'played',
+              game_title: game.title || null,
+            },
+          })
         }
       }
 

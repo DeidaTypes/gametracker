@@ -16,7 +16,12 @@ const LIST_CONFIG = {
     fetch: () => getMostPlayed(50),
     badge: (g) => `${g.hoursPlayed}h`,
     emptyIcon: Clock,
-    emptyMsg: 'Log hours in your reviews to populate this list.',
+    // Tracker-scoped by design: getMostPlayed only looks at games already
+    // in your library (currently-playing / played / want-to-play), so a
+    // reviewed-but-untracked game won't show up here even with hours
+    // logged. Copy used to say "Log hours in your reviews" on its own,
+    // which read as if reviewing alone was enough — it isn't.
+    emptyMsg: 'Add games to your library, then log hours in a review to populate this list.',
   },
   unfinished: {
     eyebrow: 'Smart List',
@@ -33,7 +38,9 @@ const LIST_CONFIG = {
     fetch: () => getTopRated(50),
     badge: (g) => `★ ${g.userRating.toFixed(1)}`,
     emptyIcon: Star,
-    emptyMsg: 'Rate games in your reviews to populate this list.',
+    // Same tracker-scoping note as 'most-played' above — getTopRated also
+    // requires the game to already be in your library.
+    emptyMsg: 'Add games to your library, then rate them in a review to populate this list.',
   },
 }
 

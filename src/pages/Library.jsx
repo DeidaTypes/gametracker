@@ -15,6 +15,7 @@ import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../componen
 import { showToast } from '../components/Toast'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { initializeLibrary, getGamesFromList } from '../services/libraryService'
+import { getAllReviews } from '../services/reviewService'
 import { STATUS_META } from '../components/StatusChip'
 import { getProfile } from '../services/profileService'
 import {
@@ -73,6 +74,13 @@ function Library() {
   const [errorLists, setErrorLists] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
+
+  // Drives the My Games empty-state copy: a user with reviews but zero
+  // tracked games gets different wording than one with neither (see
+  // renderGamesEmptyState below). Read from reviewService's own
+  // current-user cache — the same cache dnaService/profileStatsService
+  // already read synchronously — rather than an extra network round trip.
+  const [hasReviews, setHasReviews] = useState(() => getAllReviews().length > 0)
 
   // null = All. Tapping the active cell again returns here.
   const [activeStatus, setActiveStatus] = useState(null)
@@ -145,6 +153,15 @@ function Library() {
       window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
     }
   }, [loadTrackerLists, loadCustomLists])
+
+  // Keep the reviews-exist flag current as reviews are posted/removed in
+  // this session — same 'reviewAdded' event reviewService/ReviewNew
+  // already dispatch on every write.
+  useEffect(() => {
+    const refreshHasReviews = () => setHasReviews(getAllReviews().length > 0)
+    window.addEventListener('reviewAdded', refreshHasReviews)
+    return () => window.removeEventListener('reviewAdded', refreshHasReviews)
+  }, [])
 
   // Reset pagination whenever the visible set could change shape.
   useEffect(() => {
@@ -517,11 +534,23 @@ function Library() {
 
             <section className="lib-grid-section" aria-label="Your games">
               {combinedGames.length === 0 ? (
+                // My Games stays tracker+list-scoped by design (reviews for
+                // untracked games intentionally don't appear as cards here —
+                // see smart-list scoping notes elsewhere in the codebase).
+                // But a user who has posted reviews without tracking
+                // anything is not the same as a brand-new user with no data
+                // at all, so the copy must not claim "no games" in a way
+                // that reads as if their reviews don't exist or didn't
+                // count. This is the one branch this screen actually needs.
                 <EmptyState
                   icon={List}
                   size="compact"
-                  title="No games tracked yet."
-                  body="Search for a game and set a status to start your library."
+                  title={hasReviews ? 'Nothing tracked yet' : 'No games tracked yet'}
+                  body={
+                    hasReviews
+                      ? "Your reviews are saved and live independently of your library. Set a status on a game to start tracking it here."
+                      : 'Search for a game and set a status to start your library.'
+                  }
                   cta="Find games"
                   onCta={() => navigate('/search')}
                 />

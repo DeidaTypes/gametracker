@@ -203,9 +203,9 @@ export default function ProfilePlayerCard({
         />
         {/* An unresolved hours total is an em dash, not an endless
             skeleton: getTotalHoursForUser returns 0 for a user with no
-            tracker rows, so null here means the query failed or timed
-            out, and the old `hoursPlayed == null` skeleton had nothing
-            left to wait for. */}
+            play_sessions/tracker rows, so null here means the query
+            failed or timed out, and the old `hoursPlayed == null`
+            skeleton had nothing left to wait for. */}
         <Stat
           value={hoursPlayed == null ? '—' : formatHours(hoursPlayed)}
           suffix={hoursPlayed == null ? undefined : 'h'}

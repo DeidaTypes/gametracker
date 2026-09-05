@@ -83,24 +83,76 @@ export async function setHoursPlayed(igdbGameId, hours, meta = {}) {
 }
 
 /**
- * Sum hours_played across all game_trackers rows for a given user.
- * Used by the Profile page to surface the total-hours headline stat.
+ * Sum a user's total playtime across ALL games, regardless of whether a
+ * `game_trackers` row exists for them today. Used by the Profile page to
+ * surface the total-hours headline stat.
+ *
+ * Decoupling fix: `game_trackers.hours_played` is a rollup that
+ * disappears the moment a tracker row is deleted (clearGameStatus), even
+ * though the underlying `play_sessions` rows — the real record of play —
+ * are untouched (no FK from play_sessions to game_trackers; see the
+ * diagnosis report). So `play_sessions.hours` summed per user is now the
+ * primary source, not `game_trackers.hours_played`.
+ *
+ * Legacy top-up: before the `trg_play_sessions_rollup` trigger existed
+ * (and via the old client-side `setHoursPlayed` direct-write path, which
+ * is unused by any current caller but may still be sitting in historical
+ * rows), some `hours_played` values were written straight onto
+ * `game_trackers` with NO backing `play_sessions` rows at all. Switching
+ * to a pure play_sessions sum would silently zero those out. To avoid
+ * that regression, for every current tracker row we compare
+ * `hours_played` against the sum of THAT game's own `play_sessions.hours`
+ * and add only the excess — hours that only ever lived on the tracker
+ * row. A game whose hours_played is fully accounted for by its sessions
+ * contributes 0 excess (no double-counting). A tracker that gets deleted
+ * later stops contributing its excess (there's nothing else to source it
+ * from — it was never real session data), but its session-backed hours
+ * keep counting via the play_sessions sum above, which is exactly the
+ * "survives a tracker delete" behavior this fix is for.
  *
  * @param {string} userId
- * @returns {Promise<number|null>}  Total hours (≥ 0), or null on error / no rows.
+ * @returns {Promise<number|null>}  Total hours (≥ 0), or null on error.
  */
 export async function getTotalHoursForUser(userId) {
   if (!userId) return null
-  const { data, error } = await supabase
-    .from('game_trackers')
-    .select('hours_played')
-    .eq('user_id', userId)
-  if (error) {
-    console.error('[hoursService] getTotalHoursForUser failed:', error.message)
+
+  const [sessionsResult, trackersResult] = await Promise.all([
+    supabase.from('play_sessions').select('igdb_game_id, hours').eq('user_id', userId),
+    supabase.from('game_trackers').select('igdb_game_id, hours_played').eq('user_id', userId),
+  ])
+
+  if (sessionsResult.error) {
+    console.error('[hoursService] getTotalHoursForUser (sessions) failed:', sessionsResult.error.message)
     return null
   }
-  if (!data || data.length === 0) return 0
-  return data.reduce((sum, row) => sum + (Number(row.hours_played) || 0), 0)
+  if (trackersResult.error) {
+    console.error('[hoursService] getTotalHoursForUser (trackers) failed:', trackersResult.error.message)
+    return null
+  }
+
+  const sessionRows = sessionsResult.data || []
+  const trackerRows = trackersResult.data || []
+
+  // Per-game session-hours totals, plus the grand total across all games —
+  // this is the new primary source and survives a tracker row's deletion.
+  const sessionHoursByGame = new Map()
+  let totalSessionHours = 0
+  for (const row of sessionRows) {
+    const hrs = Number(row.hours) || 0
+    totalSessionHours += hrs
+    const key = String(row.igdb_game_id)
+    sessionHoursByGame.set(key, (sessionHoursByGame.get(key) || 0) + hrs)
+  }
+
+  // Legacy excess — see function doc above.
+  let legacyExcessHours = 0
+  for (const row of trackerRows) {
+    const trackerHours = Number(row.hours_played) || 0
+    const sessionHours = sessionHoursByGame.get(String(row.igdb_game_id)) || 0
+    if (trackerHours > sessionHours) legacyExcessHours += trackerHours - sessionHours
+  }
+
+  return totalSessionHours + legacyExcessHours
 }
 
 /**
