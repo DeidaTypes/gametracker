@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Search as SearchIcon, List, ChevronDown, Check, Plus, FilterX } from 'lucide-react'
-import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
+import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
@@ -13,8 +13,11 @@ import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
 import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
+import ReorderTrashTarget from '../components/ReorderTrashTarget'
+import { LIST_REORDER_DRAG_EVENT } from '../components/BottomNav'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { COVER_FALLBACK } from '../utils/coverFallback'
-import { initializeLibrary, getGamesFromList } from '../services/libraryService'
+import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
 import { STATUS_META } from '../components/StatusChip'
 import { getProfile } from '../services/profileService'
@@ -45,6 +48,12 @@ const SORTS = [
 ]
 
 const PAGE_SIZE = 30
+
+// Same long-press / move-cancel gates as ListDetail's custom-list
+// drag-to-trash path. Library only uses the trash branch — no reorder.
+const LONG_PRESS_MS = 450
+const MOVE_CANCEL_PX = 8
+const REMOVE_ANIM_MS = 200
 
 /**
  * Which segment the user last had open, remembered for the session.
@@ -89,6 +98,20 @@ function Library() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const [gridRef] = useAutoAnimateMotion()
+  const { reduced: reducedMotion } = useMotionPreference()
+
+  // Long-press drag-to-trash (My Games covers with a tracker status).
+  // Pointer Events only — same contract as ListDetail's custom-list
+  // path. No reorder / slot swapping lives here.
+  const [dragGameId, setDragGameId] = useState(null)
+  const [trashArmed, setTrashArmed] = useState(false)
+  const [removingGameId, setRemovingGameId] = useState(null)
+
+  const itemEls = useRef({})
+  const trashBarRef = useRef(null)
+  const dragSessionRef = useRef(null)
+  const longPressTimerRef = useRef(null)
+  const suppressClickRef = useRef(false)
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -297,6 +320,229 @@ function Library() {
   const handleStatusTap = (key) => {
     setActiveStatus((current) => (current === key ? null : key))
   }
+
+  // ── Long-press drag-to-trash (My Games, tracker rows only) ──────────
+  // Reuses ListDetail's Pointer Events gate, LIST_REORDER_DRAG_EVENT
+  // (so BottomNav's existing hide listener fires with zero changes),
+  // ReorderTrashTarget portal, cover-center hit test, and haptics
+  // sequence. Does NOT implement reorder / position swapping.
+
+  const applyDragTransform = (gameId, dx, dy) => {
+    const el = itemEls.current[gameId]
+    if (!el) return
+    el.style.transition = ''
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+  }
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const hardResetDrag = (gameId) => {
+    clearLongPressTimer()
+    const el = gameId != null ? itemEls.current[gameId] : null
+    if (el) {
+      el.style.transform = ''
+      el.style.transition = ''
+    }
+    dragSessionRef.current = null
+    setDragGameId(null)
+    setTrashArmed(false)
+    window.dispatchEvent(
+      new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
+    )
+  }
+
+  const handleCoverPointerDown = (e, game) => {
+    // List-only membership (_status: null) has no tracker to delete.
+    // Leave the cover as a plain tap-to-open so we never arm a no-op.
+    if (!game._status) return
+    if (dragSessionRef.current) return
+
+    const captureEl = e.currentTarget
+    try {
+      captureEl.setPointerCapture(e.pointerId)
+    } catch {
+      // Same capture-reject fallback as ListDetail — long-press still
+      // arms; move/up may not fire if the finger leaves this element.
+    }
+
+    const session = {
+      gameId: game.id,
+      pointerId: e.pointerId,
+      captureEl,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      activated: false,
+      armed: false,
+      startRect: null,
+      previousStatus: game._status,
+      gameSnapshot: {
+        id: game.id,
+        title: game.title,
+        image: game.image,
+        addedAt: game.addedAt,
+      },
+    }
+    dragSessionRef.current = session
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null
+      if (dragSessionRef.current !== session) return
+
+      const startRect = itemEls.current[game.id]?.getBoundingClientRect()
+      if (!startRect) {
+        dragSessionRef.current = null
+        return
+      }
+
+      session.activated = true
+      session.startRect = startRect
+      suppressClickRef.current = true
+      setDragGameId(game.id)
+      hapticImpact('Medium')
+      window.dispatchEvent(
+        new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: true } })
+      )
+    }, LONG_PRESS_MS)
+  }
+
+  const handleCoverPointerMove = (e) => {
+    const session = dragSessionRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    if (!session.activated) {
+      const dx = e.clientX - session.startClientX
+      const dy = e.clientY - session.startClientY
+      if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+        clearLongPressTimer()
+        dragSessionRef.current = null
+      }
+      return
+    }
+
+    e.preventDefault()
+
+    const dx = e.clientX - session.startClientX
+    const dy = e.clientY - session.startClientY
+    applyDragTransform(session.gameId, dx, dy)
+
+    const trashEl = trashBarRef.current
+    if (trashEl) {
+      const trashRect = trashEl.getBoundingClientRect()
+      const centerX = session.startRect.left + session.startRect.width / 2 + dx
+      const centerY = session.startRect.top + session.startRect.height / 2 + dy
+      const nowArmed =
+        centerX >= trashRect.left &&
+        centerX <= trashRect.right &&
+        centerY >= trashRect.top &&
+        centerY <= trashRect.bottom
+
+      if (nowArmed !== session.armed) {
+        session.armed = nowArmed
+        setTrashArmed(nowArmed)
+        if (nowArmed) hapticImpact('Light')
+      }
+    }
+  }
+
+  const commitRemoveViaDrag = (game, previousStatus) => {
+    const ok = clearGameStatus(game.id)
+    if (!ok) {
+      showToast('Failed to remove game. Please try again.', 'error')
+      return
+    }
+    hapticSuccess()
+    showToast('Removed from library', 'success', 4000, {
+      label: 'Undo',
+      onClick: () => {
+        const restored = setGameStatus(game.id, previousStatus, game)
+        if (!restored) {
+          showToast("Couldn't restore the game. Please try again.", 'error')
+        }
+      },
+    })
+  }
+
+  const handleCoverPointerUp = (e) => {
+    const session = dragSessionRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
+      session.captureEl.releasePointerCapture(e.pointerId)
+    }
+    clearLongPressTimer()
+
+    if (!session.activated) {
+      dragSessionRef.current = null
+      return
+    }
+
+    // A drag with travel usually produces no synthesized click, which
+    // would otherwise leave suppressClickRef stuck true and eat the
+    // next genuine tap. Swallow this turn's click (if any), then
+    // re-enable. ListDetail relies on its inner onClick to clear the
+    // flag; we also reset here because Library has no second handler.
+    setTimeout(() => { suppressClickRef.current = false }, 0)
+
+    const { gameId, armed, previousStatus, gameSnapshot } = session
+
+    if (armed && gameSnapshot && previousStatus) {
+      setRemovingGameId(gameId)
+      setTimeout(() => {
+        setRemovingGameId(null)
+        hardResetDrag(gameId)
+        commitRemoveViaDrag(gameSnapshot, previousStatus)
+      }, reducedMotion ? 0 : REMOVE_ANIM_MS)
+      return
+    }
+
+    hardResetDrag(gameId)
+  }
+
+  const handleCoverPointerCancel = (e) => {
+    const session = dragSessionRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+    if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
+      session.captureEl.releasePointerCapture(e.pointerId)
+    }
+    setRemovingGameId(null)
+    hardResetDrag(session.gameId)
+  }
+
+  // Leaving My Games (or unmounting) must restore the nav — same safety
+  // net BottomNav already has on route change, applied to the in-page
+  // Lists / My Games tab switch which does not change the route.
+  useEffect(() => {
+    if (isGamesTab) return
+    const session = dragSessionRef.current
+    if (!session) return
+    clearLongPressTimer()
+    const el = itemEls.current[session.gameId]
+    if (el) {
+      el.style.transform = ''
+      el.style.transition = ''
+    }
+    dragSessionRef.current = null
+    setDragGameId(null)
+    setTrashArmed(false)
+    setRemovingGameId(null)
+    window.dispatchEvent(
+      new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
+    )
+  }, [isGamesTab])
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer()
+      window.dispatchEvent(
+        new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
+      )
+    }
+  }, [])
 
   // ── Lists-tab render helpers ──────────────────────────────────────────────
 
@@ -568,16 +814,41 @@ function Library() {
                 />
               ) : (
                 <>
-                  <div className="lib-grid3" ref={gridRef}>
-                    {visibleGames.map((g) => (
+                  <div
+                    className={`lib-grid3${dragGameId != null ? ' lib-grid3--dragging' : ''}`}
+                    ref={gridRef}
+                  >
+                    {visibleGames.map((g) => {
+                      const isDragged = dragGameId === g.id
+                      const isRemoving = removingGameId === g.id
+                      return (
                       <button
                         key={g.id}
+                        ref={(el) => { if (el) itemEls.current[g.id] = el }}
                         type="button"
-                        className="lib-gamecard"
-                        onClick={() => navigate(`/game/${g.id}`)}
+                        className={`lib-gamecard${isDragged ? ' lib-gamecard--dragged' : ''}`}
+                        onPointerDown={(e) => handleCoverPointerDown(e, g)}
+                        onPointerMove={handleCoverPointerMove}
+                        onPointerUp={handleCoverPointerUp}
+                        onPointerCancel={handleCoverPointerCancel}
+                        onClick={() => {
+                          if (suppressClickRef.current) {
+                            suppressClickRef.current = false
+                            return
+                          }
+                          navigate(`/game/${g.id}`)
+                        }}
                         aria-label={g.title ? `Open ${g.title}` : 'Open game'}
                       >
-                        <div className="lib-cov">
+                        <div
+                          className={`lib-cov${
+                            isRemoving
+                              ? ' lib-cov--removing'
+                              : isDragged
+                                ? ` lib-cov--lifted${trashArmed ? ' lib-cov--armed' : ''}`
+                                : ''
+                          }`}
+                        >
                           <SharedCover gameId={g.id} imageSrc={g.image || COVER_FALLBACK}>
                             <img
                               src={g.image || COVER_FALLBACK}
@@ -591,7 +862,8 @@ function Library() {
                         </div>
                         <p className="lib-gamecard-title">{g.title || '—'}</p>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
                   {hasMore && (
                     <button
@@ -621,10 +893,20 @@ function Library() {
             (tall, scrollable) page instead of the viewport and drift
             off-screen as the page scrolls. Same reasoning already
             documented in App.jsx for SessionPill. */}
+        {isGamesTab && (
+          <ReorderTrashTarget
+            visible={dragGameId != null}
+            armed={trashArmed}
+            barRef={trashBarRef}
+          />
+        )}
+
         {createPortal(
           <button
             type="button"
-            className={`lib-fab lib-fab--${isGamesTab ? 'games' : 'lists'}`}
+            className={`lib-fab lib-fab--${isGamesTab ? 'games' : 'lists'}${
+              dragGameId != null ? ' lib-fab--hidden' : ''
+            }`}
             onClick={() => setShowCreateModal(true)}
             aria-label="Create new list"
           >

@@ -383,6 +383,12 @@
   padding: 0 var(--page-padding);
 }
 
+/* Same scoped touch-action lock ListDetail applies to .game-grid--dragging
+   — only while a My Games cover is actually lifted. */
+.lib-grid3--dragging {
+  touch-action: none;
+}
+
 .lib-gamecard {
   display: block;
   background: transparent;
@@ -391,6 +397,11 @@
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.lib-gamecard--dragged {
+  z-index: 50;
+  position: relative;
 }
 
 .lib-cov {
@@ -408,13 +419,35 @@
 }
 
 @media (hover: hover) {
-  .lib-gamecard:hover .lib-cov {
+  .lib-gamecard:hover .lib-cov:not(.lib-cov--lifted):not(.lib-cov--removing) {
     transform: translateY(-2px);
   }
 }
 
-.lib-gamecard:active .lib-cov {
+.lib-gamecard:active .lib-cov:not(.lib-cov--lifted):not(.lib-cov--removing) {
   transform: scale(0.97);
+}
+
+/* Lift / armed / remove — same scale + opacity values as ListDetail's
+   .game-cover--lifted / --armed / --removing. Shadow uses --shadow-xl
+   (token) instead of ListDetail's hardcoded rgba. */
+.lib-cov--lifted {
+  transform: scale(1.06);
+  box-shadow: var(--shadow-xl);
+  opacity: 0.95;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lib-cov--lifted.lib-cov--armed {
+  transform: scale(0.92);
+  opacity: 0.6;
+}
+
+.lib-cov--removing {
+  transform: scale(0.8);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), opacity 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .lib-cov-img {
@@ -722,6 +755,17 @@
   cursor: pointer;
   box-shadow: 0 12px 28px -10px rgba(59, 130, 246, 0.9);
   -webkit-tap-highlight-color: transparent;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Slides out with the nav during drag-to-trash so the reused
+   ReorderTrashTarget (z-index 1001) is not covered by this FAB (1005).
+   Not a second nav-hide system — BottomNav still listens only to
+   LIST_REORDER_DRAG_EVENT. */
+.lib-fab--hidden {
+  transform: translateY(120%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Two stacked gradient layers, one per tab, crossfaded via opacity —
@@ -841,12 +885,22 @@
   .lib-statcell,
   .lib-statcell-num,
   .lib-cov,
+  .lib-cov--lifted,
+  .lib-cov--removing,
   .lib-loadmore,
   .lib-pin-hero,
   .lib-list-card,
   .lib-ambient-wash,
+  .lib-fab,
   .lib-fab-bg {
     transition: none;
+  }
+
+  .lib-cov--lifted,
+  .lib-cov--lifted.lib-cov--armed {
+    transform: none;
+    box-shadow: none;
+    opacity: 1;
   }
 
   /* No fade, instant swap: the incoming tab panel skips its mount
