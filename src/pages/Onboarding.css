@@ -937,3 +937,179 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* ── Platform + era slide (step 4) ──────────────────── */
+
+.ob-vp--platform {
+  justify-content: flex-start;
+  padding-top: 64px;
+}
+
+.ob-vp--platform .ob-vp__icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 40%, transparent));
+}
+
+.ob-chip-section {
+  width: 100%;
+  max-width: 340px;
+  margin-top: var(--space-24);
+  text-align: left;
+}
+
+.ob-chip-section__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-8);
+}
+
+.ob-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* Same chip pattern as MoodChips (src/components/explore/MoodChips.css) —
+   pill, --radius-chip, filled --accent when active. Multi-select (wraps
+   instead of horizontal-scrolling) rather than the single-select mood row. */
+.ob-chip {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  padding: var(--space-8) var(--space-16);
+  min-height: 36px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.ob-chip--active {
+  color: var(--color-on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ob-chip:active {
+  opacity: 0.7;
+}
+
+/* ── Rate-from-memory slide (step 5) ────────────────── */
+
+.ob-rate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 32px 0;
+  text-align: center;
+}
+
+.ob-rate__top {
+  width: 100%;
+  margin-bottom: var(--space-24);
+}
+
+.ob-rate__top .ob-vp__title {
+  margin-bottom: var(--space-8);
+}
+
+.ob-rate__progress {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.ob-rate__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ~96x130 per spec, authoritative cover ratio/radius. */
+.ob-rate__cover {
+  position: relative;
+  width: 96px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+  overflow: hidden;
+  box-shadow: 0 8px 28px color-mix(in srgb, black 35%, transparent);
+}
+
+.ob-rate__cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: linear-gradient(
+    165deg,
+    var(--ob-tile-color) 0%,
+    color-mix(in srgb, var(--ob-tile-color) 40%, var(--color-bg-primary)) 100%
+  );
+}
+
+.ob-rate__title {
+  margin: var(--space-8) 0 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ob-rate__meta {
+  margin: 0 0 var(--space-8);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+.ob-rate__actions {
+  display: flex;
+  gap: var(--space-16);
+  margin-top: var(--space-16);
+}
+
+.ob-rate__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.ob-rate__action-btn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.ob-rate__action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-chip,
+  .ob-rate__action-btn {
+    transition: none;
+  }
+}

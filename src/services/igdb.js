@@ -145,7 +145,10 @@ const responseCache = new Map()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const inflightRequests = new Map()
 
-function coverUrlFromImageId(imageId) {
+// Exported (in addition to the internal callers below) so
+// rateFromMemoryService.js can build cover URLs from raw IGDB
+// `cover.image_id` fields without duplicating IGDB's URL scheme.
+export function coverUrlFromImageId(imageId) {
   if (!imageId) return null
   return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
 }
