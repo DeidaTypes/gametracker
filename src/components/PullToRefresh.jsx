@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { hapticImpact } from '../utils/haptics'
+import { LIST_REORDER_DRAG_EVENT } from './BottomNav'
 import './PullToRefresh.css'
 
 // Shared pull-to-refresh gesture — the ONE implementation for every
@@ -16,6 +17,12 @@ import './PullToRefresh.css'
 // Anywhere else the touch is left completely alone: normal scrolling,
 // the swipe-deck's horizontal drag, and SwipeBackWrapper's edge-swipe
 // all pass through untouched.
+//
+// Also yields the moment LIST_REORDER_DRAG_EVENT goes active (ListDetail
+// reorder + Library My Games drag-to-trash). Those long-presses start at
+// scrollTop 0 and then travel downward toward the trash bar — without
+// this abort, onMove would preventDefault the touch and steal the
+// pointer from the cover that's already captured.
 //
 // `onRefresh` must return a Promise (or be a plain async function) —
 // the spinner stays pinned at the trigger threshold until it resolves,
@@ -54,6 +61,10 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       startY: 0,
       pull: 0,
       hapticFired: false,
+      // True while a long-press cover drag is using the same finger.
+      // Set from LIST_REORDER_DRAG_EVENT so this listener stays in
+      // lockstep with BottomNav's hide — one event, two consumers.
+      reorderDragActive: false,
     }
 
     const applyPull = (px) => {
@@ -74,8 +85,21 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       applyPull(px)
     }
 
+    const onReorderDrag = (e) => {
+      state.reorderDragActive = !!e.detail?.active
+      if (!state.reorderDragActive) return
+      // Long-press just armed — drop any in-flight pull so the downward
+      // drag toward the trash bar is not also read as a refresh.
+      if (state.active && !state.refreshing) {
+        state.active = false
+        state.decided = false
+        state.vertical = false
+        settleTo(0, true)
+      }
+    }
+
     const onStart = (e) => {
-      if (state.refreshing || !scrollEl || scrollEl.scrollTop > 0) return
+      if (state.reorderDragActive || state.refreshing || !scrollEl || scrollEl.scrollTop > 0) return
       const t = e.touches[0]
       if (!t) return
       state.active = true
@@ -88,7 +112,7 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
     }
 
     const onMove = (e) => {
-      if (!state.active || state.refreshing) return
+      if (state.reorderDragActive || !state.active || state.refreshing) return
       const t = e.touches[0]
       if (!t) return
       const dx = t.clientX - state.startX
@@ -166,12 +190,14 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
     wrap.addEventListener('touchmove', onMove, { passive: false })
     wrap.addEventListener('touchend', onEnd, { passive: true })
     wrap.addEventListener('touchcancel', onEnd, { passive: true })
+    window.addEventListener(LIST_REORDER_DRAG_EVENT, onReorderDrag)
 
     return () => {
       wrap.removeEventListener('touchstart', onStart)
       wrap.removeEventListener('touchmove', onMove)
       wrap.removeEventListener('touchend', onEnd)
       wrap.removeEventListener('touchcancel', onEnd)
+      window.removeEventListener(LIST_REORDER_DRAG_EVENT, onReorderDrag)
     }
   }, [])
 
