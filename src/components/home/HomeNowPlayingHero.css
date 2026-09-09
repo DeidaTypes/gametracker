@@ -2,12 +2,12 @@
    HOME NOW PLAYING HERO
    Sits directly under Home's compact header. Reuses the shared
    ReviewCardShell box + the Sprint 5 "cover header" dominant-color tint
-   pattern (see ReviewCard.css) so it reads as the same design language
-   as the rest of Home, just applied to the active game instead of a
-   review. Namespace: nph-*
+   pattern so it reads as the same design language as the rest of Home.
+   Namespace: nph-*
    ============================================= */
 
 .nph {
+  --nph-cover-size: 96px;
   padding: 0;
   overflow: hidden;
   gap: 0;
@@ -18,12 +18,12 @@
 .nph__cover-header {
   --dominant-rgb: 40 50 80;
   display: grid;
-  grid-template-columns: var(--cover-thumb-size) 1fr;
-  gap: 14px;
+  grid-template-columns: var(--nph-cover-size) 1fr;
+  gap: var(--space-16);
   align-items: center;
   width: 100%;
-  min-height: var(--cover-header-height);
-  padding: var(--cover-header-padding);
+  min-height: var(--nph-cover-size);
+  padding: var(--space-12);
   border: none;
   cursor: pointer;
   text-align: left;
@@ -38,8 +38,8 @@
 }
 
 .nph__cover-thumb {
-  width: var(--cover-thumb-size);
-  height: var(--cover-thumb-size);
+  width: var(--nph-cover-size);
+  height: var(--nph-cover-size);
   border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
@@ -51,7 +51,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4);
 }
 
 .nph__eyebrow {
@@ -78,9 +78,8 @@
 .nph__stats {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-  min-height: 18px;
+  gap: var(--space-4);
+  min-height: var(--space-16);
 }
 
 .nph__stats-text {
@@ -90,10 +89,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.nph__dot {
-  color: var(--color-text-tertiary);
 }
 
 .nph__stats-skeleton {
@@ -106,8 +101,8 @@
 
 .nph__actions {
   display: flex;
-  gap: 8px;
-  padding: 12px var(--cover-header-padding) var(--cover-header-padding);
+  gap: var(--space-8);
+  padding: 0 var(--space-12) var(--space-12);
 }
 
 .nph__btn {
@@ -115,7 +110,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-4);
   height: 40px;
   border-radius: var(--radius-md);
   border: none;
@@ -133,8 +128,8 @@
 }
 
 .nph__btn--primary {
-  /* Home's blue→green gradient identity — same recipe as the
-     onboarding picker's primary CTA (see --grad-cta in theme.css). */
+  /* Cobalt → green primary fill. --grad-primary is not a token;
+     --grad-cta is the named cobalt-to-green CTA gradient. */
   background: var(--grad-cta);
   color: var(--color-on-accent);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
@@ -171,16 +166,14 @@
 
 /* =============================================
    BACKLOG NUDGE — fallback #2 (no active Playing game)
-   Slim single-row CTA, styled like the existing new-user topper so the
-   hero slot never feels like an empty gap.
    ============================================= */
 
 .nph-backlog {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-12);
   width: 100%;
-  padding: 12px var(--spacing-md);
+  padding: var(--space-12) var(--space-16);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -224,12 +217,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4);
 }
 
 .nph-backlog__title {
   font-family: var(--font-body);
-  font-size: var(--font-size-body-sm, 14px);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }

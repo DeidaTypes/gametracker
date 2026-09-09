@@ -1,0 +1,267 @@
+/* ============================================================
+   LogSheet — the one log-a-session modal, app-wide.
+   Centered (CenteredModal), stepper + notes. Namespace: ls-*
+   ============================================================ */
+
+.ls-modal {
+  overflow: hidden;
+}
+
+/* ── Header ── */
+
+.ls-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-16) var(--space-16) var(--space-20);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-journal) 22%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 65%,
+    transparent 100%
+  );
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ls-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  color: var(--color-on-accent);
+  background: var(--grad-purple-blue);
+}
+
+.ls-title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.ls-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ls-close:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+/* ── Game context row ── */
+
+.ls-game-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-20);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ls-game-cover {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface-2);
+}
+
+.ls-game-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Body ── */
+
+.ls-body {
+  padding: var(--space-16) var(--space-20) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.ls-field-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.ls-body .ls-field-label:not(:first-child) {
+  margin-top: var(--space-12);
+}
+
+/* ── Hours stepper ── */
+
+.ls-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-8) var(--space-12);
+}
+
+.ls-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.ls-stepper-btn:hover {
+  background: color-mix(in srgb, var(--color-text-primary) 11%, transparent);
+}
+
+.ls-stepper-btn:active {
+  transform: scale(0.94);
+}
+
+.ls-hours-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  text-align: center;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  /* 16px+ prevents iOS Safari auto-zoom on focus */
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-bold);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ls-hours-input::-webkit-outer-spin-button,
+.ls-hours-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ── Notes ── */
+
+.ls-textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-12);
+  box-sizing: border-box;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ls-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ls-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* ── Footer ── */
+
+.ls-footer {
+  display: flex;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-20) var(--space-20);
+}
+
+.ls-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.ls-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.ls-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.ls-btn--cancel {
+  background: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.ls-btn--cancel:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text-primary) 11%, transparent);
+  color: var(--text-primary);
+}
+
+.ls-btn--save {
+  background: var(--grad-purple-blue);
+  color: var(--color-on-accent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent-journal) 35%, transparent);
+}
+
+.ls-btn--save:not(:disabled):hover {
+  opacity: 0.92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-close,
+  .ls-stepper-btn,
+  .ls-textarea,
+  .ls-btn {
+    transition: none;
+  }
+  .ls-stepper-btn:active,
+  .ls-btn:not(:disabled):active {
+    transform: none;
+  }
+}

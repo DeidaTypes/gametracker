@@ -11,11 +11,13 @@ import {
 } from 'react-icons/lu'
 import CreateListModal from './CreateListModal'
 import GamePickerSheet from './GamePickerSheet'
-import HomeLogSessionModal from './home/HomeLogSessionModal'
+import LogSheet from './home/LogSheet'
 import Pressable from './Pressable'
 import { createList, addGameToList } from '../services/listService'
+import { logSession } from '../services/sessionService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
+import { hapticImpact } from '../utils/haptics'
 import './HomeFAB.css'
 
 // ── Radial item positions (from FAB center) ────────────────────────────────
@@ -90,8 +92,8 @@ function makeItemVariants(reduced) {
 
 function HomeFAB() {
   const [isOpen, setIsOpen] = useState(false)
-  const [logSessionOpen, setLogSessionOpen] = useState(false)
-  const [logSessionGame, setLogSessionGame] = useState(null)
+  const [logSheetOpen, setLogSheetOpen] = useState(false)
+  const [logSheetGame, setLogSheetGame] = useState(null)
   const [logGamePickerOpen, setLogGamePickerOpen] = useState(false)
   const [createListOpen, setCreateListOpen] = useState(false)
   const [gamePickerOpen, setGamePickerOpen] = useState(false)
@@ -132,14 +134,37 @@ function HomeFAB() {
   // to a specific, visible game.
   const handleLog = () => {
     closeRadial(false)
-    setLogSessionGame(null)
+    setLogSheetGame(null)
     setLogGamePickerOpen(true)
   }
 
   const handleLogGamePicked = (picked) => {
     setLogGamePickerOpen(false)
-    setLogSessionGame(picked)
-    setLogSessionOpen(true)
+    setLogSheetGame(picked)
+    setLogSheetOpen(true)
+  }
+
+  // ── LogSheet write — same fire-and-forget / toast-with-retry shape
+  // as Home's submitLoggedSession. ─────────────────────────────────────────
+  function submitLoggedSession({ game, hours, notes, mood }) {
+    logSession({
+      gameId: game.id,
+      hours,
+      notes,
+      mood,
+      gameTitle: game.title,
+      gameImage: game.image,
+    }).then((result) => {
+      if (result) {
+        hapticImpact('Medium')
+        showToast(`Logged ${hours}h of ${game.title}`, 'success')
+      } else {
+        showToast('Could not log session — try again', 'error', 5000, {
+          label: 'Retry',
+          onClick: () => submitLoggedSession({ game, hours, notes, mood }),
+        })
+      }
+    })
   }
 
   const handleReview = () => {
@@ -249,14 +274,15 @@ function HomeFAB() {
 
       {/* ── Sheets & Modals (outside radial root so z-index is independent) ── */}
 
-      <HomeLogSessionModal
-        isOpen={logSessionOpen}
+      <LogSheet
+        isOpen={logSheetOpen}
         onClose={() => {
-          setLogSessionOpen(false)
-          setLogSessionGame(null)
+          setLogSheetOpen(false)
+          setLogSheetGame(null)
           setTimeout(() => fabRef.current?.focus(), 60)
         }}
-        game={logSessionGame}
+        game={logSheetGame}
+        onLogIt={submitLoggedSession}
       />
 
       <GamePickerSheet

@@ -33,12 +33,11 @@ import {
 } from '../services/libraryService'
 import { getCachedUserReviews } from '../services/reviewService'
 import { hapticImpact } from '../utils/haptics'
-import { logManualSession } from '../services/sessionService'
+import { logSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
 import { showToast } from './Toast'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useNavDim } from '../hooks/useNavDim'
-import KeyboardAwareView from './KeyboardAwareView'
+import LogSheet from './home/LogSheet'
 import { STATUS_META } from './StatusChip'
 import './TrackerGameList.css'
 
@@ -72,8 +71,6 @@ const MOVE_TARGETS = [
   { id: 'want', label: STATUS_META.want.label },
   { id: 'dropped', label: 'Drop' },
 ]
-
-const QUICK_LOG_OPTIONS = [15, 30, 60, 120]
 
 // Client-side pagination — trackers can grow into the hundreds of
 // games, and this list previously rendered every row (with its own
@@ -111,174 +108,6 @@ function fmtHours(h) {
 function fmtRating(r) {
   if (r == null) return null
   return Number(r).toFixed(1)
-}
-
-// ─── LogSessionSheet ──────────────────────────────────────────────────────────
-// A bespoke bottom sheet with quick-log presets + optional custom input.
-
-function LogSessionSheet({ game, isOpen, onClose, onLogged }) {
-  const { reduced } = useMotionPreference()
-  const [customMin, setCustomMin] = useState('')
-  const [showCustom, setShowCustom] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const inputRef = useRef(null)
-
-  // Drop the bottom nav below this sheet while it's open (see BottomNav.css).
-  useNavDim(isOpen)
-
-  useEffect(() => {
-    if (!isOpen) {
-      setCustomMin('')
-      setShowCustom(false)
-      setSaving(false)
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    if (showCustom && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 80)
-    }
-  }, [showCustom])
-
-  const handleQuickLog = async (minutes) => {
-    if (!game || saving) return
-    setSaving(true)
-    const today = new Date().toISOString().slice(0, 10)
-    const result = await logManualSession(game.id, minutes, today, {
-      gameTitle: game.title,
-      gameImage: game.image,
-    })
-    setSaving(false)
-    onClose()
-    if (result) {
-      onLogged(game.id, result)
-      const hrs = fmtHours(result.addedHours)
-      showToast(`Logged ${hrs || `${minutes}m`} for "${game.title}"`, 'success')
-    } else {
-      showToast('Could not log session — are you signed in?', 'error')
-    }
-  }
-
-  const handleCustomSubmit = () => {
-    const mins = Math.round(Number(customMin))
-    if (!mins || mins <= 0) {
-      showToast('Enter a valid number of minutes', 'error')
-      return
-    }
-    handleQuickLog(mins)
-  }
-
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="tgl-sheet-overlay"
-          onClick={onClose}
-          aria-modal="true"
-          role="dialog"
-          aria-label={`Log session for ${game?.title || 'game'}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={backdropTransition}
-        >
-          <KeyboardAwareView mode="sheet" className="tgl-sheet-anchor">
-          <motion.div
-            className="tgl-sheet"
-            onClick={(e) => e.stopPropagation()}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
-          >
-            <div className="tgl-sheet-handle" aria-hidden="true" />
-            <div className="tgl-sheet-header">
-              <p className="tgl-sheet-title">Log session</p>
-              {game && (
-                <p className="tgl-sheet-game">{game.title}</p>
-              )}
-            </div>
-
-            {!showCustom ? (
-              <div className="tgl-sheet-presets">
-                {QUICK_LOG_OPTIONS.map((mins) => (
-                  <button
-                    key={mins}
-                    type="button"
-                    className="tgl-sheet-preset"
-                    onClick={() => handleQuickLog(mins)}
-                    disabled={saving}
-                  >
-                    {mins < 60 ? `${mins} min` : `${mins / 60} hr`}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="tgl-sheet-preset tgl-sheet-preset--custom"
-                  onClick={() => setShowCustom(true)}
-                  disabled={saving}
-                >
-                  Custom…
-                </button>
-              </div>
-            ) : (
-              <div className="tgl-sheet-custom">
-                <div className="tgl-sheet-custom-input-row">
-                  <input
-                    ref={inputRef}
-                    type="number"
-                    inputMode="numeric"
-                    className="tgl-sheet-custom-input"
-                    placeholder="Minutes"
-                    value={customMin}
-                    onChange={(e) => setCustomMin(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
-                    min="1"
-                    max="9999"
-                    aria-label="Custom minutes"
-                  />
-                  <span className="tgl-sheet-custom-unit">min</span>
-                </div>
-                <div className="tgl-sheet-custom-actions">
-                  <button
-                    type="button"
-                    className="tgl-sheet-cancel-btn"
-                    onClick={() => setShowCustom(false)}
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    className="tgl-sheet-confirm-btn"
-                    onClick={handleCustomSubmit}
-                    disabled={saving || !customMin}
-                  >
-                    {saving ? 'Saving…' : 'Log it'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="tgl-sheet-divider" />
-            <button
-              type="button"
-              className="tgl-sheet-cancel-full"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-          </motion.div>
-          </KeyboardAwareView>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
-  )
 }
 
 // ─── BulkActionBar ────────────────────────────────────────────────────────────
@@ -781,6 +610,28 @@ function TrackerGameList({ listId, games }) {
     })
   }, [])
 
+  function submitLoggedSession({ game, hours, notes, mood }) {
+    logSession({
+      gameId: game.id,
+      hours,
+      notes,
+      mood,
+      gameTitle: game.title,
+      gameImage: game.image,
+    }).then((result) => {
+      if (result) {
+        hapticImpact('Medium')
+        handleLogged(game.id, result)
+        showToast(`Logged ${hours}h of ${game.title}`, 'success')
+      } else {
+        showToast('Could not log session — try again', 'error', 5000, {
+          label: 'Retry',
+          onClick: () => submitLoggedSession({ game, hours, notes, mood }),
+        })
+      }
+    })
+  }
+
   // ── Derived labels ──────────────────────────────────────────────────────────
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label || 'Sort'
@@ -912,15 +763,14 @@ function TrackerGameList({ listId, games }) {
         )}
       </AnimatePresence>
 
-      {/* Log session sheet */}
-      <LogSessionSheet
+      <LogSheet
         game={logTarget}
         isOpen={logSheetOpen}
         onClose={() => {
           setLogSheetOpen(false)
           setLogTarget(null)
         }}
-        onLogged={handleLogged}
+        onLogIt={submitLoggedSession}
       />
 
       {/* Sort action sheet */}

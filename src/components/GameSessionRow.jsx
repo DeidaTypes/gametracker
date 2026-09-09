@@ -36,8 +36,8 @@ function formatHoursLabel(hours) {
  *   latestSession   { minutes: number, playedOn: string, hours: number } | null
  *   sessionCount    number
  *   onOpenHistory   () => void   opens GameSessionHistorySheet
- *   onLogSession    () => void   opens LogSessionModal (add mode) — used
- *                                only for the zero-sessions affordance
+ *   onLogSession    () => void   opens LogSheet — used only for the
+ *                                zero-sessions affordance
  */
 function GameSessionRow({ latestSession, sessionCount = 0, onOpenHistory, onLogSession }) {
   if (sessionCount === 0 || !latestSession) {

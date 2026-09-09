@@ -46,8 +46,8 @@ function formatHoursLabel(hours) {
  *   gameTitle       string
  *   totalHours      number    game_trackers.hours_played for this game
  *   sessions        Array<{ id, playedOn, minutes, hours }>  newest first
- *   onAddSession    () => void          opens LogSessionModal (add mode)
- *   onEditSession   (session) => void   opens LogSessionModal (edit mode)
+ *   onAddSession    () => void          opens LogSheet
+ *   onEditSession   (session) => void   opens LogSessionModal (edit-only)
  *   onDeleteSession (sessionId, minutes) => Promise<void>
  */
 function GameSessionHistorySheet({

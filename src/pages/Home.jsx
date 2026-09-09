@@ -7,11 +7,14 @@ import HomeFAB from '../components/HomeFAB'
 import PullToRefresh from '../components/PullToRefresh'
 import HomeWeekRow from '../components/home/HomeWeekRow'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
-import HomeLogSessionModal from '../components/home/HomeLogSessionModal'
+import LogSheet from '../components/home/LogSheet'
 import HomePulseFeed from '../components/home/HomePulseFeed'
 import TrackerSearchModal from '../components/TrackerSearchModal'
-import { getContinuePlayingGames, getGamesFromList } from '../services/libraryService'
+import { getContinuePlayingGames, getGamesFromList, setGameStatus } from '../services/libraryService'
 import { getFollowingCount } from '../services/followService'
+import { logSession } from '../services/sessionService'
+import { showToast } from '../components/Toast'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -59,16 +62,10 @@ function HomeSkeleton() {
  * Section spine, top to bottom:
  *   a. Header — compact single row: wordmark left, search icon (opens
  *      search-to-log overlay) + notification bell right. No greeting.
- *   b. Now Playing hero — the active Playing game: cover, title, real
- *      logged hours (game_trackers.hours_played, the single source of
- *      truth — see sessionService.js), last-played relative time, and
- *      "Log a session" / "Finish" actions. Falls back to a backlog nudge
- *      when there's no active game, and hides entirely when the backlog
- *      is empty too — never an empty shell. No progress bar: per-game
- *      percent-complete (game_trackers.progress_override) is plumbed
- *      end-to-end but no UI in this app ever writes it, so it's always
- *      null in practice — showing a bar here would mean fabricating a
- *      number. See HomeNowPlayingHero.jsx for the full accounting.
+ *   b. Now Playing hero — the active Playing game: cover, title,
+ *      "Just started" or relative last-played time, and Log a session /
+ *      Finish. Falls back to a backlog nudge when there's no active
+ *      game, and hides entirely when the backlog is empty too.
  *   c. Weekly rhythm row — "This week" card (real sessions-this-week +
  *      total hours from play_sessions, tap to open the week-detail sheet;
  *      "Calendar ›" keeps the entry point into the full /activity screen)
@@ -109,13 +106,46 @@ function Home() {
     setAddOpen(true)
   }, [])
 
-  // ── "Log a session" (A2) launched from the Now Playing hero ──────────────
-  const [logSessionOpen, setLogSessionOpen] = useState(false)
-  const [logSessionGame, setLogSessionGame] = useState(null)
+  // ── LogSheet — the one log-a-session modal, launched from the hero ────
+  const [logSheetOpen, setLogSheetOpen] = useState(false)
+  const [logSheetGame, setLogSheetGame] = useState(null)
 
-  const openLogSession = useCallback((game) => {
-    setLogSessionGame(game)
-    setLogSessionOpen(true)
+  const openLogSheet = useCallback((game) => {
+    setLogSheetGame(game)
+    setLogSheetOpen(true)
+  }, [])
+
+  // Fire-and-forget write with toast-with-retry. Declared as a stable
+  // function (not useCallback) so the retry closure can call it by name.
+  function submitLoggedSession({ game, hours, notes, mood }) {
+    logSession({
+      gameId: game.id,
+      hours,
+      notes,
+      mood,
+      gameTitle: game.title,
+      gameImage: game.image,
+    }).then((result) => {
+      if (result) {
+        hapticImpact('Medium')
+        showToast(`Logged ${hours}h of ${game.title}`, 'success')
+      } else {
+        showToast('Could not log session — try again', 'error', 5000, {
+          label: 'Retry',
+          onClick: () => submitLoggedSession({ game, hours, notes, mood }),
+        })
+      }
+    })
+  }
+
+  const handleFinishedIt = useCallback((game) => {
+    const ok = setGameStatus(game.id, 'played', game)
+    if (ok) {
+      hapticSuccess()
+      showToast(`Marked "${game.title}" as Played`, 'success')
+    } else {
+      showToast('Could not update — try again', 'error')
+    }
   }, [])
 
   const { unreadCount: notifUnread } = useNotifications()
@@ -140,7 +170,6 @@ function Home() {
         getGamesFromList('played').length +
         getGamesFromList('dropped').length
       )
-      // Most-recently-added backlog game — the hero's fallback #2.
       const backlog = getGamesFromList('want-to-play')
       setBacklogGame(
         backlog.length
@@ -209,12 +238,9 @@ function Home() {
   // Hidden only for the true new-user empty state (same gate as the
   // first-game topper).
   const showWeekRow = pageReady && !isNewUser
-  // Gated on real content so the section wrapper itself never renders as
-  // an empty shell — HomeNowPlayingHero also self-guards defensively, but
-  // the decision of whether to render *anything* (including the wrapper)
-  // lives here. Also gated behind !isNewUser so a brand-new user sees
-  // only the single "Log your first game" topper, not a redundant
-  // backlog nudge alongside it.
+  // Gated on real content so the section wrapper never renders empty.
+  // Also gated behind !isNewUser so a brand-new user sees only the
+  // "Log your first game" topper, not a redundant backlog nudge.
   const showNowPlayingHero = pageReady && !isNewUser && (!!continuePlaying[0] || !!backlogGame)
 
   if (!pageReady) {
@@ -281,17 +307,17 @@ function Home() {
           )}
 
           {/* ── b. Now Playing hero ───────────────────────────────────────
-              Active Playing game: cover, title, real logged hours, last-
-              played relative time, "Log a session" / "Finish". Falls back
-              to a backlog nudge, then hides entirely — never an empty
-              shell. See HomeNowPlayingHero.jsx for the full rundown.
+              Active Playing game: cover, title, Just started / last-played,
+              Log a session / Finish. Falls back to a backlog nudge, then
+              hides — never an empty shell.
           ──────────────────────────────────────────────────────────────── */}
           {showNowPlayingHero && (
             <section className="home-section home-section-padded">
               <HomeNowPlayingHero
                 activeGame={continuePlaying[0] || null}
                 backlogGame={backlogGame}
-                onLogSession={openLogSession}
+                onLogSession={openLogSheet}
+                onFinish={handleFinishedIt}
               />
             </section>
           )}
@@ -329,10 +355,11 @@ function Home() {
         status={addStatus}
       />
 
-      <HomeLogSessionModal
-        isOpen={logSessionOpen}
-        onClose={() => setLogSessionOpen(false)}
-        game={logSessionGame}
+      <LogSheet
+        isOpen={logSheetOpen}
+        onClose={() => setLogSheetOpen(false)}
+        game={logSheetGame}
+        onLogIt={submitLoggedSession}
       />
     </AppShell>
   )

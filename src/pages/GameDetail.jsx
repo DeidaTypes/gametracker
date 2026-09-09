@@ -24,8 +24,9 @@ import { shouldShowCount } from '../utils/formatSocialCount'
 import { hapticImpact } from '../utils/haptics'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import LogSessionModal from '../components/LogSessionModal'
+import LogSheet from '../components/home/LogSheet'
 import {
-  logManualSession,
+  logSession,
   getManualSessionsForGame,
   updateManualSession,
   deleteManualSession,
@@ -37,6 +38,7 @@ import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
 import Avatar from '../components/Avatar'
+import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 
@@ -367,12 +369,15 @@ function GameDetail() {
   }, [targetReviewId, loading, reviews])
 
   // ── Log session state ─────────────────────────────────────────────────────
+  // LogSessionModal is edit-only now (see its header comment) — logging a
+  // NEW session goes through LogSheet (logSheetOpen below) instead.
   const [logSessionOpen, setLogSessionOpen] = useState(false)
   const [logSaving, setLogSaving] = useState(false)
   const [sessions, setSessions] = useState([])
-  // Editing target for LogSessionModal: null = "add" mode, a session
-  // object = "edit" mode (prefills the form, routes save → update).
+  // Editing target for LogSessionModal — always set when the modal is
+  // open (history sheet's pencil action is its only remaining caller).
   const [editingSession, setEditingSession] = useState(null)
+  const [logSheetOpen, setLogSheetOpen] = useState(false)
   // This game's rolled-up total hours (game_trackers.hours_played) — the
   // history sub-screen's hero. Never derived client-side from `sessions`.
   const [gameHoursPlayed, setGameHoursPlayed] = useState(0)
@@ -438,52 +443,65 @@ function GameDetail() {
     refreshSessions,
   ])
 
-  // Single save handler for both LogSessionModal modes: routes to an
-  // update when `editingSession` is set (opened via the history sheet's
-  // edit action), otherwise inserts a new session as before.
+  // LogSessionModal's only remaining job: editing an already-logged
+  // session's date/duration (history sheet's pencil action). Logging a
+  // brand-new session has no date field/edit mode in LogSheet, so it
+  // stays here rather than being folded in.
   const handleSaveSession = useCallback(async ({ totalMinutes, playedOn }) => {
+    if (!editingSession) return
     setLogSaving(true)
     try {
-      if (editingSession) {
-        const result = await updateManualSession(editingSession.id, gameId, {
-          minutes: totalMinutes,
-          playedOn,
-        })
-        if (result) {
-          hapticImpact('Medium')
-          await refreshSessions()
-          setLogSessionOpen(false)
-          setEditingSession(null)
-        } else {
-          console.error('[gameDetail] failed to update session')
-        }
+      const result = await updateManualSession(editingSession.id, gameId, {
+        minutes: totalMinutes,
+        playedOn,
+      })
+      if (result) {
+        hapticImpact('Medium')
+        await refreshSessions()
+        setLogSessionOpen(false)
+        setEditingSession(null)
       } else {
-        const result = await logManualSession(gameId, totalMinutes, playedOn, {
-          gameTitle: game?.title,
-          gameImage: game?.image,
-        })
-        if (result) {
-          hapticImpact('Medium')
-          await refreshSessions()
-          setLogSessionOpen(false)
-        } else {
-          console.error('[gameDetail] failed to log session')
-        }
+        console.error('[gameDetail] failed to update session')
       }
     } finally {
       setLogSaving(false)
     }
-  }, [gameId, game, editingSession, refreshSessions])
-
-  const openLogSessionForAdd = useCallback(() => {
-    setEditingSession(null)
-    setLogSessionOpen(true)
-  }, [])
+  }, [gameId, editingSession, refreshSessions])
 
   const openLogSessionForEdit = useCallback((session) => {
     setEditingSession(session)
     setLogSessionOpen(true)
   }, [])
+
+  // ── LogSheet — logging a NEW session (replaces LogSessionModal's old
+  // "add" mode). Reused everywhere: status sheet's Log Play, the
+  // zero-state affordance, and the history sheet's + button all open
+  // this same sheet, always pre-attached to this page's `game`. ────────────
+  const openLogSheet = useCallback(() => {
+    setLogSheetOpen(true)
+  }, [])
+
+  const handleLogSheetSubmit = useCallback(({ game: targetGame, hours, notes, mood }) => {
+    logSession({
+      gameId: targetGame.id,
+      hours,
+      notes,
+      mood,
+      gameTitle: targetGame.title,
+      gameImage: targetGame.image,
+    }).then((result) => {
+      if (result) {
+        hapticImpact('Medium')
+        refreshSessions()
+        showToast(`Logged ${hours}h of ${targetGame.title}`, 'success')
+      } else {
+        showToast('Could not log session — try again', 'error', 5000, {
+          label: 'Retry',
+          onClick: () => handleLogSheetSubmit({ game: targetGame, hours, notes, mood }),
+        })
+      }
+    })
+  }, [refreshSessions])
 
   const handleDeleteSession = useCallback(async (sessionId, mins) => {
     const result = await deleteManualSession(sessionId, gameId, mins)
@@ -771,7 +789,7 @@ function GameDetail() {
           variant="hidden"
           forceOpen={statusSheetOpen}
           onForceClose={() => setStatusSheetOpen(false)}
-          onLogPlay={openLogSessionForAdd}
+          onLogPlay={openLogSheet}
         />
       </div>
 
@@ -784,7 +802,7 @@ function GameDetail() {
         latestSession={sessions[0] || null}
         sessionCount={sessions.length}
         onOpenHistory={() => setSessionHistoryOpen(true)}
-        onLogSession={openLogSessionForAdd}
+        onLogSession={openLogSheet}
       />
 
       {/* ── Rating card — numeric average + whole-star histogram, built
@@ -1219,9 +1237,19 @@ function GameDetail() {
 
       </div>
 
-      {/* ── Log Session Modal — shared by "add" (status sheet's Log Play,
-           zero-state affordance, history sheet's + button) and "edit"
-           (history sheet's pencil action, via editingSession) ── */}
+      {/* ── LogSheet — the one log-a-NEW-session surface. Opened by the
+           status sheet's Log Play, the zero-state affordance, and the
+           history sheet's + button, always pre-attached to this game. ── */}
+      <LogSheet
+        isOpen={logSheetOpen}
+        onClose={() => setLogSheetOpen(false)}
+        game={game}
+        onLogIt={handleLogSheetSubmit}
+      />
+
+      {/* ── Log Session Modal — edit-only now (history sheet's pencil
+           action via editingSession). Logging a NEW session uses LogSheet
+           above instead. ── */}
       <LogSessionModal
         isOpen={logSessionOpen}
         onClose={() => { setLogSessionOpen(false); setEditingSession(null) }}
@@ -1239,7 +1267,7 @@ function GameDetail() {
         gameTitle={game.title}
         totalHours={gameHoursPlayed}
         sessions={sessions}
-        onAddSession={openLogSessionForAdd}
+        onAddSession={openLogSheet}
         onEditSession={openLogSessionForEdit}
         onDeleteSession={handleDeleteSession}
       />

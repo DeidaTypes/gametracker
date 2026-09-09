@@ -67,21 +67,33 @@ async function applySessionSideEffects({
   igdbGameId,
   hours,
   notes,
+  mood = null,
   gameTitle,
   gameImage,
   playedOn,
 }) {
+  // A session only feeds Pulse when the user actually wrote something —
+  // an untagged, noteless "logged 2h" is diary-only. Both Pulse-facing
+  // emits below (the diary write's own 'journaled' event, and this
+  // function's 'played' event) are gated on the same condition so a
+  // noteless session never appears in the follow-graph feed via either
+  // path.
+  const hasNote = !!(notes && notes.trim())
+
   // 1. Diary — ALWAYS create an entry, even with blank notes. A session
-  //    with no note still records playtime + timestamp + game.
+  //    with no note still records playtime + timestamp + game. mood is
+  //    optional and independent of the note.
   let journalEntry = null
   try {
     journalEntry = await saveJournalEntry({
       igdbGameId,
       title: null,
-      body: notes && notes.trim() ? notes.trim() : '',
+      body: hasNote ? notes.trim() : '',
+      mood,
       gameTitle,
       gameImage,
       hoursPlayed: hours,
+      skipPulseEvent: !hasNote,
     })
   } catch (err) {
     console.error('[session] journal entry write failed:', err)
@@ -94,8 +106,8 @@ async function applySessionSideEffects({
   }
 
   // 3. Pulse — one 'played' activity_event per logged session so it can
-  //    appear in the follow-graph feed.
-  if (hours > 0) {
+  //    appear in the follow-graph feed. Note-gated (see hasNote above).
+  if (hours > 0 && hasNote) {
     logActivityEvent({
       type: ACTIVITY_EVENT_TYPES.PLAYED,
       entityId: String(igdbGameId),
@@ -146,6 +158,7 @@ async function readHoursAfterRollup(igdbGameId, addedHours) {
  *   gameId: number|string,
  *   hours: number,
  *   notes?: string|null,
+ *   mood?: string|null,  one of journalService.MOOD_OPTIONS values
  *   gameTitle?: string|null,
  *   gameImage?: string|null,
  *   playedOn?: string,   'YYYY-MM-DD', defaults to today
@@ -162,6 +175,7 @@ export async function logSession({
   gameId,
   hours,
   notes = null,
+  mood = null,
   gameTitle = null,
   gameImage = null,
   playedOn = null,
@@ -206,6 +220,7 @@ export async function logSession({
       igdbGameId: gameId,
       hours: h,
       notes,
+      mood,
       gameTitle,
       gameImage,
       playedOn: dateStr,

@@ -58,6 +58,15 @@ export async function saveJournalEntry({
   gameImage = null,
   mood = null,
   hoursPlayed = null,
+  // Session logging (sessionService.applySessionSideEffects) writes a
+  // journal_entries row for EVERY session, even a blank-body one, purely
+  // so the diary is complete. Pulse should not hear about those — only a
+  // session logged WITH a note is Pulse-worthy. Set true to suppress the
+  // 'journaled' activity_events emit below without affecting the diary
+  // write itself. Defaults to false so every other caller (JournalNew,
+  // JournalEntryModal) keeps today's behaviour: a deliberately-composed
+  // entry always surfaces on Pulse, even with an empty body.
+  skipPulseEvent = false,
 } = {}) {
   const {
     data: { user },
@@ -95,16 +104,20 @@ export async function saveJournalEntry({
   // Pulse — one 'journaled' event per entry (not de-duped per day like the
   // legacy `activities` row above — Pulse should reflect every entry the
   // user writes, same as every other emit-events-for-every-action type).
-  logActivityEvent({
-    type: ACTIVITY_EVENT_TYPES.JOURNALED,
-    entityId: igdbGameId,
-    metadata: {
-      entry_id: data.id,
-      game_title: gameTitle || null,
-      game_image: gameImage || null,
-      mood: mood || null,
-    },
-  })
+  // Skipped for the blank-body diary rows a session write creates on its
+  // own (see skipPulseEvent above) so a noteless session stays off Pulse.
+  if (!skipPulseEvent) {
+    logActivityEvent({
+      type: ACTIVITY_EVENT_TYPES.JOURNALED,
+      entityId: igdbGameId,
+      metadata: {
+        entry_id: data.id,
+        game_title: gameTitle || null,
+        game_image: gameImage || null,
+        mood: mood || null,
+      },
+    })
+  }
 
   try {
     window.dispatchEvent(new Event('journalEntryAdded'))

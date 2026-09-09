@@ -11,19 +11,26 @@ function todayLocalDate() {
 }
 
 /**
- * LogSessionModal — centered modal for logging a manual play session.
- * Doubles as the edit form for an existing session when `editingSession`
- * is passed: the duration/date fields pre-fill from it and the header
- * switches to "Edit Session" copy. `onSave` keeps the same payload shape
- * either way — the caller decides whether that means an insert or an
- * update based on whether it opened the modal with an `editingSession`.
+ * LogSessionModal — centered modal for EDITING an already-logged play
+ * session's date/duration.
+ *
+ * Its only remaining caller is GameSessionHistorySheet's pencil action
+ * (via GameDetail's `editingSession`, always non-null when this modal is
+ * open). Logging a brand-new session goes through LogSheet instead
+ * (src/components/home/LogSheet.jsx) — that surface has no date field
+ * and no edit mode, so this modal stays alive specifically for the
+ * "change a past session's date/duration" case LogSheet doesn't cover.
+ * `isEditing` below is therefore always true in practice; the ternaries
+ * are left in place rather than stripped since they're harmless and this
+ * component's `onSave` payload shape (`{ totalMinutes, playedOn }`) is
+ * unchanged from before.
  *
  * Props:
  *   isOpen           boolean
  *   onClose          () => void
  *   onSave           ({ totalMinutes: number, playedOn: string }) => void
  *   isSaving         boolean
- *   editingSession   { minutes: number, playedOn: string } | null
+ *   editingSession   { minutes: number, playedOn: string }
  */
 function LogSessionModal({ isOpen, onClose, onSave, isSaving = false, editingSession = null }) {
   const [hours, setHours] = useState(0)

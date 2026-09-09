@@ -6,17 +6,8 @@ import { Gamepad2, ChevronRight } from 'lucide-react'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import { getDominantColor } from '../../services/colorExtract'
 import { getTracker } from '../../services/hoursService'
-import { setGameStatus } from '../../services/libraryService'
-import { showToast } from '../Toast'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import './HomeNowPlayingHero.css'
-
-function formatHoursLabel(hours) {
-  if (hours == null || hours <= 0) return null
-  const rounded = Math.round(hours * 10) / 10
-  const value = rounded % 1 === 0 ? rounded : rounded.toFixed(1)
-  return `${value} ${rounded === 1 ? 'hour' : 'hours'} logged`
-}
 
 function humanTimeAgo(dateStr) {
   if (!dateStr) return null
@@ -25,6 +16,12 @@ function humanTimeAgo(dateStr) {
   } catch {
     return null
   }
+}
+
+function statusLine(hoursPlayed, lastPlayedAt) {
+  if (hoursPlayed == null) return null
+  if (hoursPlayed <= 0) return 'Just started'
+  return humanTimeAgo(lastPlayedAt) || 'Just started'
 }
 
 // ── Backlog nudge — fallback #2, shown when there's no active Playing game ──
@@ -59,30 +56,25 @@ function BacklogNudge({ game, onOpen }) {
  * Home's compact header.
  *
  * Fallback rotation (never an empty shell):
- *   1. `activeGame` (the user's current Playing game) — full hero: cover,
- *      title, real logged hours (fetched from game_trackers via
- *      getTracker — the single source of truth per sessionService.js),
- *      last-played relative time, and two actions.
- *   2. `backlogGame` — a slim nudge row when there's no active game but
- *      the backlog isn't empty.
- *   3. Neither — renders null. The parent is responsible for not
- *      rendering this component's section wrapper at all in that case,
- *      but this also self-guards.
+ *   1. `activeGame` — cover, title, "Just started" or relative last-
+ *      played time, and Log a session / Finish.
+ *   2. `backlogGame` — slim nudge when there's no active game but the
+ *      backlog isn't empty.
+ *   3. Neither — renders null. The parent hides the section wrapper.
  *
- * No progress bar: `progress_override` (game_trackers) is plumbed
- * end-to-end (see hoursService.setProgressOverride) but no UI in this
- * app ever calls it, so it is always null in practice — rendering a bar
- * here would mean inventing a number. Hours-only display is honest.
+ * Finish calls `onFinish` (Home's handleFinishedIt → setGameStatus
+ * 'played'). This component does not write status itself.
  *
  * Props:
  *   activeGame    { id, title, image, lastPlayedAt } | null
  *   backlogGame   { id, title, image } | null
- *   onLogSession  (game) => void   — opens the shared Log a Session modal (A2)
+ *   onLogSession  (game) => void — opens the one LogSheet modal
+ *   onFinish      (game) => void — Home's handleFinishedIt
  */
-function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession }) {
+function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish }) {
   const navigate = useNavigate()
   const [color, setColor] = useState(null)
-  const [hoursPlayed, setHoursPlayed] = useState(null) // null = still loading
+  const [hoursPlayed, setHoursPlayed] = useState(null)
   const [finishing, setFinishing] = useState(false)
 
   useEffect(() => {
@@ -103,12 +95,21 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession }) {
       setHoursPlayed(null)
       return undefined
     }
+
+    const fetchHours = () => {
+      getTracker(activeGame.id).then((tracker) => {
+        if (cancelled) return
+        setHoursPlayed(tracker?.hours_played != null ? Number(tracker.hours_played) : 0)
+      })
+    }
+
     setHoursPlayed(null)
-    getTracker(activeGame.id).then((tracker) => {
-      if (cancelled) return
-      setHoursPlayed(tracker?.hours_played != null ? Number(tracker.hours_played) : 0)
-    })
-    return () => { cancelled = true }
+    fetchHours()
+    window.addEventListener('libraryUpdated', fetchHours)
+    return () => {
+      cancelled = true
+      window.removeEventListener('libraryUpdated', fetchHours)
+    }
   }, [activeGame?.id])
 
   if (!activeGame) {
@@ -124,8 +125,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession }) {
   }
 
   const dominantStyle = color ? { '--dominant-rgb': `${color.r} ${color.g} ${color.b}` } : undefined
-  const hoursLabel = formatHoursLabel(hoursPlayed)
-  const timeAgo = humanTimeAgo(activeGame.lastPlayedAt)
+  const line = statusLine(hoursPlayed, activeGame.lastPlayedAt)
 
   const goToGame = () => {
     navigate(`/game/${activeGame.id}`, activeGame.image ? { state: { coverImage: activeGame.image } } : undefined)
@@ -140,12 +140,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession }) {
     e.stopPropagation()
     if (finishing) return
     setFinishing(true)
-    const ok = setGameStatus(activeGame.id, 'played', activeGame)
-    if (ok) {
-      showToast(`Marked "${activeGame.title}" as Played`, 'success')
-    } else {
-      showToast('Could not update — try again', 'error')
-    }
+    onFinish?.(activeGame)
     setFinishing(false)
   }
 
@@ -169,18 +164,10 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession }) {
           <span className="nph__eyebrow">Now Playing</span>
           <h2 className="nph__title">{activeGame.title}</h2>
           <div className="nph__stats">
-            {hoursLabel ? (
-              <span className="nph__stats-text">{hoursLabel}</span>
-            ) : hoursPlayed === null ? (
-              <span className="skeleton nph__stats-skeleton" aria-hidden="true" />
+            {line ? (
+              <span className="nph__stats-text">{line}</span>
             ) : (
-              <span className="nph__stats-text">Just started</span>
-            )}
-            {timeAgo && (
-              <>
-                <span className="nph__dot" aria-hidden="true">·</span>
-                <span className="nph__stats-text">{timeAgo}</span>
-              </>
+              <span className="skeleton nph__stats-skeleton" aria-hidden="true" />
             )}
           </div>
         </div>
