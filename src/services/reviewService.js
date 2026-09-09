@@ -8,6 +8,7 @@ import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
 import { getLikeCountsForReviews } from './likeService'
 import { dedupeInFlight } from './swrCache'
+import { ensureProfileExists } from './auth'
 
 /**
  * Review Service — Supabase-backed.
@@ -685,12 +686,34 @@ export async function postReview({
     life_context: lifeContext || null,
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('reviews')
     .insert(insert)
     .select('*')
     .single()
-  if (error) {
+
+  // 23503 on reviews_user_id_fkey means this signed-in user has no
+  // public.users row — the provisioning trigger should have created one at
+  // signup, but an account that predates the trigger (or whose row was
+  // removed some other way afterward) can still reach here. Self-heal via
+  // ensureProfileExists() and retry once before giving up, rather than
+  // surfacing the raw FK violation as if the review itself were invalid.
+  if (error && error.code === '23503' && /reviews_user_id_fkey/i.test(error.message || '')) {
+    const healed = await ensureProfileExists()
+    if (healed) {
+      ;({ data, error } = await supabase
+        .from('reviews')
+        .insert(insert)
+        .select('*')
+        .single())
+    }
+    if (error) {
+      console.error('[reviews] postReview failed after self-heal attempt:', error.message)
+      throw new Error(
+        "We couldn't finish setting up your profile, so this review didn't post. Please sign out and back in, then try again."
+      )
+    }
+  } else if (error) {
     console.error('[reviews] postReview failed:', error.message)
     throw new Error(error.message)
   }

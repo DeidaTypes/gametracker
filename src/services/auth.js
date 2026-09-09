@@ -504,7 +504,7 @@ export async function logIn({ email, password }) {
   // profile) or device-local and non-authoritative.
   syncLocalDataOwner(data.user.id)
 
-  const profile = await fetchProfile(data.user.id)
+  const profile = await fetchProfile(data.user.id, data.user)
   return { user: data.user, session: data.session, profile }
 }
 
@@ -544,7 +544,7 @@ export async function getCurrentUser() {
   // reason. A stamp that names a *different* user still wipes.
   syncLocalDataOwner(session.user.id, { adoptUnstamped: true })
 
-  const profile = await fetchProfile(session.user.id)
+  const profile = await fetchProfile(session.user.id, session.user)
   return { user: session.user, profile }
 }
 
@@ -609,7 +609,7 @@ export function onAuthStateChange(callback, onEventStart) {
       let profile = null
       if (user) {
         try {
-          profile = await fetchProfile(user.id)
+          profile = await fetchProfile(user.id, user)
         } catch {
           profile = null
         }
@@ -634,7 +634,82 @@ export function onAuthStateChange(callback, onEventStart) {
    Internal helpers
    ============================================================ */
 
-async function fetchProfile(userId) {
+/** Same derivation the `handle_new_user()` trigger uses for a signup with no
+ * chosen display name — mirrored here so a client-side self-heal (below)
+ * produces a row indistinguishable from one the trigger created. */
+function deriveDisplayName(authUser) {
+  const meta = authUser?.user_metadata || {}
+  return (
+    (meta.display_name && String(meta.display_name).trim()) ||
+    (meta.full_name && String(meta.full_name).trim()) ||
+    (meta.name && String(meta.name).trim()) ||
+    (authUser?.email ? authUser.email.split('@')[0] : '') ||
+    'Player'
+  )
+}
+
+/**
+ * Self-heal path for a signed-in user with no `public.users` row.
+ *
+ * This is a defense-in-depth guard, not the primary provisioning path — the
+ * `on_auth_user_created` trigger is. It exists for accounts that predate the
+ * trigger, or whose row was removed some other way after the fact (this is
+ * exactly the shape of the rdeida180@gmail.com App Store reviewer incident:
+ * an account created months before the trigger existed, with no row and no
+ * code path that should have deleted one). Without this, the first FK-
+ * dependent write for such an account (posting a review, setting a tracker
+ * status, ...) fails with an opaque foreign-key violation instead of the
+ * account just working.
+ *
+ * Deliberately does NOT set a username — inventing one for a row we didn't
+ * expect to be creating risks squatting a handle the account holder never
+ * chose (same reasoning as the 20260803000300 backfill). The user can still
+ * set one in Edit Profile. It also does NOT set onboarded_at — a freshly
+ * self-healed row is otherwise indistinguishable from a normal new signup
+ * and should still see onboarding once, unlike the one-time data-fix
+ * migration for the accounts already known to predate onboarding entirely.
+ *
+ * RLS: `users_insert_own` only permits `auth.uid() = id`, so this can only
+ * ever create the CALLER's own row.
+ */
+async function selfHealProfileRow(userId, authUser) {
+  // eslint-disable-next-line no-console
+  console.warn('[auth] Signed-in user has no public.users row — self-healing:', userId)
+
+  const { error: insertErr } = await supabase.from('users').insert({
+    id: userId,
+    display_name: deriveDisplayName(authUser),
+  })
+  // 23505 (pkey conflict) means another tab/request won the race and already
+  // created it — that's success too, just re-select below.
+  if (insertErr && insertErr.code !== '23505') {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] Self-heal profile insert failed:', insertErr.message)
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] Self-heal re-fetch failed:', error?.message)
+    return null
+  }
+  return data
+}
+
+/**
+ * @param {string} userId
+ * @param {object} [authUser] The Supabase auth user object for `userId`,
+ *   when the caller already has it (self only — see selfHealProfileRow).
+ *   Omit when fetching a profile that isn't necessarily the caller's own;
+ *   self-heal is skipped in that case rather than risk inserting a row on
+ *   someone else's behalf.
+ */
+async function fetchProfile(userId, authUser) {
   const { data, error } = await supabase
     .from('users')
     .select(PROFILE_COLUMNS)
@@ -647,7 +722,27 @@ async function fetchProfile(userId) {
     console.warn('[auth] Failed to load profile row:', error.message)
     return null
   }
-  return data
+  if (data) return data
+  if (!authUser) return null
+  return selfHealProfileRow(userId, authUser)
+}
+
+/**
+ * Last-resort guard for any other FK-dependent write (reviews,
+ * game_trackers, lists, ...) — all of them point at public.users(id). Call
+ * this when such a write fails with a foreign-key violation, self-heal, and
+ * retry once, instead of surfacing the raw FK error to the user.
+ *
+ * @returns {Promise<object|null>} the profile row, or null if it could not
+ *   be recovered (e.g. no active session).
+ */
+export async function ensureProfileExists() {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+  if (error || !user) return null
+  return fetchProfile(user.id, user)
 }
 
 export { AuthError }
