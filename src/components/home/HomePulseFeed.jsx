@@ -3,6 +3,7 @@ import { UserPlus, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import useHomeFeed from '../../hooks/useHomeFeed'
 import HomeReviewCard from './HomeReviewCard'
+import HomeCompletionCard from './HomeCompletionCard'
 import EmptyState from '../EmptyState'
 import FindFriendsModal from '../FindFriendsModal'
 import WindowedListItem from '../WindowedListItem'
@@ -40,13 +41,10 @@ function FeedSkeleton() {
  * HomePulseFeed — "The pulse" section, lead content of the Home
  * feed-first spine (v3), formerly "Fresh reviews".
  *
- * Thin presentational wrapper around useHomeFeed + HomeReviewCard (both
- * out of scope to modify here — see communityService.getHomeFeed for the
- * following/community/mixed scope decision, which already defaults new
- * users with no follows to broad community activity, and for the unified
- * event-type broadening: reviewed/rated (reviews table) plus started/
- * finished/listed/played activity_events rows, all rendered through the
- * same HomeReviewCard shell regardless of type).
+ * Thin presentational wrapper around useHomeFeed. Reviews render
+ * through HomeReviewCard; finished/completed items render through
+ * HomeCompletionCard. See communityService.getHomeFeed for the
+ * following/community/mixed scope decision.
  *
  * Infinite scroll via an IntersectionObserver sentinel.
  *
@@ -135,7 +133,11 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
             <div className="pulse-feed__list">
               {items.map((item) => (
                 <WindowedListItem key={item.id}>
-                  <HomeReviewCard item={item} />
+                  {item.type === 'finished' || item.type === 'completed' ? (
+                    <HomeCompletionCard item={item} />
+                  ) : (
+                    <HomeReviewCard item={item} />
+                  )}
                 </WindowedListItem>
               ))}
             </div>

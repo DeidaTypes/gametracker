@@ -20,6 +20,7 @@ import {
 import { HiOutlineFlag } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
 import HomeReviewCard from '../components/home/HomeReviewCard'
+import HomeCompletionCard from '../components/home/HomeCompletionCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
@@ -1051,6 +1052,8 @@ function ReviewComments() {
             <div className="rc-review-missing">
               This activity is no longer available.
             </div>
+          ) : activityFeedItem.type === 'finished' || activityFeedItem.type === 'completed' ? (
+            <HomeCompletionCard item={activityFeedItem} />
           ) : (
             <HomeReviewCard item={activityFeedItem} />
           )}

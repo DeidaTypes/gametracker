@@ -1413,9 +1413,11 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCou
   }
 
   if (row.type === 'completed') {
+    const metaRating = Number(meta.rating)
     return {
       ...base,
       type: 'finished',
+      rating: Number.isFinite(metaRating) && metaRating > 0 ? metaRating : undefined,
       game: {
         id: row.entity_id,
         title: meta.game_title || 'Unknown Game',
@@ -1482,6 +1484,67 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCou
 }
 
 /**
+ * Attach `reviews.rating` onto finished Pulse items that don't already
+ * carry one (from activity_events metadata). Completions write their
+ * optional rating to `reviews` with an empty body
+ * (completionService.completeGameWithRating); that row is excluded
+ * from the review half of this feed, so the completion card would
+ * otherwise always render unrated.
+ *
+ * Does not change which items the feed selects — display data only.
+ * Soft-fails to the input list. Picks the newest rating when a
+ * (user, game) pair has more than one reviews row.
+ */
+async function _attachFinishedRatings(items) {
+  const unfinished = (items || []).filter(
+    (it) =>
+      it.type === 'finished' &&
+      it.rating == null &&
+      it.author?.id &&
+      it.game?.id != null
+  )
+  if (unfinished.length === 0) return items
+
+  const userIds = [...new Set(unfinished.map((it) => it.author.id))]
+  const gameIds = [
+    ...new Set(
+      unfinished
+        .map((it) => Number(it.game.id))
+        .filter((n) => Number.isFinite(n))
+    ),
+  ]
+  if (userIds.length === 0 || gameIds.length === 0) return items
+
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('user_id, igdb_game_id, rating, created_at')
+      .in('user_id', userIds)
+      .in('igdb_game_id', gameIds)
+      .order('created_at', { ascending: false })
+    if (error || !data) {
+      if (error) console.error('[community] attachFinishedRatings failed:', error.message)
+      return items
+    }
+    const map = new Map()
+    for (const row of data) {
+      if (row.rating == null) continue
+      const key = `${row.user_id}:${row.igdb_game_id}`
+      if (!map.has(key)) map.set(key, Number(row.rating))
+    }
+    return items.map((it) => {
+      if (it.type !== 'finished' || it.rating != null) return it
+      const rating = map.get(`${it.author?.id}:${it.game?.id}`)
+        ?? map.get(`${it.author?.id}:${Number(it.game?.id)}`)
+      return rating != null && Number.isFinite(rating) ? { ...it, rating } : it
+    })
+  } catch (err) {
+    console.error('[community] attachFinishedRatings crashed:', err)
+    return items
+  }
+}
+
+/**
  * Fetch + shape a single `activity_events` row into the exact same
  * item shape `getHomeFeed` produces, for the activity-comments thread
  * page (`/activity/:activityId/comments`) to render via
@@ -1539,7 +1602,9 @@ export async function getActivityEventForCard(activityEventId) {
     }
 
     const commentCounts = await getCommentCountsForEvents([row.id])
-    return _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor, commentCounts })
+    const item = _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor, commentCounts })
+    const [enriched] = await _attachFinishedRatings(item ? [item] : [])
+    return enriched || item
   } catch (err) {
     console.error('[community] getActivityEventForCard crashed:', err)
     return null
@@ -1743,7 +1808,9 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     )
 
-    const items = _interleaveOwnWithCap(ownItems, otherItems, limit)
+    const items = await _attachFinishedRatings(
+      _interleaveOwnWithCap(ownItems, otherItems, limit)
+    )
 
     // A source might still have more beyond this page even if this exact
     // combined page came back short (e.g. own rows deferred by the cap,
