@@ -141,6 +141,14 @@ async function fetchNewToken() {
 
 // ── Response cache — deduplicates concurrent identical IGDB queries ──────────
 
+// Bumped whenever a query's shape or filtering semantics change (new fields,
+// changed where-clause, changed post-filter logic) so a tab that's been open
+// across a deploy — the in-memory Map survives until the page actually
+// reloads — can't keep serving cache entries keyed off the previous
+// version's query string / filtering behavior. v2: added `game_type` to
+// SEARCH_FIELDS and switched filterOutDLC from a title regex to IGDB's
+// `game_type` field (see filterOutDLC below).
+const RESPONSE_CACHE_VERSION = 'v2'
 const responseCache = new Map()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const inflightRequests = new Map()
@@ -160,7 +168,7 @@ function extractCoverUrl(game) {
 }
 
 export async function igdbRequest(endpoint, query) {
-  const cacheKey = `${endpoint}::${query}`
+  const cacheKey = `${RESPONSE_CACHE_VERSION}::${endpoint}::${query}`
 
   const cached = responseCache.get(cacheKey)
   if (cached && Date.now() < cached.expiresAt) {
@@ -649,53 +657,80 @@ limit ${spec.limit};`,
 }
 
 
-// Filter out DLC, expansions, and special editions - keep only base games
+// IGDB's `category` field (Category enum, 0=main_game/1=dlc_addon/etc. — see
+// https://api-docs.igdb.com/#game-enums) is what this filter was designed to
+// use, but it is DEPRECATED in the current schema and confirmed LIVE to come
+// back completely empty: `fields name, category; where id = 306149;` (The
+// Legend of Zelda: Echoes of Wisdom) returns `{"id":306149,"name":"..."}` —
+// no `category` key at all, and `where category = 0` / `where category = 1`
+// both return `[]` for the whole games table. Requesting it would make every
+// row look "uncategorized" and filterOutDLC would do nothing.
+//
+// IGDB's replacement is `game_type`, a reference to the `/game_types` lookup
+// table. Confirmed LIVE that it uses the *same* numeric ids as the old
+// Category enum and is actually populated:
+//   0  Main Game             4  Standalone Expansion   8  Remake
+//   9  Remaster             10  Expanded Game          11 Port
+//   1  DLC                   2  Expansion              3  Bundle
+//   5  Mod                   6  Episode                7  Season
+//   12 Fork                 13  Pack / Addon           14 Update
+// e.g. "Baldur's Gate III" → 0, "The Witcher 3: Wild Hunt - Hearts of Stone"
+// → 2, "Elden Ring: Shadow of the Erdtree" → 2. `game_type` is what's
+// actually used below; SEARCH_FIELDS requests `game_type`, not `category`.
+//
+// This filter USED to be a client-side title regex ("does the name contain
+// a word like 'echoes' or 'shadow' after a colon?"). That is a guess about
+// naming convention, not a fact about the game, and it deleted real main
+// games whose subtitles happened to match the pattern — "The Legend of
+// Zelda: Echoes of Wisdom", "God of War Ragnarok: Valhalla", "Middle-earth:
+// Shadow of Mordor", "Elden Ring: Shadow of the Erdtree" were all silently
+// dropped from search results with no error. game_type is the actual fact
+// IGDB stores about what kind of release a row is, so use that instead.
+//
+// Kept: Main Game, Standalone Expansion, Remake, Remaster, Expanded Game,
+// Port — these are all things a user legitimately searches for and tracks
+// as their own entry in a library.
+// Dropped: DLC, Expansion, Bundle, Mod, Episode, Season, Fork.
+const SEARCHABLE_GAME_TYPES = new Set([0, 4, 8, 9, 10, 11])
+
+// Filter out DLC, expansions, and other non-trackable release types using
+// IGDB's `game_type` field (requires `game_type` in the query's `fields`).
 function filterOutDLC(games) {
   if (!games || games.length === 0) {
     return []
   }
-  
-  // Patterns that indicate DLC, expansions, or special editions
-  const dlcPatterns = [
-    // ANY edition with a name before "Edition" (but keep "Remastered" and "Remake")
-    /:\s*\w+\s+edition(?!.*remaster|.*remake)/i,  // ": Something Edition" (but not Remastered)
-    /\s+edition$/i,  // "Name Edition" at end of title
-    
-    // DLC and expansions
-    /:\s*(dlc|expansion|season pass|battle pass|content pack)/i,
-    /\s+(dlc|expansion|season pass|battle pass|content pack|expansion pass)/i,
-    
-    // Specific DLC indicators - anything after colon that looks like subtitle DLC
-    /:\s*(the\s+)?(echoes|rising|awakening|prophecy|legacy|shadow|wrath|age|dawn|dusk|fall|coming|fate|curse|valhalla)\s+(of|the)/i,
-    /:\s*\w+\s+(tide|fallen|rising|darkness|light|storm)/i,
-    /:\s*valhalla/i,  // God of War: Valhalla
-    
-    // Packs and bundles
-    /\s+(pack|bundle|add-on|addon|cosmetic|skin|outfit)(?!\s+rat)/i, // "pack" but not "pack rat" game
-    
-    // Episode/Chapter DLC
-    /:\s*episode\s+\d+/i,
-    /:\s*chapter\s+\d+/i,
-    
-    // Specific edition markers at end of title
-    /\s+-\s+.+\s+edition$/i,  // " - Something Edition" at end
-    
-    // Launch/Pre-order/Digital editions
-    /:\s*(launch|pre-order|day one|digital|standard|physical)\s+edition/i,
-  ]
-  
-  return games.filter(game => {
-    const title = game.name || game.title || ''
-    
-    // Check if title matches any DLC pattern
-    for (const pattern of dlcPatterns) {
-      if (pattern.test(title)) {
-        return false // Exclude this game
-      }
-    }
-    
-    return true // Keep this game
+
+  return games.filter((game) => {
+    // A missing/undefined game_type (older or sparsely-tagged IGDB rows) is
+    // NOT treated as DLC — we would rather show an unclassified game than
+    // silently delete a real title IGDB simply didn't tag with a type.
+    if (game.game_type == null) return true
+    return SEARCHABLE_GAME_TYPES.has(game.game_type)
   })
+}
+
+/**
+ * Apply filterOutDLC with one safety net: never let the category filter turn
+ * an otherwise non-empty result into zero rows.
+ *
+ * IGDB's `game_type` tagging of "DLC" (1) is inconsistent in scope — it
+ * covers both genuinely disposable content (The Witcher 3's free one-quest
+ * add-ons) AND substantial, separately-tracked releases (God of War
+ * Ragnarök: Valhalla, a full free roguelike mode, is also tagged DLC=1).
+ * A flat exclusion of type 1 correctly hides the former from a broad
+ * "witcher 3" search — the base game still matches, so the result stays
+ * non-empty — but would fully empty a search for "god of war valhalla",
+ * whose only matching row IS the DLC-tagged entry.
+ *
+ * Same principle as queryTargetsDLC below: returning nothing is worse than
+ * returning DLC the user's own query resolves to. So: if every row for this
+ * exact query happens to fall in an excluded game_type, treat that as proof
+ * the DLC IS the answer, and fall back to the unfiltered set.
+ */
+function applyDlcFilter(games) {
+  if (!games || games.length === 0) return []
+  const filtered = filterOutDLC(games)
+  return filtered.length > 0 ? filtered : games
 }
 
 // ─── Game search — the single query every entry point ultimately runs ────────
@@ -727,7 +762,7 @@ function filterOutDLC(games) {
 const SEARCH_FIELDS =
   'fields name, cover.image_id, genres.name, rating, rating_count, ' +
   'total_rating_count, summary, involved_companies.company.name, ' +
-  'first_release_date, alternative_names.name;'
+  'first_release_date, alternative_names.name, game_type;'
 
 function escapeIgdbString(value) {
   return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
@@ -801,7 +836,7 @@ limit ${fetchLimit};`
   try {
     const games = await igdbRequest('games', query)
 
-    const baseGames = queryTargetsDLC(term) ? games : filterOutDLC(games)
+    const baseGames = queryTargetsDLC(term) ? games : applyDlcFilter(games)
 
     return formatGamesRaw(coversFirst(baseGames))
   } catch (error) {
@@ -854,7 +889,7 @@ limit ${fetchLimit};`
 
   try {
     const games = await igdbRequest('games', query)
-    const baseGames = hasTerm && queryTargetsDLC(trimmed) ? games : filterOutDLC(games)
+    const baseGames = hasTerm && queryTargetsDLC(trimmed) ? games : applyDlcFilter(games)
     return formatGamesRaw(coversFirst(baseGames))
   } catch (err) {
     console.warn('[igdb] searchGamesWithFilters failed, falling back to plain search:', err)

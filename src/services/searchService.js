@@ -15,7 +15,14 @@ import { searchGames as igdbSearchGames } from './igdb'
 // `search "…"` query, which returned nothing for most partial terms — and an
 // empty result set was cached like any other, so every user who typed "cyber"
 // before this fix would keep getting nothing from cache for 24 hours after it.
-const CACHE_KEY     = 'search_cache_v2'
+//
+// v3: filterOutDLC used to be a title regex that deleted real main games
+// (e.g. "The Legend of Zelda: Echoes of Wisdom") from non-empty result sets,
+// and non-empty results ARE cached (see the `result.length > 0` guard
+// below). Those incomplete lists would otherwise keep being served for up
+// to 24h after the game_type-based fix ships. Abandoning v2 forces every
+// cached query to be re-fetched with the corrected filtering.
+const CACHE_KEY     = 'search_cache_v3'
 const CACHE_TTL_MS  = 24 * 60 * 60 * 1000 // 24 hours — adjust here to change TTL
 const CACHE_MAX     = 50                    // max entries before oldest is evicted
 

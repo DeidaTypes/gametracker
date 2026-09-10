@@ -73,31 +73,51 @@ export function useSearch(query) {
       try {
         const parsed = parseNaturalQuery(trimmed)
         let games
+        let filtersApplied = false
 
         if (parsed.hasFilters) {
-          let { whereFragments, remainder, hasTtb } = parsed
-
-          // TTB ("short"/"quick") → fetch short-game IDs and add as where fragment
-          if (hasTtb) {
-            const shortIds = await fetchShortGameIds(2700, 200)
-            if (callId !== abortRef.current) return
-            if (shortIds.length >= 5) {
-              whereFragments = [`id = (${shortIds.slice(0, 150).join(',')})`, ...whereFragments]
-            }
-            // If TTB lookup returned < 5 results, fall back to Puzzle genre as proxy
-            else {
-              whereFragments = ['genres = (9)', ...whereFragments]
-            }
-          }
-
-          games = await searchGamesWithFilters(remainder, whereFragments, 30)
+          // Natural-language parsing strips keywords like "short", "adventure",
+          // "horror" out of the query text — but those same words are just as
+          // likely to be part of a real title ("A Short Hike", "Adventure
+          // Time") as they are to be a mood/genre filter. Stripping them
+          // unconditionally turned "A Short Hike" into a search for "A Hike"
+          // and "Adventure Time" into a search for "Time" plus a genre filter,
+          // and neither game surfaced.
+          //
+          // Fix: try the plain, unmodified query first. Only fall back to the
+          // structured, keyword-stripped query when the plain search finds
+          // nothing — that absence is the actual signal that the words were
+          // meant as filters rather than title text.
+          games = await searchGames(trimmed, 30)
           if (callId !== abortRef.current) return
 
-          // If structured search returned nothing, fall back to plain search with
-          // the original query so the user always sees something useful.
-          if (games.length === 0 && remainder) {
-            games = await searchGames(trimmed, 30)
+          if (games.length === 0) {
+            let { whereFragments, remainder, hasTtb } = parsed
+
+            // TTB ("short"/"quick") → fetch short-game IDs and add as where fragment
+            if (hasTtb) {
+              const shortIds = await fetchShortGameIds(2700, 200)
+              if (callId !== abortRef.current) return
+              if (shortIds.length >= 5) {
+                whereFragments = [`id = (${shortIds.slice(0, 150).join(',')})`, ...whereFragments]
+              }
+              // If TTB lookup returned < 5 results, fall back to Puzzle genre as proxy
+              else {
+                whereFragments = ['genres = (9)', ...whereFragments]
+              }
+            }
+
+            games = await searchGamesWithFilters(remainder, whereFragments, 30)
             if (callId !== abortRef.current) return
+            filtersApplied = true
+
+            // If the structured search also came up empty, fall back to the
+            // plain query one more time so the user still sees something.
+            if (games.length === 0 && remainder) {
+              games = await searchGames(trimmed, 30)
+              if (callId !== abortRef.current) return
+              filtersApplied = false
+            }
           }
         } else {
           games = await searchGames(trimmed, 30)
@@ -133,7 +153,7 @@ export function useSearch(query) {
           genres: matchingGenres,
           developers,
         })
-        setParsedFilters(parsed.hasFilters ? parsed.labels : [])
+        setParsedFilters(filtersApplied ? parsed.labels : [])
       } catch (err) {
         if (callId !== abortRef.current) return
         setError(err.message || 'Search failed')
