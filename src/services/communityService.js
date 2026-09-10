@@ -1037,6 +1037,15 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  *      `type: 'finished'`). Other event types remain written and are
  *      read by Explore/Profile — this feed just doesn't select them.
  *
+ * Dedupe (read-side only): when the same user has both a review-with-
+ * body and a completion for the same game within 24 hours, the
+ * completion card is suppressed. The review already implies the
+ * finish; the `activity_events` row still exists and still counts for
+ * the 2026 Challenge. A completion older than 24 hours from the
+ * review is a separate event and both cards show. Applied after every
+ * source is merged and shaped, before the own/other split + recency
+ * sort, so which fetch returned first never changes the result.
+ *
  * Scope selection (first page only — `cursor == null && scope == null`)
  * looks at BOTH sources combined (reviews + activity_events) so a viewer
  * whose follows only log sessions and never write reviews doesn't get
@@ -1119,6 +1128,7 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  */
 const HOME_FEED_PAGE_SIZE = 15
 const HOME_FEED_SPARSE_THRESHOLD = 5
+const REVIEW_COMPLETION_DEDUPE_MS = 24 * 60 * 60 * 1000
 
 // Own-activity event types surfaced on Home, sourced from `activity_events`.
 // Reviews-with-a-body come from `reviews` instead (see
@@ -1219,6 +1229,38 @@ async function _fetchHomeFeedReviewRows({ userIds = null, excludeUserIds = [], c
 // weaveForYouItems).
 function _mergeRowsByRecency(a, b) {
   return [...a, ...b].sort((x, y) => new Date(y.created_at) - new Date(x.created_at))
+}
+
+/**
+ * Drop a completion card when the same user also has a review-with-body
+ * for the same game inside a 24-hour window. Completions without a
+ * nearby review (or with a review older than 24 hours) stay.
+ */
+function _suppressNearbyCompletions(items) {
+  const reviews = []
+  for (const it of items) {
+    if (it.type === 'reviewed' && it.author?.id && it.game?.id != null) {
+      reviews.push(it)
+    }
+  }
+  if (reviews.length === 0) return items
+
+  return items.filter((it) => {
+    if (it.type !== 'finished') return true
+    const userId = it.author?.id
+    const gameId = it.game?.id
+    if (!userId || gameId == null) return true
+    const completionMs = new Date(it.createdAt).getTime()
+    if (!Number.isFinite(completionMs)) return true
+    const nearby = reviews.some((review) => {
+      if (review.author.id !== userId) return false
+      if (String(review.game.id) !== String(gameId)) return false
+      const reviewMs = new Date(review.createdAt).getTime()
+      if (!Number.isFinite(reviewMs)) return false
+      return Math.abs(reviewMs - completionMs) <= REVIEW_COMPLETION_DEDUPE_MS
+    })
+    return !nearby
+  })
 }
 
 function _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn = false } = {}) {
@@ -1801,12 +1843,18 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       _homeFeedItemFromEventRow(row, { isOwn: true, viewerAuthor, commentCounts: eventCommentCounts })
     )
 
-    const otherItems = [...otherReviewItems, ...otherEventItems].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    )
-    const ownItems = [...ownReviewItems, ...ownEventItems].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    )
+    // Merge every shaped source first, then suppress nearby
+    // review+completion pairs, then split/sort. Doing this after the
+    // merge (not per-fetch) keeps the same card out regardless of
+    // which query returned the review vs the completion.
+    const mergedItems = [...shapedReviewItems, ...otherEventItems, ...ownEventItems]
+    const dedupedItems = _suppressNearbyCompletions(mergedItems)
+    const otherItems = dedupedItems
+      .filter((it) => !it.isOwn)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const ownItems = dedupedItems
+      .filter((it) => it.isOwn)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
     const items = await _attachFinishedRatings(
       _interleaveOwnWithCap(ownItems, otherItems, limit)
