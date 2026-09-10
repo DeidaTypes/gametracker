@@ -8,9 +8,11 @@ import PullToRefresh from '../components/PullToRefresh'
 import HomeWeekRow from '../components/home/HomeWeekRow'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import LogSheet from '../components/home/LogSheet'
+import RatingSheet from '../components/RatingSheet'
 import HomePulseFeed from '../components/home/HomePulseFeed'
 import TrackerSearchModal from '../components/TrackerSearchModal'
-import { getContinuePlayingGames, getGamesFromList, setGameStatus } from '../services/libraryService'
+import { getContinuePlayingGames, getGamesFromList } from '../services/libraryService'
+import { completeGameWithRating } from '../services/completionService'
 import { getFollowingCount } from '../services/followService'
 import { logSession } from '../services/sessionService'
 import { showToast } from '../components/Toast'
@@ -138,15 +140,48 @@ function Home() {
     })
   }
 
-  const handleFinishedIt = useCallback((game) => {
-    const ok = setGameStatus(game.id, 'played', game)
-    if (ok) {
-      hapticSuccess()
-      showToast(`Marked "${game.title}" as Played`, 'success')
-    } else {
+  // ── RatingSheet — the Finish button now opens this FIRST; the actual
+  // completion write (setGameStatus + optional rating) happens when the
+  // sheet resolves (Done, Skip, or any dismissal — see RatingSheet.jsx's
+  // header comment for why dismiss === Skip). ─────────────────────────
+  const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
+  const [ratingSheetGame, setRatingSheetGame] = useState(null)
+
+  const openRatingSheet = useCallback((game) => {
+    setRatingSheetGame(game)
+    setRatingSheetOpen(true)
+  }, [])
+
+  const finishGame = useCallback(async (game, rating, hoursPlayed) => {
+    if (!game) return
+    const { ok, ratingError } = await completeGameWithRating({
+      gameId: game.id,
+      game,
+      rating,
+      hoursPlayed,
+    })
+    if (!ok) {
       showToast('Could not update — try again', 'error')
+      return
+    }
+    hapticSuccess()
+    showToast(`Marked "${game.title}" as Played`, 'success')
+    if (ratingError) {
+      showToast('Could not save your rating — try again', 'error', 5000, {
+        label: 'Retry',
+        onClick: () => finishGame(game, rating, hoursPlayed),
+      })
     }
   }, [])
+
+  const handleRatingSheetResolve = useCallback(({ rating, hoursPlayed }) => {
+    finishGame(ratingSheetGame, rating, hoursPlayed)
+  }, [ratingSheetGame, finishGame])
+
+  const handleWriteReviewFromRatingSheet = useCallback((game) => {
+    if (!game) return
+    navigate(`/review/new?gameId=${game.id}`, { state: { game } })
+  }, [navigate])
 
   const { unreadCount: notifUnread } = useNotifications()
 
@@ -317,7 +352,7 @@ function Home() {
                 activeGame={continuePlaying[0] || null}
                 backlogGame={backlogGame}
                 onLogSession={openLogSheet}
-                onFinish={handleFinishedIt}
+                onFinish={openRatingSheet}
               />
             </section>
           )}
@@ -360,6 +395,14 @@ function Home() {
         onClose={() => setLogSheetOpen(false)}
         game={logSheetGame}
         onLogIt={submitLoggedSession}
+      />
+
+      <RatingSheet
+        isOpen={ratingSheetOpen}
+        game={ratingSheetGame}
+        onResolve={handleRatingSheetResolve}
+        onClose={() => setRatingSheetOpen(false)}
+        onWriteReview={handleWriteReviewFromRatingSheet}
       />
     </AppShell>
   )

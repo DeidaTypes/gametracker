@@ -66,7 +66,7 @@ export const STATUS_TILES = [
   },
 ]
 
-function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onLogPlay }) {
+function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onLogPlay, onRequestPlayed }) {
   const { reduced } = useMotionPreference()
   const dragControls = useDragControls()
   const [isOpen, setIsOpen] = useState(false)
@@ -131,6 +131,14 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
     if (!game) return
     if (currentStatus === statusKey) return
     hapticImpact('Medium')
+    // 'played' is intercepted by the caller (GameDetail) so it can open
+    // RatingSheet FIRST — the completion write happens when that sheet
+    // resolves, not here. Every other status keeps writing directly.
+    if (statusKey === 'played' && onRequestPlayed) {
+      dismiss()
+      onRequestPlayed(game)
+      return
+    }
     setGameStatus(game.id, statusKey, game)
     refresh()
     window.dispatchEvent(new Event('libraryUpdated'))

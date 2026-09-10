@@ -19,6 +19,7 @@ import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
+import { completeGameWithRating } from '../services/completionService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { hapticImpact } from '../utils/haptics'
@@ -34,6 +35,7 @@ import {
 import { getTracker } from '../services/hoursService'
 import GameSessionRow from '../components/GameSessionRow'
 import GameSessionHistorySheet from '../components/GameSessionHistorySheet'
+import RatingSheet from '../components/RatingSheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
@@ -387,6 +389,11 @@ function GameDetail() {
   const [journalModalOpen, setJournalModalOpen] = useState(false)
   const [statusSheetOpen, setStatusSheetOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
+  // RatingSheet — opened FIRST when either status-setting surface below
+  // (the pill grid or AddToListButton's hidden sheet) sets status to
+  // Played, instead of writing the completion immediately. `game` is
+  // already in scope, so this only needs an open flag.
+  const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
 
   const refreshSessions = useCallback(async () => {
     const [data, tracker] = await Promise.all([
@@ -525,14 +532,46 @@ function GameDetail() {
 
   // Mirrors AddToListButton's internal handleStatusTap exactly — same
   // store call + same libraryUpdated dispatch — so the inline pills and
-  // the sheet stay in sync via the one unchanged status store.
+  // the sheet stay in sync via the one unchanged status store. 'played'
+  // is the one exception: it opens RatingSheet FIRST instead of writing
+  // the status immediately (see openRatingSheet below) — the completion
+  // write happens when that sheet resolves.
   const handleStatusPillTap = useCallback((statusKey) => {
     if (!game || status === statusKey) return
     hapticImpact('Medium')
+    if (statusKey === 'played') {
+      setRatingSheetOpen(true)
+      return
+    }
     setGameStatus(game.id, statusKey, game)
     refreshFromStore()
     window.dispatchEvent(new Event('libraryUpdated'))
   }, [game, status, refreshFromStore])
+
+  // RatingSheet resolve — Done/Skip/any-dismissal all land here with
+  // `rating` 0 for everything except a Done with stars picked. Writes
+  // the completion via the same setGameStatus call handleStatusPillTap
+  // used to make directly, plus an optional rating (see
+  // completionService.completeGameWithRating).
+  const handleRatingSheetResolve = useCallback(async ({ rating, hoursPlayed }) => {
+    if (!game) return
+    const { ok, ratingError } = await completeGameWithRating({
+      gameId: game.id,
+      game,
+      rating,
+      hoursPlayed,
+    })
+    if (!ok) {
+      showToast('Could not update — try again', 'error')
+      return
+    }
+    if (ratingError) {
+      showToast('Could not save your rating — try again', 'error', 5000, {
+        label: 'Retry',
+        onClick: () => handleRatingSheetResolve({ rating, hoursPlayed }),
+      })
+    }
+  }, [game])
 
   const handleShare = () => {
     setDmShareOpen(true)
@@ -790,6 +829,7 @@ function GameDetail() {
           forceOpen={statusSheetOpen}
           onForceClose={() => setStatusSheetOpen(false)}
           onLogPlay={openLogSheet}
+          onRequestPlayed={() => setRatingSheetOpen(true)}
         />
       </div>
 
@@ -1293,6 +1333,16 @@ function GameDetail() {
         isOpen={journalModalOpen}
         onClose={() => setJournalModalOpen(false)}
         game={game}
+      />
+
+      {/* ── RatingSheet — opened by the status pills / status sheet's
+           "Played" tile, before the completion writes. ── */}
+      <RatingSheet
+        isOpen={ratingSheetOpen}
+        game={game}
+        onResolve={handleRatingSheetResolve}
+        onClose={() => setRatingSheetOpen(false)}
+        onWriteReview={() => openReviewComposer()}
       />
 
       <DmShareSheet
