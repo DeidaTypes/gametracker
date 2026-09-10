@@ -5,7 +5,6 @@ import { SwipeDeck } from '../components/explore/SwipeDeck'
 import ThemedDropCard from '../components/explore/ThemedDropCard'
 import NewNotableRail from '../components/explore/NewNotableRail'
 import CollectionsShelf from '../components/explore/CollectionsShelf'
-import FollowingShelf from '../components/explore/FollowingShelf'
 import PullToRefresh from '../components/PullToRefresh'
 import { refetchAllExploreSections } from '../hooks/useExploreData'
 import {
@@ -33,9 +32,6 @@ import './Explore.css'
  *      backward in time on its see-all.
  *   4. Collections        — curated ("by Checkpoint") + popular community
  *                            lists as mosaic cards (hidden if none qualify)
- *   5. From people you follow — "Recently": followed users' real ratings
- *      + reviews, each with an algorithmic taste-match strip. Falls back
- *      to broader community activity so it's never empty.
  *
  * Discover shows no ratings. Not on a rail, not on a card, not on any of
  * its see-all grids — covers and titles only. A score under a cover turns
@@ -59,9 +55,9 @@ function Explore() {
 
   return (
     // Pull-to-refresh force-refetches every rail below (New & Notable,
-    // Collections, Following/Recently, the themed drop — see
-    // refetchAllExploreSections) by bypassing the swrCache the same way
-    // resume already does. The swipe deck deliberately sits outside this:
+    // Collections, the themed drop — see refetchAllExploreSections) by
+    // bypassing the swrCache the same way resume already does. The swipe
+    // deck deliberately sits outside this:
     // it's a full-catalog IGDB queue with its own background pagination,
     // not a cached "feed" — resetting an in-progress deck of un-swiped
     // cards on every pull would be destructive, not refreshing.
@@ -102,9 +98,6 @@ function Explore() {
 
       {/* ── 4. Collections — curated + community lists ── */}
       <CollectionsShelf />
-
-      {/* ── 5. From people you follow — "Recently" ratings & reviews ── */}
-      <FollowingShelf />
 
     </div>
     </PullToRefresh>

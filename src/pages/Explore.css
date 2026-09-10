@@ -272,8 +272,7 @@
 /* Gradient heading — purple → cobalt (--grad-explore-headline), Explore's
    own identity, parallel to Home's --grad-headline. Falls back to solid
    --color-text-primary if background-clip:text isn't supported. Shared
-   by every Explore section header (Swipe to discover, Collections, From
-   people you follow). */
+   by every Explore section header (Swipe to discover, Collections). */
 .discover-section-title {
   font-family: var(--font-body);
   font-size: var(--font-size-title);

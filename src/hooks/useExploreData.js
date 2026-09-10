@@ -6,7 +6,6 @@ import {
   getJustFinished,
   getMostPlayedThisWeek,
   getMostPlayedInCircle,
-  getRecentFollowingActivity,
 } from '../services/communityService'
 import {
   getRecentCommunityReviews,
@@ -258,18 +257,6 @@ export function useMostPlayedThisWeek() {
  */
 export function useCircleMostPlayed() {
   return useAsyncSection('explore:circle-most-played', () => getMostPlayedInCircle(10))
-}
-
-/**
- * Discover page — "Recently" shelf ("From people you follow"): followed
- * users' recent ratings + reviews only, each annotated with a real E0
- * taste-match (or null below the engine's confidence threshold). Falls
- * back to broader community activity when the viewer's circle is empty
- * or quiet, so the shelf is never blank — `data.scope` tells the caller
- * which window it got ('following' | 'community').
- */
-export function useRecentFollowingActivity() {
-  return useAsyncSection('explore:recent-following', () => getRecentFollowingActivity(10))
 }
 
 /**
