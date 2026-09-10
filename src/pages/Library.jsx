@@ -53,7 +53,8 @@ const PAGE_SIZE = 30
 // drag-to-trash path. Library only uses the trash branch — no reorder.
 const LONG_PRESS_MS = 450
 const MOVE_CANCEL_PX = 8
-const REMOVE_ANIM_MS = 200
+const REMOVE_ANIM_MS = 280
+const GRID_REFLOW_MS = 250
 
 /**
  * Which segment the user last had open, remembered for the session.
@@ -97,7 +98,7 @@ function Library() {
   const [sortKey, setSortKey] = useState('recent')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  const [gridRef] = useAutoAnimateMotion()
+  const [gridRef] = useAutoAnimateMotion({ duration: GRID_REFLOW_MS })
   const { reduced: reducedMotion } = useMotionPreference()
 
   // Long-press drag-to-trash (My Games covers with a tracker status).
@@ -106,6 +107,7 @@ function Library() {
   const [dragGameId, setDragGameId] = useState(null)
   const [trashArmed, setTrashArmed] = useState(false)
   const [removingGameId, setRemovingGameId] = useState(null)
+  const [restoringGameId, setRestoringGameId] = useState(null)
 
   const itemEls = useRef({})
   const trashBarRef = useRef(null)
@@ -331,7 +333,27 @@ function Library() {
     const el = itemEls.current[gameId]
     if (!el) return
     el.style.transition = ''
+    el.style.willChange = 'transform'
     el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+  }
+
+  const scheduleDragTransform = (session, dx, dy) => {
+    session.pendingDx = dx
+    session.pendingDy = dy
+    if (session.rafId != null) return
+    session.rafId = requestAnimationFrame(() => {
+      session.rafId = null
+      if (dragSessionRef.current !== session || !session.activated) return
+      applyDragTransform(session.gameId, session.pendingDx, session.pendingDy)
+    })
+  }
+
+  const measureTrashRectOnce = (session) => {
+    if (session.trashRect) return session.trashRect
+    const trashEl = trashBarRef.current
+    if (!trashEl) return null
+    session.trashRect = trashEl.getBoundingClientRect()
+    return session.trashRect
   }
 
   const clearLongPressTimer = () => {
@@ -341,12 +363,18 @@ function Library() {
     }
   }
 
-  const hardResetDrag = (gameId) => {
+  const hardResetDrag = (gameId, { clearTransform = true } = {}) => {
     clearLongPressTimer()
+    const session = dragSessionRef.current
+    if (session?.rafId != null) {
+      cancelAnimationFrame(session.rafId)
+      session.rafId = null
+    }
     const el = gameId != null ? itemEls.current[gameId] : null
-    if (el) {
+    if (el && clearTransform) {
       el.style.transform = ''
       el.style.transition = ''
+      el.style.willChange = ''
     }
     dragSessionRef.current = null
     setDragGameId(null)
@@ -401,12 +429,22 @@ function Library() {
 
       session.activated = true
       session.startRect = startRect
+      session.trashRect = null
+      session.rafId = null
       suppressClickRef.current = true
       setDragGameId(game.id)
       hapticImpact('Medium')
       window.dispatchEvent(
         new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: true } })
       )
+      // Trash bubble slides in on the next frame — measure its rect once
+      // here so pointermove never calls getBoundingClientRect (layout read).
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (dragSessionRef.current !== session) return
+          measureTrashRectOnce(session)
+        })
+      })
     }, LONG_PRESS_MS)
   }
 
@@ -428,24 +466,23 @@ function Library() {
 
     const dx = e.clientX - session.startClientX
     const dy = e.clientY - session.startClientY
-    applyDragTransform(session.gameId, dx, dy)
+    scheduleDragTransform(session, dx, dy)
 
-    const trashEl = trashBarRef.current
-    if (trashEl) {
-      const trashRect = trashEl.getBoundingClientRect()
-      const centerX = session.startRect.left + session.startRect.width / 2 + dx
-      const centerY = session.startRect.top + session.startRect.height / 2 + dy
-      const nowArmed =
-        centerX >= trashRect.left &&
-        centerX <= trashRect.right &&
-        centerY >= trashRect.top &&
-        centerY <= trashRect.bottom
+    const trashRect = measureTrashRectOnce(session)
+    if (!trashRect) return
 
-      if (nowArmed !== session.armed) {
-        session.armed = nowArmed
-        setTrashArmed(nowArmed)
-        if (nowArmed) hapticImpact('Light')
-      }
+    const centerX = session.startRect.left + session.startRect.width / 2 + dx
+    const centerY = session.startRect.top + session.startRect.height / 2 + dy
+    const nowArmed =
+      centerX >= trashRect.left &&
+      centerX <= trashRect.right &&
+      centerY >= trashRect.top &&
+      centerY <= trashRect.bottom
+
+    if (nowArmed !== session.armed) {
+      session.armed = nowArmed
+      setTrashArmed(nowArmed)
+      if (nowArmed) hapticImpact('Light')
     }
   }
 
@@ -459,10 +496,16 @@ function Library() {
     showToast('Removed from library', 'success', 4000, {
       label: 'Undo',
       onClick: () => {
+        setRestoringGameId(game.id)
         const restored = setGameStatus(game.id, previousStatus, game)
         if (!restored) {
+          setRestoringGameId(null)
           showToast("Couldn't restore the game. Please try again.", 'error')
+          return
         }
+        setTimeout(() => {
+          setRestoringGameId((current) => (current === game.id ? null : current))
+        }, reducedMotion ? 0 : REMOVE_ANIM_MS)
       },
     })
   }
@@ -491,11 +534,13 @@ function Library() {
     const { gameId, armed, previousStatus, gameSnapshot } = session
 
     if (armed && gameSnapshot && previousStatus) {
+      // Keep the lifted translate3d in place — hardResetDrag must not
+      // snap the cover back to its grid slot while the remove-out runs.
       setRemovingGameId(gameId)
       setTimeout(() => {
-        setRemovingGameId(null)
-        hardResetDrag(gameId)
         commitRemoveViaDrag(gameSnapshot, previousStatus)
+        hardResetDrag(gameId, { clearTransform: false })
+        setRemovingGameId(null)
       }, reducedMotion ? 0 : REMOVE_ANIM_MS)
       return
     }
@@ -821,12 +866,17 @@ function Library() {
                     {visibleGames.map((g) => {
                       const isDragged = dragGameId === g.id
                       const isRemoving = removingGameId === g.id
+                      const isRestoring = restoringGameId === g.id
                       return (
                       <button
                         key={g.id}
                         ref={(el) => { if (el) itemEls.current[g.id] = el }}
                         type="button"
-                        className={`lib-gamecard${isDragged ? ' lib-gamecard--dragged' : ''}`}
+                        className={`lib-gamecard${
+                          isDragged ? ' lib-gamecard--dragged' : ''
+                        }${isRemoving ? ' lib-gamecard--removing' : ''}${
+                          isRestoring ? ' lib-gamecard--restoring' : ''
+                        }`}
                         onPointerDown={(e) => handleCoverPointerDown(e, g)}
                         onPointerMove={handleCoverPointerMove}
                         onPointerUp={handleCoverPointerUp}

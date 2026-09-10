@@ -1,71 +1,85 @@
 /* =============================================
-   REORDER TRASH TARGET
-   Slide-up drop zone for the ListDetail long-press
-   drag-to-reorder interaction. Values below are copied
-   verbatim from the interaction spec — the only place in
-   this component allowed to hardcode colors outside the
-   app's design tokens.
+   REORDER TRASH TARGET — iOS 26 liquid-glass bubble
+   Small circular drop zone for long-press drag-to-delete.
+   Appears only during an active drag; hidden at rest.
    ============================================= */
 
 .reorder-trash-target {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 96px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  left: 50%;
+  bottom: calc(var(--space-12) + env(safe-area-inset-bottom, 0px) + var(--space-12));
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  background: rgba(20, 12, 18, 0.55);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e07a7a;
-  font-size: 13px;
-  font-weight: 600;
-  transform: translateY(100%);
+  background: color-mix(in srgb, var(--glass-bg) 62%, transparent);
+  backdrop-filter: blur(var(--blur-lg)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(1.35);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--surface-1-shadow);
+  color: var(--text-secondary);
+  transform: translate(-50%, calc(100% + var(--space-24)));
   opacity: 0;
-  /* Above .bottom-nav (z-index: 1000) — it occupies the same footprint
-     while a drag is active. */
+  /* Above .bottom-nav (z-index: 1000) while a drag is active. */
   z-index: 1001;
-  /* Hit-testing is done manually in ListDetail via getBoundingClientRect
-     against the pointer that's captured on the dragged cover — this bar
-     never needs to receive pointer events of its own. */
+  /* Hit-testing is done manually via a cached getBoundingClientRect on
+     activation — this bubble never receives pointer events. */
   pointer-events: none;
+  overflow: hidden;
   transition:
     transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
     opacity 180ms ease,
     background 180ms ease,
-    border-color 180ms ease;
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
 }
 
-.reorder-trash-target--visible {
-  transform: translateY(0);
-  opacity: 1;
+.reorder-trash-target__specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--text-primary) 14%, transparent) 0%,
+    transparent 52%
+  );
+  pointer-events: none;
 }
 
-/* Armed — the dragged cover's center is over this bar. */
-.reorder-trash-target--armed {
-  background: rgba(180, 60, 70, 0.42);
-  border-top-color: rgba(224, 122, 122, 0.45);
-}
-
-.reorder-trash-target svg,
-.reorder-trash-target__label {
+.reorder-trash-target__icon {
+  position: relative;
+  z-index: 1;
   transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.reorder-trash-target--armed svg,
-.reorder-trash-target--armed .reorder-trash-target__label {
-  transform: scale(1.08);
+.reorder-trash-target--visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+/* Armed — dragged cover center is over the bubble bounds. */
+.reorder-trash-target--armed {
+  background: color-mix(in srgb, var(--status-danger) 28%, var(--glass-bg));
+  border-color: color-mix(in srgb, var(--status-danger) 42%, var(--glass-border));
+  box-shadow: var(--shadow-xl), var(--surface-2-shadow);
+  color: var(--status-danger);
+  transform: translate(-50%, 0) scale(1.08);
+}
+
+.reorder-trash-target--armed .reorder-trash-target__icon {
+  transform: scale(1.06);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reorder-trash-target,
-  .reorder-trash-target svg,
-  .reorder-trash-target__label {
+  .reorder-trash-target__icon {
     transition: none;
+  }
+
+  .reorder-trash-target--armed {
+    transform: translate(-50%, 0);
   }
 }

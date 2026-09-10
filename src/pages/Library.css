@@ -402,6 +402,7 @@
 .lib-gamecard--dragged {
   z-index: 50;
   position: relative;
+  will-change: transform;
 }
 
 .lib-cov {
@@ -444,10 +445,53 @@
   opacity: 0.6;
 }
 
-.lib-cov--removing {
-  transform: scale(0.8);
+.lib-gamecard--removing {
+  pointer-events: none;
+}
+
+.lib-gamecard--removing .lib-cov {
+  transform: scale(0.55);
   opacity: 0;
-  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: none;
+  transition:
+    transform 280ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 240ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms ease;
+}
+
+.lib-gamecard--removing .lib-gamecard-title {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  transition:
+    opacity 180ms ease,
+    max-height 240ms cubic-bezier(0.2, 0, 0, 1),
+    margin 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lib-cov--removing {
+  transform: scale(0.55);
+  opacity: 0;
+  transition:
+    transform 280ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lib-gamecard--restoring .lib-cov {
+  animation: lib-cov-restore-in 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes lib-cov-restore-in {
+  from {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .lib-cov-img {
@@ -887,6 +931,12 @@
   .lib-cov,
   .lib-cov--lifted,
   .lib-cov--removing,
+  .lib-gamecard--removing .lib-cov,
+  .lib-gamecard--removing .lib-gamecard-title,
+  .lib-gamecard--restoring .lib-cov {
+    animation: none;
+  }
+
   .lib-loadmore,
   .lib-pin-hero,
   .lib-list-card,
