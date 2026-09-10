@@ -7,6 +7,7 @@ import IOSSwitch from '../components/IOSSwitch'
 import { getGameById } from '../services/igdb'
 import { postReview, updateReview } from '../services/reviewService'
 import { logActivity, ACTIVITY_TYPES } from '../services/activityService'
+import { logCompletedEventOnce } from '../services/activityEventsService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import { hapticImpact } from '../utils/haptics'
@@ -163,6 +164,26 @@ function ReviewNew() {
         // row — logActivity only ever writes to `activities`, so this is
         // exactly as safe for an untracked game as the toggle being off.
         // Fire-and-forget, same as setGameStatus's own activity write.
+        //
+        // It must ALSO emit the Pulse-side `activity_events` 'completed'
+        // row — setGameStatus's own 'played' branch (libraryService.js)
+        // writes:
+        //   logActivityEvent({
+        //     type: ACTIVITY_EVENT_TYPES.COMPLETED,
+        //     entityId: String(gameId),
+        //     metadata: {
+        //       from_status: currentStatus || null,
+        //       game_title: gameObj.title || null,
+        //       game_image: gameObj.image || null,
+        //     },
+        //   })
+        // Mirrored exactly below (from_status is always null here — a
+        // review composer finish has no prior tracker status). Skipping
+        // this write is exactly the bug that left the Home Pulse and the
+        // 2026 Challenge disagreeing about which games were finished.
+        // logCompletedEventOnce is idempotent on (actor_user_id,
+        // entity_id) so resubmitting "Mark as completed" for the same
+        // game never double-posts to Pulse.
         if (markCompleted) {
           logActivity({
             activityType: ACTIVITY_TYPES.STATUS_CHANGED,
@@ -171,6 +192,14 @@ function ReviewNew() {
               from_status: null,
               to_status: 'played',
               game_title: game.title || null,
+            },
+          })
+          logCompletedEventOnce({
+            entityId: game.id,
+            metadata: {
+              from_status: null,
+              game_title: game.title || null,
+              game_image: game.image || null,
             },
           })
         }

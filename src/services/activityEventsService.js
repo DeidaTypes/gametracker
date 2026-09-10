@@ -157,6 +157,66 @@ export async function logActivityEvent({
 }
 
 /* ============================================================
+   logCompletedEventOnce
+   ============================================================ */
+
+/**
+ * Idempotent variant of `logActivityEvent`, hard-coded to the
+ * 'completed' type only.
+ *
+ * Two call sites can each try to record the same finish for the same
+ * (actor, game) — libraryService's `setGameStatus` (status → 'played')
+ * and ReviewNew's "Mark as completed" toggle. Without a guard, hitting
+ * both (or resubmitting the same review action) renders as two
+ * identical "100%'d" cards on Pulse. This checks for an existing
+ * 'completed' row for the same (actor_user_id, entity_id) pair BEFORE
+ * inserting, and returns the existing row untouched instead of
+ * double-writing.
+ *
+ * Never throws — same contract as `logActivityEvent`. Returns null on
+ * any failure (no auth, existence-check error, insert error) rather
+ * than risk a duplicate by falling through to an unguarded insert.
+ *
+ * @param {{ entityId: string|number, metadata?: Record<string, any> }} args
+ * @returns {Promise<object|null>} the existing or newly-inserted row, or null
+ */
+export async function logCompletedEventOnce({ entityId, metadata = {} } = {}) {
+  try {
+    const idString = entityId != null ? String(entityId) : null
+    if (!idString) return null
+
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser()
+    if (userErr || !user) return null
+
+    const { data: existing, error: existingErr } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('actor_user_id', user.id)
+      .eq('type', ACTIVITY_EVENT_TYPES.COMPLETED)
+      .eq('entity_id', idString)
+      .limit(1)
+      .maybeSingle()
+    if (existingErr) {
+      console.debug('[pulse] logCompletedEventOnce existence check failed:', existingErr.message)
+      return null
+    }
+    if (existing) return existing
+
+    return logActivityEvent({
+      type: ACTIVITY_EVENT_TYPES.COMPLETED,
+      entityId: idString,
+      metadata,
+    })
+  } catch (err) {
+    console.error('[pulse] logCompletedEventOnce crashed:', err)
+    return null
+  }
+}
+
+/* ============================================================
    getCircleActivityEvents
    ============================================================ */
 
