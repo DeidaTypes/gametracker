@@ -76,6 +76,23 @@ const VALID_TYPES = new Set(Object.values(ACTIVITY_EVENT_TYPES))
  */
 export const ACTIVITY_EVENT_LOGGED = 'activityEventLogged'
 
+/**
+ * Broadcast after a Pulse item is deleted so useHomeFeed can drop it
+ * from the on-screen list without a full reload. `detail.id` is the
+ * feed item id (a `reviews.id` for review cards, an `activity_events.id`
+ * for completion cards).
+ */
+export const PULSE_ITEM_REMOVED = 'pulseItemRemoved'
+
+export function emitPulseItemRemoved(id) {
+  if (!id) return
+  try {
+    window.dispatchEvent(new CustomEvent(PULSE_ITEM_REMOVED, { detail: { id } }))
+  } catch {
+    // SSR / no-window — best effort.
+  }
+}
+
 function emitLogged(row) {
   try {
     window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT_LOGGED, { detail: row }))
@@ -153,6 +170,34 @@ export async function logActivityEvent({
   } catch (err) {
     console.error('[pulse] logActivityEvent crashed:', err)
     return null
+  }
+}
+
+/**
+ * DELETE one `activity_events` row. RLS (`activity_events_delete_self`)
+ * restricts this to `auth.uid() = actor_user_id`.
+ *
+ * Used to hide a completion from the Pulse feed. Does NOT touch
+ * `activities` (the 2026 Challenge source) or `game_trackers` (Played
+ * status). Those are separate tables with no FK to this row — verified
+ * against information_schema before this function was added.
+ *
+ * @param {string} eventId
+ * @returns {Promise<void>}
+ */
+export async function deleteActivityEvent(eventId) {
+  if (!eventId) throw new Error('eventId is required')
+  const { data, error } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq('id', eventId)
+    .select('id')
+  if (error) {
+    console.error('[pulse] deleteActivityEvent failed:', error.message)
+    throw new Error(error.message)
+  }
+  if (!data?.length) {
+    throw new Error('Could not delete this post.')
   }
 }
 

@@ -86,7 +86,7 @@ function ActionRow({ likeActive, likeInteractive, likeCount, commentCount, onLik
  *            muted 10-point line. Unrated: "Played through". No hours.
  *   Actions — identical heart + comment row.
  */
-export default function HomeCompletionCard({ item }) {
+export default function HomeCompletionCard({ item, linkToThread = true }) {
   const navigate = useNavigate()
   const eventReactions = useReactions('activity', item.reactionTargetId)
 
@@ -119,7 +119,7 @@ export default function HomeCompletionCard({ item }) {
   }
 
   const goToReply = (e) => {
-    e.stopPropagation()
+    e?.stopPropagation?.()
     navigate(`/activity/${item.id}/comments`)
   }
 
@@ -133,7 +133,12 @@ export default function HomeCompletionCard({ item }) {
   }
 
   return (
-    <ReviewCardShell className="home-review-card home-review-card--finished home-completion-card">
+    <ReviewCardShell
+      className={`home-review-card home-review-card--finished home-completion-card${
+        linkToThread ? ' home-review-card--opens-thread' : ''
+      }`}
+      onClick={linkToThread ? goToReply : undefined}
+    >
       <ReviewCardShellHeader
         className="home-completion-card__header"
         avatar={
@@ -158,12 +163,7 @@ export default function HomeCompletionCard({ item }) {
       </ReviewCardShellHeader>
 
       {item.game && (
-        <Pressable
-          as="div"
-          className="home-review-card__game home-completion-card__body"
-          onClick={goToGame}
-          aria-label={gameTitle ? `View ${gameTitle}` : 'View game'}
-        >
+        <div className="home-review-card__game home-completion-card__body">
           <img
             src={img}
             className="home-review-card__cover"
@@ -173,7 +173,13 @@ export default function HomeCompletionCard({ item }) {
           />
           <span className="home-review-card__game-meta">
             {gameTitle ? (
-              <span className="home-review-card__game-title">{gameTitle}</span>
+              <button
+                type="button"
+                className="home-review-card__game-title"
+                onClick={goToGame}
+              >
+                <span className="home-review-card__game-title-text">{gameTitle}</span>
+              </button>
             ) : null}
             {isRated ? (
               <>
@@ -186,7 +192,7 @@ export default function HomeCompletionCard({ item }) {
               <span className="home-review-card__score">Played through</span>
             )}
           </span>
-        </Pressable>
+        </div>
       )}
 
       <ActionRow

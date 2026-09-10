@@ -143,6 +143,25 @@ export function peekSWR(key) {
   return store.get(key)?.data
 }
 
+/**
+ * Patch a cached value in place without bumping `fetchedAt` or hitting
+ * the network. No-ops when the key is cold. Used to drop a just-deleted
+ * Pulse item so returning to Home doesn't resurrect it from a still-fresh
+ * page-1 cache.
+ *
+ * @template T
+ * @param {string} key
+ * @param {(current: T) => T} updater
+ * @returns {T|undefined} the written value, or undefined if nothing was cached
+ */
+export function updateSWR(key, updater) {
+  const entry = store.get(key)
+  if (!entry || entry.data === undefined) return undefined
+  const next = updater(entry.data)
+  store.set(key, { ...entry, data: next })
+  return next
+}
+
 /** Drop a single cache entry so the next `getSWR` call for it is a real fetch. */
 export function invalidateSWR(key) {
   store.delete(key)

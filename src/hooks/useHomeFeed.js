@@ -1,13 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getHomeFeed } from '../services/communityService'
-import { ACTIVITY_EVENT_LOGGED } from '../services/activityEventsService'
+import { ACTIVITY_EVENT_LOGGED, PULSE_ITEM_REMOVED, emitPulseItemRemoved } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
 import { prefetchReactionsBatch } from './useReactions'
 import { APP_RESUMED_EVENT } from './useAppResume'
-import { getSWR, peekSWR } from '../services/swrCache'
+import { getSWR, peekSWR, updateSWR } from '../services/swrCache'
 
 const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
+
+/**
+ * Drop a Pulse item from the page-1 SWR cache and notify a mounted
+ * useHomeFeed to splice it out of `items`. Call this from the delete
+ * path *before* navigating back — Home may be unmounted, so the
+ * window event alone would miss the cache.
+ */
+export function removePulseFeedItem(userId, itemId, pageSize = 15) {
+  if (!itemId) return
+  if (userId) {
+    updateSWR(`home:feed:${userId}:${pageSize}`, (data) => {
+      if (!data?.items) return data
+      return { ...data, items: data.items.filter((it) => it.id !== itemId) }
+    })
+  }
+  emitPulseItemRemoved(itemId)
+}
 
 /**
  * Batch-load the like and reaction state a page of cards needs, in two
@@ -205,6 +222,22 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     window.addEventListener(ACTIVITY_EVENT_LOGGED, onActivityLogged)
     return () => window.removeEventListener(ACTIVITY_EVENT_LOGGED, onActivityLogged)
   }, [user?.id, silentRefresh])
+
+  useEffect(() => {
+    function onPulseItemRemoved(e) {
+      const id = e?.detail?.id
+      if (!id) return
+      setItems((prev) => prev.filter((it) => it.id !== id))
+      if (user?.id) {
+        updateSWR(`home:feed:${user.id}:${pageSize}`, (data) => {
+          if (!data?.items) return data
+          return { ...data, items: data.items.filter((it) => it.id !== id) }
+        })
+      }
+    }
+    window.addEventListener(PULSE_ITEM_REMOVED, onPulseItemRemoved)
+    return () => window.removeEventListener(PULSE_ITEM_REMOVED, onPulseItemRemoved)
+  }, [user?.id, pageSize])
 
   return { items, loading, loadingMore, hasMore, scope, error, refresh, loadMore }
 }

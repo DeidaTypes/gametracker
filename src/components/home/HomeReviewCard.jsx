@@ -300,12 +300,7 @@ function GameZone({
   const isListAdd = item.type === 'listed' && item.listKind !== 'created'
 
   return (
-    <Pressable
-      as="div"
-      className="home-review-card__game"
-      onClick={onGameClick}
-      aria-label={`View ${item.game.title}`}
-    >
+    <div className="home-review-card__game">
       <img
         src={img}
         className="home-review-card__cover"
@@ -314,7 +309,13 @@ function GameZone({
         onError={handleImgError}
       />
       <span className="home-review-card__game-meta">
-        <span className="home-review-card__game-title">{item.game.title}</span>
+        <button
+          type="button"
+          className="home-review-card__game-title"
+          onClick={onGameClick}
+        >
+          <span className="home-review-card__game-title-text">{item.game.title}</span>
+        </button>
 
         {showRating && (
           <span className="home-review-card__rating">
@@ -348,7 +349,7 @@ function GameZone({
           </span>
         )}
       </span>
-    </Pressable>
+    </div>
   )
 }
 
@@ -403,7 +404,7 @@ function GameZone({
  *   listPreviewCovers?, reactionTargetId, durationSeconds? (all
  *   optional/omitted rather than fabricated).
  */
-export default function HomeReviewCard({ item }) {
+export default function HomeReviewCard({ item, linkToThread = true }) {
   const navigate = useNavigate()
   const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
@@ -472,7 +473,7 @@ export default function HomeReviewCard({ item }) {
   // row id instead (item.id IS that row's id for non-review items —
   // see communityService._homeFeedItemFromEventRow).
   const goToReply = (e) => {
-    e.stopPropagation()
+    e?.stopPropagation?.()
     if (isReviewType) navigate(`/reviews/${item.id}/comments`)
     else navigate(`/activity/${item.id}/comments`)
   }
@@ -516,7 +517,8 @@ export default function HomeReviewCard({ item }) {
     <ReviewCardShell
       className={`home-review-card home-review-card--${item.type}${
         ratingOnly ? ' home-review-card--rating-only' : ''
-      }`}
+      }${linkToThread ? ' home-review-card--opens-thread' : ''}`}
+      onClick={linkToThread ? goToReply : undefined}
     >
       {/* A — GAME ZONE: cover + title + the type's content zone. */}
       <GameZone

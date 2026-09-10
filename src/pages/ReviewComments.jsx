@@ -16,6 +16,7 @@ import {
   LuQuote,
   LuSend,
   LuShare2,
+  LuTrash2,
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
@@ -29,7 +30,7 @@ import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { extractQuote } from '../utils/extractQuote'
-import { getReviewById } from '../services/reviewService'
+import { deleteReview, getReviewById } from '../services/reviewService'
 import {
   getActivityEventForCard,
   homeFeedItemFromReviewRow,
@@ -41,6 +42,7 @@ import {
   updateComment,
   deleteComment,
 } from '../services/commentService'
+import { deleteActivityEvent } from '../services/activityEventsService'
 import { shareCard } from '../services/share'
 import { shareContent } from '../utils/share'
 import { hapticImpact } from '../utils/haptics'
@@ -55,6 +57,7 @@ import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
+import { removePulseFeedItem } from '../hooks/useHomeFeed'
 import { useHideNav } from '../hooks/useHideNav'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
@@ -430,6 +433,8 @@ function ReviewComments() {
   // card (see the overflowItems memo below for exactly which one shows
   // and why).
   const [overflowOpen, setOverflowOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [deletingPost, setDeletingPost] = useState(false)
   const [sharingQuote, setSharingQuote] = useState(false)
   // Only populated for the review branch, and only once we know the
   // viewer owns this review — a visitor's own-pins list is meaningless
@@ -730,6 +735,28 @@ function ReviewComments() {
     })
   }, [targetId])
 
+  const handleDeletePost = useCallback(async () => {
+    if (!targetId || deletingPost) return
+    setDeletingPost(true)
+    try {
+      if (targetType === 'review') {
+        await deleteReview(targetId)
+      } else {
+        await deleteActivityEvent(targetId)
+      }
+      removePulseFeedItem(user?.id, targetId)
+      showToast(targetType === 'review' ? 'Review deleted' : 'Removed from the pulse', 'success')
+      navigate('/')
+    } catch (err) {
+      console.error('[ReviewComments] delete post failed:', err)
+      showToast(
+        err?.message || "Couldn't delete this post. Please try again.",
+        'error'
+      )
+      setDeletingPost(false)
+    }
+  }, [targetId, targetType, deletingPost, user?.id, navigate])
+
   /**
    * Context-appropriate action set for the header kebab. The kebab is
    * always rendered on BOTH route branches once the target has loaded —
@@ -779,6 +806,12 @@ function ReviewComments() {
           tone: 'cobalt',
           onClick: handleTogglePin,
         })
+        items.push({
+          label: 'Delete',
+          icon: <LuTrash2 size={18} aria-hidden="true" />,
+          destructive: true,
+          onClick: () => setConfirmDeleteOpen(true),
+        })
       } else {
         items.push({
           label: 'Report review',
@@ -800,7 +833,14 @@ function ReviewComments() {
         onClick: handleShareActivity,
       },
     ]
-    if (!activityFeedItem.isOwn && activityFeedItem.author?.id) {
+    if (activityFeedItem.isOwn) {
+      items.push({
+        label: 'Delete',
+        icon: <LuTrash2 size={18} aria-hidden="true" />,
+        destructive: true,
+        onClick: () => setConfirmDeleteOpen(true),
+      })
+    } else if (activityFeedItem.author?.id) {
       items.push({
         label: 'Report user',
         icon: <LuFlag size={18} aria-hidden="true" />,
@@ -1046,16 +1086,16 @@ function ReviewComments() {
                 This review is no longer available.
               </div>
             ) : (
-              <HomeReviewCard item={reviewFeedItem} />
+              <HomeReviewCard item={reviewFeedItem} linkToThread={false} />
             )
           ) : reviewMissing || !activityFeedItem ? (
             <div className="rc-review-missing">
               This activity is no longer available.
             </div>
           ) : activityFeedItem.type === 'finished' || activityFeedItem.type === 'completed' ? (
-            <HomeCompletionCard item={activityFeedItem} />
+            <HomeCompletionCard item={activityFeedItem} linkToThread={false} />
           ) : (
-            <HomeReviewCard item={activityFeedItem} />
+            <HomeReviewCard item={activityFeedItem} linkToThread={false} />
           )}
         </div>
 
@@ -1114,6 +1154,24 @@ function ReviewComments() {
         isOpen={overflowOpen}
         onClose={() => setOverflowOpen(false)}
         items={overflowItems}
+      />
+
+      <ActionSheet
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="This cannot be undone"
+        items={[
+          {
+            label: deletingPost
+              ? 'Deleting…'
+              : targetType === 'review'
+                ? 'Delete review'
+                : 'Delete post',
+            destructive: true,
+            disabled: deletingPost,
+            onClick: handleDeletePost,
+          },
+        ]}
       />
 
       <ReportSheet
