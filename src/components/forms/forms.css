@@ -540,10 +540,33 @@
 }
 
 .form-star__half-btn {
+  /* This 50%/50% split is the actual half-vs-whole hit test — do not
+     change left/right or the width here without also re-checking the
+     --left/--right rules below, since they extend the TOUCH target
+     outward from this same box without moving the inner 50% seam.
+
+     min-width/min-height: 0 is REQUIRED here, not decorative. src/index.css
+     has an app-wide `button, a, [role="button"] { min-width/height: 44px }`
+     rule for touch targets under 768px. min-width/min-height clamp the
+     used box size regardless of an author `width`/`height` declaration's
+     specificity (they're separate properties, not competing values of the
+     same one), so without this override BOTH half-buttons of every star
+     get silently forced to 44px wide on any phone. Two 44px-wide buttons
+     packed into one ~32-40px star (and its neighbors) then overlap
+     massively; since both sit at the same z-index, the later-in-DOM
+     "whole star" (right) button paints on top and wins nearly every tap,
+     even ones aimed at the "half" (left) button. That is the confirmed
+     cause of "tapping only ever produces whole numbers" — the half
+     button was never unreachable in the click handler, it was buried
+     under its sibling's inflated hit target on every real phone-width
+     viewport. This component defines its own deliberate, non-overlapping
+     hit target below instead of the generic 44px minimum. */
   position: absolute;
-  top: 0;
-  height: 100%;
+  top: -8px;
+  bottom: -8px;
   width: 50%;
+  min-width: 0;
+  min-height: 0;
   background: transparent;
   border: none;
   padding: 0;
@@ -553,8 +576,32 @@
   z-index: 1;
 }
 
-.form-star__half-btn--left { left: 0; }
-.form-star__half-btn--right { right: 0; }
+/* Real star rating icon boxes are much smaller (16-20px per half at the
+   sizes used across the app) than Apple's 44pt touch-target guidance,
+   and a 5-star row with half-stars can't grow past a narrow modal's
+   width to fix that outright. As a bounded mitigation: grow the tap
+   target vertically by 8px on each side (32px tall becomes 48px,
+   already past the 44pt floor; kept on the 4px spacing grid — see
+   .form-star__half-btn's top/bottom above) and horizontally by 2px
+   into the row's own gap on the outward edge only (never across the
+   inner 50% seam, so half vs. whole selection is unaffected). 2px each
+   side is chosen to stay inside the smallest gap used anywhere in the
+   app (4px, see .form-stars) so two neighboring stars' extended zones
+   meet edge-to-edge instead of overlapping. (--space-2 is normally
+   restricted to inline icon-to-text gaps — this is hit-slop, not
+   visual spacing, but it's the same numeric step so it's reused here
+   rather than inventing an off-grid value.) */
+.form-star__half-btn--left {
+  left: 0;
+  margin-left: -2px;
+  width: calc(50% + 2px);
+}
+
+.form-star__half-btn--right {
+  right: 0;
+  margin-right: -2px;
+  width: calc(50% + 2px);
+}
 
 .form-star--punch .form-star__icon {
   animation: formStarPunch 220ms cubic-bezier(0.34, 1.56, 0.64, 1);

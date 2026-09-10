@@ -49,6 +49,11 @@ function StarRatingInput({
     (next, star) => {
       if (readOnly) return
       onChange?.(next)
+      // Every commit resets the hover/preview state so the filled-star
+      // count can never keep showing a stale preview once a value has
+      // actually been picked — see the touch note on the half-buttons
+      // below for why this can otherwise go stale.
+      setHover(0)
       triggerPunch(star)
     },
     [readOnly, onChange, triggerPunch]
@@ -105,20 +110,29 @@ function StarRatingInput({
 
         {!readOnly && (
           <>
+            {/* Hover preview is intentionally MOUSE/PEN-ONLY (pointerType
+                check below). Touch has no real "hovering" — browsers fire
+                a synthetic mouseenter for a tap without a matching leave,
+                which used to leave `hover` stuck on some other star than
+                the one actually committed (filled-star count and the "N
+                out of 5" label would then disagree). Gating on pointerType
+                means touch taps only ever affect `hover` via the explicit
+                setHover(0) in handleSelect above, so display always tracks
+                the real committed value on touch. */}
             <button
               type="button"
               className="form-star__half-btn form-star__half-btn--left"
               onClick={() => handleSelect(star - 0.5, star)}
-              onMouseEnter={() => setHover(star - 0.5)}
-              onMouseLeave={() => setHover(0)}
+              onPointerEnter={(e) => { if (e.pointerType !== 'touch') setHover(star - 0.5) }}
+              onPointerLeave={(e) => { if (e.pointerType !== 'touch') setHover(0) }}
               aria-label={`Rate ${star - 0.5} of 5`}
             />
             <button
               type="button"
               className="form-star__half-btn form-star__half-btn--right"
               onClick={() => handleSelect(star, star)}
-              onMouseEnter={() => setHover(star)}
-              onMouseLeave={() => setHover(0)}
+              onPointerEnter={(e) => { if (e.pointerType !== 'touch') setHover(star) }}
+              onPointerLeave={(e) => { if (e.pointerType !== 'touch') setHover(0) }}
               aria-label={`Rate ${star} of 5`}
             />
           </>
