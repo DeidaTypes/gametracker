@@ -59,12 +59,12 @@ const REMOVE_ANIM_MS = 200
  * Which segment the user last had open, remembered for the session.
  *
  * Navigating away from Library unmounts it, so without this the tab
- * silently snaps back to Lists every time — open a game from My Games,
- * press back, and you are somewhere you never chose to be. Module scope
- * (rather than state lifted into a parent) keeps the memory local to this
- * screen and resets naturally on a full reload.
+ * silently snaps back to the default tab every time — open a game from
+ * My Games, press back, and you are somewhere you never chose to be.
+ * Module scope (rather than state lifted into a parent) keeps the memory
+ * local to this screen and resets naturally on a full reload.
  */
-let lastActiveTab = 'lists'
+let lastActiveTab = 'games'
 
 function Library() {
   const navigate = useNavigate()
@@ -705,18 +705,6 @@ function Library() {
           <button
             type="button"
             role="tab"
-            id="lib-tab-lists"
-            aria-selected={!isGamesTab}
-            aria-controls="lib-panel-lists"
-            className={`lib-segb${!isGamesTab ? ' lib-segb--lists-on' : ''}`}
-            onClick={() => setActiveTab('lists')}
-          >
-            Lists
-            <span className="lib-seg-n">{customLists.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
             id="lib-tab-games"
             aria-selected={isGamesTab}
             aria-controls="lib-panel-games"
@@ -725,6 +713,18 @@ function Library() {
           >
             My Games
             <span className="lib-seg-n">{combinedGames.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="lib-tab-lists"
+            aria-selected={!isGamesTab}
+            aria-controls="lib-panel-lists"
+            className={`lib-segb${!isGamesTab ? ' lib-segb--lists-on' : ''}`}
+            onClick={() => setActiveTab('lists')}
+          >
+            Lists
+            <span className="lib-seg-n">{customLists.length}</span>
           </button>
         </div>
 

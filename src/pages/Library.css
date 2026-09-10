@@ -1,5 +1,5 @@
 /* ============================================
-   LIBRARY PAGE — two-tab shell (Lists / My Games)
+   LIBRARY PAGE — two-tab shell (My Games / Lists)
    plus the My Games dashboard: search, four status
    cells, sort row, 3-up cover grid.
    Cobalt design language, DM Sans throughout.
@@ -125,7 +125,7 @@
 }
 
 /* =============================================
-   SEGMENTED TOGGLE — Lists | My Games
+   SEGMENTED TOGGLE — My Games | Lists
    ============================================= */
 
 .lib-seg {
