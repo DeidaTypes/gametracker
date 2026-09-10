@@ -1028,20 +1028,14 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  *
  * Sources merged into one recency-ordered stream, for EVERY user
  * (viewer + everyone else) alike:
- *   1. `reviews` rows — a mandatory `rating` (0.5–5.0) on every row, with
- *      an empty `body` being the "rated without writing a review" case
- *      (`type: 'rated'`) and a non-empty `body` being `type: 'reviewed'`.
- *      `game_trackers.rating` is a second, currently-unused rating
- *      surface (finished-game ratings with no UI to set them yet) — not
- *      included here since it has no relevant rows to surface.
- *   2. `activity_events` rows of type 'started' | 'completed' | 'listed' |
- *      'played' | 'journaled' (see OTHER_FEED_EVENT_TYPES /
- *      OWN_FEED_EVENT_TYPES) — "started a game", "finished a game"
- *      (rendered as `type: 'finished'`), "added a game/created a list",
- *      "logged a session", and "added a journal entry" respectively.
- *      'backlogged' stays own-only (see OWN_FEED_EVENT_TYPES's comment);
- *      'dropped' / 'favorited' / 'goal_hit' stay Explore/Profile-only —
- *      out of scope for this pass.
+ *   1. `reviews` rows with a non-empty trimmed `body` (`type: 'reviewed'`).
+ *      Rating-only rows (empty body, historically `type: 'rated'`) are
+ *      excluded from this feed. `_homeFeedItemFromRow` still shapes
+ *      those as 'rated' for other surfaces (review-comments header via
+ *      `homeFeedItemFromReviewRow`).
+ *   2. `activity_events` rows of type 'completed' (rendered as
+ *      `type: 'finished'`). Other event types remain written and are
+ *      read by Explore/Profile — this feed just doesn't select them.
  *
  * Scope selection (first page only — `cursor == null && scope == null`)
  * looks at BOTH sources combined (reviews + activity_events) so a viewer
@@ -1058,6 +1052,8 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  *                                          an empty island when follows
  *                                          are quiet.
  *   - Follows with enough activity      → 'following'
+ * Community-wide is intentional at current graph size: a following-only
+ * feed would often be empty.
  * The caller should pass the `scope` it got back on every subsequent
  * `loadMore` call so pagination keeps reading from the same source(s)
  * instead of re-deciding scope on every page (see useHomeFeed.js).
@@ -1065,14 +1061,13 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  * "Own activity" below for the viewer's own stream, which is merged in
  * on top regardless of scope.
  *
- * Own activity (Home-is-the-hub sprint) — the viewer's own reviewed/
- * rated/started/listed/finished/played/backlogged rows are fetched
- * unconditionally (own `reviews` rows via the same
- * `_fetchHomeFeedReviewRows` helper, plus own `activity_events` rows —
- * see OWN_FEED_EVENT_TYPES) and merged into the exact same
- * recency-sorted stream as everyone else's items, via
- * `_interleaveOwnWithCap`. Each returned item carries `isOwn: true`
- * when it's the viewer's; HomeReviewCard uses that to render
+ * Own activity (Home-is-the-hub sprint) — the viewer's own reviewed
+ * (non-empty body) and completed rows are fetched unconditionally
+ * (own `reviews` rows via the same `_fetchHomeFeedReviewRows` helper,
+ * plus own `activity_events` rows — see OWN_FEED_EVENT_TYPES) and
+ * merged into the exact same recency-sorted stream as everyone else's
+ * items, via `_interleaveOwnWithCap`. Each returned item carries
+ * `isOwn: true` when it's the viewer's; HomeReviewCard uses that to render
  * second-person wording and hide (but not remove) the like control.
  * Own items are capped at ~1-in-3 consecutive slots whenever another
  * item is available to fill that slot instead — see
@@ -1101,7 +1096,7 @@ export async function getFollowedRatingsForGame(igdbGameId) {
  * @returns {Promise<{
  *   items: Array<{
  *     id: string,
- *     type: 'reviewed'|'rated'|'listed'|'finished'|'started'|'played'|'backlogged',
+ *     type: 'reviewed'|'finished',
  *     isOwn: boolean,
  *     createdAt: string,
  *     author: { id: string|null, username: string|null, displayName: string, avatarUrl: string|null },
@@ -1125,36 +1120,18 @@ export async function getFollowedRatingsForGame(igdbGameId) {
 const HOME_FEED_PAGE_SIZE = 15
 const HOME_FEED_SPARSE_THRESHOLD = 5
 
-// Own-activity event types surfaced on Home, sourced from `activity_events`
-// (reviewed/rated own rows come from `reviews` instead — see
-// _fetchHomeFeedReviewRows). Deliberately narrower than every type Pulse
-// logs: 'dropped'/'favorited'/'goal_hit' stay Explore/Profile-only per
-// this sprint's spec.
-//   'listed'     → metadata.kind 'list_created' (created a list) or
-//                  'game_added_to_list' (added a game to a list)
-//   'completed'  → rendered as HomeReviewCard's 'finished' type
-//   'backlogged' → added to the backlog (see
-//                  libraryService.STATUS_TO_EVENT_TYPE) — also surfaced
-//                  for other users now, see OTHER_FEED_EVENT_TYPES below
-//   'started'    → moved a game to Currently Playing
-//   'played'     → logged a play session (sessionService.js)
-//   'journaled'  → wrote a journal entry (journalService.js) — see
-//                  supabase/migrations/20260729140000_activity_events_journaled_type.sql
-const OWN_FEED_EVENT_TYPES = ['listed', 'completed', 'backlogged', 'started', 'played', 'journaled']
+// Own-activity event types surfaced on Home, sourced from `activity_events`.
+// Reviews-with-a-body come from `reviews` instead (see
+// _fetchHomeFeedReviewRows). The feed is reviews-with-words +
+// completions only — 'listed'/'backlogged'/'started'/'played'/'journaled'
+// are still WRITTEN by their services and read by Explore/Profile, but
+// Home no longer selects them.
+const OWN_FEED_EVENT_TYPES = ['completed']
 
-// Other-users' event types surfaced on Home (Pulse broadening — task:
-// "logged a session, logged/added a game, finished a game, started a
-// game, rated a game, reviewed, added to a list"). 'rated'/'reviewed'
-// come from the `reviews` table, not this list. 'backlogged' ("logged/
-// added a game") WAS own-only in an earlier pass (the reasoning being
-// "not circle-worthy from someone else") but the broadening task
-// explicitly calls for other users' backlog adds to render too (e.g.
-// "justin added Left 4 Dead 2 to his backlog") — included below.
-// Deliberately still excludes 'dropped'/'favorited'/'goal_hit'
-// (Explore/Profile-only, out of scope for this pass).
-// 'journaled' added by the emit-events-for-every-action sprint — journal
-// entries previously never surfaced on Home at all (own or others').
-const OTHER_FEED_EVENT_TYPES = ['listed', 'completed', 'started', 'played', 'backlogged', 'journaled']
+// Other-users' event types surfaced on Home. Same narrow set as own:
+// completions only. 'reviewed' comes from the `reviews` table, not this
+// list. 'dropped'/'favorited'/'goal_hit' stay Explore/Profile-only.
+const OTHER_FEED_EVENT_TYPES = ['completed']
 
 /**
  * Soft-cap interleave: merges two recency-sorted item arrays (the
@@ -1215,13 +1192,17 @@ async function _fetchHomeFeedReviewRows({ userIds = null, excludeUserIds = [], c
     if (userIds) q = q.in('user_id', userIds)
     if (excludeUserIds.length) q = q.not('user_id', 'in', `(${excludeUserIds.join(',')})`)
     if (cursor) q = q.lt('created_at', cursor)
+    // Pulse only surfaces reviews with words. Rating-only rows (empty
+    // body) stay off this feed; other surfaces still shape them via
+    // homeFeedItemFromReviewRow → _homeFeedItemFromRow (`type: 'rated'`).
+    q = q.not('body', 'is', null).neq('body', '')
     q = await applyBlockFilter(q, 'user_id')
     const { data, error } = await q
     if (error) {
       console.error('[community] getHomeFeed page query failed:', error.message)
       return []
     }
-    return data || []
+    return (data || []).filter((r) => (r.body || '').trim())
   } catch (err) {
     console.error('[community] getHomeFeed page query crashed:', err)
     return []
@@ -1644,6 +1625,7 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       // or start games (never write reviews) doesn't get mis-classified
       // as having a "quiet" circle — this is the community fallback that
       // keeps the feed from ever being an empty island.
+      // Community-wide is intentional at current graph size.
       if (followeeIds.length === 0) {
         effectiveScope = 'community'
         ;[otherReviewRows, otherEventRows] = await Promise.all([
@@ -1716,9 +1698,11 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       getCommentCountsForReviews(reviewIds),
     ])
 
-    const shapedReviewItems = cleanReviewRows.map((row) =>
-      _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn: row.user_id === viewerId })
-    )
+    const shapedReviewItems = cleanReviewRows
+      .map((row) =>
+        _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn: row.user_id === viewerId })
+      )
+      .filter((it) => it.type === 'reviewed')
     const otherReviewItems = shapedReviewItems.filter((it) => !it.isOwn)
     const ownReviewItems = shapedReviewItems.filter((it) => it.isOwn)
 
