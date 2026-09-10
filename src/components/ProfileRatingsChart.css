@@ -1,7 +1,7 @@
 /* ============================================================
    ProfileRatingsChart — "How I Rate" histogram on Profile Home.
 
-   Five whole-star columns: count label above each bar, a baseline
+   Ten half-star columns: count label above each bar, a baseline
    rule beneath them, and the real average in the header. Tapping a
    populated bar opens a modal listing those games.
    ============================================================ */
@@ -46,12 +46,12 @@
 /* ---- Chart area ----
    Each column is its own tap target: count label, bar track, axis
    label. The baseline is the track's bottom border, so it reads as a
-   single continuous rule across all five columns. */
+   single continuous rule across all ten columns. */
 
 .prc-chart {
   display: flex;
   align-items: flex-end;
-  gap: var(--spacing-xs);
+  gap: var(--space-4);
 }
 
 .prc-bar-btn {
@@ -116,11 +116,12 @@
 
 .prc-bar-label {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-medium);
   line-height: 1;
   text-align: center;
   color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .prc-bar-btn--active .prc-bar-label {

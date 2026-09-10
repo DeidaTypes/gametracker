@@ -1,7 +1,6 @@
 /* =====================================================
-   COMMUNITY RATING CARD — numeric average + whole-star histogram
-   Left: gradient average number. Right: 5-row histogram (★5→★1).
-   No half-stars anywhere; this is the screen's one gradient heading.
+   COMMUNITY RATING CARD — numeric average + half-star histogram
+   Left: gradient average number. Right: 10-row histogram (★5→★0.5).
    ===================================================== */
 
 .crc-card {
@@ -63,25 +62,26 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--space-4);
 }
 
 .crc-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .crc-row-label {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-2);
   flex-shrink: 0;
-  width: 22px;
+  min-width: var(--space-32);
   font-family: var(--font-body);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .crc-row-star {

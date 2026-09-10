@@ -1,17 +1,19 @@
 import React, { useState } from 'react'
 import { LuChevronRight, LuX } from 'react-icons/lu'
 import CenteredModal from './CenteredModal'
+import { HALF_STAR_BUCKETS, toHalfStarBucket } from '../utils/ratingBuckets'
 import './ProfileRatingsChart.css'
 
 /* ----------------------------------------------------------------
-   Five whole-star buckets. Each bucket holds the raw Supabase review
-   rows that belong to it, so tapping a bar can list its games.
+   Ten half-star buckets (0.5–5.0). Each bucket holds the raw Supabase
+   review rows that belong to it, so tapping a bar can list its games.
 
-   Half-star ratings snap to the nearest whole star — the chart reads
-   as five labelled columns rather than ten, which is only legible at
-   this width if each column carries real weight.
+   RatingsHistogram.jsx already buckets by Math.round(r * 2) but is an
+   unused SVG with no tap-through, counts, or mean — this chart keeps
+   those and shares the same snap via toHalfStarBucket. Do not
+   Math.round(rating) here: that dumps 3.5 into the 4-star bar while
+   the header mean still shows the raw fraction.
    ---------------------------------------------------------------- */
-const BUCKETS = [1, 2, 3, 4, 5]
 const CHART_HEIGHT_PX = 72
 const MIN_BAR_PX = 3
 
@@ -21,14 +23,13 @@ const MIN_BAR_PX = 3
 const MIN_RATINGS_FOR_CHART = 3
 
 function buildBuckets(reviews) {
-  const map = new Map(BUCKETS.map((b) => [b, []]))
+  const map = new Map(HALF_STAR_BUCKETS.map((b) => [b, []]))
   for (const r of reviews) {
-    const rating = Number(r.rating)
-    if (!Number.isFinite(rating) || rating <= 0) continue
-    const snapped = Math.min(5, Math.max(1, Math.round(rating)))
+    const snapped = toHalfStarBucket(r.rating)
+    if (snapped == null) continue
     map.get(snapped).push(r)
   }
-  return BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
+  return HALF_STAR_BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
 }
 
 /** Mean of the real ratings, from the raw values rather than the
@@ -43,6 +44,10 @@ function meanRating(reviews) {
 
 function starLabel(rating) {
   return rating === 1 ? '1 star' : `${rating} stars`
+}
+
+function axisLabel(rating) {
+  return String(rating)
 }
 
 /* ---- Filtered list inside the bucket tap-through modal ---- */
@@ -109,9 +114,9 @@ function BucketModal({ bucket, onReviewTap, onClose }) {
 
 /* ---- Main export ----
    "How I Rate" — the rating-distribution histogram on Profile Home.
-   Five columns with the count above each bar, a baseline under them,
-   and the real average in the section header. Tapping a bar with
-   reviews behind it opens the list of those games.
+   Ten half-star columns with the count above each bar, a baseline
+   under them, and the real average in the section header. Tapping a
+   bar with reviews behind it opens the list of those games.
 
    Hides itself entirely below MIN_RATINGS_FOR_CHART so a brand-new
    account never sees a chart that is one bar and four gaps. */
@@ -171,7 +176,7 @@ export default function ProfileRatingsChart({ reviews, onReviewTap }) {
                 <span className="prc-bar-fill" style={{ height: `${heightPx}px` }} />
               </span>
               <span className="prc-bar-label" aria-hidden="true">
-                {bucket.rating}★
+                {axisLabel(bucket.rating)}
               </span>
             </button>
           )

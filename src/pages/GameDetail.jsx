@@ -192,7 +192,7 @@ function GameDetail() {
   // Sprint 6 P1 — real comment counts per review id, fetched once per
   // refresh. The ReviewCard badge consumes these via toReviewCardShape.
   const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
-  // Whole-game rating distribution (avg + per-star counts) for the
+  // Whole-game rating distribution (avg + half-star counts) for the
   // community rating card — independent of `reviews` above, which is
   // capped to the 20 most recent rows for the Top Reviews list.
   const [ratingDist, setRatingDist] = useState(null)
@@ -845,7 +845,7 @@ function GameDetail() {
         onLogSession={openLogSheet}
       />
 
-      {/* ── Rating card — numeric average + whole-star histogram, built
+      {/* ── Rating card — numeric average + half-star histogram, built
            from every community rating for this game (not just the 20
            most recent shown in Top Reviews below). Renders whenever
            totalCount > 0. Hides on a genuine zero-rating game (confirmed

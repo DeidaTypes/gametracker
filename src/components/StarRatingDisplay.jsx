@@ -51,6 +51,10 @@ const STARS = [0, 1, 2, 3, 4]
  */
 function StarRatingDisplay({ rating, size = 'md' }) {
   const safeRating = Math.max(0, Math.min(5, Number(rating) || 0))
+  // WARNING: any caller that Math.rounds (or otherwise integerizes)
+  // `rating` before passing it here breaks half stars. A stored 3.5
+  // rounded to 4 fills 80% instead of 70% and the half is gone. Pass
+  // the raw value — fill is (rating / 5) * 100 via getStarRatingFillPercent.
   const fillPct = getStarRatingFillPercent(safeRating)
   const px = resolveStarRatingSize(size)
 

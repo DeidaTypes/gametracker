@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { emptyHalfStarCounts, toHalfStarBucket } from '../utils/ratingBuckets'
 import { logActivity } from './activityService'
 import {
   ACTIVITY_EVENT_TYPES,
@@ -934,23 +935,22 @@ export async function getCommunityRatings({ limit = 2000 } = {}) {
 }
 
 /**
- * Whole-star rating distribution for a single game — every rating row is
- * fetched (not just the 20 most recent shown in "Top Reviews") and rounded
- * to its nearest whole star (1–5) for bucketing. Powers GameDetail's
- * community rating card (numeric average + 5-row histogram).
+ * Half-star rating distribution for a single game — every rating row is
+ * fetched (not just the 20 most recent shown in "Top Reviews") and snapped
+ * to its nearest 0.5 step (0.5–5.0) for bucketing. Powers GameDetail's
+ * community rating card (numeric average + 10-row histogram).
  *
- * The `rating` column itself stores 0.5–5.0 in half-star steps (the
- * composer's picker), but that granularity is out of scope for this
- * whole-star display, so each real rating is rounded to its nearest
- * integer star before counting — no values are invented, only bucketed.
- * `average` is computed from the raw (unrounded) ratings so the numeric
- * average stays precise to one decimal.
+ * The `rating` column already stores 0.5–5.0 in half-star steps (the
+ * composer's picker). Do not Math.round(rating) to a whole star — that
+ * counts a stored 3.5 as 4. Snap with toHalfStarBucket so a 3.5 stays
+ * a 3.5. `average` is computed from the raw (unrounded) ratings so the
+ * numeric average stays precise to one decimal.
  *
  * Returns `{ average, totalCount, counts, error }`:
  *   average    — mean of the raw ratings rounded to 1 decimal, or null
  *                when the game has zero ratings (or the query failed)
  *   totalCount — total number of rating rows for this game
- *   counts     — `{ 1: n, 2: n, 3: n, 4: n, 5: n }` keyed by whole star, or
+ *   counts     — `{ 0.5: n, 1: n, …, 5: n }` keyed by half-star, or
  *                `null` when the query failed (never a fake all-zero map —
  *                that shape is reserved for a *confirmed* zero-rating game)
  *   error      — true only when the query itself failed (network/RLS/schema).
@@ -965,7 +965,7 @@ export async function getCommunityRatings({ limit = 2000 } = {}) {
 export async function getRatingDistributionForGame(igdbGameId) {
   // Genuine "this game has zero ratings" — a confirmed result from a
   // successful query, safe for the UI to treat as an empty state.
-  const EMPTY = { average: null, totalCount: 0, counts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, error: false }
+  const EMPTY = { average: null, totalCount: 0, counts: emptyHalfStarCounts(), error: false }
   // "We don't know" — the query itself failed. Deliberately shaped
   // differently from EMPTY (counts: null) so a failure can never be
   // mistaken downstream for a confirmed zero-rating game.
@@ -987,11 +987,12 @@ export async function getRatingDistributionForGame(igdbGameId) {
     .filter((n) => Number.isFinite(n) && n > 0)
   if (ratings.length === 0) return EMPTY
 
-  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  const counts = emptyHalfStarCounts()
   let sum = 0
   for (const r of ratings) {
     sum += r
-    const star = Math.min(5, Math.max(1, Math.round(r)))
+    const star = toHalfStarBucket(r)
+    if (star == null) continue
     counts[star] += 1
   }
 

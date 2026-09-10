@@ -1,7 +1,8 @@
 import React from 'react'
+import { HALF_STAR_BUCKETS } from '../utils/ratingBuckets'
 import './CommunityRatingCard.css'
 
-const ROWS = [5, 4, 3, 2, 1]
+const ROWS = [...HALF_STAR_BUCKETS].reverse()
 
 // Full (never half-filled) star glyph used only as the histogram row
 // label — the average number to the left never renders a star at all.
@@ -15,7 +16,7 @@ function FullStar() {
 
 /**
  * Community rating card for GameDetail — numeric average (gradient number)
- * on the left, whole-star histogram (rows ★5→★1) on the right.
+ * on the left, half-star histogram (rows ★5→★0.5) on the right.
  *
  * Renders whenever `totalCount > 0`. Renders nothing when `totalCount` is 0
  * — which the caller (GameDetail) only sets on a genuine zero-rating game

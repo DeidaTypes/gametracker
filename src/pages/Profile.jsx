@@ -2265,8 +2265,9 @@ function HomeTab({
         </section>
       )}
 
-      {/* HOW I RATE — 1★–5★ distribution from this user's real ratings.
-          Self-hides below a few ratings rather than drawing an empty chart. */}
+      {/* HOW I RATE — 0.5–5.0 half-star distribution from this user's
+          real ratings. Self-hides below a few ratings rather than
+          drawing an empty chart. */}
       <ProfileRatingsChart reviews={allReviews} onReviewTap={onReviewTap} />
 
       {/* BADGES — earned row + "See more". Badge counters derive from the
