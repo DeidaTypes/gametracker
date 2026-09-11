@@ -475,10 +475,24 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
   /* Size comes from the shared t-shirt scale (starRatingConfig.js),
      set inline by the component as --star-rating-size. */
   --star-rating-size: 32px;
+}
+
+/* Prevent iOS scroll/gesture stealing during drag-to-rate. The row is
+   small and not a scroll surface, so touch-action: none at rest is safe. */
+.form-stars:not(.form-stars--readonly) {
+  touch-action: none;
+}
+
+.form-stars:not(.form-stars--readonly) * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .form-stars--readonly {
