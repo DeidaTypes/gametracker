@@ -368,20 +368,6 @@
    single tile style everyone shares. */
 
 /* =====================================================
-   RATING CARD — wraps CommunityRatingCard (numeric average +
-   whole-star histogram). This wrapper only owns page-level padding/
-   max-width; the card's own visual treatment lives in
-   CommunityRatingCard.css.
-   ===================================================== */
-.gd-rating-card {
-  position: relative;
-  z-index: 3;
-  padding: 14px 20px 0;
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-}
-
-/* =====================================================
    CONTENT AREA (below the fold)
    ===================================================== */
 .gd-content {
@@ -1238,7 +1224,7 @@
 
 
 /* ── Latest-session row + session-history sub-screen ──────────────────────
-   Styling lives in GameSessionRow.css / GameSessions.css
+   Styling lives in GameDetailStatStrip.css / GameSessions.css
    (components own their own outer page padding, same pattern as the
    status-tile grid above). ── */
 

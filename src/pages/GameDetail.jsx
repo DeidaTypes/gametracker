@@ -10,7 +10,8 @@ import ReviewCard from '../components/ReviewCard'
 import AddToListButton, { STATUS_TILES } from '../components/AddToListButton'
 import StatusChip, { STATUS_META } from '../components/StatusChip'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
-import CommunityRatingCard from '../components/CommunityRatingCard'
+import GameDetailStatStrip from '../components/GameDetailStatStrip'
+import RatingDistributionSheet from '../components/RatingDistributionSheet'
 import SimilarGamesRow from '../components/SimilarGamesRow'
 import { getReviewsForGame, getRatingDistributionForGame } from '../services/reviewService'
 import { getCirclePulseForGame, getFollowedRatingsForGame } from '../services/communityService'
@@ -29,7 +30,6 @@ import {
   logSession,
   getManualSessionsForGame,
 } from '../services/sessionService'
-import GameSessionRow from '../components/GameSessionRow'
 import RatingSheet from '../components/RatingSheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
@@ -377,6 +377,7 @@ function GameDetail() {
   // Played, instead of writing the completion immediately. `game` is
   // already in scope, so this only needs an open flag.
   const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
+  const [ratingDistSheetOpen, setRatingDistSheetOpen] = useState(false)
 
   const refreshSessions = useCallback(async () => {
     const data = await getManualSessionsForGame(gameId).catch(() => [])
@@ -766,31 +767,16 @@ function GameDetail() {
         />
       </div>
 
-      {/* ── Session total row — hours from getTotalHoursForGame (same
-           function as the Session History sheet). Hidden when this game
-           has no sessions. Tapping opens the per-game history sheet. ── */}
-      <GameSessionRow
+      {/* ── Session + community stat strip — one bordered container, two
+           equal halves. Left: total session hours (sum). Right: community
+           average + 5-bar ridge meter. Always renders; empty halves show
+           muted zero states. ── */}
+      <GameDetailStatStrip
         sessions={sessions}
-        onOpenHistory={() => navigate(`/game/${gameId}/sessions`)}
+        ratingDist={ratingDist}
+        onOpenSessions={() => navigate(`/game/${gameId}/sessions`)}
+        onOpenRatingDistribution={() => setRatingDistSheetOpen(true)}
       />
-
-      {/* ── Rating card — numeric average + half-star histogram, built
-           from every community rating for this game (not just the 20
-           most recent shown in Top Reviews below). Renders whenever
-           totalCount > 0. Hides on a genuine zero-rating game (confirmed
-           by a successful query) OR on a failed query — but a failed
-           query is logged loudly in getRatingDistributionForGame rather
-           than silently masqueraded as "no ratings"; ratingDist.error
-           carries that distinction for any future caller that needs it. ── */}
-      {ratingDist && ratingDist.totalCount > 0 && (
-        <div className="gd-rating-card">
-          <CommunityRatingCard
-            average={ratingDist.average}
-            totalCount={ratingDist.totalCount}
-            counts={ratingDist.counts}
-          />
-        </div>
-      )}
 
       {/* ── Add a Review / Journal Entry quick-action buttons ── */}
       <div className="gd-action-pair">
@@ -1247,6 +1233,12 @@ function GameDetail() {
         onResolve={handleRatingSheetResolve}
         onClose={() => setRatingSheetOpen(false)}
         onWriteReview={() => openReviewComposer()}
+      />
+
+      <RatingDistributionSheet
+        isOpen={ratingDistSheetOpen}
+        onClose={() => setRatingDistSheetOpen(false)}
+        ratingDist={ratingDist}
       />
 
       <DmShareSheet

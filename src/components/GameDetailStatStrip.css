@@ -1,0 +1,187 @@
+/* GameDetailStatStrip — one bordered container, two equal halves, one divider. */
+
+.gd-stat-strip-wrap {
+  position: relative;
+  z-index: 3;
+  padding: var(--space-12) var(--space-20) 0;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.gd-stat-strip {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.gd-stat-strip__half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-12) var(--space-12);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.gd-stat-strip__half:hover,
+.gd-stat-strip__half:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.gd-stat-strip__half:active {
+  background: var(--color-surface-active);
+}
+
+.gd-stat-strip__divider {
+  flex-shrink: 0;
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-border);
+}
+
+.gd-stat-strip__label {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+}
+
+.gd-stat-strip__value-row,
+.gd-stat-strip__rating-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--space-24);
+}
+
+.gd-stat-strip__value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display, -0.02em);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.gd-stat-strip__value--muted {
+  color: var(--color-text-tertiary);
+}
+
+.gd-stat-strip__value--rating {
+  font-size: var(--font-size-heading);
+}
+
+.gd-stat-strip__unit {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.gd-stat-strip__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+}
+
+.gd-stat-strip__meta-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-stat-strip__chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.gd-stat-strip__rating-row--empty {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.gd-stat-strip__empty-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+/* Ridge meter — 5 bars, ~22px track, proportional height with floor */
+.gd-stat-strip__ridge {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  width: 100%;
+  height: 22px;
+  margin-top: var(--space-4);
+}
+
+.gd-stat-strip__ridge-bar {
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  transition: height 0.3s ease;
+}
+
+.gd-stat-strip__ridge-bar--filled {
+  background: var(--grad-headline);
+}
+
+.gd-stat-strip__ridge-caption {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-stat-strip__half {
+    transition: none;
+  }
+
+  .gd-stat-strip__ridge-bar {
+    transition: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .gd-stat-strip__half {
+    padding: var(--space-8) var(--space-8) var(--space-8);
+  }
+
+  .gd-stat-strip__value {
+    font-size: var(--font-size-heading);
+  }
+}

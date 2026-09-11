@@ -1,0 +1,75 @@
+.rating-dist-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet, 1000);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-bg-primary) 50%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.rating-dist-sheet {
+  width: 100%;
+  max-width: var(--page-max-width);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-12) var(--space-20) calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-bg-elevated, var(--color-bg-primary));
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  outline: none;
+}
+
+.rating-dist-sheet__handle {
+  width: var(--space-32);
+  height: var(--space-4);
+  margin: 0 auto var(--space-12);
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+.rating-dist-sheet__title {
+  margin: 0 0 var(--space-16);
+  font-family: var(--font-body);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.rating-dist-sheet__caption {
+  margin: var(--space-12) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  line-height: 1.35;
+}
+
+.rating-dist-sheet__empty {
+  margin: 0 0 var(--space-16);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+}
+
+.rating-dist-sheet__close {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-16);
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rating-dist-sheet__close:hover {
+  background: var(--color-surface-hover);
+}
