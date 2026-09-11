@@ -459,10 +459,90 @@ function Library() {
     setPullToRefreshYield(false)
   }
 
+  // ── Scroll-container lock (armed drag only) ──────────────────────────────
+  // Device trace showed the drag arming correctly every time (~450ms) but
+  // still losing a race to pointercancel afterward, with .main-content's
+  // scrollTop non-zero AND climbing between attempts — the page was still
+  // scrolling (residual momentum from -webkit-overflow-scrolling: touch,
+  // since Library's grid sits at the top of the page) while the drag was
+  // held. touch-action: none on the COVER (pointerdown) and later on
+  // .lib-cov--lifted only stops THIS touch from starting a NEW pan; it
+  // does nothing to an already-in-flight momentum/deceleration animation
+  // on an ancestor scroll view, which iOS appears to reassert control
+  // over by cancelling the pointer. Nothing in this file was locking the
+  // actual scroll container — .main-content (see App.css) — during a
+  // drag, so this closes that gap once the drag is genuinely active.
+  //
+  // overflow: hidden (not touch-action: none, not position: fixed) is
+  // used on .main-content itself because it actively halts an in-progress
+  // momentum animation, not just future panning — touch-action only
+  // governs how NEW touches are interpreted and can't retroactively stop
+  // one already running. position: fixed was ruled out: it would need to
+  // reproduce this page's safe-area/nav offset math to avoid a jump (see
+  // the FAB/SessionPill notes elsewhere in this codebase about
+  // position: fixed under a transformed ancestor) for no benefit over
+  // overflow: hidden here. scrollTop is captured before locking and
+  // re-applied (not scrollTo, which can trigger smooth-scroll behavior)
+  // on every unlock path so there is no visual jump in either direction.
+  const scrollLockRef = useRef(null) // { el, scrollTop } while locked, else null
+
+  const lockScrollContainer = (captureEl) => {
+    if (scrollLockRef.current) return // already locked this session
+    const scrollEl = captureEl?.closest('.main-content')
+    if (!scrollEl) return
+    const scrollTop = scrollEl.scrollTop
+    scrollLockRef.current = { el: scrollEl, scrollTop }
+    scrollEl.style.overflow = 'hidden'
+    scrollEl.scrollTop = scrollTop
+  }
+
+  const unlockScrollContainer = () => {
+    const lock = scrollLockRef.current
+    if (!lock) return
+    scrollLockRef.current = null
+    lock.el.style.overflow = ''
+    lock.el.scrollTop = lock.scrollTop
+  }
+
+  // ── Non-passive native touchmove backstop (armed drag only) ─────────────
+  // React 18 only forces passive: true for the root 'touchstart',
+  // 'touchmove' and 'wheel' listeners (see react-dom's
+  // addTrappedEventListener) — pointer events are NOT in that list, so
+  // the onPointerMove prop below is already registered non-passive and
+  // e.preventDefault() there is not silently dropped by React itself.
+  // That said, WKWebView's handling of preventDefault() called via a
+  // PointerEvent (vs. the underlying TouchEvent) has been inconsistent
+  // across iOS versions, and this can't be verified on this device from
+  // here. The scroll-container lock above no longer depends on
+  // preventDefault working at all — once .main-content is overflow:
+  // hidden there is nothing left to scroll — but this native, explicitly
+  // non-passive touchmove listener is added as a low-cost backstop for
+  // the whole armed hold anyway, so the fix doesn't stand or fall on
+  // that one WebKit behavior either way.
+  const addNonPassiveTouchMoveBlock = (session) => {
+    if (!session.captureEl || session.touchMoveBlockAdded) return
+    session.touchMoveBlockAdded = true
+    session.onNativeTouchMove = (te) => {
+      if (te.cancelable) te.preventDefault()
+    }
+    session.captureEl.addEventListener('touchmove', session.onNativeTouchMove, {
+      passive: false,
+    })
+  }
+
+  const removeNonPassiveTouchMoveBlock = (session) => {
+    if (!session?.touchMoveBlockAdded) return
+    session.touchMoveBlockAdded = false
+    session.captureEl?.removeEventListener('touchmove', session.onNativeTouchMove)
+    session.onNativeTouchMove = null
+  }
+
   const hardResetDrag = (gameId, { clearTransform = true } = {}) => {
     clearLongPressTimer()
     const session = dragSessionRef.current
     releasePreArmLock(session)
+    removeNonPassiveTouchMoveBlock(session)
+    unlockScrollContainer()
     if (session?.rafId != null) {
       cancelAnimationFrame(session.rafId)
       session.rafId = null
@@ -570,8 +650,23 @@ function Library() {
       session.activatedAt = Date.now()
       suppressClickRef.current = true
 
+      // Lock the actual scroll container now that the drag is genuinely
+      // active — only here, on arm, never at pointerdown (see
+      // lockScrollContainer above for why, and why a plain scroll must
+      // stay completely unaffected until this point).
+      lockScrollContainer(captureEl)
+      addNonPassiveTouchMoveBlock(session)
+
       if (DRAG_DEBUG) {
         const elapsedMs = Math.round(performance.now() - session.startTime)
+        // "ARM" here means session.activated just flipped true (the
+        // long-press fired and the drag is now lifted/active) — a
+        // DIFFERENT thing from session.armed (logged as `armed=` on the
+        // up/cancel lines below), which means "the lifted cover is
+        // currently hovering the trash target". A cancel shortly after
+        // ARM legitimately shows armed=N: the finger simply hasn't
+        // reached the trash bar yet. Same word, two flags — see the
+        // up/cancel logging below for the full explanation.
         // eslint-disable-next-line no-console
         console.log('[drag-debug] long-press armed', {
           gameId: game.id,
@@ -642,6 +737,22 @@ function Library() {
 
     e.preventDefault()
 
+    if (DRAG_DEBUG) {
+      // The one value this whole investigation hinges on: if the lock
+      // above is holding, this must stay pinned at the value captured
+      // when lockScrollContainer ran. Only appended to the on-screen
+      // overlay when it actually changes, so a long hold doesn't drown
+      // the 12-line buffer in repeats of the same number.
+      const scrollEl = session.captureEl?.closest('.main-content')
+      const scrollTop = scrollEl ? scrollEl.scrollTop : null
+      // eslint-disable-next-line no-console
+      console.log('[drag-debug] pointermove (armed)', { scrollTop })
+      if (scrollTop !== session.lastLoggedScrollTop) {
+        session.lastLoggedScrollTop = scrollTop
+        appendDragDebugLine(`armed-move st=${scrollTop}`, 'default')
+      }
+    }
+
     const dx = e.clientX - session.startClientX
     const dy = e.clientY - session.startClientY
     scheduleDragTransform(session, dx, dy)
@@ -694,6 +805,12 @@ function Library() {
 
     if (DRAG_DEBUG) {
       const elapsedMs = Math.round(performance.now() - session.startTime)
+      // act = session.activated: the long-press fired, the cover is
+      // lifted/dragging. armed = session.armed: the lifted cover's
+      // center is CURRENTLY over the trash target (decides delete vs.
+      // no-op below). They track different things and routinely
+      // disagree — act=Y/armed=N just means the drag was active but
+      // never reached the trash bar, not a bug.
       // eslint-disable-next-line no-console
       console.log('[drag-debug] pointerup', {
         elapsedMs,
@@ -751,7 +868,11 @@ function Library() {
       const elapsedMs = Math.round(performance.now() - session.startTime)
       // THE key signal: if this fires before LONG_PRESS_MS (450ms), the
       // UA killed the gesture before it could ever arm — a native-layer
-      // cause, not anything in this handler chain.
+      // cause, not anything in this handler chain. act/armed here mean
+      // the same two DIFFERENT things as the pointerup log above (act =
+      // lifted/dragging, armed = currently over the trash target) — an
+      // act=Y/armed=N cancel is expected if the cancel lands before the
+      // finger ever reached the trash bar, not evidence of a flag bug.
       // eslint-disable-next-line no-console
       console.log('[drag-debug] pointercancel', {
         elapsedMs,
@@ -813,6 +934,8 @@ function Library() {
     if (!session) return
     clearLongPressTimer()
     releasePreArmLock(session)
+    removeNonPassiveTouchMoveBlock(session)
+    unlockScrollContainer()
     const el = itemEls.current[session.gameId]
     if (el) {
       el.style.transform = ''
@@ -831,6 +954,8 @@ function Library() {
     return () => {
       clearLongPressTimer()
       releasePreArmLock(dragSessionRef.current)
+      removeNonPassiveTouchMoveBlock(dragSessionRef.current)
+      unlockScrollContainer()
       window.dispatchEvent(
         new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
       )
