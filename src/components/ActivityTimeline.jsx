@@ -10,6 +10,7 @@ import {
   LuBookOpen,
 } from 'react-icons/lu'
 import { formatActivityMessage } from '../services/activityService'
+import { getGameNavStub } from '../utils/gameNavStub'
 
 /* ============================================================
    Reactions — localStorage, keyed by activity id
@@ -294,21 +295,31 @@ export default function ActivityTimeline({
       }
       // Default: route by activity type
       const { activityType, igdbGameId, targetId, metadata } = activity
+      // Timeline rows only ever carry a title (denormalized at write-time,
+      // see activityService.js) + whatever cover gameImageMap already has
+      // — never a year or developer — so the stub only fills in what's
+      // genuinely known here.
+      const navState = igdbGameId
+        ? getGameNavStub({
+            gameTitle: activity.gameTitle,
+            image: gameImageMap.get(String(igdbGameId)),
+          })
+        : undefined
       if (activityType === 'status_changed' || activityType === 'session_logged' || activityType === 'journal_written') {
-        if (igdbGameId) navigate(`/game/${igdbGameId}`)
+        if (igdbGameId) navigate(`/game/${igdbGameId}`, { state: navState })
       } else if (activityType === 'review_posted') {
         if (igdbGameId) {
           const href = targetId
             ? `/game/${igdbGameId}?review=${encodeURIComponent(targetId)}`
             : `/game/${igdbGameId}`
-          navigate(href)
+          navigate(href, { state: navState })
         }
       } else if (activityType === 'list_created' || activityType === 'game_added_to_list') {
-        if (igdbGameId) navigate(`/game/${igdbGameId}`)
+        if (igdbGameId) navigate(`/game/${igdbGameId}`, { state: navState })
         else if (targetId) navigate(`/list/${targetId}`)
       }
     },
-    [navigate, onNavigateProp]
+    [navigate, onNavigateProp, gameImageMap]
   )
 
   const groups = useMemo(() => groupActivities(activities), [activities])

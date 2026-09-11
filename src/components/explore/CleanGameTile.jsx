@@ -4,6 +4,7 @@ import { getBestImageUrl } from '../../services/imageUtils'
 import SharedCover from '../SharedCover'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './CleanGameTile.css'
 
 /**
@@ -34,7 +35,7 @@ export default function CleanGameTile({ game, tag = null }) {
   return (
     <Pressable
       className="clean-tile"
-      onClick={() => navigate(`/game/${game.id}`, { state: { coverImage: image } })}
+      onClick={() => navigate(`/game/${game.id}`, { state: { ...getGameNavStub(game), coverImage: image } })}
       aria-label={`View ${title}`}
     >
       <div className="clean-tile__cover">

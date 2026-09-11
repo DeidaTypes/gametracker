@@ -13,6 +13,7 @@ import { showToast } from '../components/Toast'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
 import { LIST_REORDER_DRAG_EVENT } from '../components/BottomNav'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
 import { getProfile } from '../services/profileService'
@@ -920,7 +921,7 @@ function Library() {
                             suppressClickRef.current = false
                             return
                           }
-                          navigate(`/game/${g.id}`)
+                          navigate(`/game/${g.id}`, { state: getGameNavStub(g) })
                         }}
                         onCoverPointerDown={(e) => handleCoverPointerDown(e, g)}
                         onCoverPointerMove={handleCoverPointerMove}

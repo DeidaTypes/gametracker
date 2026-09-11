@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchSimilarGamesForRow } from '../services/igdb'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './SimilarGamesRow.css'
 
 const COVER_W = 120
@@ -73,7 +74,7 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
                 <div key={game.id} className="sgr-item" role="listitem">
                   <button
                     className="sgr-cover-btn"
-                    onClick={() => navigate(`/game/${game.id}`)}
+                    onClick={() => navigate(`/game/${game.id}`, { state: getGameNavStub(game) })}
                     aria-label={game.title}
                   >
                     <img

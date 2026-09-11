@@ -4,6 +4,7 @@ import { getBestImageUrl } from '../services/imageUtils'
 import SharedCover from './SharedCover'
 import Pressable from './Pressable'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './GameCard.css'
 
 /**
@@ -19,7 +20,7 @@ function GameCard({ game, titleOverlay = true }) {
   const imageUrl = getBestImageUrl(game, 800) || game.image
 
   const handleClick = () => {
-    navigate(`/game/${game.id}`, { state: { coverImage: imageUrl } })
+    navigate(`/game/${game.id}`, { state: { ...getGameNavStub(game), coverImage: imageUrl } })
   }
 
   return (

@@ -30,6 +30,7 @@ import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
 import { extractQuote } from '../utils/extractQuote'
 import { hapticImpact } from '../utils/haptics'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './ReviewCard.css'
 
 /** "42 hrs" / "1.5 hrs" — drops the decimal on whole numbers. */
@@ -287,7 +288,7 @@ function ReviewCard({
   }
   const goToGame = (e) => {
     e.stopPropagation()
-    navigate(`/game/${review.game.id}`)
+    navigate(`/game/${review.game.id}`, { state: getGameNavStub(review.game) })
   }
 
   const handleAuthorClick = (e) => {

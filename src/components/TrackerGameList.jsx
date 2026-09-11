@@ -33,6 +33,7 @@ import {
 } from '../services/libraryService'
 import { getCachedUserReviews } from '../services/reviewService'
 import { hapticImpact } from '../utils/haptics'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { logSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
 import { showToast } from './Toast'
@@ -186,7 +187,7 @@ function TrackerGameRow({
       onToggleSelect(game.id)
       return
     }
-    navigate(`/game/${game.id}`)
+    navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
   }
 
   const handleLogClick = (e) => {

@@ -177,7 +177,33 @@ function GameDetail() {
   // of renders the hero, title and metadata immediately rather than showing
   // a skeleton while we re-confirm details that have not changed.
   const cachedGame = peekSWR(`game:${gameId}`)
-  const [game, setGame] = useState(cachedGame ?? null)
+  // The "game stub" — title, year, developer, cover — that whichever grid/
+  // card/row the user just tapped already had on screen and passed through
+  // via router state (see src/utils/gameNavStub.js). Only built when a
+  // title is present: a title-less stub (e.g. an older caller that still
+  // passes only `coverImage`) isn't enough to render a real hero, so that
+  // case falls through to the cover-only skeleton below, same as today.
+  // Every field a full IGDB game exposes gets a safe empty default here so
+  // downstream reads like `game.developers.length` never crash on a
+  // partially-known game.
+  const navStub = location.state?.title
+    ? {
+        id: gameId,
+        title: location.state.title,
+        year: location.state.year ?? null,
+        image: placeholderCover,
+        developers: location.state.developer ? [location.state.developer] : [],
+        publishers: [],
+        genres: [],
+        genreIds: [],
+        themes: [],
+        themeIds: [],
+        platforms: [],
+        screenshots: [],
+        description: null,
+      }
+    : null
+  const [game, setGame] = useState(cachedGame ?? navStub ?? null)
   const [loading, setLoading] = useState(cachedGame === undefined)
   const [error, setError] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -272,6 +298,21 @@ function GameDetail() {
         if (warm === undefined) setLoading(true)
         setError(null)
         setRatingDist(null)
+
+        // Everything below only needs `gameId`, not the resolved IGDB
+        // payload — start it alongside getGameById instead of waiting for
+        // IGDB to finish first. This used to sit in a Promise.all AFTER
+        // `await getGameById`, which meant reviews/ratings/circle pulse/
+        // followed-ratings all sat idle for the entire IGDB round-trip for
+        // no reason. Time to Beat + sessions already did this correctly
+        // via the sibling effect below — this matches that.
+        refreshReviews()
+        refreshRatingDistribution()
+        getCirclePulseForGame(gameId)
+          .then(p => setCirclePulse(p))
+          .catch(() => {})
+        refreshFollowedRatings()
+
         const gameData = await getSWR(`game:${gameId}`, () => getGameById(gameId), {
           ttlMs: GAME_TTL_MS,
         })
@@ -280,27 +321,14 @@ function GameDetail() {
         addViewedGame(gameId, gameData.title, gameData.image)
         refreshFromStore()
 
-        // Kick off all post-load work in parallel — none of these block
-        // the main content from rendering.
-        Promise.all([
-          refreshReviews(),
-          refreshRatingDistribution(),
-          getDominantColor(gameData.image)
-            .then(color => setDominantColor(color))
-            .catch(() => {}),
-          getGameSwatches(gameData.image, gameId)
-            .then(sw => setGlobalSwatches(sw))
-            .catch(() => {}),
-          // Time to Beat is fetched by the loadTtbAndSessions effect below
-          // (it needs to run alongside getManualSessionsForGame anyway) —
-          // intentionally not duplicated here.
-          // Community Pulse — circle-scoped signals; hides when empty.
-          getCirclePulseForGame(gameId)
-            .then(p => setCirclePulse(p))
-            .catch(() => {}),
-          // From People You Follow — hides when no followed user rated it.
-          refreshFollowedRatings(),
-        ])
+        // These genuinely need the resolved IGDB cover, so they can't start
+        // any earlier than this.
+        getDominantColor(gameData.image)
+          .then(color => setDominantColor(color))
+          .catch(() => {})
+        getGameSwatches(gameData.image, gameId)
+          .then(sw => setGlobalSwatches(sw))
+          .catch(() => {})
       } catch (err) {
         console.error('Error fetching game:', err)
         setError('Failed to load game details.')
@@ -511,14 +539,23 @@ function GameDetail() {
     setDmShareOpen(true)
   }
 
-  if (loading) {
+  // Only the truly-cold path (no SWR cache AND no usable stub — a deep
+  // link, or an older caller that hasn't been updated to pass a stub yet)
+  // still gates the whole page on `loading`. The moment `game` is set —
+  // whether from cache or from a passed-through stub — we fall through to
+  // the real return below and render the real hero immediately; `loading`
+  // from that point on only affects the sections further down the page
+  // that a stub genuinely can't provide (see hasDescription / hasDetails /
+  // the screenshots + similar-games gates further down).
+  if (loading && !game) {
     // If we know the cover image from the navigation source (state or
-    // recent-cover cache), render a real hero with the shared layoutId
-    // so the cover-to-hero flight has somewhere to land. The detail
-    // metadata (title, description, etc.) is still skeletoned underneath
-    // until the IGDB request resolves. If no placeholder is available
-    // (deep-link from outside the app) we fall back to the original
-    // all-skeleton state.
+    // recent-cover cache) but not a full stub — e.g. an older caller that
+    // still only passes `coverImage` — render a real hero with the shared
+    // layoutId so the cover-to-hero flight has somewhere to land. The
+    // detail metadata (title, description, etc.) is still skeletoned
+    // underneath until the IGDB request resolves. If no placeholder is
+    // available either (deep-link from outside the app) we fall back to
+    // the original all-skeleton state.
     if (placeholderCover) {
       return (
         <div className="game-detail margins-style" aria-busy="true">
@@ -583,7 +620,12 @@ function GameDetail() {
     )
   }
 
-  if (error || !game) {
+  // A stub-seeded `game` is enough to keep rendering the real page even if
+  // the getGameById fetch that would have filled in the rest fails — the
+  // hero the user is looking at is already correct, so an IGDB hiccup
+  // shouldn't blow it away in favor of an error screen. Only show the
+  // error page when there's truly nothing to show.
+  if (error && !game) {
     return (
       <div className="game-detail margins-style">
         <div className="error-container">
@@ -966,10 +1008,19 @@ function GameDetail() {
       {/* ── Content Area ── */}
       <div className="gd-content">
 
-        {/* About — hidden outright when IGDB has no summary for this game,
-             which used to leave an "About" label over a blank fade and a
-             "Read more" button with nothing to expand. */}
-        {hasDescription && (
+        {/* About — a stub genuinely can't provide a summary, so this stays
+             skeletoned (not hidden) for the one gap between "we don't know
+             yet" and "IGDB has no summary for this game". Hidden outright
+             once loading finishes and there's still nothing — that used to
+             leave an "About" label over a blank fade and a "Read more"
+             button with nothing to expand. */}
+        {loading ? (
+          <div className="gd-section">
+            <p className="gd-section-label">About</p>
+            <div className="gd-sk-desc skeleton" />
+            <div className="gd-sk-desc gd-sk-desc--short skeleton" />
+          </div>
+        ) : hasDescription && (
           <div className="gd-section">
             <p className="gd-section-label">About</p>
             <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
@@ -1044,8 +1095,21 @@ function GameDetail() {
           </>
         )}
 
-        {/* Screenshots — scroll-snap + lightbox */}
-        {game.screenshots && game.screenshots.length > 0 && (
+        {/* Screenshots — scroll-snap + lightbox. Another field a stub
+             genuinely can't provide, so it skeletons (a row of blank
+             screenshot-sized tiles) instead of hiding while getGameById is
+             still in flight; collapses away entirely if the loaded game
+             turns out to have none. */}
+        {loading ? (
+          <div className="gd-section">
+            <p className="gd-section-label">Screenshots</p>
+            <div className="gd-screenshots-scroll" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="gd-screenshot skeleton" />
+              ))}
+            </div>
+          </div>
+        ) : game.screenshots && game.screenshots.length > 0 && (
           <>
             <div className="gd-divider" />
             <div className="gd-section">
@@ -1175,20 +1239,30 @@ function GameDetail() {
           })()}
         </div>
 
-        {/* More Like This — SimilarGamesRow self-fetches in parallel; renders null (incl. header/divider) if no results.
-             "See all" reuses the same /browse/:categoryKey destination as the Genres chips above (CategoryResults) —
-             there is no dedicated "all similar games" page today, so this is the closest real destination rather
-             than a dead link. */}
-        <SimilarGamesRow
-          gameId={gameId}
-          genreIds={game.genreIds || []}
-          themeIds={game.themeIds || []}
-          onSeeAll={
-            game.genres.length > 0
-              ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
-              : undefined
-          }
-        />
+        {/* More Like This — deliberately held back until the real
+             genreIds/themeIds land: SimilarGamesRow's own fetch effect only
+             re-runs on `gameId`, so mounting it early against the stub's
+             empty genreIds/themeIds would fetch once with no genre/theme
+             filter and never correct itself once the real ones arrive.
+             SimilarGamesRow self-fetches (and shows its own cover-skeleton
+             row) in parallel with the rest of the page once mounted, and
+             renders null (incl. header/divider) if it comes back empty.
+             "See all" reuses the same /browse/:categoryKey destination as
+             the Genres chips above (CategoryResults) — there is no
+             dedicated "all similar games" page today, so this is the
+             closest real destination rather than a dead link. */}
+        {!loading && (
+          <SimilarGamesRow
+            gameId={gameId}
+            genreIds={game.genreIds || []}
+            themeIds={game.themeIds || []}
+            onSeeAll={
+              game.genres.length > 0
+                ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
+                : undefined
+            }
+          />
+        )}
 
       </div>
 

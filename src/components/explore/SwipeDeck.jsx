@@ -14,6 +14,7 @@ import {
   SWIPE_ACTIONS,
 } from '../../services/swipeService'
 import { hapticImpact } from '../../utils/haptics'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './SwipeDeck.css'
 
 // sessionStorage key used to preserve deck state when the user taps a card
@@ -354,7 +355,7 @@ export function SwipeDeck() {
   const handleTap = useCallback(
     (game) => {
       persistSessionState(pool, currentIdx)
-      navigate(`/game/${game.id}`)
+      navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
     },
     [navigate, pool, currentIdx, persistSessionState]
   )

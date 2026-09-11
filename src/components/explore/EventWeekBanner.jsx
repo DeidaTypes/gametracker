@@ -4,6 +4,7 @@ import useEventWeek from '../../hooks/useEventWeek'
 import Pressable from '../Pressable'
 import Avatar from '../Avatar'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './EventWeekBanner.css'
 
 // ── Date label ────────────────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ function EventGameTile({ game }) {
     <Pressable
       as="div"
       className="ewb-game-tile"
-      onClick={() => navigate(`/game/${game.id}`, { state: { coverImage: game.image } })}
+      onClick={() => navigate(`/game/${game.id}`, { state: getGameNavStub(game) })}
       role="button"
       tabIndex={0}
       aria-label={game.title}

@@ -4,6 +4,7 @@ import Pressable from '../Pressable'
 import EmptyState from '../EmptyState'
 import { getBestImageUrl } from '../../services/imageUtils'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './GotAnHourRail.css'
 
 // ── Buckets ───────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ function TimeBeatCard({ game }) {
   const label = formatHours(game.mainStoryHours)
 
   function handleClick() {
-    navigate(`/game/${game.id}`, { state: { coverImage: img } })
+    navigate(`/game/${game.id}`, { state: { ...getGameNavStub(game), coverImage: img } })
   }
 
   return (

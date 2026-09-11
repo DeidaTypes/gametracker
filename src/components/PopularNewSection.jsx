@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { fetchPopularThisWeek, fetchNewThisWeek } from '../services/igdb'
+import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from './EmptyState'
 import './PopularNewSection.css'
 
@@ -121,7 +122,7 @@ function PopularNewSection() {
                   key={g.id}
                   className="pn-card"
                   role="listitem"
-                  onClick={() => navigate(`/game/${g.id}`)}
+                  onClick={() => navigate(`/game/${g.id}`, { state: getGameNavStub(g) })}
                 >
                   <div className="pn-card__cover-wrap">
                     <img

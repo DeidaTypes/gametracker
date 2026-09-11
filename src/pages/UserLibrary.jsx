@@ -7,6 +7,7 @@ import { getGameTrackersForUser } from '../services/statsService'
 import { TRACKER_STATUS } from '../services/libraryService'
 import { getGamesByIds } from '../services/igdb'
 import { getListsForUser, getSaveCountsForLists } from '../services/listService'
+import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from '../components/EmptyState'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE } from '../components/library/libraryConstants'
@@ -399,12 +400,7 @@ function UserLibrary() {
                       hasMore={hasMore}
                       onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
                       ariaLabel={`${displayName || 'Player'}'s games`}
-                      onGameClick={(g) =>
-                        navigate(
-                          `/game/${g.id}`,
-                          g.image ? { state: { coverImage: g.image } } : undefined
-                        )
-                      }
+                      onGameClick={(g) => navigate(`/game/${g.id}`, { state: getGameNavStub(g) })}
                     />
                   )}
                 </section>

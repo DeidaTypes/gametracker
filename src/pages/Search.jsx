@@ -21,6 +21,7 @@ import {
   useRecents,
 } from '../utils/recentSearches'
 import { shouldShowCount } from '../utils/formatSocialCount'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { fetchBrowseCategories } from '../services/browseService'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getSizedImageUrl } from '../services/imageUtils'
@@ -454,6 +455,9 @@ function ContinuePlayingSection({ games, onTapGame }) {
                 id: item.id,
                 title: item.title ?? item.name,
                 image: item.image ?? item.coverUrl ?? null,
+                year: item.year,
+                developers: item.developers,
+                developer: item.developer,
               })
             }
             aria-label={item.title ?? item.name ?? 'Game'}
@@ -1346,7 +1350,7 @@ function Search() {
   const handleGameTap = useCallback(
     (game) => {
       commitRecentQuery(trimmedQuery)
-      navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
+      navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
     },
     [navigate, commitRecentQuery, trimmedQuery]
   )
@@ -1572,9 +1576,7 @@ function Search() {
                 onTapQuery={handleRecentQueryTap}
                 onRemoveQuery={(id) => removeRecent('queries', id)}
                 onTapGame={(item) =>
-                  navigate(`/game/${item.id}`, {
-                    state: { coverImage: item.image ?? item.coverUrl },
-                  })
+                  navigate(`/game/${item.id}`, { state: getGameNavStub(item) })
                 }
                 continuePlaying={continuePlaying}
                 onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}
@@ -1609,9 +1611,7 @@ function Search() {
                 onTapQuery={handleRecentQueryTap}
                 onRemoveQuery={(id) => removeRecent('queries', id)}
                 onTapGame={(item) =>
-                  navigate(`/game/${item.id}`, {
-                    state: { coverImage: item.image ?? item.coverUrl },
-                  })
+                  navigate(`/game/${item.id}`, { state: getGameNavStub(item) })
                 }
                 continuePlaying={continuePlaying}
                 onTapGenreCard={(slug) => navigate(`/browse/${slug}`)}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { shouldShowCount } from '../../utils/formatSocialCount'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './MostPlayedRail.css'
 
 /**
@@ -66,9 +67,7 @@ function MostPlayedRow({ item, rank, mode }) {
   const navigate = useNavigate()
 
   function handleClick() {
-    navigate(`/game/${item.igdb_game_id}`, {
-      state: { coverImage: item.game_image },
-    })
+    navigate(`/game/${item.igdb_game_id}`, { state: getGameNavStub(item) })
   }
 
   const isCircle = mode === 'circle'

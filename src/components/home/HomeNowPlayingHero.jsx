@@ -7,6 +7,7 @@ import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import { getDominantColor } from '../../services/colorExtract'
 import { getTracker } from '../../services/hoursService'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './HomeNowPlayingHero.css'
 
 function humanTimeAgo(dateStr) {
@@ -117,9 +118,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
     return (
       <BacklogNudge
         game={backlogGame}
-        onOpen={() =>
-          navigate(`/game/${backlogGame.id}`, backlogGame.image ? { state: { coverImage: backlogGame.image } } : undefined)
-        }
+        onOpen={() => navigate(`/game/${backlogGame.id}`, { state: getGameNavStub(backlogGame) })}
       />
     )
   }
@@ -128,7 +127,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   const line = statusLine(hoursPlayed, activeGame.lastPlayedAt)
 
   const goToGame = () => {
-    navigate(`/game/${activeGame.id}`, activeGame.image ? { state: { coverImage: activeGame.image } } : undefined)
+    navigate(`/game/${activeGame.id}`, { state: getGameNavStub(activeGame) })
   }
 
   const handleLogSession = (e) => {
