@@ -51,6 +51,42 @@ const GRID_REFLOW_MS = 250
 // Must match ReorderTrashTarget.css slide-in transition duration.
 const TRASH_ENTER_MS = 220
 
+// ── TEMPORARY instrumentation — remove after the device trace is captured ──
+// Two prior fixes (touch-action lock + PullToRefresh yield, commit
+// 6c5b5c0) did not resolve drag-to-trash never arming on a physical
+// iPhone. Rather than guess a third theory, this logs the real pointer
+// event sequence so the fix (if any) is driven by device data:
+//   - pointerdown: capture success, computed touch-action AFTER the
+//     inline lock is applied, and .main-content's scrollTop
+//   - every pre-arm pointermove: elapsed time, dx/dy/hypot, whether
+//     preventDefault was called and whether the event was cancelable
+//   - the long-press timer firing (armed)
+//   - pointercancel: elapsed time since pointerdown — THE key signal.
+//     If this fires before LONG_PRESS_MS (450ms), the UA is killing the
+//     gesture before it can ever arm, confirming a native-layer cause
+//     rather than anything in this handler chain.
+//   - pointerup: elapsed time and whether the drag had armed
+// Read via Safari on a Mac: Develop menu > <device name> > GameTracker,
+// with Web Inspector enabled on the iPhone (Settings > Safari >
+// Advanced > Web Inspector) and the device connected over USB. Console
+// entries are tagged '[drag-debug]'. Flip this to false (or delete the
+// call sites) once a trace has been captured — not meant to ship.
+// On-device: the same lines also render in a fixed overlay at the top
+// of the screen (see .lib-drag-debug in Library.css) so traces can be
+// read and screenshotted without Safari Web Inspector.
+const DRAG_DEBUG = true
+const DRAG_DEBUG_MAX_LINES = 12
+
+function dragDebugYn(v) {
+  return v ? 'Y' : 'N'
+}
+
+function dragDebugShortTouchAction(value) {
+  if (!value || value === 'auto') return 'auto'
+  if (value === 'none') return 'none'
+  return value.replace(/\s+/g, '')
+}
+
 /**
  * Which segment the user last had open, remembered for the session.
  *
@@ -117,6 +153,30 @@ function Library() {
   const dragSessionRef = useRef(null)
   const longPressTimerRef = useRef(null)
   const suppressClickRef = useRef(false)
+
+  // ── TEMPORARY on-screen drag trace (see DRAG_DEBUG above) ───────────────
+  const dragDebugScrollRef = useRef(null)
+  const [dragDebugLines, setDragDebugLines] = useState([])
+
+  const appendDragDebugLine = useCallback((text, kind = 'default') => {
+    if (!DRAG_DEBUG) return
+    setDragDebugLines((prev) => {
+      const next = [...prev, { text, kind }]
+      return next.length > DRAG_DEBUG_MAX_LINES
+        ? next.slice(-DRAG_DEBUG_MAX_LINES)
+        : next
+    })
+  }, [])
+
+  const clearDragDebugLines = useCallback(() => {
+    setDragDebugLines([])
+  }, [])
+
+  useEffect(() => {
+    if (!DRAG_DEBUG) return
+    const el = dragDebugScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [dragDebugLines])
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -428,9 +488,14 @@ function Library() {
     if (dragSessionRef.current) return
 
     const captureEl = e.currentTarget
+    const startTime = performance.now()
+    let captureCaptured = true
+    let captureError = null
     try {
       captureEl.setPointerCapture(e.pointerId)
-    } catch {
+    } catch (err) {
+      captureCaptured = false
+      captureError = err
       // Same capture-reject fallback as ListDetail — long-press still
       // arms; move/up may not fire if the finger leaves this element.
     }
@@ -445,10 +510,34 @@ function Library() {
     // rather than racing it for the whole pre-arm hold.
     setPullToRefreshYield(true)
 
+    if (DRAG_DEBUG) {
+      const scrollEl = captureEl.closest('.main-content')
+      const computedTouchAction = getComputedStyle(captureEl).touchAction
+      const scrollTop = scrollEl ? scrollEl.scrollTop : 0
+      // eslint-disable-next-line no-console
+      console.log('[drag-debug] pointerdown', {
+        gameId: game.id,
+        timestamp: Math.round(startTime),
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        setPointerCaptureOk: captureCaptured,
+        setPointerCaptureError: captureError ? String(captureError) : null,
+        // Read back AFTER the inline lock above — confirms it actually
+        // took rather than assuming it from the assignment alone.
+        computedTouchActionAfterLock: computedTouchAction,
+        mainContentScrollTop: scrollEl ? scrollEl.scrollTop : null,
+      })
+      appendDragDebugLine(
+        `down t=0 cap=${captureCaptured ? 'OK' : 'THREW'} ta=${dragDebugShortTouchAction(computedTouchAction)} st=${scrollTop}`,
+        'default'
+      )
+    }
+
     const session = {
       gameId: game.id,
       pointerId: e.pointerId,
       captureEl,
+      startTime,
       startClientX: e.clientX,
       startClientY: e.clientY,
       activated: false,
@@ -480,6 +569,17 @@ function Library() {
       session.rafId = null
       session.activatedAt = Date.now()
       suppressClickRef.current = true
+
+      if (DRAG_DEBUG) {
+        const elapsedMs = Math.round(performance.now() - session.startTime)
+        // eslint-disable-next-line no-console
+        console.log('[drag-debug] long-press armed', {
+          gameId: game.id,
+          elapsedMs,
+        })
+        appendDragDebugLine(`ARM t=${elapsedMs}`, 'arm')
+      }
+
       setDragGameId(game.id)
       hapticImpact('Medium')
       window.dispatchEvent(
@@ -498,14 +598,38 @@ function Library() {
       // a scroll grab the UA already made, but an early one on the very
       // first move — while arbitration is still open — helps hold the
       // line until the lock takes effect. Once only per session.
+      let preventedThisMove = false
       if (!session.firstMoveSeen) {
         session.firstMoveSeen = true
-        if (e.cancelable) e.preventDefault()
+        if (e.cancelable) {
+          e.preventDefault()
+          preventedThisMove = true
+        }
       }
 
       const dx = e.clientX - session.startClientX
       const dy = e.clientY - session.startClientY
-      if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+      const dist = Math.hypot(dx, dy)
+
+      if (DRAG_DEBUG) {
+        const elapsedMs = Math.round(performance.now() - session.startTime)
+        const distRounded = (Math.round(dist * 10) / 10).toFixed(1)
+        // eslint-disable-next-line no-console
+        console.log('[drag-debug] pointermove (pre-arm)', {
+          elapsedMs,
+          dx,
+          dy,
+          hypot: Math.round(dist * 100) / 100,
+          preventDefaultCalled: preventedThisMove,
+          cancelable: e.cancelable,
+        })
+        appendDragDebugLine(
+          `move t=${elapsedMs} d=${distRounded} pd=${dragDebugYn(preventedThisMove)} c=${dragDebugYn(e.cancelable)}`,
+          'default'
+        )
+      }
+
+      if (dist > MOVE_CANCEL_PX) {
         clearLongPressTimer()
         // Genuine scroll, not a hold — release the lock now, in this
         // same synchronous handler, so the UA's own pan recognizer can
@@ -568,6 +692,20 @@ function Library() {
     const session = dragSessionRef.current
     if (!session || session.pointerId !== e.pointerId) return
 
+    if (DRAG_DEBUG) {
+      const elapsedMs = Math.round(performance.now() - session.startTime)
+      // eslint-disable-next-line no-console
+      console.log('[drag-debug] pointerup', {
+        elapsedMs,
+        activated: session.activated,
+        armed: session.armed,
+      })
+      appendDragDebugLine(
+        `up t=${elapsedMs} act=${dragDebugYn(session.activated)} armed=${dragDebugYn(session.armed)}`,
+        'default'
+      )
+    }
+
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
     }
@@ -608,6 +746,24 @@ function Library() {
   const handleCoverPointerCancel = (e) => {
     const session = dragSessionRef.current
     if (!session || session.pointerId !== e.pointerId) return
+
+    if (DRAG_DEBUG) {
+      const elapsedMs = Math.round(performance.now() - session.startTime)
+      // THE key signal: if this fires before LONG_PRESS_MS (450ms), the
+      // UA killed the gesture before it could ever arm — a native-layer
+      // cause, not anything in this handler chain.
+      // eslint-disable-next-line no-console
+      console.log('[drag-debug] pointercancel', {
+        elapsedMs,
+        activated: session.activated,
+        armed: session.armed,
+      })
+      appendDragDebugLine(
+        `CANCEL t=${elapsedMs} act=${dragDebugYn(session.activated)} armed=${dragDebugYn(session.armed)}`,
+        'cancel'
+      )
+    }
+
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
     }
@@ -879,6 +1035,33 @@ function Library() {
           </button>,
           document.body
         )}
+
+        {/* TEMPORARY — on-screen drag trace for device debugging. Remove
+            with DRAG_DEBUG once a trace has been captured. Portaled to
+            body so PageTransition transforms can't pin it to the page. */}
+        {DRAG_DEBUG &&
+          createPortal(
+            <div className="lib-drag-debug" aria-hidden="true">
+              <div className="lib-drag-debug-log" ref={dragDebugScrollRef}>
+                {dragDebugLines.map((line, index) => (
+                  <div
+                    key={`${index}-${line.text}`}
+                    className={`lib-drag-debug-line lib-drag-debug-line--${line.kind}`}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="lib-drag-debug-clear"
+                onClick={clearDragDebugLines}
+              >
+                clear
+              </button>
+            </div>,
+            document.body
+          )}
 
         <CreateListModal
           isOpen={showCreateModal}
