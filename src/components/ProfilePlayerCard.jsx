@@ -26,9 +26,9 @@ function formatHours(hours) {
  * flash empty on reload" symptom was this block rendering 0 and then
  * jumping.
  */
-function Stat({ value, label, suffix, loading }) {
-  return (
-    <div className="ppc__stat">
+function Stat({ value, label, suffix, loading, onClick, ariaLabel }) {
+  const content = (
+    <>
       <span className="ppc__stat-value">
         {loading ? (
           <Skeleton variant="text" width={28} height={22} className="ppc__stat-skeleton" />
@@ -40,8 +40,28 @@ function Stat({ value, label, suffix, loading }) {
         )}
       </span>
       <span className="ppc__stat-label">{label}</span>
-    </div>
+    </>
   )
+
+  // Games is the only stat with a destination (its own/other's library
+  // grid) — everything else stays a plain, non-interactive cell. Visual
+  // design is unchanged; this only adds the tap affordance, a focus
+  // ring, and an accessible label.
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="ppc__stat ppc__stat--tappable"
+        onClick={onClick}
+        disabled={loading}
+        aria-label={ariaLabel}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return <div className="ppc__stat">{content}</div>
 }
 
 /**
@@ -83,6 +103,7 @@ export default function ProfilePlayerCard({
   onAvatarClick,
   onFollowersClick,
   onFollowingClick,
+  onGamesClick,
 }) {
   const hasRatings = avgRating != null && avgRating > 0
 
@@ -200,6 +221,12 @@ export default function ProfilePlayerCard({
           value={gamesCount ?? 0}
           label="Games"
           loading={statsLoading || gamesCount == null}
+          onClick={onGamesClick}
+          ariaLabel={
+            isOwnProfile
+              ? `${gamesCount ?? 0} games, open your library`
+              : `${gamesCount ?? 0} games, open ${displayName || 'this player'}'s library`
+          }
         />
         {/* An unresolved hours total is an em dash, not an endless
             skeleton: getTotalHoursForUser returns 0 for a user with no

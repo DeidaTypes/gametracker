@@ -241,6 +241,35 @@
   min-width: 0;
 }
 
+/* Games is the only stat that's tappable — a plain <button> reset to
+   look identical to the sibling <div> stats, plus a press/focus
+   affordance so it doesn't look inert. */
+.ppc__stat--tappable {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast);
+}
+
+.ppc__stat--tappable:active {
+  opacity: 0.7;
+}
+
+.ppc__stat--tappable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.ppc__stat--tappable:disabled {
+  cursor: default;
+}
+
 .ppc__stat-value {
   display: flex;
   align-items: baseline;
@@ -298,7 +327,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ppc__icon-btn,
-  .ppc__follow-link {
+  .ppc__follow-link,
+  .ppc__stat--tappable {
     transition: none;
   }
 }

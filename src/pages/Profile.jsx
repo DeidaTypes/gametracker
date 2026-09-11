@@ -1593,6 +1593,20 @@ function Profile() {
           onAvatarClick={() => isOwnProfile && setShowEditModal(true)}
           onFollowersClick={() => navigate(`/user/${profilePathSegment}/followers`)}
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}
+          onGamesClick={
+            // Own profile goes to the real (localStorage-backed) Library
+            // page, never this screen's read-only copy of it. Other
+            // profiles get the new grid, seeded with the Games count
+            // already showing on the card — UserLibrary compares that
+            // hint against its own fresh RLS-gated query so a "this
+            // library isn't visible to you" state can be told apart from
+            // a genuinely empty one (see UserLibrary.jsx).
+            isOwnProfile
+              ? () => navigate('/library')
+              : () => navigate(`/user/${profilePathSegment}/library`, {
+                  state: { gamesCountHint: gamesCount },
+                })
+          }
         />
 
         {/* ═════════════════════════════════════════════════════════

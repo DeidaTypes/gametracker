@@ -569,6 +569,51 @@ export async function getTrackedGamesCountForUser(userId) {
 }
 
 /**
+ * Full tracker rows for ANY user, sourced directly from `game_trackers`
+ * and gated ONLY by the existing `trackers_select_visible` RLS policy —
+ * no client-side privacy check duplicates or second-guesses it here.
+ *
+ * Used by the `/user/:username/library` (and `/user/id/:userId/library`)
+ * screen — the tap destination behind the Games stat on another user's
+ * profile. Sorted most-recently-updated first so a fresh status change
+ * surfaces at the top, matching Library's own default "Recent" sort.
+ *
+ * Deliberately does NOT fall back to any other user id — callers must
+ * pass the PROFILE user's id explicitly. Returns `[]` (not the viewer's
+ * own rows) for a null/missing id.
+ *
+ * @param {string} userId
+ * @returns {Promise<Array<{
+ *   igdbGameId: number,
+ *   status: string,        // raw game_trackers.status vocabulary
+ *   title: string|null,
+ *   image: string|null,
+ *   hoursPlayed: number,
+ *   updatedAt: string|null,
+ * }>>}
+ */
+export async function getGameTrackersForUser(userId) {
+  if (!userId) return []
+  const { data, error } = await supabase
+    .from('game_trackers')
+    .select('igdb_game_id, status, game_title, game_image, hours_played, updated_at')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+  if (error) {
+    console.error('[stats] getGameTrackersForUser failed:', error.message)
+    return []
+  }
+  return (data || []).map((row) => ({
+    igdbGameId: Number(row.igdb_game_id),
+    status: row.status,
+    title: row.game_title || null,
+    image: row.game_image || null,
+    hoursPlayed: row.hours_played || 0,
+    updatedAt: row.updated_at || null,
+  }))
+}
+
+/**
  * Fetch current streaks for users that `userId` follows, using the
  * `get_circle_streaks` Postgres function.
  *

@@ -32,6 +32,7 @@ import UserFollowers from './pages/UserFollowers'
 import UserFollowing from './pages/UserFollowing'
 import UserActivity from './pages/UserActivity'
 import ChallengeDetail from './pages/ChallengeDetail'
+import UserLibrary from './pages/UserLibrary'
 import MessagesInbox from './pages/MessagesInbox'
 import MessagesThread from './pages/MessagesThread'
 import NotificationsInbox from './pages/NotificationsInbox'
@@ -810,6 +811,31 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><ChallengeDetail /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Another user's tracked-games grid — the tap destination
+                behind the Games stat on a visitor profile. Own profile
+                routes to /library instead (see ProfilePlayerCard's
+                onGamesClick in Profile.jsx); UserLibrary itself also
+                redirects there as a safety net for a direct/deep link. */}
+            <Route
+              path="/user/:username/library"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserLibrary /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/library"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><UserLibrary /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
