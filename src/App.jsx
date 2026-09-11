@@ -25,6 +25,7 @@ import Wishlist from './pages/Wishlist'
 import Reviews from './pages/Reviews'
 import GameDetail from './pages/GameDetail'
 import GameReviewsAll from './pages/GameReviewsAll'
+import GameSessions from './pages/GameSessions'
 import DeveloperDetail from './pages/DeveloperDetail'
 import Profile from './pages/Profile'
 import UserBadgesPage from './pages/UserBadgesPage'
@@ -618,6 +619,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><GameReviewsAll /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/game/:gameId/sessions"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><GameSessions /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

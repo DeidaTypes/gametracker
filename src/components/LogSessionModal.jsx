@@ -14,7 +14,7 @@ function todayLocalDate() {
  * LogSessionModal — centered modal for EDITING an already-logged play
  * session's date/duration.
  *
- * Its only remaining caller is GameSessionHistorySheet's pencil action
+ * Its only remaining caller is GameSessions' pencil action
  * (via GameDetail's `editingSession`, always non-null when this modal is
  * open). Logging a brand-new session goes through LogSheet instead
  * (src/components/home/LogSheet.jsx) — that surface has no date field

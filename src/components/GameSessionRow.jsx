@@ -32,7 +32,7 @@ function formatHoursLabel(hours) {
  *
  * Props:
  *   sessions        Array<{ hours: number, playedOn: string }>  newest first
- *   onOpenHistory   () => void   opens GameSessionHistorySheet
+ *   onOpenHistory   () => void   navigates to /game/:id/sessions
  */
 function GameSessionRow({ sessions = [], onOpenHistory }) {
   const sessionCount = sessions.length

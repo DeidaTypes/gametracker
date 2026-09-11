@@ -1,0 +1,403 @@
+/* =====================================================
+   GAME SESSIONS — per-game session history sub-page
+   Route: /game/:gameId/sessions
+   ===================================================== */
+
+.gs-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+/* ── Nav row ── */
+
+.gs-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--page-padding, var(--space-16));
+  padding-top: calc(var(--space-12) + var(--safe-area-inset-top));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gs-back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.gs-back-btn:hover,
+.gs-back-btn:focus-visible {
+  background: var(--color-surface-hover);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.gs-nav-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.gs-nav-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: var(--letter-spacing-display);
+  line-height: var(--line-height-title);
+}
+
+.gs-nav-subtitle {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Scroll body ── */
+
+.gs-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-16) var(--page-padding, var(--space-16));
+  padding-bottom: var(--bottom-nav-safe-area, var(--space-64));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* ── Hero card ── */
+
+.gs-hero-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.gs-hero-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.gs-hero-hours {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-display);
+}
+
+.gs-hero-hours--gradient {
+  color: var(--text-primary);
+  background: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .gs-hero-hours--gradient {
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--text-primary);
+  }
+}
+
+.gs-hero-hours--muted {
+  color: var(--text-secondary);
+}
+
+.gs-hero-unit {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.gs-hero-meta {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+/* ── Sparkline ── */
+
+.gs-sparkline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+}
+
+.gs-sparkline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-8);
+  height: var(--space-48);
+}
+
+.gs-sparkline-bar-wrap {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.gs-sparkline-bar {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--grad-cta);
+  min-height: var(--space-8);
+  transition: height 220ms ease;
+}
+
+.gs-sparkline-bar--zero {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.gs-sparkline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  color: var(--text-tertiary);
+  text-transform: none;
+}
+
+/* ── Log button ── */
+
+.gs-log-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: var(--space-48);
+  padding: var(--space-12) var(--space-16);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--grad-cta);
+  color: var(--color-on-accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: filter var(--transition-fast), transform var(--transition-fast);
+}
+
+.gs-log-btn:hover {
+  filter: brightness(1.06);
+}
+
+.gs-log-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Day groups ── */
+
+.gs-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.gs-day-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-8);
+}
+
+.gs-day-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.gs-day-total {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+}
+
+.gs-session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* ── Session row ── */
+
+.gs-session-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-12);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.gs-session-spine {
+  width: 3px;
+  flex-shrink: 0;
+  background: var(--grad-cta);
+}
+
+.gs-session-body {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-12) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gs-session-hours {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.gs-session-time {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+}
+
+.gs-session-note {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  line-height: var(--line-height-caption);
+}
+
+.gs-session-mood {
+  margin-right: var(--space-4);
+}
+
+.gs-session-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-12) var(--space-12) 0;
+  flex-shrink: 0;
+}
+
+.gs-session-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.gs-session-action-btn:hover,
+.gs-session-action-btn:focus-visible {
+  color: var(--text-primary);
+  background: var(--color-surface-hover);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.gs-session-action-btn--danger:hover,
+.gs-session-action-btn--danger:focus-visible {
+  color: var(--status-danger);
+  background: color-mix(in srgb, var(--status-danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--status-danger) 30%, var(--border-subtle));
+}
+
+/* ── Delete confirm ── */
+
+.gs-confirm {
+  padding: var(--space-24);
+  text-align: center;
+}
+
+.gs-confirm-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display-l);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-16);
+}
+
+.gs-confirm-body {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-24);
+  line-height: 1.5;
+}
+
+.gs-confirm-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.gs-confirm-footer .form-button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-log-btn,
+  .gs-back-btn,
+  .gs-session-action-btn,
+  .gs-sparkline-bar {
+    transition: none;
+  }
+
+  .gs-log-btn:active {
+    transform: none;
+  }
+}

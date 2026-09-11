@@ -1238,7 +1238,7 @@
 
 
 /* ── Latest-session row + session-history sub-screen ──────────────────────
-   Styling lives in GameSessionRow.css / GameSessionHistorySheet.css
+   Styling lives in GameSessionRow.css / GameSessions.css
    (components own their own outer page padding, same pattern as the
    status-tile grid above). ── */
 

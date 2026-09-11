@@ -471,38 +471,99 @@ async function ensureActivityForDay(userId, igdbGameId, playedOn, addedHours, me
  *
  * @param {number|string} igdbGameId
  * @param {{ limit?: number }} [opts]
- * @returns {Promise<Array<{ id: string, playedOn: string, minutes: number, hours: number }>>}
+ * @returns {Promise<Array<{
+ *   id: string,
+ *   playedOn: string,
+ *   minutes: number,
+ *   hours: number,
+ *   note: string|null,
+ *   mood: string|null,
+ *   createdAt: string|null,
+ *   startedAt: string|null,
+ * }>>}
  */
 export async function getManualSessionsForGame(igdbGameId, { limit = 200 } = {}) {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
-    const { data, error } = await supabase
-      .from('play_sessions')
-      .select('id, played_on, seconds, hours, created_at')
-      .eq('user_id', user.id)
-      .eq('igdb_game_id', Number(igdbGameId))
-      .not('played_on', 'is', null)
-      .order('played_on', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(limit)
+    const [{ data, error }, { data: journalRows }] = await Promise.all([
+      supabase
+        .from('play_sessions')
+        .select('id, played_on, seconds, hours, created_at, started_at, note')
+        .eq('user_id', user.id)
+        .eq('igdb_game_id', Number(igdbGameId))
+        .not('played_on', 'is', null)
+        .order('played_on', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('journal_entries')
+        .select('mood, hours_played, created_at')
+        .eq('user_id', user.id)
+        .eq('igdb_game_id', Number(igdbGameId))
+        .not('mood', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(limit),
+    ])
 
     if (error) {
       console.error('[session] getManualSessionsForGame failed:', error.message)
       return []
     }
 
+    const moodBySession = matchMoodsToSessions(data || [], journalRows || [])
+
     return (data || []).map(row => ({
       id: row.id,
       playedOn: row.played_on,
       minutes: Math.round((row.seconds || 0) / 60),
       hours: Number(row.hours) || 0,
+      note: row.note || null,
+      mood: moodBySession.get(row.id) || null,
+      createdAt: row.created_at || null,
+      startedAt: row.started_at || null,
     }))
   } catch (err) {
     console.error('[session] getManualSessionsForGame crashed:', err)
     return []
   }
+}
+
+/** Pair journal-entry moods to play_sessions by closest created_at + hours. */
+function matchMoodsToSessions(sessions, journalRows) {
+  const map = new Map()
+  const usedJournal = new Set()
+
+  for (const session of sessions) {
+    const sessionHours = Number(session.hours) || 0
+    const sessionTs = new Date(session.created_at || session.started_at || 0).getTime()
+    if (!sessionTs) continue
+
+    let best = null
+    let bestDelta = Infinity
+
+    for (let i = 0; i < journalRows.length; i++) {
+      if (usedJournal.has(i)) continue
+      const entry = journalRows[i]
+      const entryHours = Number(entry.hours_played) || 0
+      if (Math.abs(entryHours - sessionHours) > 0.02) continue
+
+      const entryTs = new Date(entry.created_at).getTime()
+      const delta = Math.abs(entryTs - sessionTs)
+      if (delta < bestDelta && delta <= 5 * 60 * 1000) {
+        bestDelta = delta
+        best = i
+      }
+    }
+
+    if (best != null) {
+      usedJournal.add(best)
+      map.set(session.id, journalRows[best].mood)
+    }
+  }
+
+  return map
 }
 
 // ── Update a manual session ──────────────────────────────────────────────────
