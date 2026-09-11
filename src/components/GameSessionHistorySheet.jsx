@@ -5,6 +5,7 @@ import { Clock, X, Pencil, Trash2, Plus } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useNavDim } from '../hooks/useNavDim'
 import { formatActivityDate } from '../utils/formatActivityDate'
+import { getTotalHoursForGame } from '../services/hoursService'
 import CenteredModal from './CenteredModal'
 import { DestructiveButton, SecondaryButton } from './forms'
 import EmptyState from './EmptyState'
@@ -26,25 +27,23 @@ function formatHoursLabel(hours) {
 /**
  * GameSessionHistorySheet — per-game session-history sub-screen (Direction
  * 2 layout). Opened by tapping the "latest session" row (GameSessionRow)
- * or its zero-state "Log a session" affordance on Game Detail.
+ * on Game Detail.
  *
- * Shows a total-playtime hero for THIS game (`totalHours` — the same
- * game_trackers.hours_played value the Profile "Played" stat sums across
- * every game), the session count, then every play_sessions row logged for
- * this game with edit + delete. Delete always confirms first — no bare
- * one-tap trash.
+ * Shows a total-playtime hero for THIS game via getTotalHoursForGame
+ * (the same function the Game Detail session card uses), the session
+ * count, then every play_sessions row logged for this game with edit +
+ * delete. Delete always confirms first — no bare one-tap trash.
  *
  * This component owns no data fetching or mutation of its own: `sessions`
- * / `totalHours` are passed down from GameDetail (the single owner of that
- * state, same as it already is for LogSessionModal) and every CRUD action
- * delegates back up via props, so there is exactly one source of truth and
- * the row underneath stays in sync the instant this sheet's list changes.
+ * are passed down from GameDetail (the single owner of that state, same
+ * as it already is for LogSessionModal) and every CRUD action delegates
+ * back up via props, so there is exactly one source of truth and the row
+ * underneath stays in sync the instant this sheet's list changes.
  *
  * Props:
  *   isOpen          boolean
  *   onClose         () => void
  *   gameTitle       string
- *   totalHours      number    game_trackers.hours_played for this game
  *   sessions        Array<{ id, playedOn, minutes, hours }>  newest first
  *   onAddSession    () => void          opens LogSheet
  *   onEditSession   (session) => void   opens LogSessionModal (edit-only)
@@ -54,7 +53,6 @@ function GameSessionHistorySheet({
   isOpen,
   onClose,
   gameTitle,
-  totalHours = 0,
   sessions = [],
   onAddSession,
   onEditSession,
@@ -93,6 +91,7 @@ function GameSessionHistorySheet({
   }
 
   const isEmpty = sessions.length === 0
+  const totalHours = getTotalHoursForGame(sessions)
 
   const content = (
     <AnimatePresence>

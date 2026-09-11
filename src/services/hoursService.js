@@ -83,6 +83,23 @@ export async function setHoursPlayed(igdbGameId, hours, meta = {}) {
 }
 
 /**
+ * Sum `hours` across already-fetched play-session rows for ONE game.
+ * Game Detail's session card and Session History sheet both read this —
+ * do not re-implement the reduce at either call site.
+ *
+ * @param {Array<{ hours?: number }>} sessions
+ * @returns {number}  Total hours (≥ 0)
+ */
+export function getTotalHoursForGame(sessions) {
+  if (!Array.isArray(sessions) || sessions.length === 0) return 0
+  let total = 0
+  for (const row of sessions) {
+    total += Number(row.hours) || 0
+  }
+  return total
+}
+
+/**
  * Sum a user's total playtime across ALL games, regardless of whether a
  * `game_trackers` row exists for them today. Used by the Profile page to
  * surface the total-hours headline stat.
@@ -135,11 +152,11 @@ export async function getTotalHoursForUser(userId) {
 
   // Per-game session-hours totals, plus the grand total across all games —
   // this is the new primary source and survives a tracker row's deletion.
+  // Grand total uses the same per-game summer the Game Detail surfaces use.
   const sessionHoursByGame = new Map()
-  let totalSessionHours = 0
+  const totalSessionHours = getTotalHoursForGame(sessionRows)
   for (const row of sessionRows) {
     const hrs = Number(row.hours) || 0
-    totalSessionHours += hrs
     const key = String(row.igdb_game_id)
     sessionHoursByGame.set(key, (sessionHoursByGame.get(key) || 0) + hrs)
   }

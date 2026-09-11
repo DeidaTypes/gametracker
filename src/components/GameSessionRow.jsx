@@ -1,6 +1,7 @@
 import React from 'react'
-import { Clock, ChevronRight, Plus } from 'lucide-react'
+import { Clock, ChevronRight } from 'lucide-react'
 import { formatActivityDate } from '../utils/formatActivityDate'
+import { getTotalHoursForGame } from '../services/hoursService'
 import './GameSessionRow.css'
 
 // Interprets a 'YYYY-MM-DD' played_on string as local noon so the
@@ -20,36 +21,25 @@ function formatHoursLabel(hours) {
 }
 
 /**
- * GameSessionRow — compact "latest session" row on Game Detail, rendered
- * directly under the status tiles. Always reflects `latestSession`
- * (sessions[0] from the caller, which is sorted newest-first) so it
- * updates automatically the moment a new session is logged.
+ * GameSessionRow — compact session-total row on Game Detail, rendered
+ * directly under the status tiles. Hours come from getTotalHoursForGame
+ * (the same function the Session History sheet uses) so the number is
+ * the SUM of this game's sessions, not the latest row.
  *
- * Zero-sessions state renders a plain text affordance instead of an empty
- * bordered box — no card, no placeholder numbers.
- *
- * Tapping the row (or the empty-state affordance) is the only entry point
- * into the full per-game session-history sub-screen / log form; this
- * component owns no data fetching of its own.
+ * Hidden entirely when there are no sessions — logging stays reachable
+ * from the FAB, the Now Playing hero, the status sheet's Log play, and
+ * this card's "View sessions" → history sheet once a session exists.
  *
  * Props:
- *   latestSession   { minutes: number, playedOn: string, hours: number } | null
- *   sessionCount    number
+ *   sessions        Array<{ hours: number, playedOn: string }>  newest first
  *   onOpenHistory   () => void   opens GameSessionHistorySheet
- *   onLogSession    () => void   opens LogSheet — used only for the
- *                                zero-sessions affordance
  */
-function GameSessionRow({ latestSession, sessionCount = 0, onOpenHistory, onLogSession }) {
-  if (sessionCount === 0 || !latestSession) {
-    return (
-      <div className="gsr-wrap">
-        <button type="button" className="gsr-empty-cta" onClick={onLogSession}>
-          <Plus size={15} aria-hidden="true" />
-          <span>Log a session</span>
-        </button>
-      </div>
-    )
-  }
+function GameSessionRow({ sessions = [], onOpenHistory }) {
+  const sessionCount = sessions.length
+  const latestSession = sessions[0] || null
+  const totalHours = getTotalHoursForGame(sessions)
+
+  if (sessionCount === 0 || !latestSession) return null
 
   const dateLabel = formatActivityDate(playedOnToDate(latestSession.playedOn))
 
@@ -59,13 +49,13 @@ function GameSessionRow({ latestSession, sessionCount = 0, onOpenHistory, onLogS
         type="button"
         className="gsr-row"
         onClick={onOpenHistory}
-        aria-label={`View session history — ${formatHoursLabel(latestSession.hours)} played, ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} logged`}
+        aria-label={`View session history — ${formatHoursLabel(totalHours)} played, ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} logged`}
       >
         <span className="gsr-icon" aria-hidden="true">
           <Clock size={18} />
         </span>
         <span className="gsr-content">
-          <span className="gsr-primary">{formatHoursLabel(latestSession.hours)} played</span>
+          <span className="gsr-primary">{formatHoursLabel(totalHours)} played</span>
           <span className="gsr-secondary">
             {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
             {dateLabel ? ` · logged ${dateLabel}` : ''}

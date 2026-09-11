@@ -32,7 +32,6 @@ import {
   updateManualSession,
   deleteManualSession,
 } from '../services/sessionService'
-import { getTracker } from '../services/hoursService'
 import GameSessionRow from '../components/GameSessionRow'
 import GameSessionHistorySheet from '../components/GameSessionHistorySheet'
 import RatingSheet from '../components/RatingSheet'
@@ -380,9 +379,6 @@ function GameDetail() {
   // open (history sheet's pencil action is its only remaining caller).
   const [editingSession, setEditingSession] = useState(null)
   const [logSheetOpen, setLogSheetOpen] = useState(false)
-  // This game's rolled-up total hours (game_trackers.hours_played) — the
-  // history sub-screen's hero. Never derived client-side from `sessions`.
-  const [gameHoursPlayed, setGameHoursPlayed] = useState(0)
   const [sessionHistoryOpen, setSessionHistoryOpen] = useState(false)
 
   const [composeSheetOpen, setComposeSheetOpen] = useState(false)
@@ -396,22 +392,13 @@ function GameDetail() {
   const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
 
   const refreshSessions = useCallback(async () => {
-    const [data, tracker] = await Promise.all([
-      getManualSessionsForGame(gameId).catch(() => []),
-      getTracker(gameId).catch(() => null),
-    ])
+    const data = await getManualSessionsForGame(gameId).catch(() => [])
     setSessions(data)
-    setGameHoursPlayed(Number(tracker?.hours_played) || 0)
   }, [gameId])
 
-  // Time to Beat + manual sessions + this game's rolled-up hours, for every
-  // game regardless of library status. `gameHoursPlayed` comes from
-  // game_trackers — the same rollup the Profile "Played" stat sums across
-  // every game — never computed client-side from the sessions list.
-  //
-  // Sessions and tracker go through refreshSessions rather than being
-  // fetched separately here: the mount path and the resume/mutation path
-  // had drifted into issuing the same pair of queries independently.
+  // Time to Beat + this game's play_sessions, for every game regardless
+  // of library status. Card and Session History both sum those rows via
+  // getTotalHoursForGame — do not re-derive hours here.
   useEffect(() => {
     let cancelled = false
     getTimeToBeat(gameId)
@@ -481,9 +468,9 @@ function GameDetail() {
   }, [])
 
   // ── LogSheet — logging a NEW session (replaces LogSessionModal's old
-  // "add" mode). Reused everywhere: status sheet's Log Play, the
-  // zero-state affordance, and the history sheet's + button all open
-  // this same sheet, always pre-attached to this page's `game`. ────────────
+  // "add" mode). Reused everywhere: status sheet's Log Play and the
+  // history sheet's + button all open this same sheet, always
+  // pre-attached to this page's `game`. ────────────
   const openLogSheet = useCallback(() => {
     setLogSheetOpen(true)
   }, [])
@@ -514,7 +501,6 @@ function GameDetail() {
     const result = await deleteManualSession(sessionId, gameId, mins)
     if (result) {
       setSessions(prev => prev.filter(s => s.id !== sessionId))
-      setGameHoursPlayed(result.newHours)
     } else {
       console.error('[gameDetail] failed to delete session')
     }
@@ -833,16 +819,12 @@ function GameDetail() {
         />
       </div>
 
-      {/* ── Latest session row — compact, always reflects the most recent
-           logged session for this game (sessions[0], sorted newest-first).
-           Tapping it opens the per-game session-history sub-screen. Hidden
-           entirely in favor of a plain "Log a session" affordance when the
-           user has zero sessions for this game — no empty bordered box. ── */}
+      {/* ── Session total row — hours from getTotalHoursForGame (same
+           function as the Session History sheet). Hidden when this game
+           has no sessions. Tapping opens the per-game history sheet. ── */}
       <GameSessionRow
-        latestSession={sessions[0] || null}
-        sessionCount={sessions.length}
+        sessions={sessions}
         onOpenHistory={() => setSessionHistoryOpen(true)}
-        onLogSession={openLogSheet}
       />
 
       {/* ── Rating card — numeric average + half-star histogram, built
@@ -1278,8 +1260,8 @@ function GameDetail() {
       </div>
 
       {/* ── LogSheet — the one log-a-NEW-session surface. Opened by the
-           status sheet's Log Play, the zero-state affordance, and the
-           history sheet's + button, always pre-attached to this game. ── */}
+           status sheet's Log Play and the history sheet's + button,
+           always pre-attached to this game. ── */}
       <LogSheet
         isOpen={logSheetOpen}
         onClose={() => setLogSheetOpen(false)}
@@ -1298,14 +1280,12 @@ function GameDetail() {
         editingSession={editingSession}
       />
 
-      {/* ── Session-history sub-screen — per-game only; total hours here
-           is game_trackers.hours_played, the same rollup the Profile
-           "Played" stat sums across every game. ── */}
+      {/* ── Session-history sub-screen — per-game only; total hours
+           come from getTotalHoursForGame(sessions), same as the card. ── */}
       <GameSessionHistorySheet
         isOpen={sessionHistoryOpen}
         onClose={() => setSessionHistoryOpen(false)}
         gameTitle={game.title}
-        totalHours={gameHoursPlayed}
         sessions={sessions}
         onAddSession={openLogSheet}
         onEditSession={openLogSessionForEdit}

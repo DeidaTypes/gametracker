@@ -90,33 +90,8 @@
   white-space: nowrap;
 }
 
-/* ── Zero-sessions state — plain affordance, no box ─────────────────── */
-
-.gsr-empty-cta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  padding: 6px 2px;
-  color: var(--accent);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease;
-}
-
-.gsr-empty-cta:hover,
-.gsr-empty-cta:focus-visible {
-  opacity: 0.8;
-  outline: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .gsr-row,
-  .gsr-empty-cta {
+  .gsr-row {
     transition: none;
   }
   .gsr-row:active {
