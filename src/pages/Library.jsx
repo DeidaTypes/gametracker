@@ -51,42 +51,6 @@ const GRID_REFLOW_MS = 250
 // Must match ReorderTrashTarget.css slide-in transition duration.
 const TRASH_ENTER_MS = 220
 
-// ── TEMPORARY instrumentation — remove after the device trace is captured ──
-// Two prior fixes (touch-action lock + PullToRefresh yield, commit
-// 6c5b5c0) did not resolve drag-to-trash never arming on a physical
-// iPhone. Rather than guess a third theory, this logs the real pointer
-// event sequence so the fix (if any) is driven by device data:
-//   - pointerdown: capture success, computed touch-action AFTER the
-//     inline lock is applied, and .main-content's scrollTop
-//   - every pre-arm pointermove: elapsed time, dx/dy/hypot, whether
-//     preventDefault was called and whether the event was cancelable
-//   - the long-press timer firing (armed)
-//   - pointercancel: elapsed time since pointerdown — THE key signal.
-//     If this fires before LONG_PRESS_MS (450ms), the UA is killing the
-//     gesture before it can ever arm, confirming a native-layer cause
-//     rather than anything in this handler chain.
-//   - pointerup: elapsed time and whether the drag had armed
-// Read via Safari on a Mac: Develop menu > <device name> > GameTracker,
-// with Web Inspector enabled on the iPhone (Settings > Safari >
-// Advanced > Web Inspector) and the device connected over USB. Console
-// entries are tagged '[drag-debug]'. Flip this to false (or delete the
-// call sites) once a trace has been captured — not meant to ship.
-// On-device: the same lines also render in a fixed overlay at the top
-// of the screen (see .lib-drag-debug in Library.css) so traces can be
-// read and screenshotted without Safari Web Inspector.
-const DRAG_DEBUG = true
-const DRAG_DEBUG_MAX_LINES = 12
-
-function dragDebugYn(v) {
-  return v ? 'Y' : 'N'
-}
-
-function dragDebugShortTouchAction(value) {
-  if (!value || value === 'auto') return 'auto'
-  if (value === 'none') return 'none'
-  return value.replace(/\s+/g, '')
-}
-
 /**
  * Which segment the user last had open, remembered for the session.
  *
@@ -153,30 +117,6 @@ function Library() {
   const dragSessionRef = useRef(null)
   const longPressTimerRef = useRef(null)
   const suppressClickRef = useRef(false)
-
-  // ── TEMPORARY on-screen drag trace (see DRAG_DEBUG above) ───────────────
-  const dragDebugScrollRef = useRef(null)
-  const [dragDebugLines, setDragDebugLines] = useState([])
-
-  const appendDragDebugLine = useCallback((text, kind = 'default') => {
-    if (!DRAG_DEBUG) return
-    setDragDebugLines((prev) => {
-      const next = [...prev, { text, kind }]
-      return next.length > DRAG_DEBUG_MAX_LINES
-        ? next.slice(-DRAG_DEBUG_MAX_LINES)
-        : next
-    })
-  }, [])
-
-  const clearDragDebugLines = useCallback(() => {
-    setDragDebugLines([])
-  }, [])
-
-  useEffect(() => {
-    if (!DRAG_DEBUG) return
-    const el = dragDebugScrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [dragDebugLines])
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -561,6 +501,18 @@ function Library() {
     )
   }
 
+  // iOS drag-to-trash needs four coordinated defenses — do not strip any
+  // of them during refactors:
+  //   1. user-select / touch-callout: none on .lib-gamecard (Library.css)
+  //      — native text selection steals the touch and fires pointercancel.
+  //   2. captureEl.style.touchAction = 'none' synchronously at pointerdown
+  //      — must land this tick so UA gesture arbitration sees it at start.
+  //   3. setPullToRefreshYield(true) at pointerdown — PullToRefresh races
+  //      the same finger from scrollTop === 0 and must stand down now.
+  //   4. lockScrollContainer + non-passive touchmove on arm — ancestor
+  //      scroll/momentum can reassert and cancel the pointer; React's
+  //      passive touch listeners make preventDefault on synthetic pointer
+  //      events unreliable in WKWebView, so both backstops stay.
   const handleCoverPointerDown = (e, game) => {
     // List-only membership (_status: null) has no tracker to delete.
     // Leave the cover as a plain tap-to-open so we never arm a no-op.
@@ -569,13 +521,9 @@ function Library() {
 
     const captureEl = e.currentTarget
     const startTime = performance.now()
-    let captureCaptured = true
-    let captureError = null
     try {
       captureEl.setPointerCapture(e.pointerId)
-    } catch (err) {
-      captureCaptured = false
-      captureError = err
+    } catch {
       // Same capture-reject fallback as ListDetail — long-press still
       // arms; move/up may not fire if the finger leaves this element.
     }
@@ -589,29 +537,6 @@ function Library() {
     // scrollTop === 0 condition) — tell it to stand down immediately
     // rather than racing it for the whole pre-arm hold.
     setPullToRefreshYield(true)
-
-    if (DRAG_DEBUG) {
-      const scrollEl = captureEl.closest('.main-content')
-      const computedTouchAction = getComputedStyle(captureEl).touchAction
-      const scrollTop = scrollEl ? scrollEl.scrollTop : 0
-      // eslint-disable-next-line no-console
-      console.log('[drag-debug] pointerdown', {
-        gameId: game.id,
-        timestamp: Math.round(startTime),
-        pointerId: e.pointerId,
-        pointerType: e.pointerType,
-        setPointerCaptureOk: captureCaptured,
-        setPointerCaptureError: captureError ? String(captureError) : null,
-        // Read back AFTER the inline lock above — confirms it actually
-        // took rather than assuming it from the assignment alone.
-        computedTouchActionAfterLock: computedTouchAction,
-        mainContentScrollTop: scrollEl ? scrollEl.scrollTop : null,
-      })
-      appendDragDebugLine(
-        `down t=0 cap=${captureCaptured ? 'OK' : 'THREW'} ta=${dragDebugShortTouchAction(computedTouchAction)} st=${scrollTop}`,
-        'default'
-      )
-    }
 
     const session = {
       gameId: game.id,
@@ -657,24 +582,6 @@ function Library() {
       lockScrollContainer(captureEl)
       addNonPassiveTouchMoveBlock(session)
 
-      if (DRAG_DEBUG) {
-        const elapsedMs = Math.round(performance.now() - session.startTime)
-        // "ARM" here means session.activated just flipped true (the
-        // long-press fired and the drag is now lifted/active) — a
-        // DIFFERENT thing from session.armed (logged as `armed=` on the
-        // up/cancel lines below), which means "the lifted cover is
-        // currently hovering the trash target". A cancel shortly after
-        // ARM legitimately shows armed=N: the finger simply hasn't
-        // reached the trash bar yet. Same word, two flags — see the
-        // up/cancel logging below for the full explanation.
-        // eslint-disable-next-line no-console
-        console.log('[drag-debug] long-press armed', {
-          gameId: game.id,
-          elapsedMs,
-        })
-        appendDragDebugLine(`ARM t=${elapsedMs}`, 'arm')
-      }
-
       setDragGameId(game.id)
       hapticImpact('Medium')
       window.dispatchEvent(
@@ -693,36 +600,16 @@ function Library() {
       // a scroll grab the UA already made, but an early one on the very
       // first move — while arbitration is still open — helps hold the
       // line until the lock takes effect. Once only per session.
-      let preventedThisMove = false
       if (!session.firstMoveSeen) {
         session.firstMoveSeen = true
         if (e.cancelable) {
           e.preventDefault()
-          preventedThisMove = true
         }
       }
 
       const dx = e.clientX - session.startClientX
       const dy = e.clientY - session.startClientY
       const dist = Math.hypot(dx, dy)
-
-      if (DRAG_DEBUG) {
-        const elapsedMs = Math.round(performance.now() - session.startTime)
-        const distRounded = (Math.round(dist * 10) / 10).toFixed(1)
-        // eslint-disable-next-line no-console
-        console.log('[drag-debug] pointermove (pre-arm)', {
-          elapsedMs,
-          dx,
-          dy,
-          hypot: Math.round(dist * 100) / 100,
-          preventDefaultCalled: preventedThisMove,
-          cancelable: e.cancelable,
-        })
-        appendDragDebugLine(
-          `move t=${elapsedMs} d=${distRounded} pd=${dragDebugYn(preventedThisMove)} c=${dragDebugYn(e.cancelable)}`,
-          'default'
-        )
-      }
 
       if (dist > MOVE_CANCEL_PX) {
         clearLongPressTimer()
@@ -736,22 +623,6 @@ function Library() {
     }
 
     e.preventDefault()
-
-    if (DRAG_DEBUG) {
-      // The one value this whole investigation hinges on: if the lock
-      // above is holding, this must stay pinned at the value captured
-      // when lockScrollContainer ran. Only appended to the on-screen
-      // overlay when it actually changes, so a long hold doesn't drown
-      // the 12-line buffer in repeats of the same number.
-      const scrollEl = session.captureEl?.closest('.main-content')
-      const scrollTop = scrollEl ? scrollEl.scrollTop : null
-      // eslint-disable-next-line no-console
-      console.log('[drag-debug] pointermove (armed)', { scrollTop })
-      if (scrollTop !== session.lastLoggedScrollTop) {
-        session.lastLoggedScrollTop = scrollTop
-        appendDragDebugLine(`armed-move st=${scrollTop}`, 'default')
-      }
-    }
 
     const dx = e.clientX - session.startClientX
     const dy = e.clientY - session.startClientY
@@ -803,26 +674,6 @@ function Library() {
     const session = dragSessionRef.current
     if (!session || session.pointerId !== e.pointerId) return
 
-    if (DRAG_DEBUG) {
-      const elapsedMs = Math.round(performance.now() - session.startTime)
-      // act = session.activated: the long-press fired, the cover is
-      // lifted/dragging. armed = session.armed: the lifted cover's
-      // center is CURRENTLY over the trash target (decides delete vs.
-      // no-op below). They track different things and routinely
-      // disagree — act=Y/armed=N just means the drag was active but
-      // never reached the trash bar, not a bug.
-      // eslint-disable-next-line no-console
-      console.log('[drag-debug] pointerup', {
-        elapsedMs,
-        activated: session.activated,
-        armed: session.armed,
-      })
-      appendDragDebugLine(
-        `up t=${elapsedMs} act=${dragDebugYn(session.activated)} armed=${dragDebugYn(session.armed)}`,
-        'default'
-      )
-    }
-
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
     }
@@ -863,27 +714,6 @@ function Library() {
   const handleCoverPointerCancel = (e) => {
     const session = dragSessionRef.current
     if (!session || session.pointerId !== e.pointerId) return
-
-    if (DRAG_DEBUG) {
-      const elapsedMs = Math.round(performance.now() - session.startTime)
-      // THE key signal: if this fires before LONG_PRESS_MS (450ms), the
-      // UA killed the gesture before it could ever arm — a native-layer
-      // cause, not anything in this handler chain. act/armed here mean
-      // the same two DIFFERENT things as the pointerup log above (act =
-      // lifted/dragging, armed = currently over the trash target) — an
-      // act=Y/armed=N cancel is expected if the cancel lands before the
-      // finger ever reached the trash bar, not evidence of a flag bug.
-      // eslint-disable-next-line no-console
-      console.log('[drag-debug] pointercancel', {
-        elapsedMs,
-        activated: session.activated,
-        armed: session.armed,
-      })
-      appendDragDebugLine(
-        `CANCEL t=${elapsedMs} act=${dragDebugYn(session.activated)} armed=${dragDebugYn(session.armed)}`,
-        'cancel'
-      )
-    }
 
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
@@ -1160,33 +990,6 @@ function Library() {
           </button>,
           document.body
         )}
-
-        {/* TEMPORARY — on-screen drag trace for device debugging. Remove
-            with DRAG_DEBUG once a trace has been captured. Portaled to
-            body so PageTransition transforms can't pin it to the page. */}
-        {DRAG_DEBUG &&
-          createPortal(
-            <div className="lib-drag-debug" aria-hidden="true">
-              <div className="lib-drag-debug-log" ref={dragDebugScrollRef}>
-                {dragDebugLines.map((line, index) => (
-                  <div
-                    key={`${index}-${line.text}`}
-                    className={`lib-drag-debug-line lib-drag-debug-line--${line.kind}`}
-                  >
-                    {line.text}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="lib-drag-debug-clear"
-                onClick={clearDragDebugLines}
-              >
-                clear
-              </button>
-            </div>,
-            document.body
-          )}
 
         <CreateListModal
           isOpen={showCreateModal}
