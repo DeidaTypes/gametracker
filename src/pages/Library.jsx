@@ -6,7 +6,7 @@ import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPre
 import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
-import PullToRefresh from '../components/PullToRefresh'
+import PullToRefresh, { PULL_TO_REFRESH_YIELD_EVENT } from '../components/PullToRefresh'
 import Avatar from '../components/Avatar'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
@@ -376,9 +376,33 @@ function Library() {
     }
   }
 
+  // Tells PullToRefresh to stand down for the same finger. Dispatched at
+  // pointerdown — well before the 450ms arm — because PTR starts tracking
+  // from touchstart whenever scrollTop is 0, which is exactly where the
+  // top row of covers sits. Waiting for the arm event (LIST_REORDER_DRAG_EVENT)
+  // is too late: that's the whole pre-arm hold PTR spends racing this drag.
+  const setPullToRefreshYield = (active) => {
+    window.dispatchEvent(
+      new CustomEvent(PULL_TO_REFRESH_YIELD_EVENT, { detail: { active } })
+    )
+  }
+
+  // Releases the synchronous pre-arm touch-action lock set in
+  // handleCoverPointerDown and lets PullToRefresh resume tracking this
+  // finger. Called whenever a session ends before the long-press arms
+  // (move-cancel gate, quick tap) as well as at full session teardown —
+  // once armed, the class-based touch-action (.lib-cov--lifted etc.) and
+  // LIST_REORDER_DRAG_EVENT already cover the rest of the drag, so an
+  // extra clear here is harmless.
+  const releasePreArmLock = (session) => {
+    if (session?.captureEl) session.captureEl.style.touchAction = ''
+    setPullToRefreshYield(false)
+  }
+
   const hardResetDrag = (gameId, { clearTransform = true } = {}) => {
     clearLongPressTimer()
     const session = dragSessionRef.current
+    releasePreArmLock(session)
     if (session?.rafId != null) {
       cancelAnimationFrame(session.rafId)
       session.rafId = null
@@ -410,6 +434,16 @@ function Library() {
       // Same capture-reject fallback as ListDetail — long-press still
       // arms; move/up may not fire if the finger leaves this element.
     }
+
+    // Synchronous, same-tick lock — must be set before this handler
+    // returns so the UA's gesture arbitration sees it at gesture start,
+    // not 450ms later via a class React hasn't rendered yet. Cleared in
+    // releasePreArmLock if the hold turns out to be a scroll or a tap.
+    captureEl.style.touchAction = 'none'
+    // PullToRefresh also starts tracking this finger right now (same
+    // scrollTop === 0 condition) — tell it to stand down immediately
+    // rather than racing it for the whole pre-arm hold.
+    setPullToRefreshYield(true)
 
     const session = {
       gameId: game.id,
@@ -459,10 +493,24 @@ function Library() {
     if (!session || session.pointerId !== e.pointerId) return
 
     if (!session.activated) {
+      // Backs up the synchronous touch-action lock during iOS's gesture
+      // arbitration window: a late (post-450ms) preventDefault can't undo
+      // a scroll grab the UA already made, but an early one on the very
+      // first move — while arbitration is still open — helps hold the
+      // line until the lock takes effect. Once only per session.
+      if (!session.firstMoveSeen) {
+        session.firstMoveSeen = true
+        if (e.cancelable) e.preventDefault()
+      }
+
       const dx = e.clientX - session.startClientX
       const dy = e.clientY - session.startClientY
       if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
         clearLongPressTimer()
+        // Genuine scroll, not a hold — release the lock now, in this
+        // same synchronous handler, so the UA's own pan recognizer can
+        // still pick up the gesture for the rest of the move sequence.
+        releasePreArmLock(session)
         dragSessionRef.current = null
       }
       return
@@ -526,6 +574,9 @@ function Library() {
     clearLongPressTimer()
 
     if (!session.activated) {
+      // Quick tap, timer never armed — release the pre-arm lock so the
+      // next genuine scroll/tap on this cover isn't blocked.
+      releasePreArmLock(session)
       dragSessionRef.current = null
       return
     }
@@ -605,6 +656,7 @@ function Library() {
     const session = dragSessionRef.current
     if (!session) return
     clearLongPressTimer()
+    releasePreArmLock(session)
     const el = itemEls.current[session.gameId]
     if (el) {
       el.style.transform = ''
@@ -622,6 +674,7 @@ function Library() {
   useEffect(() => {
     return () => {
       clearLongPressTimer()
+      releasePreArmLock(dragSessionRef.current)
       window.dispatchEvent(
         new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
       )

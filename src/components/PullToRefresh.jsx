@@ -34,6 +34,15 @@ const MAX_PULL = 96 // visual cap — extra resistance past this point
 const RESISTANCE = 0.5 // finger-to-indicator travel ratio
 const SETTLE = 'height 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
 
+// Fired by Library's cover long-press handler at pointerdown — earlier
+// than LIST_REORDER_DRAG_EVENT, which only goes active once the long-press
+// actually arms 450ms later. Library covers sit at scrollTop 0 (top row),
+// the same condition that arms this component's own onStart, so for the
+// whole pre-arm hold the two gestures are racing the same finger. This
+// lets the long-press handler make PTR stand down immediately instead of
+// waiting for arm. detail: { active }.
+export const PULL_TO_REFRESH_YIELD_EVENT = 'gt:pullToRefreshYield'
+
 export default function PullToRefresh({ onRefresh, children, className = '' }) {
   const { reduced } = useMotionPreference()
   const wrapRef = useRef(null)
@@ -65,6 +74,9 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       // Set from LIST_REORDER_DRAG_EVENT so this listener stays in
       // lockstep with BottomNav's hide — one event, two consumers.
       reorderDragActive: false,
+      // Set from PULL_TO_REFRESH_YIELD_EVENT — true for the whole
+      // pre-arm long-press hold, before reorderDragActive turns on.
+      yieldActive: false,
     }
 
     const applyPull = (px) => {
@@ -98,8 +110,21 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       }
     }
 
+    const onYieldSignal = (e) => {
+      state.yieldActive = !!e.detail?.active
+      if (!state.yieldActive) return
+      // A cover long-press just began on the same finger — drop any
+      // in-flight pull immediately, same abort as onReorderDrag below.
+      if (state.active && !state.refreshing) {
+        state.active = false
+        state.decided = false
+        state.vertical = false
+        settleTo(0, true)
+      }
+    }
+
     const onStart = (e) => {
-      if (state.reorderDragActive || state.refreshing || !scrollEl || scrollEl.scrollTop > 0) return
+      if (state.reorderDragActive || state.yieldActive || state.refreshing || !scrollEl || scrollEl.scrollTop > 0) return
       const t = e.touches[0]
       if (!t) return
       state.active = true
@@ -112,7 +137,7 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
     }
 
     const onMove = (e) => {
-      if (state.reorderDragActive || !state.active || state.refreshing) return
+      if (state.reorderDragActive || state.yieldActive || !state.active || state.refreshing) return
       const t = e.touches[0]
       if (!t) return
       const dx = t.clientX - state.startX
@@ -191,6 +216,7 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
     wrap.addEventListener('touchend', onEnd, { passive: true })
     wrap.addEventListener('touchcancel', onEnd, { passive: true })
     window.addEventListener(LIST_REORDER_DRAG_EVENT, onReorderDrag)
+    window.addEventListener(PULL_TO_REFRESH_YIELD_EVENT, onYieldSignal)
 
     return () => {
       wrap.removeEventListener('touchstart', onStart)
@@ -198,6 +224,7 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       wrap.removeEventListener('touchend', onEnd)
       wrap.removeEventListener('touchcancel', onEnd)
       window.removeEventListener(LIST_REORDER_DRAG_EVENT, onReorderDrag)
+      window.removeEventListener(PULL_TO_REFRESH_YIELD_EVENT, onYieldSignal)
     }
   }, [])
 
