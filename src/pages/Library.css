@@ -432,14 +432,25 @@
   touch-action: none;
 }
 
+/* Plain layout wrapper now (cover + title stacked) — no longer a
+   <button>, so none of the old type reset/cursor/tap-highlight
+   declarations apply; those live on .lib-cov-tap now, the actual
+   tap/keyboard target. Mirrors ListDetail's .gg-item. */
 .lib-gamecard {
   display: block;
-  background: transparent;
-  border: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  /* iOS WKWebView: long-press on selectable text (the title <p> below
+     the cover) engages the native text-selection recognizer ~400–700ms
+     into the press, steals the touch, and fires pointercancel mid-drag.
+     Scoped to this drag surface only — reviews/journal/comments stay
+     selectable. user-select inherits to .lib-gamecard-title; touch-callout
+     does not inherit in WebKit so descendants are included explicitly. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.lib-gamecard * {
+  -webkit-touch-callout: none;
 }
 
 .lib-gamecard--dragged {
@@ -469,8 +480,26 @@
   }
 }
 
-.lib-gamecard:active .lib-cov:not(.lib-cov--lifted):not(.lib-cov--removing) {
+/* .lib-gamecard is a plain div now (no longer a <button> — see
+   LibraryGameGrid.jsx), so the press state is read directly off
+   .lib-cov itself rather than off a button ancestor. The actual
+   tap/keyboard target is the inner .lib-cov-tap Pressable, but :active
+   set by the UA on that inner element still applies to this ancestor,
+   so this selector doesn't need to reach through to it. */
+.lib-cov:active:not(.lib-cov--lifted):not(.lib-cov--removing) {
   transform: scale(0.97);
+}
+
+/* Supplemental — the tappable/navigable surface inside .lib-cov.
+   Mirrors ListDetail's .gg-cover-tap exactly: fills the cover like the
+   plain <img> would, and gives SharedCover's own absolute-inset frame
+   a positioning context one level down from .lib-cov. */
+.lib-cov-tap {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Lift / armed / remove — same scale + opacity values as ListDetail's
@@ -1026,7 +1055,7 @@
   .lib-search-toggle:active,
   .lib-back:active,
   .lib-statcell:active,
-  .lib-gamecard:active .lib-cov,
+  .lib-cov:active,
   .lib-pin-hero:active,
   .lib-list-card:active {
     transform: none;

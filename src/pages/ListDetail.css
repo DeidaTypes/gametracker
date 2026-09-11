@@ -883,6 +883,16 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Same iOS text-selection suppression as Library .lib-gamecard — without
+     this, long-press drag on the cover can lose the touch when the title
+     <p> below engages WKWebView's native selection recognizer. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.list-detail-page .gg-item * {
+  -webkit-touch-callout: none;
 }
 
 /* ── Long-press drag-to-reorder (owner/collaborator only) ──
