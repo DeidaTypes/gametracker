@@ -97,7 +97,7 @@ export default function WeekDetailSheet({
   function handleSessionTap(session) {
     if (!session.igdbGameId) return
     onClose()
-    navigate(`/game/${session.igdbGameId}`)
+    navigate(`/game/${session.igdbGameId}/sessions`)
   }
 
   const isEmpty = !loading && sessionCount === 0
