@@ -1,25 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Search as SearchIcon, List, ChevronDown, Check, Plus, FilterX } from 'lucide-react'
+import { List, Plus, FilterX } from 'lucide-react'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
-import ActionSheet from '../components/ActionSheet'
 import PullToRefresh from '../components/PullToRefresh'
-import InlineErrorBanner from '../components/InlineErrorBanner'
 import Avatar from '../components/Avatar'
-import ListCoverCluster from '../components/ListCoverCluster'
-import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
+import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
 import { LIST_REORDER_DRAG_EVENT } from '../components/BottomNav'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
-import { COVER_FALLBACK } from '../utils/coverFallback'
 import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
-import { STATUS_META } from '../components/StatusChip'
 import { getProfile } from '../services/profileService'
 import {
   getListsForUser,
@@ -29,25 +24,23 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE } from '../components/library/libraryConstants'
+import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
+import LibraryHeader from '../components/library/LibraryHeader'
+import LibraryTabs from '../components/library/LibraryTabs'
+import LibraryStatBar from '../components/library/LibraryStatBar'
+import LibrarySortRow from '../components/library/LibrarySortRow'
+import LibrarySortSheet from '../components/library/LibrarySortSheet'
+import LibraryGameGrid, { LibraryGameCard } from '../components/library/LibraryGameGrid'
+import LibraryListsPanel from '../components/library/LibraryListsPanel'
+import {
+  useLibrarySearch,
+  LibrarySearchToggle,
+  LibrarySearchPanel,
+} from '../components/library/LibrarySearch'
 import './Library.css'
 
-// The four status cells of the My Games dashboard, in render order.
-// `listId` is the localStorage tracker bucket (see libraryService.DEFAULT_LISTS)
-// and `key` is the status tag carried on each combined game as `_status`.
-const STATUS_CELLS = [
-  { key: 'want', label: STATUS_META.want.label, listId: 'want-to-play' },
-  { key: 'currently', label: 'Playing', listId: 'currently-playing' },
-  { key: 'played', label: STATUS_META.played.label, listId: 'played' },
-  { key: 'dropped', label: STATUS_META.dropped.label, listId: 'dropped' },
-]
-
-// Sort options — only sorts backed by a real field on every game.
-const SORTS = [
-  { key: 'recent', label: 'Recent' },
-  { key: 'title', label: 'Title A–Z' },
-]
-
-const PAGE_SIZE = 30
+const PAGE_SIZE = LIBRARY_PAGE_SIZE
 
 // Same long-press / move-cancel gates as ListDetail's custom-list
 // drag-to-trash path. Library only uses the trash branch — no reorder.
@@ -55,6 +48,8 @@ const LONG_PRESS_MS = 450
 const MOVE_CANCEL_PX = 8
 const REMOVE_ANIM_MS = 280
 const GRID_REFLOW_MS = 250
+// Must match ReorderTrashTarget.css slide-in transition duration.
+const TRASH_ENTER_MS = 220
 
 /**
  * Which segment the user last had open, remembered for the session.
@@ -94,7 +89,14 @@ function Library() {
 
   // null = All. Tapping the active cell again returns here.
   const [activeStatus, setActiveStatus] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const {
+    open: searchOpen,
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    toggle: toggleSearch,
+    clear: clearSearch,
+    inputRef: searchInputRef,
+  } = useLibrarySearch()
   const [sortKey, setSortKey] = useState('recent')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
@@ -110,6 +112,7 @@ function Library() {
   const [restoringGameId, setRestoringGameId] = useState(null)
 
   const itemEls = useRef({})
+  const coverEls = useRef({})
   const trashBarRef = useRef(null)
   const dragSessionRef = useRef(null)
   const longPressTimerRef = useRef(null)
@@ -304,7 +307,7 @@ function Library() {
   }, [user?.id])
 
   const isGamesTab = activeTab === 'games'
-  const sortLabel = SORTS.find((s) => s.key === sortKey)?.label || 'Recent'
+  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sortKey)?.label || 'Recent'
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -348,12 +351,22 @@ function Library() {
     })
   }
 
-  const measureTrashRectOnce = (session) => {
+  const cacheTrashRect = (session) => {
     if (session.trashRect) return session.trashRect
     const trashEl = trashBarRef.current
-    if (!trashEl) return null
+    // Bubble must be visible and settled — measuring while it is still
+    // off-screen (pre-slide or mid-transition) caches a wrong rect and
+    // the armed hit test never fires.
+    if (!trashEl?.classList.contains('reorder-trash-target--visible')) return null
     session.trashRect = trashEl.getBoundingClientRect()
     return session.trashRect
+  }
+
+  const measureTrashRectOnce = (session) => {
+    if (session.trashRect) return session.trashRect
+    const slideMs = reducedMotion ? 0 : TRASH_ENTER_MS
+    if (Date.now() - (session.activatedAt ?? 0) < slideMs) return null
+    return cacheTrashRect(session)
   }
 
   const clearLongPressTimer = () => {
@@ -421,7 +434,7 @@ function Library() {
       longPressTimerRef.current = null
       if (dragSessionRef.current !== session) return
 
-      const startRect = itemEls.current[game.id]?.getBoundingClientRect()
+      const startRect = coverEls.current[game.id]?.getBoundingClientRect()
       if (!startRect) {
         dragSessionRef.current = null
         return
@@ -431,20 +444,13 @@ function Library() {
       session.startRect = startRect
       session.trashRect = null
       session.rafId = null
+      session.activatedAt = Date.now()
       suppressClickRef.current = true
       setDragGameId(game.id)
       hapticImpact('Medium')
       window.dispatchEvent(
         new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: true } })
       )
-      // Trash bubble slides in on the next frame — measure its rect once
-      // here so pointermove never calls getBoundingClientRect (layout read).
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (dragSessionRef.current !== session) return
-          measureTrashRectOnce(session)
-        })
-      })
     }, LONG_PRESS_MS)
   }
 
@@ -561,6 +567,39 @@ function Library() {
   // Leaving My Games (or unmounting) must restore the nav — same safety
   // net BottomNav already has on route change, applied to the in-page
   // Lists / My Games tab switch which does not change the route.
+  // Cache the trash bubble's hit rect once its slide-in finishes. Measuring
+  // earlier captures the off-screen position and the armed test never fires.
+  useEffect(() => {
+    if (dragGameId == null) return undefined
+
+    const el = trashBarRef.current
+    if (!el) return undefined
+
+    let settled = false
+    const settleTrashRect = () => {
+      if (settled) return
+      settled = true
+      const session = dragSessionRef.current
+      if (session?.gameId === dragGameId) cacheTrashRect(session)
+    }
+
+    const onTransitionEnd = (e) => {
+      if (e.target === el && e.propertyName === 'transform') settleTrashRect()
+    }
+    el.addEventListener('transitionend', onTransitionEnd)
+
+    if (reducedMotion) {
+      requestAnimationFrame(() => requestAnimationFrame(settleTrashRect))
+    } else {
+      setTimeout(settleTrashRect, TRASH_ENTER_MS + 32)
+    }
+
+    return () => {
+      settled = true
+      el.removeEventListener('transitionend', onTransitionEnd)
+    }
+  }, [dragGameId, reducedMotion])
+
   useEffect(() => {
     if (isGamesTab) return
     const session = dragSessionRef.current
@@ -589,130 +628,6 @@ function Library() {
     }
   }, [])
 
-  // ── Lists-tab render helpers ──────────────────────────────────────────────
-
-  // Fanned poster stack for a list tile / hero — ListCoverCluster's
-  // "poster" variant (true --cover-ratio plates, up to 3, center on top
-  // and larger, outer two fanned -9deg/+9deg). It takes the list's first
-  // 3 games in list order (the same `position`-ordered slice listService
-  // already returns, and the same order the old mosaic sampled), so the
-  // stack matches whatever order the list itself is kept in — reordering
-  // a list's games updates its own card stack too.
-  const renderCoverStack = (list) => (
-    <ListCoverCluster
-      games={list.games}
-      coverImageUrl={list.coverImageUrl}
-      name={list.name}
-      variant="poster"
-    />
-  )
-
-  const listMeta = (list) => {
-    const games = `${list.gameCount} ${list.gameCount === 1 ? 'game' : 'games'}`
-    const saves = saveCounts.get(list.id) || 0
-    // Saves are only mentioned once at least one exists — a "0 saves" label
-    // is noise on a brand-new list.
-    return saves > 0 ? `${games} · ${saves} ${saves === 1 ? 'save' : 'saves'}` : games
-  }
-
-  const renderPinnedHero = (list) => (
-    <button
-      type="button"
-      className="lib-pin-hero"
-      onClick={() => navigate(`/list/${list.id}`)}
-      aria-label={`Open pinned list ${list.name} (${listMeta(list)})`}
-    >
-      <div className="lib-pin-hero-stack">{renderCoverStack(list)}</div>
-      <span className="lib-pin-hero-body">
-        <span className="lib-pin-hero-tag" aria-hidden="true">◆ Pinned</span>
-        <span className="lib-pin-hero-name">{list.name}</span>
-        <span className="lib-pin-hero-meta">{listMeta(list)}</span>
-      </span>
-    </button>
-  )
-
-  const renderListCard = (list) => (
-    <button
-      key={list.id}
-      type="button"
-      className="lib-list-card"
-      onClick={() => navigate(`/list/${list.id}`)}
-      aria-label={`Open list ${list.name} (${listMeta(list)})`}
-    >
-      <div className="lib-list-card-stack">{renderCoverStack(list)}</div>
-      <span className="lib-list-card-body">
-        <span className="lib-list-card-name">{list.name}</span>
-        <span className="lib-list-card-meta">{listMeta(list)}</span>
-      </span>
-    </button>
-  )
-
-  const renderListsTab = () => {
-    if (isLoadingLists) {
-      return (
-        <div className="lib-lists-grid" aria-hidden="true">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="lib-list-card lib-list-card--skeleton">
-              <div className="lib-list-card-stack">
-                <div className="skeleton lib-stack-skeleton" />
-              </div>
-              <span className="lib-list-card-body">
-                <span className="skeleton lib-sk-name" />
-                <span className="skeleton lib-sk-meta" />
-              </span>
-            </div>
-          ))}
-        </div>
-      )
-    }
-
-    if (errorLists) {
-      return (
-        <div className="lib-lists-error">
-          <InlineErrorBanner message="Couldn't load your lists. Tap to retry." onRetry={loadCustomLists} />
-        </div>
-      )
-    }
-
-    if (customLists.length === 0) {
-      // Single centered empty state — no pinned section, no grid.
-      return (
-        <div className="lib-lists-empty">
-          <EmptyState
-            icon={List}
-            title="No lists yet"
-            cta="New list"
-            onCta={() => setShowCreateModal(true)}
-          />
-        </div>
-      )
-    }
-
-    // Exactly one hero: the most-recently-pinned list (pinnedLists[0]).
-    // Everything else — including any OTHER pinned lists — falls through to
-    // the "All lists" grid below; pinning a list never hides it entirely.
-    const heroList = pinnedLists[0] || null
-    const restLists = heroList ? customLists.filter((l) => l.id !== heroList.id) : customLists
-
-    return (
-      <>
-        {heroList && (
-          <>
-            <p className="lib-sec-label">Pinned</p>
-            {renderPinnedHero(heroList)}
-          </>
-        )}
-
-        {restLists.length > 0 && (
-          <>
-            <p className="lib-sec-label">All lists</p>
-            <div className="lib-lists-grid">{restLists.map(renderListCard)}</div>
-          </>
-        )}
-      </>
-    )
-  }
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -725,103 +640,52 @@ function Library() {
             .lib-ambient-wash--on in Library.css) so the cobalt→green ↔
             purple shift reads as a deliberate 220ms transition instead of
             a hard cut when the tab changes. */}
-        <div
-          className={`lib-ambient-wash lib-ambient-wash--games${isGamesTab ? ' lib-ambient-wash--on' : ''}`}
-          aria-hidden="true"
+        <LibraryAmbientWash isGamesTab={isGamesTab} />
+
+        <LibraryHeader
+          title="Library"
+          actions={
+            <>
+              <LibrarySearchToggle open={searchOpen} onToggle={toggleSearch} />
+              <button
+                type="button"
+                className="lib-avatar-btn"
+                onClick={() => navigate('/profile')}
+                aria-label="Open your profile"
+              >
+                <Avatar user={avatarUser} size="sm" />
+              </button>
+            </>
+          }
         />
-        <div
-          className={`lib-ambient-wash lib-ambient-wash--lists${!isGamesTab ? ' lib-ambient-wash--on' : ''}`}
-          aria-hidden="true"
+        <LibrarySearchPanel
+          open={searchOpen}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          onClear={clearSearch}
+          inputRef={searchInputRef}
         />
 
-        <header className="lib-header">
-          <h1 className="lib-title">Library</h1>
-          <button
-            type="button"
-            className="lib-avatar-btn"
-            onClick={() => navigate('/profile')}
-            aria-label="Open your profile"
-          >
-            <Avatar user={avatarUser} size="sm" />
-          </button>
-        </header>
-
-        <div className="lib-seg" role="tablist" aria-label="Library view">
-          <button
-            type="button"
-            role="tab"
-            id="lib-tab-games"
-            aria-selected={isGamesTab}
-            aria-controls="lib-panel-games"
-            className={`lib-segb${isGamesTab ? ' lib-segb--games-on' : ''}`}
-            onClick={() => setActiveTab('games')}
-          >
-            My Games
-            <span className="lib-seg-n">{combinedGames.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="lib-tab-lists"
-            aria-selected={!isGamesTab}
-            aria-controls="lib-panel-lists"
-            className={`lib-segb${!isGamesTab ? ' lib-segb--lists-on' : ''}`}
-            onClick={() => setActiveTab('lists')}
-          >
-            Lists
-            <span className="lib-seg-n">{customLists.length}</span>
-          </button>
-        </div>
+        <LibraryTabs
+          activeTab={activeTab}
+          gamesCount={combinedGames.length}
+          listsCount={customLists.length}
+          onTabChange={setActiveTab}
+        />
 
         {isGamesTab ? (
           <div id="lib-panel-games" role="tabpanel" aria-labelledby="lib-tab-games" className="lib-tabpanel">
-            <div className="lib-search">
-              <SearchIcon size={15} className="lib-search-icon" aria-hidden="true" />
-              <input
-                type="text"
-                className="lib-search-input"
-                placeholder="Search your library"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search your library by title"
-              />
-            </div>
+            <LibraryStatBar
+              counts={counts}
+              activeStatus={activeStatus}
+              onStatusTap={handleStatusTap}
+            />
 
-            <div className="lib-statbar">
-              {STATUS_CELLS.map((cell) => {
-                const active = activeStatus === cell.key
-                const count = counts[cell.key] ?? 0
-                const isEmpty = count === 0
-                return (
-                  <button
-                    key={cell.key}
-                    type="button"
-                    aria-pressed={active}
-                    className={`lib-statcell lib-statcell--${cell.key}${active ? ' lib-statcell--active' : ''}${isEmpty ? ' lib-statcell--empty' : ''}`}
-                    onClick={() => handleStatusTap(cell.key)}
-                  >
-                    <span className="lib-statcell-num">{count}</span>
-                    <span className="lib-statcell-lbl">{cell.label}</span>
-                    <span className="lib-statcell-bar" aria-hidden="true" />
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="lib-sortrow">
-              <span className="lib-sortrow-count">
-                {sortedGames.length} {sortedGames.length === 1 ? 'game' : 'games'}
-              </span>
-              <button
-                type="button"
-                className="lib-sortrow-btn"
-                onClick={() => setShowSortSheet(true)}
-                aria-label={`Sort games (currently ${sortLabel})`}
-              >
-                {sortLabel}
-                <ChevronDown size={14} aria-hidden="true" />
-              </button>
-            </div>
+            <LibrarySortRow
+              count={sortedGames.length}
+              sortLabel={sortLabel}
+              onSortClick={() => setShowSortSheet(true)}
+            />
 
             <section className="lib-grid-section" aria-label="Your games">
               {combinedGames.length === 0 ? (
@@ -854,33 +718,39 @@ function Library() {
                   ctaVariant="secondary"
                   onCta={() => {
                     setActiveStatus(null)
-                    setSearchQuery('')
+                    clearSearch()
                   }}
                 />
               ) : (
-                <>
-                  <div
-                    className={`lib-grid3${dragGameId != null ? ' lib-grid3--dragging' : ''}`}
-                    ref={gridRef}
-                  >
-                    {visibleGames.map((g) => {
-                      const isDragged = dragGameId === g.id
-                      const isRemoving = removingGameId === g.id
-                      const isRestoring = restoringGameId === g.id
-                      return (
-                      <button
+                <LibraryGameGrid
+                  games={visibleGames}
+                  gridRef={gridRef}
+                  dragging={dragGameId != null}
+                  hasMore={hasMore}
+                  onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  ariaLabel="Your games"
+                  renderCard={(g) => {
+                    const isDragged = dragGameId === g.id
+                    const isRemoving = removingGameId === g.id
+                    const isRestoring = restoringGameId === g.id
+                    return (
+                      <LibraryGameCard
                         key={g.id}
-                        ref={(el) => { if (el) itemEls.current[g.id] = el }}
-                        type="button"
-                        className={`lib-gamecard${
-                          isDragged ? ' lib-gamecard--dragged' : ''
+                        game={g}
+                        cardRef={(el) => { if (el) itemEls.current[g.id] = el }}
+                        coverRef={(el) => { if (el) coverEls.current[g.id] = el }}
+                        cardClassName={`${
+                          isDragged ? 'lib-gamecard--dragged' : ''
                         }${isRemoving ? ' lib-gamecard--removing' : ''}${
                           isRestoring ? ' lib-gamecard--restoring' : ''
                         }`}
-                        onPointerDown={(e) => handleCoverPointerDown(e, g)}
-                        onPointerMove={handleCoverPointerMove}
-                        onPointerUp={handleCoverPointerUp}
-                        onPointerCancel={handleCoverPointerCancel}
+                        coverClassName={
+                          isRemoving
+                            ? 'lib-cov--removing'
+                            : isDragged
+                              ? `lib-cov--lifted${trashArmed ? ' lib-cov--armed' : ''}`
+                              : ''
+                        }
                         onClick={() => {
                           if (suppressClickRef.current) {
                             suppressClickRef.current = false
@@ -888,49 +758,36 @@ function Library() {
                           }
                           navigate(`/game/${g.id}`)
                         }}
-                        aria-label={g.title ? `Open ${g.title}` : 'Open game'}
-                      >
-                        <div
-                          className={`lib-cov${
-                            isRemoving
-                              ? ' lib-cov--removing'
-                              : isDragged
-                                ? ` lib-cov--lifted${trashArmed ? ' lib-cov--armed' : ''}`
-                                : ''
-                          }`}
-                        >
-                          <SharedCover gameId={g.id} imageSrc={g.image || COVER_FALLBACK}>
-                            <img
-                              src={g.image || COVER_FALLBACK}
-                              alt=""
-                              className="lib-cov-img"
-                              loading="lazy"
-                              draggable={false}
-                              onError={(e) => { e.target.src = COVER_FALLBACK }}
-                            />
-                          </SharedCover>
-                        </div>
-                        <p className="lib-gamecard-title">{g.title || '—'}</p>
-                      </button>
-                      )
-                    })}
-                  </div>
-                  {hasMore && (
-                    <button
-                      type="button"
-                      className="lib-loadmore"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                    >
-                      Show more
-                    </button>
-                  )}
-                </>
+                        onCoverPointerDown={(e) => handleCoverPointerDown(e, g)}
+                        onCoverPointerMove={handleCoverPointerMove}
+                        onCoverPointerUp={handleCoverPointerUp}
+                        onCoverPointerCancel={handleCoverPointerCancel}
+                      />
+                    )
+                  }}
+                />
               )}
             </section>
           </div>
         ) : (
           <div id="lib-panel-lists" role="tabpanel" aria-labelledby="lib-tab-lists" className="lib-lists-panel lib-tabpanel">
-            {renderListsTab()}
+            <LibraryListsPanel
+              lists={customLists}
+              pinnedLists={pinnedLists}
+              saveCounts={saveCounts}
+              isLoading={isLoadingLists}
+              error={errorLists}
+              onRetry={loadCustomLists}
+              onOpenList={(list) => navigate(`/list/${list.id}`)}
+              empty={
+                <EmptyState
+                  icon={List}
+                  title="No lists yet"
+                  cta="New list"
+                  onCta={() => setShowCreateModal(true)}
+                />
+              }
+            />
           </div>
         )}
 
@@ -976,19 +833,11 @@ function Library() {
           onCreate={handleCreateList}
         />
 
-        <ActionSheet
+        <LibrarySortSheet
           isOpen={showSortSheet}
           onClose={() => setShowSortSheet(false)}
-          title="Sort By"
-          items={SORTS.map((s) => ({
-            label: (
-              <span className="lib-sort-item">
-                {s.label}
-                {sortKey === s.key && <Check size={16} aria-hidden="true" />}
-              </span>
-            ),
-            onClick: () => setSortKey(s.key),
-          }))}
+          sortKey={sortKey}
+          onSelect={setSortKey}
         />
       </div>
       </PullToRefresh>

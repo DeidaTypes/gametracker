@@ -1,7 +1,7 @@
 /* ============================================
    LIBRARY PAGE — two-tab shell (My Games / Lists)
-   plus the My Games dashboard: search, four status
-   cells, sort row, 3-up cover grid.
+   plus the My Games dashboard: header search icon,
+   four status cells, sort row, 3-up cover grid.
    Cobalt design language, DM Sans throughout.
 
    Token note: the Sprint spec names --surface / --line /
@@ -85,7 +85,7 @@
 }
 
 /* =============================================
-   HEADER — title left, profile avatar right.
+   HEADER — title left; search icon (+ avatar) right.
    ============================================= */
 
 .lib-header {
@@ -94,9 +94,47 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-12);
   padding: 14px var(--page-padding) 0;
   padding-top: calc(14px + var(--safe-area-inset-top));
+}
+
+.lib-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  flex: 1;
+}
+
+.lib-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.lib-back {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-8));
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lib-back:active {
+  transform: scale(0.94);
 }
 
 .lib-title {
@@ -107,6 +145,10 @@
   letter-spacing: -0.03em;
   color: var(--text-primary);
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lib-avatar-btn {
@@ -190,50 +232,51 @@
 }
 
 /* =============================================
-   MY GAMES — search
+   HEADER SEARCH — icon toggle + slide-down row
    ============================================= */
 
-.lib-search {
-  position: relative;
-  z-index: 1;
+.lib-search-toggle {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 9px 12px;
-  margin: 14px var(--page-padding) 0;
-  transition: border-color var(--transition-fast);
-}
-
-.lib-search:focus-within {
-  border-color: var(--accent);
-}
-
-.lib-search-icon {
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-}
-
-.lib-search-input {
-  flex: 1;
-  min-width: 0;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
   background: none;
   border: none;
-  padding: 0;
+  border-radius: var(--radius-full);
   color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  font-weight: 400;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.lib-search-input:focus {
-  outline: none;
+.lib-search-toggle--open {
+  color: var(--accent);
 }
 
-.lib-search-input::placeholder {
-  color: var(--text-tertiary);
+.lib-search-toggle:active {
+  transform: scale(0.94);
+}
+
+.lib-search-panel {
+  position: relative;
+  z-index: 1;
+  margin: var(--space-12) var(--page-padding) 0;
+  animation: lib-search-in 180ms ease both;
+}
+
+@keyframes lib-search-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* =============================================
@@ -403,6 +446,7 @@
   z-index: 50;
   position: relative;
   will-change: transform;
+  touch-action: none;
 }
 
 .lib-cov {
@@ -436,6 +480,7 @@
   transform: scale(1.06);
   box-shadow: var(--shadow-xl);
   opacity: 0.95;
+  touch-action: none;
   transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
     opacity 180ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -893,7 +938,7 @@
 @media (min-width: 769px) {
   .lib-header,
   .lib-seg,
-  .lib-search,
+  .lib-search-panel,
   .lib-statbar,
   .lib-sortrow,
   .lib-grid3,
@@ -923,9 +968,26 @@
    REDUCED MOTION
    ============================================= */
 
+.library-page--visitor {
+  padding-bottom: var(--bottom-nav-safe-area);
+}
+
+.lib-visitor-notice {
+  position: relative;
+  z-index: 1;
+  margin: var(--space-24) var(--page-padding) 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+}
+
+.lib-grid3 .skeleton.lib-cov {
+  border-radius: var(--cover-radius);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lib-segb,
-  .lib-search,
+  .lib-search-panel,
   .lib-statcell,
   .lib-statcell-num,
   .lib-cov,
@@ -961,6 +1023,8 @@
   }
 
   .lib-avatar-btn:active,
+  .lib-search-toggle:active,
+  .lib-back:active,
   .lib-statcell:active,
   .lib-gamecard:active .lib-cov,
   .lib-pin-hero:active,
