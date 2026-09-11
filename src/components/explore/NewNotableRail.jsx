@@ -1,8 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import { useDiscoverGamesNew } from '../../hooks/useExploreData'
 import CleanGameTile from './CleanGameTile'
+import DiscoverSectionHeader from './DiscoverSectionHeader'
 import './SectionScaffold.css'
 
 /**
@@ -18,7 +18,7 @@ import './SectionScaffold.css'
  * number: it explains WHY a game is here without turning browsing into
  * judging.
  *
- * "See all" continues the same gated list, newest release first, at
+ * The section header opens the same gated list, newest release first, at
  * /discover/new. Hides entirely when the cache has nothing rather than
  * showing an empty rail.
  */
@@ -31,9 +31,15 @@ export default function NewNotableRail() {
 
   return (
     <section className="explore-section" aria-label="New & Notable">
-      <div className="explore-section__pad shelf-scaffold__head">
-        <h2 className="discover-section-title">New &amp; Notable</h2>
-        <p className="shelf-scaffold__subtitle">Just released</p>
+      <div className="explore-section__pad">
+        <DiscoverSectionHeader
+          title="New & Notable"
+          subtitle="Just released"
+          visibleCount={games.length}
+          totalCount={null}
+          destinationLabel="New releases"
+          onNavigate={() => navigate('/discover/new')}
+        />
       </div>
 
       <div className="explore-scroll-row">
@@ -41,15 +47,6 @@ export default function NewNotableRail() {
           <CleanGameTile key={game.id} game={game} tag={game.tag} />
         ))}
       </div>
-
-      <button
-        type="button"
-        className="discover-see-all-btn"
-        onClick={() => navigate('/discover/new')}
-      >
-        See all new releases
-        <ChevronRight size={16} className="discover-see-all-btn__chevron" aria-hidden="true" />
-      </button>
     </section>
   )
 }
