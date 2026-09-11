@@ -74,8 +74,8 @@ export default function RatingDistributionSheet({ isOpen, onClose, ratingDist })
                   counts={ratingDist.counts}
                 />
                 <p className="rating-dist-sheet__caption">
-                  The ridge on Game Detail groups half ratings into the star above.
-                  This chart shows the true half-star distribution.
+                  Half ratings group into the star above. This chart shows the true
+                  half-star distribution.
                 </p>
               </>
             ) : (

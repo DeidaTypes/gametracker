@@ -6,7 +6,9 @@ import StarRatingDisplay from './StarRatingDisplay'
 import './GameDetailStatStrip.css'
 
 const RIDGE_BAR_COUNT = 5
-/** Minimum bar height as a fraction of the 22px track — keeps the ridge legible at any count. */
+/** Ridge track height in px — must match .gd-stat-strip__ridge height in CSS. */
+const RIDGE_TRACK_PX = 22
+/** Minimum bar height as a fraction of the track — keeps empty buckets visible, not hairlines. */
 const RIDGE_FLOOR_FRAC = 0.22
 
 function playedOnToDate(playedOn) {
@@ -154,21 +156,19 @@ export default function GameDetailStatStrip({
           >
             {barHeights.map((heightFrac, idx) => {
               const filled = hasRatings && ridgeBuckets[idx] > 0
+              const barPx = Math.max(
+                Math.round(RIDGE_FLOOR_FRAC * RIDGE_TRACK_PX),
+                Math.round(heightFrac * RIDGE_TRACK_PX)
+              )
               return (
                 <span
                   key={idx}
                   className={`gd-stat-strip__ridge-bar${filled ? ' gd-stat-strip__ridge-bar--filled' : ''}`}
-                  style={{ height: `${Math.round(heightFrac * 100)}%` }}
+                  style={{ height: `${barPx}px` }}
                 />
               )
             })}
           </div>
-
-          {hasRatings && (
-            <p className="gd-stat-strip__ridge-caption">
-              Half ratings group into the star above
-            </p>
-          )}
         </button>
       </div>
     </div>

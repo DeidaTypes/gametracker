@@ -1383,11 +1383,17 @@
   .gd-pulse-live-dot { animation: none; }
 }
 
-/* ── Headrow hero: short art strip + poster/title side-by-side ── */
-.gd-hero { min-height: 190px; }
+/* ── Headrow hero: short art strip + poster/title side-by-side ──
+   Hero min-height = topbar footprint (72px + safe-area) + ~28px breathing
+   room before the cover. Title section follows in normal flow — no negative
+   margin pull — so the cover sits ~24–32px below the nav row, not inside a
+   tall empty gradient slab. */
+.gd-hero {
+  min-height: calc(72px + var(--safe-area-inset-top) + var(--space-32));
+}
 
 .gd-title-section {
-  margin-top: -54px;
+  margin-top: 0;
   align-items: flex-end;
   gap: 14px;
 }
@@ -1406,9 +1412,7 @@
 }
 
 @media (min-width: 769px) {
-  .gd-hero { min-height: 240px; }
   .gd-hero-cover { width: 120px; }
-  .gd-title-section { margin-top: -64px; }
 }
 
 /* =====================================================
