@@ -12,6 +12,30 @@ import './SwipeBackWrapper.css'
 //
 // Only secondary / pushed screens opt in (App.jsx passes swipeBack to
 // their PageTransition). Top-level tab screens never mount this wrapper.
+//
+// KNOWN LIMITATION — what's behind the dragging page during the gesture:
+// This drags only the CURRENT page. The screen being navigated back to
+// isn't mounted yet (React Router hasn't changed location — navigate(-1)
+// only fires on release/commit), so what's actually revealed as this page
+// slides right is the app's base navy surface (.main-content's transparent
+// background over body's fixed gradient), not the real previous screen.
+// True keep-alive (rendering the previous route underneath for the whole
+// gesture, the way UINavigationController does) was evaluated for this
+// pass and rejected: it would mean two instances of a route's page mounted
+// simultaneously for the entire time a swipeable screen is visible, not
+// just during a transition, which is a much bigger window for
+// side-effect-heavy pages (data fetching, realtime subscriptions,
+// module-level caches like SharedCover's coverCache, GameColorContext's
+// single "current game" swatch) to collide. That's a real architecture
+// change (a genuine back-stack cache), not something to bolt on here.
+//
+// What DID change: once the gesture commits, AnimatedRoutes (App.jsx) now
+// treats the resulting navigate(-1) as a normal direction-aware POP, so
+// the revealed page fades/slides in using the 'back' variant (mirrored
+// from how it would have exited on a push) instead of always replaying
+// the generic forward enter. That makes the reveal read as "returning"
+// rather than "loading a new page," but the brief flash of navy before it
+// is still there — don't describe this as feeling fully native.
 const EDGE = 28 // px from the left edge where a back-swipe may begin
 const THRESHOLD = 90 // px of travel that commits the back navigation
 const VELOCITY = 0.45 // px/ms flick speed that commits regardless of travel

@@ -40,3 +40,33 @@
 .page-transition--animating {
   will-change: opacity, transform;
 }
+
+/* =====================================================
+   ROUTE LAYER STACK — direction-aware push/pop transitions
+   Rendered by <AnimatedRoutes> (see src/App.jsx). During a navigation,
+   up to two of these are mounted at once: the entering page (plain,
+   in-flow — identical to how <Routes> rendered directly into
+   .main-content before) and, briefly, the previous page mid-exit.
+   ===================================================== */
+
+.route-layer {
+  width: 100%;
+}
+
+/* The exiting layer is pulled out of .main-content's normal flow so it
+   can't affect scrollHeight or fight the entering page's scroll
+   restoration (App.jsx ~300-368) for ownership of .main-content's
+   scrollTop. `position: fixed` here is safe from the "attaches to the
+   nearest transformed ancestor" trap documented at Library.jsx ~958-966
+   because this wrapper itself has no transform — only its PageTransition
+   motion.div descendant does, and position:fixed escapes NON-transformed
+   ancestors' overflow/scroll entirely. It keeps whatever scrollTop it had
+   while it was the current page (same DOM node, no snapshot needed) and
+   is frozen there — pointer-events: none means it's purely visual for the
+   short remainder of its exit animation. */
+.route-layer--exiting {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}

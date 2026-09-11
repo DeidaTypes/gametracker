@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,7 +8,9 @@ import {
   useLocation,
   useNavigationType,
 } from 'react-router-dom'
-import PageTransition from './components/PageTransition'
+import { LayoutGroup } from 'motion/react'
+import PageTransition, { PageTransitionPhase } from './components/PageTransition'
+import { useMotionPreference } from './hooks/useMotionPreference'
 import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
 import BottomNav from './components/BottomNav'
@@ -107,46 +109,172 @@ const PUBLIC_PATHS = new Set([
 ])
 
 /**
- * Animated route outlet. Wraps <Routes> in a single motion.div whose
- * key is the current route path, so AnimatePresence treats every
- * navigation as a child swap and runs exit on the outgoing page
- * before mounting the new one. The motion.div carries the per-page
- * fade + 8 px vertical slide from the motion-system spec.
+ * Animated route outlet — direction-aware push/pop exit + enter.
  *
- * The keyed motion.div pattern is the recommended fix for the
- * "stuck mid-transition" failure mode of AnimatePresence mode="wait":
- * a unique key on each route is the only way React + Motion can tell
- * that the old subtree should be torn down and a new one mounted.
+ * HISTORY — why this isn't AnimatePresence:
+ * An earlier attempt wrapped a keyed <Routes> in <AnimatePresence
+ * mode="wait">, which is the textbook React Router + Motion pattern. It
+ * deadlocked: exit animations on the outgoing page never received their
+ * `onComplete` callback, so `mode="wait"` sat permanently "waiting" and
+ * the next page never mounted. It reproduced with or without LayoutGroup.
+ * Our best-supported diagnosis: this app's shared Motion layout tree has
+ * several long-lived `layoutId` consumers — SharedCover (scoped per
+ * gameId, used on ~10 different pages), BottomNav's `nav-pill`, and
+ * Profile's tab indicator — and AnimatePresence's exit-complete signal for
+ * a subtree is derived from Motion's internal layout-projection bookkeeping
+ * for *everything* in that shared tree, not just the exiting page in
+ * isolation. If any projection node elsewhere (e.g. a `layoutId` partner
+ * that mounts, unmounts, or re-parents while the route exit is in flight)
+ * never resolves its FLIP measurement, the exit-tree's completion promise
+ * never resolves either, and `mode="wait"` has no timeout or escape hatch —
+ * it just hangs forever. Enter-only sidestepped this at the cost of the
+ * exit itself being dead code (see PageTransition's old comment, and the
+ * `exit` prop that never ran because nothing kept AnimatePresence in the
+ * tree).
+ *
+ * THIS APPROACH:
+ * Rather than re-introduce AnimatePresence, this keeps the outgoing page
+ * mounted itself (no AnimatePresence involved) and drives its exit as a
+ * plain `animate` prop change on an already-mounted motion.div (see
+ * PageTransition). That's a bare opacity/y tween whose `onAnimationComplete`
+ * is basic Motion functionality, not tied to layout-projection or exit-tree
+ * completion — it cannot be blocked by an unrelated `layoutId` partner
+ * failing to resolve elsewhere. Two more things close the gaps that made
+ * the old attempt fragile:
+ *   - Each rendered layer (the exiting page and the entering page can be
+ *     mounted simultaneously for one transition's duration) gets its own
+ *     <LayoutGroup id={layer.key}>. SharedCover's layoutId is scoped to
+ *     gameId, so without this, a source page and GameDetail showing the
+ *     same game could suddenly attempt a cross-layer shared-element
+ *     "flight" during the overlap that never happened before (source and
+ *     destination were never mounted at the same time under the old
+ *     enter-only model). Per-layer LayoutGroup isolation keeps that
+ *     never-worked, never-attempted state exactly as it was — see
+ *     SharedCover.jsx and the module docstring above for why the flight
+ *     itself is out of scope here.
+ *   - A safety-net timeout (same pattern as SwipeBackWrapper's own
+ *     `safetyTimer`) force-unmounts an exiting layer if its
+ *     `onAnimationComplete` never fires for some unrelated reason, so this
+ *     can't wedge navigation the way AnimatePresence did even in a case we
+ *     didn't anticipate.
+ *
+ * Reduced motion (`useMotionPreference`) skips all of this: layers swap
+ * instantly with no overlap and no exit, per requirement.
+ *
+ * Internal transitions (Profile tabs, Search tabs, modals, FAB sheet)
+ * still use AnimatePresence — those subtrees are smaller, self-contained,
+ * and don't share layoutId state with the route-level layers, so they
+ * remain unaffected by any of this and continue to animate cleanly.
  */
-/**
- * Animated route outlet.
- *
- * Each Route renders `<PageTransition>` which wraps the page in a
- * motion.div that fades + slides 8 px on mount. Re-mounts happen
- * naturally on every navigation because we key `<Routes>` itself on
- * `location.pathname` — each route change tears down the previous
- * subtree and mounts a fresh one.
- *
- * Why not AnimatePresence mode="wait" with full exit animations?
- * We tried. In this codebase (Motion 12.38 + React Router 6.30 +
- * layoutId-heavy SharedCover/BottomNav/Profile-tab subtrees), exit
- * animations on the previous page never receive their `onComplete`
- * callback, leaving AnimatePresence permanently "waiting" and the
- * next page never mounts. The deadlock reproduces with or without
- * LayoutGroup. Enter-only is the fail-safe pattern the team already
- * battle-tested before this prompt (see Motion #3059) and it still
- * delivers the spec's "smooth fade + slide-up" feel because every
- * page mount runs the same animation from initial → animate.
- *
- * Internal transitions (Profile tabs, Search tabs, modals, FAB
- * sheet) DO use AnimatePresence — those subtrees are smaller and
- * don't contain layoutId descendants, so they animate cleanly.
- */
-function AnimatedRoutes({ location, children }) {
+const EXIT_SAFETY_MS = 320 // PAGE_TRANSITION (220ms) + buffer, mirrors SwipeBackWrapper's own safety-net margin
+
+function AnimatedRoutes({ location, navigationType, children }) {
+  const { reduced } = useMotionPreference()
+
+  // Up to two layers at once: the 'current' (entering/settled) page, and
+  // — only mid-transition — the previous page, held in the tree with
+  // phase 'exiting' just long enough to play its exit animation.
+  const [layers, setLayers] = useState(() => [
+    { key: location.key, location, phase: 'current' },
+  ])
+  const lastKeyRef = useRef(location.key)
+  const exitTimersRef = useRef(new Map())
+
+  const clearExitTimer = (key) => {
+    const t = exitTimersRef.current.get(key)
+    if (t) {
+      clearTimeout(t)
+      exitTimersRef.current.delete(key)
+    }
+  }
+
+  const removeLayer = (key) => {
+    clearExitTimer(key)
+    setLayers((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev))
+  }
+
+  // useLayoutEffect (not useEffect) so the new layer set commits before
+  // paint — otherwise there'd be one frame where `location` has already
+  // moved on but `layers` still reflects the old route.
+  useLayoutEffect(() => {
+    if (location.key === lastKeyRef.current) return
+    lastKeyRef.current = location.key
+
+    if (reduced) {
+      // Instant, no overlap — see requirement #4. Anything still mid-exit
+      // is dropped immediately rather than left to finish off-screen.
+      exitTimersRef.current.forEach((t) => clearTimeout(t))
+      exitTimersRef.current.clear()
+      setLayers([{ key: location.key, location, phase: 'current' }])
+      return
+    }
+
+    // PUSH/REPLACE read as 'forward'; POP (back button, hardware back,
+    // navigate(-1), swipe-back) reads as 'back'. Both the exiting and
+    // entering layer of this navigation share the same direction so they
+    // animate as a matched, mirrored pair — see PageTransition's VARIANTS.
+    const direction = navigationType === 'POP' ? 'back' : 'forward'
+
+    setLayers((prev) => {
+      // Normally there's exactly one 'current' layer to hand off from. If
+      // navigation happens again before a prior exit finished, that stale
+      // exiting layer is dropped (not stacked a third-deep) — its timer
+      // is cleaned up below.
+      const outgoingSource = prev.find((l) => l.phase === 'current') || prev[prev.length - 1]
+      prev.forEach((l) => {
+        if (l.phase === 'exiting' && l.key !== outgoingSource?.key) clearExitTimer(l.key)
+      })
+
+      const incoming = { key: location.key, location, phase: 'current', direction }
+
+      if (!outgoingSource) return [incoming]
+
+      const outgoingKey = outgoingSource.key
+      const timer = setTimeout(() => removeLayer(outgoingKey), EXIT_SAFETY_MS)
+      exitTimersRef.current.set(outgoingKey, timer)
+
+      const outgoing = { ...outgoingSource, phase: 'exiting', direction }
+      return [outgoing, incoming]
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, navigationType, reduced])
+
+  useEffect(() => {
+    const timers = exitTimersRef.current
+    return () => timers.forEach((t) => clearTimeout(t))
+  }, [])
+
   return (
-    <Routes key={location.pathname} location={location}>
-      {children}
-    </Routes>
+    <>
+      {layers.map((layer) => {
+        const isExiting = layer.phase === 'exiting'
+        // Whichever layer represents the "deeper" stack entry renders on
+        // top: on a forward push that's the incoming page (it's covering
+        // the one before it); on a pop it's the outgoing page (the one
+        // being popped off was on top before this transition started).
+        const onTop =
+          (layer.direction || 'forward') === 'forward' ? !isExiting : isExiting
+        return (
+          <div
+            key={layer.key}
+            className={isExiting ? 'route-layer route-layer--exiting' : 'route-layer'}
+            style={{ zIndex: onTop ? 2 : 1 }}
+          >
+            <LayoutGroup id={layer.key}>
+              <PageTransitionPhase.Provider
+                value={{
+                  phase: layer.phase,
+                  direction: layer.direction || 'forward',
+                  onExitComplete: isExiting ? () => removeLayer(layer.key) : undefined,
+                }}
+              >
+                <Routes location={layer.location}>{children}</Routes>
+              </PageTransitionPhase.Provider>
+            </LayoutGroup>
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -392,7 +520,7 @@ function AppContent() {
       {showNav && <TopNav />}
       {showNav && <MobileNav />}
       <main className="main-content" ref={mainContentRef}>
-        <AnimatedRoutes location={location}>
+        <AnimatedRoutes location={location} navigationType={navigationType}>
             {/* Public auth routes */}
             <Route
               path="/login"
