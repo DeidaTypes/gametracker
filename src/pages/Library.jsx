@@ -63,6 +63,22 @@ const TRASH_ENTER_MS = 220
  */
 let lastActiveTab = 'games'
 
+// Synchronous localStorage read — same data initializeLibrary/
+// getGamesFromList always had available, just previously read one tick
+// late (inside a useEffect) so first paint rendered the empty-state/
+// EmptyState branch below and then immediately swapped to the real grid.
+// Reading it during render instead means the grid is correct on frame
+// one, which is also what removes the GRID_REFLOW_MS auto-animate firing
+// on a plain remount — see the gridRef comment below.
+function readTrackerLists() {
+  initializeLibrary()
+  const snap = {}
+  for (const cell of STATUS_CELLS) {
+    snap[cell.listId] = { games: getGamesFromList(cell.listId) }
+  }
+  return snap
+}
+
 function Library() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -73,7 +89,7 @@ function Library() {
     setActiveTabState(tab)
   }, [])
 
-  const [trackerLists, setTrackerLists] = useState({})
+  const [trackerLists, setTrackerLists] = useState(readTrackerLists)
   const [customLists, setCustomLists] = useState([])
   const [saveCounts, setSaveCounts] = useState(new Map())
   const [isLoadingLists, setIsLoadingLists] = useState(true)
@@ -101,6 +117,18 @@ function Library() {
   const [sortKey, setSortKey] = useState('recent')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
+  // @formkit/auto-animate only animates children ADDED/REMOVED/reordered
+  // AFTER the ref is attached — whatever is already in the DOM at attach
+  // time is the baseline, not an "insertion". trackerLists/customLists are
+  // now populated from readTrackerLists()/localStorage synchronously
+  // during render (see the useState initializer above and loadCustomLists
+  // below is still async but Library's own grid data no longer is), so on
+  // a plain mount/remount the grid already has its final item set on the
+  // very first commit — there is nothing left for GRID_REFLOW_MS to
+  // animate in, and it no longer overlaps the 220ms page tween. It still
+  // fires exactly when it should: a real insertion/removal/reorder while
+  // the page stays mounted (status change, drag-to-trash, undo, list
+  // create/delete).
   const [gridRef] = useAutoAnimateMotion({ duration: GRID_REFLOW_MS })
   const { reduced: reducedMotion } = useMotionPreference()
 
@@ -122,12 +150,7 @@ function Library() {
   // ── Data loading ──────────────────────────────────────────────────────────
 
   const loadTrackerLists = useCallback(() => {
-    initializeLibrary()
-    const snap = {}
-    for (const cell of STATUS_CELLS) {
-      snap[cell.listId] = { games: getGamesFromList(cell.listId) }
-    }
-    setTrackerLists(snap)
+    setTrackerLists(readTrackerLists())
   }, [])
 
   // `background: true` refreshes in place. Pull-to-refresh, library writes
@@ -719,6 +742,16 @@ function Library() {
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
     }
+    // A cancelled sequence (the OS/WebView interrupting the touch — e.g. a
+    // gesture recognizer taking over, or main-thread churn from a
+    // navigation transition landing mid-touch) never reaches
+    // handleCoverPointerUp, so the setTimeout reset there never runs. An
+    // activated session already set this true; left uncleared, it silently
+    // eats the very next tap on ANY cover (this is a single ref, not
+    // per-card) — the tap fires, the guard below swallows it and clears the
+    // flag, and only the tap after that actually opens the game. Reset it
+    // here too so an interruption can never leave a live time bomb behind.
+    if (session.activated) suppressClickRef.current = false
     setRemovingGameId(null)
     hardResetDrag(session.gameId)
   }

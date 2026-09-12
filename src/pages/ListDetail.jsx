@@ -778,6 +778,16 @@ function ListDetail() {
     if (session.captureEl?.hasPointerCapture?.(e.pointerId)) {
       session.captureEl.releasePointerCapture(e.pointerId)
     }
+    // An activated session set this true expecting handleCoverPointerUp's
+    // own click-swallow (below, in the tap handler) to clear it eventually.
+    // A cancel never reaches that click at all — the OS/WebView interrupted
+    // the touch instead of ending it normally (a competing gesture
+    // recognizer, or main-thread churn from a navigation transition landing
+    // mid-touch) — so without this, the flag is left stuck true and the
+    // very next tap on ANY cover in this grid (it's a single ref, not
+    // per-card) is silently eaten to clear it. "Cleanly reset everything"
+    // below has to include this, not just the visible drag state.
+    if (session.activated) suppressClickRef.current = false
     setRemovingGameId(null)
     // No commit of any kind — a cancel/interruption must cleanly reset
     // everything: no stuck lifted cover, no orphaned trash target, nav
