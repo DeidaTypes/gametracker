@@ -1,45 +1,40 @@
 import React, { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import {
+  beginBack,
+  setBackProgress,
+  finishBack,
+  teardownBack,
+} from './backTransition'
 import './SwipeBackWrapper.css'
 
 // Native-feeling left-edge swipe-to-go-back.
 //
 // A touch that starts within EDGE px of the screen's left edge and drags
-// rightward translates the page content under the finger. Release past
-// THRESHOLD (or with enough velocity) slides the page fully off to the
-// right and calls navigate(-1); otherwise it springs back to rest.
+// rightward translates the page under the finger. Release past THRESHOLD (or
+// with enough velocity) completes the travel and calls navigate(-1);
+// otherwise both layers spring back to rest.
 //
-// Only secondary / pushed screens opt in (App.jsx passes swipeBack to
-// their PageTransition). Top-level tab screens never mount this wrapper.
+// Only secondary / pushed screens opt in (App.jsx passes swipeBack to their
+// PageTransition). Top-level tab screens never mount this wrapper.
 //
-// KNOWN LIMITATION — what's behind the dragging page during the gesture:
-// This drags only the CURRENT page. The screen being navigated back to
-// isn't mounted yet (React Router hasn't changed location — navigate(-1)
-// only fires on release/commit), so what's actually revealed as this page
-// slides right is the app's base navy surface (.main-content's transparent
-// background over body's fixed gradient), not the real previous screen.
-// True keep-alive (rendering the previous route underneath for the whole
-// gesture, the way UINavigationController does) was evaluated for this
-// pass and rejected: it would mean two instances of a route's page mounted
-// simultaneously for the entire time a swipeable screen is visible, not
-// just during a transition, which is a much bigger window for
-// side-effect-heavy pages (data fetching, realtime subscriptions,
-// module-level caches like SharedCover's coverCache, GameColorContext's
-// single "current game" swatch) to collide. That's a real architecture
-// change (a genuine back-stack cache), not something to bolt on here.
+// WHAT'S BEHIND THE DRAGGING PAGE
+// The previous screen — revealed for real, offset left and sliding into place
+// in parallax as this page leaves, which is the part that sells the gesture.
+// It is a DOM snapshot of that screen captured at push time rather than a live
+// route layer; backTransition.js documents why a live layer isn't achievable
+// in this architecture (single scroll container, single-instance contexts) and
+// what the snapshot does and doesn't preserve.
 //
-// What DID change: once the gesture commits, AnimatedRoutes (App.jsx) now
-// treats the resulting navigate(-1) as a normal direction-aware POP, so
-// the revealed page fades/slides in using the 'back' variant (mirrored
-// from how it would have exited on a push) instead of always replaying
-// the generic forward enter. That makes the reveal read as "returning"
-// rather than "loading a new page," but the brief flash of navy before it
-// is still there — don't describe this as feeling fully native.
+// This file no longer owns any transform. It converts finger travel into a
+// progress value and hands it to backTransition.js, which moves this page AND
+// the screen behind it from the same number. A back BUTTON press reaches the
+// same controller through AnimatedRoutes' POP handling, so the two produce one
+// visual result rather than two similar ones.
 const EDGE = 28 // px from the left edge where a back-swipe may begin
 const THRESHOLD = 90 // px of travel that commits the back navigation
 const VELOCITY = 0.45 // px/ms flick speed that commits regardless of travel
-const SETTLE = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
 
 export default function SwipeBackWrapper({ children }) {
   const navigate = useNavigate()
@@ -56,35 +51,29 @@ export default function SwipeBackWrapper({ children }) {
       active: false,
       decided: false,
       horizontal: false,
+      dragging: false,
       startX: 0,
       startY: 0,
       startT: 0,
       dx: 0,
+      width: 0,
       navigating: false,
       navigated: false,
     }
 
-    let safetyTimer = null
-
-    // Single source of truth for the back navigation so the transitionend
-    // handler and the safety-net timer can never both fire it (which would
-    // pop two entries off the history stack).
+    // Single source of truth for the navigation so the controller's completion
+    // callback can never fire it twice (which would pop two history entries).
     const goBackOnce = () => {
       if (state.navigated) return
       state.navigated = true
-      if (safetyTimer) clearTimeout(safetyTimer)
       navigate(-1)
-    }
-
-    const setTransform = (x, withShadow) => {
-      el.style.transform = x ? `translateX(${x}px)` : ''
-      el.classList.toggle('swipe-back--dragging', withShadow)
     }
 
     const reset = () => {
       state.active = false
       state.decided = false
       state.horizontal = false
+      state.dragging = false
       state.dx = 0
     }
 
@@ -118,6 +107,13 @@ export default function SwipeBackWrapper({ children }) {
           state.active = false
           return
         }
+        // Mount the reveal on the first horizontal frame, not on touchstart:
+        // an edge tap that turns out to be a scroll never pays for a clone
+        // being inserted and then removed.
+        if (!reducedRef.current) {
+          state.width = beginBack({ topLayer: el }) || el.offsetWidth
+          state.dragging = true
+        }
       }
 
       if (!state.horizontal) return
@@ -126,36 +122,8 @@ export default function SwipeBackWrapper({ children }) {
       if (e.cancelable) e.preventDefault()
 
       state.dx = dx > 0 ? dx : 0
-      if (!reducedRef.current) {
-        el.style.transition = 'none'
-        setTransform(state.dx, state.dx > 0)
-      }
-    }
-
-    const finish = (commit) => {
-      if (commit) {
-        state.navigating = true
-        if (reducedRef.current) {
-          goBackOnce()
-          return
-        }
-        el.style.transition = SETTLE
-        setTransform(el.offsetWidth, true)
-        const done = () => {
-          el.removeEventListener('transitionend', done)
-          goBackOnce()
-        }
-        el.addEventListener('transitionend', done)
-        // Safety net in case transitionend never fires.
-        safetyTimer = setTimeout(goBackOnce, 360)
-      } else if (!reducedRef.current) {
-        el.style.transition = SETTLE
-        setTransform(0, false)
-        const clear = () => {
-          el.style.transition = ''
-          el.removeEventListener('transitionend', clear)
-        }
-        el.addEventListener('transitionend', clear)
+      if (state.dragging && state.width) {
+        setBackProgress(state.dx / state.width)
       }
     }
 
@@ -167,8 +135,20 @@ export default function SwipeBackWrapper({ children }) {
       const dt = Math.max(Date.now() - state.startT, 1)
       const velocity = state.dx / dt
       const commit = state.dx > THRESHOLD || velocity > VELOCITY
+      const dragging = state.dragging
       reset()
-      finish(commit)
+
+      if (!dragging) {
+        // Reduced motion: no gesture animation at all, just the navigation.
+        if (commit) {
+          state.navigating = true
+          goBackOnce()
+        }
+        return
+      }
+
+      if (commit) state.navigating = true
+      finishBack({ commit, onDone: goBackOnce })
     }
 
     el.addEventListener('touchstart', onStart, { passive: true })
@@ -177,7 +157,9 @@ export default function SwipeBackWrapper({ children }) {
     el.addEventListener('touchcancel', onEnd, { passive: true })
 
     return () => {
-      if (safetyTimer) clearTimeout(safetyTimer)
+      // If this page unmounts mid-gesture (a deep link, a programmatic
+      // navigation) the reveal must not outlive it.
+      if (state.dragging && !state.navigating) teardownBack()
       el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)

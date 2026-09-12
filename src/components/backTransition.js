@@ -72,6 +72,13 @@ const DIM_FLOOR = 0.55
 // Same curve and duration SwipeBackWrapper has always used to settle. 300ms
 // is the ceiling — past that a back gesture reads as broken, not polished.
 export const BACK_SETTLE_MS = 300
+// Button backs defer settleTo by two rAFs so `.route-layer--exiting` commits
+// first; budget that wait when sizing AnimatedRoutes' exit safety timer.
+const BACK_SLIDE_START_DEFER_MS = 34
+const BACK_SETTLE_BUFFER_MS = 20
+/** Full button-back travel time from POP to settleTo completion (worst case). */
+export const BACK_EXIT_ANIM_MS =
+  BACK_SLIDE_START_DEFER_MS + BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS
 const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const SETTLE = `transform ${BACK_SETTLE_MS}ms ${SETTLE_EASE}, opacity ${BACK_SETTLE_MS}ms ${SETTLE_EASE}`
 
@@ -227,6 +234,37 @@ function setTransitioned(on) {
   active.win.style.transition = value
   active.content.style.transition = value
   if (active.topLayer) active.topLayer.style.transition = on ? SETTLE : 'none'
+}
+
+/** Same element the swipe gesture drives — inner `.swipe-back` when present. */
+function resolveSlideLayer(layerEl) {
+  return layerEl?.querySelector('.swipe-back') || layerEl
+}
+
+/**
+ * Animate from the current progress to `targetP` with the shared SETTLE
+ * curve. Both the swipe release and the button back must go through here so
+ * they stay on one timing path.
+ */
+function settleTo(targetP, onComplete) {
+  if (!active) {
+    onComplete?.()
+    return
+  }
+  if (active.settleTimer) clearTimeout(active.settleTimer)
+  setTransitioned(true)
+  // Record the start transform before changing it — without a flush, enabling
+  // transition and updating transform in one turn jumps instantly (most visible
+  // on button backs that travel the full width from p=0).
+  void active.win.offsetWidth
+  if (active.topLayer) void active.topLayer.offsetWidth
+  apply(targetP)
+  const el = active
+  active.settleTimer = setTimeout(() => {
+    if (active !== el) return
+    active.settleTimer = null
+    onComplete?.()
+  }, BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS)
 }
 
 /**
@@ -421,25 +459,18 @@ export function finishBack({ commit, onDone }) {
   if (active.settleTimer) clearTimeout(active.settleTimer)
 
   if (!commit) {
-    setTransitioned(true)
-    apply(0)
-    const el = active
-    active.settleTimer = setTimeout(() => {
-      if (active === el) destroy()
-    }, BACK_SETTLE_MS + 20)
+    settleTo(0, () => {
+      if (active) destroy()
+    })
     return
   }
 
-  setTransitioned(true)
-  apply(1)
-
   const key = active.snapKey
-  active.settleTimer = setTimeout(() => {
+  settleTo(1, () => {
     if (!active) {
       onDone?.()
       return
     }
-    active.settleTimer = null
     // The page is off-screen; hand the reveal over to the POP that onDone is
     // about to trigger. claimBack picks it up as 'gesture'.
     detachTopLayer()
@@ -452,7 +483,7 @@ export function finishBack({ commit, onDone }) {
       }, COMMIT_SAFETY_MS),
     }
     onDone?.()
-  }, BACK_SETTLE_MS + 20)
+  })
 }
 
 /* ------------------------------------------------------------------ */
@@ -496,19 +527,26 @@ export function claimBack(destKey, topLayer) {
   const top = stack.length ? stack[stack.length - 1] : null
   if (!top || top.key !== destKey || !topLayer) return 'fade'
 
-  const width = beginBack({ topLayer })
+  const slideEl = resolveSlideLayer(topLayer)
+  const width = beginBack({ topLayer: slideEl })
   if (!width) return 'fade'
 
   stack.pop()
   startHold()
 
-  // Same curve, same duration, same progress function the finger drives.
-  setTransitioned(true)
-  apply(1)
-  setTimeout(() => {
-    if (!holdState) return
-    holdState.slideDone = true
-    maybeRelease()
-  }, BACK_SETTLE_MS + 20)
+  // claimBack runs inside AnimatedRoutes' layout effect, before the outgoing
+  // layer commits as `.route-layer--exiting` (position: fixed + scroll offset).
+  // Wait two frames so that layout is painted, then run the same settleTo the
+  // swipe release uses — same element, same curve, same duration.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (!active || !holdState) return
+      settleTo(1, () => {
+        if (!holdState) return
+        holdState.slideDone = true
+        maybeRelease()
+      })
+    })
+  })
   return 'slide'
 }

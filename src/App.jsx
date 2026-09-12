@@ -14,7 +14,7 @@ import PageTransition, {
   PAGE_TRANSITION_EXIT_DURATION_MS,
 } from './components/PageTransition'
 import {
-  BACK_SETTLE_MS,
+  BACK_EXIT_ANIM_MS,
   captureSnapshot,
   claimBack,
   clearSnapshots,
@@ -202,7 +202,8 @@ const PUBLIC_PATHS = new Set([
  */
 const EXIT_SAFETY_BUFFER_MS = 100
 const EXIT_SAFETY_MS = PAGE_TRANSITION_EXIT_DURATION_MS + EXIT_SAFETY_BUFFER_MS
-const BACK_EXIT_SAFETY_MS = BACK_SETTLE_MS + EXIT_SAFETY_BUFFER_MS
+// Must exceed BACK_EXIT_ANIM_MS (defer + settle) so the layer isn't torn down mid-slide.
+const BACK_EXIT_SAFETY_MS = BACK_EXIT_ANIM_MS + EXIT_SAFETY_BUFFER_MS
 
 function AnimatedRoutes({ location, navigationType, children, onEnterComplete, scrollRef }) {
   const { reduced } = useMotionPreference()
