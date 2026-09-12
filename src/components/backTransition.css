@@ -1,0 +1,83 @@
+/* Back-transition reveal — see backTransition.js for the geometry and for why
+   the previous screen is a snapshot rather than a live route layer. */
+
+/* The window. Viewport-sized and clipped, translated so its right edge tracks
+   the outgoing page's left edge; only the strip the top page has vacated is
+   ever visible.
+
+   Appended as a trailing child of `.main-content` on purpose: the exiting
+   route layer is `position: fixed; z-index: 2` inside `.main-content`, which
+   is itself a stacking context, so nothing outside it can paint between the
+   destination layer and the exiting one. `position: fixed` keeps it out of
+   flow, so it never contributes to that container's scrollHeight.
+
+   `position: fixed` here is safe from the "attaches to the nearest transformed
+   ancestor" trap documented at Library.jsx ~958-966: `.main-content` has no
+   transform, and this element is a SIBLING of the transformed page layers
+   rather than a descendant of either.
+
+   Opaque, because it has to hide the live destination page underneath while
+   that page mounts and restores its scroll. The gradient is body's own recipe
+   over a viewport-height box, so the revealed screen's background is identical
+   to the real thing. */
+.back-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  /* Purely decorative for the length of the transition. */
+  pointer-events: none;
+  background-color: var(--color-bg-primary);
+  background-image: var(--color-bg-gradient);
+  background-repeat: no-repeat;
+  transform: translate3d(-100%, 0, 0);
+  will-change: transform;
+  /* Keeps the snapshot's layout and paint out of the live page's. */
+  contain: layout paint;
+}
+
+/* Carries the parallax translate and the dim. The dim is this element's
+   opacity over the window's navy gradient above — that keeps darkening to one
+   composited property and introduces no new color. */
+.back-reveal__content {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+/* The cloned page. `top` is set inline to (host padding-top - scrollTop) so
+   the revealed screen appears at the scroll offset the user left it at. */
+.back-reveal__page {
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+/* The page being popped, whichever element is carrying it — `.swipe-back`
+   during a gesture, `.route-layer--exiting` after a button back. Both paths
+   get the same leading-edge shadow so the outgoing screen reads as a layer
+   lifting off the one behind it.
+
+   will-change is scoped to the transition for the same reason as
+   `.swipe-back--dragging`: left on permanently it would make the element a
+   containing block for `position: fixed` descendants at rest. */
+.back-slide-top {
+  will-change: transform;
+  box-shadow: var(--shadow-page-edge);
+}
+
+/* Belt-and-braces for the OS-level query. Both entry points gate on
+   useMotionPreference (which also covers the in-app Reduce motion toggle)
+   before a reveal is ever mounted — AnimatedRoutes swaps layers instantly and
+   SwipeBackWrapper skips the gesture animation entirely — so this should be
+   unreachable. It's here so a missed branch can't animate anyway. */
+@media (prefers-reduced-motion: reduce) {
+  .back-reveal {
+    display: none;
+  }
+
+  .back-slide-top {
+    box-shadow: none;
+  }
+}

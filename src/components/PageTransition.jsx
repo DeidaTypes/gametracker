@@ -14,11 +14,40 @@ import SwipeBackWrapper from './SwipeBackWrapper'
  * `onExitComplete` is only meaningful when phase === 'exiting' — calling
  * it tells AnimatedRoutes it's safe to unmount this layer.
  *
+ * `exitMode` is 'fade' (this component's own tween) or 'slide' — a back
+ * navigation whose horizontal travel is driven by backTransition.js on the
+ * route-layer wrapper instead, so this component must hold still and let the
+ * layer's own timer own the unmount. `enterMode` is 'animate' or 'instant';
+ * 'instant' means the entering page is covered by the back reveal for the
+ * whole transition, so it has nothing to fade in from.
+ *
  * A component rendered with no provider (ctx === null) gets the historical
  * defaults (phase 'current', direction 'forward'), so PageTransition is
  * still safe to use anywhere outside the route-layer machinery.
  */
 export const PageTransitionPhase = createContext(null)
+
+/**
+ * Whether THIS layer's entrance tween has finished painting.
+ *
+ * Defaults to `true` so anything reading it outside of a PageTransition
+ * (no provider in the tree) treats "no pending transition" as "go ahead
+ * now" rather than deadlocking — same defaulting philosophy as
+ * PageTransitionPhase above.
+ *
+ * Consumers: any page that does non-critical work on mount (color
+ * extraction, secondary data fetches, anything that isn't needed for the
+ * very first paint) should gate that work on `useTransitionComplete()`
+ * instead of firing it unconditionally in a mount effect. See GameDetail
+ * for the reference usage — it's deliberately generic so any other screen
+ * can adopt the same pattern later (out of scope for this pass, but
+ * nothing here is GameDetail-specific).
+ */
+const TransitionCompleteContext = createContext(true)
+
+export function useTransitionComplete() {
+  return useContext(TransitionCompleteContext)
+}
 
 // Forward (push) and back (pop) are mirror images of each other: forward
 // enters rising from below and exits continuing to rise away; back enters
@@ -38,8 +67,23 @@ const VARIANTS = {
   },
 }
 
-const PAGE_TRANSITION = { duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }
+const PAGE_TRANSITION_ENTER = { duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }
+// Slightly slower than enter — screen leaves should feel set down, not yanked.
+// Easing matches backTransition.js SETTLE so fade-fallback backs read the same.
+const PAGE_TRANSITION_EXIT = { duration: 0.3, ease: [0.32, 0.72, 0, 1] }
 const PAGE_TRANSITION_INSTANT = { duration: 0 }
+// Exported so anything that needs to run ITS OWN animation in lockstep with
+// the page ENTER tween (e.g. GameDetail's color backdrop) can match durations
+// instead of hardcoding a second copy of "0.22" that can silently drift
+// from this one.
+export const PAGE_TRANSITION_DURATION_MS = PAGE_TRANSITION_ENTER.duration * 1000
+export const PAGE_TRANSITION_EXIT_DURATION_MS = PAGE_TRANSITION_EXIT.duration * 1000
+
+// Safety net for useTransitionComplete, mirroring AnimatedRoutes' own
+// EXIT_SAFETY_MS pattern (App.jsx) — if onAnimationComplete never fires for
+// some unrelated reason, deferred work still unblocks instead of waiting
+// forever on a signal that didn't arrive.
+const TRANSITION_COMPLETE_SAFETY_MS = 320
 
 /**
  * Wraps a top-level page in the canonical fade + 8 px vertical slide
@@ -83,10 +127,29 @@ export default function PageTransition({ children, swipeBack = false }) {
   const phase = phaseCtx?.phase ?? 'current'
   const direction = phaseCtx?.direction ?? 'forward'
   const onExitComplete = phaseCtx?.onExitComplete
+  // Fired once the ENTERING layer's tween finishes — App.jsx's scroll-
+  // restore effect waits on this before ever writing .main-content's
+  // scrollTop, so a POP's restore write always lands after the fade is
+  // visually settled instead of racing it. See App.jsx's `attemptRestore`
+  // for the consumer side of this.
+  const onEnterComplete = phaseCtx?.onEnterComplete
   const isExiting = phase === 'exiting'
 
+  // A back navigation that reveals the previous screen: the outgoing layer's
+  // travel belongs to backTransition.js (one element, one animation engine —
+  // two would desync by a frame at the seam between the two layers), and the
+  // incoming one is hidden behind the reveal, so neither animates here.
+  const slidingOut = isExiting && phaseCtx?.exitMode === 'slide'
+  const instantEnter = !isExiting && (reduced || phaseCtx?.enterMode === 'instant')
+  const isStatic = slidingOut || instantEnter
+
   const variants = VARIANTS[direction] || VARIANTS.forward
-  const transition = reduced ? PAGE_TRANSITION_INSTANT : PAGE_TRANSITION
+  const transition =
+    reduced || isStatic
+      ? PAGE_TRANSITION_INSTANT
+      : isExiting && !slidingOut
+        ? PAGE_TRANSITION_EXIT
+        : PAGE_TRANSITION_ENTER
 
   // The compositor hint is carried by a class rather than the stylesheet so
   // it can be dropped the moment the slide ends. Left on permanently, the
@@ -95,13 +158,60 @@ export default function PageTransition({ children, swipeBack = false }) {
   // of the viewport. Starts true because the enter animation runs on mount.
   const [animating, setAnimating] = useState(true)
 
-  // Belt-and-suspenders: AnimatedRoutes never puts a layer into 'exiting'
-  // while motion is reduced (it swaps layers instantly instead), so this
-  // should be unreachable. If that invariant is ever broken, don't strand
-  // the layer forever waiting on an animation that won't run.
+  // Backs useTransitionComplete(). An exiting layer already played its own
+  // entrance in a previous render of this same route, so it starts (and
+  // stays) "complete" — there's nothing for it to gate. The entering layer
+  // starts false (unless motion is reduced, in which case there is no
+  // tween to wait for) and flips true the moment its tween's
+  // onAnimationComplete fires, below.
+  const [entered, setEntered] = useState(() => reduced || isExiting)
+
+  // Safety net: if onAnimationComplete never fires for some reason, don't
+  // strand a page's deferred work forever. Mount-only for the same reason
+  // as the reduced-motion effect below — isExiting/reduced never change
+  // during one layer's lifetime.
   useEffect(() => {
-    if (isExiting && reduced) onExitComplete?.()
-  }, [isExiting, reduced, onExitComplete])
+    if (entered) return undefined
+    const timer = setTimeout(() => setEntered(true), TRANSITION_COMPLETE_SAFETY_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Belt-and-suspenders for the modes that have no animation to wait on.
+  // Exiting layers are never created while motion is reduced (AnimatedRoutes
+  // swaps layers instantly instead), so the isExiting branch here should be
+  // unreachable — kept so that invariant breaking doesn't strand a layer
+  // forever waiting on an animation that won't run. The entering branch IS
+  // reachable on every reduced-motion navigation and on every sliding back:
+  // with transition duration 0 `onAnimationComplete` should still fire, but
+  // this is the same "don't strand the caller" guarantee applied to
+  // onEnterComplete, so the destination's scroll restore starts on time
+  // either way — and on a sliding back that restore lands while the reveal is
+  // still covering the page, which is what makes the old lurch invisible.
+  //
+  // Note this deliberately does NOT flip `entered`. useTransitionComplete's
+  // consumers do non-critical work (color extraction, secondary fetches), and
+  // running it the instant a covered page mounts would put it on the main
+  // thread for the whole slide. The safety timer above releases it instead, a
+  // few ms after the slide is done.
+  //
+  // Deliberately mount-only (empty deps, values read from the closure at
+  // mount time): `onEnterComplete`/`onExitComplete` are new closures every
+  // time AnimatedRoutes re-renders (unrelated to this navigation), and
+  // `isExiting` never flips during one layer's lifetime (an exiting layer
+  // is created already-exiting). Depending on them would re-fire this on
+  // every unrelated parent re-render instead of once per mount.
+  useEffect(() => {
+    if (isExiting) {
+      // A sliding exit is unmounted by AnimatedRoutes' own timer once the
+      // controller has finished the travel — reporting completion here would
+      // tear the page out from under the animation.
+      if (reduced && !slidingOut) onExitComplete?.()
+      return
+    }
+    if (instantEnter) onEnterComplete?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Secondary / pushed screens opt into the native left-edge swipe-back
   // gesture. The motion.div owns the page's enter/exit fade+slide (Y);
@@ -109,17 +219,24 @@ export default function PageTransition({ children, swipeBack = false }) {
   // transforms never fight over the same element.
   return (
     <motion.div
-      className={`page-transition${animating ? ' page-transition--animating' : ''}`}
-      initial={variants.initial}
-      animate={isExiting ? variants.exit : variants.animate}
+      className={`page-transition${animating && !isStatic ? ' page-transition--animating' : ''}`}
+      initial={isStatic ? variants.animate : variants.initial}
+      animate={isExiting && !slidingOut ? variants.exit : variants.animate}
       transition={transition}
       onAnimationStart={() => setAnimating(true)}
       onAnimationComplete={() => {
         setAnimating(false)
-        if (isExiting) onExitComplete?.()
+        if (isExiting) {
+          if (!slidingOut) onExitComplete?.()
+          return
+        }
+        if (!instantEnter) setEntered(true)
+        onEnterComplete?.()
       }}
     >
-      {swipeBack ? <SwipeBackWrapper>{children}</SwipeBackWrapper> : children}
+      <TransitionCompleteContext.Provider value={entered}>
+        {swipeBack ? <SwipeBackWrapper>{children}</SwipeBackWrapper> : children}
+      </TransitionCompleteContext.Provider>
     </motion.div>
   )
 }

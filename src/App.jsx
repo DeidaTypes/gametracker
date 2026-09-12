@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   BrowserRouter as Router,
   Routes,
@@ -9,7 +9,19 @@ import {
   useNavigationType,
 } from 'react-router-dom'
 import { LayoutGroup } from 'motion/react'
-import PageTransition, { PageTransitionPhase } from './components/PageTransition'
+import PageTransition, {
+  PageTransitionPhase,
+  PAGE_TRANSITION_EXIT_DURATION_MS,
+} from './components/PageTransition'
+import {
+  BACK_SETTLE_MS,
+  captureSnapshot,
+  claimBack,
+  clearSnapshots,
+  notifyBackSettled,
+  registerBackHost,
+  teardownBack,
+} from './components/backTransition'
 import { useMotionPreference } from './hooks/useMotionPreference'
 import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
@@ -165,10 +177,34 @@ const PUBLIC_PATHS = new Set([
  * still use AnimatePresence — those subtrees are smaller, self-contained,
  * and don't share layoutId state with the route-level layers, so they
  * remain unaffected by any of this and continue to animate cleanly.
+ *
+ * BACK NAVIGATION — the slide + previous-screen reveal:
+ * A POP is no longer a fade. It hands the animation to backTransition.js,
+ * which slides the outgoing layer off to the right while revealing the
+ * previous screen underneath it in parallax — the same controller, easing and
+ * progress function the left-edge swipe gesture drives, so a back BUTTON and a
+ * back SWIPE produce one visual result instead of two similar ones. See that
+ * module for the geometry, and for why the revealed screen is a DOM snapshot
+ * captured at push time rather than a retained live route layer (short
+ * version: `.main-content` is the app's single scroll container, and
+ * GameColorContext-style single-instance contexts can't survive two mounted
+ * copies of a page).
+ *
+ * The snapshot is captured here, on PUSH, because this is the one place that
+ * still has the outgoing layer's DOM and its pre-reset scrollTop. If no
+ * snapshot matches the destination — a cold start or deep link straight into a
+ * pushed screen, or a history shape we didn't predict — claimBack returns
+ * 'fade' and the previous back-fade behaviour is used unchanged, so this never
+ * reveals the wrong screen.
+ *
+ * Reduced motion still skips all of it: layers swap instantly, no reveal is
+ * ever mounted, and no snapshots are taken.
  */
-const EXIT_SAFETY_MS = 320 // PAGE_TRANSITION (220ms) + buffer, mirrors SwipeBackWrapper's own safety-net margin
+const EXIT_SAFETY_BUFFER_MS = 100
+const EXIT_SAFETY_MS = PAGE_TRANSITION_EXIT_DURATION_MS + EXIT_SAFETY_BUFFER_MS
+const BACK_EXIT_SAFETY_MS = BACK_SETTLE_MS + EXIT_SAFETY_BUFFER_MS
 
-function AnimatedRoutes({ location, navigationType, children }) {
+function AnimatedRoutes({ location, navigationType, children, onEnterComplete, scrollRef }) {
   const { reduced } = useMotionPreference()
 
   // Up to two layers at once: the 'current' (entering/settled) page, and
@@ -179,6 +215,9 @@ function AnimatedRoutes({ location, navigationType, children }) {
   ])
   const lastKeyRef = useRef(location.key)
   const exitTimersRef = useRef(new Map())
+  // Live DOM node per layer. The back transition needs the outgoing layer's
+  // actual element — to clone it on a push, and to slide it on a pop.
+  const layerElsRef = useRef(new Map())
 
   const clearExitTimer = (key) => {
     const t = exitTimersRef.current.get(key)
@@ -198,11 +237,20 @@ function AnimatedRoutes({ location, navigationType, children }) {
   // moved on but `layers` still reflects the old route.
   useLayoutEffect(() => {
     if (location.key === lastKeyRef.current) return
+    const prevKey = lastKeyRef.current
     lastKeyRef.current = location.key
+
+    // Read BEFORE AppContent's own layout effect resets it. Child layout
+    // effects flush before their parent's, so this still holds the offset the
+    // page we're leaving was actually at.
+    const scrollEl = scrollRef?.current || null
+    const prevScrollTop = scrollEl?.scrollTop || 0
+    const outgoingEl = layerElsRef.current.get(prevKey) || null
 
     if (reduced) {
       // Instant, no overlap — see requirement #4. Anything still mid-exit
       // is dropped immediately rather than left to finish off-screen.
+      teardownBack()
       exitTimersRef.current.forEach((t) => clearTimeout(t))
       exitTimersRef.current.clear()
       setLayers([{ key: location.key, location, phase: 'current' }])
@@ -215,6 +263,39 @@ function AnimatedRoutes({ location, navigationType, children }) {
     // animate as a matched, mirrored pair — see PageTransition's VARIANTS.
     const direction = navigationType === 'POP' ? 'back' : 'forward'
 
+    // 'gesture' — the swipe already performed the slide and the reveal is
+    // mounted and closed; swap layers instantly, there is nothing left to
+    // animate. 'slide' — a button back; the controller is now driving
+    // `outgoingEl` off to the right. 'fade' — no usable snapshot, keep the
+    // previous behaviour. A forward navigation never reveals anything.
+    const claim = direction === 'back' ? claimBack(location.key, outgoingEl) : 'fade'
+    if (direction === 'forward') teardownBack()
+
+    // Only a PUSH deepens the stack, so only a PUSH is worth a snapshot: a
+    // REPLACE discards the entry it replaces (back still goes to the one
+    // before it, which we already hold), and a POP consumes one. Deferred a
+    // frame so the clone never lands on the navigation's own commit frame —
+    // the outgoing layer stays mounted for the whole of its exit.
+    if (navigationType === 'PUSH' && outgoingEl && scrollEl) {
+      requestAnimationFrame(() => {
+        captureSnapshot({
+          key: prevKey,
+          layerEl: outgoingEl,
+          scrollTop: prevScrollTop,
+          padTop: getComputedStyle(scrollEl).paddingTop,
+        })
+      })
+    }
+
+    if (claim === 'gesture') {
+      exitTimersRef.current.forEach((t) => clearTimeout(t))
+      exitTimersRef.current.clear()
+      setLayers([
+        { key: location.key, location, phase: 'current', direction, enterMode: 'instant' },
+      ])
+      return
+    }
+
     setLayers((prev) => {
       // Normally there's exactly one 'current' layer to hand off from. If
       // navigation happens again before a prior exit finished, that stale
@@ -225,15 +306,43 @@ function AnimatedRoutes({ location, navigationType, children }) {
         if (l.phase === 'exiting' && l.key !== outgoingSource?.key) clearExitTimer(l.key)
       })
 
-      const incoming = { key: location.key, location, phase: 'current', direction }
+      const sliding = claim === 'slide'
+      const incoming = {
+        key: location.key,
+        location,
+        phase: 'current',
+        direction,
+        // A sliding back keeps the reveal over the destination for the whole
+        // transition, so the destination has nothing to fade in from — it
+        // renders settled, behind the cover. Its onEnterComplete still fires
+        // (immediately), which is what lets the scroll restore run while it's
+        // hidden instead of racing a visible fade.
+        enterMode: sliding ? 'instant' : 'animate',
+      }
 
       if (!outgoingSource) return [incoming]
 
       const outgoingKey = outgoingSource.key
-      const timer = setTimeout(() => removeLayer(outgoingKey), EXIT_SAFETY_MS)
+      const timer = setTimeout(
+        () => removeLayer(outgoingKey),
+        sliding ? BACK_EXIT_SAFETY_MS : EXIT_SAFETY_MS
+      )
       exitTimersRef.current.set(outgoingKey, timer)
 
-      const outgoing = { ...outgoingSource, phase: 'exiting', direction }
+      const outgoing = {
+        ...outgoingSource,
+        phase: 'exiting',
+        direction,
+        // The controller owns this layer's X translate; PageTransition must
+        // not also animate it, or two engines fight over one element and the
+        // seam against the revealed screen desyncs by a frame.
+        exitMode: sliding ? 'slide' : 'fade',
+        // Pulled out of flow into `position: fixed`, an exiting layer loses
+        // the scroll offset it had as a child of `.main-content`. A 220ms fade
+        // could get away with that; a 300ms slide where the page stays fully
+        // opaque cannot — it would snap to top the instant the back began.
+        exitScrollTop: sliding ? prevScrollTop : 0,
+      }
       return [outgoing, incoming]
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,13 +350,17 @@ function AnimatedRoutes({ location, navigationType, children }) {
 
   useEffect(() => {
     const timers = exitTimersRef.current
-    return () => timers.forEach((t) => clearTimeout(t))
+    return () => {
+      timers.forEach((t) => clearTimeout(t))
+      teardownBack()
+    }
   }, [])
 
   return (
     <>
       {layers.map((layer) => {
         const isExiting = layer.phase === 'exiting'
+        const isSlidingOut = isExiting && layer.exitMode === 'slide'
         // Whichever layer represents the "deeper" stack entry renders on
         // top: on a forward push that's the incoming page (it's covering
         // the one before it); on a pop it's the outgoing page (the one
@@ -257,15 +370,54 @@ function AnimatedRoutes({ location, navigationType, children }) {
         return (
           <div
             key={layer.key}
-            className={isExiting ? 'route-layer route-layer--exiting' : 'route-layer'}
-            style={{ zIndex: onTop ? 2 : 1 }}
+            ref={(el) => {
+              if (el) layerElsRef.current.set(layer.key, el)
+              else layerElsRef.current.delete(layer.key)
+            }}
+            // `back-slide-top` (the leading-edge shadow + compositor hint) is
+            // declared here rather than left to backTransition.js's own
+            // classList call: this layer's className changes as it flips to
+            // 'exiting', and React writing the new value would wipe a class it
+            // doesn't know about. The gesture's `.swipe-back` element has a
+            // constant className, so the controller's classList call is
+            // authoritative there.
+            className={
+              isSlidingOut
+                ? 'route-layer route-layer--exiting back-slide-top'
+                : isExiting
+                  ? 'route-layer route-layer--exiting'
+                  : 'route-layer'
+            }
+            style={
+              isSlidingOut
+                ? {
+                    zIndex: onTop ? 2 : 1,
+                    // Hold the page at the offset it was scrolled to. `height`
+                    // grows to match so `overflow: hidden` still clips at the
+                    // bottom of the viewport rather than short of it.
+                    top: `${-layer.exitScrollTop}px`,
+                    height: `calc(100% + ${layer.exitScrollTop}px)`,
+                  }
+                : { zIndex: onTop ? 2 : 1 }
+            }
           >
             <LayoutGroup id={layer.key}>
               <PageTransitionPhase.Provider
                 value={{
                   phase: layer.phase,
                   direction: layer.direction || 'forward',
-                  onExitComplete: isExiting ? () => removeLayer(layer.key) : undefined,
+                  exitMode: layer.exitMode || 'fade',
+                  enterMode: layer.enterMode || 'animate',
+                  // A sliding exit is driven by backTransition.js on this
+                  // wrapper, not by PageTransition's own tween, so there is no
+                  // inner animation whose completion could unmount the layer —
+                  // the exit timer above owns that.
+                  onExitComplete:
+                    isExiting && !isSlidingOut ? () => removeLayer(layer.key) : undefined,
+                  // Only the entering ('current') layer ever reports this —
+                  // see PageTransition's onEnterComplete and App.jsx's
+                  // attemptRestore, the consumer.
+                  onEnterComplete: isExiting ? undefined : () => onEnterComplete?.(layer.key),
                 }}
               >
                 <Routes location={layer.location}>{children}</Routes>
@@ -341,6 +493,17 @@ function AppContent() {
   const { user, profile, loading: authLoading } = useAuth()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const mainContentRef = useRef(null)
+
+  // MUST be stable. React detaches and re-attaches a callback ref whenever its
+  // identity changes, and it does so bottom-up alongside layout effects — so
+  // an inline arrow here leaves `mainContentRef.current` null for the whole of
+  // AnimatedRoutes' layout effect (a child, which therefore runs before this
+  // parent's ref is re-attached). That effect reads scrollTop to snapshot the
+  // outgoing page, so an unstable ref silently disables the back transition.
+  const setMainContentEl = useCallback((el) => {
+    mainContentRef.current = el
+    registerBackHost(el)
+  }, [])
 
   // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
   // earning a badge anywhere in the app surfaces a celebratory toast.
@@ -422,7 +585,13 @@ function AppContent() {
   // disappears so a subsequent login by a different account doesn't
   // see the previous user's blocked-users set.
   useEffect(() => {
-    if (!user) clearBlockCache()
+    if (!user) {
+      clearBlockCache()
+      // Retained page snapshots are per-session content. A different account
+      // signing in must never be able to see the previous one's screens
+      // revealed behind a back gesture.
+      clearSnapshots()
+    }
   }, [user])
 
   // Scroll handling on route change. The .main-content div persists across
@@ -437,16 +606,42 @@ function AppContent() {
   // of navigating this app. We record the offset for each history entry as
   // it is left and put it back on a POP.
   //
-  // Restoring is necessarily best-effort: the incoming screen has to have
-  // rendered tall enough to hold the offset before it can be applied, and
-  // a screen still waiting on data is initially short. So rather than
-  // setting scrollTop once, we keep re-applying it each frame until it
-  // sticks, giving lists a chance to fill in. The attempt is abandoned as
-  // soon as the target is reached, the user scrolls themselves, or
-  // RESTORE_WINDOW_MS passes — a screen whose data takes longer than that
-  // should stay at the top rather than lurching downward under the reader.
+  // CHOSEN APPROACH (fixes the mid-fade "jump"): the old code re-wrote
+  // el.scrollTop on every rAF for up to 800ms on a POP, because a short
+  // destination (still on its skeleton) clamps the write back toward 0.
+  // Once the destination grew tall enough — often mid-fade, since the
+  // 220ms tween and the data fetch race each other — the very next write
+  // finally "stuck" at the larger value and the viewport visibly snapped
+  // to it. Two changes fix this instead of just tuning the timing:
+  //
+  //   1. We never begin the restore attempt until the ENTERING page's
+  //      transition has actually finished (PageTransition's
+  //      onEnterComplete, wired through AnimatedRoutes below — see its
+  //      docstring). A `setTimeout(EXIT_SAFETY_MS)` mirrors the same
+  //      safety-net pattern AnimatedRoutes already uses for exit
+  //      completion, in case onAnimationComplete never fires for some
+  //      unrelated reason. So nothing is ever attempted while the fade
+  //      is actually playing.
+  //   2. Once we do attempt it, we only ever WRITE scrollTop once. We
+  //      poll scrollHeight (a read — never visible) each frame to ask
+  //      "can this page hold the full saved offset yet?" and only when
+  //      the answer is yes do we perform the single, non-clamped write.
+  //      If RESTORE_WINDOW_MS passes without the page growing enough, we
+  //      give up and leave it at top — never a late, partial write.
+  //
+  // PUSH (and REPLACE) always reset to top, and now via useLayoutEffect
+  // (before paint) rather than useEffect (after first paint), so a new
+  // page can never render for even one frame at the previous page's
+  // leftover scrollTop.
   const scrollOffsetsRef = useRef(new Map())
   const navigationType = useNavigationType()
+  // { key, cancel } for whichever POP restore attempt is currently
+  // in-flight (there is ever only one), plus the set of location keys
+  // that have already had a restore attempt started — this is how we
+  // make sure the onEnterComplete callback and the EXIT_SAFETY_MS
+  // fallback timer never both kick off a second, redundant attempt.
+  const restoreRef = useRef({ key: null, cancel: null })
+  const attemptedKeysRef = useRef(new Set())
 
   useEffect(() => {
     const el = mainContentRef.current
@@ -454,50 +649,100 @@ function AppContent() {
     const key = location.key
     return () => {
       scrollOffsetsRef.current.set(key, el.scrollTop)
+      // The page we're leaving is going away — any restore attempt still
+      // polling for it is now moot.
+      if (restoreRef.current.key === key) {
+        restoreRef.current.cancel?.()
+        restoreRef.current = { key: null, cancel: null }
+      }
     }
   }, [location.key])
 
-  useEffect(() => {
+  // Reset to a clean, correct baseline BEFORE paint. This alone fixes PUSH
+  // (which never had a saved offset to restore, so top is simply correct)
+  // and puts POP navigations at top for the duration of the fade — the
+  // real POP restore, if any, only ever happens later, in attemptRestore.
+  useLayoutEffect(() => {
     const el = mainContentRef.current
-    if (!el) return undefined
+    if (!el) return
+    el.scrollTop = 0
+  }, [location.key])
 
-    const saved =
-      navigationType === 'POP' ? scrollOffsetsRef.current.get(location.key) : undefined
-
-    if (!saved) {
-      el.scrollTop = 0
-      return undefined
-    }
-
-    const RESTORE_WINDOW_MS = 800
-    const deadline = performance.now() + RESTORE_WINDOW_MS
-    let frame = 0
-    let cancelled = false
-
-    const stop = () => {
-      cancelled = true
-      cancelAnimationFrame(frame)
-      el.removeEventListener('wheel', stop)
-      el.removeEventListener('touchstart', stop)
-    }
-
-    const attempt = () => {
-      if (cancelled) return
-      el.scrollTop = saved
-      // Short of the target means the content has not grown enough yet.
-      if (el.scrollTop >= saved || performance.now() > deadline) {
-        stop()
+  const attemptRestore = useCallback(
+    (key) => {
+      if (attemptedKeysRef.current.has(key)) return // already handled once
+      if (navigationType !== 'POP' || location.key !== key) return
+      const el = mainContentRef.current
+      if (!el) {
+        notifyBackSettled()
         return
       }
-      frame = requestAnimationFrame(attempt)
-    }
+      const saved = scrollOffsetsRef.current.get(key)
+      if (!saved) {
+        // Nothing to restore, or already at top — correct as-is, so the back
+        // reveal has nothing left to wait for.
+        notifyBackSettled()
+        return
+      }
 
-    el.addEventListener('wheel', stop, { passive: true, once: true })
-    el.addEventListener('touchstart', stop, { passive: true, once: true })
-    attempt()
+      attemptedKeysRef.current.add(key)
 
-    return stop
-  }, [location.key, navigationType])
+      const RESTORE_WINDOW_MS = 800
+      const deadline = performance.now() + RESTORE_WINDOW_MS
+      let frame = 0
+      let cancelled = false
+
+      const stop = () => {
+        cancelled = true
+        cancelAnimationFrame(frame)
+        el.removeEventListener('wheel', stop)
+        el.removeEventListener('touchstart', stop)
+        if (restoreRef.current.key === key) restoreRef.current = { key: null, cancel: null }
+        // A back transition holds its reveal over this page until the restore
+        // has resolved, so the single scrollTop write below happens behind an
+        // opaque cover. Without this it would be visible as the same lurch the
+        // restore rewrite was fixing.
+        notifyBackSettled()
+      }
+
+      const poll = () => {
+        if (cancelled) return
+        // Read-only — never itself visible. Only once this is true do we
+        // know the eventual write below will stick in full, not clamp.
+        const canHoldFullOffset = el.scrollHeight - el.clientHeight >= saved
+        if (canHoldFullOffset) {
+          el.scrollTop = saved // the one and only write
+          stop()
+          return
+        }
+        if (performance.now() > deadline) {
+          stop() // gave up — stays at top, which reads as correct, not broken
+          return
+        }
+        frame = requestAnimationFrame(poll)
+      }
+
+      // A manual scroll mid-poll means the user has already taken over;
+      // don't yank them to a different position afterward.
+      el.addEventListener('wheel', stop, { passive: true, once: true })
+      el.addEventListener('touchstart', stop, { passive: true, once: true })
+      restoreRef.current = { key, cancel: stop }
+      poll()
+    },
+    [navigationType, location.key]
+  )
+
+  // Safety net mirroring AnimatedRoutes' own EXIT_SAFETY_MS: if the
+  // entering PageTransition's onAnimationComplete never fires for some
+  // unrelated reason, a POP still settles instead of staying parked at
+  // top forever. attemptedKeysRef makes this a no-op if the real
+  // callback already ran first.
+  useEffect(() => {
+    if (navigationType !== 'POP') return undefined
+    const key = location.key
+    const timer = setTimeout(() => attemptRestore(key), EXIT_SAFETY_MS)
+    return () => clearTimeout(timer)
+  }, [location.key, navigationType, attemptRestore])
 
   // Block the entire app until the initial Supabase session restore
   // resolves. Without this, a refresh-while-logged-in briefly renders
@@ -519,8 +764,21 @@ function AppContent() {
     <div className="app">
       {showNav && <TopNav />}
       {showNav && <MobileNav />}
-      <main className="main-content" ref={mainContentRef}>
-        <AnimatedRoutes location={location} navigationType={navigationType}>
+      {/* This element is also where backTransition.js appends the
+          back-navigation reveal (registerBackHost). It has to be in here: the
+          exiting route layer is `position: fixed; z-index: 2` among these
+          children and `.main-content` is itself a stacking context, so
+          nothing mounted outside it can paint between the destination layer
+          and the exiting one. The reveal is appended and removed as a plain
+          trailing DOM child, which React leaves alone because it never
+          rendered it. */}
+      <main className="main-content" ref={setMainContentEl}>
+        <AnimatedRoutes
+          location={location}
+          navigationType={navigationType}
+          onEnterComplete={attemptRestore}
+          scrollRef={mainContentRef}
+        >
             {/* Public auth routes */}
             <Route
               path="/login"
