@@ -35,9 +35,8 @@ import { Capacitor } from '@capacitor/core'
 // once the comment composers were anchored there, meant it visually
 // overlapped the composer on every comment screen.
 //
-// Dismiss is owned by the app-level KeyboardDismissBar instead. Native
-// inset therefore reserves DISMISS_BAR_PX so composers / sheets / scroll
-// pads lift above that bar rather than sitting under it.
+// Single-line fields dismiss via Return (see initKeyboardTapDismiss below).
+// Multi-line fields rely on tap-outside only.
 //
 // ACCESSORY_BAR_PX stays only for the web/PWA path below: outside Capacitor
 // (setAccessoryBarVisible is a native-only no-op there), mobile Safari can
@@ -46,8 +45,17 @@ import { Capacitor } from '@capacitor/core'
 // native setting above.
 const ACCESSORY_BAR_PX = 44
 
-// Must match --kb-dismiss-bar-height (var(--space-40)) in keyboard.css.
-const DISMISS_BAR_PX = 40
+// INPUT types where Return has native meaning other than "submit / dismiss".
+const ENTER_SKIP_INPUT_TYPES = new Set([
+  'checkbox',
+  'radio',
+  'button',
+  'submit',
+  'reset',
+  'file',
+  'range',
+  'hidden',
+])
 
 // Cached @capacitor/keyboard module. Filled by initKeyboardInset; hideKeyboard
 // also fills it lazily so a dismiss tap before init finishes still works.
@@ -104,10 +112,9 @@ function measureFromViewport() {
 function recompute() {
   if (typeof document === 'undefined') return
 
-  // Native iOS: trust the plugin's reported frame height, then reserve
-  // room for KeyboardDismissBar so lifted composers sit above it.
+  // Native iOS: trust the plugin's reported frame height.
   if (nativeKbHeight > 0) {
-    applyInset(nativeKbHeight + DISMISS_BAR_PX)
+    applyInset(nativeKbHeight)
     return
   }
 
@@ -204,6 +211,74 @@ async function getKeyboardApi() {
  * Capacitor's Keyboard.hide() as well. Safe on web (blur only).
  * Does not clear input values.
  */
+function isTypable(el) {
+  if (!el || el.nodeType !== 1) return false
+  const tag = el.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable
+  )
+}
+
+/**
+ * Keep the keyboard up when the tap is still "on the field": the input
+ * itself, its immediate chrome (clear / eye / stepper), or a labelled
+ * control marked data-kb-keep. Taps anywhere else hide the keyboard
+ * without calling any modal onClose.
+ */
+function tapKeepsKeyboard(target) {
+  if (!(target instanceof Element)) return false
+  if (target.closest('input, textarea, select, [contenteditable="true"]')) {
+    return true
+  }
+
+  const active = document.activeElement
+  if (!isTypable(active)) return false
+
+  const keep = active.closest('[data-kb-keep]')
+  if (keep && keep.contains(target)) return true
+
+  const chrome = active.parentElement
+  if (chrome && chrome.contains(target)) return true
+
+  const label = target.closest('label')
+  if (label && active.id && label.htmlFor === active.id) return true
+
+  return false
+}
+
+function initKeyboardTapDismiss() {
+  document.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!isKeyboardOpen()) return
+      if (tapKeepsKeyboard(e.target)) return
+      hideKeyboard()
+      // Swallow the tap so backdrop / sheet dismiss handlers do not also
+      // fire — multi-line composers in modals rely on tap-outside for
+      // keyboard-only dismiss.
+      e.preventDefault()
+      e.stopPropagation()
+    },
+    true,
+  )
+
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Enter') return
+      const el = e.target
+      if (!el || el.tagName !== 'INPUT') return
+      const type = (el.type || 'text').toLowerCase()
+      if (ENTER_SKIP_INPUT_TYPES.has(type)) return
+      void hideKeyboard()
+    },
+    false,
+  )
+}
+
 export async function hideKeyboard() {
   const active = typeof document !== 'undefined' ? document.activeElement : null
   if (active && typeof active.blur === 'function') {
@@ -239,6 +314,8 @@ export function initKeyboardInset() {
   // Seed so var(--keyboard-inset) always resolves, even on first paint.
   document.documentElement.style.setProperty('--keyboard-inset', '0px')
 
+  initKeyboardTapDismiss()
+
   const vv = window.visualViewport
   if (vv) {
     vv.addEventListener('resize', recompute)
@@ -252,14 +329,10 @@ export function initKeyboardInset() {
       const { Keyboard } = await import('@capacitor/keyboard')
       keyboardApi = Keyboard
 
-      // OFF: this is the native input-accessory view (prev/next chevrons +
-      // a Done checkmark) iOS shows above the keyboard for stepping between
-      // form fields. With the comment composers anchored flush above the
-      // keyboard, that native bar rendered on top of them, obscuring the
-      // app's own "Add a comment" field. KeyboardDismissBar is the app's
-      // dismiss control, so turning the native bar off is not a lost
-      // affordance — it is what lets our bar sit in a reserved gap
-      // instead of overlapping the input.
+      // OFF: suppresses the native iOS input-accessory view (prev/next
+      // chevrons + Done) so it cannot render on top of composers anchored
+      // flush above the keyboard. Single-line Return + tap-outside dismiss
+      // replace it.
       await Keyboard.setAccessoryBarVisible({ isVisible: false })
 
       await Keyboard.addListener('keyboardWillShow', (info) => {

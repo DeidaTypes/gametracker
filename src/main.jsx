@@ -54,8 +54,8 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
 //            overlays while the keyboard slides, preventing flicker.
 //   Fix 4 — setAccessoryBarVisible(false) suppresses the native iOS
 //            input-accessory view (prev/next chevrons + Done) so it can't
-//            render on top of the composer anchored flush above the
-//            keyboard — the app's composer is the only bar there now.
+//            render on top of composers anchored flush above the keyboard.
+//            Single-line Return + tap-outside dismiss replace it.
 //
 // Started before React mounts so --keyboard-inset resolves on first paint.
 initKeyboardInset()

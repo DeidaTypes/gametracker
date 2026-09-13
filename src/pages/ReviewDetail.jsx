@@ -1074,7 +1074,7 @@ function ReviewDetail() {
       {/*
        * In-flow last child of .rd-page (position:fixed, rides keyboard).
        * The lift comes from the shared composer mode, so this bar sits flush
-       * on the iOS "Done" accessory bar's top edge when the keyboard is up.
+       * flush on the keyboard's top edge when the keyboard is up.
        */}
       <KeyboardAwareView
         mode="composer"

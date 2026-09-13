@@ -45,10 +45,6 @@
      the reserve can never drift out of sync with the bar it is clearing. */
   --comment-composer-clearance: 120px;
 
-  /* Height of KeyboardDismissBar. Must match DISMISS_BAR_PX in
-     keyboardInset.js — native --keyboard-inset includes this so lifted
-     composers sit above the bar instead of under it. */
-  --kb-dismiss-bar-height: var(--space-40);
 }
 
 body.keyboard-open {
@@ -242,67 +238,6 @@ select,
   scroll-margin-top: 24px;
 }
 
-/* ── Keyboard dismiss accessory ──────────────────────────────────────────
-   One shared Done / chevron bar, portaled to document.body. Sits on the
-   keyboard's top edge (inset already includes --kb-dismiss-bar-height on
-   native). z-index is above CenteredModal / sheets (1100) so taps hit
-   this bar instead of a full-screen backdrop — that is what stops
-   dismiss-keyboard from accidentally closing a modal.
-   No backdrop-filter: animating a blurred layer during the keyboard
-   slide is the expensive path keyboard.css exists to avoid. */
-.kb-dismiss-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1200;
-  height: var(--kb-dismiss-bar-height);
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-left: max(var(--space-16), env(safe-area-inset-left, 0px));
-  padding-right: max(var(--space-16), env(safe-area-inset-right, 0px));
-  background: var(--color-bg-secondary);
-  border-top: 1px solid var(--color-border);
-  transform: translate3d(
-    0,
-    calc(-1 * max(0px, calc(var(--keyboard-inset) - var(--kb-dismiss-bar-height)))),
-    0
-  );
-  transition:
-    transform var(--keyboard-anim-duration) var(--keyboard-anim-ease),
-    opacity var(--keyboard-anim-duration) var(--keyboard-anim-ease);
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform;
-}
-
-body.keyboard-open .kb-dismiss-bar {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.kb-dismiss-bar__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--space-40);
-  padding-inline: var(--space-12);
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--font-body);
-  font-weight: var(--font-weight-semibold);
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.kb-dismiss-bar__btn:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
 /* ── Reduced motion ──────────────────────────────────────────────────────
    Still lift (never leave an input covered — that is a correctness issue,
    not decoration), but arrive instantly instead of animating. */
@@ -311,8 +246,7 @@ body.keyboard-open .kb-dismiss-bar {
   .kb-sheet-lift,
   .kb-modal-lift,
   .kb-scroll-pad,
-  .kb-scroll-pad-nav,
-  .kb-dismiss-bar {
+  .kb-scroll-pad-nav {
     transition-duration: 0.01ms;
   }
 }

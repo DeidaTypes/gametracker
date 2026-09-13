@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { hideKeyboard, isKeyboardOpen } from '../services/keyboardInset'
 import '../styles/keyboard.css'
 import './CenteredModal.css'
 
@@ -69,6 +70,10 @@ function CenteredModal({
   }, [isOpen, onClose])
 
   const handleBackdrop = () => {
+    if (isKeyboardOpen()) {
+      void hideKeyboard()
+      return
+    }
     if (dismissOnBackdrop) onClose?.()
   }
 
