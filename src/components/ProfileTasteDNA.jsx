@@ -30,7 +30,12 @@ const TOP_GENRE_COUNT = 4
  * a skeleton at the section's true height, so the sections below it don't
  * shift once the bar arrives.
  */
-export default function ProfileTasteDNA({ userId, isOwnProfile = true }) {
+export default function ProfileTasteDNA({
+  userId,
+  isOwnProfile = true,
+  embedded = false,
+  onResolved,
+}) {
   const [vector, setVector] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const title = isOwnProfile ? 'Your Taste' : 'Their Taste'
@@ -54,9 +59,29 @@ export default function ProfileTasteDNA({ userId, isOwnProfile = true }) {
     }
   }, [userId])
 
+  const genreWeights = vector?.genreWeights || {}
+  const hasEnoughSignal =
+    !!vector &&
+    (vector.signalCount || 0) >= MIN_SIGNAL_FOR_TASTE &&
+    Object.keys(genreWeights).length > 0
+
+  useEffect(() => {
+    if (!onResolved) return undefined
+    if (!loaded) {
+      onResolved({ visible: false, loading: true })
+      return undefined
+    }
+    onResolved({ visible: hasEnoughSignal, loading: false })
+    return undefined
+  }, [loaded, hasEnoughSignal, onResolved])
+
   if (!loaded) {
     return (
-      <section className="ptd" aria-label={title} aria-busy="true">
+      <section
+        className={`ptd${embedded ? ' ptd--embedded' : ''}`}
+        aria-label={title}
+        aria-busy="true"
+      >
         <h3 className="ptd__title">{title}</h3>
         <Skeleton height={10} className="ptd__bar-skeleton" />
         <div className="ptd__legend">
@@ -68,12 +93,6 @@ export default function ProfileTasteDNA({ userId, isOwnProfile = true }) {
     )
   }
 
-  const genreWeights = vector?.genreWeights || {}
-  const hasEnoughSignal =
-    !!vector &&
-    (vector.signalCount || 0) >= MIN_SIGNAL_FOR_TASTE &&
-    Object.keys(genreWeights).length > 0
-
   if (!hasEnoughSignal) return null
 
   const topGenres = Object.entries(genreWeights)
@@ -83,7 +102,7 @@ export default function ProfileTasteDNA({ userId, isOwnProfile = true }) {
   const pct = (w) => Math.round((w / totalWeight) * 100)
 
   return (
-    <section className="ptd" aria-label={title}>
+    <section className={`ptd${embedded ? ' ptd--embedded' : ''}`} aria-label={title}>
       <h3 className="ptd__title">{title}</h3>
 
       <div

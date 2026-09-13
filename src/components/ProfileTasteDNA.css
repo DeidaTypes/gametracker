@@ -12,6 +12,10 @@
   padding: 0 var(--page-padding);
 }
 
+.ptd--embedded {
+  padding: 0;
+}
+
 .ptd__title {
   margin: 0;
   font-family: var(--font-display);

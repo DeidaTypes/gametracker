@@ -13,6 +13,10 @@
   padding: 0 var(--page-padding);
 }
 
+.prc-section--embedded {
+  padding: 0;
+}
+
 .prc-header {
   display: flex;
   align-items: baseline;

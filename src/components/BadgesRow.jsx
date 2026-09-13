@@ -25,16 +25,18 @@ const MAX_EARNED_TILES = 4
  *   onSeeMore: () => void,
  * }} props
  */
-function BadgesRow({ userId, onSeeMore }) {
+function BadgesRow({ userId, onSeeMore, embedded = false }) {
   const { earned, inProgress, locked, stats, loading } = useBadges(userId)
   const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
 
+  const sectionClass = `badges-row-section${embedded ? ' badges-row-section--embedded' : ''}`
+
   // Placeholder tiles at the row's real height while the counters resolve,
   // so the sections below don't jump once badges land.
   if (loading) {
-    return (
-      <section className="badges-row-section" aria-label="Badges" aria-busy="true">
+    const loadingBody = (
+      <>
         <div className="badges-row-section__header">
           <h3 className="badges-row-section__title">Badges</h3>
         </div>
@@ -46,6 +48,23 @@ function BadgesRow({ userId, onSeeMore }) {
             </div>
           ))}
         </div>
+      </>
+    )
+
+    if (embedded) {
+      return (
+        <>
+          <hr className="profile-home__hairline" aria-hidden="true" />
+          <div className={sectionClass} aria-label="Badges" aria-busy="true">
+            {loadingBody}
+          </div>
+        </>
+      )
+    }
+
+    return (
+      <section className={sectionClass} aria-label="Badges" aria-busy="true">
+        {loadingBody}
       </section>
     )
   }
@@ -68,56 +87,71 @@ function BadgesRow({ userId, onSeeMore }) {
 
   const tiles = earned.slice(0, MAX_EARNED_TILES)
 
-  return (
+  const badgesBody = (
     <>
-      <section className="badges-row-section" aria-label="Badges">
-        <div className="badges-row-section__header">
-          <h3 className="badges-row-section__title">Badges</h3>
-          <button
-            type="button"
-            className="badges-row-section__see-more"
-            onClick={onSeeMore}
-          >
-            See more
-          </button>
-        </div>
+      <div className="badges-row-section__header">
+        <h3 className="badges-row-section__title">Badges</h3>
+        <button
+          type="button"
+          className="badges-row-section__see-more"
+          onClick={onSeeMore}
+        >
+          See more
+        </button>
+      </div>
 
-        <div className="badges-row" role="list" aria-label="Badges">
-          {tiles.map((badge) => {
-            const Icon = badge.icon
-            return (
-              <button
-                key={badge.id}
-                type="button"
-                role="listitem"
-                className={`badges-row__item badges-row__item--earned badges-row__item--${badge.tier}`}
-                onClick={() => setSelectedBadge(badge)}
-                aria-label={`${badge.name}, earned`}
-              >
-                <span className="badges-row__tile" aria-hidden="true">
-                  <Icon size={22} strokeWidth={1.8} />
-                </span>
-                <span className="badges-row__label">{badge.name}</span>
-              </button>
-            )
-          })}
-
-          {nextLocked && (
+      <div className="badges-row" role="list" aria-label="Badges">
+        {tiles.map((badge) => {
+          const Icon = badge.icon
+          return (
             <button
+              key={badge.id}
               type="button"
               role="listitem"
-              className="badges-row__item badges-row__item--locked"
-              onClick={() => setSelectedBadge(nextLocked)}
-              aria-label={`Locked badge: ${nextLocked.name}. ${nextLocked.description}`}
+              className={`badges-row__item badges-row__item--earned badges-row__item--${badge.tier}`}
+              onClick={() => setSelectedBadge(badge)}
+              aria-label={`${badge.name}, earned`}
             >
               <span className="badges-row__tile" aria-hidden="true">
-                <Lock size={20} strokeWidth={1.8} />
+                <Icon size={22} strokeWidth={1.8} />
               </span>
-              <span className="badges-row__label">Locked</span>
+              <span className="badges-row__label">{badge.name}</span>
             </button>
-          )}
-        </div>
-      </section>
+          )
+        })}
+
+        {nextLocked && (
+          <button
+            type="button"
+            role="listitem"
+            className="badges-row__item badges-row__item--locked"
+            onClick={() => setSelectedBadge(nextLocked)}
+            aria-label={`Locked badge: ${nextLocked.name}. ${nextLocked.description}`}
+          >
+            <span className="badges-row__tile" aria-hidden="true">
+              <Lock size={20} strokeWidth={1.8} />
+            </span>
+            <span className="badges-row__label">Locked</span>
+          </button>
+        )}
+      </div>
+    </>
+  )
+
+  return (
+    <>
+      {embedded ? (
+        <>
+          <hr className="profile-home__hairline" aria-hidden="true" />
+          <div className={sectionClass} aria-label="Badges">
+            {badgesBody}
+          </div>
+        </>
+      ) : (
+        <section className={sectionClass} aria-label="Badges">
+          {badgesBody}
+        </section>
+      )}
 
       <BadgeDetailModal
         badge={selectedBadge}

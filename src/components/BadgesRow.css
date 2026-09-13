@@ -14,6 +14,15 @@
   padding: 0 var(--page-padding);
 }
 
+.badges-row-section--embedded {
+  padding: var(--spacing-sm) 0 0;
+}
+
+.badges-row-section--embedded .badges-row {
+  margin: 0;
+  padding: 2px 0 4px;
+}
+
 .badges-row-section__header {
   display: flex;
   align-items: baseline;

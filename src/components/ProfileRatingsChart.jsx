@@ -20,7 +20,7 @@ const MIN_BAR_PX = 3
 // A histogram over one or two ratings describes the sample, not the
 // person. Below this the section hides rather than drawing a chart that
 // is almost entirely empty.
-const MIN_RATINGS_FOR_CHART = 3
+export const MIN_RATINGS_FOR_CHART = 3
 
 function buildBuckets(reviews) {
   const map = new Map(HALF_STAR_BUCKETS.map((b) => [b, []]))
@@ -120,7 +120,7 @@ function BucketModal({ bucket, onReviewTap, onClose }) {
 
    Hides itself entirely below MIN_RATINGS_FOR_CHART so a brand-new
    account never sees a chart that is one bar and four gaps. */
-export default function ProfileRatingsChart({ reviews, onReviewTap }) {
+export default function ProfileRatingsChart({ reviews, onReviewTap, embedded = false }) {
   /* ---- ALL hooks first — React Rules of Hooks ---- */
   const [selectedBucket, setSelectedBucket] = useState(null)
 
@@ -136,7 +136,10 @@ export default function ProfileRatingsChart({ reviews, onReviewTap }) {
 
   /* ---- Render ---- */
   return (
-    <section className="prc-section" aria-label="How I rate">
+    <section
+      className={`prc-section${embedded ? ' prc-section--embedded' : ''}`}
+      aria-label="How I rate"
+    >
       <div className="prc-header">
         <h3 className="prc-section-title">How I Rate</h3>
         {avg != null && (

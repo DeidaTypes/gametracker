@@ -98,7 +98,7 @@ import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import PinnedListsSection from '../components/PinnedListsSection'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
-import ProfileRatingsChart from '../components/ProfileRatingsChart'
+import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
 import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
 import ProfileActivityGlimpse from '../components/ProfileActivityGlimpse'
@@ -107,7 +107,7 @@ import { getJournalEntriesForUser, getMoodMeta } from '../services/journalServic
 import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import { getSWR } from '../services/swrCache'
+import { getSWR, peekSWR } from '../services/swrCache'
 import './Profile.css'
 
 /* ============================================================
@@ -137,6 +137,45 @@ function safeWithTimeout(promise, fallback, ms = PROFILE_TIMEOUT_MS) {
     promise,
     new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
   ])
+}
+
+// getGoalProgress() resolving to null (no goal row, or a timed-out
+// safeWithTimeout) reads as "still resolving" to the UI, which parks the
+// GoalRing on a skeleton forever. Settle it on the same "no goal set"
+// shape either way. Shared between the peekSWR seed and the live fetch.
+function normalizeGoalProgress(gp) {
+  return (
+    gp || {
+      hasGoal: false,
+      target: null,
+      current: 0,
+      year: new Date().getFullYear(),
+      percent: 0,
+      tier: 1,
+      tierBase: 0,
+      goalReachedAt: null,
+    }
+  )
+}
+
+// Shape raw getListsForUser() rows into what customLists state actually
+// stores. Shared between the peekSWR seed and the live fetch below so the
+// two never drift out of sync with each other.
+function mapProfileLists(lists) {
+  return (lists || []).map((l) => ({
+    id: l.id,
+    name: l.name,
+    description: l.description || '',
+    createdAt: l.createdAt,
+    updatedAt: l.updatedAt,
+    gameCount: l.gameCount,
+    previewGames: l.previewGames || [],
+    games: l.games || [],
+    coverImageUrl: l.coverImageUrl || null,
+    isPinned: !!l.isPinned,
+    likeCount: 0,
+    commentCount: 0,
+  }))
 }
 
 /* ============================================================
@@ -489,11 +528,34 @@ function Profile() {
     ? (user?.id ?? null)
     : (resolvedMatchesParams ? (resolvedUser?.id ?? null) : null)
 
+  // Warm-cache seed for every piece of profile-scoped state below — same
+  // peekSWR pattern ListDetail/GameDetail already use, applied to the one
+  // bundle fetch this page makes (see fetchProfileBundle + the getSWR call
+  // in loadProfileData further down, both keyed `profile:${targetUserId}`).
+  // A cache hit here means a revisit within PROFILE_CACHE_TTL_MS paints
+  // real reviews/lists/stats on the very first frame instead of each one
+  // individually skeletoning while loadProfileData's mount-effect re-fetch
+  // resolves (which itself will be a cache hit too, and just revalidates
+  // in the background — see getSWR's stale-while-revalidate semantics).
+  const cachedProfileBundle = targetUserId ? peekSWR(`profile:${targetUserId}`) : undefined
+
   // Local profile blob (display name / avatar / bio / socials / favorites).
   // Lives in localStorage for the signed-in user; for "another user"
   // viewing we'd fetch from Supabase but Sprint 5 only wires the own-
   // profile UX so we still source everything from localStorage here.
-  const [profile, setProfile] = useState(null)
+  //
+  // Seeded synchronously (not left null) for the own-profile case: unlike
+  // a visitor profile, which genuinely has to wait on resolving the route
+  // param, own-profile data is a synchronous localStorage read that's
+  // already sitting there on every visit after the first. Leaving this
+  // null until the loadProfileData effect ran was the entire reason your
+  // OWN profile showed a full-page hero skeleton on every navigation —
+  // see the loading-state gate below, which keys off `profile` being
+  // non-null. isOwnProfile is already correct at this point for the
+  // plain `/profile` route (paramKey === 'self' needs no async lookup).
+  const [profile, setProfile] = useState(() =>
+    isOwnProfile ? (getProfile() || initializeProfile()) : null
+  )
 
   // Tabs: 'home' (default), 'reviews', 'lists', 'diary' — reflected in the
   // URL's `?tab=` query param rather than plain component state. Both the
@@ -565,16 +627,22 @@ function Profile() {
   // loading skeleton in HomeTab below) or a real goal flashes as
   // "Set a goal" for a frame on every load.
   const thisYear = new Date().getFullYear()
-  const [goalProgress, setGoalProgress] = useState(null)
+  const [goalProgress, setGoalProgress] = useState(() =>
+    cachedProfileBundle ? normalizeGoalProgress(cachedProfileBundle.gp) : null
+  )
   const [goalSheetOpen, setGoalSheetOpen] = useState(false)
-  const [rivalryData, setRivalryData] = useState([])
+  const [rivalryData, setRivalryData] = useState(() => cachedProfileBundle?.rd || [])
   // Supabase-backed "games" stat numeral (see getTrackedGamesCountForUser).
   // `null` means "not resolved yet" so the player card skeletons the
   // numeral instead of flashing a fabricated 0.
-  const [trackedGamesCount, setTrackedGamesCount] = useState(null)
+  const [trackedGamesCount, setTrackedGamesCount] = useState(() =>
+    cachedProfileBundle ? (cachedProfileBundle.trackedGames ?? 0) : null
+  )
   // Total hours logged, summed from game_trackers. `null` = not resolved
   // yet, so the player card skeletons the numeral rather than showing 0h.
-  const [hoursPlayed, setHoursPlayed] = useState(null)
+  const [hoursPlayed, setHoursPlayed] = useState(() =>
+    cachedProfileBundle ? cachedProfileBundle.hours : null
+  )
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
@@ -587,42 +655,53 @@ function Profile() {
   // read a `{ reviews, lists }` object.
   const [activeSort, setActiveSort] = useState(readSortFromStorage)
 
-  // Data
-  const [allReviews, setAllReviews] = useState([])
+  // Data — every one of these is seeded from cachedProfileBundle when a
+  // warm cache entry exists (see cachedProfileBundle above), so a revisit
+  // within PROFILE_CACHE_TTL_MS paints real content immediately instead
+  // of each stat/section skeletoning individually while loadProfileData's
+  // mount effect re-resolves (a cache hit itself, revalidating quietly in
+  // the background).
+  const [allReviews, setAllReviews] = useState(() => cachedProfileBundle?.rows || [])
   // True until the FIRST loadProfileData() for the current targetUserId
   // resolves. Gates the review-count stat (and anything else derived
   // from allReviews on this render pass) so a loading profile never
   // paints "0 reviews" — only a skeleton or the real, resolved count.
   // Does NOT flip back to true on background refreshes (reviewAdded,
   // storage, etc.) so optimistic updates still paint instantly per the
-  // app's optimistic-UI convention.
-  const [profileLoading, setProfileLoading] = useState(true)
-  const loadedProfileForUserRef = useRef(null)
-  const [customLists, setCustomLists] = useState([])
-  const [activities, setActivities] = useState([])
-  const [journalEntries, setJournalEntries] = useState([])
+  // app's optimistic-UI convention. Starts false (not true) on a cache
+  // hit — loadedProfileForUserRef below is seeded to match, so the mount
+  // effect doesn't immediately flip this back to true and undo the seed.
+  const [profileLoading, setProfileLoading] = useState(() => cachedProfileBundle === undefined)
+  const loadedProfileForUserRef = useRef(cachedProfileBundle !== undefined ? targetUserId : null)
+  const [customLists, setCustomLists] = useState(() => mapProfileLists(cachedProfileBundle?.lists))
+  const [activities, setActivities] = useState(() => cachedProfileBundle?.acts || [])
+  const [journalEntries, setJournalEntries] = useState(() => cachedProfileBundle?.journalRows || [])
   // Sprint 6 P0 — Map<reviewId, count> fetched once per profile load
   // and re-fetched whenever reviews change. Drives the Most Liked sort
   // and the count rendered on each card. Seeded into useLikeState's
   // shared cache so individual cards skip per-card round-trips.
-  const [reviewLikeCounts, setReviewLikeCounts] = useState(() => new Map())
+  const [reviewLikeCounts, setReviewLikeCounts] = useState(
+    () => cachedProfileBundle?.counts || new Map()
+  )
   // Sprint 6 P1 — real comment counts for every review on this profile,
   // batched in one query alongside the like-count prefetch. Threaded
   // into the ReviewCard adapter so the comment-icon badge matches the
   // actual row count in the comments table.
-  const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
+  const [reviewCommentCounts, setReviewCommentCounts] = useState(
+    () => cachedProfileBundle?.cCounts || new Map()
+  )
 
   // Sprint 6 P3 — pinned reviews. Loaded in parallel with the main
   // reviews fetch so the Pinned section renders at the same time as
   // the sorted list below it. Each entry is { position, review } where
   // `review` carries the full row + embedded users join, ready to feed
   // through rowToReviewCard.
-  const [pinnedRows, setPinnedRows] = useState([])
+  const [pinnedRows, setPinnedRows] = useState(() => cachedProfileBundle?.pins || [])
   const [showReorderModal, setShowReorderModal] = useState(false)
 
   // Pinned lists (Section B on the Home tab). Loaded in parallel with
   // the main data fetch; ordered by pinned_at DESC, cap 5.
-  const [pinnedLists, setPinnedLists] = useState([])
+  const [pinnedLists, setPinnedLists] = useState(() => cachedProfileBundle?.pinnedListData || [])
 
   // ── Follow graph (Sprint 6) ─────────────────────────────────────
   // followersCount is the count shown on the Followers stat numeral.
@@ -762,40 +841,14 @@ function Profile() {
         // with no goal row: the cell falls back to its "Set a goal" prompt,
         // which is both the truth for a brand-new account and a live action
         // for anyone whose fetch merely stalled.
-        setGoalProgress(
-          gp || {
-            hasGoal: false,
-            target: null,
-            current: 0,
-            year: new Date().getFullYear(),
-            percent: 0,
-            tier: 1,
-            tierBase: 0,
-            goalReachedAt: null,
-          }
-        )
+        setGoalProgress(normalizeGoalProgress(gp))
         if (rd) setRivalryData(rd)
         setTrackedGamesCount(trackedGames ?? 0)
         setHoursPlayed(hours)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
-        setCustomLists(
-          lists.map((l) => ({
-            id: l.id,
-            name: l.name,
-            description: l.description || '',
-            createdAt: l.createdAt,
-            updatedAt: l.updatedAt,
-            gameCount: l.gameCount,
-            previewGames: l.previewGames || [],
-            games: l.games || [],
-            coverImageUrl: l.coverImageUrl || null,
-            isPinned: !!l.isPinned,
-            likeCount: 0,
-            commentCount: 0,
-          }))
-        )
+        setCustomLists(mapProfileLists(lists))
         setActivities(acts)
         setJournalEntries(journalRows || [])
 
@@ -2066,7 +2119,280 @@ function Profile() {
    ── Home tab
    ============================================================ */
 
-function HomeTab({
+function useProfileChallengeMeta(goalProgress, rivalryData) {
+  const currentYear = goalProgress?.year ?? new Date().getFullYear()
+  const circleRank = (() => {
+    if (!goalProgress?.hasGoal || !rivalryData?.length) return null
+    const withSelf = [
+      { userId: 'self', current: goalProgress.current, isSelf: true },
+      ...rivalryData.map((r) => ({ ...r, isSelf: false })),
+    ].sort((a, b) => b.current - a.current || (a.isSelf ? -1 : 1))
+    const idx = withSelf.findIndex((r) => r.isSelf)
+    return idx === -1 ? null : idx + 1
+  })()
+  const hasGoal = goalProgress?.hasGoal
+  const remaining = hasGoal ? Math.max(0, goalProgress.target - goalProgress.current) : null
+  return { currentYear, circleRank, hasGoal, remaining }
+}
+
+function ProfileChallengeSection({
+  goalProgress,
+  profilePathSegment,
+  circleRank,
+  remaining,
+  hasGoal,
+  currentYear,
+  onSetGoal,
+  mergeBadges = false,
+  badgesUserId = null,
+  onSeeMoreBadges,
+}) {
+  return (
+    <section
+      className="profile-home__section profile-home__section--card profile-challenge-cell"
+      aria-label={`${currentYear} challenge`}
+    >
+      {goalProgress === null ? (
+        <div className="profile-challenge" aria-busy="true">
+          <Skeleton variant="circle" width={52} height={52} />
+          <div className="profile-challenge__info">
+            <Skeleton variant="text" width={160} height={18} />
+            <Skeleton variant="text" width={110} height={13} style={{ marginTop: 6 }} />
+          </div>
+        </div>
+      ) : hasGoal ? (
+        <ChallengeCard
+          className="profile-challenge profile-challenge--tappable"
+          year={goalProgress.year}
+          current={goalProgress.current}
+          target={goalProgress.target}
+          profilePathSegment={profilePathSegment}
+          ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
+        >
+          <GoalRing
+            current={goalProgress.current}
+            target={goalProgress.target}
+            year={goalProgress.year}
+            tier={goalProgress.tier}
+            variant="compact"
+          />
+          <span className="profile-challenge__info">
+            <span className="profile-challenge__headline">
+              {goalProgress.year} Challenge{goalProgress.tier > 1 ? ` · Tier ${goalProgress.tier}` : ''} · {goalProgress.current}/{goalProgress.target}
+            </span>
+            <span
+              className={`profile-challenge__sub${remaining === 0 ? ' profile-challenge__sub--reached' : ''}`}
+            >
+              {circleRank != null && (
+                <>
+                  {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle
+                  {remaining > 0 ? ' · ' : ''}
+                </>
+              )}
+              {remaining === 0 ? 'Goal reached!' : `${remaining} to go`}
+            </span>
+          </span>
+          <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
+        </ChallengeCard>
+      ) : (
+        <div className="profile-challenge">
+          <GoalRing
+            current={0}
+            target={null}
+            year={goalProgress.year}
+            variant="compact"
+            onSet={onSetGoal}
+          />
+          <div className="profile-challenge__info">
+            <span className="profile-challenge__headline">
+              {goalProgress.year} Challenge
+            </span>
+            <button
+              type="button"
+              className="profile-challenge__set-goal"
+              onClick={onSetGoal}
+            >
+              Set a {goalProgress.year} goal
+            </button>
+          </div>
+        </div>
+      )}
+      {mergeBadges && (
+        <BadgesRow
+          embedded
+          userId={badgesUserId}
+          onSeeMore={onSeeMoreBadges}
+        />
+      )}
+    </section>
+  )
+}
+
+function ProfileFavoritesSection({
+  favoriteGames,
+  isOwnProfile,
+  onShareFavorites,
+  favSharing,
+  onEditFavorites,
+  onGameClick,
+  onReorderFavorites,
+  compactEmpty = false,
+}) {
+  if (favoriteGames.length === 0 && !isOwnProfile) return null
+
+  return (
+    <section className="profile-home__section profile-home__section--card">
+      <div className="profile-home__section-header">
+        <h3 className="profile-home__section-title">Favorite games</h3>
+        <div className="profile-home__section-actions">
+          {favoriteGames.length > 0 && (
+            <button
+              type="button"
+              className="profile-home__share-btn"
+              onClick={onShareFavorites}
+              disabled={favSharing === 'generating'}
+              aria-label="Share favorite games card"
+            >
+              {favSharing === 'generating' ? (
+                <span className="profile-home__share-spinner" aria-hidden="true" />
+              ) : (
+                <LuShare2 size={15} aria-hidden="true" />
+              )}
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
+              type="button"
+              className="profile-home__edit-btn"
+              onClick={onEditFavorites}
+              aria-label="Edit favorite games"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      </div>
+      {favoriteGames.length === 0 ? (
+        compactEmpty ? (
+          <FavoriteGamesRow
+            games={[]}
+            isOwnProfile
+            onGameClick={onGameClick}
+            onAdd={onEditFavorites}
+            showAddSlot
+          />
+        ) : (
+          <EmptyState
+            icon={Plus}
+            size="inline"
+            cta="Add favorite games"
+            ctaVariant="secondary"
+            onCta={onEditFavorites}
+          />
+        )
+      ) : (
+        <FavoriteGamesRow
+          games={favoriteGames.slice(0, MAX_FAVORITE_SLOTS)}
+          isOwnProfile={isOwnProfile}
+          onGameClick={onGameClick}
+          onAdd={onEditFavorites}
+          showAddSlot={isOwnProfile && favoriteGames.length < MAX_FAVORITE_SLOTS}
+          onReorder={onReorderFavorites}
+        />
+      )}
+    </section>
+  )
+}
+
+function HomeTab(props) {
+  if (props.isOwnProfile) {
+    return <OwnProfileHomeTab {...props} />
+  }
+  return <VisitorProfileHomeTab {...props} />
+}
+
+function OwnProfileHomeTab({
+  favoriteGames,
+  onGameClick,
+  onSeeMoreBadges,
+  profilePathSegment,
+  user,
+  targetUserId,
+  onEditFavorites,
+  onReorderFavorites,
+  onShareFavorites,
+  favSharing,
+  allReviews,
+  onReviewTap,
+  goalProgress,
+  rivalryData,
+  onSetGoal,
+}) {
+  const [tasteVisible, setTasteVisible] = useState(false)
+  const [tasteLoading, setTasteLoading] = useState(true)
+  const handleTasteResolved = useCallback(({ visible, loading }) => {
+    setTasteVisible(visible)
+    setTasteLoading(loading)
+  }, [])
+
+  const { currentYear, circleRank, hasGoal, remaining } = useProfileChallengeMeta(
+    goalProgress,
+    rivalryData
+  )
+
+  const ratedCount = (allReviews || []).filter((r) => Number(r.rating) > 0).length
+  const ratingsVisible = ratedCount >= MIN_RATINGS_FOR_CHART
+  const showTasteRatingsCard = tasteLoading || tasteVisible || ratingsVisible
+
+  return (
+    <div className="profile-home profile-home--condensed">
+      <ProfileFavoritesSection
+        favoriteGames={favoriteGames}
+        isOwnProfile
+        onShareFavorites={onShareFavorites}
+        favSharing={favSharing}
+        onEditFavorites={onEditFavorites}
+        onGameClick={onGameClick}
+        onReorderFavorites={onReorderFavorites}
+        compactEmpty
+      />
+
+      {showTasteRatingsCard && (
+        <section className="profile-home__section profile-home__section--card profile-home__taste-rate">
+          <ProfileTasteDNA
+            userId={targetUserId}
+            isOwnProfile
+            embedded
+            onResolved={handleTasteResolved}
+          />
+          {tasteVisible && ratingsVisible && (
+            <hr className="profile-home__hairline" aria-hidden="true" />
+          )}
+          <ProfileRatingsChart
+            reviews={allReviews}
+            onReviewTap={onReviewTap}
+            embedded
+          />
+        </section>
+      )}
+
+      <ProfileChallengeSection
+        goalProgress={goalProgress}
+        profilePathSegment={profilePathSegment}
+        circleRank={circleRank}
+        remaining={remaining}
+        hasGoal={hasGoal}
+        currentYear={currentYear}
+        onSetGoal={onSetGoal}
+        mergeBadges
+        badgesUserId={user?.id}
+        onSeeMoreBadges={onSeeMoreBadges}
+      />
+    </div>
+  )
+}
+
+function VisitorProfileHomeTab({
   favoriteGames,
   activities,
   onGameClick,
@@ -2090,194 +2416,49 @@ function HomeTab({
   onSetGoal,
   profileLoading,
 }) {
-  // Fallback year label while goalProgress is still resolving (null) —
-  // never fabricates goal data, just labels the loading card correctly.
-  const currentYear = goalProgress?.year ?? new Date().getFullYear()
-
-  // Circle rank — global rank of "you" in the merged, sorted rivalry list.
-  // This is the one thing that survives from the old Circle leaderboard.
-  const circleRank = (() => {
-    if (!goalProgress?.hasGoal || !rivalryData?.length) return null
-    const withSelf = [
-      { userId: 'self', current: goalProgress.current, isSelf: true },
-      ...rivalryData.map((r) => ({ ...r, isSelf: false })),
-    ].sort((a, b) => b.current - a.current || (a.isSelf ? -1 : 1))
-    const idx = withSelf.findIndex((r) => r.isSelf)
-    return idx === -1 ? null : idx + 1
-  })()
-
-  const hasGoal = goalProgress?.hasGoal
-  const remaining = hasGoal ? Math.max(0, goalProgress.target - goalProgress.current) : null
+  const { currentYear, circleRank, hasGoal, remaining } = useProfileChallengeMeta(
+    goalProgress,
+    rivalryData
+  )
 
   return (
     <div className="profile-home">
-      {/* YOUR TASTE / THEIR TASTE — stacked genre bar + percentages from
-          the cached B1 taste vector. Label flips to "Their Taste" on a
-          visitor profile; same bar + genre tokens either way. Self-hides
-          when the engine has too little signal to describe a real taste
-          shape. */}
       <ProfileTasteDNA userId={targetUserId} isOwnProfile={isOwnProfile} />
 
-      {/* FAVORITE GAMES cell — covers + add slot. Hidden when empty on
-          others' profiles; own profile shows an empty-state CTA. */}
-      {(favoriteGames.length > 0 || isOwnProfile) && (
-        <section className="profile-home__section profile-home__section--card">
-          <div className="profile-home__section-header">
-            <h3 className="profile-home__section-title">Favorite games</h3>
-            <div className="profile-home__section-actions">
-              {favoriteGames.length > 0 && (
-                <button
-                  type="button"
-                  className="profile-home__share-btn"
-                  onClick={onShareFavorites}
-                  disabled={favSharing === 'generating'}
-                  aria-label="Share favorite games card"
-                >
-                  {favSharing === 'generating' ? (
-                    <span className="profile-home__share-spinner" aria-hidden="true" />
-                  ) : (
-                    <LuShare2 size={15} aria-hidden="true" />
-                  )}
-                </button>
-              )}
-              {isOwnProfile && (
-                <button
-                  type="button"
-                  className="profile-home__edit-btn"
-                  onClick={onEditFavorites}
-                  aria-label="Edit favorite games"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          </div>
-          {favoriteGames.length === 0 ? (
-            <EmptyState
-              icon={Plus}
-              size="inline"
-              cta="Add favorite games"
-              ctaVariant="secondary"
-              onCta={onEditFavorites}
-            />
-          ) : (
-            <FavoriteGamesRow
-              games={favoriteGames.slice(0, MAX_FAVORITE_SLOTS)}
-              isOwnProfile={isOwnProfile}
-              onGameClick={onGameClick}
-              onAdd={onEditFavorites}
-              showAddSlot={isOwnProfile && favoriteGames.length < MAX_FAVORITE_SLOTS}
-              onReorder={onReorderFavorites}
-            />
-          )}
-        </section>
-      )}
+      <ProfileFavoritesSection
+        favoriteGames={favoriteGames}
+        isOwnProfile={isOwnProfile}
+        onShareFavorites={onShareFavorites}
+        favSharing={favSharing}
+        onEditFavorites={onEditFavorites}
+        onGameClick={onGameClick}
+        onReorderFavorites={onReorderFavorites}
+      />
 
-      {/* YEARLY CHALLENGE — tapping the card opens the detail view listing
-          the games that actually count toward it. Renders on visitor
-          profiles once the owner has a goal set (user_goals RLS is
-          privacy-aware, not owner-only — see migration
-          profile_visitor_rls_fix); a visitor never sees the "Set a goal"
-          CTA, since that's an owner-only action. */}
       {(isOwnProfile || hasGoal) && (
-        <section
-          className="profile-home__section profile-home__section--card profile-challenge-cell"
-          aria-label={`${currentYear} challenge`}
-        >
-          {goalProgress === null ? (
-            // `null` = not resolved yet. Never render "Set a goal" or a
-            // fabricated 0/0 here — a real goal could still come back.
-            // (Visitors only reach this section once hasGoal is already
-            // true, so this skeleton only ever shows on own profile.)
-            <div className="profile-challenge" aria-busy="true">
-              <Skeleton variant="circle" width={52} height={52} />
-              <div className="profile-challenge__info">
-                <Skeleton variant="text" width={160} height={18} />
-                <Skeleton variant="text" width={110} height={13} style={{ marginTop: 6 }} />
-              </div>
-            </div>
-          ) : hasGoal ? (
-            <ChallengeCard
-              className="profile-challenge profile-challenge--tappable"
-              year={goalProgress.year}
-              current={goalProgress.current}
-              target={goalProgress.target}
-              profilePathSegment={profilePathSegment}
-              ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
-            >
-              <GoalRing
-                current={goalProgress.current}
-                target={goalProgress.target}
-                year={goalProgress.year}
-                tier={goalProgress.tier}
-                variant="compact"
-              />
-              <span className="profile-challenge__info">
-                <span className="profile-challenge__headline">
-                  {goalProgress.year} Challenge{goalProgress.tier > 1 ? ` · Tier ${goalProgress.tier}` : ''} · {goalProgress.current}/{goalProgress.target}
-                </span>
-                <span
-                  className={`profile-challenge__sub${remaining === 0 ? ' profile-challenge__sub--reached' : ''}`}
-                >
-                  {circleRank != null && (
-                    <>
-                      {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle
-                      {remaining > 0 ? ' · ' : ''}
-                    </>
-                  )}
-                  {remaining === 0 ? 'Goal reached!' : `${remaining} to go`}
-                </span>
-              </span>
-              <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
-            </ChallengeCard>
-          ) : (
-            <div className="profile-challenge">
-              <GoalRing
-                current={0}
-                target={null}
-                year={goalProgress.year}
-                variant="compact"
-                onSet={onSetGoal}
-              />
-              <div className="profile-challenge__info">
-                <span className="profile-challenge__headline">
-                  {goalProgress.year} Challenge
-                </span>
-                <button
-                  type="button"
-                  className="profile-challenge__set-goal"
-                  onClick={onSetGoal}
-                >
-                  Set a {goalProgress.year} goal
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
+        <ProfileChallengeSection
+          goalProgress={goalProgress}
+          profilePathSegment={profilePathSegment}
+          circleRank={circleRank}
+          remaining={remaining}
+          hasGoal={hasGoal}
+          currentYear={currentYear}
+          onSetGoal={onSetGoal}
+        />
       )}
 
-      {/* HOW I RATE — 0.5–5.0 half-star distribution from this user's
-          real ratings. Self-hides below a few ratings rather than
-          drawing an empty chart. */}
       <ProfileRatingsChart reviews={allReviews} onReviewTap={onReviewTap} />
 
-      {/* BADGES — earned row + "See more". Badge counters derive from the
-          signed-in device (see useUserStats), so a null userId on visitor
-          profiles makes the section hide itself. */}
       <BadgesRow
         userId={isOwnProfile ? user?.id : null}
         onSeeMore={onSeeMoreBadges}
       />
 
-      {/* Pinned Lists — hidden entirely when the user has no pinned
-          lists; chevron routes to the Lists tab. */}
       <PinnedListsSection
         pinnedLists={pinnedLists}
         onSeeAll={onListsChevron}
       />
 
-      {/* RECENT ACTIVITY — a 3-item glimpse; the full history lives
-          behind "See all". */}
       <ProfileActivityGlimpse
         activities={activities}
         loading={profileLoading}

@@ -540,6 +540,23 @@
   gap: var(--spacing-lg);
 }
 
+/* Own profile — tighter rhythm below the tabs (S15-6). */
+.profile-home--condensed {
+  gap: var(--spacing-md);
+}
+
+.profile-home__taste-rate {
+  gap: var(--spacing-md);
+}
+
+.profile-home__hairline {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
 /* Sections that don't bring their own padding (favorites, challenge,
    pinned lists) get it from the wrapper. */
 .profile-home > .profile-home__section,
@@ -1505,6 +1522,11 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
      border-radius and reads as a square "cut off" edge instead of a
      soft bloom inside a rounded card. */
   overflow: hidden;
+}
+
+/* Badges row scrolls edge-to-edge inside the merged challenge card. */
+.profile-challenge-cell:has(.badges-row-section--embedded) {
+  overflow: visible;
 }
 
 .profile-challenge {
