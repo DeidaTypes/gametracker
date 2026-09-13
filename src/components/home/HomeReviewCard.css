@@ -53,7 +53,7 @@
      instead an explicit margin on the zone that follows, so a zone the
      event doesn't have costs no space at all. */
   gap: 0;
-  padding: 14px;
+  padding: var(--space-12);
 }
 
 .home-review-card--reviewed,

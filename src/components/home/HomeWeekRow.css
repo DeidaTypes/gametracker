@@ -6,7 +6,7 @@
 .hwr-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
+  gap: var(--space-12);
   align-items: stretch;
 }
 

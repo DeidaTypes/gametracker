@@ -12,14 +12,14 @@
 
 /* ── Head ── */
 .pulse-feed__head {
-  padding: 0 var(--container-padding) var(--spacing-sm);
+  padding: 0 var(--container-padding) var(--space-8);
 }
 
 /* Gradient heading — cobalt → green (--grad-headline), the one heading
    treatment allowed by the multi-hue pass. Falls back to solid
    --color-text-primary if background-clip:text isn't supported. */
 .pulse-feed__title {
-  margin: 0 0 2px;
+  margin: 0 0 var(--space-4);
   font-family: var(--font-display);
   font-size: var(--font-size-title);
   font-weight: var(--font-weight-semibold);
@@ -48,6 +48,13 @@
   color: var(--color-text-tertiary);
 }
 
+/* Tighter empty state — compact variant still reads loose at Home's
+   lead-section scale; scoped here so other compact empties stay put. */
+.pulse-feed .es-root--compact {
+  padding: var(--space-24) var(--space-16);
+  gap: var(--space-12);
+}
+
 /* ── List ──
    Each item is now an individually bounded <ReviewCardShell/> card
    (no shared divider borders), so the list needs its own gap — the
@@ -63,8 +70,8 @@
 .pulse-feed__find-nudge {
   display: block;
   width: calc(100% - var(--container-padding) * 2);
-  margin: 12px var(--container-padding);
-  padding: 10px 16px;
+  margin: var(--space-12) var(--container-padding);
+  padding: var(--space-12) var(--space-16);
   background: transparent;
   border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
   border-radius: var(--radius-md, 10px);
@@ -114,8 +121,8 @@
 
 .pulse-feed__skeleton-card {
   display: flex;
-  gap: 10px;
-  padding: 14px var(--container-padding);
+  gap: var(--space-12);
+  padding: var(--space-12) var(--container-padding);
   border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
 }
 
@@ -130,8 +137,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
 }
 
 .pulse-feed__skeleton-line {
