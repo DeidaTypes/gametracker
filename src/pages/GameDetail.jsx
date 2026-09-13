@@ -6,8 +6,10 @@ import { getGameById } from '../services/igdb'
 import EmptyState from '../components/EmptyState'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
+import { useTransitionComplete, PAGE_TRANSITION_DURATION_MS } from '../components/PageTransition'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import ReviewCard from '../components/ReviewCard'
-import AddToListButton, { STATUS_TILES } from '../components/AddToListButton'
+import { STATUS_TILES } from '../components/AddToListButton'
 import StatusChip, { STATUS_META } from '../components/StatusChip'
 import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import GameDetailStatStrip from '../components/GameDetailStatStrip'
@@ -25,11 +27,7 @@ import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { hapticImpact } from '../utils/haptics'
 import { getTimeToBeat } from '../services/timeToBeatService'
-import LogSheet from '../components/home/LogSheet'
-import {
-  logSession,
-  getManualSessionsForGame,
-} from '../services/sessionService'
+import { getManualSessionsForGame } from '../services/sessionService'
 import RatingSheet from '../components/RatingSheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
@@ -166,6 +164,24 @@ function GameDetail() {
   const [searchParams] = useSearchParams()
   const targetReviewId = searchParams.get('review')
   const { user } = useAuth()
+  // perf: gates every non-critical mount effect below (social bundle,
+  // color extraction, SimilarGamesRow) so none of it competes with the
+  // page's own 220ms entrance tween for the main thread — see
+  // useTransitionComplete's docstring in PageTransition.jsx. Resolves
+  // immediately when motion is reduced (there's no tween to wait for).
+  const transitionComplete = useTransitionComplete()
+  const { reduced: motionReduced } = useMotionPreference()
+  // The color backdrop used to fade in over its own hardcoded 280ms,
+  // longer than (and unsynchronized with) the page's 220ms tween — two
+  // overlapping fades of different durations finishing at different times
+  // is part of what read as choppy on a cold game. Matching the page
+  // tween's own duration (imported from PageTransition, not re-typed as a
+  // second "0.22") means the two always finish together instead of the
+  // backdrop trailing off after the page has already settled. Also
+  // respects reduced motion, which the old hardcoded transition never did.
+  const backdropTransition = motionReduced
+    ? { duration: 0 }
+    : { duration: PAGE_TRANSITION_DURATION_MS / 1000 }
   // Source cover image for the shared-element flight. Comes either from
   // the navigation state (if the caller passed it) or from a small
   // module-level cache of the most recently rendered cover for this
@@ -219,6 +235,11 @@ function GameDetail() {
   const [ratingDist, setRatingDist] = useState(null)
   const [status, setStatus] = useState(null)
   const [dominantColor, setDominantColor] = useState(null)
+  // The resolved (real IGDB, not stub) cover URL, set once getGameById
+  // settles. Color extraction keys off this rather than `game.image`
+  // directly so it never runs against the nav-stub placeholder — same
+  // "needs the resolved cover" requirement the old inline code had.
+  const [resolvedImage, setResolvedImage] = useState(null)
   const { setSwatches: setGlobalSwatches } = useGameColor()
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -228,6 +249,17 @@ function GameDetail() {
   const [followedRatings, setFollowedRatings] = useState(null)
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
+  // perf/exit — guards every setState below that lands from a fetch that
+  // can still be in flight when the user navigates away (reviews, rating
+  // distribution, circle pulse, followed ratings). None of these fetches
+  // are aborted (they're cheap reads and worth letting finish for the
+  // cache), but their .then()/async continuations all check this first so
+  // a slow response never calls setState on an unmounted GameDetail.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const [ttb, setTtb] = useState(null)
 
@@ -238,6 +270,7 @@ function GameDetail() {
   const refreshReviews = useCallback(async () => {
     try {
       const rows = await getReviewsForGame(gameId)
+      if (!mountedRef.current) return
       setReviews(rows)
       // Seed the in-process useLikeState cache and grab the count
       // Map for the Top Reviews sort below. Batched alongside the
@@ -248,15 +281,18 @@ function GameDetail() {
           prefetchLikeStatesForReviews(ids),
           getCommentCountsForReviews(ids),
         ])
+        if (!mountedRef.current) return
         setReviewLikeCounts(counts)
         setReviewCommentCounts(cCounts)
       } catch (err) {
         console.error('[gameDetail] like/comment count prefetch failed:', err)
+        if (!mountedRef.current) return
         setReviewLikeCounts(new Map())
         setReviewCommentCounts(new Map())
       }
     } catch (err) {
       console.error('[gameDetail] failed to load reviews:', err)
+      if (!mountedRef.current) return
       setReviews([])
       setReviewLikeCounts(new Map())
       setReviewCommentCounts(new Map())
@@ -266,10 +302,27 @@ function GameDetail() {
   const refreshFollowedRatings = useCallback(async () => {
     try {
       const result = await getFollowedRatingsForGame(gameId)
+      if (!mountedRef.current) return
       setFollowedRatings(result)
     } catch (err) {
       console.error('[gameDetail] failed to load followed ratings:', err)
+      if (!mountedRef.current) return
       setFollowedRatings({ average: null, count: 0, followers: [] })
+    }
+  }, [gameId])
+
+  // Circle pulse — was previously three copies of the same inline
+  // `getCirclePulseForGame(gameId).then(setCirclePulse).catch(() => {})`
+  // (initial load, reviewAdded handler, resume handler). Centralized here
+  // so all three get the same mountedRef guard instead of each needing it
+  // duplicated.
+  const refreshCirclePulse = useCallback(async () => {
+    try {
+      const p = await getCirclePulseForGame(gameId)
+      if (!mountedRef.current) return
+      setCirclePulse(p)
+    } catch {
+      // Best-effort — leave whatever circlePulse already holds.
     }
   }, [gameId])
 
@@ -282,14 +335,25 @@ function GameDetail() {
     // so a thrown error can't get silently reinterpreted as "no ratings".
     try {
       const dist = await getRatingDistributionForGame(gameId)
+      if (!mountedRef.current) return
       setRatingDist(dist)
     } catch (err) {
       console.error('[gameDetail] failed to load rating distribution:', err)
+      if (!mountedRef.current) return
       setRatingDist({ average: null, totalCount: 0, counts: null, error: true })
     }
   }, [gameId])
 
   useEffect(() => {
+    // perf/exit — getGameById itself is the one thing on this page that is
+    // NOT deferred behind the transition (the hero needs it, or already
+    // has a stub to render meanwhile), but it's still a network round-trip
+    // that can outlive a fast back-navigation. `cancelled` stops its
+    // resolution from writing state into a GameDetail that already
+    // unmounted — the request itself isn't aborted since the SWR cache
+    // benefits from letting it finish for the next visit.
+    let cancelled = false
+
     async function fetchGame() {
       try {
         const warm = peekSWR(`game:${gameId}`)
@@ -299,48 +363,78 @@ function GameDetail() {
         setError(null)
         setRatingDist(null)
 
-        // Everything below only needs `gameId`, not the resolved IGDB
-        // payload — start it alongside getGameById instead of waiting for
-        // IGDB to finish first. This used to sit in a Promise.all AFTER
-        // `await getGameById`, which meant reviews/ratings/circle pulse/
-        // followed-ratings all sat idle for the entire IGDB round-trip for
-        // no reason. Time to Beat + sessions already did this correctly
-        // via the sibling effect below — this matches that.
-        refreshReviews()
-        refreshRatingDistribution()
-        getCirclePulseForGame(gameId)
-          .then(p => setCirclePulse(p))
-          .catch(() => {})
-        refreshFollowedRatings()
-
         const gameData = await getSWR(`game:${gameId}`, () => getGameById(gameId), {
           ttlMs: GAME_TTL_MS,
         })
+        if (cancelled) return
         setGame(gameData)
+        // Hands off to the deferred color-extraction effect below — it
+        // waits for both this AND the page transition to finish before
+        // touching the canvas. Deliberately NOT chained here: this keeps
+        // getGameById's own re-render as cheap as a single setGame call.
+        setResolvedImage(gameData.image)
 
         addViewedGame(gameId, gameData.title, gameData.image)
         refreshFromStore()
-
-        // These genuinely need the resolved IGDB cover, so they can't start
-        // any earlier than this.
-        getDominantColor(gameData.image)
-          .then(color => setDominantColor(color))
-          .catch(() => {})
-        getGameSwatches(gameData.image, gameId)
-          .then(sw => setGlobalSwatches(sw))
-          .catch(() => {})
       } catch (err) {
+        if (cancelled) return
         console.error('Error fetching game:', err)
         setError('Failed to load game details.')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (gameId) {
       fetchGame()
     }
+
+    return () => { cancelled = true }
   }, [gameId])
+
+  // perf — the social bundle (reviews, rating distribution, circle pulse,
+  // followed ratings). None of it needs the resolved IGDB payload, only
+  // `gameId`, so it used to fire in parallel with getGameById right at
+  // mount — which on a COLD game meant four fetches landing and
+  // re-rendering mid-tween, fighting the entrance animation for the main
+  // thread. Deferred until the transition completes (immediately, under
+  // reduced motion) so it always lands "after", not "during". The visible
+  // effect is these sections popping in a beat later instead of during
+  // the fade — see the individual refresh* callbacks above for the
+  // mountedRef guards that make this safe if the user has already
+  // navigated away by the time any of these resolve.
+  useEffect(() => {
+    if (!gameId || !transitionComplete) return
+    refreshReviews()
+    refreshRatingDistribution()
+    refreshCirclePulse()
+    refreshFollowedRatings()
+  }, [
+    gameId,
+    transitionComplete,
+    refreshReviews,
+    refreshRatingDistribution,
+    refreshCirclePulse,
+    refreshFollowedRatings,
+  ])
+
+  // perf — dominant-color + swatch extraction. Canvas pixel work, purely
+  // cosmetic (the poster glow + backdrop tint), and cached after the first
+  // run — but that first run is real main-thread work with no reason to
+  // compete with the page's own entrance tween, on a warm visit or a cold
+  // one. Waits for BOTH the resolved cover (can't extract from nothing)
+  // AND the transition to finish (immediately, under reduced motion).
+  useEffect(() => {
+    if (!resolvedImage || !transitionComplete) return
+    let cancelled = false
+    getDominantColor(resolvedImage)
+      .then((color) => { if (!cancelled) setDominantColor(color) })
+      .catch(() => {})
+    getGameSwatches(resolvedImage, gameId)
+      .then((sw) => { if (!cancelled) setGlobalSwatches(sw) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [resolvedImage, gameId, transitionComplete, setGlobalSwatches])
 
   useEffect(() => {
     const handleLibraryUpdate = () => {
@@ -395,10 +489,8 @@ function GameDetail() {
 
   // ── Log session state ─────────────────────────────────────────────────────
   const [sessions, setSessions] = useState([])
-  const [logSheetOpen, setLogSheetOpen] = useState(false)
   const [composeSheetOpen, setComposeSheetOpen] = useState(false)
   const [journalModalOpen, setJournalModalOpen] = useState(false)
-  const [statusSheetOpen, setStatusSheetOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
   // RatingSheet — opened FIRST when either status-setting surface below
   // (the pill grid or AddToListButton's hidden sheet) sets status to
@@ -438,9 +530,7 @@ function GameDetail() {
       refreshRatingDistribution()
       refreshFollowedRatings()
       refreshSessions()
-      getCirclePulseForGame(gameId)
-        .then((p) => setCirclePulse(p))
-        .catch(() => {})
+      refreshCirclePulse()
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
@@ -449,38 +539,10 @@ function GameDetail() {
     refreshFromStore,
     refreshReviews,
     refreshRatingDistribution,
+    refreshCirclePulse,
     refreshFollowedRatings,
     refreshSessions,
   ])
-
-  // ── LogSheet — logging a NEW session. Reused everywhere: status sheet's
-  // Log Play and the sessions page's + button all open this same sheet,
-  // always pre-attached to this page's `game`. ────────────
-  const openLogSheet = useCallback(() => {
-    setLogSheetOpen(true)
-  }, [])
-
-  const handleLogSheetSubmit = useCallback(({ game: targetGame, hours, notes, mood }) => {
-    logSession({
-      gameId: targetGame.id,
-      hours,
-      notes,
-      mood,
-      gameTitle: targetGame.title,
-      gameImage: targetGame.image,
-    }).then((result) => {
-      if (result) {
-        hapticImpact('Medium')
-        refreshSessions()
-        showToast(`Logged ${hours}h of ${targetGame.title}`, 'success')
-      } else {
-        showToast('Could not log session — try again', 'error', 5000, {
-          label: 'Retry',
-          onClick: () => handleLogSheetSubmit({ game: targetGame, hours, notes, mood }),
-        })
-      }
-    })
-  }, [refreshSessions])
 
   const openReviewComposer = useCallback((reviewShape) => {
     navigate(`/review/new?gameId=${gameId}`, {
@@ -564,7 +626,7 @@ function GameDetail() {
             aria-hidden="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.28 }}
+            transition={backdropTransition}
           />
           <div className="gd-hero">
             <div className="gd-hero-topbar">
@@ -694,16 +756,21 @@ function GameDetail() {
            gradient shows through with no seam. pointer-events: none so it
            never blocks taps.
 
-           Wrapped in motion.div with a 280ms opacity fade so the
-           dominant-color glow blooms in WHILE the cover-to-hero
-           layoutId flight is still in motion (per spec). */}
+           Wrapped in motion.div with an opacity fade timed to MATCH the
+           page's own entrance tween (backdropTransition, above) rather than
+           its own independent 280ms — the two now finish together instead
+           of the backdrop's fade trailing on past the page settling, which
+           was part of what read as choppy on a cold game. Still blooms in
+           WHILE the cover-to-hero layoutId flight is in motion (per spec);
+           it's just no longer a second, differently-timed animation
+           racing the page tween. */}
       <motion.div
         className="gd-color-backdrop"
         style={backdropStyle}
         aria-hidden="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.28 }}
+        transition={backdropTransition}
       />
 
       {/* ── Hero Section ── */}
@@ -718,17 +785,6 @@ function GameDetail() {
           <button className="gd-glass-btn" onClick={() => navigate(-1)} aria-label="Go back">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button
-            className="gd-glass-btn"
-            onClick={() => setStatusSheetOpen(true)}
-            aria-label="More status options: log play, add to a custom list"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="5" r="1.5" />
-              <circle cx="12" cy="12" r="1.5" />
-              <circle cx="12" cy="19" r="1.5" />
             </svg>
           </button>
           <button className="gd-glass-btn" onClick={handleShare} aria-label="Share">
@@ -796,17 +852,6 @@ function GameDetail() {
             )
           })}
         </div>
-        {/* Hidden sheet — same unchanged 4-status picker, plus Log play and
-             custom lists, still reachable via the overflow button in the
-             hero topbar above. */}
-        <AddToListButton
-          game={game}
-          variant="hidden"
-          forceOpen={statusSheetOpen}
-          onForceClose={() => setStatusSheetOpen(false)}
-          onLogPlay={openLogSheet}
-          onRequestPlayed={() => setRatingSheetOpen(true)}
-        />
       </div>
 
       {/* ── Session + community stat strip — one bordered container, two
@@ -1240,22 +1285,36 @@ function GameDetail() {
         </div>
 
         {/* More Like This — deliberately held back until the real
-             genreIds/themeIds land: SimilarGamesRow's own fetch effect only
-             re-runs on `gameId`, so mounting it early against the stub's
-             empty genreIds/themeIds would fetch once with no genre/theme
-             filter and never correct itself once the real ones arrive.
+             genreIds/themeIds/similarGameIds land: SimilarGamesRow's own
+             fetch effect only re-runs on gameId/genreIds/themeIds/
+             similarGameIds, so mounting it early against the stub's empty
+             values would fetch once with nothing to resolve/filter on and
+             never correct itself once the real ones arrive.
              SimilarGamesRow self-fetches (and shows its own cover-skeleton
              row) in parallel with the rest of the page once mounted, and
              renders null (incl. header/divider) if it comes back empty.
+             similarGameIds is IGDB's own `similar_games` relation for this
+             game — already fetched by getGameById as part of the normal
+             game load, never re-fetched here — and is the primary source
+             fetchSimilarGamesForRow resolves from, falling back to the
+             genre/theme query only when it's sparse/empty.
              "See all" reuses the same /browse/:categoryKey destination as
              the Genres chips above (CategoryResults) — there is no
              dedicated "all similar games" page today, so this is the
-             closest real destination rather than a dead link. */}
-        {!loading && (
+             closest real destination rather than a dead link.
+
+             perf: also held back until the page transition completes —
+             mounting fires SimilarGamesRow's own IGDB fetch (which can
+             retry a second time internally if its first query comes back
+             empty, see fetchSimilarGamesForRow), so on a cold game this
+             used to start competing with the entrance tween for the main
+             thread on top of everything else. */}
+        {!loading && transitionComplete && (
           <SimilarGamesRow
             gameId={gameId}
             genreIds={game.genreIds || []}
             themeIds={game.themeIds || []}
+            similarGameIds={game.similarGameIds || []}
             onSeeAll={
               game.genres.length > 0
                 ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
@@ -1265,16 +1324,6 @@ function GameDetail() {
         )}
 
       </div>
-
-      {/* ── LogSheet — the one log-a-NEW-session surface. Opened by the
-           status sheet's Log Play and the history sheet's + button,
-           always pre-attached to this game. ── */}
-      <LogSheet
-        isOpen={logSheetOpen}
-        onClose={() => setLogSheetOpen(false)}
-        game={game}
-        onLogIt={handleLogSheetSubmit}
-      />
 
       {/* ── Compose action sheet: Write review / Add to journal ── */}
       <ActionSheet

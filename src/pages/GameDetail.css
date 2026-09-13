@@ -339,9 +339,8 @@
 /* =====================================================
    STATUS TILE GRID — the four-way, mutually-exclusive status
    control (Backlog / Playing / Played / Dropped) rendered as
-   four equal-width square tiles, plus a "more" trigger for Log
-   play + custom lists. Sits directly under the title, above
-   the fold.
+   four equal-width square tiles. Sits directly under the title,
+   above the fold.
    ===================================================== */
 .gd-status-row {
   position: relative;
