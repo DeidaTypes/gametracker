@@ -96,12 +96,10 @@ import BioEditModal from '../components/BioEditModal'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
-import PinnedListsSection from '../components/PinnedListsSection'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
 import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
-import ProfileActivityGlimpse from '../components/ProfileActivityGlimpse'
 import BadgesRow from '../components/BadgesRow'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
@@ -1921,12 +1919,9 @@ function Profile() {
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
-                  activities={activities}
                   onGameClick={(id, image) =>
                     navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
                   }
-                  onNavigate={navigate}
-                  onSeeAllActivity={() => navigate(`/user/${profilePathSegment}/activity`)}
                   onSeeMoreBadges={() => navigate(`/user/${profilePathSegment}/badges`)}
                   profilePathSegment={profilePathSegment}
                   user={user}
@@ -1936,14 +1931,11 @@ function Profile() {
                   onReorderFavorites={handleReorderFavorites}
                   onShareFavorites={handleShareFavorites}
                   favSharing={favSharing}
-                  pinnedLists={pinnedLists}
-                  onListsChevron={() => setActiveTab('lists')}
                   allReviews={allReviews}
                   onReviewTap={(id) => navigate(`/review/${id}`)}
                   goalProgress={goalProgress}
                   rivalryData={rivalryData}
                   onSetGoal={() => setGoalSheetOpen(true)}
-                  profileLoading={profileLoading}
                 />
               )}
 
@@ -2194,7 +2186,7 @@ function ProfileChallengeSection({
           </span>
           <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
         </ChallengeCard>
-      ) : (
+      ) : onSetGoal ? (
         <div className="profile-challenge">
           <GoalRing
             current={0}
@@ -2216,7 +2208,7 @@ function ProfileChallengeSection({
             </button>
           </div>
         </div>
-      )}
+      ) : null}
       {mergeBadges && (
         <BadgesRow
           embedded
@@ -2304,20 +2296,14 @@ function ProfileFavoritesSection({
   )
 }
 
-function HomeTab(props) {
-  if (props.isOwnProfile) {
-    return <OwnProfileHomeTab {...props} />
-  }
-  return <VisitorProfileHomeTab {...props} />
-}
-
-function OwnProfileHomeTab({
+function HomeTab({
   favoriteGames,
   onGameClick,
   onSeeMoreBadges,
   profilePathSegment,
   user,
   targetUserId,
+  isOwnProfile,
   onEditFavorites,
   onReorderFavorites,
   onShareFavorites,
@@ -2343,25 +2329,28 @@ function OwnProfileHomeTab({
   const ratedCount = (allReviews || []).filter((r) => Number(r.rating) > 0).length
   const ratingsVisible = ratedCount >= MIN_RATINGS_FOR_CHART
   const showTasteRatingsCard = tasteLoading || tasteVisible || ratingsVisible
+  // Own profile always shows the challenge cell (Set Goal when empty).
+  // Visitors only see it while loading or when the owner has a public goal.
+  const showChallengeSection = isOwnProfile || goalProgress === null || hasGoal
 
   return (
     <div className="profile-home profile-home--condensed">
       <ProfileFavoritesSection
         favoriteGames={favoriteGames}
-        isOwnProfile
+        isOwnProfile={isOwnProfile}
         onShareFavorites={onShareFavorites}
         favSharing={favSharing}
         onEditFavorites={onEditFavorites}
         onGameClick={onGameClick}
         onReorderFavorites={onReorderFavorites}
-        compactEmpty
+        compactEmpty={isOwnProfile}
       />
 
       {showTasteRatingsCard && (
         <section className="profile-home__section profile-home__section--card profile-home__taste-rate">
           <ProfileTasteDNA
             userId={targetUserId}
-            isOwnProfile
+            isOwnProfile={isOwnProfile}
             embedded
             onResolved={handleTasteResolved}
           />
@@ -2376,66 +2365,7 @@ function OwnProfileHomeTab({
         </section>
       )}
 
-      <ProfileChallengeSection
-        goalProgress={goalProgress}
-        profilePathSegment={profilePathSegment}
-        circleRank={circleRank}
-        remaining={remaining}
-        hasGoal={hasGoal}
-        currentYear={currentYear}
-        onSetGoal={onSetGoal}
-        mergeBadges
-        badgesUserId={user?.id}
-        onSeeMoreBadges={onSeeMoreBadges}
-      />
-    </div>
-  )
-}
-
-function VisitorProfileHomeTab({
-  favoriteGames,
-  activities,
-  onGameClick,
-  onNavigate,
-  onSeeAllActivity,
-  onSeeMoreBadges,
-  profilePathSegment,
-  user,
-  targetUserId,
-  isOwnProfile,
-  onEditFavorites,
-  onReorderFavorites,
-  onShareFavorites,
-  favSharing,
-  pinnedLists,
-  onListsChevron,
-  allReviews,
-  onReviewTap,
-  goalProgress,
-  rivalryData,
-  onSetGoal,
-  profileLoading,
-}) {
-  const { currentYear, circleRank, hasGoal, remaining } = useProfileChallengeMeta(
-    goalProgress,
-    rivalryData
-  )
-
-  return (
-    <div className="profile-home">
-      <ProfileTasteDNA userId={targetUserId} isOwnProfile={isOwnProfile} />
-
-      <ProfileFavoritesSection
-        favoriteGames={favoriteGames}
-        isOwnProfile={isOwnProfile}
-        onShareFavorites={onShareFavorites}
-        favSharing={favSharing}
-        onEditFavorites={onEditFavorites}
-        onGameClick={onGameClick}
-        onReorderFavorites={onReorderFavorites}
-      />
-
-      {(isOwnProfile || hasGoal) && (
+      {showChallengeSection && (
         <ProfileChallengeSection
           goalProgress={goalProgress}
           profilePathSegment={profilePathSegment}
@@ -2443,28 +2373,12 @@ function VisitorProfileHomeTab({
           remaining={remaining}
           hasGoal={hasGoal}
           currentYear={currentYear}
-          onSetGoal={onSetGoal}
+          onSetGoal={isOwnProfile ? onSetGoal : undefined}
+          mergeBadges={isOwnProfile}
+          badgesUserId={isOwnProfile ? user?.id : null}
+          onSeeMoreBadges={onSeeMoreBadges}
         />
       )}
-
-      <ProfileRatingsChart reviews={allReviews} onReviewTap={onReviewTap} />
-
-      <BadgesRow
-        userId={isOwnProfile ? user?.id : null}
-        onSeeMore={onSeeMoreBadges}
-      />
-
-      <PinnedListsSection
-        pinnedLists={pinnedLists}
-        onSeeAll={onListsChevron}
-      />
-
-      <ProfileActivityGlimpse
-        activities={activities}
-        loading={profileLoading}
-        onSeeAll={onSeeAllActivity}
-        onItemClick={onNavigate}
-      />
     </div>
   )
 }

@@ -540,7 +540,7 @@
   gap: var(--spacing-lg);
 }
 
-/* Own profile — tighter rhythm below the tabs (S15-6). */
+/* Profile Home tab — tighter rhythm below the tabs (S15-6). */
 .profile-home--condensed {
   gap: var(--spacing-md);
 }
