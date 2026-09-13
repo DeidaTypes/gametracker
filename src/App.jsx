@@ -91,6 +91,7 @@ import { NudgesProvider } from './contexts/NudgesContext'
 import { SessionProvider } from './contexts/SessionContext'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
+import KeyboardDismissBar from './components/KeyboardDismissBar'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import { useAppResume } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -1454,6 +1455,11 @@ function App() {
                   without touching the DB notifications inbox. */}
               <NudgesProvider>
               <AppContent />
+              {/* One shared keyboard Done bar for every text surface.
+                  Portals to document.body; visibility is driven by
+                  body.keyboard-open. Mounted here so auth / onboarding
+                  / AppContent early-return still have it. */}
+              <KeyboardDismissBar />
               <ToastHost />
               {/* Mounted once at the root so first-time-Played transitions from
                   anywhere in the app (Game Detail, AddToListButton, future

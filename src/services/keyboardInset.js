@@ -33,9 +33,11 @@ import { Capacitor } from '@capacitor/core'
 // because it renders as a floating pill (prev/next chevrons + a checkmark)
 // that sits on top of whatever is anchored flush above the keyboard — which,
 // once the comment composers were anchored there, meant it visually
-// overlapped the composer on every comment screen. The app's own composer
-// already provides its own dismiss affordance, so the native bar is
-// redundant on top of being a visual bug.
+// overlapped the composer on every comment screen.
+//
+// Dismiss is owned by the app-level KeyboardDismissBar instead. Native
+// inset therefore reserves DISMISS_BAR_PX so composers / sheets / scroll
+// pads lift above that bar rather than sitting under it.
 //
 // ACCESSORY_BAR_PX stays only for the web/PWA path below: outside Capacitor
 // (setAccessoryBarVisible is a native-only no-op there), mobile Safari can
@@ -43,6 +45,13 @@ import { Capacitor } from '@capacitor/core'
 // doesn't report, so that measurement still needs the pad regardless of the
 // native setting above.
 const ACCESSORY_BAR_PX = 44
+
+// Must match --kb-dismiss-bar-height (var(--space-40)) in keyboard.css.
+const DISMISS_BAR_PX = 40
+
+// Cached @capacitor/keyboard module. Filled by initKeyboardInset; hideKeyboard
+// also fills it lazily so a dismiss tap before init finishes still works.
+let keyboardApi = null
 
 let keyboardVisible = false
 // px from @capacitor/keyboard. Authoritative on iOS, where visualViewport
@@ -95,9 +104,10 @@ function measureFromViewport() {
 function recompute() {
   if (typeof document === 'undefined') return
 
-  // Native iOS: trust the plugin's reported frame height.
+  // Native iOS: trust the plugin's reported frame height, then reserve
+  // room for KeyboardDismissBar so lifted composers sit above it.
   if (nativeKbHeight > 0) {
-    applyInset(nativeKbHeight)
+    applyInset(nativeKbHeight + DISMISS_BAR_PX)
     return
   }
 
@@ -178,6 +188,45 @@ export function isKeyboardOpen() {
   return keyboardVisible
 }
 
+async function getKeyboardApi() {
+  if (keyboardApi) return keyboardApi
+  try {
+    const { Keyboard } = await import('@capacitor/keyboard')
+    keyboardApi = Keyboard
+    return Keyboard
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Hide the software keyboard. Blur is not enough in WKWebView — call
+ * Capacitor's Keyboard.hide() as well. Safe on web (blur only).
+ * Does not clear input values.
+ */
+export async function hideKeyboard() {
+  const active = typeof document !== 'undefined' ? document.activeElement : null
+  if (active && typeof active.blur === 'function') {
+    const tag = active.tagName
+    if (
+      tag === 'INPUT' ||
+      tag === 'TEXTAREA' ||
+      tag === 'SELECT' ||
+      active.isContentEditable
+    ) {
+      active.blur()
+    }
+  }
+
+  const Keyboard = await getKeyboardApi()
+  if (!Keyboard || typeof Keyboard.hide !== 'function') return
+  try {
+    await Keyboard.hide()
+  } catch {
+    // web / plugin unavailable
+  }
+}
+
 /**
  * Start the single global listener set. Idempotent — safe to call more than
  * once. Called from main.jsx before React mounts so the variable always
@@ -201,14 +250,16 @@ export function initKeyboardInset() {
   ;(async () => {
     try {
       const { Keyboard } = await import('@capacitor/keyboard')
+      keyboardApi = Keyboard
 
       // OFF: this is the native input-accessory view (prev/next chevrons +
       // a Done checkmark) iOS shows above the keyboard for stepping between
       // form fields. With the comment composers anchored flush above the
       // keyboard, that native bar rendered on top of them, obscuring the
-      // app's own "Add a comment" field. The composer already has its own
-      // way to dismiss the keyboard, so there is no affordance lost by
-      // turning this off.
+      // app's own "Add a comment" field. KeyboardDismissBar is the app's
+      // dismiss control, so turning the native bar off is not a lost
+      // affordance — it is what lets our bar sit in a reserved gap
+      // instead of overlapping the input.
       await Keyboard.setAccessoryBarVisible({ isVisible: false })
 
       await Keyboard.addListener('keyboardWillShow', (info) => {

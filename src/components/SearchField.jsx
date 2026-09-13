@@ -55,6 +55,7 @@ const SearchField = forwardRef(function SearchField(
   return (
     <div
       className={`search-field${hasValue ? ' search-field--has-value' : ''}${className ? ` ${className}` : ''}`}
+      data-kb-keep
     >
       <svg
         className="search-field__icon"
