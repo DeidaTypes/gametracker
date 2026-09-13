@@ -69,6 +69,13 @@
   opacity: 0.6;
 }
 
+.explore-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-shrink: 0;
+}
+
 @media (min-width: 769px) {
   .explore-header {
     padding-left: 48px;
@@ -262,17 +269,10 @@
    DISCOVER — section header with text toggle
    ============================================= */
 
-.discover-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
 /* Gradient heading — purple → cobalt (--grad-explore-headline), Explore's
    own identity, parallel to Home's --grad-headline. Falls back to solid
    --color-text-primary if background-clip:text isn't supported. Shared
-   by every Explore section header (Swipe to discover, Collections). */
+   by Explore section headers (Collections, New & Notable, etc.). */
 .discover-section-title {
   font-family: var(--font-body);
   font-size: var(--font-size-title);

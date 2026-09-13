@@ -67,26 +67,25 @@ function Explore() {
       {/* ── Page header ── */}
       <div className="explore-header">
         <h1 className="explore-header__title">Discover</h1>
-        <button
-          type="button"
-          className="explore-search-btn"
-          onClick={() => navigate('/search')}
-          aria-label="Search"
-        >
-          <Search size={22} aria-hidden="true" />
-        </button>
-      </div>
-
-      {/* ── 1. Swipe to discover — full-catalog, all-genres deck ── */}
-      <section className="explore-section explore-section--swipe-deck">
-        <div className="explore-section__pad discover-section-header">
-          <h2 className="discover-section-title">Swipe to discover</h2>
+        <div className="explore-header__actions">
           {addedTonight > 0 && (
-            <span className="discover-payoff-indicator">
+            <span className="discover-payoff-indicator" aria-live="polite">
               {addedTonight} added tonight
             </span>
           )}
+          <button
+            type="button"
+            className="explore-search-btn"
+            onClick={() => navigate('/search')}
+            aria-label="Search"
+          >
+            <Search size={22} aria-hidden="true" />
+          </button>
         </div>
+      </div>
+
+      {/* ── 1. Swipe deck — full-catalog, all-genres deck ── */}
+      <section className="explore-section explore-section--swipe-deck">
         <SwipeDeck />
       </section>
 
