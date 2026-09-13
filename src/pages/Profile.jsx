@@ -15,7 +15,6 @@ import {
   LuShare2,
   LuPin,
   LuArrowUpDown,
-  LuPlus,
   LuUserPen,
   LuSparkles,
   LuMessageCircle,
@@ -90,10 +89,11 @@ import SetGoalSheet from '../components/SetGoalSheet'
 import ReviewCard from '../components/ReviewCard'
 import ListCoverCluster from '../components/ListCoverCluster'
 import EmptyState from '../components/EmptyState'
+import FavoriteGamesRow from '../components/FavoriteGamesRow'
 import ReorderPinsModal from '../components/ReorderPinsModal'
 import SortSheet from '../components/SortSheet'
 import BioEditModal from '../components/BioEditModal'
-import SharedCover, { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
+import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import PinnedListsSection from '../components/PinnedListsSection'
@@ -1136,6 +1136,20 @@ function Profile() {
     }
   }
 
+  const handleReorderFavorites = (newFavorites) => {
+    const previous = profile?.favoriteGames || []
+    const updated = updateProfile({ favoriteGames: newFavorites })
+    setProfile(updated)
+    window.dispatchEvent(new Event('profileUpdated'))
+    if (!user?.id) return
+    updateUserProfile(user.id, { favoriteGames: newFavorites }).catch(() => {
+      const rolled = updateProfile({ favoriteGames: previous })
+      setProfile(rolled)
+      window.dispatchEvent(new Event('profileUpdated'))
+      showToast('Failed to save new order. Please try again.', 'error')
+    })
+  }
+
   const handleShareFavorites = useCallback(async () => {
     if (favSharing === 'generating') return
     setFavSharing('generating')
@@ -1866,6 +1880,7 @@ function Profile() {
                   targetUserId={targetUserId}
                   isOwnProfile={isOwnProfile}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
+                  onReorderFavorites={handleReorderFavorites}
                   onShareFavorites={handleShareFavorites}
                   favSharing={favSharing}
                   pinnedLists={pinnedLists}
@@ -2063,6 +2078,7 @@ function HomeTab({
   targetUserId,
   isOwnProfile,
   onEditFavorites,
+  onReorderFavorites,
   onShareFavorites,
   favSharing,
   pinnedLists,
@@ -2145,53 +2161,14 @@ function HomeTab({
               onCta={onEditFavorites}
             />
           ) : (
-            <div className="profile-favorites-row" role="list">
-              {favoriteGames.slice(0, MAX_FAVORITE_SLOTS).map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  role="listitem"
-                  className="profile-favorite-card"
-                  onClick={() => onGameClick(g.id, g.image)}
-                >
-                  <div className="profile-favorite-card__cover">
-                    {g.image ? (
-                      <SharedCover gameId={g.id} imageSrc={g.image}>
-                        <img src={g.image} alt={g.title} loading="lazy" />
-                      </SharedCover>
-                    ) : (
-                      <span className="profile-favorite-card__fallback">
-                        {g.title?.charAt(0) || '?'}
-                      </span>
-                    )}
-                  </div>
-                  <span className="profile-favorite-card__name">{g.title}</span>
-                  {g.developer && (
-                    <span className="profile-favorite-card__dev">
-                      {g.developer}
-                    </span>
-                  )}
-                  {g.why && (
-                    <span className="profile-favorite-card__why">
-                      {g.why}
-                    </span>
-                  )}
-                </button>
-              ))}
-              {isOwnProfile && favoriteGames.length < MAX_FAVORITE_SLOTS && (
-                <button
-                  type="button"
-                  role="listitem"
-                  className="profile-favorite-card profile-favorite-card--add"
-                  onClick={onEditFavorites}
-                  aria-label="Add a favorite game"
-                >
-                  <span className="profile-favorite-card__cover profile-favorite-card__cover--add">
-                    <LuPlus size={22} aria-hidden="true" />
-                  </span>
-                </button>
-              )}
-            </div>
+            <FavoriteGamesRow
+              games={favoriteGames.slice(0, MAX_FAVORITE_SLOTS)}
+              isOwnProfile={isOwnProfile}
+              onGameClick={onGameClick}
+              onAdd={onEditFavorites}
+              showAddSlot={isOwnProfile && favoriteGames.length < MAX_FAVORITE_SLOTS}
+              onReorder={onReorderFavorites}
+            />
           )}
         </section>
       )}
