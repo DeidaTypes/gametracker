@@ -53,6 +53,7 @@
 .hcp-cover-wrap,
 .hcp-mini-cover-wrap,
 .stats-top-cover,
-.profile-favorite-card__cover {
+.profile-favorite-card__cover,
+.lib-gamerow-cover {
   position: relative;
 }

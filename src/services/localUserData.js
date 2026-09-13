@@ -64,6 +64,7 @@ const RAW_LOCAL_STORAGE_KEYS = [
   'gt:shares-count', // src/hooks/useUserStats.js
   'gt:reactions:v1', // src/components/ActivityTimeline.jsx — reactions keyed by activity id
   'gt:profile-sort:v1', // src/pages/Profile.jsx — reviews-tab sort preference
+  'gt:library-view:v1', // src/components/library/libraryConstants.js — Library grid/list view
   'gt:recents:v1', // src/utils/recentSearches.js — per-tab Search screen recents
   'gameWishlist', // src/pages/Wishlist.jsx
 ]

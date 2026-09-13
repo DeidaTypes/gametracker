@@ -20,6 +20,7 @@ import './ActionSheet.css'
  *   title        – optional string rendered as a heading above items
  *   items        – Array<Item>, where Item is one of:
  *                    { divider: true }  — a thin group separator
+ *                    { heading: string } — non-interactive section label
  *                    {
  *                      label, onClick, disabled?, destructive?,
  *                      icon?      – JSX rendered inside a tinted tile.
@@ -103,6 +104,10 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
                     className="action-sheet__divider"
                     aria-hidden="true"
                   />
+                ) : item.heading ? (
+                  <p key={idx} className="action-sheet__heading">
+                    {item.heading}
+                  </p>
                 ) : (
                   <button
                     key={idx}

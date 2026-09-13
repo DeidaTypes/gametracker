@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LuChevronLeft } from 'react-icons/lu'
 import { Gamepad2, Lock, List, FilterX } from 'lucide-react'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { getGameTrackersForUser } from '../services/statsService'
@@ -10,7 +9,7 @@ import { getListsForUser, getSaveCountsForLists } from '../services/listService'
 import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from '../components/EmptyState'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
-import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE } from '../components/library/libraryConstants'
+import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeLibraryView } from '../components/library/libraryConstants'
 import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
 import LibraryHeader from '../components/library/LibraryHeader'
 import LibraryTabs from '../components/library/LibraryTabs'
@@ -84,6 +83,7 @@ function UserLibrary() {
   const [activeTab, setActiveTab] = useState('games')
   const [activeStatus, setActiveStatus] = useState(null)
   const [sortKey, setSortKey] = useState('recent')
+  const [viewKey, setViewKey] = useState(readLibraryView)
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const {
@@ -300,16 +300,7 @@ function UserLibrary() {
 
         <LibraryHeader
           title={pageTitle}
-          back={
-            <button
-              type="button"
-              className="lib-back"
-              onClick={() => navigate(-1)}
-              aria-label="Go back"
-            >
-              <LuChevronLeft size={22} aria-hidden="true" />
-            </button>
-          }
+          onBack={() => navigate(-1)}
           actions={
             !notFound && !missingProfileId ? (
               <LibrarySearchToggle open={searchOpen} onToggle={toggleSearch} />
@@ -397,6 +388,7 @@ function UserLibrary() {
                   ) : (
                     <LibraryGameGrid
                       games={visibleGames}
+                      view={viewKey}
                       hasMore={hasMore}
                       onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
                       ariaLabel={`${displayName || 'Player'}'s games`}
@@ -450,6 +442,11 @@ function UserLibrary() {
           onClose={() => setShowSortSheet(false)}
           sortKey={sortKey}
           onSelect={setSortKey}
+          viewKey={viewKey}
+          onViewSelect={(key) => {
+            setViewKey(key)
+            writeLibraryView(key)
+          }}
         />
       </div>
     </SharedCoverScope>

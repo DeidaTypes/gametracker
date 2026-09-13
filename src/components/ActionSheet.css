@@ -184,6 +184,21 @@
   margin: 8px 0;
 }
 
+/* Non-interactive group label (e.g. Sort vs View inside one sheet).
+   Matches the sheet title's caption/uppercase treatment so it reads
+   as a section, not as a fourth selectable row. */
+.action-sheet__heading {
+  margin: 0;
+  padding: var(--space-8) var(--space-20) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
 .action-sheet__item--cancel {
   justify-content: center;
   text-align: center;

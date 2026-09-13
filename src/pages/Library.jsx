@@ -25,14 +25,14 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE } from '../components/library/libraryConstants'
+import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeLibraryView } from '../components/library/libraryConstants'
 import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
 import LibraryHeader from '../components/library/LibraryHeader'
 import LibraryTabs from '../components/library/LibraryTabs'
 import LibraryStatBar from '../components/library/LibraryStatBar'
 import LibrarySortRow from '../components/library/LibrarySortRow'
 import LibrarySortSheet from '../components/library/LibrarySortSheet'
-import LibraryGameGrid, { LibraryGameCard } from '../components/library/LibraryGameGrid'
+import LibraryGameGrid, { LibraryGameCard, LibraryGameRow } from '../components/library/LibraryGameGrid'
 import LibraryListsPanel from '../components/library/LibraryListsPanel'
 import {
   useLibrarySearch,
@@ -115,7 +115,13 @@ function Library() {
     inputRef: searchInputRef,
   } = useLibrarySearch()
   const [sortKey, setSortKey] = useState('recent')
+  const [viewKey, setViewKey] = useState(readLibraryView)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  const handleViewSelect = useCallback((key) => {
+    setViewKey(key)
+    writeLibraryView(key)
+  }, [])
 
   // @formkit/auto-animate only animates children ADDED/REMOVED/reordered
   // AFTER the ref is attached — whatever is already in the DOM at attach
@@ -922,6 +928,7 @@ function Library() {
               ) : (
                 <LibraryGameGrid
                   games={visibleGames}
+                  view={viewKey}
                   gridRef={gridRef}
                   dragging={dragGameId != null}
                   hasMore={hasMore}
@@ -931,12 +938,39 @@ function Library() {
                     const isDragged = dragGameId === g.id
                     const isRemoving = removingGameId === g.id
                     const isRestoring = restoringGameId === g.id
+                    const onOpen = () => {
+                      if (suppressClickRef.current) {
+                        suppressClickRef.current = false
+                        return
+                      }
+                      navigate(`/game/${g.id}`, { state: getGameNavStub(g) })
+                    }
+                    const dragProps = {
+                      cardRef: (el) => { if (el) itemEls.current[g.id] = el },
+                      coverRef: (el) => { if (el) coverEls.current[g.id] = el },
+                      onClick: onOpen,
+                      onCoverPointerDown: (e) => handleCoverPointerDown(e, g),
+                      onCoverPointerMove: handleCoverPointerMove,
+                      onCoverPointerUp: handleCoverPointerUp,
+                      onCoverPointerCancel: handleCoverPointerCancel,
+                    }
+                    if (viewKey === 'list') {
+                      return (
+                        <LibraryGameRow
+                          key={g.id}
+                          game={g}
+                          isDragged={isDragged}
+                          isRemoving={isRemoving}
+                          isRestoring={isRestoring}
+                          trashArmed={trashArmed}
+                          {...dragProps}
+                        />
+                      )
+                    }
                     return (
                       <LibraryGameCard
                         key={g.id}
                         game={g}
-                        cardRef={(el) => { if (el) itemEls.current[g.id] = el }}
-                        coverRef={(el) => { if (el) coverEls.current[g.id] = el }}
                         cardClassName={`${
                           isDragged ? 'lib-gamecard--dragged' : ''
                         }${isRemoving ? ' lib-gamecard--removing' : ''}${
@@ -949,17 +983,7 @@ function Library() {
                               ? `lib-cov--lifted${trashArmed ? ' lib-cov--armed' : ''}`
                               : ''
                         }
-                        onClick={() => {
-                          if (suppressClickRef.current) {
-                            suppressClickRef.current = false
-                            return
-                          }
-                          navigate(`/game/${g.id}`, { state: getGameNavStub(g) })
-                        }}
-                        onCoverPointerDown={(e) => handleCoverPointerDown(e, g)}
-                        onCoverPointerMove={handleCoverPointerMove}
-                        onCoverPointerUp={handleCoverPointerUp}
-                        onCoverPointerCancel={handleCoverPointerCancel}
+                        {...dragProps}
                       />
                     )
                   }}
@@ -1036,6 +1060,8 @@ function Library() {
           onClose={() => setShowSortSheet(false)}
           sortKey={sortKey}
           onSelect={setSortKey}
+          viewKey={viewKey}
+          onViewSelect={handleViewSelect}
         />
       </div>
       </PullToRefresh>
