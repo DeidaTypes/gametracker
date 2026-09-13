@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Shuffle, ChevronRight, X } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './BacklogRoulette.css'
 
@@ -117,7 +118,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
   const handleViewGame = () => {
     if (!winner) return
     onClose()
-    navigate(`/game/${winner.id}`, { state: { coverImage: winner.image } })
+    navigate(`/game/${winner.id}`, { state: getGameNavStub(winner) })
   }
 
   const finalY = -(STRIP_LEN - 1) * ITEM_H

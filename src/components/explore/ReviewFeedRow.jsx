@@ -6,6 +6,7 @@ import SharedCover from '../SharedCover'
 import SpoilerOverlay from '../SpoilerOverlay'
 import { useAuth } from '../../contexts/AuthContext'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './ReviewFeedRow.css'
 
 function timeAgo(timestamp) {
@@ -84,7 +85,7 @@ function ReviewFeedRow({ review }) {
     // Try to deep-link to the specific review on the game detail page.
     // GameDetail will scroll to it if it can, otherwise it just lands on the page.
     navigate(`/game/${v.gameId}?review=${encodeURIComponent(v.id || '')}`, {
-      state: { coverImage: img },
+      state: getGameNavStub({ title: v.gameTitle, coverImage: img }),
     })
   }
 

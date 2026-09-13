@@ -7,6 +7,7 @@ import EmptyState from '../components/EmptyState'
 import { getBestImageUrl } from '../services/imageUtils'
 import { getMostPlayed, getUnfinished, getTopRated } from '../services/smartListService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './SmartListDetail.css'
 
 const LIST_CONFIG = {
@@ -94,7 +95,7 @@ function SmartListDetail() {
                 className="sld-item"
                 onClick={() =>
                   navigate(`/game/${game.id}`, {
-                    state: { coverImage: imgUrl },
+                    state: { ...getGameNavStub(game), coverImage: imgUrl },
                   })
                 }
               >

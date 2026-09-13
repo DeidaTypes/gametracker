@@ -4,6 +4,7 @@ import { Bookmark, ChevronRight, Shuffle } from 'lucide-react'
 import SharedCover from './SharedCover'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import BacklogRoulette from './BacklogRoulette'
 import './HomeShelf.css'
 
@@ -85,7 +86,7 @@ function BacklogSection({ games = [], onAddGame }) {
             role="listitem"
             className="backlog-peek-card"
             onClick={() =>
-              navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
+              navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
             }
             aria-label={game.title}
           >

@@ -21,6 +21,7 @@ import {
 } from '../services/statsService'
 import SharedCover, { SharedCoverScope } from '../components/SharedCover'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './Stats.css'
 
 /**
@@ -221,7 +222,7 @@ function MostPlayedBars({ topByHours, onGameClick }) {
           <li key={g.id} className="stats-top-row">
             <button
               className="stats-top-row-btn"
-              onClick={() => onGameClick(g.id, g.image)}
+              onClick={() => onGameClick(g)}
               aria-label={`${g.title} — ${g.hours} hours`}
             >
               <span className="stats-top-rank">{i + 1}</span>
@@ -503,8 +504,8 @@ function Stats() {
     formatMemberSince(localProfile?.createdAt) ||
     'this year'
 
-  const handleGameClick = (id, image) =>
-    navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
+  const handleGameClick = (game) =>
+    navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
 
   const possessive = displayName.endsWith('s') ? `${displayName}'` : `${displayName}'s`
 

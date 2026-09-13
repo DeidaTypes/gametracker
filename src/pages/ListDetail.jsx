@@ -19,6 +19,7 @@ import SharedCover from '../components/SharedCover'
 import Pressable from '../components/Pressable'
 import { getBestImageUrl } from '../services/imageUtils'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import AddGamesModal from '../components/AddGamesModal'
 import ActionSheet from '../components/ActionSheet'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
@@ -1382,12 +1383,16 @@ function ListDetail() {
                           suppressClickRef.current = false
                           return
                         }
-                        navigate(`/game/${game.id}`, { state: { coverImage: imageUrl } })
+                        navigate(`/game/${game.id}`, {
+                          state: { ...getGameNavStub(game), coverImage: imageUrl },
+                        })
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          navigate(`/game/${game.id}`, { state: { coverImage: imageUrl } })
+                          navigate(`/game/${game.id}`, {
+                            state: { ...getGameNavStub(game), coverImage: imageUrl },
+                          })
                         }
                       }}
                       aria-label={`View ${game.title}`}

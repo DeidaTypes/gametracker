@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import StarRatingDisplay from '../components/StarRatingDisplay'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './Reviews.css'
 
 function Reviews() {
@@ -45,7 +46,7 @@ function Reviews() {
   const handleReviewClick = (review) => {
     navigate(
       `/game/${review.igdb_game_id}?review=${encodeURIComponent(review.id)}`,
-      review.game_image ? { state: { coverImage: review.game_image } } : undefined
+      { state: getGameNavStub(review) }
     )
   }
 

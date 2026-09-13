@@ -106,6 +106,7 @@ import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './Profile.css'
 
 /* ============================================================
@@ -1919,8 +1920,8 @@ function Profile() {
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
-                  onGameClick={(id, image) =>
-                    navigate(`/game/${id}`, image ? { state: { coverImage: image } } : undefined)
+                  onGameClick={(game) =>
+                    navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
                   }
                   onSeeMoreBadges={() => navigate(`/user/${profilePathSegment}/badges`)}
                   profilePathSegment={profilePathSegment}

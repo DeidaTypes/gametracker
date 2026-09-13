@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import SectionHeader from './SectionHeader'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './ContinuePlaying.css'
 
 function ContinuePlaying({ games }) {
@@ -24,7 +25,7 @@ function ContinuePlaying({ games }) {
             <button
               key={game.id}
               className="cp-card"
-              onClick={() => navigate(`/game/${game.id}`)}
+              onClick={() => navigate(`/game/${game.id}`, { state: getGameNavStub(game) })}
             >
               <div className="cp-cover-wrap">
                 <img

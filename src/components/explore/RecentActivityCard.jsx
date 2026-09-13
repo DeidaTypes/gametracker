@@ -6,6 +6,7 @@ import StarRatingDisplay from '../StarRatingDisplay'
 import SharedCover from '../SharedCover'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { addGameToBacklog } from '../../services/libraryService'
@@ -111,7 +112,8 @@ export default function RecentActivityCard({ item }) {
   const canReact = !!item.reviewId
   const img = item.game.image || COVER_FALLBACK
 
-  const goToGame = () => navigate(`/game/${item.game.id}`)
+  const goToGame = () =>
+    navigate(`/game/${item.game.id}`, { state: getGameNavStub(item.game) })
 
   const goToReply = (e) => {
     e.stopPropagation()

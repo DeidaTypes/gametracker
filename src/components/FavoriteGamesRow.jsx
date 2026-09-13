@@ -124,7 +124,7 @@ export default function FavoriteGamesRow({
       suppressClickRef.current = false
       return
     }
-    onGameClick?.(game.id, game.image)
+    onGameClick?.(game)
   }
 
   return (

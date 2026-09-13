@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getDominantColor } from '../services/colorExtract'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import './CurrentlyPlaying.css'
 
@@ -39,7 +40,7 @@ function GameRow({ game }) {
       className="cp-page-card"
       style={tintStyle}
       onClick={() =>
-        navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
+        navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
       }
     >
       <div className="cp-page-card-cover">

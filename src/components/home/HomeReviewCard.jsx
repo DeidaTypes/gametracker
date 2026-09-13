@@ -6,6 +6,7 @@ import Avatar from '../Avatar'
 import StarRatingDisplay from '../StarRatingDisplay'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import { getSizedImageUrl } from '../../services/imageUtils'
 import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { useReactions } from '../../hooks/useReactions'
@@ -456,10 +457,7 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
   const goToGame = (e) => {
     e?.stopPropagation?.()
     if (!item.game) return
-    navigate(
-      `/game/${item.game.id}`,
-      item.game.image ? { state: { coverImage: item.game.image } } : undefined
-    )
+    navigate(`/game/${item.game.id}`, { state: getGameNavStub(item.game) })
   }
 
   const goToList = (e) => {

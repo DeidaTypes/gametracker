@@ -282,6 +282,18 @@
   margin: 0 0 4px;
 }
 
+/* Placeholder for .gd-title when a cover-only nav stub hasn't resolved a
+   real title yet. Sits beside the cover in .gd-title-text (the real
+   headrow), not in the old centered .gd-sk-body. Shimmer comes from
+   .skeleton and already respects prefers-reduced-motion in theme.css. */
+.gd-title-skel {
+  display: block;
+  width: 70%;
+  height: 32px;
+  margin: 0 0 var(--space-4);
+  border-radius: var(--radius-xs);
+}
+
 .gd-publisher {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);

@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import SharedCover from './SharedCover'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import './HomeShelf.css'
 
@@ -38,7 +39,7 @@ function RecentActivitySection({ games = [] }) {
               role="listitem"
               className="shelf-cover-card"
               onClick={() =>
-                navigate(`/game/${game.id}`, { state: { coverImage: game.image } })
+                navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
               }
               aria-label={game.title}
             >

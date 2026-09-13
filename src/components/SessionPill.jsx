@@ -7,6 +7,7 @@
 import React, { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession, useSessionElapsed } from '../contexts/SessionContext'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './SessionPill.css'
 
 function formatElapsed(seconds) {
@@ -31,7 +32,7 @@ export default function SessionPill() {
   const handleNavigate = useCallback(() => {
     if (session?.igdb_game_id) {
       navigate(`/game/${session.igdb_game_id}`, {
-        state: { coverImage: session.game_image },
+        state: getGameNavStub(session),
       })
     }
   }, [navigate, session])

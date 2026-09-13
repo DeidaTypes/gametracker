@@ -22,6 +22,7 @@ import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { completeGameWithRating } from '../services/completionService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
@@ -195,30 +196,40 @@ function GameDetail() {
   const cachedGame = peekSWR(`game:${gameId}`)
   // The "game stub" — title, year, developer, cover — that whichever grid/
   // card/row the user just tapped already had on screen and passed through
-  // via router state (see src/utils/gameNavStub.js). Only built when a
-  // title is present: a title-less stub (e.g. an older caller that still
-  // passes only `coverImage`) isn't enough to render a real hero, so that
-  // case falls through to the cover-only skeleton below, same as today.
-  // Every field a full IGDB game exposes gets a safe empty default here so
-  // downstream reads like `game.developers.length` never crash on a
-  // partially-known game.
-  const navStub = location.state?.title
-    ? {
-        id: gameId,
-        title: location.state.title,
-        year: location.state.year ?? null,
-        image: placeholderCover,
-        developers: location.state.developer ? [location.state.developer] : [],
-        publishers: [],
-        genres: [],
-        genreIds: [],
-        themes: [],
-        themeIds: [],
-        platforms: [],
-        screenshots: [],
-        description: null,
-      }
-    : null
+  // via router state (see src/utils/gameNavStub.js). getGameNavStub() safely
+  // omits whatever field a given caller doesn't have, so this is built as
+  // long as there's *anything* to seed with (a title, a coverImage on
+  // location.state, or a cached cover from a prior visit) — it no longer
+  // requires a title specifically. Callers that only pass `coverImage` (or
+  // nothing at all, relying on the recent-cover cache) used to fall through
+  // to a "cover-only" skeleton branch built for the old centered hero — that
+  // branch rendered the cover inside .gd-hero with no title-section, no
+  // status tiles, no About/reviews below, and never fell through to the
+  // real headrow layout. That branch has been removed; this partial stub
+  // now flows straight into the real render below (see the headrow hero at
+  // .gd-title-section), with a skeleton title shown wherever the caller
+  // didn't have one yet. Every field a full IGDB game exposes gets a safe
+  // empty default here so downstream reads like `game.developers.length`
+  // never crash on a partially-known game.
+  const navSeed = getGameNavStub(location.state)
+  const navStub =
+    navSeed.title || navSeed.coverImage || placeholderCover
+      ? {
+          id: gameId,
+          title: navSeed.title || null,
+          year: navSeed.year ?? null,
+          image: navSeed.coverImage || placeholderCover,
+          developers: navSeed.developer ? [navSeed.developer] : [],
+          publishers: [],
+          genres: [],
+          genreIds: [],
+          themes: [],
+          themeIds: [],
+          platforms: [],
+          screenshots: [],
+          description: null,
+        }
+      : null
   const [game, setGame] = useState(cachedGame ?? navStub ?? null)
   const [loading, setLoading] = useState(cachedGame === undefined)
   const [error, setError] = useState(null)
@@ -602,67 +613,19 @@ function GameDetail() {
   }
 
   // Only the truly-cold path (no SWR cache AND no usable stub — a deep
-  // link, or an older caller that hasn't been updated to pass a stub yet)
-  // still gates the whole page on `loading`. The moment `game` is set —
-  // whether from cache or from a passed-through stub — we fall through to
-  // the real return below and render the real hero immediately; `loading`
-  // from that point on only affects the sections further down the page
-  // that a stub genuinely can't provide (see hasDescription / hasDetails /
-  // the screenshots + similar-games gates further down).
+  // link, or a navigation with no title, no coverImage, and nothing in the
+  // recent-cover cache) still gates the whole page on `loading`. The moment
+  // `game` is set — whether from cache or from a passed-through stub, full
+  // or partial — we fall through to the real return below and render the
+  // real headrow hero immediately; `loading` from that point on only
+  // affects the sections further down the page that a stub genuinely can't
+  // provide (see hasDescription / hasDetails / the screenshots +
+  // similar-games gates further down). A caller that only had a cover
+  // (no title) no longer has a separate branch here — `navStub` above
+  // already builds a partial stub for that case, so it renders through the
+  // same real layout as a full stub, just with a skeleton title until
+  // getGameById resolves.
   if (loading && !game) {
-    // If we know the cover image from the navigation source (state or
-    // recent-cover cache) but not a full stub — e.g. an older caller that
-    // still only passes `coverImage` — render a real hero with the shared
-    // layoutId so the cover-to-hero flight has somewhere to land. The
-    // detail metadata (title, description, etc.) is still skeletoned
-    // underneath until the IGDB request resolves. If no placeholder is
-    // available either (deep-link from outside the app) we fall back to
-    // the original all-skeleton state.
-    if (placeholderCover) {
-      return (
-        <div className="game-detail margins-style" aria-busy="true">
-          <motion.div
-            className="gd-color-backdrop"
-            aria-hidden="true"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={backdropTransition}
-          />
-          <div className="gd-hero">
-            <div className="gd-hero-topbar">
-              <button
-                className="gd-glass-btn"
-                onClick={() => navigate(-1)}
-                aria-label="Go back"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-            </div>
-            <div className="gd-hero-cover-wrapper">
-              <div className="gd-hero-cover">
-                <SharedCover gameId={gameId} imageSrc={placeholderCover}>
-                  <img src={placeholderCover} alt="" />
-                </SharedCover>
-              </div>
-            </div>
-          </div>
-          <div className="gd-sk-body">
-            <div className="gd-sk-title skeleton" />
-            <div className="gd-sk-subtitle skeleton" />
-            <div className="gd-sk-meta">
-              <div className="gd-sk-pill skeleton" />
-              <div className="gd-sk-pill skeleton" />
-              <div className="gd-sk-pill skeleton" />
-            </div>
-            <div className="gd-sk-desc skeleton" />
-            <div className="gd-sk-desc gd-sk-desc--short skeleton" />
-          </div>
-        </div>
-      )
-    }
-
     return (
       <div className="game-detail margins-style" aria-hidden="true">
         <div className="gd-sk-hero skeleton" />
@@ -806,14 +769,23 @@ function GameDetail() {
             <SharedCover gameId={gameId} imageSrc={game.image}>
               <img
                 src={game.image || fallbackCover}
-                alt={game.title}
+                alt={game.title || 'Game cover'}
                 onError={(e) => { e.target.src = fallbackCover }}
               />
             </SharedCover>
           </div>
         </div>
         <div className="gd-title-text">
-          <h1 className="gd-title">{game.title}</h1>
+          {/* Callers that navigated in with only a cover (no title in
+              router state, and nothing in the recent-cover cache for this
+              gameId) seed a partial stub whose `title` is null — shimmer a
+              placeholder here rather than rendering an empty <h1> until
+              getGameById resolves the real title. */}
+          {game.title ? (
+            <h1 className="gd-title">{game.title}</h1>
+          ) : (
+            <span className="gd-title-skel skeleton" aria-hidden="true" />
+          )}
           {(game.year || game.developers.length > 0) && (
             <p className="gd-subtitle">
               {[game.year, game.developers.join(', ')].filter(Boolean).join(' · ')}

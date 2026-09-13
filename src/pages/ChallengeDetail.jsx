@@ -10,6 +10,7 @@ import Pressable from '../components/Pressable'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './ChallengeDetail.css'
 
 /**
@@ -165,7 +166,7 @@ function ChallengeDetail() {
                     onClick={() =>
                       navigate(
                         `/game/${game.igdbGameId}`,
-                        game.image ? { state: { coverImage: game.image } } : undefined
+                        { state: getGameNavStub(game) }
                       )
                     }
                     aria-label={game.title ? `Open ${game.title}` : 'Open game'}

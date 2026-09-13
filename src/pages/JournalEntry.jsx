@@ -6,6 +6,7 @@ import { getJournalEntryById, deleteJournalEntry, getMoodMeta } from '../service
 import { useAuth } from '../contexts/AuthContext'
 import JournalEntryModal from '../components/JournalEntryModal'
 import { showToast } from '../components/Toast'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './JournalEntry.css'
 
 /**
@@ -269,7 +270,7 @@ function JournalEntry() {
             onClick={() =>
               navigate(
                 `/game/${entry.igdb_game_id}`,
-                entry.game_image ? { state: { coverImage: entry.game_image } } : undefined,
+                { state: getGameNavStub(entry) },
               )
             }
             aria-label={`View ${entry.game_title || 'game'} detail`}

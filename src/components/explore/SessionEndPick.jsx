@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { getGameNavStub } from '../../utils/gameNavStub'
 import './SessionEndPick.css'
 
 /**
@@ -27,7 +28,7 @@ export default function SessionEndPick({ game, sessionStats, onKeepSwiping }) {
   if (!game) return null
 
   const handleOpen = () => {
-    navigate(`/game/${game.id}`)
+    navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
   }
 
   const subline = buildSubline(game, sessionStats)
