@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from 'react'
 import { Reorder } from 'motion/react'
-import { LuX, LuSearch, LuCheck } from 'react-icons/lu'
+import { LuX, LuSearch, LuCheck, LuPencil } from 'react-icons/lu'
 import { SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
 import { getGamesFromList } from '../services/libraryService'
@@ -26,8 +26,9 @@ const MAX_FAVORITES = 4
  *   Header row: title + Done button
  *   Current selection strip — horizontal, drag-to-reorder via Framer
  *     Motion Reorder.Group. Each card has an X remove button.
- *   Why-editor — compact per-pick text inputs for an optional one-line note.
- *     Only rendered for the favorites mode (showWhy=true).
+ *   Why-editor — on-demand per-cover disclosure for an optional one-line note.
+ *     Pencil badge on each cover; one compact input expands beneath the strip.
+ *     Only in favorites mode (showWhy=true).
  *   Search input (IGDB search, identical pattern to GamePickerSheet)
  *   Scrollable body: 2-column cover grid of results (or library games
  *     when no query is typed).
@@ -66,10 +67,48 @@ function FavoritesPickerSheet({
   const [error, setError] = useState(null)
   // ID of the grid cell currently shaking (cap-exceeded feedback)
   const [shakingId, setShakingId] = useState(null)
+  // Which favorite's why-input is expanded (string id), or null
+  const [expandedWhyId, setExpandedWhyId] = useState(null)
+  const [whyDraft, setWhyDraft] = useState('')
 
   const inputRef = useRef(null)
+  const whyInputRef = useRef(null)
+  const whyEditorRef = useRef(null)
   const debounceRef = useRef(null)
   const { reduced } = useMotionPreference()
+
+  const commitWhyDraft = useCallback((id, draft) => {
+    const trimmed = draft.trim()
+    setWhyMap((prev) => {
+      const next = { ...prev }
+      if (trimmed) next[id] = trimmed
+      else delete next[id]
+      return next
+    })
+  }, [])
+
+  const collapseWhyEditor = useCallback(() => {
+    if (!expandedWhyId) return
+    commitWhyDraft(expandedWhyId, whyDraft)
+    setExpandedWhyId(null)
+    setWhyDraft('')
+  }, [expandedWhyId, whyDraft, commitWhyDraft])
+
+  const toggleWhyEditor = useCallback(
+    (id) => {
+      const key = String(id)
+      if (expandedWhyId === key) {
+        collapseWhyEditor()
+        return
+      }
+      if (expandedWhyId) {
+        commitWhyDraft(expandedWhyId, whyDraft)
+      }
+      setExpandedWhyId(key)
+      setWhyDraft(whyMap[key] || '')
+    },
+    [expandedWhyId, whyDraft, whyMap, collapseWhyEditor, commitWhyDraft]
+  )
 
   // Reset internal state when the picker opens
   useEffect(() => {
@@ -85,9 +124,33 @@ function FavoritesPickerSheet({
       setResults([])
       setError(null)
       setShakingId(null)
+      setExpandedWhyId(null)
+      setWhyDraft('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
+
+  // Focus the why-input when a disclosure opens
+  useEffect(() => {
+    if (!expandedWhyId) return undefined
+    const id = setTimeout(() => whyInputRef.current?.focus(), 80)
+    return () => clearTimeout(id)
+  }, [expandedWhyId])
+
+  // Collapse why-editor when tapping elsewhere
+  useEffect(() => {
+    if (!expandedWhyId) return undefined
+    function handleOutside(e) {
+      if (whyEditorRef.current?.contains(e.target)) return
+      collapseWhyEditor()
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [expandedWhyId, collapseWhyEditor])
 
   // Auto-focus search when the picker opens
   useEffect(() => {
@@ -123,10 +186,18 @@ function FavoritesPickerSheet({
   )
 
   const removeFromFavorites = useCallback((id) => {
-    setFavorites((prev) =>
-      prev.filter((f) => String(f.id) !== String(id))
-    )
-  }, [])
+    const key = String(id)
+    setFavorites((prev) => prev.filter((f) => String(f.id) !== key))
+    setWhyMap((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+    if (expandedWhyId === key) {
+      setExpandedWhyId(null)
+      setWhyDraft('')
+    }
+  }, [expandedWhyId])
 
   const toggleGame = useCallback(
     (game) => {
@@ -187,13 +258,19 @@ function FavoritesPickerSheet({
   }, [])
 
   const handleDone = useCallback(() => {
+    const finalWhyMap = { ...whyMap }
+    if (expandedWhyId) {
+      const trimmed = whyDraft.trim()
+      if (trimmed) finalWhyMap[expandedWhyId] = trimmed
+      else delete finalWhyMap[expandedWhyId]
+    }
     const withWhy = favorites.map((g) => ({
       ...g,
-      why: (whyMap[String(g.id)] || '').trim() || undefined,
+      why: (finalWhyMap[String(g.id)] || '').trim() || undefined,
     }))
     onSave(withWhy)
     onClose()
-  }, [favorites, whyMap, onSave, onClose])
+  }, [favorites, whyMap, expandedWhyId, whyDraft, onSave, onClose])
 
   // Grid source: IGDB results when searching, library otherwise
   const displayGames = query.trim() ? results : libraryGames
@@ -219,102 +296,127 @@ function FavoritesPickerSheet({
       </div>
 
       {/* Current selection — horizontal drag-to-reorder strip */}
-      <div className="fps-favorites-section">
+      <div
+        className="fps-favorites-section"
+        ref={showWhy ? whyEditorRef : undefined}
+      >
         <p className="fps-favorites-label">
           {favorites.length} / {maxItems} selected
           {favorites.length > 0 && (
             <span className="fps-favorites-label__hint">
               {' '}· drag to reorder
+              {showWhy && ' · tap pencil to add why'}
             </span>
           )}
         </p>
         {favorites.length > 0 ? (
-          <Reorder.Group
-            as="div"
-            axis="x"
-            values={favorites}
-            onReorder={setFavorites}
-            className="fps-favorites-strip"
-          >
-            {favorites.map((fav) => (
-              <Reorder.Item
-                key={fav.id}
-                value={fav}
-                className="fps-fav-item"
-                whileDrag={reduced ? {} : { scale: 1.08, zIndex: 10 }}
-              >
-                <div className="fps-fav-cover">
-                  {fav.image ? (
-                    <img
-                      src={fav.image}
-                      alt={fav.title}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="fps-fav-cover__fallback">
-                      {fav.title?.charAt(0) || '?'}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="fps-fav-remove"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeFromFavorites(fav.id)
-                    }}
-                    aria-label={`Remove ${fav.title} from favorites`}
+          <>
+            <Reorder.Group
+              as="div"
+              axis="x"
+              values={favorites}
+              onReorder={setFavorites}
+              className="fps-favorites-strip"
+            >
+              {favorites.map((fav) => {
+                const favKey = String(fav.id)
+                const hasWhy = Boolean((whyMap[favKey] || '').trim())
+                const isWhyOpen = expandedWhyId === favKey
+                return (
+                  <Reorder.Item
+                    key={fav.id}
+                    value={fav}
+                    className="fps-fav-item"
+                    whileDrag={reduced ? {} : { scale: 1.08, zIndex: 10 }}
                   >
-                    <LuX size={10} strokeWidth={3} />
-                  </button>
-                </div>
-                <span className="fps-fav-name" aria-hidden="true">
-                  {fav.title}
-                </span>
-              </Reorder.Item>
-            ))}
-          </Reorder.Group>
+                    <div className="fps-fav-cover">
+                      {fav.image ? (
+                        <img
+                          src={fav.image}
+                          alt={fav.title}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="fps-fav-cover__fallback">
+                          {fav.title?.charAt(0) || '?'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="fps-fav-remove"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFromFavorites(fav.id)
+                        }}
+                        aria-label={`Remove ${fav.title} from favorites`}
+                      >
+                        <LuX size={10} strokeWidth={3} />
+                      </button>
+                      {showWhy && (
+                        <button
+                          type="button"
+                          className={`fps-why-badge${hasWhy ? ' fps-why-badge--filled' : ''}${isWhyOpen ? ' fps-why-badge--open' : ''}`}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleWhyEditor(fav.id)
+                          }}
+                          aria-label={
+                            hasWhy
+                              ? `Edit why ${fav.title} is a favorite`
+                              : `Add why ${fav.title} is a favorite`
+                          }
+                          aria-expanded={isWhyOpen}
+                        >
+                          <LuPencil size={10} strokeWidth={2.5} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                    <span className="fps-fav-name" aria-hidden="true">
+                      {fav.title}
+                    </span>
+                  </Reorder.Item>
+                )
+              })}
+            </Reorder.Group>
+
+            {showWhy && (
+              <div
+                className={`fps-why-disclosure${expandedWhyId ? ' fps-why-disclosure--open' : ''}`}
+                aria-hidden={!expandedWhyId}
+              >
+                {expandedWhyId && (
+                  <div className="fps-why-disclosure__inner">
+                    <label
+                      className="fps-why-disclosure__label"
+                      htmlFor="fps-why-input"
+                    >
+                      Why this?
+                      <span className="fps-why-disclosure__hint"> (optional)</span>
+                    </label>
+                    <input
+                      ref={whyInputRef}
+                      id="fps-why-input"
+                      type="text"
+                      className="fps-why-input"
+                      placeholder="One line about why…"
+                      maxLength={120}
+                      value={whyDraft}
+                      onChange={(e) => setWhyDraft(e.target.value)}
+                      aria-label={`Why ${favorites.find((f) => String(f.id) === expandedWhyId)?.title || 'this game'} is a favorite`}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <p className="fps-favorites-empty">
             Tap a game below to add it
           </p>
         )}
       </div>
-
-      {/* Why-notes editor — optional one-line annotations per pick */}
-      {showWhy && favorites.length > 0 && (
-        <div className="fps-why-section">
-          <p className="fps-why-label">Why these? <span className="fps-why-label__hint">(optional)</span></p>
-          {favorites.map((fav) => (
-            <div key={fav.id} className="fps-why-row">
-              <div className="fps-why-thumb">
-                {fav.image ? (
-                  <img src={fav.image} alt="" loading="lazy" />
-                ) : (
-                  <span className="fps-why-thumb__fallback">
-                    {fav.title?.charAt(0) || '?'}
-                  </span>
-                )}
-              </div>
-              <div className="fps-why-input-wrap">
-                <span className="fps-why-game-name">{fav.title}</span>
-                <input
-                  type="text"
-                  className="fps-why-input"
-                  placeholder="One line about why…"
-                  maxLength={120}
-                  value={whyMap[String(fav.id)] || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setWhyMap((prev) => ({ ...prev, [String(fav.id)]: val }))
-                  }}
-                  aria-label={`Why ${fav.title} is a favorite`}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Search input */}
       <div className="fps-search-wrap">

@@ -189,94 +189,101 @@
   padding: 10px 0;
 }
 
-/* ── Why-notes editor ───────────────────────────────────── */
+/* ── Why-notes editor (on-demand disclosure) ────────────── */
 
-.fps-why-section {
-  flex-shrink: 0;
-  padding: 10px 20px 12px;
-  border-bottom: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Pencil badge — bottom-right corner of each favorite cover */
+.fps-why-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-elevated, #1a2240);
+  background: var(--color-text-muted, #3a4a66);
+  color: var(--color-text-primary, #f0f3fa);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease, transform 80ms ease, color 120ms ease;
+  z-index: 4;
 }
 
-.fps-why-label {
+.fps-why-badge:hover {
+  background: var(--color-text-tertiary, #5c6b8a);
+}
+
+.fps-why-badge:active {
+  transform: scale(0.9);
+}
+
+.fps-why-badge--filled {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+}
+
+.fps-why-badge--filled:hover {
+  background: var(--accent-hover, #60a5fa);
+}
+
+.fps-why-badge--open {
+  background: var(--accent-press, #2563eb);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+/* Compact disclosure panel beneath the cover strip */
+.fps-why-disclosure {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  transition:
+    max-height 200ms ease,
+    opacity 180ms ease,
+    margin-top 200ms ease;
+}
+
+.fps-why-disclosure--open {
+  max-height: 72px;
+  opacity: 1;
+  margin-top: var(--space-8, 8px);
+}
+
+.fps-why-disclosure__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 4px);
+}
+
+.fps-why-disclosure__label {
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
   font-size: var(--font-size-label, 11px);
   font-weight: var(--font-weight-semibold, 600);
   letter-spacing: var(--letter-spacing-label, 0.08em);
   text-transform: uppercase;
   color: var(--color-text-tertiary, #5c6b8a);
-  margin: 0 0 4px;
+  margin: 0;
 }
 
-.fps-why-label__hint {
+.fps-why-disclosure__hint {
   font-weight: var(--font-weight-normal, 400);
   text-transform: none;
   letter-spacing: 0;
 }
 
-.fps-why-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.fps-why-thumb {
-  flex-shrink: 0;
-  width: 36px;
-  height: 48px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: var(--bg-surface, #131a35);
-}
-
-.fps-why-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.fps-why-thumb__fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text-tertiary, #5c6b8a);
-}
-
-.fps-why-input-wrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.fps-why-game-name {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-secondary, #94a8d4);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .fps-why-input {
   width: 100%;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 var(--space-12, 12px);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: 8px;
+  border-radius: var(--radius-md, 8px);
   color: var(--color-text-primary, #f0f3fa);
   font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 13px;
+  font-size: var(--font-size-caption, 13px);
   outline: none;
   transition: border-color 160ms ease, background 160ms ease;
   -webkit-appearance: none;
@@ -289,8 +296,8 @@
 }
 
 .fps-why-input:focus {
-  border-color: var(--color-brand-warm, #c9813a);
-  background: rgba(201, 129, 58, 0.06);
+  border-color: var(--accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 /* ── Search input ───────────────────────────────────────── */
@@ -561,5 +568,13 @@
 
   .fps-grid-tile:hover .fps-grid-cover {
     transform: none;
+  }
+
+  .fps-why-disclosure {
+    transition: none;
+  }
+
+  .fps-why-badge {
+    transition: none;
   }
 }
