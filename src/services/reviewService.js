@@ -10,6 +10,7 @@ import { getFlaggedContentIds } from './reportService'
 import { getLikeCountsForReviews } from './likeService'
 import { dedupeInFlight } from './swrCache'
 import { ensureProfileExists } from './auth'
+import { recomputeBadges } from './badgeService'
 
 /**
  * Review Service — Supabase-backed.
@@ -752,6 +753,9 @@ export async function postReview({
     },
   })
 
+  // Sprint 16 badges — Critic / Honest both read reviews.body / rating.
+  recomputeBadges()
+
   return data
 }
 
@@ -786,6 +790,11 @@ export async function updateReview(reviewId, fields) {
 
   _cachedUserReviews = _cachedUserReviews.map((r) => (r.id === reviewId ? data : r))
   notifyChange()
+
+  // Sprint 16 badges — an edit can add/remove a body or cross the
+  // Honest rating threshold.
+  recomputeBadges()
+
   return data
 }
 

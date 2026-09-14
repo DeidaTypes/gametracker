@@ -93,11 +93,25 @@ export function useBadgeUnlockWatcher() {
     if (loading) return
 
     const currentIds = new Set(earned.map((b) => b.id))
+    // S16-4: Sprint 16 badges (badge.category === 'sprint16') are already
+    // persisted server-side by recompute_my_badges() under their FAMILY
+    // id (e.g. 'finisher'), with real tier/current_value columns — not
+    // this per-tier id ('finisher-bronze'/'-silver'/'-gold'). Feeding
+    // those ids into syncEarnedBadge/syncAllEarnedBadges (which only ever
+    // write bare {user_id, badge_id} rows, Sprint-5-P9-style) would
+    // insert a SEPARATE, malformed row per tier with no tier/current_value
+    // — silently polluting user_badges and badge_rarity() with ids no
+    // definition or query expects. Only legacy (pre-Sprint-16) badges use
+    // that sync path; Sprint 16 badges are filtered out of every sync
+    // call below. This is additive filtering only — it does not touch
+    // the separately-diagnosed `loading`/replay bug in this effect.
+    const legacyEarnedIds = () =>
+      earned.filter((b) => b.category !== 'sprint16').map((b) => b.id)
 
     if (previousIdsRef.current === null) {
       previousIdsRef.current = currentIds
       persistEarnedIds(userId, currentIds)
-      syncAllEarnedBadges(userId, Array.from(currentIds))
+      syncAllEarnedBadges(userId, legacyEarnedIds())
       return
     }
 
@@ -110,13 +124,23 @@ export function useBadgeUnlockWatcher() {
       const next = new Set([...previousIdsRef.current, ...currentIds])
       previousIdsRef.current = next
       persistEarnedIds(userId, next)
-      syncAllEarnedBadges(userId, Array.from(currentIds))
+      syncAllEarnedBadges(userId, legacyEarnedIds())
       return
     }
 
     for (const badge of newlyEarned) {
+      // S16-4 celebration-collision rule: Kept the Fire overlaps streak
+      // milestones (S16-2) at day 7/30/100 exactly, so it never gets its
+      // own toast — it still records/shows a tier normally, it just
+      // never reaches dispatchBadgeEarned. This is the ONLY change made
+      // in this file for S16-4 besides the sprint16-id sync filtering
+      // above; the separately-diagnosed `loading`/replay bug in the
+      // effect above is untouched, and this guard can only ever SKIP a
+      // dispatch, never add one, so it cannot increase how many badges a
+      // mass-fire replays.
+      if (badge.silent) continue
       dispatchBadgeEarned(badge)
-      syncEarnedBadge(userId, badge.id)
+      if (badge.category !== 'sprint16') syncEarnedBadge(userId, badge.id)
     }
 
     const next = new Set([...previousIdsRef.current, ...currentIds])

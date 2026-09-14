@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { logActivity, ACTIVITY_TYPES } from './activityService'
 import { ACTIVITY_EVENT_TYPES, logActivityEvent } from './activityEventsService'
+import { recomputeBadges } from './badgeService'
 
 /**
  * Journal Service — per-game dated notes a user writes as they play.
@@ -124,6 +125,9 @@ export async function saveJournalEntry({
   } catch {
     // SSR / no-window
   }
+
+  // Sprint 16 badges — Chronicler / Full Picture both read journal_entries.
+  recomputeBadges()
 
   return data
 }
@@ -342,6 +346,10 @@ export async function updateJournalEntry(entryId, {
   } catch {
     // SSR / no-window
   }
+
+  // Sprint 16 badges — an edit can add/remove the note or mood/hours
+  // fields that Chronicler / Full Picture score.
+  recomputeBadges()
 
   return data
 }

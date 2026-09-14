@@ -8,6 +8,7 @@ import { getTracker } from './hoursService'
 import { queueCelebration, updateCelebrationStats } from './celebrationService'
 import { countFinishedThisYear } from './goalService'
 import { supabase } from './supabase'
+import { recomputeBadges } from './badgeService'
 import { showToast } from '../components/Toast'
 import { STATUS_META } from '../components/StatusChip'
 
@@ -644,6 +645,14 @@ export function setGameStatus(gameId, newStatus, game = null) {
         game_title: gameObj.title || null,
       },
     })
+
+    // Sprint 16 badges — Finisher / Omnivore read status_changed rows
+    // (to_status = 'played'), never game_trackers.status directly (see the
+    // decoupling rule in the chat report). Chained off the same promise
+    // countFinishedThisYear below waits on, for the same reason: recompute
+    // must run AFTER the row above has actually committed, or it
+    // undercounts this game by one.
+    activityLogPromise.then(() => recomputeBadges()).catch(() => {})
 
     // "Your #Nth finished game of {year}" for the completion splash's stat
     // chips. This MUST run after the status_changed row above has actually

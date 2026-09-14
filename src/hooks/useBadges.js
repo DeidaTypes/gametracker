@@ -1,27 +1,85 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BADGES, TIER_RANK } from '../data/badges'
-import { useUserStatsState } from './useUserStats'
+import { supabase } from '../services/supabase'
 
 /**
- * Sprint 5 P9 — Badge state hook.
+ * Sprint 16 (S16-4) — Badge state hook, rewritten as a READER.
  *
- * Wraps useUserStats and partitions BADGES into:
- *   earned     — isEarned(stats) === true
- *   inProgress — isEarned === false AND progress(stats) > 0
- *   locked     — progress(stats) === 0
+ * Sprint 5 P9's version of this hook wrapped useUserStats and computed
+ * every badge's progress/isEarned from 20+ live Supabase/localStorage
+ * queries on every mount. That is gone. This hook now does exactly ONE
+ * thing on mount: a single indexed
+ *   select badge_id, tier, current_value from user_badges where user_id = X
+ * query. All actual computation happens server-side in
+ * recompute_my_badges() (see
+ * supabase/migrations/20260914190930_badge_tiers_persistence.sql), fired
+ * from the write-side call sites (sessionService, journalService,
+ * reviewService, libraryService.setGameStatus) — never from here, and
+ * never on mount. See the chat report for the measured cost of that one
+ * query vs. the old per-mount computation.
  *
- * Each list is sorted by tier ascending so callers can render a
- * predictable visual hierarchy (bronze → platinum) without re-sorting
- * at every consumer site.
+ * Reshapes the query result into the `stats` shape src/data/badges.js's
+ * tieredBadge() reads: `{ [familyId]: current_value, [familyId +
+ * '__tier']: tier }`. Refetches on the same `badgesUpdated` event
+ * badgeService.recomputeBadges() dispatches after a successful RPC call,
+ * plus `storage` for cross-tab consistency (matching the old hook's
+ * refresh convention).
  *
- * The return value is memoized on the stats object so identical stats
- * don't trigger downstream re-renders. The unlock watcher relies on
- * the `earned` array's reference identity: when stats genuinely change,
- * `earned` is a new reference; when stats are unchanged it stays
- * pointer-stable so the watcher's diff doesn't fire spuriously.
+ * Return shape is UNCHANGED from Sprint 5 — { earned, inProgress, locked,
+ * stats, loading } — so BadgesRow / UserBadgesPage / BadgeShowcase /
+ * BadgeDetailModal (all out of scope here, S16-5) need no changes.
  */
 export function useBadges(userId) {
-  const { stats, loading } = useUserStatsState(userId)
+  const [stats, setStats] = useState({})
+  const [loading, setLoading] = useState(!!userId)
+  const requestRef = useRef(0)
+
+  useEffect(() => {
+    let cancelled = false
+    const myRequest = ++requestRef.current
+
+    if (!userId) {
+      setStats({})
+      setLoading(false)
+      return undefined
+    }
+
+    setLoading(true)
+
+    async function load() {
+      const { data, error } = await supabase
+        .from('user_badges')
+        .select('badge_id, tier, current_value')
+        .eq('user_id', userId)
+
+      if (cancelled || myRequest !== requestRef.current) return
+
+      if (error) {
+        console.error('[useBadges] failed to read persisted badge state:', error.message)
+        setStats({})
+      } else {
+        const next = {}
+        for (const row of data || []) {
+          next[row.badge_id] = Number(row.current_value) || 0
+          next[`${row.badge_id}__tier`] = row.tier || null
+        }
+        setStats(next)
+      }
+      setLoading(false)
+    }
+
+    load()
+
+    const refresh = () => load()
+    window.addEventListener('storage', refresh)
+    window.addEventListener('badgesUpdated', refresh)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('badgesUpdated', refresh)
+    }
+  }, [userId])
 
   const partitioned = useMemo(() => {
     const earned = []

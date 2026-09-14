@@ -50,6 +50,7 @@ import {
 } from './activityEventsService'
 import { updateStreak } from './streakMilestoneService'
 import { dispatchStreakUpdated } from '../components/MilestoneCelebration'
+import { recomputeBadges } from './badgeService'
 
 // ── Shared side effects ────────────────────────────────────────────────────
 //
@@ -230,6 +231,11 @@ export async function logSession({
 
     try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
 
+    // Sprint 16 badges — Timekeeper / Marathoner / Devoted / Regular all
+    // read play_sessions or its game_trackers.hours_played rollup.
+    // Fire-and-forget; recomputeBadges never throws.
+    recomputeBadges()
+
     return { sessionRow, journalEntry, addedHours: h, newHours, prevHours }
   } catch (err) {
     console.error('[session] logSession crashed:', err)
@@ -348,6 +354,9 @@ export async function stopSession(sessionId, igdbGameId, opts = {}) {
     const { newHours, prevHours } = await readHoursAfterRollup(igdbGameId, hours)
 
     try { window.dispatchEvent(new Event('libraryUpdated')) } catch {}
+
+    // Sprint 16 badges — see the matching call in logSession above.
+    recomputeBadges()
 
     return { sessionRow, journalEntry, addedHours: hours, newHours, prevHours }
   } catch (err) {
