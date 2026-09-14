@@ -88,8 +88,12 @@ export async function syncAllEarnedBadges(userId, badgeIds) {
  * Dispatches a `badgesUpdated` window event on success so any mounted
  * `useBadges()` re-reads the fresh persisted state without a page reload.
  */
-export async function recomputeBadges() {
-  const { error } = await supabase.rpc('recompute_my_badges')
+export async function recomputeBadges(options = {}) {
+  const allowCompletionTierDrop = options.allowCompletionTierDrop === true
+  const { error } = await supabase.rpc(
+    'recompute_my_badges',
+    allowCompletionTierDrop ? { p_allow_completion_tier_drop: true } : {}
+  )
   if (error) {
     console.error('[badges] recomputeBadges failed:', error.message)
     return

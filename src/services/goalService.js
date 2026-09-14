@@ -419,6 +419,98 @@ export async function getFinishedGamesThisYear(userId, year = new Date().getFull
   )
 }
 
+function notifyActivityUpdated() {
+  try {
+    window.dispatchEvent(new Event('activityUpdated'))
+  } catch {
+    // SSR / no-window — best effort
+  }
+}
+
+/**
+ * Every completion event for (user, game, year). Duplicates are real —
+ * remaking Played writes another `status_changed` / to_status=played
+ * row — so a challenge-list removal must delete the whole matching set
+ * or the DISTINCT count would still include the game.
+ *
+ * @returns {Promise<Array<object>>}
+ */
+export async function getCompletionEventsForGame(userId, igdbGameId, year) {
+  if (!userId || igdbGameId == null || !year) return []
+
+  const { data, error } = await applyFinishedThisYearFilters(
+    supabase
+      .from('activities')
+      .select('id, user_id, activity_type, igdb_game_id, target_id, metadata, created_at')
+      .eq('user_id', userId)
+      .eq('igdb_game_id', Number(igdbGameId)),
+    year
+  ).order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[goal] getCompletionEventsForGame failed:', error.message)
+    return []
+  }
+  return data || []
+}
+
+/**
+ * Delete every completion event for (user, game, year). Returns the
+ * deleted rows so Undo can restore them with the original `created_at`
+ * (re-inserting as "now" would move the completion into the wrong year).
+ *
+ * Does not touch `game_trackers` — library status is a separate path.
+ *
+ * @returns {Promise<{ rows: Array<object>, error: string|null }>}
+ */
+export async function deleteCompletionEventsForGame(userId, igdbGameId, year) {
+  const rows = await getCompletionEventsForGame(userId, igdbGameId, year)
+  if (!rows.length) return { rows: [], error: null }
+
+  const { error } = await supabase
+    .from('activities')
+    .delete()
+    .eq('user_id', userId)
+    .in('id', rows.map((row) => row.id))
+
+  if (error) {
+    console.error('[goal] deleteCompletionEventsForGame failed:', error.message)
+    return { rows: [], error: error.message }
+  }
+
+  notifyActivityUpdated()
+  return { rows, error: null }
+}
+
+/**
+ * Re-insert previously deleted completion rows, preserving id + created_at.
+ * @param {Array<object>} rows
+ * @returns {Promise<boolean>}
+ */
+export async function restoreCompletionEvents(rows) {
+  if (!rows?.length) return false
+
+  const { error } = await supabase.from('activities').insert(
+    rows.map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      activity_type: row.activity_type,
+      igdb_game_id: row.igdb_game_id,
+      target_id: row.target_id ?? null,
+      metadata: row.metadata ?? {},
+      created_at: row.created_at,
+    }))
+  )
+
+  if (error) {
+    console.error('[goal] restoreCompletionEvents failed:', error.message)
+    return false
+  }
+
+  notifyActivityUpdated()
+  return true
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    getGoalProgress
    ────────────────────────────────────────────────────────────────────── */
@@ -472,29 +564,40 @@ export async function getGoalProgress(userId, year = new Date().getFullYear(), o
 
   const todayStamp = getLocalDateStamp()
   const { state, changed } = resolveTierState(goal, current, todayStamp)
-  if (changed) {
-    await persistTierState(userId, year, state)
-    // Fire only on the transition into a freshly-reached tier (not on a
-    // silent tier-advance with no new reach) — one-shot per tier, since
-    // a later call this same day will already see goalReachedAt === today
-    // and skip the `changed` branch entirely.
-    if (state.goalReachedAt === todayStamp) {
+
+  // Accidental-completion removal can drop `current` below today's
+  // just-reached target. Clear the stamp so we do not keep celebrating
+  // a goal they no longer meet, and so tomorrow's advance loop does
+  // not climb a tier for a reach that was retracted.
+  let nextState = state
+  let nextChanged = changed
+  if (current < nextState.target && nextState.goalReachedAt === todayStamp) {
+    nextState = { ...nextState, goalReachedAt: null }
+    nextChanged = true
+  }
+
+  if (nextChanged) {
+    await persistTierState(userId, year, nextState)
+    if (nextState.goalReachedAt === todayStamp) {
       hapticSuccess()
     }
   }
 
-  const tierSpan = Math.max(1, state.target - state.tierBase)
-  const percent = Math.min(100, Math.round(((current - state.tierBase) / tierSpan) * 100))
+  const tierSpan = Math.max(1, nextState.target - nextState.tierBase)
+  const percent = Math.max(
+    0,
+    Math.min(100, Math.round(((current - nextState.tierBase) / tierSpan) * 100))
+  )
 
   return {
     hasGoal: true,
-    target: state.target,
+    target: nextState.target,
     current,
     year,
     percent,
-    tier: state.tier,
-    tierBase: state.tierBase,
-    goalReachedAt: state.goalReachedAt,
+    tier: nextState.tier,
+    tierBase: nextState.tierBase,
+    goalReachedAt: nextState.goalReachedAt,
   }
 }
 

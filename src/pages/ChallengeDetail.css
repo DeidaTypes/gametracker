@@ -140,6 +140,10 @@
   gap: var(--space-8);
 }
 
+.challenge-detail__grid--dragging {
+  touch-action: none;
+}
+
 .challenge-detail__poster {
   display: block;
   width: 100%;
@@ -149,6 +153,23 @@
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* iOS WKWebView: long-press on the title engages the native
+     text-selection recognizer and fires pointercancel mid-drag.
+     Same scoped lock as Library .lib-gamecard. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.challenge-detail__poster * {
+  -webkit-touch-callout: none;
+}
+
+.challenge-detail__poster--dragged {
+  z-index: 50;
+  position: relative;
+  will-change: transform;
+  touch-action: none;
 }
 
 .challenge-detail__poster:focus-visible {
@@ -165,6 +186,73 @@
   border: 1px solid var(--border-subtle);
   overflow: hidden;
   background: var(--bg-surface-2);
+  transition: transform var(--transition-smooth);
+}
+
+.challenge-detail__cover-tap {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.challenge-detail__cover--lifted {
+  transform: scale(1.06);
+  box-shadow: var(--shadow-xl);
+  opacity: 0.95;
+  touch-action: none;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.challenge-detail__cover--lifted.challenge-detail__cover--armed {
+  transform: scale(0.92);
+  opacity: 0.6;
+}
+
+.challenge-detail__poster--removing {
+  pointer-events: none;
+}
+
+.challenge-detail__poster--removing .challenge-detail__cover,
+.challenge-detail__cover--removing {
+  transform: scale(0.55);
+  opacity: 0;
+  box-shadow: none;
+  transition:
+    transform 280ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 240ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms ease;
+}
+
+.challenge-detail__poster--removing .challenge-detail__poster-title {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  transition:
+    opacity 180ms ease,
+    max-height 240ms cubic-bezier(0.2, 0, 0, 1),
+    margin 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.challenge-detail__poster--restoring .challenge-detail__cover {
+  animation: challenge-cover-restore-in 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes challenge-cover-restore-in {
+  from {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .challenge-detail__cover-img {
@@ -194,7 +282,29 @@
 
 
 @media (prefers-reduced-motion: reduce) {
-  .challenge-detail__back {
+  .challenge-detail__back,
+  .challenge-detail__cover,
+  .challenge-detail__cover--lifted,
+  .challenge-detail__poster--removing .challenge-detail__cover,
+  .challenge-detail__cover--removing,
+  .challenge-detail__poster--removing .challenge-detail__poster-title {
     transition: none;
   }
+
+  .challenge-detail__poster--restoring .challenge-detail__cover {
+    animation: none;
+  }
+}
+
+body[data-reduce-motion='true'] .challenge-detail__back,
+body[data-reduce-motion='true'] .challenge-detail__cover,
+body[data-reduce-motion='true'] .challenge-detail__cover--lifted,
+body[data-reduce-motion='true'] .challenge-detail__poster--removing .challenge-detail__cover,
+body[data-reduce-motion='true'] .challenge-detail__cover--removing,
+body[data-reduce-motion='true'] .challenge-detail__poster--removing .challenge-detail__poster-title {
+  transition: none;
+}
+
+body[data-reduce-motion='true'] .challenge-detail__poster--restoring .challenge-detail__cover {
+  animation: none;
 }

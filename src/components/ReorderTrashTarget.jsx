@@ -20,7 +20,7 @@ import './ReorderTrashTarget.css'
  *   barRef  - ref assigned to the bubble element. Drag handlers read its
  *             getBoundingClientRect() once on activation for hit-testing.
  */
-function ReorderTrashTarget({ visible, armed, barRef }) {
+function ReorderTrashTarget({ visible, armed, barRef, ariaLabel = 'Remove from library' }) {
   return createPortal(
     <div
       ref={barRef}
@@ -28,7 +28,7 @@ function ReorderTrashTarget({ visible, armed, barRef }) {
         armed ? ' reorder-trash-target--armed' : ''
       }`}
       aria-hidden={!visible}
-      aria-label="Remove from library"
+      aria-label={ariaLabel}
     >
       <span className="reorder-trash-target__specular" aria-hidden="true" />
       <Trash2 size={22} aria-hidden="true" className="reorder-trash-target__icon" />
