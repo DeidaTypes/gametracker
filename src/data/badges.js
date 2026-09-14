@@ -440,6 +440,111 @@ export const TIER_STYLES = {
  */
 export const TIER_RANK = { bronze: 0, silver: 1, gold: 2, platinum: 3 }
 
+/** Full Sprint 16 catalogue size — used for "N of 32 earned" copy. */
+export const BADGE_CATALOG_FAMILY_COUNT = 32
+
+/** Families omitted from shelf / full-screen until S16-10. */
+export const BADGE_SHELF_HIDDEN_FAMILIES = new Set(['tastemaker', 'dawn-patrol'])
+
+/**
+ * Six collapsible shelf categories for the profile teaser + full badges
+ * screen. Every family in BADGES appears exactly once except
+ * BADGE_SHELF_HIDDEN_FAMILIES.
+ */
+export const BADGE_SHELF_CATEGORIES = [
+  {
+    id: 'home-sessions',
+    label: 'Home & Sessions',
+    families: ['timekeeper', 'marathoner', 'devoted', 'kept-the-fire', 'regular', 'weekender'],
+  },
+  {
+    id: 'reviews-diary',
+    label: 'Reviews & Diary',
+    families: ['critic', 'chronicler', 'honest', 'full-picture'],
+  },
+  {
+    id: 'library',
+    label: 'Library',
+    families: [
+      'finisher',
+      'omnivore',
+      'time-traveler',
+      'short-stack',
+      'the-long-haul',
+      'platform-nomad',
+      'backlog-slayer',
+      'paid-off',
+    ],
+  },
+  {
+    id: 'discover',
+    label: 'Discover',
+    families: ['prospector', 'early-adopter', 'deep-cut'],
+  },
+  {
+    id: 'community',
+    label: 'Community',
+    families: ['resonant', 'curator', 'conversationalist', 'circle', 'first-responder'],
+  },
+  {
+    id: 'time-return',
+    label: 'Time & Return',
+    families: ['years-work', 'comeback', 'veteran', 'perfect-month'],
+  },
+]
+
+const familyToCategoryLabel = (() => {
+  const map = new Map()
+  for (const cat of BADGE_SHELF_CATEGORIES) {
+    for (const family of cat.families) {
+      map.set(family, cat.label)
+    }
+  }
+  return map
+})()
+
+/** Category heading for a badge family (celebration + full screen). */
+export function getBadgeShelfCategoryLabel(familyId) {
+  return familyToCategoryLabel.get(familyId) || null
+}
+
+/** Bronze-tier row for a family — the locked-state representative. */
+export function getRepresentativeBadge(familyId) {
+  return (
+    BADGES.find((b) => b.family === familyId && b.tier === 'bronze')
+    || BADGES.find((b) => b.family === familyId)
+    || null
+  )
+}
+
+/** Highest earned tier badge for a family, or null when locked. */
+export function getHighestEarnedTierBadge(familyId, stats) {
+  for (const tier of ['gold', 'silver', 'bronze']) {
+    const badge = BADGES.find((b) => b.family === familyId && b.tier === tier)
+    if (badge?.isEarned(stats)) return badge
+  }
+  return null
+}
+
+/** Distinct families with at least bronze earned. */
+export function countEarnedBadgeFamilies(stats) {
+  const seen = new Set()
+  let count = 0
+  for (const badge of BADGES) {
+    if (seen.has(badge.family)) continue
+    seen.add(badge.family)
+    if (getHighestEarnedTierBadge(badge.family, stats)) count += 1
+  }
+  return count
+}
+
+/** Shelf-visible families in category order (hidden families excluded). */
+export function getShelfVisibleFamilies() {
+  return BADGE_SHELF_CATEGORIES.flatMap((cat) =>
+    cat.families.filter((id) => !BADGE_SHELF_HIDDEN_FAMILIES.has(id))
+  )
+}
+
 /**
  * Initial / empty stats object. Exported so consumers (and the unlock
  * watcher) can rely on a stable shape before async data resolves.

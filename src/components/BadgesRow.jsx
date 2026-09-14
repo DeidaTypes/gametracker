@@ -1,53 +1,58 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Lock } from 'lucide-react'
+import {
+  BADGE_CATALOG_FAMILY_COUNT,
+  TIER_RANK,
+  countEarnedBadgeFamilies,
+} from '../data/badges'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import BadgeDetailModal from './BadgeDetailModal'
 import Skeleton from './Skeleton'
 import './BadgesRow.css'
 
-// How many earned badges fit the row before the locked teaser tile.
-const MAX_EARNED_TILES = 4
+const TEASER_SLOT_COUNT = 5
 
 /**
- * Sprint 5 P9 — Badges row on the Profile Home tab.
- *
- * Earned badges first (newest tier last, as useBadges sorts them), then a
- * single locked tile teasing the closest unearned badge. Tapping a tile
- * opens the badge detail modal; "See more" pushes the full badges view.
- *
- * Badge counters are derived from the signed-in device (see useUserStats),
- * so this only ever renders for the profile owner — a null `userId` yields
- * no earned and no in-progress badges, and the section hides itself.
- *
- * @param {{
- *   userId: string|null,
- *   onSeeMore: () => void,
- * }} props
+ * Profile teaser — folds into the year-challenge card below a hairline.
+ * Five highest-tier earned badges, lock placeholders for empty slots,
+ * "N of 32 earned", and "See all" to the full badges screen.
  */
 function BadgesRow({ userId, onSeeMore, embedded = false }) {
-  const { earned, inProgress, locked, stats, loading } = useBadges(userId)
+  const { earned, stats, loading } = useBadges(userId)
   const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
 
   const sectionClass = `badges-row-section${embedded ? ' badges-row-section--embedded' : ''}`
 
-  // Placeholder tiles at the row's real height while the counters resolve,
-  // so the sections below don't jump once badges land.
+  const teaserBadges = useMemo(() => {
+    const sorted = [...earned].sort((a, b) => {
+      const tierDiff = (TIER_RANK[b.tier] ?? 0) - (TIER_RANK[a.tier] ?? 0)
+      if (tierDiff !== 0) return tierDiff
+      return a.name.localeCompare(b.name)
+    })
+    return sorted.slice(0, TEASER_SLOT_COUNT)
+  }, [earned])
+
+  const earnedFamilyCount = countEarnedBadgeFamilies(stats)
+  const lockSlotCount = Math.max(0, TEASER_SLOT_COUNT - teaserBadges.length)
+
+  if (!userId) return null
+
   if (loading) {
     const loadingBody = (
       <>
         <div className="badges-row-section__header">
-          <h3 className="badges-row-section__title">Badges</h3>
+          <span className="badges-row-section__title text-title">Badges</span>
         </div>
         <div className="badges-row">
-          {[0, 1, 2, 3, 4].map((i) => (
+          {Array.from({ length: TEASER_SLOT_COUNT }, (_, i) => (
             <div key={i} className="badges-row__item badges-row__item--placeholder">
-              <Skeleton className="badges-row__tile-skeleton" />
-              <Skeleton variant="text" width={40} height={11} />
+              <Skeleton className="badges-row__ring-skeleton" variant="circle" width={48} height={48} />
             </div>
           ))}
         </div>
+        <Skeleton variant="text" width={96} height={13} />
       </>
     )
 
@@ -69,39 +74,21 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
     )
   }
 
-  if (earned.length === 0 && inProgress.length === 0) return null
-
-  // The closest unearned badge — highest completion ratio, else the
-  // cheapest fully-locked one. Same pick the badges page leads with.
-  const nextLocked = (() => {
-    if (inProgress.length > 0) {
-      return inProgress.reduce((best, b) =>
-        b.progress(stats) / b.target > best.progress(stats) / best.target ? b : best
-      )
-    }
-    if (locked.length > 0) {
-      return locked.reduce((best, b) => (b.target < best.target ? b : best))
-    }
-    return null
-  })()
-
-  const tiles = earned.slice(0, MAX_EARNED_TILES)
-
   const badgesBody = (
     <>
       <div className="badges-row-section__header">
-        <h3 className="badges-row-section__title">Badges</h3>
+        <span className="badges-row-section__title text-title">Badges</span>
         <button
           type="button"
-          className="badges-row-section__see-more"
+          className="badges-row-section__see-all text-caption"
           onClick={onSeeMore}
         >
-          See more
+          See all
         </button>
       </div>
 
-      <div className="badges-row" role="list" aria-label="Badges">
-        {tiles.map((badge) => {
+      <div className="badges-row" role="list" aria-label="Recent badges">
+        {teaserBadges.map((badge) => {
           const Icon = badge.icon
           return (
             <button
@@ -110,31 +97,32 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
               role="listitem"
               className={`badges-row__item badges-row__item--earned badges-row__item--${badge.tier}`}
               onClick={() => setSelectedBadge(badge)}
-              aria-label={`${badge.name}, earned`}
+              aria-label={`${badge.name}, ${badge.tier} earned`}
             >
-              <span className="badges-row__tile" aria-hidden="true">
-                <Icon size={22} strokeWidth={1.8} />
+              <span className={`badges-row__ring badges-row__ring--${badge.tier}`} aria-hidden="true">
+                <Icon size={22} strokeWidth={1.75} />
               </span>
-              <span className="badges-row__label">{badge.name}</span>
             </button>
           )
         })}
 
-        {nextLocked && (
-          <button
-            type="button"
+        {Array.from({ length: lockSlotCount }, (_, i) => (
+          <span
+            key={`lock-${i}`}
             role="listitem"
             className="badges-row__item badges-row__item--locked"
-            onClick={() => setSelectedBadge(nextLocked)}
-            aria-label={`Locked badge: ${nextLocked.name}. ${nextLocked.description}`}
+            aria-hidden="true"
           >
-            <span className="badges-row__tile" aria-hidden="true">
-              <Lock size={20} strokeWidth={1.8} />
+            <span className="badges-row__ring badges-row__ring--locked">
+              <Lock size={18} strokeWidth={1.75} />
             </span>
-            <span className="badges-row__label">Locked</span>
-          </button>
-        )}
+          </span>
+        ))}
       </div>
+
+      <p className="badges-row-section__count text-caption">
+        {earnedFamilyCount} of {BADGE_CATALOG_FAMILY_COUNT} earned
+      </p>
     </>
   )
 
