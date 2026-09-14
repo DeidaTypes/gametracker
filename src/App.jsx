@@ -75,6 +75,9 @@ import ResetPassword from './pages/auth/ResetPassword'
 const ReviewCardDemo = import.meta.env.DEV
   ? React.lazy(() => import('./pages/_dev/ReviewCardDemo'))
   : null
+const StreakUIDemo = import.meta.env.DEV
+  ? React.lazy(() => import('./pages/_dev/StreakUIDemo'))
+  : null
 import { getPreferences, initializePreferences } from './services/userPreferences'
 import { initializeProfile } from './services/profileService'
 import { initSettings, applySettingsToDom, getSettings } from './services/userSettingsService'
@@ -1398,6 +1401,16 @@ function AppContent() {
                 element={
                   <React.Suspense fallback={null}>
                     <ReviewCardDemo />
+                  </React.Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && StreakUIDemo && (
+              <Route
+                path="/_dev/streak-ui"
+                element={
+                  <React.Suspense fallback={null}>
+                    <StreakUIDemo />
                   </React.Suspense>
                 }
               />

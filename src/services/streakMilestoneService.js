@@ -31,7 +31,9 @@ import {
  *     freezes_remaining, freeze_week
  */
 
-export const MILESTONES = [7, 30, 100]
+import { STREAK_MILESTONE_DAYS } from './streakMilestoneState'
+
+export const MILESTONES = STREAK_MILESTONE_DAYS
 
 /* ──────────────────────────────────────────────────────────────────────
    Local milestone-seen helpers

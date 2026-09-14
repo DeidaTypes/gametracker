@@ -1,0 +1,156 @@
+/* ============================================================
+   HOME STREAK STRIP — enhanced streak panel (S16-1)
+   Namespace: hss-*
+   Tokens only. Multi-hue by meaning (journal purple flame, review green
+   pips, cobalt today ring, accent progress).
+   ============================================================ */
+
+.hss {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-16);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s;
+}
+
+.hss:active {
+  border-color: var(--border-strong);
+}
+
+.hss-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.hss-hero-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.hss-flame {
+  flex-shrink: 0;
+  color: var(--accent-journal);
+}
+
+.hss-count {
+  color: var(--color-text-primary);
+  line-height: 1;
+  font-weight: var(--font-weight-semibold);
+}
+
+.hss-tier-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--accent-journal) 16%, transparent);
+  color: var(--accent-journal-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: var(--font-weight-semibold);
+}
+
+.hss-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.hss-progress-track {
+  height: var(--space-8);
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated, color-mix(in srgb, var(--border-subtle) 60%, transparent));
+  overflow: hidden;
+}
+
+.hss-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-brand, var(--accent));
+  transition: width 0.35s ease;
+}
+
+.hss-next {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.hss-zero-copy {
+  margin: 0;
+  color: var(--color-text-tertiary);
+}
+
+.hss-calendar {
+  padding-top: var(--space-4);
+}
+
+.hss-pips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.hss-pip {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.hss-pip--active {
+  background: var(--accent-review);
+  border-color: var(--accent-review);
+}
+
+.hss-pip--today {
+  box-shadow:
+    0 0 0 2px var(--bg-surface),
+    0 0 0 3.5px var(--accent);
+}
+
+.hss-pip--today.hss-pip--active {
+  box-shadow:
+    0 0 0 2px var(--bg-surface),
+    0 0 0 3.5px var(--accent);
+}
+
+.hss-shield {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  align-self: flex-start;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hss--zero .hss-flame,
+.hss--zero .hss-count {
+  color: var(--color-text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hss { transition: none; }
+  .hss-progress-fill { transition: none; }
+}
+
+[data-reduce-motion='true'] .hss { transition: none; }
+[data-reduce-motion='true'] .hss-progress-fill { transition: none; }

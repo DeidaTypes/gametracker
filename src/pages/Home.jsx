@@ -6,6 +6,7 @@ import AppShell from '../components/AppShell'
 import HomeFAB from '../components/HomeFAB'
 import PullToRefresh from '../components/PullToRefresh'
 import HomeWeekRow from '../components/home/HomeWeekRow'
+import HomeStreakStrip from '../components/home/HomeStreakStrip'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import LogSheet from '../components/home/LogSheet'
 import RatingSheet from '../components/RatingSheet'
@@ -34,25 +35,6 @@ function LogFirstGameTopper({ onLogGame }) {
       <span>Log your first game</span>
       <ChevronRight size={14} aria-hidden="true" />
     </button>
-  )
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function HomeSkeleton() {
-  return (
-    <div className="home-skeleton">
-      <div className="home-sk-heading">
-        <div className="skeleton home-sk-heading-block" />
-      </div>
-      <div className="home-sk-single home-sk-week-row">
-        <div className="skeleton home-sk-week-cell" />
-        <div className="skeleton home-sk-week-cell" />
-      </div>
-      <div className="home-sk-single">
-        <div className="skeleton home-sk-single-card" />
-      </div>
-    </div>
   )
 }
 
@@ -91,13 +73,61 @@ function HomeSkeleton() {
  * recency-ordered stream, so the feed reads as "what your circle is up
  * to", not just "who wrote something".
  */
+// Synchronous localStorage reads used to seed initial state below, so the
+// very first paint already shows the real Now Playing hero / week row
+// instead of a skeleton that immediately swaps for them. See loadHomeData,
+// which re-reads the exact same three calls for every subsequent refresh.
+function readBacklogGame() {
+  const backlog = getGamesFromList('want-to-play')
+  return backlog.length
+    ? [...backlog].sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0))[0]
+    : null
+}
+
+function readLoggedGamesCount() {
+  return (
+    getGamesFromList('currently-playing').length +
+    getGamesFromList('played').length +
+    getGamesFromList('dropped').length
+  )
+}
+
 function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [continuePlaying, setContinuePlaying] = useState([])
-  const [backlogGame, setBacklogGame] = useState(null)
-  const [loggedGamesCount, setLoggedGamesCount] = useState(0)
+  // Seeded synchronously from localStorage — there is nothing async to
+  // wait on for these, so there is no reason to start the page on a
+  // skeleton. loadHomeData() still runs on mount to pick up anything that
+  // changed between module load and first render, and on every
+  // libraryUpdated/reviewAdded/etc event after that.
+  const [continuePlaying, setContinuePlaying] = useState(() => {
+    try {
+      return getContinuePlayingGames()
+    } catch (err) {
+      console.error('Error loading home data:', err)
+      return []
+    }
+  })
+  const [backlogGame, setBacklogGame] = useState(() => {
+    try {
+      return readBacklogGame()
+    } catch (err) {
+      console.error('Error loading home data:', err)
+      return null
+    }
+  })
+  const [loggedGamesCount, setLoggedGamesCount] = useState(() => {
+    try {
+      return readLoggedGamesCount()
+    } catch (err) {
+      console.error('Error loading home data:', err)
+      return 0
+    }
+  })
+  // Network-backed and genuinely async — starts null and fills in once it
+  // resolves. Never gates the page itself (see isNewUser below): while
+  // it's null, isNewUser reads as false, i.e. we assume an existing user
+  // rather than showing (and then hiding) the brand-new-user topper.
   const [followCount, setFollowCount] = useState(null)
 
   const [addOpen, setAddOpen] = useState(false)
@@ -190,38 +220,25 @@ function Home() {
   // refresh here can trigger that refetch without lifting the hook up.
   const pulseFeedRef = useRef(null)
 
-  // `background: true` updates the same state in place without dropping the
-  // page back to its skeleton. Every caller other than the initial mount is
-  // a refresh over content the user is already looking at — pull-to-refresh,
-  // a library write, app resume — and none of them should blank the screen.
-  // The reads here are synchronous localStorage anyway, so there is nothing
-  // for a loading state to cover.
-  const loadHomeData = useCallback(({ background = false } = {}) => {
+  // Re-reads the same synchronous localStorage sources used to seed
+  // initial state above. There is no network here and never a reason to
+  // show a skeleton — `background` only used to exist to skip that; kept
+  // as a param for callers (pull-to-refresh, event listeners below) that
+  // still pass it, but it no longer changes this function's behavior.
+  const loadHomeData = useCallback(() => {
     try {
-      if (!background) setLoading(true)
       setContinuePlaying(getContinuePlayingGames())
-      setLoggedGamesCount(
-        getGamesFromList('currently-playing').length +
-        getGamesFromList('played').length +
-        getGamesFromList('dropped').length
-      )
-      const backlog = getGamesFromList('want-to-play')
-      setBacklogGame(
-        backlog.length
-          ? [...backlog].sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0))[0]
-          : null
-      )
+      setLoggedGamesCount(readLoggedGamesCount())
+      setBacklogGame(readBacklogGame())
     } catch (err) {
       console.error('Error loading home data:', err)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     loadHomeData()
 
-    const handleUpdate = () => loadHomeData({ background: true })
+    const handleUpdate = () => loadHomeData()
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener('reviewAdded', handleUpdate)
     window.addEventListener('storage', handleUpdate)
@@ -254,7 +271,7 @@ function Home() {
   // a live localStorage read, nothing to bypass), the follow count, and
   // force the pulse feed's own swrCache-bypassing refetch, in parallel.
   const handlePullToRefresh = useCallback(async () => {
-    loadHomeData({ background: true })
+    loadHomeData()
     const tasks = [pulseFeedRef.current?.refresh?.()]
     if (user?.id) {
       tasks.push(
@@ -266,27 +283,20 @@ function Home() {
     await Promise.all(tasks)
   }, [loadHomeData, user?.id])
 
-  const pageReady = !loading && followCount !== null
-  const isNewUser = pageReady && followCount === 0 && loggedGamesCount === 0
+  // followCount === null means "not resolved yet" — reads as false here
+  // rather than gating the page on it, so a genuinely new user briefly
+  // sees the normal (empty-ish) layout until the one real network call
+  // this page makes resolves, instead of the whole page waiting on it.
+  const isNewUser = followCount === 0 && loggedGamesCount === 0
   // Always show for anyone with account history — even a zero-session week
   // gets a neutral "No sessions yet this week" state (see HomeWeekCard).
   // Hidden only for the true new-user empty state (same gate as the
   // first-game topper).
-  const showWeekRow = pageReady && !isNewUser
+  const showWeekRow = !isNewUser
   // Gated on real content so the section wrapper never renders empty.
   // Also gated behind !isNewUser so a brand-new user sees only the
   // "Log your first game" topper, not a redundant backlog nudge.
-  const showNowPlayingHero = pageReady && !isNewUser && (!!continuePlaying[0] || !!backlogGame)
-
-  if (!pageReady) {
-    return (
-      <AppShell>
-        <div className="home">
-          <HomeSkeleton />
-        </div>
-      </AppShell>
-    )
-  }
+  const showNowPlayingHero = !isNewUser && (!!continuePlaying[0] || !!backlogGame)
 
   return (
     <AppShell>
@@ -363,6 +373,12 @@ function Home() {
               shown for users with account history — a zero-session week
               reads as a neutral state, not a guilt-trippy empty grid.
           ──────────────────────────────────────────────────────────────── */}
+          {showWeekRow && (
+            <section className="home-section home-section-padded home-streak-section">
+              <HomeStreakStrip />
+            </section>
+          )}
+
           {showWeekRow && (
             <section className="home-section home-section-padded">
               <HomeWeekRow />

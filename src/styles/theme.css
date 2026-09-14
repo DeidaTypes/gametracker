@@ -491,6 +491,12 @@ body[data-larger-text='true'] {
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7), 0 6px 18px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.18), 0 0 48px rgba(59, 130, 246, 0.08);
   --shadow-cover: 4px 8px 24px rgba(0, 0, 0, 0.65);
+  /* Leading-edge depth for a page sliding off during a back transition, so
+     the outgoing screen reads as a layer lifting off the one behind it
+     (matching native iOS push depth). Named rather than inlined because two
+     call sites need the identical value — the swipe gesture and the button
+     back both apply it via `.back-slide-top`. */
+  --shadow-page-edge: -12px 0 32px rgba(0, 0, 0, 0.45);
 
   /* ---- Surface Elevations ----
      Surface 1 — default cards: card bg + 1px inner top edge highlight
@@ -587,6 +593,13 @@ body[data-larger-text='true'] {
   --tier-bronze: #CD7F32;
   --tier-silver: #C0C0C0;
   --tier-gold: #FFD700;
+
+  /* ---- Streak tier ring colors (S16) — accent-derived, no new hex ---- */
+  --streak-tier-spark: var(--accent-journal);
+  --streak-tier-ember: var(--accent);
+  --streak-tier-kindled: var(--accent-review);
+  --streak-tier-blaze: color-mix(in srgb, var(--accent) 50%, var(--accent-journal));
+  --streak-tier-wildfire: var(--accent-journal-deep);
 
   /* ---- Rating Stars — intentional exception to the all-cobalt rule ---- */
   --star:       #f5b50a;                    /* rich gold — filled/half stars only */

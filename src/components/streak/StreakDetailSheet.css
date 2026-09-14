@@ -1,0 +1,205 @@
+/* ============================================================
+   STREAK DETAIL SHEET — milestone ladder + at-risk warning
+   Namespace: sds-*
+   ============================================================ */
+
+.sds-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  background: color-mix(in srgb, var(--bg-base) 40%, black);
+}
+
+.sds-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 241;
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-16));
+}
+
+.sds-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: var(--space-12) auto var(--space-8);
+  flex-shrink: 0;
+}
+
+.sds-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: 0 var(--space-20) var(--space-12);
+}
+
+.sds-title {
+  margin: 0;
+}
+
+.sds-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sds-body {
+  overflow-y: auto;
+  padding: 0 var(--space-20) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.sds-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sds-current {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  color: var(--accent-journal);
+}
+
+.sds-current .text-heading {
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.sds-current .text-caption {
+  color: var(--color-text-secondary);
+}
+
+.sds-longest {
+  margin: 0;
+  color: var(--color-text-tertiary);
+}
+
+.sds-at-risk {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 28%, transparent);
+  color: var(--status-warning);
+}
+
+.sds-at-risk-title {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sds-at-risk-body {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.sds-ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sds-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.sds-step--done {
+  border-color: color-mix(in srgb, var(--accent-review) 35%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent-review) 8%, var(--bg-surface));
+}
+
+.sds-step--next {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+}
+
+.sds-step--locked {
+  opacity: 0.72;
+}
+
+.sds-step-icon {
+  width: var(--space-32);
+  height: var(--space-32);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg-elevated, color-mix(in srgb, var(--border-subtle) 40%, transparent));
+  color: var(--color-text-secondary);
+}
+
+.sds-step--done .sds-step-icon {
+  color: var(--accent-review);
+  background: color-mix(in srgb, var(--accent-review) 16%, transparent);
+}
+
+.sds-step--next .sds-step-icon {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.sds-step-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sds-step-name {
+  color: var(--color-text-primary);
+}
+
+.sds-step-days {
+  color: var(--color-text-tertiary);
+}
+
+.sds-step-badge {
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sds-shield-note {
+  margin: 0;
+  color: var(--color-text-tertiary);
+}
