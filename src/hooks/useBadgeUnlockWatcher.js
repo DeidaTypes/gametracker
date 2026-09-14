@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from './useBadges'
+import { useBadgeBackfill } from './useBadgeBackfill'
 import { dispatchBadgeEarned } from '../components/BadgeReveal'
-import { syncEarnedBadge, syncAllEarnedBadges } from '../services/badgeService'
+import { syncEarnedBadge, syncAllEarnedBadges, acknowledgeBadgeCelebration } from '../services/badgeService'
 
 const STORAGE_PREFIX = 'gt:earnedBadges:v1'
 
@@ -65,15 +66,23 @@ function persistEarnedIds(userId, set) {
  *   - Empty → N in a single tick is hydration, not N unlocks.
  *
  * A genuine single unlock still dispatches exactly once.
+ *
+ * Backfill coordination (this prompt — not the loading/replay fix):
+ *   wait until useBadgeBackfill has settled, absorb any historical
+ *   grant ids into the seen-set, and skip families whose
+ *   celebrated_at is already set. Loading/hydration rules above are
+ *   untouched.
  */
 export function useBadgeUnlockWatcher() {
   const { user } = useAuth()
   const userId = user?.id || null
-  const { earned, loading } = useBadges(userId)
+  const { earned, stats, loading } = useBadges(userId)
+  const backfill = useBadgeBackfill()
   // null sentinel = no baseline yet for this user. Once populated this
   // is the canonical "what we've already toasted for" set.
   const previousIdsRef = useRef(null)
   const lastUserIdRef = useRef(null)
+  const absorbedBackfillRef = useRef(false)
 
   useEffect(() => {
     if (!userId) {
@@ -84,9 +93,27 @@ export function useBadgeUnlockWatcher() {
       return
     }
 
+    // Do not seed or diff until historical grants are stamped
+    // celebrated_at. Prevents a first-launch race against backfill.
+    // A failed RPC must not fall through into a catalogue dump.
+    if (!backfill.settled || backfill.failed) return
+
     if (lastUserIdRef.current !== userId) {
       previousIdsRef.current = readPersistedEarnedIds(userId)
       lastUserIdRef.current = userId
+      absorbedBackfillRef.current = false
+    }
+
+    if (!absorbedBackfillRef.current) {
+      absorbedBackfillRef.current = true
+      if (backfill.grants.length > 0) {
+        const next = new Set([
+          ...(previousIdsRef.current || []),
+          ...backfill.grants.map((b) => b.id),
+        ])
+        previousIdsRef.current = next
+        persistEarnedIds(userId, next)
+      }
     }
 
     // Empty snapshot during hydration is not a baseline.
@@ -139,12 +166,16 @@ export function useBadgeUnlockWatcher() {
       // dispatch, never add one, so it cannot increase how many badges a
       // mass-fire replays.
       if (badge.silent) continue
+      // Backfill (and any later acknowledge) stamps celebrated_at on
+      // the family row. Skip those — they are already acknowledged.
+      if (badge.family && stats?.[`${badge.family}__celebrated`]) continue
       dispatchBadgeEarned(badge)
       if (badge.category !== 'sprint16') syncEarnedBadge(userId, badge.id)
+      else acknowledgeBadgeCelebration(badge.family)
     }
 
     const next = new Set([...previousIdsRef.current, ...currentIds])
     previousIdsRef.current = next
     persistEarnedIds(userId, next)
-  }, [earned, userId, loading])
+  }, [earned, stats, userId, loading, backfill.settled, backfill.failed, backfill.grants])
 }

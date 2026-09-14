@@ -86,6 +86,7 @@ import ToastHost from './components/Toast'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import MilestoneCelebration from './components/MilestoneCelebration'
 import BadgeReveal from './components/BadgeReveal'
+import BadgeBackfillSummary from './components/BadgeBackfillSummary'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
 import { UnreadMessagesProvider } from './contexts/UnreadMessagesContext'
@@ -1484,6 +1485,10 @@ function App() {
                   dispatched by useBadgeUnlockWatcher and shows a full-screen
                   reveal overlay for each newly-earned achievement badge. */}
               <BadgeReveal />
+              {/* One-time historical-grants summary — first launch after
+                  badges went live, never again. Genuine single unlocks
+                  still go through BadgeReveal above. */}
+              <BadgeBackfillSummary />
               </NudgesProvider>
               </SessionProvider>
             </GameColorProvider>

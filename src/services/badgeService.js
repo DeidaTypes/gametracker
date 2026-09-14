@@ -1,4 +1,33 @@
 import { supabase } from './supabase'
+import { BADGES, TIER_RANK } from '../data/badges'
+
+/** Catalogue version stamped on users.badge_backfill_version. */
+export const BADGE_BACKFILL_VERSION = 1
+
+const backfillInflight = new Map()
+
+/**
+ * Expand RPC family-rows ({ badge_id, tier }) into the earned per-tier
+ * badge objects the UI already renders. Wave 3 definitions never earn
+ * (isEarned is hard-locked false) and are skipped even if a stray row
+ * appeared. Only real Wave 1 / promoted Wave 2 grants are returned.
+ */
+export function expandGrantedBadgeTiers(rows) {
+  const granted = []
+  for (const row of rows || []) {
+    if (!row?.badge_id || !row.tier) continue
+    const grantedRank = TIER_RANK[row.tier]
+    if (grantedRank == null) continue
+    for (const badge of BADGES) {
+      if (badge.family !== row.badge_id) continue
+      if (badge.wave === 3) continue
+      if ((TIER_RANK[badge.tier] ?? 99) <= grantedRank) {
+        granted.push(badge)
+      }
+    }
+  }
+  return granted
+}
 
 /**
  * Upsert a single earned badge for the current user.
@@ -69,6 +98,69 @@ export async function recomputeBadges() {
     window.dispatchEvent(new Event('badgesUpdated'))
   } catch {
     // SSR / no-window — skip.
+  }
+}
+
+function notifyBadgesUpdated() {
+  try {
+    window.dispatchEvent(new Event('badgesUpdated'))
+  } catch {
+    // SSR / no-window — skip.
+  }
+}
+
+/**
+ * One-time first-launch backfill. Calls backfill_my_badges() which
+ * runs the unchanged S16-4 RPC, stamps celebrated_at on every earned
+ * family, and sets users.badge_backfill_version = 1.
+ *
+ * Deduped per user for the life of the tab — subsequent launches hit
+ * the RPC's version short-circuit (returns empty, no recompute).
+ *
+ * Returns { grants, alreadyDone, failed }. grants is empty when the
+ * user has zero earned tiers (brand-new account) OR when the marker
+ * is already set — the summary screen treats both as "do not show".
+ */
+export function backfillMyBadges(userId) {
+  if (!userId) return Promise.resolve({ grants: [], alreadyDone: true, failed: false })
+  const cached = backfillInflight.get(userId)
+  if (cached) return cached
+
+  const pending = (async () => {
+    const { data, error } = await supabase.rpc('backfill_my_badges')
+    if (error) {
+      console.error('[badges] backfillMyBadges failed:', error.message)
+      backfillInflight.delete(userId)
+      return { grants: [], alreadyDone: false, failed: true }
+    }
+    const rows = (data || [])
+      .map((row) => ({
+        badge_id: row.family_id ?? row.badge_id,
+        tier: row.granted_tier ?? row.tier,
+        current_value: row.metric_value ?? row.current_value,
+      }))
+      .filter((row) => row.badge_id && row.tier)
+    const grants = expandGrantedBadgeTiers(rows)
+    notifyBadgesUpdated()
+    return { grants, alreadyDone: grants.length === 0, failed: false }
+  })()
+
+  backfillInflight.set(userId, pending)
+  return pending
+}
+
+/**
+ * Stamp celebrated_at on a Sprint 16 family after a genuine unlock
+ * overlay. No-op if already set. Uses a SECURITY DEFINER RPC because
+ * user_badges has no client UPDATE policy.
+ */
+export async function acknowledgeBadgeCelebration(badgeFamilyId) {
+  if (!badgeFamilyId) return
+  const { error } = await supabase.rpc('acknowledge_my_badge', {
+    p_badge_id: badgeFamilyId,
+  })
+  if (error) {
+    console.error('[badges] acknowledgeBadgeCelebration failed:', error.message)
   }
 }
 

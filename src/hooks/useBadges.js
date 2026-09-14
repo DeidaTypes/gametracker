@@ -9,7 +9,7 @@ import { supabase } from '../services/supabase'
  * every badge's progress/isEarned from 20+ live Supabase/localStorage
  * queries on every mount. That is gone. This hook now does exactly ONE
  * thing on mount: a single indexed
- *   select badge_id, tier, current_value from user_badges where user_id = X
+ *   select badge_id, tier, current_value, celebrated_at from user_badges where user_id = X
  * query. All actual computation happens server-side in
  * recompute_my_badges() (see
  * supabase/migrations/20260914190930_badge_tiers_persistence.sql), fired
@@ -49,7 +49,7 @@ export function useBadges(userId) {
     async function load() {
       const { data, error } = await supabase
         .from('user_badges')
-        .select('badge_id, tier, current_value')
+        .select('badge_id, tier, current_value, celebrated_at')
         .eq('user_id', userId)
 
       if (cancelled || myRequest !== requestRef.current) return
@@ -62,6 +62,7 @@ export function useBadges(userId) {
         for (const row of data || []) {
           next[row.badge_id] = Number(row.current_value) || 0
           next[`${row.badge_id}__tier`] = row.tier || null
+          next[`${row.badge_id}__celebrated`] = !!row.celebrated_at
         }
         setStats(next)
       }
