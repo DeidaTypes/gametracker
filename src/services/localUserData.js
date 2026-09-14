@@ -59,7 +59,6 @@ const OWNER_KEY = 'gt:local-data-owner:v1'
 // circular import back through AuthContext) — each is cross-referenced to
 // its owning file so the two never drift apart silently.
 const RAW_LOCAL_STORAGE_KEYS = [
-  'gt:earnedBadges:v1', // src/hooks/useBadgeUnlockWatcher.js — per-device "already toasted" badge set
   'gt:comments-count', // src/hooks/useUserStats.js
   'gt:shares-count', // src/hooks/useUserStats.js
   'gt:reactions:v1', // src/components/ActivityTimeline.jsx — reactions keyed by activity id
@@ -84,6 +83,35 @@ const RAW_SESSION_STORAGE_KEYS = [
 //     it here would drop the referrer on the very flow it exists to serve.
 //   Game/IGDB caches (search_cache_v1, gt:ttb:v2, gameColorCache_v1, ...)
 //     Not account data; re-fetching them would only cost bandwidth.
+//
+// gt:earnedBadges:v1 and gt:earnedBadges:v1:<userId> ARE wiped (see
+// clearEarnedBadgeSeenKeys). The seen-set is account-shaped — which
+// unlocks this user has already been shown — so it belongs in the wipe.
+// After wipe, useBadgeUnlockWatcher re-seeds from the first loaded
+// earned snapshot and does not dispatch, so a sign-out/sign-in cannot
+// replay the catalogue.
+
+/**
+ * Remove the legacy global seen-set and every per-user
+ * `gt:earnedBadges:v1:<id>` key. Prefix scan instead of a single
+ * literal: the watcher now keys by user id, and we may not know that
+ * id at wipe time (sign-out passes null).
+ */
+function clearEarnedBadgeSeenKeys() {
+  try {
+    const prefix = 'gt:earnedBadges:v1'
+    const toRemove = []
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)
+      if (key === prefix || (key && key.startsWith(`${prefix}:`))) {
+        toRemove.push(key)
+      }
+    }
+    for (const key of toRemove) localStorage.removeItem(key)
+  } catch {
+    // best-effort
+  }
+}
 
 /**
  * Synchronously wipe every local-first cache that mirrors account data.
@@ -108,6 +136,8 @@ export function clearAllLocalUserData() {
   clearBlockCache()
   clearSWRCache()
   invalidateActivityCache()
+
+  clearEarnedBadgeSeenKeys()
 
   for (const key of RAW_LOCAL_STORAGE_KEYS) {
     try {

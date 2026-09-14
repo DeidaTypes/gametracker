@@ -133,6 +133,12 @@ export function useUserStatsState(userId) {
       if (!cancelled && myRequest === requestRef.current) setLoading(false)
     }
 
+    // userId starts null on relaunch (auth flicker). The initial
+    // `useState(!!userId)` is then false and would stay false for the
+    // whole first fetch — the unlock watcher would treat EMPTY_STATS as
+    // a loaded baseline. Mark in-flight whenever a user-scoped load starts.
+    if (userId) setLoading(true)
+
     async function load() {
       // Always recompute local stats — these are cheap and don't need
       // an `await` so we can paint them before the network resolves.

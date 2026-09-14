@@ -249,6 +249,20 @@ function tapKeepsKeyboard(target) {
   return false
 }
 
+/**
+ * Buttons, links, and form controls must still receive their click when
+ * the keyboard is up. hideKeyboard() runs, but we do not swallow the
+ * event — that was swallowing Skip / Post / any control outside a field.
+ * Backdrop divs are NOT in this list, so tap-outside still dismisses
+ * only the keyboard.
+ */
+function tapIsInteractive(target) {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest('button, a, [role="button"], input, select, textarea'),
+  )
+}
+
 function initKeyboardTapDismiss() {
   document.addEventListener(
     'pointerdown',
@@ -256,9 +270,11 @@ function initKeyboardTapDismiss() {
       if (!isKeyboardOpen()) return
       if (tapKeepsKeyboard(e.target)) return
       hideKeyboard()
-      // Swallow the tap so backdrop / sheet dismiss handlers do not also
+      // Interactive controls keep their click. Everything else is
+      // swallowed so backdrop / sheet dismiss handlers do not also
       // fire — multi-line composers in modals rely on tap-outside for
       // keyboard-only dismiss.
+      if (tapIsInteractive(e.target)) return
       e.preventDefault()
       e.stopPropagation()
     },
