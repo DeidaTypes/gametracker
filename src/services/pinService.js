@@ -83,7 +83,7 @@ export async function getPinsForUser(userId) {
   const { data, error } = await supabase
     .from('review_pins')
     .select(
-      'position, pinned_at, review:reviews!review_pins_review_id_fkey(*, users!reviews_user_id_fkey(username, display_name, avatar_url))'
+      'position, pinned_at, review:reviews!review_pins_review_id_fkey(*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone))'
     )
     .eq('user_id', userId)
     .order('position', { ascending: true })

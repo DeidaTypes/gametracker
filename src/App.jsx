@@ -1475,8 +1475,10 @@ function App() {
                   renders when the head is non-null. */}
               <CompletionCelebration />
               {/* Mounted once at root — listens to 'streakUpdated' events and
-                  shows the 7 / 30 / 100-day milestone celebration once per
-                  milestone per user (localStorage-gated). Never guilt, only joy. */}
+                  shows the 3/7/15/30/100-day milestone celebration once per
+                  milestone per user, EVER (server-gated via
+                  user_streak_milestones — see streakMilestoneService.js and
+                  MilestoneCelebration.jsx, S16-2). Never guilt, only joy. */}
               <MilestoneCelebration />
               {/* Mounted once at root — listens to 'badgeEarned' events
                   dispatched by useBadgeUnlockWatcher and shows a full-screen

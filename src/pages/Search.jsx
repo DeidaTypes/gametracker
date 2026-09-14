@@ -285,6 +285,7 @@ function reviewRowToCard(row) {
       // No avatar_url? Leave it null — ReviewCard already renders its own
       // local initials fallback rather than fetching one over the network.
       avatarUrl: row.users?.avatar_url || null,
+      highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
     },
     game: {
       id: row.igdb_game_id,

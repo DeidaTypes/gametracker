@@ -143,6 +143,7 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
       displayName: row.users?.display_name || 'Anonymous',
       userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
+      highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
     },
     title: null,
     body: row.body || '',

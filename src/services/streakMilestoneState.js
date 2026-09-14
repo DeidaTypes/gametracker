@@ -57,6 +57,16 @@ export function buildRollingWeekCells(dateCounts) {
   return cells
 }
 
+/**
+ * Resolves a tier by its exact milestone day count. Used by profile
+ * flair (S16-2 task 5), which reads `highest_streak_milestone` — a
+ * lifetime-highest value, not the current streak — off the author/actor
+ * embed on reviews and Pulse items.
+ */
+export function getTierByDays(days) {
+  return TIER_BY_DAYS.get(days) ?? null
+}
+
 /** Highest tier the user has reached at `currentStreak` days. */
 export function getCurrentTier(currentStreak) {
   let tier = null

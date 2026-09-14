@@ -9,10 +9,31 @@ import {
  *
  * Rules:
  *
- *   Milestones: 7 / 30 / 100 consecutive active days.
- *     Each milestone fires ONCE per user per lifetime (persisted in
- *     localStorage so it works even while the user is offline).
- *     Key: 'gt:milestone-seen:v1:{userId}:{milestone}'
+ *   Milestones: 3 / 7 / 15 / 30 / 100 consecutive active days (Spark /
+ *     Ember / Kindled / Blaze / Wildfire — see streakMilestoneState.js,
+ *     the single source of truth for tier names/colors/copy).
+ *
+ *     S16-2 — persisted SERVER-SIDE in `user_streak_milestones`
+ *     (user_id, milestone_days, reached_at, celebrated_at), NOT
+ *     localStorage-only, so it survives reinstall and is readable
+ *     cross-device and by other users (profile flair, task 5).
+ *
+ *     DECISION (task 6): a milestone celebrates ONCE PER USER, EVER —
+ *     not once per crossing. `reached_at` is written the first time
+ *     current_streak crosses a tier and is NEVER cleared or re-written
+ *     on a later reset + re-cross of that same tier (rows are inserted
+ *     with ON CONFLICT DO NOTHING — see recordStreakMilestoneProgress
+ *     below). A user who drops from day 8 back to day 0 and climbs
+ *     back through day 7 (Ember) a second time is NOT re-congratulated:
+ *     getPendingCelebrations only ever returns rows with
+ *     celebrated_at IS NULL, and that row's celebrated_at was already
+ *     set the first time through.
+ *
+ *     `users.highest_streak_milestone` is a denormalized cache of the
+ *     highest tier ever reached (kept in sync here), independent of
+ *     the CURRENT streak — it's what reviews/Pulse read for flair, via
+ *     the same `users!..._fkey(...)` embed those surfaces already
+ *     select, with no extra join per card.
  *
  *   Streak freeze: one freeze token per ISO calendar week (Mon–Sun).
  *     Stored in user_streaks as (freezes_remaining, freeze_week).
@@ -36,62 +57,109 @@ import { STREAK_MILESTONE_DAYS } from './streakMilestoneState'
 export const MILESTONES = STREAK_MILESTONE_DAYS
 
 /* ──────────────────────────────────────────────────────────────────────
-   Local milestone-seen helpers
+   Server-side milestone reached/celebrated state (S16-2)
    ────────────────────────────────────────────────────────────────────── */
 
-function milestoneKey(userId, milestone) {
-  return `gt:milestone-seen:v1:${userId}:${milestone}`
-}
-
 /**
- * Returns the list of milestones (from MILESTONES) that:
- *   a) current_streak >= milestone, AND
- *   b) the user has NOT yet seen the celebration for this milestone.
+ * Idempotently records which of MILESTONES have been reached as of
+ * `currentStreak`, and bumps `users.highest_streak_milestone` if this is
+ * a new high for this user. Safe to call on every 'streakUpdated' event —
+ * a tier already reached (even if the streak has since reset and climbed
+ * back through it) is left completely untouched: `.upsert(...,
+ * { ignoreDuplicates: true })` is `INSERT ... ON CONFLICT DO NOTHING`, so
+ * neither `reached_at` nor `celebrated_at` are ever overwritten once set.
  *
- * Side-effect-free — call multiple times safely.
+ * Returns the milestones that are reached but NOT YET celebrated — i.e.
+ * exactly what should fire the UnlockCelebration overlay next.
  */
-export function getPendingMilestones(userId, currentStreak) {
+export async function recordStreakMilestoneProgress(userId, currentStreak) {
   if (!userId || !currentStreak) return []
-  return MILESTONES.filter(
-    (m) =>
-      currentStreak >= m &&
-      !localStorage.getItem(milestoneKey(userId, m))
-  )
+
+  const reachedTiers = MILESTONES.filter((m) => currentStreak >= m)
+  if (reachedTiers.length === 0) return []
+
+  const { error: upsertError } = await supabase
+    .from('user_streak_milestones')
+    .upsert(
+      reachedTiers.map((m) => ({ user_id: userId, milestone_days: m })),
+      { onConflict: 'user_id,milestone_days', ignoreDuplicates: true }
+    )
+  if (upsertError) {
+    console.error('[streak] recordStreakMilestoneProgress upsert failed:', upsertError.message)
+  }
+
+  // Keep the flair cache in sync — only ever moves up, never down (a
+  // reset streak must not un-flair a user who already earned a tier).
+  const newHigh = Math.max(...reachedTiers)
+  const { data: userRow, error: userReadError } = await supabase
+    .from('users')
+    .select('highest_streak_milestone')
+    .eq('id', userId)
+    .maybeSingle()
+  if (userReadError) {
+    console.error('[streak] highest_streak_milestone read failed:', userReadError.message)
+  } else if (!userRow || (userRow.highest_streak_milestone ?? 0) < newHigh) {
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({ highest_streak_milestone: newHigh })
+      .eq('id', userId)
+    if (userUpdateError) {
+      console.error('[streak] highest_streak_milestone update failed:', userUpdateError.message)
+    }
+  }
+
+  return getPendingCelebrations(userId, reachedTiers)
 }
 
 /**
- * Mark milestone as seen so it never shows again.
- *
- * Side-effect: emits a Pulse 'goal_hit' activity_event the first time
- * a given milestone is marked seen for this user. The localStorage
- * guard above (`milestoneKey`) means the celebration fires once per
- * user per milestone, and so does the Pulse event — no double-firing
- * on re-mount or repeated streakUpdated dispatches.
+ * Reads back which of `milestones` are reached but have celebrated_at
+ * still null for this user — i.e. pending a first-ever celebration.
  */
-export function markMilestoneSeen(userId, milestone) {
-  if (!userId) return
-  let alreadySeen = false
-  try {
-    alreadySeen = !!localStorage.getItem(milestoneKey(userId, milestone))
-    localStorage.setItem(milestoneKey(userId, milestone), '1')
-  } catch {
-    // localStorage full — best effort
+async function getPendingCelebrations(userId, milestones) {
+  if (!userId || milestones.length === 0) return []
+  const { data, error } = await supabase
+    .from('user_streak_milestones')
+    .select('milestone_days, celebrated_at')
+    .eq('user_id', userId)
+    .in('milestone_days', milestones)
+  if (error) {
+    console.error('[streak] getPendingCelebrations failed:', error.message)
+    return []
   }
-  if (!alreadySeen) {
+  return (data || [])
+    .filter((row) => !row.celebrated_at)
+    .map((row) => row.milestone_days)
+}
+
+/**
+ * Marks a milestone as celebrated, server-side — permanently, so it can
+ * never fire again for this user (see the task-6 decision above).
+ *
+ * The `.is('celebrated_at', null)` guard makes this a no-op (and
+ * `data` comes back empty) if it was somehow already celebrated —
+ * e.g. two overlapping 'streakUpdated' handlers racing — so the Pulse
+ * 'goal_hit' event below still only ever fires once.
+ */
+export async function markMilestoneCelebrated(userId, milestone) {
+  if (!userId) return
+  const { data, error } = await supabase
+    .from('user_streak_milestones')
+    .update({ celebrated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('milestone_days', milestone)
+    .is('celebrated_at', null)
+    .select()
+  if (error) {
+    console.error('[streak] markMilestoneCelebrated failed:', error.message)
+    return
+  }
+  if (data && data.length > 0) {
     logActivityEvent({
       type: ACTIVITY_EVENT_TYPES.GOAL_HIT,
       entityId: String(milestone),
       metadata: { milestone, kind: 'streak' },
     })
   }
-}
-
-/**
- * Check whether a specific milestone has been seen.
- */
-export function isMilestoneSeen(userId, milestone) {
-  if (!userId) return true
-  return !!localStorage.getItem(milestoneKey(userId, milestone))
 }
 
 /* ──────────────────────────────────────────────────────────────────────

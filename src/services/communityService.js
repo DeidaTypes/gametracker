@@ -1089,7 +1089,7 @@ async function _fetchHomeFeedReviewRows({ userIds = null, excludeUserIds = [], c
       .from('reviews')
       .select(
         'id, user_id, igdb_game_id, body, rating, has_spoilers, game_title, game_image, created_at, ' +
-          'users!reviews_user_id_fkey(id, username, display_name, avatar_url)'
+          'users!reviews_user_id_fkey(id, username, display_name, avatar_url, highest_streak_milestone)'
       )
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -1173,6 +1173,7 @@ function _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn = false } 
       username: u.username || null,
       displayName: u.display_name || u.username || 'Player',
       avatarUrl: u.avatar_url || null,
+      highestStreakMilestone: u.highest_streak_milestone ?? null,
     },
     game: {
       id: row.igdb_game_id,
@@ -1246,7 +1247,7 @@ async function _fetchHomeFeedEventRows({
       .from('activity_events')
       .select(
         'id, actor_user_id, type, entity_id, metadata, created_at,' +
-          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url)'
+          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url, highest_streak_milestone)'
       )
       .in('type', types)
       .order('created_at', { ascending: false })
@@ -1279,6 +1280,7 @@ function _authorFromActorJoin(actor) {
     username: a.username || null,
     displayName: a.display_name || a.username || 'Player',
     avatarUrl: a.avatar_url || null,
+    highestStreakMilestone: a.highest_streak_milestone ?? null,
   }
 }
 
@@ -1509,7 +1511,7 @@ export async function getActivityEventForCard(activityEventId) {
       .from('activity_events')
       .select(
         'id, actor_user_id, type, entity_id, metadata, created_at,' +
-          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url)'
+          ' actor:users!activity_events_actor_user_id_fkey(id, username, display_name, avatar_url, highest_streak_milestone)'
       )
       .eq('id', activityEventId)
       .maybeSingle()

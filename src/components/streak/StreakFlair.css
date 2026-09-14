@@ -1,0 +1,33 @@
+/* =====================================================
+   StreakFlair — tier chip beside a username on reviews/Pulse cards.
+   Color is set once per instance via --streak-flair-color (StreakFlair.jsx
+   points it at one of the --streak-tier-* tokens in theme.css); this file
+   never names a tier or hardcodes a hex. Squared corners per the design
+   system's --radius-chip, same as StatusChip's pill variant.
+   ===================================================== */
+
+.streak-flair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--streak-flair-color) 18%, transparent);
+  color: var(--streak-flair-color);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-label);
+  white-space: nowrap;
+}
+
+.streak-flair svg {
+  display: block;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.streak-flair__label {
+  color: inherit;
+}

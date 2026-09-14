@@ -14,6 +14,7 @@ import { useListPreview } from '../../hooks/useListPreview'
 import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
+import StreakFlair from '../streak/StreakFlair'
 import StatusChip from '../StatusChip'
 import { shouldShowCount } from '../../utils/formatSocialCount'
 import { formatActivityDate } from '../../utils/formatActivityDate'
@@ -560,6 +561,7 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
         <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
           {item.isOwn ? 'You' : item.author.displayName}
         </button>
+        {!item.isOwn && <StreakFlair milestoneDays={item.author.highestStreakMilestone} />}
         <span className="home-review-card__verb">{bylineVerb(item)}</span>
         <span className="home-review-card__dot" aria-hidden="true">
           {'\u00b7'}

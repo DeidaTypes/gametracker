@@ -269,6 +269,7 @@ function rowToReviewCard(row, likeCounts, commentCounts) {
       displayName: row.users?.display_name || 'Anonymous',
       userId: row.user_id,
       avatarUrl: row.users?.avatar_url || '',
+      highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
     },
     title: null,
     body: row.body || '',
@@ -556,45 +557,74 @@ function Profile() {
     isOwnProfile ? (getProfile() || initializeProfile()) : null
   )
 
-  // Tabs: 'home' (default), 'reviews', 'lists', 'diary' — reflected in the
-  // URL's `?tab=` query param rather than plain component state. Both the
-  // header back chevron and the iOS edge-swipe-back gesture (see
-  // SwipeBackWrapper) resolve to the exact same thing: a browser history
-  // pop. Popping only restores what the URL of the previous history entry
-  // says, so if that entry's URL didn't record which tab was active, there
-  // was nothing to restore and every return trip landed on the useState
-  // default ('home') instead of the tab the user actually drilled in from.
-  // Storing the tab in `?tab=` — and always REPLACING the current history
-  // entry when it changes rather than pushing a new one — fixes that for
-  // every detail screen this page links out to, keeps this profile route
-  // out of the back-stack entirely (so back-navigating away from /profile
-  // never has to step through past tab selections), and comes with a
-  // refresh-survives-it and copy/paste-the-link-survives-it bonus that
-  // component state could never give us. Works identically for the
-  // signed-in user's own profile (/profile) and any visitor profile
-  // (/user/:username, /user/id/:userId) since both render this same
-  // component and derive the tab from `location.search` the same way.
-  const tabParam = new URLSearchParams(location.search).get('tab')
-  const activeTab = PROFILE_TAB_IDS.has(tabParam) ? tabParam : 'home'
+  // Tabs: 'home' (default), 'reviews', 'lists', 'diary'.
+  //
+  // FIX (bug against this file's own prior intent — see App.jsx's
+  // AnimatedRoutes docstring, which already says profile tabs are
+  // supposed to have their own AnimatePresence and stay unaffected by
+  // route-level transitions): this used to call `navigate({ pathname,
+  // search }, { replace: true })` on every tab click. React Router mints
+  // a brand-new `location.key` on EVERY navigate call, replace or not —
+  // and AnimatedRoutes treats any `location.key` change as a real
+  // navigation: it remounts this whole component on a fresh route layer
+  // and replays the 220ms route-level PageTransition. That's why tab
+  // switches looked like full page reloads (resolving flipped back to
+  // true, follow state re-fetched, taste vector / on-this-day RPCs
+  // re-fired, etc.) and why the tab pane's own 180ms AnimatePresence
+  // slide (below) never got a chance to run.
+  //
+  // `activeTab` is now plain component state — same pattern as
+  // Search.jsx's and Library.jsx's tab state — so a click only
+  // re-renders this component in place; it never calls `navigate` and
+  // never touches `location.key`.
+  //
+  // The `?tab=` query param is still worth keeping for: (1) deep links /
+  // copy-pasting the address bar while on a non-Home tab, (2) surviving
+  // a manual page refresh, and (3) restoring the right tab when the user
+  // drills into a detail screen (game/review/list) and then taps back —
+  // that's a genuine POP navigation, which legitimately remounts this
+  // page from scratch, and the fresh mount needs *something* durable to
+  // read the tab back from. So this is read ONCE on mount to pick the
+  // starting tab, and two-way synced afterwards by writing straight to
+  // the address bar with `window.history.replaceState` — bypassing
+  // react-router's `navigate` entirely — rather than not syncing it back
+  // at all. This is safe here specifically because: the app uses a plain
+  // `BrowserRouter`, so react-router's history is backed by the same
+  // native History API `replaceState` is mutating; the pathname is never
+  // touched, only `?tab=`, so no route match changes; and every other
+  // reader of the tab (this component) treats `activeTab` state as the
+  // source of truth, not `location.search`, so nothing here depends on
+  // react-router's `location` object noticing the change. The one thing
+  // this deliberately gives up is `location.search` staying in sync in
+  // real time elsewhere in this component (e.g. the one-shot edit-modal
+  // effect a bit below, which only ever reads it once on mount before a
+  // tab click could happen) — not a concern for that reason, but flagged
+  // in case a future edit adds a `location.search` read that fires after
+  // a tab switch.
+  const [activeTab, setActiveTab] = useState(() => {
+    const initialTab = new URLSearchParams(location.search).get('tab')
+    return PROFILE_TAB_IDS.has(initialTab) ? initialTab : 'home'
+  })
 
-  const setActiveTab = useCallback(
-    (tabId) => {
-      const nextParams = new URLSearchParams(location.search)
-      if (tabId === 'home') {
-        // Keep the default tab out of the URL so plain /profile and
-        // /user/:username links stay clean.
-        nextParams.delete('tab')
-      } else {
-        nextParams.set('tab', tabId)
-      }
-      const nextSearch = nextParams.toString()
-      navigate(
-        { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' },
-        { replace: true }
-      )
-    },
-    [navigate, location.pathname, location.search]
-  )
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (activeTab === 'home') {
+      // Keep the default tab out of the URL so plain /profile and
+      // /user/:username links stay clean.
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', activeTab)
+    }
+    const nextHref = `${url.pathname}${url.search}${url.hash}`
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (nextHref !== currentHref) {
+      // NOT `navigate()` — see the comment above. Replaces the current
+      // history entry's URL in place without minting a new
+      // `location.key`, so react-router (and therefore AnimatedRoutes)
+      // never sees this as a navigation.
+      window.history.replaceState(window.history.state, '', nextHref)
+    }
+  }, [activeTab])
 
   // Modals / sheets
   const [showEditModal, setShowEditModal] = useState(false)
