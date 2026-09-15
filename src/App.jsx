@@ -499,6 +499,10 @@ function AppContent() {
   const { user, profile, loading: authLoading } = useAuth()
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const mainContentRef = useRef(null)
+  // Element in state (not just the ref) so useNavHideOnScroll's effect
+  // re-runs once `<main>` hydrates after the auth/onboarding early returns.
+  // A ref-only bind is null on first mount and never retriggers.
+  const [mainContentEl, setMainContentElState] = useState(null)
 
   // MUST be stable. React detaches and re-attaches a callback ref whenever its
   // identity changes, and it does so bottom-up alongside layout effects — so
@@ -509,9 +513,10 @@ function AppContent() {
   const setMainContentEl = useCallback((el) => {
     mainContentRef.current = el
     registerBackHost(el)
+    setMainContentElState((prev) => (prev === el ? prev : el))
   }, [])
 
-  const navScrollHidden = useNavHideOnScroll(mainContentRef)
+  const navScrollHidden = useNavHideOnScroll(mainContentEl)
 
   // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
   // earning a badge anywhere in the app surfaces a celebratory toast.
