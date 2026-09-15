@@ -17,7 +17,8 @@ const REASON_OPTIONS = [
  * DeleteAccountSheet — two-step Apple-compliant account deletion flow,
  * presented as a centered popup (CenteredModal).
  *
- * Step 1: Informational — explains what deletion means + 30-day window.
+ * Step 1: Informational — explains that deletion is immediate and permanent
+ *         (no recovery window; see delete-account Edge Function header).
  * Step 2: Intent confirmation — user must type "DELETE" (case-sensitive)
  *         before the destructive button becomes active.
  *
@@ -102,10 +103,11 @@ function DeleteAccountSheet({ isOpen, onClose, onConfirm, isDeleting = false }) 
               </h2>
 
               <p className="del-acct-sheet__body-text">
-                This will permanently remove your profile, reviews, lists, and
-                messages from Checkpoint. You have{' '}
-                <strong>30 days to change your mind</strong> by signing in —
-                after that, your data is gone forever.
+                This will permanently delete your profile, library, and
+                messages, and remove your name from anything you've posted.{' '}
+                <strong>This can't be undone</strong> — there is no recovery
+                window, and you won't be able to sign back in with this
+                account.
               </p>
 
               <div className="del-acct-sheet__actions">

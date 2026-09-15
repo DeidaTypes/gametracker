@@ -5,30 +5,19 @@ import { useAuth } from '../../contexts/AuthContext'
 import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
 import { AUTH_ERRORS } from '../../services/auth'
-import AccountRecoverySheet from '../../components/AccountRecoverySheet'
-import {
-  getPendingDeletion,
-  restoreAccount,
-  daysUntilHardDelete,
-} from '../../services/deleteAccountService'
 import './Auth.css'
 import './LogIn.css'
 
 function LogIn() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { logIn, logOut } = useAuth()
+  const { logIn } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
-
-  // Recovery sheet state
-  const [recoveryOpen, setRecoveryOpen] = useState(false)
-  const [daysRemaining, setDaysRemaining] = useState(30)
-  const [isRestoring, setIsRestoring] = useState(false)
 
   const redirectTo =
     new URLSearchParams(location.search).get('redirectTo') || '/'
@@ -55,21 +44,6 @@ function LogIn() {
     setSubmitting(true)
     try {
       await logIn({ email: email.trim(), password })
-
-      // Check whether this account is pending deletion.
-      const pending = await getPendingDeletion()
-      if (pending?.deleted_at) {
-        const days = daysUntilHardDelete(pending.deleted_at)
-        if (days > 0) {
-          setDaysRemaining(days)
-          setRecoveryOpen(true)
-          // Do NOT navigate yet — wait for the user's choice.
-          return
-        }
-        // Recovery window expired; treat like a normal login and let
-        // the Sprint 8 cron job tidy up.
-      }
-
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const code = err?.code
@@ -86,27 +60,6 @@ function LogIn() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const handleRestore = async () => {
-    if (isRestoring) return
-    setIsRestoring(true)
-    try {
-      await restoreAccount()
-      setRecoveryOpen(false)
-      showToast('Your account has been restored. Welcome back!', 'success', 3500)
-      navigate(redirectTo, { replace: true })
-    } catch (err) {
-      showToast(err?.message || 'Could not restore account. Try again.', 'error')
-    } finally {
-      setIsRestoring(false)
-    }
-  }
-
-  const handleContinueDeletion = async () => {
-    setRecoveryOpen(false)
-    await logOut().catch(() => {})
-    showToast('Your account is still scheduled for deletion.', 'info', 3500)
   }
 
   return (
@@ -193,14 +146,6 @@ function LogIn() {
           </Link>
         </p>
       </div>
-
-      <AccountRecoverySheet
-        isOpen={recoveryOpen}
-        daysRemaining={daysRemaining}
-        onRestore={handleRestore}
-        onContinue={handleContinueDeletion}
-        isRestoring={isRestoring}
-      />
     </div>
   )
 }

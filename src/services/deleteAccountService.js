@@ -3,9 +3,16 @@ import { supabase } from './supabase'
 /**
  * Calls the delete-account Edge Function.
  *
- * The function scrubs PII, hard-deletes messages/comments/likes/follows,
- * and revokes the current auth session. Reviews are left with an
- * anonymised author so other users' threads stay coherent.
+ * The function hard-deletes the user's private data (trackers, journal,
+ * sessions, taste data, badges, streaks, goals, DMs, blocks, follows,
+ * likes, saves, pins, reactions, notifications), leaves reviews/lists/
+ * comments in place but attributed to an anonymized "[deleted user]"
+ * profile (so other users' comment threads, saves, and collaborations
+ * stay intact), and permanently locks the auth credential (scrambled
+ * password + long ban) so the account cannot sign back in. There is no
+ * recovery window — deletion is immediate and final, per Apple's
+ * requirement that account deletion actually remove the account rather
+ * than merely hide it.
  *
  * @param {string|null} reason  Optional churn reason from the dropdown.
  * @throws {Error} on network failure or non-2xx response.
@@ -45,58 +52,4 @@ export async function deleteAccount(reason = null) {
     }
     throw new Error(message)
   }
-}
-
-/**
- * Checks whether the signed-in user has a pending soft-deletion.
- *
- * Returns null if there is no active session or the profile row doesn't
- * exist. Returns an object with `deleted_at` if the account is pending.
- *
- * @returns {Promise<{ deleted_at: string } | null>}
- */
-export async function getPendingDeletion() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session?.user) return null
-
-  // We must bypass the normal `deleted_at IS NULL` RLS filter here.
-  // The users_select_own policy allows the owner to read their own row
-  // regardless of deleted_at, so this call will succeed.
-  const { data, error } = await supabase
-    .from('users')
-    .select('deleted_at')
-    .eq('id', session.user.id)
-    .maybeSingle()
-
-  if (error || !data) return null
-  if (!data.deleted_at) return null
-  return { deleted_at: data.deleted_at }
-}
-
-/**
- * Restores a soft-deleted account within the 30-day recovery window.
- * Calls the restore_deleted_account() Postgres function (SECURITY DEFINER).
- *
- * @throws {Error} if the RPC fails.
- */
-export async function restoreAccount() {
-  const { error } = await supabase.rpc('restore_deleted_account')
-  if (error) throw new Error(error.message)
-}
-
-/**
- * Calculates the number of days remaining in the 30-day recovery window.
- *
- * @param {string} deletedAt  ISO timestamp string from the users row.
- * @returns {number}  days remaining, clamped to [0, 30].
- */
-export function daysUntilHardDelete(deletedAt) {
-  const WINDOW_MS = 30 * 24 * 60 * 60 * 1000
-  const deletedMs = new Date(deletedAt).getTime()
-  const expiresMs = deletedMs + WINDOW_MS
-  const remaining = Math.ceil((expiresMs - Date.now()) / (24 * 60 * 60 * 1000))
-  return Math.max(0, Math.min(30, remaining))
 }
