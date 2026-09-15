@@ -1,8 +1,15 @@
 import { supabase } from './supabase'
 import { BADGES, TIER_RANK } from '../data/badges'
 
-/** Catalogue version stamped on users.badge_backfill_version. */
-export const BADGE_BACKFILL_VERSION = 1
+/**
+ * Catalogue version stamped on users.badge_backfill_version.
+ * 1 = S16-4a (Wave 1 + promoted Wave 2). 2 = also includes the eleven
+ * Wave-3-to-live families (Circle, Conversationalist, First Responder,
+ * Curator, Tastemaker, Year's Work, Comeback, Veteran, Weekender,
+ * Perfect Month, Deep Cut) — see backfill_my_badges() in
+ * supabase/migrations/20260915120000_wave3_eleven_badges_live.sql.
+ */
+export const BADGE_BACKFILL_VERSION = 2
 
 const backfillInflight = new Map()
 
@@ -114,9 +121,21 @@ function notifyBadgesUpdated() {
 }
 
 /**
- * One-time first-launch backfill. Calls backfill_my_badges() which
- * runs the unchanged S16-4 RPC, stamps celebrated_at on every earned
- * family, and sets users.badge_backfill_version = 1.
+ * One-time (per catalogue version) backfill. Calls backfill_my_badges(),
+ * which runs recompute_my_badges(), stamps celebrated_at on every newly
+ * earned family from THIS pass, and advances
+ * users.badge_backfill_version. Runs in up to two silent passes as the
+ * catalogue has grown:
+ *   0 -> 2: brand-new user, never backfilled — every earned family
+ *           (Wave 1/2 + the eleven Wave-3-to-live families) is new.
+ *   1 -> 2: already ran the S16-4a pass — only the eleven
+ *           Wave-3-to-live families (see
+ *           supabase/migrations/20260915120000_wave3_eleven_badges_live.sql)
+ *           are silently stamped this time. Any OLDER family with a
+ *           still-null celebrated_at is a genuine pending unlock and is
+ *           deliberately left alone for useBadgeUnlockWatcher to
+ *           celebrate normally.
+ *   2 -> 2: no-op, RPC returns immediately.
  *
  * Deduped per user for the life of the tab — subsequent launches hit
  * the RPC's version short-circuit (returns empty, no recompute).

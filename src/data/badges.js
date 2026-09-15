@@ -36,8 +36,11 @@ import {
  * Curator / Player / Explorer / Social — countBadge() over client-computed
  * useUserStats counters). That catalogue is retired, not extended:
  *   - Three of its names (Curator, Conversationalist, Backlog Slayer)
- *     reappear below in WAVE 3 under new, not-yet-instrumented definitions
- *     — they are NOT the same badges and do not inherit old progress.
+ *     reappear below under new definitions with no relation to the old
+ *     ones — they are NOT the same badges and do not inherit old
+ *     progress. Curator and Conversationalist shipped live in the
+ *     Wave-3-to-live pass (see that section below); Backlog Slayer is
+ *     still deferred (Wave 3).
  *   - Its "Backlog Slayer" scored current game_trackers.status, which is
  *     exactly what the new decoupling rule (see Finisher below) forbids.
  *   - Old earned rows in user_badges (badge_id like 'reviewer-10') are
@@ -324,41 +327,6 @@ export const BADGES = [
     blockedReason: 'Needs each game\u2019s release_date compared to the activity timestamp. Release dates are not cached with full coverage anywhere in this project (see Time Traveler).',
   }),
   ...deferredBadge({
-    id: 'deep-cut',
-    name: 'Deep Cut',
-    description: 'Play or review a very low-popularity game.',
-    icon: Layers,
-    blockedReason: 'drop_candidate_pool.popularity_rank/popularity_pct only cover the curated Drops pool, not every game a user might play — needs full-coverage popularity data.',
-  }),
-  ...deferredBadge({
-    id: 'curator',
-    name: 'Curator',
-    description: 'Build lists people actually save.',
-    icon: Bookmark,
-    blockedReason: 'The old Sprint 5 "Curator" badge counted raw list count; this name is being redefined (list quality/saves?) and the new definition + thresholds are not specified yet.',
-  }),
-  ...deferredBadge({
-    id: 'conversationalist',
-    name: 'Conversationalist',
-    description: 'Leave comments on reviews.',
-    icon: MessageCircle,
-    blockedReason: 'The old Sprint 5 badge counted a dead `comments` table (0 rows) via a localStorage shadow counter. Needs repointing to the live `review_comments` table plus new thresholds.',
-  }),
-  ...deferredBadge({
-    id: 'circle',
-    name: 'Circle',
-    description: 'Build mutual connections with other players.',
-    icon: Users,
-    blockedReason: 'No defined "circle" concept (mutual follows? close-friends list?) or count thresholds specified yet.',
-  }),
-  ...deferredBadge({
-    id: 'first-responder',
-    name: 'First Responder',
-    description: 'Be first to comment or react on a review.',
-    icon: Siren,
-    blockedReason: 'Needs "first by timestamp" ordering logic across review_comments/reactions with a defined count threshold — not implemented.',
-  }),
-  ...deferredBadge({
     id: 'backlog-slayer',
     name: 'Backlog Slayer',
     description: 'Clear a large backlog.',
@@ -366,53 +334,109 @@ export const BADGES = [
     blockedReason: 'The old Sprint 5 badge scored game_trackers.status directly, which the new decoupling rule forbids. Needs re-anchoring to completion EVENTS (like Finisher) with new thresholds.',
   }),
   ...deferredBadge({
-    id: 'years-work',
-    name: 'Year\u2019s Work',
-    description: 'Hit your yearly game-count goal.',
-    icon: CalendarRange,
-    blockedReason: 'user_goals (yearly game-count challenges) exists, but the mapping from goal completion to a badge tier ladder is not specified.',
-  }),
-  ...deferredBadge({
-    id: 'comeback',
-    name: 'Comeback',
-    description: 'Return to a dropped game and finish it.',
-    icon: RotateCcw,
-    blockedReason: 'Needs a "dropped, then later played" event-sequence detector over `activities` with a defined count threshold — not implemented.',
-  }),
-  ...deferredBadge({
-    id: 'veteran',
-    name: 'Veteran',
-    description: 'Stick around.',
-    icon: ShieldCheck,
-    blockedReason: 'No anchor definition given (account age? total lifetime activity?) or thresholds specified.',
-  }),
-  ...deferredBadge({
-    id: 'perfect-month',
-    name: 'Perfect Month',
-    description: 'Hit every tracked habit in one calendar month.',
-    icon: Sparkles,
-    blockedReason: '"Perfect" is undefined — which combination of session/review/diary/streak activity qualifies a month is not specified.',
-  }),
-  ...deferredBadge({
-    id: 'weekender',
-    name: 'Weekender',
-    description: 'Play mostly on weekends.',
-    icon: Sunset,
-    blockedReason: 'play_sessions.played_on can support a weekend/weekday split, but the exact ratio or count thresholds are not specified.',
-  }),
-  ...deferredBadge({
-    id: 'tastemaker',
-    name: 'Tastemaker',
-    description: 'Build a following around your taste.',
-    icon: Palette,
-    blockedReason: 'Explicitly gated on S16-10 per the sprint prompt — not this prompt\u2019s decision to make.',
-  }),
-  ...deferredBadge({
     id: 'dawn-patrol',
     name: 'Dawn Patrol',
     description: 'Play early in the morning, often.',
     icon: Sunrise,
     blockedReason: 'Explicitly gated on S16-10 per the sprint prompt — not this prompt\u2019s decision to make.',
+  }),
+
+  // ── WAVE 3 -> LIVE (this prompt) — a read-only diagnosis confirmed all
+  //    eleven of these are computable today from EXISTING tables (no
+  //    schema change, no new write path). Server-side computation lives
+  //    in recompute_my_badges() —
+  //    supabase/migrations/20260915120000_wave3_eleven_badges_live.sql —
+  //    same RPC as every Wave 1/2 family above. Descriptions below
+  //    describe what each ACTUALLY measures now; several of the Wave 3
+  //    placeholders above were written against a different (and in
+  //    Conversationalist/Deep Cut's case, wrong-table) assumption. ──────
+  ...tieredBadge({
+    id: 'circle',
+    name: 'Circle',
+    description: 'Build mutual connections — people who follow you back.',
+    icon: Users,
+    tiers: [3, 15, 50],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'conversationalist',
+    name: 'Conversationalist',
+    description: 'Leave comments on other players\u2019 reviews.',
+    icon: MessageCircle,
+    tiers: [10, 50, 200],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'first-responder',
+    name: 'First Responder',
+    description: 'Be the first to comment on someone else\u2019s review or pulse post.',
+    icon: Siren,
+    tiers: [5, 25, 100],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'curator',
+    name: 'Curator',
+    description: 'Get saves on lists you built.',
+    icon: Bookmark,
+    tiers: [5, 25, 100],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'tastemaker',
+    name: 'Tastemaker',
+    description: 'Build a following of people who genuinely share your taste — over 70% match.',
+    icon: Palette,
+    tiers: [3, 15, 50],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'years-work',
+    name: 'Year\u2019s Work',
+    description: 'Hit your yearly game-count goal — lifetime, across every year.',
+    icon: CalendarRange,
+    tiers: [1, 2, 3],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'comeback',
+    name: 'Comeback',
+    description: 'Return to a game you dropped and finish it.',
+    icon: RotateCcw,
+    tiers: [1, 5, 15],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'veteran',
+    name: 'Veteran',
+    description: 'Stick around — full account-years with at least one logged session.',
+    icon: ShieldCheck,
+    tiers: [1, 2, 3],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'weekender',
+    name: 'Weekender',
+    description: 'Log play sessions on weekends.',
+    icon: Sunset,
+    tiers: [10, 50, 150],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'perfect-month',
+    name: 'Perfect Month',
+    description: 'Log a session on every single day of a calendar month.',
+    icon: Sparkles,
+    tiers: [1, 3, 12],
+    wave: 4,
+  }),
+  ...tieredBadge({
+    id: 'deep-cut',
+    name: 'Deep Cut',
+    description: 'Finish games most people have never heard of — under 50 IGDB ratings.',
+    icon: Layers,
+    tiers: [3, 12, 35],
+    wave: 4,
   }),
 ]
 
@@ -443,8 +467,13 @@ export const TIER_RANK = { bronze: 0, silver: 1, gold: 2, platinum: 3 }
 /** Full Sprint 16 catalogue size — used for "N of 32 earned" copy. */
 export const BADGE_CATALOG_FAMILY_COUNT = 32
 
-/** Families omitted from shelf / full-screen until S16-10. */
-export const BADGE_SHELF_HIDDEN_FAMILIES = new Set(['tastemaker', 'dawn-patrol'])
+/**
+ * Families omitted from shelf / full-screen until S16-10.
+ * Tastemaker shipped live in the Wave-3-to-live pass (this prompt) — it
+ * is no longer gated, despite the still-accurate "gated on S16-10" note
+ * on Dawn Patrol below (Dawn Patrol was not part of that pass).
+ */
+export const BADGE_SHELF_HIDDEN_FAMILIES = new Set(['dawn-patrol'])
 
 /**
  * Six collapsible shelf categories for the profile teaser + full badges
@@ -484,7 +513,7 @@ export const BADGE_SHELF_CATEGORIES = [
   {
     id: 'community',
     label: 'Community',
-    families: ['resonant', 'curator', 'conversationalist', 'circle', 'first-responder'],
+    families: ['resonant', 'curator', 'conversationalist', 'circle', 'first-responder', 'tastemaker'],
   },
   {
     id: 'time-return',
