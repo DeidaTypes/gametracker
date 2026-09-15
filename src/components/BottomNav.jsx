@@ -77,7 +77,7 @@ const NAV_ITEMS = [
   },
 ]
 
-function BottomNav() {
+function BottomNav({ scrollHidden = false }) {
   const location = useLocation()
   const reduced = useReducedMotion()
   const { unreadCount } = useUnreadMessages()
@@ -104,11 +104,15 @@ function BottomNav() {
     ? { duration: 0 }
     : { type: 'spring', stiffness: 380, damping: 30 }
 
+  const visuallyHidden = dragReorderActive || scrollHidden
+
   return (
     <nav
-      className={`bottom-nav${dragReorderActive ? ' bottom-nav--hidden' : ''}`}
+      className={`bottom-nav${dragReorderActive ? ' bottom-nav--hidden' : ''}${
+        scrollHidden && !dragReorderActive ? ' bottom-nav--scroll-hidden' : ''
+      }`}
       aria-label="Primary"
-      aria-hidden={dragReorderActive || undefined}
+      aria-hidden={visuallyHidden || undefined}
     >
       {NAV_ITEMS.map(({ id, to, label, Icon, isActive }) => {
         const active = isActive(location.pathname)

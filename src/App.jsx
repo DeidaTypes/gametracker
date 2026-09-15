@@ -23,6 +23,7 @@ import {
   teardownBack,
 } from './components/backTransition'
 import { useMotionPreference } from './hooks/useMotionPreference'
+import { useNavHideOnScroll } from './hooks/useNavHideOnScroll'
 import TopNav from './components/TopNav'
 import MobileNav from './components/MobileNav'
 import BottomNav from './components/BottomNav'
@@ -509,6 +510,8 @@ function AppContent() {
     mainContentRef.current = el
     registerBackHost(el)
   }, [])
+
+  const navScrollHidden = useNavHideOnScroll(mainContentRef)
 
   // Sprint 5 P9 — Mount the badge unlock watcher once at the app root so
   // earning a badge anywhere in the app surfaces a celebratory toast.
@@ -1430,7 +1433,7 @@ function AppContent() {
             />
         </AnimatedRoutes>
       </main>
-      {showNav && <BottomNav />}
+      {showNav && <BottomNav scrollHidden={navScrollHidden} />}
 
       {/* Persistent session timer pill — floats above BottomNav when a
           session is running. Rendered outside .main-content so fixed

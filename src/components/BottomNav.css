@@ -47,6 +47,17 @@
   pointer-events: none;
 }
 
+/* ---- Scroll-down hide (useNavHideOnScroll) ----
+   Same compositor-only transform/opacity as drag-hide above, but driven
+   by scroll direction on `.main-content` — a separate mechanism so the
+   two states never share JS logic. FAB position is unaffected: it anchors
+   to --bottom-nav-height, not the nav element's live box. */
+.bottom-nav--scroll-hidden {
+  transform: translateX(-50%) translateY(120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ---- Day/week activity bottom sheet open (WeekDetailSheet / DayLogSheet) ----
    Sets body.nav-dimmed (via useNavDim, see src/hooks/useNavDim.js). The
    sheet's own scrim sits at z-index 200, so the nav is dropped to 150 —
