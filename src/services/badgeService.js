@@ -7,9 +7,13 @@ import { BADGES, TIER_RANK } from '../data/badges'
  * Wave-3-to-live families (Circle, Conversationalist, First Responder,
  * Curator, Tastemaker, Year's Work, Comeback, Veteran, Weekender,
  * Perfect Month, Deep Cut) — see backfill_my_badges() in
- * supabase/migrations/20260915120000_wave3_eleven_badges_live.sql.
+ * supabase/migrations/20260915120000_wave3_eleven_badges_live.sql. 3 =
+ * also includes the five badges unblocked by the widened game_tags
+ * cache (Time Traveler, Early Adopter, Short Stack, The Long Haul,
+ * Platform Nomad) — see backfill_my_badges() in
+ * supabase/migrations/20260915170000_five_badges_widened_cache.sql.
  */
-export const BADGE_BACKFILL_VERSION = 2
+export const BADGE_BACKFILL_VERSION = 3
 
 const backfillInflight = new Map()
 

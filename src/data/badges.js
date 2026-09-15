@@ -27,6 +27,7 @@ import {
   Sunset,
   Palette,
   Sunrise,
+  Zap,
 } from 'lucide-react'
 
 /**
@@ -262,45 +263,12 @@ export const BADGES = [
     wave: 2,
   }),
 
-  // ── WAVE 2 candidates MOVED to Wave 3 — real thresholds kept, but data
-  //    coverage is incomplete (see chat report: only ~65% of finished
-  //    games have a release year or a time-to-beat number cached anywhere
-  //    in this project) or entirely absent (platforms) ─────────────────
-  ...deferredTieredBadge({
-    id: 'time-traveler',
-    name: 'Time Traveler',
-    description: 'Finish games across distinct release decades.',
-    icon: CalendarRange,
-    tiers: [3, 5, 7],
-    blockedReason:
-      'release_year exists only in drop_candidate_pool (Themed Drops\u2019 curated pool), which covers ~65% of a real user\u2019s finished games in this project — not every game. Needs a full per-game release-date cache, not the Drops-scoped one.',
-  }),
-  ...deferredTieredBadge({
-    id: 'short-stack',
-    name: 'Short Stack',
-    description: 'Finish games with a completionist time under 5 hours.',
-    icon: Layers,
-    tiers: [5, 20, 60],
-    blockedReason:
-      'Same drop_candidate_pool coverage gap as Time Traveler, plus its time_to_beat_seconds is IGDB\u2019s general time-to-beat, not verified to be the "completionist" figure this definition specifies.',
-  }),
-  ...deferredTieredBadge({
-    id: 'the-long-haul',
-    name: 'The Long Haul',
-    description: 'Finish games with a completionist time over 80 hours.',
-    icon: Sword,
-    tiers: [1, 3, 8],
-    blockedReason: 'Same as Short Stack.',
-  }),
-  ...deferredTieredBadge({
-    id: 'platform-nomad',
-    name: 'Platform Nomad',
-    description: 'Finish games across distinct platforms.',
-    icon: Rocket,
-    tiers: [3, 6, 10],
-    blockedReason:
-      'No table in this project caches per-game platforms at all (game_tags and drop_candidate_pool both cache genres/themes but never platforms). Needs a new IGDB-backed cache column before this can compute for anyone.',
-  }),
+  // ── WAVE 2 candidates that were MOVED to Wave 3 (Time Traveler, Short
+  //    Stack, The Long Haul, Platform Nomad) and Early Adopter (originally
+  //    a no-threshold Wave 3 placeholder) all shipped live together below,
+  //    once game_tags widened with release date / time-to-beat / platforms
+  //    and was backfilled across all 728 existing rows — see "FIVE BADGES
+  //    ON THE WIDENED CACHE" further down. They are not re-declared here.
 
   // ── WAVE 3 — deferred, no data source today, definitions kept for the
   //    shelf only. See chat report for the one-line instrumentation need
@@ -320,13 +288,6 @@ export const BADGES = [
     blockedReason: 'Partial data exists (activities has backlogged + status_changed/to_status=played timestamps for the same game), but the exact elapsed-time thresholds and tiers are not specified.',
   }),
   ...deferredBadge({
-    id: 'early-adopter',
-    name: 'Early Adopter',
-    description: 'Play or review a game shortly after its release.',
-    icon: Rocket,
-    blockedReason: 'Needs each game\u2019s release_date compared to the activity timestamp. Release dates are not cached with full coverage anywhere in this project (see Time Traveler).',
-  }),
-  ...deferredBadge({
     id: 'backlog-slayer',
     name: 'Backlog Slayer',
     description: 'Clear a large backlog.',
@@ -339,6 +300,77 @@ export const BADGES = [
     description: 'Play early in the morning, often.',
     icon: Sunrise,
     blockedReason: 'Explicitly gated on S16-10 per the sprint prompt — not this prompt\u2019s decision to make.',
+  }),
+
+  // ── FIVE BADGES ON THE WIDENED CACHE (this prompt) — Time Traveler,
+  //    Early Adopter, Short Stack, The Long Haul, Platform Nomad. Blocked
+  //    since Wave 2/3 on missing game facts (release date, time-to-beat,
+  //    platforms); unblocked now that game_tags carries all three,
+  //    backfilled across all 728 existing rows (commit 7977dd4). Same RPC
+  //    as every other family — recompute_my_badges() in
+  //    supabase/migrations/20260915170000_five_badges_widened_cache.sql.
+  //
+  //    Coverage (this project's live data, see that migration's header
+  //    for the query):
+  //      - first_release_date / platform_ids: 79/79 finished games (100%)
+  //        — Time Traveler and Platform Nomad need no caveat.
+  //      - time_to_beat_completely_seconds: 53/79 finished games (67.1%)
+  //        — Short Stack and The Long Haul's descriptions say so.
+  //      - time_to_beat_normally_seconds is NEVER read by either TTB
+  //        badge — completely (100%-completion) is the only flavor that
+  //        matches "completionist time" in both definitions.
+  //
+  //    200-HOUR PLAUSIBILITY BOUND: time_to_beat_completely_seconds is
+  //    bounded to 15min-200h (private.plausible_ttb_seconds() in that
+  //    migration), matching supabase/functions/themed-drops/pool.ts's
+  //    existing TTB_MIN_PLAUSIBLE_SECONDS/TTB_MAX_PLAUSIBLE_SECONDS. A
+  //    value outside that range (Star Citizen: 99,999h; League of
+  //    Legends: 14,452h; also WoW/Minecraft/GTA V/CS:GO/Fortnite — 9 of
+  //    them land in finished-game data in this project) is treated as
+  //    UNKNOWN, never as a very long completion — so a game like GTA V
+  //    cannot back into The Long Haul off an IGDB sentinel/live-service
+  //    artifact.
+  ...tieredBadge({
+    id: 'time-traveler',
+    name: 'Time Traveler',
+    description: 'Finish games across distinct release decades.',
+    icon: CalendarRange,
+    tiers: [3, 5, 7],
+    wave: 5,
+  }),
+  ...tieredBadge({
+    id: 'early-adopter',
+    name: 'Early Adopter',
+    description: 'Play or review games within 30 days of their release.',
+    icon: Zap,
+    tiers: [3, 15, 40],
+    wave: 5,
+  }),
+  ...tieredBadge({
+    id: 'short-stack',
+    name: 'Short Stack',
+    description:
+      'Finish games with a completionist time under 5 hours, from games with a known completion time.',
+    icon: Layers,
+    tiers: [5, 20, 60],
+    wave: 5,
+  }),
+  ...tieredBadge({
+    id: 'the-long-haul',
+    name: 'The Long Haul',
+    description:
+      'Finish games with a completionist time over 80 hours, from games with a known completion time.',
+    icon: Sword,
+    tiers: [1, 3, 8],
+    wave: 5,
+  }),
+  ...tieredBadge({
+    id: 'platform-nomad',
+    name: 'Platform Nomad',
+    description: 'Finish games across distinct platforms.',
+    icon: Rocket,
+    tiers: [3, 6, 10],
+    wave: 5,
   }),
 
   // ── WAVE 3 -> LIVE (this prompt) — a read-only diagnosis confirmed all
