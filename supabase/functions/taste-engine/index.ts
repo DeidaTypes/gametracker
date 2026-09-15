@@ -336,6 +336,16 @@ interface GameTag {
   similar_game_ids: number[]
   total_rating: number | null
   total_rating_count: number | null
+  // Release date / platforms — from the `games` endpoint, same request as
+  // everything above (no extra IGDB round trip). null = IGDB genuinely has
+  // none, ONCE release_platform_fetched_at is set (see resolveTags).
+  first_release_date: string | null
+  platform_ids: number[] | null
+  platform_names: string[] | null
+  // Time-to-beat — from the separate `game_time_to_beats` endpoint. null =
+  // IGDB genuinely has none, ONCE time_to_beat_fetched_at is set.
+  time_to_beat_normally_seconds?: number | null
+  time_to_beat_completely_seconds?: number | null
 }
 
 // ── Tag resolution (cache-first, IGDB fallback) ───────────────────────────────
@@ -343,6 +353,7 @@ function shapeIgdbGame(g: any): GameTag {
   const genres = Array.isArray(g.genres) ? g.genres : []
   const themes = Array.isArray(g.themes) ? g.themes : []
   const similar = Array.isArray(g.similar_games) ? g.similar_games : []
+  const platforms = Array.isArray(g.platforms) ? g.platforms : []
   return {
     igdb_game_id: Number(g.id),
     name: g.name ?? null,
@@ -354,24 +365,50 @@ function shapeIgdbGame(g: any): GameTag {
     similar_game_ids: similar.map((x: any) => (typeof x === 'object' ? Number(x.id) : Number(x))).filter(Boolean),
     total_rating: typeof g.total_rating === 'number' ? g.total_rating : null,
     total_rating_count: typeof g.total_rating_count === 'number' ? g.total_rating_count : null,
+    // IGDB ships this as unix-epoch seconds; convert to a real timestamp,
+    // never truncate to a year. Some games (unreleased/placeholder entries)
+    // genuinely have none — stays null, never guessed.
+    first_release_date: typeof g.first_release_date === 'number'
+      ? new Date(g.first_release_date * 1000).toISOString()
+      : null,
+    // [] here is a real "IGDB lists no platforms for this game", distinct
+    // from the null these columns hold before they've ever been fetched.
+    platform_ids: platforms.map((x: any) => Number(x.id)).filter(Boolean),
+    platform_names: platforms.map((x: any) => String(x.name)).filter(Boolean),
   }
 }
 
 const TAG_FIELDS =
   'fields name, cover.image_id, genres.id, genres.name, themes.id, themes.name, ' +
-  'similar_games, total_rating, total_rating_count'
+  'similar_games, total_rating, total_rating_count, first_release_date, ' +
+  'platforms.id, platforms.name'
 
 /**
  * Resolve GameTag for a set of IGDB ids. Reads fresh rows from the
- * game_tags cache, fetches the rest from IGDB (chunked), upserts new rows,
- * and returns a Map<id, GameTag>. `db` is the service-role client.
+ * game_tags cache, fetches the rest from IGDB (chunked), upserts new/updated
+ * rows, and returns a Map<id, GameTag>. `db` is the service-role client.
+ *
+ * Three independent freshness clocks, because release-date/platforms and
+ * time-to-beat come from two different IGDB endpoints and this table now
+ * tracks each with its own "attempted at" column (see the
+ * game_tags_release_ttb_platforms migration for why NULL alone can't carry
+ * "not fetched" vs "IGDB has none"):
+ *   - genre/theme/rating: TTL-gated by `fetched_at` (unchanged — 7 days).
+ *   - release_date/platforms: gated by `release_platform_fetched_at` being
+ *     NULL. Fetched from the SAME `games` query as genre/theme, so
+ *     upgrading an old pre-migration row costs zero extra IGDB requests
+ *     whenever that row would be re-fetched anyway (cache miss OR never
+ *     had these fields).
+ *   - time-to-beat: gated by `time_to_beat_fetched_at` being NULL, from the
+ *     separate `game_time_to_beats` endpoint. Never re-queried once
+ *     attempted — per timeToBeatService.js, this data "rarely changes".
  */
 async function resolveTags(db: any, ids: number[]): Promise<Map<number, GameTag>> {
   const result = new Map<number, GameTag>()
   const unique = Array.from(new Set(ids.map(Number).filter(Boolean)))
   if (unique.length === 0) return result
 
-  // 1. Cache read (only rows fresh within the TTL are trusted).
+  // 1. Cache read (only rows fresh within the genre/theme TTL are trusted).
   const freshCutoff = new Date(Date.now() - TAG_TTL_MS).toISOString()
   const { data: cached } = await db
     .from('game_tags')
@@ -380,36 +417,126 @@ async function resolveTags(db: any, ids: number[]): Promise<Map<number, GameTag>
     .gte('fetched_at', freshCutoff)
   for (const row of cached || []) result.set(Number(row.igdb_game_id), row as GameTag)
 
-  const missing = unique.filter((id) => !result.has(id))
-  if (missing.length === 0) return result
+  // 2a. Ids needing a `games` fetch: cache misses, PLUS cache hits that
+  // predate this migration (release_platform_fetched_at never set) — these
+  // fields ride the same request as genre/theme, so this is free upgrade,
+  // not an extra round trip.
+  const needsGamesFetch = unique.filter((id) => {
+    const row = result.get(id) as any
+    return !row || row.release_platform_fetched_at == null
+  })
 
-  // 2. IGDB fetch for the misses, chunked + batched via /multiquery so
-  // however many chunks this pass needs still costs a small bounded
-  // number of round trips (≤10 chunks per POST) rather than one per chunk.
-  const chunks: number[][] = []
-  for (let i = 0; i < missing.length; i += ID_CHUNK) chunks.push(missing.slice(i, i + ID_CHUNK))
+  // 2b. Ids needing a `game_time_to_beats` fetch: cache misses, PLUS any
+  // cached row that has never had a time-to-beat lookup attempted.
+  const needsTtbFetch = unique.filter((id) => {
+    const row = result.get(id) as any
+    return !row || row.time_to_beat_fetched_at == null
+  })
 
-  const subQueries: SubQuery[] = chunks.map((chunk, i) => ({
+  if (needsGamesFetch.length === 0 && needsTtbFetch.length === 0) return result
+
+  // Both endpoints ride the SAME /multiquery batches (each sub-query names
+  // its own endpoint), so widening what we fetch does not multiply the
+  // request count beyond what the extra id coverage actually requires.
+  const subQueries: SubQuery[] = []
+  const gamesChunks: number[][] = []
+  for (let i = 0; i < needsGamesFetch.length; i += ID_CHUNK) gamesChunks.push(needsGamesFetch.slice(i, i + ID_CHUNK))
+  gamesChunks.forEach((chunk, i) => subQueries.push({
     name: `tags_${i}`,
     endpoint: 'games',
     body: `${TAG_FIELDS}; where id = (${chunk.join(',')}); limit ${chunk.length};`,
   }))
-  const resultsByName = await igdbMulti(subQueries)
 
-  const toUpsert: GameTag[] = []
-  for (const games of resultsByName.values()) {
+  const ttbChunks: number[][] = []
+  for (let i = 0; i < needsTtbFetch.length; i += ID_CHUNK) ttbChunks.push(needsTtbFetch.slice(i, i + ID_CHUNK))
+  ttbChunks.forEach((chunk, i) => subQueries.push({
+    name: `ttb_${i}`,
+    endpoint: 'game_time_to_beats',
+    body: `fields game_id, normally, completely; where game_id = (${chunk.join(',')}); limit ${chunk.length};`,
+  }))
+
+  const resultsByName = await igdbMulti(subQueries)
+  const now = new Date().toISOString()
+
+  // Base-tag results: one upsert candidate per game, stamped with both
+  // fetched_at (existing convention) and release_platform_fetched_at (this
+  // migration's "attempted" mark for first_release_date/platforms).
+  const upsertByGame = new Map<number, any>()
+  for (const [name, games] of resultsByName) {
+    if (!name.startsWith('tags_')) continue
     for (const g of games) {
       if (!g?.id) continue
       const tag = shapeIgdbGame(g)
+      // Preserve any time-to-beat data this row already had cached — this
+      // pass may only be refreshing it for the release_platform_fetched_at
+      // upgrade, and the ttb loop below only touches ids in needsTtbFetch.
+      const prior = result.get(tag.igdb_game_id) as any
+      if (prior && prior.time_to_beat_fetched_at != null) {
+        tag.time_to_beat_normally_seconds = prior.time_to_beat_normally_seconds ?? null
+        tag.time_to_beat_completely_seconds = prior.time_to_beat_completely_seconds ?? null
+      }
       result.set(tag.igdb_game_id, tag)
-      toUpsert.push(tag)
+      upsertByGame.set(tag.igdb_game_id, {
+        ...tag,
+        fetched_at: now,
+        release_platform_fetched_at: now,
+      })
     }
   }
 
-  // 3. Persist to cache (fetched_at defaults to now()).
+  // Time-to-beat results, merged onto the same upsert row when this id also
+  // got a base-tag fetch this pass, else a partial update (by id only) for
+  // an already-cached-and-fresh row. Ids with no row returned still get
+  // time_to_beat_fetched_at stamped — IGDB was asked and genuinely has
+  // nothing, which is not the same as never having asked.
+  const ttbById = new Map<number, { normally: number | null; completely: number | null }>()
+  for (const [name, rows] of resultsByName) {
+    if (!name.startsWith('ttb_')) continue
+    for (const r of rows) {
+      const gid = Number(r?.game_id)
+      if (!gid) continue
+      ttbById.set(gid, {
+        normally: typeof r.normally === 'number' ? r.normally : null,
+        completely: typeof r.completely === 'number' ? r.completely : null,
+      })
+    }
+  }
+  for (const gid of needsTtbFetch) {
+    const ttb = ttbById.get(gid) ?? { normally: null, completely: null }
+    const existingUpsert = upsertByGame.get(gid)
+    if (existingUpsert) {
+      existingUpsert.time_to_beat_normally_seconds = ttb.normally
+      existingUpsert.time_to_beat_completely_seconds = ttb.completely
+      existingUpsert.time_to_beat_fetched_at = now
+    } else if (result.has(gid)) {
+      // Base tags are already cached and fresh — partial update touching
+      // only the three time-to-beat columns; supabase-js's upsert only sets
+      // the keys present here, so genre/theme/etc are left untouched.
+      upsertByGame.set(gid, {
+        igdb_game_id: gid,
+        time_to_beat_normally_seconds: ttb.normally,
+        time_to_beat_completely_seconds: ttb.completely,
+        time_to_beat_fetched_at: now,
+      })
+    }
+    // else: IGDB has no base game for this id either (deleted/invalid) —
+    // nothing to attach the attempt to; skip rather than insert a row with
+    // only NOT-NULL-defaulted junk (empty genre/theme arrays) in it.
+
+    const cachedTag = result.get(gid) as any
+    if (cachedTag) {
+      cachedTag.time_to_beat_normally_seconds = ttb.normally
+      cachedTag.time_to_beat_completely_seconds = ttb.completely
+    }
+  }
+
+  // 3. Persist. Each row is either a full base-tag row (new or upgraded,
+  // possibly with time-to-beat merged in) or a partial time-to-beat-only
+  // row for an already-fresh cached game — never a mix that could clobber
+  // data it doesn't mention.
+  const toUpsert = Array.from(upsertByGame.values())
   if (toUpsert.length > 0) {
-    const rows = toUpsert.map((t) => ({ ...t, fetched_at: new Date().toISOString() }))
-    const { error } = await db.from('game_tags').upsert(rows, { onConflict: 'igdb_game_id' })
+    const { error } = await db.from('game_tags').upsert(toUpsert, { onConflict: 'igdb_game_id' })
     if (error) console.error('[taste-engine] game_tags upsert error:', error.message)
   }
   return result
