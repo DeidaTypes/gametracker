@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
@@ -7,14 +8,19 @@ import {
   ChevronLeft,
   Plus,
   MoreHorizontal,
-  ChevronDown,
   PlayCircle,
   CheckCircle2,
-  Bookmark,
-  BookmarkCheck,
   List,
   Pencil,
 } from 'lucide-react'
+import LibrarySortRow from '../components/library/LibrarySortRow'
+import LibrarySortSheet from '../components/library/LibrarySortSheet'
+import {
+  LIBRARY_SORTS,
+  readLibraryView,
+  writeLibraryView,
+} from '../components/library/libraryConstants'
+import LibraryGameGrid, { LibraryGameRow } from '../components/library/LibraryGameGrid'
 import SharedCover from '../components/SharedCover'
 import Pressable from '../components/Pressable'
 import { getBestImageUrl } from '../services/imageUtils'
@@ -41,8 +47,6 @@ import {
   deleteList,
   removeGameFromList,
   reorderListGames,
-  getOwnerRatingsForList,
-  getOwnerTrackerDataForList,
   isTrackerList,
   pinList,
   unpinList,
@@ -58,7 +62,6 @@ import {
 import ListComments from '../components/ListComments'
 import { useHideNav } from '../hooks/useHideNav'
 import TrackerGameList from '../components/TrackerGameList'
-import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
@@ -66,6 +69,7 @@ import { getSWR, peekSWR } from '../services/swrCache'
 /** How long a list's contents are reused before the next entry revalidates. */
 const LIST_TTL_MS = 60 * 1000
 import './ListDetail.css'
+import '../pages/Library.css'
 
 // ── Long-press drag-to-reorder tuning ───────────────────────────────────
 const LONG_PRESS_MS = 450
@@ -92,15 +96,6 @@ function findSlotIndexAtPoint(x, y, slotRects) {
     if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i
   }
   return -1
-}
-
-function fmtDate(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 /* ── Context-aware empty state for tracker and custom list pages ── */
@@ -148,9 +143,7 @@ function ListDetailEmpty({ listId, isTracker, onAddGames, onFindGames }) {
       <EmptyState
         icon={List}
         title="No games in this list."
-        body="Start adding games to build your collection."
-        cta="Add a game"
-        onCta={onAddGames}
+        body="Games added to this list will appear here."
       />
     </div>
   )
@@ -203,13 +196,6 @@ function ListDetail() {
   // resulting pointerup's synthesized click doesn't also navigate
   const { reduced: reducedMotion } = useMotionPreference()
 
-  // Owner ratings: { [igdbGameId]: rating }
-  const [ownerRatings, setOwnerRatings] = useState({})
-
-  // Owner tracker data (status + hours): { [igdbGameId]: { status, hoursPlayed } }
-  // Powers the stat line's Played/Total-hours cells and the per-cover status dot.
-  const [ownerTrackerData, setOwnerTrackerData] = useState({})
-
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState('')
@@ -224,14 +210,17 @@ function ListDetail() {
   // See src/hooks/useHideNav.js.
   useHideNav(!!listInfo?.isCustom)
 
-  // ── Sticky-header title fade ─────────────────────────────────────────────
-  // The header title is hidden at scroll-top and only fades in once the
-  // masthead title (.masthead-title) has scrolled up behind the sticky
-  // header. Tracker lists never render the masthead card, so their header
-  // label stays visible the whole time (unchanged from before).
-  const titleRef = useRef(null)
   const headerBarRef = useRef(null)
-  const [showHeaderTitle, setShowHeaderTitle] = useState(isTracker)
+
+  // Sort + view — same controls and persistence as Library › My Games.
+  const [sortKey, setSortKey] = useState('recent')
+  const [viewKey, setViewKey] = useState(readLibraryView)
+  const [showSortSheet, setShowSortSheet] = useState(false)
+
+  const handleViewSelect = useCallback((key) => {
+    setViewKey(key)
+    writeLibraryView(key)
+  }, [])
 
   // ── Session ───────────────────────────────────────────────────────────────
 
@@ -269,10 +258,10 @@ function ListDetail() {
     }
   }, [listId, isTracker])
 
-  // Reset to the first page whenever a different list is opened.
+  // Reset to the first page whenever a different list is opened or sort changes.
   useEffect(() => {
     setVisibleGamesCount(GAMES_PAGE_SIZE)
-  }, [listId])
+  }, [listId, sortKey])
 
   useEffect(() => {
     // Mount reads through the cache; the events below mean the list really
@@ -293,8 +282,16 @@ function ListDetail() {
   // Reveal another page of games once the sentinel below the grid comes
   // into view. Drag-reorder deliberately only ever operates on this
   // visible slice — see commitReorder.
-  const visibleGames = games.slice(0, visibleGamesCount)
-  const hasMoreGames = games.length > visibleGames.length
+  const sortedGames = useMemo(() => {
+    const list = [...games]
+    if (sortKey === 'title') {
+      list.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+    }
+    return list
+  }, [games, sortKey])
+
+  const visibleGames = sortedGames.slice(0, visibleGamesCount)
+  const hasMoreGames = sortedGames.length > visibleGames.length
 
   useEffect(() => {
     if (!hasMoreGames) return undefined
@@ -311,31 +308,6 @@ function ListDetail() {
     observer.observe(node)
     return () => observer.disconnect()
   }, [hasMoreGames])
-
-  // Show the sticky header's title only once the masthead title has
-  // scrolled up behind it. `.main-content` is the app's single scroll
-  // container (see App.jsx), so we measure against its scroll position
-  // rather than window scroll. Purely visual — no data/behavior change.
-  useEffect(() => {
-    if (isTracker) return
-    const titleEl = titleRef.current
-    const scrollEl = document.querySelector('.main-content')
-    if (!titleEl || !scrollEl) return
-
-    const update = () => {
-      const headerHeight = headerBarRef.current?.getBoundingClientRect().height || 0
-      const titleBottom = titleEl.getBoundingClientRect().bottom
-      setShowHeaderTitle(titleBottom <= headerHeight)
-    }
-
-    update()
-    scrollEl.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      scrollEl.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
-  }, [isTracker, listInfo, games.length])
 
   // Derived: can the current user edit this list's cover?
   const isOwner =
@@ -364,39 +336,6 @@ function ListDetail() {
     setDescDraft(listInfo.description || '')
     setEditingDesc(true)
   }, [location.state, isOwner, listInfo])
-
-  // Load the list owner's ratings for all games in this list (real data only)
-  useEffect(() => {
-    if (!listInfo?.userId || !games.length || isTracker) {
-      setOwnerRatings({})
-      return
-    }
-    let cancelled = false
-    getOwnerRatingsForList(
-      listInfo.userId,
-      games.map((g) => g.id)
-    ).then((ratings) => {
-      if (!cancelled) setOwnerRatings(ratings)
-    })
-    return () => { cancelled = true }
-  }, [listInfo?.userId, games, isTracker])
-
-  // Load the list owner's tracker status + hours for all games in this
-  // list (real data only — same source as the Played/Total-hours stats).
-  useEffect(() => {
-    if (!listInfo?.userId || !games.length || isTracker) {
-      setOwnerTrackerData({})
-      return
-    }
-    let cancelled = false
-    getOwnerTrackerDataForList(
-      listInfo.userId,
-      games.map((g) => g.id)
-    ).then((data) => {
-      if (!cancelled) setOwnerTrackerData(data)
-    })
-    return () => { cancelled = true }
-  }, [listInfo?.userId, games, isTracker])
 
   // ── Save state (public custom lists) ─────────────────────────────────────
 
@@ -1052,61 +991,30 @@ function ListDetail() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }, [descDraft])
 
-  // ── Stat line (custom lists only) — real data, never fabricated ─────────
-  // Avg rating excludes games the owner hasn't rated (not counted as 0).
-  // Games count always renders; Played / Avg rating / Total hours each
-  // appear only when they have something real to show.
-  const ratedValues = games
-    .map((g) => ownerRatings[g.id])
-    .filter((r) => r != null)
-  const avgRating = ratedValues.length
-    ? ratedValues.reduce((sum, r) => sum + r, 0) / ratedValues.length
-    : null
-  const playedCount = games.filter(
-    (g) => ownerTrackerData[g.id]?.status === 'played'
-  ).length
-  const totalHours = games.reduce(
-    (sum, g) => sum + (ownerTrackerData[g.id]?.hoursPlayed || 0),
-    0
-  )
-  const totalHoursRounded = Math.round(totalHours)
-
-  const statCells = [
-    { key: 'games', value: games.length, label: games.length === 1 ? 'game' : 'games' },
-    ...(playedCount > 0 ? [{ key: 'played', value: playedCount, label: 'played' }] : []),
-    ...(avgRating != null ? [{ key: 'rating', value: avgRating.toFixed(1) }] : []),
-    ...(totalHoursRounded > 0 ? [{ key: 'hours', value: `${totalHoursRounded}h` }] : []),
-  ]
-
-  // Masthead cover strip — first up-to-4 cover images. Omitted entirely
-  // (no node at all) when the list has zero games.
-  const coverImages = games
-    .slice(0, 4)
-    .map((g) => getBestImageUrl(g, 800) || g.image)
-    .filter(Boolean)
-
   const author = listInfo?.author
+  const ownerLabel = author?.displayName || author?.username || 'Unknown'
+  const showFab = isOwner
+  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sortKey)?.label || 'Recent'
+
+  const openGame = useCallback((game, imageUrl) => {
+    navigate(`/game/${game.id}`, {
+      state: { ...getGameNavStub(game), coverImage: imageUrl },
+    })
+  }, [navigate])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
-      <div className="list-detail-page list-detail-page--loading" aria-busy="true" aria-label="Loading list">
-        <div className="ld-sk-header-bar" aria-hidden="true" />
-        <div className="ld-sk-body" aria-hidden="true">
-          <div className="ld-sk-eyebrow skeleton" />
-          <div className="ld-sk-title skeleton" />
-          <div className="ld-sk-meta skeleton" />
-          <div className="ld-sk-desc skeleton" />
-          <div className="ld-sk-divider" aria-hidden="true" />
+      <div className="list-detail-page list-detail-page--loading list-detail-page--custom" aria-busy="true" aria-label="Loading list">
+        <div className="ld-sk-header-bar" aria-hidden="true">
+          <div className="ld-sk-header-title skeleton" />
+          <div className="ld-sk-header-byline skeleton" />
+        </div>
+        <div className="ld-sk-sortrow skeleton" aria-hidden="true" />
+        <div className="ld-sk-grid" aria-hidden="true">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="ld-sk-game-row" aria-hidden="true">
-              <div className="ld-sk-game-thumb skeleton" />
-              <div className="ld-sk-game-meta">
-                <div className="ld-sk-game-name skeleton" />
-                <div className="ld-sk-game-sub skeleton" />
-              </div>
-            </div>
+            <div key={i} className="ld-sk-cover skeleton" />
           ))}
         </div>
       </div>
@@ -1160,9 +1068,7 @@ function ListDetail() {
             <LuChevronLeft size={22} aria-hidden="true" />
           </button>
 
-          <span
-            className={`list-detail-header-label${showHeaderTitle ? ' list-detail-header-label--visible' : ''}`}
-          >
+          <span className="list-detail-header-label list-detail-header-label--visible">
             {listInfo.name}
           </span>
 
@@ -1270,15 +1176,14 @@ function ListDetail() {
     )
   }
 
-  // ── Custom lists — rebuilt to the Musicboard-inspired mockup ─────────────
+  // ── Custom lists — mockup D: compact nav, optional description, grid ─────
   return (
-    <div className="list-detail-page content-fade-in">
-
-      {/* Sticky header — back (left), gradient + for the owner / bookmark
-          for a signed-in non-owner viewer, and ⋯ overflow (right). Title
-          is invisible at scroll-top and only fades in once the masthead
-          card has scrolled up behind this bar. */}
-      <header className="header" ref={headerBarRef}>
+    <div
+      className={`list-detail-page list-detail-page--custom content-fade-in${
+        showFab ? ' list-detail-page--fab' : ''
+      }`}
+    >
+      <header className="ld-header" ref={headerBarRef}>
         <button
           type="button"
           className="icon-btn"
@@ -1288,37 +1193,37 @@ function ListDetail() {
           <ChevronLeft size={16} aria-hidden="true" />
         </button>
 
-        <span
-          className={`header-title${showHeaderTitle ? ' header-title--visible' : ''}`}
-        >
-          {listInfo.name}
-        </span>
+        <div className="ld-header-center">
+          <span className="ld-header-title">{listInfo.name}</span>
+          <span className="ld-header-byline">
+            {author?.username ? (
+              <>
+                <button
+                  type="button"
+                  className="ld-header-owner"
+                  onClick={() => navigate(`/profile/${author.username}`)}
+                >
+                  {ownerLabel}
+                </button>
+                {' · '}
+              </>
+            ) : (
+              <>{ownerLabel} · </>
+            )}
+            {games.length} {games.length === 1 ? 'game' : 'games'}
+          </span>
+        </div>
 
         <div className="header-right">
-          {isOwner ? (
+          {isOwner && (
             <button
               type="button"
-              className="icon-btn icon-btn--add"
-              onClick={() => setShowAddGames(true)}
-              aria-label="Add games"
+              className="icon-btn"
+              onClick={openDescEdit}
+              aria-label="Edit list"
             >
-              <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
+              <Pencil size={16} aria-hidden="true" />
             </button>
-          ) : (
-            listInfo.isPublic && currentUserId && (
-              <button
-                type="button"
-                className="icon-btn icon-btn--add"
-                onClick={handleSaveToggle}
-                aria-pressed={isSaved}
-                aria-label={isSaved ? 'Unsave list' : 'Save list'}
-              >
-                {isSaved
-                  ? <BookmarkCheck size={16} strokeWidth={2.4} aria-hidden="true" />
-                  : <Bookmark size={16} strokeWidth={2.4} aria-hidden="true" />
-                }
-              </button>
-            )
           )}
           <button
             type="button"
@@ -1332,259 +1237,173 @@ function ListDetail() {
         </div>
       </header>
 
-      {/* Masthead card — cover strip (first up to 4 covers, omitted if
-          none) + title + byline + inline stat line + description. */}
-      <div className="masthead">
-        {coverImages.length > 0 && (
-          <div
-            className="masthead-strip"
-            style={{ gridTemplateColumns: `repeat(${coverImages.length}, 1fr)` }}
-          >
-            {coverImages.map((src, i) => (
-              <img key={i} src={src} alt="" loading="lazy" />
-            ))}
+      {isOwner && editingDesc ? (
+        <div className="list-detail-desc-edit-wrap ld-desc-edit">
+          <textarea
+            ref={descTextareaRef}
+            className="list-detail-desc-textarea"
+            value={descDraft}
+            onChange={(e) => setDescDraft(e.target.value)}
+            placeholder="Add a description…"
+            maxLength={500}
+            aria-label="List description"
+          />
+          <div className="list-detail-desc-edit-actions">
+            <button
+              type="button"
+              className="list-detail-desc-cancel-btn"
+              onClick={handleDescCancel}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="list-detail-desc-save-btn"
+              onClick={handleDescSave}
+            >
+              Save
+            </button>
           </div>
-        )}
-
-        <div className="masthead-inner">
-          <h1 className="masthead-title" ref={titleRef}>{listInfo.name}</h1>
-
-          {(author || listInfo.createdAt) && (
-            <div className="masthead-byline">
-              {author && (
-                <Avatar
-                  user={author}
-                  size="xs"
-                  className="masthead-byline-avatar"
-                />
-              )}
-              <span>
-                {author && (
-                  <b
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => author.username && navigate(`/profile/${author.username}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && author.username) navigate(`/profile/${author.username}`)
-                    }}
-                  >
-                    {author.displayName || author.username}
-                  </b>
-                )}
-                {author && listInfo.createdAt && ' · '}
-                {listInfo.createdAt && fmtDate(listInfo.createdAt)}
-              </span>
-            </div>
-          )}
-
-          {statCells.length > 0 && (
-            <div className="statline">
-              {statCells.map((cell, i) => (
-                <React.Fragment key={cell.key}>
-                  {i > 0 && <span className="sep" aria-hidden="true">·</span>}
-                  {cell.key === 'rating' ? (
-                    <span className="rating">{cell.value}★</span>
-                  ) : (
-                    <span><b>{cell.value}</b>{cell.label ? ` ${cell.label}` : ''}</span>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-
-          {/* Description — inline edit for owner, read-only for viewer.
-              Empty + owner → quiet "Add a description" affordance (no box).
-              Empty + viewer → renders nothing. */}
-          {isOwner && editingDesc ? (
-            <div className="list-detail-desc-edit-wrap">
-              <textarea
-                ref={descTextareaRef}
-                className="list-detail-desc-textarea"
-                value={descDraft}
-                onChange={(e) => setDescDraft(e.target.value)}
-                placeholder="Add a description…"
-                maxLength={500}
-                aria-label="List description"
-              />
-              <div className="list-detail-desc-edit-actions">
-                <button
-                  type="button"
-                  className="list-detail-desc-cancel-btn"
-                  onClick={handleDescCancel}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="list-detail-desc-save-btn"
-                  onClick={handleDescSave}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          ) : isOwner ? (
-            listInfo.description ? (
-              <p
-                className="masthead-desc masthead-desc--editable"
-                onClick={openDescEdit}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && openDescEdit()}
-                aria-label="Edit description"
-              >
-                {listInfo.description}
-              </p>
-            ) : (
-              <button
-                type="button"
-                className="masthead-desc-add"
-                onClick={openDescEdit}
-              >
-                <Pencil size={13} aria-hidden="true" />
-                Add a description
-              </button>
-            )
-          ) : (
-            listInfo.description && (
-              <p className="masthead-desc">{listInfo.description}</p>
-            )
-          )}
         </div>
-      </div>
+      ) : (
+        listInfo.description && (
+          <p className="ld-desc-line">{listInfo.description}</p>
+        )
+      )}
 
-      {/* Body — section label row, game grid, comments + composer. No
-          dividers, no background bands, no action-button row. */}
       <div className="list-body">
-        <div className="section-row">
-          <p>{games.length} {games.length === 1 ? 'GAME' : 'GAMES'}</p>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              showToast('Sort coming soon', 'info')
-            }}
-          >
-            Sort
-            <ChevronDown size={12} aria-hidden="true" />
-          </a>
-        </div>
+        <LibrarySortRow
+          count={sortedGames.length}
+          sortLabel={sortLabel}
+          onSortClick={() => setShowSortSheet(true)}
+        />
 
-        {games.length > 0 ? (
-          <>
-          <div
-            className={`game-grid${dragGameId != null ? ' game-grid--dragging' : ''}`}
-            ref={gridRef}
-          >
-            {visibleGames.map((game, originalIndex) => {
-              const imageUrl = getBestImageUrl(game, 800) || game.image
-              const isDragged = dragGameId === game.id
-              const isRemoving = removingGameId === game.id
-              const isDragActive = dragGameId != null
-
-              // Sibling shift — while a drag is active, every OTHER item
-              // gets a transform translating it to wherever it currently
-              // sits in the live `dragOrder`, computed against the slot
-              // rects snapshotted at drag start (see handleCoverPointerDown).
-              // The dragged item's own transform is written imperatively
-              // in the pointer handlers (applyDragTransform) so it can
-              // follow the finger every frame without going through React.
-              let shiftStyle
-              if (isDragActive && !isDragged && dragOrder && dragSessionRef.current?.slotRects) {
-                const slotRects = dragSessionRef.current.slotRects
-                const currentIndex = dragOrder.indexOf(game.id)
-                const origin = slotRects[originalIndex]
-                const dest = slotRects[currentIndex]
-                if (origin && dest && currentIndex !== originalIndex) {
-                  shiftStyle = {
-                    transform: `translate3d(${dest.left - origin.left}px, ${dest.top - origin.top}px, 0)`,
-                  }
-                }
-              }
-
-              return (
-                <div
-                  key={game.id}
-                  ref={(el) => { if (el) itemEls.current[game.id] = el }}
-                  className={`gg-item${isDragged ? ' gg-item--dragged' : ''}${
-                    isDragActive && !isDragged ? ' gg-item--drag-shift' : ''
-                  }`}
-                  style={shiftStyle}
-                >
-                  <div
-                    className={`game-cover${
-                      isRemoving
-                        ? ' game-cover--removing'
-                        : isDragged
-                          ? ` game-cover--lifted${trashArmed ? ' game-cover--armed' : ''}`
-                          : ''
-                    }`}
-                    onPointerDown={(e) => handleCoverPointerDown(e, game.id)}
-                    onPointerMove={handleCoverPointerMove}
-                    onPointerUp={handleCoverPointerUp}
-                    onPointerCancel={handleCoverPointerCancel}
-                  >
-                    <Pressable
-                      as="div"
-                      role="button"
-                      tabIndex={0}
-                      className="gg-cover-tap"
+        {sortedGames.length > 0 ? (
+          viewKey === 'list' ? (
+            <>
+              <LibraryGameGrid
+                games={visibleGames}
+                view="list"
+                dragging={dragGameId != null}
+                ariaLabel="List games"
+                renderCard={(game) => {
+                  const imageUrl = getBestImageUrl(game, 800) || game.image
+                  return (
+                    <LibraryGameRow
+                      key={game.id}
+                      game={{ ...game, image: imageUrl }}
                       onClick={() => {
-                        // A long-press that activated a drag suppresses the
-                        // pointerup's synthesized click so releasing a
-                        // dragged/dropped cover never also navigates.
                         if (suppressClickRef.current) {
                           suppressClickRef.current = false
                           return
                         }
-                        navigate(`/game/${game.id}`, {
-                          state: { ...getGameNavStub(game), coverImage: imageUrl },
-                        })
+                        openGame(game, imageUrl)
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          navigate(`/game/${game.id}`, {
-                            state: { ...getGameNavStub(game), coverImage: imageUrl },
-                          })
-                        }
-                      }}
-                      aria-label={`View ${game.title}`}
+                    />
+                  )
+                }}
+              />
+              {hasMoreGames && (
+                <div ref={gamesSentinelRef} className="ld-games-sentinel" aria-hidden="true" />
+              )}
+            </>
+          ) : (
+            <>
+              <div
+                className={`game-grid${dragGameId != null ? ' game-grid--dragging' : ''}`}
+                ref={gridRef}
+              >
+                {visibleGames.map((game, originalIndex) => {
+                  const imageUrl = getBestImageUrl(game, 800) || game.image
+                  const isDragged = dragGameId === game.id
+                  const isRemoving = removingGameId === game.id
+                  const isDragActive = dragGameId != null
+
+                  let shiftStyle
+                  if (isDragActive && !isDragged && dragOrder && dragSessionRef.current?.slotRects) {
+                    const slotRects = dragSessionRef.current.slotRects
+                    const currentIndex = dragOrder.indexOf(game.id)
+                    const origin = slotRects[originalIndex]
+                    const dest = slotRects[currentIndex]
+                    if (origin && dest && currentIndex !== originalIndex) {
+                      shiftStyle = {
+                        transform: `translate3d(${dest.left - origin.left}px, ${dest.top - origin.top}px, 0)`,
+                      }
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={game.id}
+                      ref={(el) => { if (el) itemEls.current[game.id] = el }}
+                      className={`gg-item${isDragged ? ' gg-item--dragged' : ''}${
+                        isDragActive && !isDragged ? ' gg-item--drag-shift' : ''
+                      }`}
+                      style={shiftStyle}
                     >
-                      <SharedCover gameId={game.id} imageSrc={imageUrl}>
-                        <img
-                          src={imageUrl}
-                          alt={game.title}
-                          loading="lazy"
-                          draggable={false}
-                          onError={(e) => {
-                            if (e.target.src !== game.image && game.image) {
-                              e.target.src = game.image
-                            } else {
-                              e.target.src = COVER_FALLBACK
+                      <div
+                        className={`game-cover${
+                          isRemoving
+                            ? ' game-cover--removing'
+                            : isDragged
+                              ? ` game-cover--lifted${trashArmed ? ' game-cover--armed' : ''}`
+                              : ''
+                        }`}
+                        onPointerDown={(e) => handleCoverPointerDown(e, game.id)}
+                        onPointerMove={handleCoverPointerMove}
+                        onPointerUp={handleCoverPointerUp}
+                        onPointerCancel={handleCoverPointerCancel}
+                      >
+                        <Pressable
+                          as="div"
+                          role="button"
+                          tabIndex={0}
+                          className="gg-cover-tap"
+                          onClick={() => {
+                            if (suppressClickRef.current) {
+                              suppressClickRef.current = false
+                              return
+                            }
+                            openGame(game, imageUrl)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              openGame(game, imageUrl)
                             }
                           }}
-                        />
-                      </SharedCover>
-                    </Pressable>
-                  </div>
+                          aria-label={`View ${game.title}`}
+                        >
+                          <SharedCover gameId={game.id} imageSrc={imageUrl}>
+                            <img
+                              src={imageUrl}
+                              alt={game.title}
+                              loading="lazy"
+                              draggable={false}
+                              onError={(e) => {
+                                if (e.target.src !== game.image && game.image) {
+                                  e.target.src = game.image
+                                } else {
+                                  e.target.src = COVER_FALLBACK
+                                }
+                              }}
+                            />
+                          </SharedCover>
+                        </Pressable>
+                      </div>
 
-                  <p className="game-title">{game.title}</p>
-                </div>
-              )
-            })}
-          </div>
-          {hasMoreGames && (
-            <div ref={gamesSentinelRef} className="ld-games-sentinel" aria-hidden="true" />
-          )}
-          </>
+                      <p className="game-title">{game.title}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              {hasMoreGames && (
+                <div ref={gamesSentinelRef} className="ld-games-sentinel" aria-hidden="true" />
+              )}
+            </>
+          )
         ) : (
-          <ListDetailEmpty
-            listId={listId}
-            isTracker={isTracker}
-            onAddGames={() => setShowAddGames(true)}
-            onFindGames={() => navigate('/search')}
-          />
+          <ListDetailEmpty listId={listId} isTracker={isTracker} />
         )}
 
         {/* Slide-up trash target — mounted (via portal) only while this
@@ -1666,6 +1485,31 @@ function ListDetail() {
           url_path: `/list/${listId}`,
         }}
       />
+
+      <LibrarySortSheet
+        isOpen={showSortSheet}
+        onClose={() => setShowSortSheet(false)}
+        sortKey={sortKey}
+        onSelect={setSortKey}
+        viewKey={viewKey}
+        onViewSelect={handleViewSelect}
+      />
+
+      {showFab &&
+        createPortal(
+          <button
+            type="button"
+            className={`lib-fab lib-fab--lists${
+              dragGameId != null ? ' lib-fab--hidden' : ''
+            }`}
+            onClick={() => setShowAddGames(true)}
+            aria-label="Add games"
+          >
+            <span className="lib-fab-bg lib-fab-bg--lists" aria-hidden="true" />
+            <Plus size={24} aria-hidden="true" />
+          </button>,
+          document.body
+        )}
     </div>
   )
 }

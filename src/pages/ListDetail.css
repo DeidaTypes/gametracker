@@ -9,6 +9,13 @@
   --page-padding: 16px;
 }
 
+/* FAB clearance — owner/collaborator only (see ListDetail.jsx portal). */
+.list-detail-page--fab {
+  padding-bottom: calc(
+    var(--bottom-nav-safe-area) + 52px + var(--space-16)
+  );
+}
+
 /* Keyboard clearance for the in-flow description editor is handled
    globally on `.main-content` (the app's single scroll container) in
    src/styles/keyboard.css — this page needs no rule of its own for that
@@ -38,92 +45,49 @@
   flex-direction: column;
 }
 
-/* Header bar placeholder */
+/* Compact header skeleton (custom lists) */
 .ld-sk-header-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
   width: 100%;
-  height: calc(52px + var(--safe-area-inset-top));
-  background: var(--glass-bg);
-  border-bottom: 1px solid var(--color-border);
+  min-height: calc(52px + var(--safe-area-inset-top));
+  padding: calc(var(--space-12) + var(--safe-area-inset-top)) var(--page-padding) var(--space-12);
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
-.ld-sk-body {
-  padding: var(--spacing-xl) var(--page-padding) var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-/* Eyebrow placeholder */
-.ld-sk-eyebrow {
-  width: 32px;
-  height: 11px;
-  border-radius: var(--radius-sm);
-}
-
-/* Title placeholder */
-.ld-sk-title {
+.ld-sk-header-title {
   width: 55%;
-  height: 26px;
+  height: 18px;
   border-radius: var(--radius-sm);
-  margin-bottom: 4px;
 }
 
-/* Meta row placeholder */
-.ld-sk-meta {
-  width: 50%;
+.ld-sk-header-byline {
+  width: 40%;
   height: 13px;
   border-radius: var(--radius-sm);
 }
 
-/* Description placeholder */
-.ld-sk-desc {
-  width: 80%;
+.ld-sk-sortrow {
+  width: calc(100% - var(--page-padding) * 2);
   height: 14px;
+  margin: var(--space-12) var(--page-padding);
   border-radius: var(--radius-sm);
 }
 
-.ld-sk-divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin: var(--spacing-sm) 0;
+.ld-sk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+  padding: 0 var(--page-padding);
 }
 
-/* Game row skeleton */
-.ld-sk-game-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-/* Thumbnail — 2:3 cover mini */
-.ld-sk-game-thumb {
-  width: 44px;
+.ld-sk-cover {
   aspect-ratio: var(--cover-ratio);
-  flex-shrink: 0;
   border-radius: var(--cover-radius);
-}
-
-.ld-sk-game-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Game title placeholder */
-.ld-sk-game-name {
-  width: 65%;
-  height: 14px;
-  border-radius: var(--radius-sm);
-}
-
-/* Game subtitle placeholder */
-.ld-sk-game-sub {
-  width: 40%;
-  height: 12px;
-  border-radius: var(--radius-sm);
 }
 
 /* ── Cover hero (legacy — no longer referenced by ListDetail.jsx, kept
@@ -470,60 +434,80 @@
    size itself to fit the header instead of ballooning to its content's
    width. Every selector here is scoped so nothing in this file can leak
    onto another page's markup again. ── */
-.list-detail-page header {
+.list-detail-page .ld-header {
   position: sticky;
   top: 0;
   z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px;
-  /* Custom-list header sits flush with the top of the viewport (it's the
-     first thing rendered on the page, unlike the tracker-list header bar
-     above which is reached via .list-detail-header-bar) — without this it
-     rendered the back chevron and ⋯/+ controls straight into the status
-     bar / Dynamic Island on notched devices. */
-  padding-top: calc(14px + var(--safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(10, 15, 31, .96), rgba(10, 15, 31, .7) 70%, transparent);
+  gap: var(--space-8);
+  padding: var(--space-12) var(--page-padding);
+  padding-top: calc(var(--space-12) + var(--safe-area-inset-top));
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .list-detail-page .header-right {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
+  flex-shrink: 0;
 }
 
-/* Supplemental — sticky header title. Not covered by the literal mockup
-   spec (the mockup screenshot never shows it, since it's still at
-   scroll-top); rule 3 of the brief requires it to fade in only once the
-   masthead has scrolled behind the header. Centered independently of
-   the header's flex layout since it's taken out of flow. */
-.list-detail-page .header-title {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+.list-detail-page .ld-header-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.list-detail-page .ld-header-title {
   font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #f0f3fa;
-  max-width: 55%;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-  pointer-events: none;
+  line-height: 1.2;
 }
 
-.list-detail-page .header-title--visible {
-  opacity: 1;
+.list-detail-page .ld-header-byline {
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .list-detail-page .header-title {
-    transition: none;
-  }
+.list-detail-page .ld-header-owner {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-detail-page .ld-desc-line {
+  margin: 0;
+  padding: var(--space-8) var(--page-padding) var(--space-12);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-detail-page .ld-desc-edit {
+  padding: 0 var(--page-padding) var(--space-12);
+  margin-top: 0;
 }
 
 /* all three header buttons */
@@ -550,163 +534,8 @@
   stroke-width: 2;
 }
 
-/* the + button ONLY — this is the screen's single gradient element.
-   Purple→cobalt, matching the Library Lists-tab FAB: a list screen keeps
-   the lists accent rather than the cobalt→green games accent. */
-.list-detail-page .icon-btn--add {
-  background: var(--grad-purple-blue);
-  border: none;
-}
-
-.list-detail-page .icon-btn--add svg {
-  stroke: #fff;
-  stroke-width: 2.4;
-}
-
-/* MASTHEAD CARD */
-.list-detail-page .masthead {
-  margin: 4px 16px 0;
-  background: #131a35;
-  border: 1px solid rgba(148, 168, 212, .12);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list-detail-page .masthead-strip {
-  height: 76px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  position: relative;
-  /* Supplemental — clips the row to the declared 76px. Without this,
-     the (auto-sized) implicit grid row grows to the covers' intrinsic
-     portrait aspect ratio instead of being cropped by object-fit:cover,
-     so each image bleeds past the strip into the card below it. */
-  overflow: hidden;
-}
-
-.list-detail-page .masthead-strip img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.list-detail-page .masthead-strip::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, #131a35 6%, rgba(19, 26, 53, .62) 62%, rgba(19, 26, 53, .2));
-}
-
-.list-detail-page .masthead-inner {
-  padding: 12px 14px 14px;
-}
-
-.list-detail-page .masthead-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
-}
-
-.list-detail-page .masthead-byline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 9px;
-}
-
-/* Sizing + fallback color for the byline avatar are owned by the
-   shared Avatar component (src/components/Avatar.jsx / Avatar.css). */
-.list-detail-page .masthead-byline-avatar {
-  flex: 0 0 auto;
-}
-
-.list-detail-page .masthead-byline span {
-  font-size: 12.5px;
-  color: #94a8d4;
-  line-height: 1;
-}
-
-.list-detail-page .masthead-byline b {
-  color: #f0f3fa;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* STAT LINE — one inline row, NOT a card */
-.list-detail-page .statline {
-  font-size: 12.5px;
-  color: #94a8d4;
-  margin-top: 9px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.list-detail-page .statline b {
-  color: #f0f3fa;
-  font-weight: 600;
-}
-
-.list-detail-page .statline .rating {
-  background: linear-gradient(100deg, #6ea3ff, #8fd0bd);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-weight: 700;
-}
-
-.list-detail-page .statline .sep {
-  opacity: .35;
-}
-
-.list-detail-page .masthead-desc {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #c3cfea;
-  margin-top: 11px;
-}
-
-/* Supplemental — owner tap-to-edit affordance on the description text. */
-.list-detail-page .masthead-desc--editable {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-page .masthead-desc-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #94a8d4;
-  margin-top: 11px;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--font-body);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-page .masthead-desc-add svg {
-  width: 13px;
-  height: 13px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-}
-
-/* Inline description edit — reuses the same textarea/actions treatment
-   as before, just relocated inside .masthead-inner. Not covered by the
-   literal mockup (which never shows the editing state), so it keeps its
-   own pre-existing surface/border rather than inventing a new one. */
 .list-detail-desc-edit-wrap {
   width: 100%;
-  margin-top: 11px;
 }
 
 .list-detail-desc-textarea {
@@ -788,58 +617,26 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .list-detail-page .list-detail-desc-textarea,
-  .list-detail-page .masthead-desc-add,
-  .list-detail-page .masthead-desc--editable {
+  .list-detail-page .list-detail-desc-textarea {
     transition: none;
   }
 }
 
 /* BODY */
 .list-detail-page .list-body {
-  padding: 0 16px 28px;
+  padding: 0 0 var(--space-24);
 }
 
-/* SECTION LABEL ROW */
-.list-detail-page .section-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 22px 0 11px;
+.list-detail-page--custom .lib-sortrow {
+  margin-top: var(--space-12);
 }
 
-.list-detail-page .section-row p {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #94a8d4;
-}
-
-.list-detail-page .section-row a {
-  font-size: 12px;
-  color: #94a8d4;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-page .section-row a svg {
-  width: 12px;
-  height: 12px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-}
-
-/* GAME GRID */
+/* GAME GRID — 2-up default per mockup D */
 .list-detail-page .game-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+  padding: 0 var(--page-padding);
 }
 
 /* ── Pagination sentinel — see ListDetail.jsx's IntersectionObserver ── */
@@ -978,8 +775,10 @@
 }
 
 @media (min-width: 769px) {
-  .list-detail-page .masthead,
-  .list-detail-page .list-body {
+  .list-detail-page .list-body,
+  .list-detail-page .ld-header,
+  .list-detail-page .ld-desc-line,
+  .list-detail-page .ld-desc-edit {
     max-width: var(--page-max-width);
     margin-left: auto;
     margin-right: auto;
