@@ -16,10 +16,10 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="wLm-9x-Log">
-                                <rect key="frame" x="77.5" y="308.5" width="220" height="49.5"/>
+                                <rect key="frame" x="109" y="203.5" width="157" height="260"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="220" id="Wid-th0-con"/>
-                                    <constraint firstAttribute="height" secondItem="wLm-9x-Log" secondAttribute="width" multiplier="0.225" id="Asp-ect-con"/>
+                                    <constraint firstAttribute="width" constant="157" id="Wid-msc-con"/>
+                                    <constraint firstAttribute="height" constant="260" id="Hgt-msc-con"/>
                                 </constraints>
                             </imageView>
                         </subviews>
@@ -36,7 +36,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchLogo" width="720" height="162"/>
+        <image name="LaunchLogo" width="157" height="260"/>
         <namedColor name="LaunchBackground">
             <color red="0.0392156862745098" green="0.058823529411764705" blue="0.12156862745098039" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>

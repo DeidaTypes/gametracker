@@ -84,6 +84,7 @@ import { initializeProfile } from './services/profileService'
 import { initSettings, applySettingsToDom, getSettings } from './services/userSettingsService'
 import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import ToastHost from './components/Toast'
+import AuthBootSplash from './components/AuthBootSplash'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import MilestoneCelebration from './components/MilestoneCelebration'
 import BadgeReveal from './components/BadgeReveal'
@@ -433,24 +434,6 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
         )
       })}
     </>
-  )
-}
-
-/**
- * Boot splash shown only while we're restoring the Supabase session on
- * initial page load. Mirrors the existing skeleton style (shared
- * `.skeleton` shimmer class from theme.css) so reduced-motion users get
- * the static fallback for free.
- */
-function AuthBootSplash() {
-  return (
-    <div className="auth-boot" role="status" aria-label="Loading">
-      <div className="auth-boot__inner" aria-hidden="true">
-        <div className="skeleton auth-boot__avatar" />
-        <div className="skeleton auth-boot__bar" />
-        <div className="skeleton auth-boot__bar auth-boot__bar--short" />
-      </div>
-    </div>
   )
 }
 

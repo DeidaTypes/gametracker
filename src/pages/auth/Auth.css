@@ -133,9 +133,8 @@
 
 /* ============================================================
    Auth boot splash — shown while the initial Supabase session is
-   being restored. Mirrors the visual rhythm of the existing
-   skeletons (avatar disc + two text bars + a stat-row strip) so
-   the screen feels coherent rather than blank.
+   being restored. Matches native LaunchScreen: mascot centered on
+   --bg-base at 260pt tall (157pt wide), no animation.
    ============================================================ */
 .auth-boot {
   position: fixed;
@@ -143,32 +142,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-primary);
+  background: var(--bg-base);
   z-index: 9999;
 }
 
-.auth-boot__inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-md);
-  width: min(280px, 80vw);
-}
-
-.auth-boot__avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-full, 999px);
-}
-
-.auth-boot__bar {
-  width: 100%;
-  height: 12px;
-  border-radius: var(--radius-sm, 6px);
-}
-
-.auth-boot__bar--short {
-  width: 60%;
+.auth-boot__mascot {
+  display: block;
+  width: auto;
+  height: 260px;
+  max-width: none;
 }
 
 /* ============================================================
