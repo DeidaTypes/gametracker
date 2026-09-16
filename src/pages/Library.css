@@ -834,6 +834,15 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--transition-smooth);
+  /* iOS WKWebView: long-press menu is as vulnerable to native image
+     callout / text selection as a cover drag. Same hijack as .lib-gamecard. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.lib-pin-hero * {
+  -webkit-touch-callout: none;
 }
 
 .lib-pin-hero-stack {
@@ -918,6 +927,15 @@
   transition: background-color var(--transition-fast),
               border-color var(--transition-fast),
               transform var(--transition-smooth);
+  /* iOS WKWebView: long-press menu is as vulnerable to native image
+     callout / text selection as a cover drag. Same hijack as .lib-gamecard. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.lib-list-card * {
+  -webkit-touch-callout: none;
 }
 
 @media (hover: hover) {

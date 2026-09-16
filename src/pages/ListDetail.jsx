@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
 import { LuChevronLeft } from 'react-icons/lu'
 import { HiDotsVertical, HiPlus } from 'react-icons/hi'
@@ -159,6 +159,7 @@ function ListDetailEmpty({ listId, isTracker, onAddGames, onFindGames }) {
 function ListDetail() {
   const { listId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [gridRef] = useAutoAnimateMotion()
   // Seed from the shared cache so re-opening a list the user just backed
   // out of paints the real list on the first frame instead of a skeleton.
@@ -346,6 +347,23 @@ function ListDetail() {
     !isOwner &&
     currentUserId != null &&
     collaborators.some((c) => c.userId === currentUserId)
+
+  // Library list-card long-press → "Add/Edit description" lands here with
+  // location.state.editDescription so we open the existing masthead editor
+  // rather than inventing a second one. Consumed via ref — do not
+  // replace-navigate to clear state; that remounts this page and loses
+  // the editor we just opened.
+  const openedDescFromNavRef = useRef(false)
+  useEffect(() => {
+    openedDescFromNavRef.current = false
+  }, [listId])
+  useEffect(() => {
+    if (openedDescFromNavRef.current) return
+    if (!location.state?.editDescription || !isOwner || !listInfo) return
+    openedDescFromNavRef.current = true
+    setDescDraft(listInfo.description || '')
+    setEditingDesc(true)
+  }, [location.state, isOwner, listInfo])
 
   // Load the list owner's ratings for all games in this list (real data only)
   useEffect(() => {

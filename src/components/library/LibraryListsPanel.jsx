@@ -1,6 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
+import { useLongPressMenu } from '../../hooks/useLongPressMenu'
 import ListCoverCluster from '../ListCoverCluster'
 import InlineErrorBanner from '../InlineErrorBanner'
+import ListCardActionHost, { listCardMenuKind } from './ListCardActionHost'
 
 export function formatListMeta(list, saveCounts) {
   const games = `${list.gameCount} ${list.gameCount === 1 ? 'game' : 'games'}`
@@ -19,13 +22,14 @@ function CoverStack({ list }) {
   )
 }
 
-export function LibraryPinnedHero({ list, meta, onOpen }) {
+export function LibraryPinnedHero({ list, meta, onOpen, onClick, pressBind }) {
   return (
     <button
       type="button"
       className="lib-pin-hero"
-      onClick={() => onOpen(list)}
+      onClick={onClick || (() => onOpen(list))}
       aria-label={`Open pinned list ${list.name} (${meta})`}
+      {...(pressBind || {})}
     >
       <div className="lib-pin-hero-stack">
         <CoverStack list={list} />
@@ -39,13 +43,14 @@ export function LibraryPinnedHero({ list, meta, onOpen }) {
   )
 }
 
-export function LibraryListCard({ list, meta, onOpen }) {
+export function LibraryListCard({ list, meta, onOpen, onClick, pressBind }) {
   return (
     <button
       type="button"
       className="lib-list-card"
-      onClick={() => onOpen(list)}
+      onClick={onClick || (() => onOpen(list))}
       aria-label={`Open list ${list.name} (${meta})`}
+      {...(pressBind || {})}
     >
       <div className="lib-list-card-stack">
         <CoverStack list={list} />
@@ -92,6 +97,27 @@ export default function LibraryListsPanel({
   empty,
   errorMessage = "Couldn't load your lists. Tap to retry.",
 }) {
+  const { user } = useAuth()
+  const currentUserId = user?.id || null
+  const [menuList, setMenuList] = useState(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const { bind, suppressClickRef } = useLongPressMenu({
+    shouldOpen: (list) => listCardMenuKind(list, currentUserId) != null,
+    onOpen: (list) => {
+      setMenuList(list)
+      setSheetOpen(true)
+    },
+  })
+
+  const handleCardClick = (list) => (e) => {
+    if (suppressClickRef.current) {
+      e.preventDefault()
+      return
+    }
+    onOpenList(list)
+  }
+
   if (isLoading) return <LibraryListsSkeleton />
 
   if (error) {
@@ -118,6 +144,8 @@ export default function LibraryListsPanel({
             list={heroList}
             meta={formatListMeta(heroList, saveCounts)}
             onOpen={onOpenList}
+            onClick={handleCardClick(heroList)}
+            pressBind={bind(heroList)}
           />
         </>
       )}
@@ -132,11 +160,20 @@ export default function LibraryListsPanel({
                 list={list}
                 meta={formatListMeta(list, saveCounts)}
                 onOpen={onOpenList}
+                onClick={handleCardClick(list)}
+                pressBind={bind(list)}
               />
             ))}
           </div>
         </>
       )}
+
+      <ListCardActionHost
+        list={menuList}
+        currentUserId={currentUserId}
+        sheetOpen={sheetOpen}
+        onCloseSheet={() => setSheetOpen(false)}
+      />
     </>
   )
 }
