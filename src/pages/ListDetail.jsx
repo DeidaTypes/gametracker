@@ -522,11 +522,87 @@ function ListDetail() {
     }
   }
 
+  // Releases the synchronous pre-arm touch-action lock set in
+  // handleCoverPointerDown. Called whenever a session ends before the
+  // long-press arms (move-cancel gate, quick tap) as well as at full
+  // session teardown — once armed, the class-based touch-action
+  // (.game-grid--dragging) already covers the rest of the drag, so an
+  // extra clear here is harmless. Mirrors My Games' releasePreArmLock
+  // (Library.jsx) minus the PullToRefresh yield, which this page has no
+  // equivalent of (ListDetail is not wrapped in <PullToRefresh>).
+  const releasePreArmLock = (session) => {
+    if (session?.captureEl) session.captureEl.style.touchAction = ''
+  }
+
+  // ── Scroll-container lock (armed drag only) ──────────────────────────────
+  // Same fix as My Games (Library.jsx): touch-action: none on the cover
+  // (pointerdown) and later via .game-grid--dragging only stops THIS
+  // touch from starting a NEW pan on this element; it does nothing to an
+  // already-in-flight momentum/deceleration animation on an ancestor
+  // scroll view, which iOS can reassert control over mid-hold by
+  // cancelling the pointer. `.main-content` (see App.jsx) is this app's
+  // single scroll container — the same one the sticky-header-title
+  // effect above already queries — so lock that, not something page-
+  // local. overflow: hidden (not touch-action: none, not position:
+  // fixed) is used because it actively halts an in-progress momentum
+  // animation, not just future panning. scrollTop is captured before
+  // locking and re-applied (not scrollTo, which can trigger smooth-
+  // scroll behavior) on every unlock path so there is no visual jump.
+  const scrollLockRef = useRef(null) // { el, scrollTop } while locked, else null
+
+  const lockScrollContainer = (captureEl) => {
+    if (scrollLockRef.current) return // already locked this session
+    const scrollEl = captureEl?.closest('.main-content')
+    if (!scrollEl) return
+    const scrollTop = scrollEl.scrollTop
+    scrollLockRef.current = { el: scrollEl, scrollTop }
+    scrollEl.style.overflow = 'hidden'
+    scrollEl.scrollTop = scrollTop
+  }
+
+  const unlockScrollContainer = () => {
+    const lock = scrollLockRef.current
+    if (!lock) return
+    scrollLockRef.current = null
+    lock.el.style.overflow = ''
+    lock.el.scrollTop = lock.scrollTop
+  }
+
+  // ── Non-passive native touchmove backstop (armed drag only) ─────────────
+  // Same backstop as My Games: WKWebView's handling of preventDefault()
+  // called via a PointerEvent (vs. the underlying TouchEvent) has been
+  // inconsistent across iOS versions. The scroll-container lock above no
+  // longer depends on preventDefault working at all — once .main-content
+  // is overflow: hidden there is nothing left to scroll — but this
+  // native, explicitly non-passive touchmove listener is added as a
+  // low-cost backstop for the whole armed hold anyway.
+  const addNonPassiveTouchMoveBlock = (session) => {
+    if (!session.captureEl || session.touchMoveBlockAdded) return
+    session.touchMoveBlockAdded = true
+    session.onNativeTouchMove = (te) => {
+      if (te.cancelable) te.preventDefault()
+    }
+    session.captureEl.addEventListener('touchmove', session.onNativeTouchMove, {
+      passive: false,
+    })
+  }
+
+  const removeNonPassiveTouchMoveBlock = (session) => {
+    if (!session?.touchMoveBlockAdded) return
+    session.touchMoveBlockAdded = false
+    session.captureEl?.removeEventListener('touchmove', session.onNativeTouchMove)
+    session.onNativeTouchMove = null
+  }
+
   // Full teardown — used on a clean release AND on pointercancel/system
   // interruption. Never calls reorderListGames/removeGameFromList itself;
   // callers commit those first if the release should persist a change.
   const hardResetDrag = (gameId) => {
     clearLongPressTimer()
+    const session = dragSessionRef.current
+    releasePreArmLock(session)
+    removeNonPassiveTouchMoveBlock(session)
+    unlockScrollContainer()
     const el = gameId != null ? itemEls.current[gameId] : null
     if (el) {
       el.style.transform = ''
@@ -541,6 +617,16 @@ function ListDetail() {
     )
   }
 
+  // iOS drag-to-reorder needs the same coordinated defenses as My Games
+  // (Library.jsx) — do not strip any of them during refactors:
+  //   1. user-select / touch-callout: none on .gg-item (ListDetail.css)
+  //      — native text selection steals the touch and fires pointercancel.
+  //   2. captureEl.style.touchAction = 'none' synchronously at pointerdown
+  //      — must land this tick so UA gesture arbitration sees it at start.
+  //   3. lockScrollContainer + non-passive touchmove on arm — ancestor
+  //      scroll/momentum can reassert and cancel the pointer; React's
+  //      passive touch listeners make preventDefault on synthetic pointer
+  //      events unreliable in WKWebView, so both backstops stay.
   const handleCoverPointerDown = (e, gameId) => {
     if (!canDrag) return
     if (dragSessionRef.current) return // one drag session at a time
@@ -554,6 +640,12 @@ function ListDetail() {
       // runs; without capture, pointermove/up just won't fire here if
       // the finger leaves this element's bounds before releasing.
     }
+
+    // Synchronous, same-tick lock — must be set before this handler
+    // returns so the UA's gesture arbitration sees it at gesture start,
+    // not 450ms later via a class React hasn't rendered yet. Cleared in
+    // releasePreArmLock if the hold turns out to be a scroll or a tap.
+    captureEl.style.touchAction = 'none'
 
     const session = {
       gameId,
@@ -587,6 +679,13 @@ function ListDetail() {
         (g) => itemEls.current[g.id]?.getBoundingClientRect() || null
       )
 
+      // Lock the actual scroll container now that the drag is genuinely
+      // active — only here, on arm, never at pointerdown (see
+      // lockScrollContainer above for why, and why a plain scroll must
+      // stay completely unaffected until this point).
+      lockScrollContainer(captureEl)
+      addNonPassiveTouchMoveBlock(session)
+
       suppressClickRef.current = true
       setDragGameId(gameId)
       setDragOrder(visibleGames.map((g) => g.id))
@@ -602,12 +701,27 @@ function ListDetail() {
     if (!session || session.pointerId !== e.pointerId) return
 
     if (!session.activated) {
+      // Backs up the synchronous touch-action lock during iOS's gesture
+      // arbitration window: a late (post-450ms) preventDefault can't undo
+      // a scroll grab the UA already made, but an early one on the very
+      // first move — while arbitration is still open — helps hold the
+      // line until the lock takes effect. Once per session.
+      if (!session.firstMoveSeen) {
+        session.firstMoveSeen = true
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+      }
+
       const dx = e.clientX - session.startClientX
       const dy = e.clientY - session.startClientY
       if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
         // Moved before the long-press fired — a scroll/swipe, not a
-        // long-press. Bail and let the browser handle it natively.
+        // long-press. Release the lock now, in this same synchronous
+        // handler, so the UA's own pan recognizer can still pick up the
+        // gesture for the rest of the move sequence.
         clearLongPressTimer()
+        releasePreArmLock(session)
         dragSessionRef.current = null
       }
       return
@@ -723,8 +837,11 @@ function ListDetail() {
     clearLongPressTimer()
 
     if (!session.activated) {
-      // Plain tap, released before the long-press fired — clean up and
-      // let the synthesized click go through to navigate as usual.
+      // Plain tap, released before the long-press fired — release the
+      // pre-arm lock so the next genuine scroll/tap on this cover isn't
+      // blocked, then let the synthesized click go through to navigate
+      // as usual.
+      releasePreArmLock(session)
       dragSessionRef.current = null
       return
     }
@@ -795,6 +912,25 @@ function ListDetail() {
     // restored.
     hardResetDrag(session.gameId)
   }
+
+  // Navigating away mid-drag (back button, tab switch to another route)
+  // unmounts this component without ever running pointerup/pointercancel
+  // for the in-flight session — same risk Library.jsx guards against for
+  // its in-page tab switch. Without this, a locked .main-content
+  // (overflow: hidden) or a stuck touch-action: none would silently
+  // outlive the page and break scrolling/gestures on wherever the user
+  // navigated to next.
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer()
+      releasePreArmLock(dragSessionRef.current)
+      removeNonPassiveTouchMoveBlock(dragSessionRef.current)
+      unlockScrollContainer()
+      window.dispatchEvent(
+        new CustomEvent(LIST_REORDER_DRAG_EVENT, { detail: { active: false } })
+      )
+    }
+  }, [])
 
   // ── Main action sheet items ───────────────────────────────────────────────
   // Everything lives in the ⋯ menu now — Share moved in here from the
@@ -1402,6 +1538,7 @@ function ListDetail() {
                           src={imageUrl}
                           alt={game.title}
                           loading="lazy"
+                          draggable={false}
                           onError={(e) => {
                             if (e.target.src !== game.image && game.image) {
                               e.target.src = game.image

@@ -861,6 +861,10 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  /* Matches LibraryGameGrid's draggable={false} img — without this, iOS
+     WKWebView's native image-lift (long-press callout/drag) can win the
+     same long-press gesture this page's drag-to-reorder relies on. */
+  -webkit-user-drag: none;
 }
 
 .list-detail-page .game-title {
