@@ -80,8 +80,8 @@
 
 .ld-sk-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
   padding: 0 var(--page-padding);
 }
 
@@ -415,11 +415,10 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   CUSTOM LISTS — Musicboard-inspired rebuild. Values below are copied
-   verbatim from the mockup spec (listdetail_C_minimal.html, phone
-   "1 · Header +"). Supplemental rules needed for behavior the literal
-   mockup doesn't cover (header title fade, avatar-initial fallback,
-   inline-edit affordance, grid-item wrapper) are called out inline.
+   CUSTOM LISTS — tightened header + 3-up grid. Values below match
+   checkpoint_list_detail_v2.html "TIGHTENED" panel (.new-* classes).
+   Supplemental rules needed for behavior the literal mockup doesn't
+   cover (inline-edit affordance, grid-item wrapper) are called out inline.
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ── Scoping note ──────────────────────────────────────────────────────
@@ -434,52 +433,55 @@
    size itself to fit the header instead of ballooning to its content's
    width. Every selector here is scoped so nothing in this file can leak
    onto another page's markup again. ── */
+/* .new-hdrow — single row: back | title+byline | edit+overflow */
 .list-detail-page .ld-header {
   position: sticky;
   top: 0;
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-12) var(--page-padding);
-  padding-top: calc(var(--space-12) + var(--safe-area-inset-top));
+  gap: 9px;
+  padding: 8px var(--page-padding);
+  padding-top: calc(8px + var(--safe-area-inset-top));
   background: var(--bg-base);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .list-detail-page .header-right {
   display: flex;
-  gap: var(--space-8);
+  gap: 5px;
   flex-shrink: 0;
 }
 
+/* .new-titlewrap */
 .list-detail-page .ld-header-center {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
+/* .new-title */
 .list-detail-page .ld-header-title {
   font-family: var(--font-display);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
+  font-size: 14.5px;
+  font-weight: 800;
   letter-spacing: var(--letter-spacing-display);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
+/* .new-sub */
 .list-detail-page .ld-header-byline {
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
+  font-size: 9.5px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .list-detail-page .ld-header-owner {
@@ -494,15 +496,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* .new-desc — no hairline above; border-bottom lives here */
 .list-detail-page .ld-desc-line {
-  margin: 0;
-  padding: var(--space-8) var(--page-padding) var(--space-12);
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-body);
+  margin: 0 0 9px;
+  padding: 0 var(--page-padding) 8px;
+  font-size: 10.5px;
+  line-height: 1.4;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .list-detail-page .ld-desc-edit {
@@ -510,28 +511,36 @@
   margin-top: 0;
 }
 
-/* all three header buttons */
+/* .new-iconbtn / .new-back / .new-acts — 24×24, no pill chrome */
 .list-detail-page .icon-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 0;
   display: grid;
   place-items: center;
-  background: rgba(10, 15, 31, .5);
-  border: 1px solid rgba(255, 255, 255, .08);
-  color: #f0f3fa;
-  backdrop-filter: blur(10px);
+  background: none;
+  border: none;
+  color: var(--text-primary);
   flex: 0 0 auto;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
 }
 
 .list-detail-page .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-page .icon-btn {
+    transition: none;
+  }
 }
 
 .list-detail-desc-edit-wrap {
@@ -627,15 +636,47 @@
   padding: 0 0 var(--space-24);
 }
 
-.list-detail-page--custom .lib-sortrow {
-  margin-top: var(--space-12);
+/* .new-sortrow — plain right-aligned text, no pill */
+.list-detail-page .ld-sortrow {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 var(--page-padding) 8px;
 }
 
-/* GAME GRID — 2-up default per mockup D */
+.list-detail-page .ld-sortrow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition-fast);
+}
+
+.list-detail-page .ld-sortrow-btn svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-page .ld-sortrow-btn {
+    transition: none;
+  }
+}
+
+/* .new-g3 — 3-up cover grid */
 .list-detail-page .game-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
   padding: 0 var(--page-padding);
 }
 
@@ -664,11 +705,12 @@
   -webkit-user-drag: none;
 }
 
+/* .new-gname */
 .list-detail-page .game-title {
-  font-size: 10.5px;
-  color: #c3cfea;
-  margin-top: 5px;
-  line-height: 1.3;
+  font-size: 8.5px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.25;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -778,7 +820,8 @@
   .list-detail-page .list-body,
   .list-detail-page .ld-header,
   .list-detail-page .ld-desc-line,
-  .list-detail-page .ld-desc-edit {
+  .list-detail-page .ld-desc-edit,
+  .list-detail-page .ld-sortrow {
     max-width: var(--page-max-width);
     margin-left: auto;
     margin-right: auto;

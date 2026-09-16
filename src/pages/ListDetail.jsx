@@ -6,14 +6,15 @@ import { LuChevronLeft } from 'react-icons/lu'
 import { HiDotsVertical, HiPlus } from 'react-icons/hi'
 import {
   ChevronLeft,
+  ChevronDown,
   Plus,
   MoreHorizontal,
   PlayCircle,
   CheckCircle2,
+  Bookmark,
   List,
   Pencil,
 } from 'lucide-react'
-import LibrarySortRow from '../components/library/LibrarySortRow'
 import LibrarySortSheet from '../components/library/LibrarySortSheet'
 import {
   LIBRARY_SORTS,
@@ -221,6 +222,12 @@ function ListDetail() {
     setViewKey(key)
     writeLibraryView(key)
   }, [])
+
+  const openGame = useCallback((game, imageUrl) => {
+    navigate(`/game/${game.id}`, {
+      state: { ...getGameNavStub(game), coverImage: imageUrl },
+    })
+  }, [navigate])
 
   // ── Session ───────────────────────────────────────────────────────────────
 
@@ -996,12 +1003,6 @@ function ListDetail() {
   const showFab = isOwner
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sortKey)?.label || 'Recent'
 
-  const openGame = useCallback((game, imageUrl) => {
-    navigate(`/game/${game.id}`, {
-      state: { ...getGameNavStub(game), coverImage: imageUrl },
-    })
-  }, [navigate])
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -1190,7 +1191,7 @@ function ListDetail() {
           onClick={() => navigate(-1)}
           aria-label="Go back"
         >
-          <ChevronLeft size={16} aria-hidden="true" />
+          <ChevronLeft size={14} strokeWidth={2.5} aria-hidden="true" />
         </button>
 
         <div className="ld-header-center">
@@ -1222,7 +1223,7 @@ function ListDetail() {
               onClick={openDescEdit}
               aria-label="Edit list"
             >
-              <Pencil size={16} aria-hidden="true" />
+              <Pencil size={14} strokeWidth={2.5} aria-hidden="true" />
             </button>
           )}
           <button
@@ -1232,7 +1233,7 @@ function ListDetail() {
             aria-haspopup="dialog"
             aria-label="More options"
           >
-            <MoreHorizontal size={16} aria-hidden="true" />
+            <MoreHorizontal size={14} strokeWidth={2.5} aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -1272,11 +1273,17 @@ function ListDetail() {
       )}
 
       <div className="list-body">
-        <LibrarySortRow
-          count={sortedGames.length}
-          sortLabel={sortLabel}
-          onSortClick={() => setShowSortSheet(true)}
-        />
+        <div className="ld-sortrow">
+          <button
+            type="button"
+            className="ld-sortrow-btn"
+            onClick={() => setShowSortSheet(true)}
+            aria-label={`Sort games (currently ${sortLabel})`}
+          >
+            {sortedGames.length} {sortedGames.length === 1 ? 'game' : 'games'} · {sortLabel}
+            <ChevronDown size={10} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        </div>
 
         {sortedGames.length > 0 ? (
           viewKey === 'list' ? (
