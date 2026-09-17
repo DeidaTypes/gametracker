@@ -1240,30 +1240,32 @@ function ListDetail() {
 
       {isOwner && editingDesc ? (
         <div className="list-detail-desc-edit-wrap ld-desc-edit">
-          <textarea
-            ref={descTextareaRef}
-            className="list-detail-desc-textarea"
-            value={descDraft}
-            onChange={(e) => setDescDraft(e.target.value)}
-            placeholder="Add a description…"
-            maxLength={500}
-            aria-label="List description"
-          />
-          <div className="list-detail-desc-edit-actions">
-            <button
-              type="button"
-              className="list-detail-desc-cancel-btn"
-              onClick={handleDescCancel}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="list-detail-desc-save-btn"
-              onClick={handleDescSave}
-            >
-              Save
-            </button>
+          <div className="list-detail-desc-edit-unit">
+            <textarea
+              ref={descTextareaRef}
+              className="list-detail-desc-textarea"
+              value={descDraft}
+              onChange={(e) => setDescDraft(e.target.value)}
+              placeholder="Add a description…"
+              maxLength={500}
+              aria-label="List description"
+            />
+            <div className="list-detail-desc-edit-toolbar">
+              <button
+                type="button"
+                className="list-detail-desc-cancel-btn"
+                onClick={handleDescCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="list-detail-desc-save-btn"
+                onClick={handleDescSave}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       ) : (

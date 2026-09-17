@@ -547,6 +547,13 @@
   width: 100%;
 }
 
+/* Field + toolbar — one continuous accent-bordered shape (mockup C). */
+.list-detail-desc-edit-unit {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
 .list-detail-desc-textarea {
   display: block;
   width: 100%;
@@ -554,9 +561,9 @@
   max-height: 200px;
   padding: 10px 12px;
   background: var(--bg-base, var(--color-bg-base));
-  border: 1px solid rgba(148, 168, 212, .12);
-  border-radius: 8px;
-  color: #f0f3fa;
+  border: none;
+  border-radius: 0;
+  color: var(--text-primary);
   font-family: var(--font-body);
   /* 16px prevents iOS auto-zoom on focus */
   font-size: 16px;
@@ -565,53 +572,49 @@
   outline: none;
   box-sizing: border-box;
   overflow-y: auto;
-  transition: border-color var(--transition-fast);
   -webkit-text-size-adjust: 100%;
 }
 
-.list-detail-desc-textarea:focus {
-  border-color: var(--color-brand-primary);
-}
-
 .list-detail-desc-textarea::placeholder {
-  color: #94a8d4;
+  color: var(--text-secondary);
 }
 
-.list-detail-desc-edit-actions {
+.list-detail-desc-edit-toolbar {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
+  align-items: center;
+  gap: var(--space-8);
+  padding: 9px 12px;
+  background: var(--bg-surface);
 }
 
 .list-detail-desc-cancel-btn {
-  padding: 6px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(148, 168, 212, .2);
+  padding: 6px 8px;
+  border: none;
   background: transparent;
-  color: #c3cfea;
+  color: var(--text-secondary);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: color var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
 
 .list-detail-desc-cancel-btn:hover {
-  background: rgba(148, 168, 212, .08);
-  color: #f0f3fa;
+  color: var(--text-primary);
 }
 
 .list-detail-desc-save-btn {
-  padding: 6px 16px;
+  padding: 8px 18px;
   border-radius: var(--radius-full);
   border: none;
-  background: var(--color-brand-primary);
-  color: #fff;
+  /* Same fill as lib-fab-bg--lists on this screen (Library.css). */
+  background: var(--grad-purple-blue);
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   cursor: pointer;
   transition: opacity var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
@@ -626,7 +629,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .list-detail-page .list-detail-desc-textarea {
+  .list-detail-desc-cancel-btn,
+  .list-detail-desc-save-btn {
     transition: none;
   }
 }
