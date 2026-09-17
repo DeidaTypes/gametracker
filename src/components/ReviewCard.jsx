@@ -5,23 +5,19 @@ import {
   HiOutlineHeart,
   HiHeart,
   HiOutlineChat,
-  HiOutlineShare,
   HiPlay,
   HiDotsVertical,
   HiOutlinePencil,
   HiOutlineFlag,
 } from 'react-icons/hi'
-import { LuPin, LuPinOff, LuQuote } from 'react-icons/lu'
+import { LuPin, LuPinOff } from 'react-icons/lu'
 import StarRatingDisplay from './StarRatingDisplay'
 import Pressable from './Pressable'
 import Avatar from './Avatar'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../services/likeService'
-import { shareCard } from '../services/share'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { formatActivityDate } from '../utils/formatActivityDate'
-import DmShareSheet from './DmShareSheet'
-import { bumpSharesCount } from '../hooks/useUserStats'
 import { getDominantColor } from '../services/colorExtract'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { useMotionPreference } from '../hooks/useMotionPreference'
@@ -29,7 +25,6 @@ import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
 import StreakFlair from './streak/StreakFlair'
-import { extractQuote } from '../utils/extractQuote'
 import { hapticImpact } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
 import './ReviewCard.css'
@@ -78,7 +73,7 @@ const LIFE_LABELS = {
  *   4. Star rating (read-only display)
  *   5. Body text with overflow-aware "Read more..." (default variant only)
  *   6. Author row (avatar + username)
- *   7. Action row (like / comment / share)
+ *   7. Action row (like / comment)
  * This cover-header-first / author-at-bottom ordering is an intentional,
  * documented exception to the shared <ReviewCardShellHeader/> one-line
  * actor pattern (see ReviewCardShell.jsx) — it's the locked, cross-screen
@@ -133,8 +128,6 @@ function ReviewCard({
   const [heartPulse, setHeartPulse] = useState(false)
   const [kebabOpen, setKebabOpen] = useState(false)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
-  const [sharingQuote, setSharingQuote] = useState(false)
-  const [dmShareOpen, setDmShareOpen] = useState(false)
   const kebabRef = useRef(null)
   const bodyRef = useRef(null)
   // Guards against a double-tap/rapid-toggle firing a second like/unlike
@@ -230,56 +223,6 @@ function ReviewCard({
       )
     } finally {
       likeInFlightRef.current = false
-    }
-  }
-
-  const handleShare = () => {
-    setDmShareOpen(true)
-    bumpSharesCount(1)
-  }
-
-  const dmShareAttachment = {
-    type: 'review',
-    id: review.id,
-    title:
-      review.title ||
-      `${review.author?.username || 'Someone'}\u2019s review of ${review.game?.name || 'a game'}`,
-    cover_url: review.game?.coverUrl || null,
-    subtitle: review.game?.name || null,
-    url_path: `/reviews/${review.id}`,
-  }
-
-  const handleShareQuote = async () => {
-    if (sharingQuote) return
-    setKebabOpen(false)
-    const quote = extractQuote(review.body)
-    if (!quote) {
-      showToast('No quotable text in this review.', 'error')
-      return
-    }
-    setSharingQuote(true)
-    showToast('Building share card\u2026')
-    try {
-      await shareCard({
-        variant: 'quotable-review',
-        data: {
-          quote,
-          game: {
-            title: review.game.name || review.game.title || '',
-            coverUrl: review.game.coverUrl || null,
-          },
-          rating: review.rating,
-          username: review.author.username || review.author.displayName || '',
-        },
-        target: { type: 'review', id: review.id },
-        title: `Review of ${review.game.name || 'a game'} on Checkpoint`,
-      })
-      bumpSharesCount(1)
-    } catch (err) {
-      console.error('[ReviewCard] shareQuote error:', err)
-      showToast('Could not create share card.', 'error')
-    } finally {
-      setSharingQuote(false)
     }
   }
 
@@ -385,15 +328,6 @@ function ReviewCard({
       </button>
       {kebabOpen && (
         <div className="review-card__kebab-menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            disabled={sharingQuote}
-            onClick={(e) => { e.stopPropagation(); handleShareQuote() }}
-          >
-            <LuQuote />
-            {sharingQuote ? 'Creating card\u2026' : 'Share quote'}
-          </button>
           {isOwn && (
             <>
               <button
@@ -515,7 +449,7 @@ function ReviewCard({
         <>
           <div className="review-card__pr-cover">
             {coverThumbUrl ? (
-              <img src={coverThumbUrl} alt="" loading="lazy" />
+              <img src={coverThumbUrl} alt="" loading="lazy" decoding="async" />
             ) : (
               <span className="review-card__pr-cover-empty" aria-hidden="true" />
             )}
@@ -604,9 +538,11 @@ function ReviewCard({
               </div>
             )}
           </div>
-          <div className="review-card__play-btn" aria-hidden="true">
-            <HiPlay size={18} />
-          </div>
+          {variant !== 'detail' && (
+            <div className="review-card__play-btn" aria-hidden="true">
+              <HiPlay size={18} />
+            </div>
+          )}
         </Pressable>
   
         {review.title && (
@@ -659,16 +595,6 @@ function ReviewCard({
             {likeButton}
             {commentButton}
           </div>
-          <div className="review-card__actions-right">
-            <Pressable
-              className="review-card__share"
-              onClick={(e) => { e.stopPropagation(); handleShare() }}
-              aria-label="Share"
-            >
-              <HiOutlineShare />
-            </Pressable>
-            {kebabControl}
-          </div>
         </div>
         </>
       )}
@@ -679,11 +605,6 @@ function ReviewCard({
       onClose={() => setReportSheetOpen(false)}
       contentType="review"
       contentId={review.id}
-    />
-    <DmShareSheet
-      isOpen={dmShareOpen}
-      onClose={() => setDmShareOpen(false)}
-      attachment={dmShareAttachment}
     />
     </>
   )

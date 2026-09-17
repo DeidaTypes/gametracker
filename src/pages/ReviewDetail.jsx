@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis, LuSend } from 'react-icons/lu'
+import { LuChevronLeft, LuEllipsis, LuFlag, LuSend, LuShare2 } from 'react-icons/lu'
 import { HiOutlineFlag, HiHeart, HiOutlineHeart } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
@@ -28,7 +28,8 @@ import {
   getCommentLikeStates,
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
-import { bumpCommentsCount } from '../hooks/useUserStats'
+import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
+import DmShareSheet from '../components/DmShareSheet'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
@@ -579,10 +580,6 @@ function ReviewDetail() {
   // ── Comment likes ───────────────────────────────────────────
   const [likeStates, setLikeStates] = useState(new Map())
 
-  // ── Sort mode ────────────────────────────────────────────────
-  // 'new' = chronological (default); 'top' = most-liked first
-  const [sortMode, setSortMode] = useState('new')
-
   // ── Composer state ──────────────────────────────────────────
   const [replyTo, setReplyTo] = useState(null)
   const [draft, setDraft] = useState('')
@@ -599,6 +596,7 @@ function ReviewDetail() {
   // ── Report sheet ────────────────────────────────────────────
   const [reportTarget, setReportTarget] = useState(null)
   const [reportReview, setReportReview] = useState(false)
+  const [dmShareOpen, setDmShareOpen] = useState(false)
 
   // Bumped on app resume so the realtime effect below tears down the dead
   // (post-suspend) channel and re-subscribes onto a fresh socket — same
@@ -725,8 +723,8 @@ function ReviewDetail() {
   /* ── Auto-grow textarea ───────────────────────────────────── */
   // Shared with List Comments / Review Comments (see
   // src/hooks/useAutoGrowTextarea.js) so the grow-then-cap behavior can
-  // never drift between composers. Cap matches .rd-composer__input's
-  // max-height in ReviewDetail.css.
+  // never drift between composers. Cap matches .composer__input's
+  // max-height in styles/keyboard.css.
   useAutoGrowTextarea(inputRef, draft, 90)
 
   /* ── Scroll helpers ───────────────────────────────────────── */
@@ -748,17 +746,7 @@ function ReviewDetail() {
 
   /* ── Derived ──────────────────────────────────────────────── */
 
-  const threaded = useMemo(() => {
-    const groups = threadComments(comments)
-    if (sortMode === 'top') {
-      return [...groups].sort((a, b) => {
-        const la = likeStates.get(a.id)?.count ?? 0
-        const lb = likeStates.get(b.id)?.count ?? 0
-        return lb !== la ? lb - la : new Date(a.created_at) - new Date(b.created_at)
-      })
-    }
-    return groups
-  }, [comments, sortMode, likeStates])
+  const threaded = useMemo(() => threadComments(comments), [comments])
   const commentCount = comments.length
 
   const reviewCardShape = useMemo(
@@ -949,13 +937,26 @@ function ReviewDetail() {
     setReportTarget(comment)
   }, [])
 
-  /* ── Current user avatar for the composer bar ─────────────── */
+  // Same share path ReviewCard's action-row share icon used (DmShareSheet
+  // → native/web/clipboard cascade). Share-quote is removed, not repaired.
+  const handleShare = useCallback(() => {
+    if (!reviewCardShape) return
+    setDmShareOpen(true)
+    bumpSharesCount(1)
+  }, [reviewCardShape])
 
-  const currentAvatarUrl = user?.user_metadata?.avatar_url || ''
-  const currentDisplayName =
-    user?.user_metadata?.display_name ||
-    user?.user_metadata?.username ||
-    ''
+  const dmShareAttachment = reviewCardShape
+    ? {
+        type: 'review',
+        id: reviewCardShape.id,
+        title:
+          reviewCardShape.title ||
+          `${reviewCardShape.author?.username || 'Someone'}\u2019s review of ${reviewCardShape.game?.name || 'a game'}`,
+        cover_url: reviewCardShape.game?.coverUrl || null,
+        subtitle: reviewCardShape.game?.name || null,
+        url_path: `/reviews/${reviewCardShape.id}`,
+      }
+    : null
 
   /* ── Render ───────────────────────────────────────────────── */
 
@@ -972,14 +973,26 @@ function ReviewDetail() {
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
         <h1 className="rd-header__title">Review</h1>
-        <button
-          type="button"
-          className="rd-header__menu"
-          onClick={() => setReportReview(true)}
-          aria-label="More options"
-        >
-          <LuEllipsis size={20} aria-hidden="true" />
-        </button>
+        <div className="rd-header__actions">
+          <button
+            type="button"
+            className="rd-header__icon"
+            onClick={handleShare}
+            disabled={!reviewCardShape}
+            aria-label="Share"
+          >
+            <LuShare2 size={20} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="rd-header__icon"
+            onClick={() => setReportReview(true)}
+            disabled={!reviewCardShape}
+            aria-label="Report review"
+          >
+            <LuFlag size={20} aria-hidden="true" />
+          </button>
+        </div>
       </header>
 
       {/* ── Thread body ──────────────────────────── */}
@@ -1021,22 +1034,6 @@ function ReviewDetail() {
               </span>
             )}
             <div className="rd-thread__divider-line" aria-hidden="true" />
-            <div className="rd-thread__sort" role="group" aria-label="Sort comments">
-              <button
-                type="button"
-                className={`rd-thread__sort-pill${sortMode === 'new' ? ' rd-thread__sort-pill--active' : ''}`}
-                onClick={() => setSortMode('new')}
-              >
-                New
-              </button>
-              <button
-                type="button"
-                className={`rd-thread__sort-pill${sortMode === 'top' ? ' rd-thread__sort-pill--active' : ''}`}
-                onClick={() => setSortMode('top')}
-              >
-                Top
-              </button>
-            </div>
           </div>
 
           {commentsLoading ? (
@@ -1079,7 +1076,7 @@ function ReviewDetail() {
        */}
       <KeyboardAwareView
         mode="composer"
-        className="kb-composer-bar rd-composer"
+        className="kb-composer-bar composer-bar rd-composer"
         aria-label="Comment composer"
       >
         {replyTo && (
@@ -1101,48 +1098,39 @@ function ReviewDetail() {
           </div>
         )}
 
-        <div className="rd-composer__row">
-          {/* Current-user avatar */}
-          <Avatar
-            avatarUrl={currentAvatarUrl}
-            name={currentDisplayName}
-            seed={user?.id}
-            size="sm"
-            className="rd-composer__avatar"
-          />
+        <div className="composer__row">
+          <div className="composer__shell">
+            <textarea
+              ref={inputRef}
+              className="composer__input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onFocus={handleComposerFocus}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={
+                replyTo
+                  ? `Reply to ${displayNameFor(replyTo.users)}…`
+                  : 'Add a comment…'
+              }
+              maxLength={MAX_COMMENT_LEN}
+              rows={1}
+              aria-label={
+                replyTo
+                  ? `Reply to ${displayNameFor(replyTo.users)}`
+                  : 'Add a comment'
+              }
+            />
 
-          {/* Auto-growing textarea */}
-          <textarea
-            ref={inputRef}
-            className="rd-composer__input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onFocus={handleComposerFocus}
-            onKeyDown={handleComposerKeyDown}
-            placeholder={
-              replyTo
-                ? `Reply to ${displayNameFor(replyTo.users)}…`
-                : 'Add a comment…'
-            }
-            maxLength={MAX_COMMENT_LEN}
-            rows={1}
-            aria-label={
-              replyTo
-                ? `Reply to ${displayNameFor(replyTo.users)}`
-                : 'Add a comment'
-            }
-          />
-
-          {/* Send button — always visible; dims when empty */}
-          <button
-            type="button"
-            className="rd-composer__send"
-            onClick={handlePost}
-            disabled={!draft.trim() || posting}
-            aria-label="Send comment"
-          >
-            <LuSend size={18} aria-hidden="true" />
-          </button>
+            <button
+              type="button"
+              className="composer__send"
+              onClick={handlePost}
+              disabled={!draft.trim() || posting}
+              aria-label="Send comment"
+            >
+              <LuSend size={14} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </KeyboardAwareView>
 
@@ -1160,6 +1148,12 @@ function ReviewDetail() {
         onClose={() => setReportReview(false)}
         contentType="review"
         contentId={reviewId}
+      />
+
+      <DmShareSheet
+        isOpen={dmShareOpen}
+        onClose={() => setDmShareOpen(false)}
+        attachment={dmShareAttachment}
       />
     </div>
   )

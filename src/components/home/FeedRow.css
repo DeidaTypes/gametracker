@@ -1,0 +1,317 @@
+/* ============================================================
+   FEED ROW — "The pulse"'s COMPACT row for every non-opinion-bearing
+   event (see communityService.pulseItemHasOpinion / FeedRow.jsx).
+   Namespace: feed-row__*, feed-group-row__*
+   Tokens only — no hardcoded hex.
+
+   One anatomy for every row: avatar → text → cover → trailing.
+   ============================================================ */
+
+/* Base row: also used directly (with role="button" + this same class)
+   by FeedGroupRow's own collapsed summary row (.feed-group-row__summary),
+   which has no separate heart to isolate — so cursor/tap-highlight/focus
+   styling stays here, not just on .feed-row__tap below. */
+.feed-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feed-row:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+/* Comments / list overlay — a real <button> sibling of the heart, not
+   its parent. Covers the row except the 44px heart column so avatar,
+   actor, verb, timestamp, cover, and empty space all hit this target.
+   pointer-events:none on .feed-row__content lets those taps pass
+   through; the game-name button re-enables pointer-events on itself. */
+.feed-row__tap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feed-row__tap:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+/* Visual row contents sit above the overlay. pointer-events:none so
+   taps on avatar / actor / verb / cover / empty space fall through to
+   .feed-row__tap. The game-name button turns pointer-events back on. */
+.feed-row__content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  pointer-events: none;
+}
+
+/* Expanded child rows: no avatar — 36px indent aligns text with parent. */
+.feed-row--indented {
+  padding-left: calc(14px + 36px);
+}
+
+/* Hairline between consecutive compact rows inside a group. */
+.feed-group-row__children-inner .feed-row + .feed-row::before,
+.feed-group-row--open .feed-group-row__summary + .feed-group-row__children .feed-row:first-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.feed-row__avatar {
+  flex-shrink: 0;
+  display: flex;
+  border-radius: var(--radius-full);
+}
+
+.feed-row__avatar .avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.feed-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body);
+  color: var(--color-text-primary);
+}
+
+.feed-row__line1 {
+  font-size: 14px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-row__line2 {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-label);
+  line-height: 1.3;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-row__actor {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.feed-row__verb {
+  font-weight: var(--font-weight-medium);
+}
+
+.feed-row__verb--status {
+  color: var(--accent);
+}
+
+.feed-row__verb--curation {
+  color: var(--accent-journal-text);
+}
+
+.feed-row__object--purple {
+  color: var(--accent-journal-text);
+}
+
+/* Game-name tap — real <button>, sibling-layer of the overlay (pointer-
+   events restored). Hit area is the text plus 8px above and 4px left/
+   right, pulled back with negative margin so the line doesn't wrap or
+   shift. Bottom stays flush with the glyphs so the timestamp line
+   (2px below) is not swallowed. Deliberately NOT 44px: a 44px box
+   would take actor / verb / timestamp taps meant for comments. */
+.feed-row__object-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  vertical-align: baseline;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: var(--space-8) var(--space-4) 0;
+  margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-4)) 0;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feed-row__object-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.feed-row__cover {
+  flex-shrink: 0;
+  width: 26px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+}
+
+.feed-row__cover-stack {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 43px;
+}
+
+.feed-row__cover-stack-img {
+  position: absolute;
+  width: 26px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.feed-row__cover-stack-img--back {
+  top: var(--space-4);
+  left: 6px;
+  z-index: 1;
+}
+
+.feed-row__cover-stack-img--front {
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.feed-row__trailing {
+  flex-shrink: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Glyph box inside the 44px heart button — 13px icon, centered. */
+.feed-row__heart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.feed-row__heart svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Real <button> (via Pressable), sibling of .feed-row__tap — never a
+   descendant. The BUTTON itself is 44×44 so iOS WKWebView hit-tests
+   the control, not a overflowing ::after. Negative margin absorbs the
+   extra size so the row's visual rhythm stays the 24px trailing slot.
+   Glyph stays 13px. */
+.feed-row__heart-btn {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-4));
+  border-radius: var(--radius-full);
+  color: var(--accent-journal-text);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feed-row__heart-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.feed-row__heart-btn--active {
+  color: var(--accent-journal-text);
+}
+
+.feed-row__heart-btn--own {
+  cursor: default;
+}
+
+.feed-row__heart-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+  border-radius: var(--radius-full);
+}
+
+.feed-group-row__chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-muted);
+  transition: transform 0.2s ease;
+}
+
+.feed-group-row__chevron--open {
+  transform: rotate(180deg);
+}
+
+.feed-group-row__children {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.feed-group-row__children--open {
+  grid-template-rows: 1fr;
+}
+
+.feed-group-row__children-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
