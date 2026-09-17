@@ -69,9 +69,10 @@ const PARALLAX = 0.28
 // This is the "slightly darkened" part of the native look.
 const DIM_FLOOR = 0.55
 
-// Same curve and duration SwipeBackWrapper has always used to settle. 300ms
-// is the ceiling — past that a back gesture reads as broken, not polished.
-export const BACK_SETTLE_MS = 300
+// Settle duration and easing for swipe-release and button-back. The curve
+// matches PAGE_TRANSITION_ENTER in PageTransition.jsx so back feels like
+// the inverse of forward — smooth throughout, not front-loaded.
+export const BACK_SETTLE_MS = 400
 // Button backs defer settleTo by two rAFs so `.route-layer--exiting` commits
 // first; budget that wait when sizing AnimatedRoutes' exit safety timer.
 const BACK_SLIDE_START_DEFER_MS = 34
@@ -79,7 +80,7 @@ const BACK_SETTLE_BUFFER_MS = 20
 /** Full button-back travel time from POP to settleTo completion (worst case). */
 export const BACK_EXIT_ANIM_MS =
   BACK_SLIDE_START_DEFER_MS + BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS
-const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+const SETTLE_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
 const SETTLE = `transform ${BACK_SETTLE_MS}ms ${SETTLE_EASE}, opacity ${BACK_SETTLE_MS}ms ${SETTLE_EASE}`
 
 // One entry per back-stack depth. Three is plenty for back-through-three
