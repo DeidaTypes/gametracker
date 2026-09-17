@@ -1010,9 +1010,11 @@ function ListDetail() {
       <div className="list-detail-page list-detail-page--loading list-detail-page--custom" aria-busy="true" aria-label="Loading list">
         <div className="ld-sk-header-bar" aria-hidden="true">
           <div className="ld-sk-header-title skeleton" />
-          <div className="ld-sk-header-byline skeleton" />
         </div>
-        <div className="ld-sk-sortrow skeleton" aria-hidden="true" />
+        <div className="ld-sk-sortrow" aria-hidden="true">
+          <div className="ld-sk-sortrow-owner skeleton" />
+          <div className="ld-sk-sortrow-sort skeleton" />
+        </div>
         <div className="ld-sk-grid" aria-hidden="true">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="ld-sk-cover skeleton" />
@@ -1196,23 +1198,6 @@ function ListDetail() {
 
         <div className="ld-header-center">
           <span className="ld-header-title">{listInfo.name}</span>
-          <span className="ld-header-byline">
-            {author?.username ? (
-              <>
-                <button
-                  type="button"
-                  className="ld-header-owner"
-                  onClick={() => navigate(`/profile/${author.username}`)}
-                >
-                  {ownerLabel}
-                </button>
-                {' · '}
-              </>
-            ) : (
-              <>{ownerLabel} · </>
-            )}
-            {games.length} {games.length === 1 ? 'game' : 'games'}
-          </span>
         </div>
 
         <div className="header-right">
@@ -1276,6 +1261,19 @@ function ListDetail() {
 
       <div className="list-body">
         <div className="ld-sortrow">
+          <span className="ld-sortrow-byline">
+            {author?.username ? (
+              <button
+                type="button"
+                className="ld-header-owner"
+                onClick={() => navigate(`/profile/${author.username}`)}
+              >
+                {ownerLabel}
+              </button>
+            ) : (
+              ownerLabel
+            )}
+          </span>
           <button
             type="button"
             className="ld-sortrow-btn"

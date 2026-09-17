@@ -9,6 +9,12 @@
   --page-padding: 16px;
 }
 
+/* Comment composer is fixed but inherits --page-padding from here — pin
+   its inset explicitly so the bar lines up with the grid/comments above. */
+.list-detail-page .composer-bar {
+  padding-inline: var(--page-padding);
+}
+
 /* FAB clearance — owner/collaborator only (see ListDetail.jsx portal). */
 .list-detail-page--fab {
   padding-bottom: calc(
@@ -65,16 +71,22 @@
   border-radius: var(--radius-sm);
 }
 
-.ld-sk-header-byline {
-  width: 40%;
+.ld-sk-sortrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--space-12) var(--page-padding);
+}
+
+.ld-sk-sortrow-owner {
+  width: 28%;
   height: 13px;
   border-radius: var(--radius-sm);
 }
 
-.ld-sk-sortrow {
-  width: calc(100% - var(--page-padding) * 2);
+.ld-sk-sortrow-sort {
+  width: 32%;
   height: 14px;
-  margin: var(--space-12) var(--page-padding);
   border-radius: var(--radius-sm);
 }
 
@@ -473,17 +485,6 @@
   line-height: 1.15;
 }
 
-/* .new-sub */
-.list-detail-page .ld-header-byline {
-  font-size: 9.5px;
-  color: var(--text-tertiary);
-  margin-top: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.15;
-}
-
 .list-detail-page .ld-header-owner {
   display: inline;
   padding: 0;
@@ -584,19 +585,23 @@
   justify-content: flex-end;
   align-items: center;
   gap: var(--space-8);
-  padding: 9px 12px;
+  padding: var(--space-4) var(--space-12);
   background: var(--bg-surface);
 }
 
 .list-detail-desc-cancel-btn {
-  padding: 6px 8px;
+  padding: var(--space-4) var(--space-8);
   border: none;
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
+  /* Opt out of the global 44px tap-target rule — inline toolbar control. */
+  min-width: 0;
+  min-height: 0;
   transition: color var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
@@ -606,7 +611,7 @@
 }
 
 .list-detail-desc-save-btn {
-  padding: 8px 18px;
+  padding: var(--space-4) var(--space-12);
   border-radius: var(--radius-full);
   border: none;
   /* Same fill as lib-fab-bg--lists on this screen (Library.css). */
@@ -615,7 +620,11 @@
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: 700;
+  line-height: 1.2;
   cursor: pointer;
+  /* Opt out of the global 44px tap-target rule — inline toolbar control. */
+  min-width: 0;
+  min-height: 0;
   transition: opacity var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
@@ -640,17 +649,31 @@
   padding: 0 0 var(--space-24);
 }
 
-/* .new-sortrow — plain right-aligned text, no pill */
+/* .new-sortrow — username left, count+sort right */
 .list-detail-page .ld-sortrow {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
   margin: 0 var(--page-padding) 8px;
+}
+
+.list-detail-page .ld-sortrow-byline {
+  flex: 1;
+  min-width: 0;
+  font-size: 9.5px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
 }
 
 .list-detail-page .ld-sortrow-btn {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;
   padding: 0;
   margin: 0;
   background: none;
