@@ -382,7 +382,12 @@ body[data-larger-text='true'] {
   --status-want-to-play: var(--color-accent-lavender);
   --status-currently-playing: var(--accent);
   --status-played: var(--accent-review);
-  --status-dropped: var(--text-secondary);
+  /* Near-white primary text — not a fourth accent hue. Idle tiles
+     already paint with --color-text-secondary (same hex as the old
+     --text-secondary alias), so a selected Dropped tile was invisible.
+     --text-primary stays in the cool-white family, is unmistakably
+     brighter than idle, and is neither warm nor a new accent. */
+  --status-dropped: var(--text-primary);
 
   /* =============================================
      MULTI-HUE GRADIENT TOKENS

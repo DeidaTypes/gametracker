@@ -579,7 +579,11 @@ function GameDetail() {
       setRatingSheetOpen(true)
       return
     }
-    setGameStatus(game.id, statusKey, game)
+    const ok = setGameStatus(game.id, statusKey, game)
+    if (!ok) {
+      showToast('Could not update — try again', 'error')
+      return
+    }
     refreshFromStore()
     window.dispatchEvent(new Event('libraryUpdated'))
   }, [game, status, refreshFromStore])

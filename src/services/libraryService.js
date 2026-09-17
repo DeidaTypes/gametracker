@@ -210,17 +210,33 @@ export function getBacklogClearsThisYear() {
   ).length
 }
 
-// Initialize library with default lists
+// Initialize library with default lists. An older localStorage library
+// can be missing keys added later (e.g. `dropped`); merge those in so
+// setGameStatus never reads `library.lists[targetList]` as undefined.
 export function initializeLibrary() {
   const existing = getLibrary()
   if (!existing || !existing.lists) {
     const library = {
-      lists: { ...DEFAULT_LISTS },
+      lists: Object.fromEntries(
+        Object.entries(DEFAULT_LISTS).map(([key, def]) => [
+          key,
+          { name: def.name, games: [] },
+        ]),
+      ),
       customLists: {},
     }
     saveLibrary(library)
     return library
   }
+
+  let missing = false
+  for (const [key, def] of Object.entries(DEFAULT_LISTS)) {
+    if (!existing.lists[key]) {
+      existing.lists[key] = { name: def.name, games: [] }
+      missing = true
+    }
+  }
+  if (missing) saveLibrary(existing)
   return existing
 }
 
@@ -568,7 +584,7 @@ export function setGameStatus(gameId, newStatus, game = null) {
     const currentStatus = getGameStatus(id)
     if (currentStatus === newStatus) return true
 
-    const library = getLibrary() || initializeLibrary()
+    const library = initializeLibrary()
 
     let gameObj = game
     for (const listId of Object.keys(LIST_STATUS_MAP)) {
