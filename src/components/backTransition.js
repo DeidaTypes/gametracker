@@ -54,11 +54,11 @@
  * or layout projection, so it cannot reintroduce the exit-complete deadlock
  * documented in AnimatedRoutes.
  *
- * The top page element differs between the two entry points — the gesture
- * drives `.swipe-back` before navigating, the button drives
- * `.route-layer--exiting` after — but both represent the full-screen page at
- * its correct scroll offset, and both run through `apply()` below, so the
- * visual result is the same.
+ * Both entry points drive the same element: the outgoing `.route-layer`
+ * (SwipeBackWrapper still passes its inner `.swipe-back` ref to beginBack,
+ * which resolves up). One translateX on the wrapper, Framer's inner
+ * motion.div held still via CSS, so the visual result is the same for swipe
+ * and button back.
  */
 import './backTransition.css'
 
@@ -97,11 +97,11 @@ const COMMIT_SAFETY_MS = 500
 // The floor exists because the opposite failure is just as visible: a
 // destination with nothing to restore reports settled almost immediately, and
 // swapping to a page that is still on its skeletons would flick from real
-// content to placeholders. The reveal is pointer-events: none throughout, so
-// the live page underneath is already interactive either way.
+// content to placeholders. The reveal is pointer-events: none throughout,
+// but the live page underneath is hidden (see holdLiveLayer) rather than
+// interactive during the hold — brief enough that trading that off for
+// never showing two copies of the destination is the right call.
 const HOLD_CAP_MS = 700
-const HOLD_FLOOR_MS = 180
-const FADE_OUT_MS = 140
 
 /** `.main-content` — registered by AppContent, see registerBackHost. */
 let host = null
@@ -113,6 +113,18 @@ let active = null
 let pendingCommit = null
 /** Tracks the two conditions that must both hold before we drop the reveal. */
 let holdState = null
+/**
+ * The live destination's `.route-layer` DOM node while a hold covers it, or
+ * null. The snapshot (`.back-reveal`) is an imperatively-appended sibling of
+ * the React-rendered route layers, so it competes with them for paint order
+ * as peers rather than actually containing them — see the module docstring's
+ * "ONE ENGINE, DELIBERATELY" section for the sibling relationship, and
+ * backTransition.css for why that competition can go the wrong way. Rather
+ * than trying to win a stacking contest that a future page's own positioned
+ * child could silently re-lose, the live layer is made to not paint at all
+ * for as long as the hold lasts — see holdLiveLayer below.
+ */
+let heldLiveLayer = null
 
 /**
  * AppContent hands us `.main-content`. The reveal must be a child of it: the
@@ -226,7 +238,14 @@ function apply(p) {
   win.style.transform = `translate3d(${(clamped - 1) * width}px, 0, 0)`
   content.style.transform = `translate3d(${(1 - clamped) * (1 - PARALLAX) * width}px, 0, 0)`
   content.style.opacity = String(DIM_FLOOR + (1 - DIM_FLOOR) * clamped)
-  if (topLayer) topLayer.style.transform = `translate3d(${clamped * width}px, 0, 0)`
+  if (topLayer) {
+    // AnimatedRoutes re-renders can reset route-layer className and drop a
+    // classList-only `.back-slide-top` mid-gesture — re-apply every frame.
+    if (!topLayer.classList.contains('back-slide-top')) {
+      topLayer.classList.add('back-slide-top')
+    }
+    topLayer.style.transform = `translate3d(${clamped * width}px, 0, 0)`
+  }
 }
 
 function setTransitioned(on) {
@@ -237,9 +256,10 @@ function setTransitioned(on) {
   if (active.topLayer) active.topLayer.style.transition = on ? SETTLE : 'none'
 }
 
-/** Same element the swipe gesture drives — inner `.swipe-back` when present. */
-function resolveSlideLayer(layerEl) {
-  return layerEl?.querySelector('.swipe-back') || layerEl
+/** Always slide the route-layer wrapper — never an inner `.swipe-back`. */
+function resolveSlideTarget(el) {
+  if (!el) return null
+  return el.closest?.('.route-layer') || el
 }
 
 /**
@@ -247,12 +267,24 @@ function resolveSlideLayer(layerEl) {
  * curve. Both the swipe release and the button back must go through here so
  * they stay on one timing path.
  */
+function clearSettleCompletion(el) {
+  if (!el) return
+  if (el.settleEndHandler) {
+    el.win.removeEventListener('transitionend', el.settleEndHandler)
+    el.settleEndHandler = null
+  }
+  if (el.settleTimer) {
+    clearTimeout(el.settleTimer)
+    el.settleTimer = null
+  }
+}
+
 function settleTo(targetP, onComplete) {
   if (!active) {
     onComplete?.()
     return
   }
-  if (active.settleTimer) clearTimeout(active.settleTimer)
+  clearSettleCompletion(active)
   setTransitioned(true)
   // Record the start transform before changing it — without a flush, enabling
   // transition and updating transform in one turn jumps instantly (most visible
@@ -261,11 +293,21 @@ function settleTo(targetP, onComplete) {
   if (active.topLayer) void active.topLayer.offsetWidth
   apply(targetP)
   const el = active
-  active.settleTimer = setTimeout(() => {
-    if (active !== el) return
-    active.settleTimer = null
+  let finished = false
+  const finish = () => {
+    if (finished || active !== el) return
+    finished = true
+    clearSettleCompletion(el)
     onComplete?.()
-  }, BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS)
+  }
+  const onTransitionEnd = (e) => {
+    if (e.target !== el.win || e.propertyName !== 'transform') return
+    finish()
+  }
+  el.settleEndHandler = onTransitionEnd
+  el.win.addEventListener('transitionend', onTransitionEnd)
+  // transitionend tracks the real curve; the timer is only a safety net.
+  el.settleTimer = setTimeout(finish, BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS + 80)
 }
 
 /**
@@ -285,6 +327,7 @@ export function beginBack({ topLayer } = {}) {
   const width = host.clientWidth || window.innerWidth || 0
   if (!width) return 0
 
+  const slideTarget = resolveSlideTarget(topLayer)
   const snap = stack.length ? stack[stack.length - 1] : null
 
   const win = document.createElement('div')
@@ -318,13 +361,14 @@ export function beginBack({ topLayer } = {}) {
   active = {
     win,
     content,
-    topLayer: topLayer || null,
+    topLayer: slideTarget,
     width,
     progress: 0,
     snapKey: snap?.key || null,
     settleTimer: null,
+    settleEndHandler: null,
   }
-  if (topLayer) topLayer.classList.add('back-slide-top')
+  if (slideTarget) slideTarget.classList.add('back-slide-top')
   setTransitioned(false)
   apply(0)
   // The window was just inserted, so it has no previously-computed transform
@@ -340,10 +384,7 @@ export function setBackProgress(p) {
   // A finger landing again while a spring-back is still playing takes the
   // gesture over; the settle that was in flight must not go on to tear the
   // reveal down underneath it.
-  if (active.settleTimer) {
-    clearTimeout(active.settleTimer)
-    active.settleTimer = null
-  }
+  clearSettleCompletion(active)
   setTransitioned(false)
   apply(p)
 }
@@ -351,22 +392,64 @@ export function setBackProgress(p) {
 function clearHold() {
   if (!holdState) return
   if (holdState.timer) clearTimeout(holdState.timer)
-  if (holdState.floorTimer) clearTimeout(holdState.floorTimer)
   holdState = null
 }
 
-function destroy() {
+/**
+ * Stop hiding whichever live layer is currently held, if any. Called from
+ * every path that can end a hold — the normal settle-and-release in
+ * maybeRelease, the HOLD_CAP_MS failsafe in startHold, and teardownBack —
+ * so a hidden layer can never outlive the reveal that justified hiding it.
+ */
+function clearHeldLiveLayer() {
+  if (!heldLiveLayer) return
+  heldLiveLayer.classList.remove('route-layer--held')
+  heldLiveLayer = null
+}
+
+/**
+ * Hide the live destination's route layer for as long as a hold covers it.
+ * AnimatedRoutes calls this once, from the ref callback, the moment the
+ * incoming layer's DOM node mounts for a navigation whose claimBack call
+ * returned 'gesture' or 'slide' (i.e. started a hold) — see App.jsx.
+ *
+ * `visibility: hidden`, not `display: none`: the layer still lays out and
+ * still runs its effects (PageTransition's onEnterComplete fires immediately
+ * under enterMode 'instant', which is what lets attemptRestore poll
+ * scrollHeight and write scrollTop while nothing is visibly there to show
+ * the write happening). It only stops painting.
+ *
+ * Idempotent and safe to call again with a different element — a second
+ * back navigation arriving before the first's hold has released replaces
+ * the held layer with the new one rather than leaving the old one hidden
+ * forever after it unmounts.
+ */
+export function holdLiveLayer(el) {
+  if (!el || el === heldLiveLayer) return
+  clearHeldLiveLayer()
+  heldLiveLayer = el
+  el.classList.add('route-layer--held')
+}
+
+function destroy({ resetTopLayer = false } = {}) {
   if (!active) return
-  const { win, topLayer, settleTimer } = active
-  if (settleTimer) clearTimeout(settleTimer)
+  clearSettleCompletion(active)
+  const { win, topLayer } = active
   if (topLayer) {
     topLayer.classList.remove('back-slide-top')
     topLayer.style.transition = ''
-    topLayer.style.transform = ''
+    // Never clear transform when the layer is still mounted off-screen (p≈1).
+    // Resetting translateX snaps the outgoing page back into view for a frame
+    // before AnimatedRoutes unmounts it — the "jump" at exit.
+    if (resetTopLayer) topLayer.style.transform = ''
   }
   win.remove()
   active = null
   clearHold()
+  // The live page is about to be the only thing left — whatever was covering
+  // it (settled release, HOLD_CAP_MS failsafe, or a stranded-reveal teardown)
+  // is gone, so it must be visible again no matter which path got us here.
+  clearHeldLiveLayer()
 }
 
 /** Drop everything immediately. Used whenever a navigation arrives that this
@@ -374,7 +457,7 @@ function destroy() {
 export function teardownBack() {
   if (pendingCommit?.timer) clearTimeout(pendingCommit.timer)
   pendingCommit = null
-  destroy()
+  destroy({ resetTopLayer: true })
 }
 
 /**
@@ -385,37 +468,28 @@ export function teardownBack() {
  */
 function detachTopLayer() {
   if (!active?.topLayer) return
-  active.topLayer.classList.remove('back-slide-top')
+  // Stop driving this element but leave `.back-slide-top` on until the route
+  // layer unmounts. Removing the class here drops the compositor flatten in
+  // backTransition.css while the layer is still mounted for a frame or two
+  // before POP — Framer's motion.div re-applies its own transform and reads
+  // as a second back transition on top of the settle.
   active.topLayer.style.transition = ''
   active.topLayer = null
-}
-
-function fadeOutAndDestroy() {
-  if (!active) return
-  const { win } = active
-  detachTopLayer()
-  win.style.transition = `opacity ${FADE_OUT_MS}ms linear`
-  win.style.opacity = '0'
-  const el = active
-  setTimeout(() => {
-    // Only tear down if this is still the same reveal.
-    if (active === el) destroy()
-  }, FADE_OUT_MS + 20)
 }
 
 function maybeRelease() {
   if (!holdState) return
   if (!holdState.slideDone || !holdState.settled) return
-  const waited = Date.now() - holdState.startedAt
-  if (waited < HOLD_FLOOR_MS) {
-    if (holdState.floorTimer) return
-    holdState.floorTimer = setTimeout(maybeRelease, HOLD_FLOOR_MS - waited)
-    return
-  }
   if (holdState.timer) clearTimeout(holdState.timer)
-  if (holdState.floorTimer) clearTimeout(holdState.floorTimer)
   holdState = null
-  fadeOutAndDestroy()
+  // One motion only: the settle is the exit. Drop the cover after the scroll
+  // restore has had a frame to paint underneath — same-turn destroy can flash
+  // one frame at the wrong offset.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (active) destroy()
+    })
+  })
 }
 
 /**
@@ -430,11 +504,9 @@ function startHold() {
   holdState = {
     slideDone: false,
     settled: false,
-    startedAt: Date.now(),
-    floorTimer: null,
     timer: setTimeout(() => {
       holdState = null
-      fadeOutAndDestroy()
+      destroy()
     }, HOLD_CAP_MS),
   }
 }
@@ -457,11 +529,11 @@ export function finishBack({ commit, onDone }) {
     return
   }
 
-  if (active.settleTimer) clearTimeout(active.settleTimer)
+  clearSettleCompletion(active)
 
   if (!commit) {
     settleTo(0, () => {
-      if (active) destroy()
+      if (active) destroy({ resetTopLayer: true })
     })
     return
   }
@@ -477,10 +549,11 @@ export function finishBack({ commit, onDone }) {
     detachTopLayer()
     pendingCommit = {
       key,
+      fromGesture: true,
       timer: setTimeout(() => {
         // navigate(-1) produced no POP — don't strand the reveal.
         pendingCommit = null
-        fadeOutAndDestroy()
+        destroy()
       }, COMMIT_SAFETY_MS),
     }
     onDone?.()
@@ -507,12 +580,16 @@ export function finishBack({ commit, onDone }) {
  */
 export function claimBack(destKey, topLayer) {
   if (pendingCommit) {
-    const matches = pendingCommit.key === destKey
-    clearTimeout(pendingCommit.timer)
+    const { key, fromGesture, timer } = pendingCommit
+    clearTimeout(timer)
     pendingCommit = null
-    if (matches && active) {
-      const i = stack.findIndex((s) => s.key === destKey)
-      if (i !== -1) stack.splice(i, 1)
+    const handoff =
+      active && (key === destKey || (fromGesture && key == null))
+    if (handoff) {
+      if (key != null) {
+        const i = stack.findIndex((s) => s.key === destKey)
+        if (i !== -1) stack.splice(i, 1)
+      }
       startHold()
       // The gesture already travelled the full distance, so the only thing
       // left to wait on is the destination page settling.
@@ -528,8 +605,7 @@ export function claimBack(destKey, topLayer) {
   const top = stack.length ? stack[stack.length - 1] : null
   if (!top || top.key !== destKey || !topLayer) return 'fade'
 
-  const slideEl = resolveSlideLayer(topLayer)
-  const width = beginBack({ topLayer: slideEl })
+  const width = beginBack({ topLayer })
   if (!width) return 'fade'
 
   stack.pop()

@@ -18,6 +18,7 @@ import {
   captureSnapshot,
   claimBack,
   clearSnapshots,
+  holdLiveLayer,
   notifyBackSettled,
   registerBackHost,
   teardownBack,
@@ -86,6 +87,7 @@ import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import ToastHost from './components/Toast'
 import AuthBootSplash from './components/AuthBootSplash'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
+import RateItHost from './components/RateItHost'
 import MilestoneCelebration from './components/MilestoneCelebration'
 import BadgeReveal from './components/BadgeReveal'
 import BadgeBackfillSummary from './components/BadgeBackfillSummary'
@@ -225,6 +227,13 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
   // Live DOM node per layer. The back transition needs the outgoing layer's
   // actual element — to clone it on a push, and to slide it on a pop.
   const layerElsRef = useRef(new Map())
+  // Key of the incoming layer that backTransition.js is about to hold a
+  // snapshot over, or null. Set synchronously below when claimBack returns
+  // 'gesture'/'slide' (a hold is starting) — but the incoming layer's DOM
+  // node doesn't exist until the setLayers() in that same branch commits, so
+  // the actual holdLiveLayer() call happens later, in the ref callback below,
+  // the first time it fires for a layer whose key matches this ref.
+  const heldLayerKeyRef = useRef(null)
 
   const clearExitTimer = (key) => {
     const t = exitTimersRef.current.get(key)
@@ -280,23 +289,26 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
 
     // Only a PUSH deepens the stack, so only a PUSH is worth a snapshot: a
     // REPLACE discards the entry it replaces (back still goes to the one
-    // before it, which we already hold), and a POP consumes one. Deferred a
-    // frame so the clone never lands on the navigation's own commit frame —
-    // the outgoing layer stays mounted for the whole of its exit.
+    // before it, which we already hold), and a POP consumes one. Capture
+    // synchronously while the outgoing layer is still mounted — deferring a
+    // frame let a fast swipe-back arrive before the clone existed, which
+    // forced a PageTransition fade on top of the gesture slide.
     if (navigationType === 'PUSH' && outgoingEl && scrollEl) {
-      requestAnimationFrame(() => {
-        captureSnapshot({
-          key: prevKey,
-          layerEl: outgoingEl,
-          scrollTop: prevScrollTop,
-          padTop: getComputedStyle(scrollEl).paddingTop,
-        })
+      captureSnapshot({
+        key: prevKey,
+        layerEl: outgoingEl,
+        scrollTop: prevScrollTop,
+        padTop: getComputedStyle(scrollEl).paddingTop,
       })
     }
 
     if (claim === 'gesture') {
       exitTimersRef.current.forEach((t) => clearTimeout(t))
       exitTimersRef.current.clear()
+      // A hold just started over this key (see backTransition's startHold) —
+      // the incoming layer must not paint until the ref callback below hides
+      // it and the hold later releases it.
+      heldLayerKeyRef.current = location.key
       setLayers([
         { key: location.key, location, phase: 'current', direction, enterMode: 'instant' },
       ])
@@ -314,6 +326,10 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
       })
 
       const sliding = claim === 'slide'
+      // Same hold-start signal as the gesture branch above, but only for a
+      // 'slide' claim — a 'fade' claim never mounts a reveal, so the
+      // destination is meant to actually fade in visibly.
+      if (sliding) heldLayerKeyRef.current = location.key
       const incoming = {
         key: location.key,
         location,
@@ -378,16 +394,26 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
           <div
             key={layer.key}
             ref={(el) => {
-              if (el) layerElsRef.current.set(layer.key, el)
-              else layerElsRef.current.delete(layer.key)
+              if (el) {
+                layerElsRef.current.set(layer.key, el)
+                // Fires on every render (this ref callback is a fresh
+                // function each time, so React re-invokes it), but only
+                // matches — and only does anything — the one time the layer
+                // a just-started hold is waiting on actually mounts.
+                // holdLiveLayer() itself is idempotent past that.
+                if (heldLayerKeyRef.current === layer.key) {
+                  holdLiveLayer(el)
+                  heldLayerKeyRef.current = null
+                }
+              } else {
+                layerElsRef.current.delete(layer.key)
+              }
             }}
-            // `back-slide-top` (the leading-edge shadow + compositor hint) is
-            // declared here rather than left to backTransition.js's own
-            // classList call: this layer's className changes as it flips to
-            // 'exiting', and React writing the new value would wipe a class it
-            // doesn't know about. The gesture's `.swipe-back` element has a
-            // constant className, so the controller's classList call is
-            // authoritative there.
+            // `back-slide-top` on button-back exits: React owns it here because
+            // className changes as the layer flips to 'exiting' and would wipe
+            // a classList-only add. Swipe gestures also target this wrapper;
+            // backTransition.js re-applies the class in apply() when a mid-gesture
+            // re-render drops it.
             className={
               isSlidingOut
                 ? 'route-layer route-layer--exiting back-slide-top'
@@ -1466,6 +1492,7 @@ function App() {
                   component subscribes to celebrationService's queue and only
                   renders when the head is non-null. */}
               <CompletionCelebration />
+              <RateItHost />
               {/* Mounted once at root — listens to 'streakUpdated' events and
                   shows the 3/7/15/30/100-day milestone celebration once per
                   milestone per user, EVER (server-gated via

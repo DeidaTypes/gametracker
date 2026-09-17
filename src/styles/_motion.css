@@ -56,17 +56,39 @@
 /* The exiting layer is pulled out of .main-content's normal flow so it
    can't affect scrollHeight or fight the entering page's scroll
    restoration (App.jsx ~300-368) for ownership of .main-content's
-   scrollTop. `position: fixed` here is safe from the "attaches to the
-   nearest transformed ancestor" trap documented at Library.jsx ~958-966
-   because this wrapper itself has no transform — only its PageTransition
-   motion.div descendant does, and position:fixed escapes NON-transformed
-   ancestors' overflow/scroll entirely. It keeps whatever scrollTop it had
-   while it was the current page (same DOM node, no snapshot needed) and
-   is frozen there — pointer-events: none means it's purely visual for the
-   short remainder of its exit animation. */
+   scrollTop. pointer-events: none means it's purely visual for the
+   short remainder of its exit animation.
+
+   `top` and `height` are set inline by AnimatedRoutes on a sliding back exit
+   (never `bottom`, which would over-constrain them): leaving the flow costs
+   this layer the scroll offset it had as a child of .main-content, and a
+   300ms slide of a fully-opaque page would otherwise snap to top the instant
+   the back began. The fade exit leaves them at 0.
+
+   On a sliding back exit this element carries a transform, applied by
+   backTransition.js. That makes it a containing block for any
+   position: fixed descendant — the trap documented at Library.jsx ~958-966 —
+   but that was already true for the whole of every exit, since the
+   PageTransition motion.div one level down is transformed during its tween.
+   The window is 300ms rather than 220ms and the layer is inert throughout. */
 .route-layer--exiting {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* The live destination layer while backTransition.js's snapshot reveal is
+   holding it (swipe-back gesture handoff or button-back slide). The reveal
+   is appended to `.main-content` imperatively, as a DOM sibling of these
+   React-rendered route layers rather than an ancestor of them — so it can
+   only guarantee it covers this layer by making this layer not paint,
+   not by winning a stacking fight page CSS could someday re-lose. Layout,
+   scroll restore, and effects all still run underneath; only painting stops.
+   Set via backTransition.js's holdLiveLayer(), cleared by its destroy(). */
+.route-layer--held {
+  visibility: hidden;
 }
