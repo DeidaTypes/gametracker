@@ -22,9 +22,6 @@ import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
 import { getGameStatus, setGameStatus, getLastLibraryError } from '../services/libraryService'
-// TEMPORARY device debug — remove this import and the debugLog calls in
-// handleStatusPillTap when the iOS status-tile investigation is done.
-import { debugLog, debugLogLibraryMembership, debugTakeSetStatusError } from '../utils/deviceDebug'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { completeGameWithRating } from '../services/completionService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -571,22 +568,9 @@ function GameDetail() {
   // writes immediately (Finish), then the shared Rate it? sheet opens
   // after the celebration closes if this user has no rating.
   const handleStatusPillTap = useCallback((statusKey) => {
-    // TEMPORARY device debug — remove the debugLog / debugLogLibraryMembership
-    // / debugTakeSetStatusError lines in this callback when the iOS
-    // status-tile investigation is done. Do not remove the original guards.
-    debugLog(`a. tap statusKey=${statusKey}`)
-    debugLog(`b. status=${status == null ? 'null' : status} game=${game ? game.id : 'none'}`)
-    if (!game || status === statusKey) {
-      debugLog(`b. GUARD FIRED ${!game ? 'no game' : 'status===statusKey'}`)
-      return
-    }
-    debugLog('b. guard passed')
+    if (!game || status === statusKey) return
     if (statusKey === 'played') {
       completeGameWithRating({ gameId: game.id, game, rating: 0 }).then(({ ok }) => {
-        // TEMPORARY device debug — remove these three lines with the block above.
-        debugLog(`c. setGameStatus returned ${ok} (via completeGameWithRating)`)
-        if (!ok) debugLog(`d. error: ${debugTakeSetStatusError() || '(none stashed)'}`)
-        debugLogLibraryMembership(game.id, statusKey)
         if (!ok) {
           // A quota failure already showed its own distinct, honest toast
           // from saveLibrary() (libraryService.js) — don't stack a second,
@@ -607,10 +591,6 @@ function GameDetail() {
     }
     tap()
     const ok = setGameStatus(game.id, statusKey, game)
-    // TEMPORARY device debug — remove these three lines with the block above.
-    debugLog(`c. setGameStatus returned ${ok}`)
-    if (!ok) debugLog(`d. error: ${debugTakeSetStatusError() || '(none stashed)'}`)
-    debugLogLibraryMembership(game.id, statusKey)
     refreshFromStore()
     if (!ok) {
       // See the completeGameWithRating branch above — same reasoning.

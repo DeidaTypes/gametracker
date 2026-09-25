@@ -11,9 +11,6 @@ import './styles/keyboard.css'
 import { initKeyboardInset } from './services/keyboardInset'
 import { initAppLifecycle } from './services/appLifecycle'
 import { captureWebReferral } from './services/inviteService'
-// TEMPORARY device debug — remove this import and the runDeviceStorageProbe()
-// call below when the iOS status-tile / swipe-deck investigation is done.
-import { runDeviceStorageProbe, debugLogStorageSizes, debugLogMigrationResult } from './utils/deviceDebug'
 import { migrateLibraryToSlimShape } from './services/libraryService'
 import { pruneSwipeHistory } from './services/swipeService'
 
@@ -65,22 +62,12 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
 // Started before React mounts so --keyboard-inset resolves on first paint.
 initKeyboardInset()
 
-// TEMPORARY device debug — remove this call with the import above.
-runDeviceStorageProbe()
-
 // ── One-time (idempotent) storage cleanup — see libraryService.js /
 // swipeService.js for the fixes this backs. Runs on every app start; on an
 // already-slim/-capped device this is a cheap no-op (both functions
-// detect "nothing to do" and skip the write). TEMPORARY: the
-// debugLogStorageSizes / debugLogMigrationResult calls are part of the
-// same device-debug investigation as runDeviceStorageProbe above and
-// should come out together.
-debugLogStorageSizes('before migration')
-const libraryMigration = migrateLibraryToSlimShape()
-debugLogMigrationResult('migrateLibraryToSlimShape', libraryMigration)
-const swipeMigration = pruneSwipeHistory()
-debugLogMigrationResult('pruneSwipeHistory', swipeMigration)
-debugLogStorageSizes('after migration')
+// detect "nothing to do" and skip the write).
+migrateLibraryToSlimShape()
+pruneSwipeHistory()
 
 // Start Supabase auth lifecycle management (native-only; no-op on web).
 initAppLifecycle()

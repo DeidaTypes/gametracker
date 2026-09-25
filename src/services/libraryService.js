@@ -13,9 +13,6 @@ import { recomputeBadges } from './badgeService'
 import { showToast } from '../components/Toast'
 import { STATUS_META } from '../components/StatusChip'
 import { isQuotaExceededError } from '../utils/storageQuota'
-// TEMPORARY device debug — remove this import and the debugClear/debugNote
-// calls inside setGameStatus when the iOS status-tile investigation is done.
-import { debugClearSetStatusError, debugNoteSetStatusError } from '../utils/deviceDebug'
 
 // Map tracker status → Pulse activity_event type. 'want' maps to
 // 'backlogged' — Home-hub sprint: this is surfaced on the viewer's own
@@ -67,6 +64,10 @@ export function getLastLibraryError() {
   return lastLibraryError
 }
 
+// WHY: writing full IGDB payloads into localStorage exhausted the WKWebView
+// quota on device, which silently broke every status write and the swipe-deck
+// exclude set. It did not reproduce in a browser, where the quota is far
+// larger. Do not strip this as dead weight.
 /**
  * The ONLY shape a game row inside library.lists / library.customLists may
  * ever have. Every write path into a library list must go through this —
@@ -459,6 +460,10 @@ export function saveLibrary(library) {
   return false
 }
 
+// WHY: writing full IGDB payloads into localStorage exhausted the WKWebView
+// quota on device, which silently broke every status write and the swipe-deck
+// exclude set. It did not reproduce in a browser, where the quota is far
+// larger. This rewrites rows already stored that way. Do not strip it.
 /**
  * One-time (but always safe to re-run — fully idempotent) migration:
  * rewrite every game row in gameLibrary down to the slim shape defined by
@@ -858,16 +863,10 @@ export function getGameStatus(gameId) {
  *   "first-time-ever-Played per game" semantics from the design spec.
  */
 export function setGameStatus(gameId, newStatus, game = null) {
-  // TEMPORARY device debug — remove this call with the import above.
-  debugClearSetStatusError()
   try {
     const id = String(gameId)
     const targetList = STATUS_LIST_MAP[newStatus]
-    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
-    if (!targetList) {
-      debugNoteSetStatusError(`returned false: no targetList for ${newStatus}`)
-      return false
-    }
+    if (!targetList) return false
 
     const currentStatus = getGameStatus(id)
     if (currentStatus === newStatus) return true
@@ -885,11 +884,7 @@ export function setGameStatus(gameId, newStatus, game = null) {
       }
     }
 
-    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
-    if (!gameObj) {
-      debugNoteSetStatusError('returned false: no gameObj')
-      return false
-    }
+    if (!gameObj) return false
 
     if (!library.lists[targetList] || typeof library.lists[targetList] !== 'object') {
       library.lists[targetList] = {
@@ -922,15 +917,11 @@ export function setGameStatus(gameId, newStatus, game = null) {
       }
     }
 
-    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
     // saveLibrary() no longer throws on quota exhaustion (it prunes/retries
     // internally and fires its own distinct toast) — it returns false
     // instead, so this check is what makes a genuine storage failure still
     // come back to the status tile as `false`, exactly like before.
-    if (!saveLibrary(library)) {
-      debugNoteSetStatusError(getLastLibraryError()?.message || 'saveLibrary returned false')
-      return false
-    }
+    if (!saveLibrary(library)) return false
 
     // Side effects must not flip a successful write into a false return —
     // GameDetail now toasts on false, which made a post-save throw look
@@ -1079,8 +1070,6 @@ export function setGameStatus(gameId, newStatus, game = null) {
     return true
   } catch (err) {
     console.error('setGameStatus failed:', err)
-    // TEMPORARY device debug — remove this line; keep the console.error and return.
-    debugNoteSetStatusError(err?.message || String(err))
     return false
   }
 }

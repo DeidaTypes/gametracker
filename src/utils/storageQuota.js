@@ -9,6 +9,10 @@
 // decides "was that a quota error?" so every storage-layer catch block
 // agrees on the answer, and the one place that measures per-key size so an
 // on-device diagnosis doesn't need ad-hoc math scattered across files.
+//
+// getLocalStorageSizes() and getTotalLocalStorageBytes() are not called on
+// launch. From a device Web Inspector console, import this module and call
+// them when a future quota issue needs measuring.
 
 /**
  * True if `err` is a localStorage quota-exceeded error, across the
