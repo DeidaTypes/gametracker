@@ -5,19 +5,19 @@ import { Search, ChevronRight } from 'lucide-react'
 import AppShell from '../components/AppShell'
 import HomeFAB from '../components/HomeFAB'
 import PullToRefresh from '../components/PullToRefresh'
-import HomeWeekRow from '../components/home/HomeWeekRow'
-import HomeStreakStrip from '../components/home/HomeStreakStrip'
+import ProgressStrip from '../components/home/ProgressStrip'
 import HomeNowPlayingHero from '../components/home/HomeNowPlayingHero'
 import LogSheet from '../components/home/LogSheet'
-import RatingSheet from '../components/RatingSheet'
 import HomePulseFeed from '../components/home/HomePulseFeed'
 import TrackerSearchModal from '../components/TrackerSearchModal'
-import { getContinuePlayingGames, getGamesFromList } from '../services/libraryService'
+import { getContinuePlayingGames, getGamesFromList, getLastLibraryError } from '../services/libraryService'
 import { completeGameWithRating } from '../services/completionService'
+import { getCurrentCelebration } from '../services/celebrationService'
+import { maybeOpenRateItSheet } from '../services/ratePrompt'
 import { getFollowingCount } from '../services/followService'
 import { logSession } from '../services/sessionService'
 import { showToast } from '../components/Toast'
-import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { add, success } from '../services/moments'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -26,8 +26,8 @@ import './Home.css'
 // ── New-user topper ───────────────────────────────────────────────────────────
 
 /**
- * LogFirstGameTopper — slim CTA shown in place of the weekly rhythm row +
- * Continue breadcrumb for brand-new users (no follows, no logged games).
+ * LogFirstGameTopper — slim CTA shown in place of the progress strip +
+ * Now Playing hero for brand-new users (no follows, no logged games).
  */
 function LogFirstGameTopper({ onLogGame }) {
   return (
@@ -50,14 +50,11 @@ function LogFirstGameTopper({ onLogGame }) {
  *      "Just started" or relative last-played time, and Log a session /
  *      Finish. Falls back to a backlog nudge when there's no active
  *      game, and hides entirely when the backlog is empty too.
- *   c. Weekly rhythm row — "This week" card (real sessions-this-week +
- *      total hours from play_sessions, tap to open the week-detail sheet;
- *      "Calendar ›" keeps the entry point into the full /activity screen)
- *      beside a "{year} goal" card that hides entirely when no goal is
- *      set. Replaces the old daily streak strip — a daily streak punishes
- *      deep multi-week playthroughs, weekly rhythm rewards them. Always
- *      visible for users with account history; a zero-session week reads
- *      as a neutral "No sessions yet this week", never fabricated data.
+ *   c. Progress strip — merged streak + yearly challenge in one card.
+ *      Left cell: streak count, tier, rolling week dots (tap → streak
+ *      detail sheet). Right cell: challenge ring when a goal is set
+ *      (tap → same `/user/.../challenge` destination as Profile).
+ *      Always visible for users with account history.
  *   d. The pulse — the feed, promoted to lead content. Defaults to
  *      community scope for users with no follows (see getHomeFeed).
  *
@@ -159,7 +156,7 @@ function Home() {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        hapticImpact('Medium')
+        add()
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {
         showToast('Could not log session — try again', 'error', 5000, {
@@ -170,48 +167,32 @@ function Home() {
     })
   }
 
-  // ── RatingSheet — the Finish button now opens this FIRST; the actual
-  // completion write (setGameStatus + optional rating) happens when the
-  // sheet resolves (Done, Skip, or any dismissal — see RatingSheet.jsx's
-  // header comment for why dismiss === Skip). ─────────────────────────
-  const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
-  const [ratingSheetGame, setRatingSheetGame] = useState(null)
-
-  const openRatingSheet = useCallback((game) => {
-    setRatingSheetGame(game)
-    setRatingSheetOpen(true)
-  }, [])
-
-  const finishGame = useCallback(async (game, rating, hoursPlayed) => {
+  // Finish writes immediately. If this is a first-time Played, the
+  // celebration overlay owns the follow-up "Rate it?" prompt; otherwise
+  // we open it here once the write lands.
+  const finishGame = useCallback(async (game) => {
     if (!game) return
-    const { ok, ratingError } = await completeGameWithRating({
+    const { ok } = await completeGameWithRating({
       gameId: game.id,
       game,
-      rating,
-      hoursPlayed,
+      rating: 0,
     })
     if (!ok) {
-      showToast('Could not update — try again', 'error')
+      // A quota failure already showed its own distinct, honest toast from
+      // saveLibrary() (libraryService.js) — don't stack a second,
+      // contradictory "try again" on top of it.
+      if (getLastLibraryError()?.code !== 'quota') {
+        showToast('Could not update — try again', 'error')
+      }
       return
     }
-    hapticSuccess()
+    success()
     showToast(`Marked "${game.title}" as Played`, 'success')
-    if (ratingError) {
-      showToast('Could not save your rating — try again', 'error', 5000, {
-        label: 'Retry',
-        onClick: () => finishGame(game, rating, hoursPlayed),
-      })
+    const head = getCurrentCelebration()
+    if (!head || String(head.igdbGameId) !== String(game.id)) {
+      maybeOpenRateItSheet(game)
     }
   }, [])
-
-  const handleRatingSheetResolve = useCallback(({ rating, hoursPlayed }) => {
-    finishGame(ratingSheetGame, rating, hoursPlayed)
-  }, [ratingSheetGame, finishGame])
-
-  const handleWriteReviewFromRatingSheet = useCallback((game) => {
-    if (!game) return
-    navigate(`/review/new?gameId=${game.id}`, { state: { game } })
-  }, [navigate])
 
   const { unreadCount: notifUnread } = useNotifications()
 
@@ -289,10 +270,9 @@ function Home() {
   // this page makes resolves, instead of the whole page waiting on it.
   const isNewUser = followCount === 0 && loggedGamesCount === 0
   // Always show for anyone with account history — even a zero-session week
-  // gets a neutral "No sessions yet this week" state (see HomeWeekCard).
   // Hidden only for the true new-user empty state (same gate as the
   // first-game topper).
-  const showWeekRow = !isNewUser
+  const showProgressStrip = !isNewUser
   // Gated on real content so the section wrapper never renders empty.
   // Also gated behind !isNewUser so a brand-new user sees only the
   // "Log your first game" topper, not a redundant backlog nudge.
@@ -343,7 +323,7 @@ function Home() {
 
           {/* ── New-user topper ───────────────────────────────────────────
               Brand-new users (no follows, no logged games) get a single
-              slim CTA in place of the weekly rhythm row + Continue breadcrumb.
+              slim CTA in place of the progress strip + Now Playing hero.
           ──────────────────────────────────────────────────────────────── */}
           {isNewUser && (
             <section className="home-section home-section-padded">
@@ -357,31 +337,23 @@ function Home() {
               hides — never an empty shell.
           ──────────────────────────────────────────────────────────────── */}
           {showNowPlayingHero && (
-            <section className="home-section home-section-padded">
+            <section className="home-section home-section-padded home-section--hero">
               <HomeNowPlayingHero
                 activeGame={continuePlaying[0] || null}
                 backlogGame={backlogGame}
                 onLogSession={openLogSheet}
-                onFinish={openRatingSheet}
+                onFinish={finishGame}
               />
             </section>
           )}
 
-          {/* ── c. Weekly rhythm row ───────────────────────────────────────
-              "This week" (real sessions + hours, tap for detail) beside a
-              "{year} goal" card that hides when no goal is set. Always
-              shown for users with account history — a zero-session week
-              reads as a neutral state, not a guilt-trippy empty grid.
+          {/* ── c. Progress strip ─────────────────────────────────────────
+              Streak + challenge merged into one card. Zero-streak reads
+              "Start a streak"; challenge cell hides when no goal is set.
           ──────────────────────────────────────────────────────────────── */}
-          {showWeekRow && (
-            <section className="home-section home-section-padded home-streak-section">
-              <HomeStreakStrip />
-            </section>
-          )}
-
-          {showWeekRow && (
-            <section className="home-section home-section-padded">
-              <HomeWeekRow />
+          {showProgressStrip && (
+            <section className="home-section home-section-padded home-section--progress-strip">
+              <ProgressStrip />
             </section>
           )}
 
@@ -413,13 +385,6 @@ function Home() {
         onLogIt={submitLoggedSession}
       />
 
-      <RatingSheet
-        isOpen={ratingSheetOpen}
-        game={ratingSheetGame}
-        onResolve={handleRatingSheetResolve}
-        onClose={() => setRatingSheetOpen(false)}
-        onWriteReview={handleWriteReviewFromRatingSheet}
-      />
     </AppShell>
   )
 }

@@ -3,6 +3,7 @@ import { logActivity } from './activityService'
 import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
+  logCompletedEventOnce,
 } from './activityEventsService'
 import { getTracker } from './hoursService'
 import { queueCelebration, updateCelebrationStats } from './celebrationService'
@@ -11,6 +12,10 @@ import { supabase } from './supabase'
 import { recomputeBadges } from './badgeService'
 import { showToast } from '../components/Toast'
 import { STATUS_META } from '../components/StatusChip'
+import { isQuotaExceededError } from '../utils/storageQuota'
+// TEMPORARY device debug — remove this import and the debugClear/debugNote
+// calls inside setGameStatus when the iOS status-tile investigation is done.
+import { debugClearSetStatusError, debugNoteSetStatusError } from '../utils/deviceDebug'
 
 // Map tracker status → Pulse activity_event type. 'want' maps to
 // 'backlogged' — Home-hub sprint: this is surfaced on the viewer's own
@@ -27,6 +32,128 @@ const STATUS_TO_EVENT_TYPE = {
 const LIBRARY_STORAGE_KEY = 'gameLibrary'
 const PROGRESS_STORAGE_KEY = 'gameProgress'
 const BACKLOG_CLEARS_KEY = 'backlogClears_v1'
+
+// backlogClears_v1 grows one entry per backlog-clear with no eviction —
+// each entry is tiny ({gameId, clearedAt}) but it is genuinely unbounded,
+// same class of bug as gt:swipes:v1 (see swipeService.js). Capped here for
+// the same reason: nothing downstream (getBacklogClearsThisYear) needs
+// more than a year or two of history. Oldest-first eviction.
+const MAX_BACKLOG_CLEARS = 500
+
+/**
+ * Distinct error class for a localStorage write that failed even after the
+ * prune-and-retry in saveLibrary() below. Exported so a caller that DOES
+ * want to tell quota apart from "list doesn't exist" / "already in list"
+ * can `err instanceof LibraryQuotaError` instead of string-matching.
+ * Nothing in this file throws this to a caller that isn't already
+ * try/catching (see saveLibrary) — it exists for callers that want it, not
+ * as a new way for an unrelated write to crash.
+ */
+export class LibraryQuotaError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'LibraryQuotaError'
+  }
+}
+
+// Last storage-layer failure from saveLibrary(), for callers that want to
+// show a distinct message instead of a generic "could not update" toast —
+// see getLastLibraryError(). Reset to null on every successful save.
+let lastLibraryError = null
+
+/** The most recent saveLibrary() failure, or null if the last save (or the
+ *  last check) succeeded. Shape: `{ code: 'quota'|'unknown', message }`. */
+export function getLastLibraryError() {
+  return lastLibraryError
+}
+
+/**
+ * The ONLY shape a game row inside library.lists / library.customLists may
+ * ever have. Every write path into a library list must go through this —
+ * spreading a raw canonical Game object (screenshots, websites, keywords,
+ * themes, tagIds, description, platforms, developers, publishers...) here
+ * is what wrote entire IGDB API responses into localStorage and exhausted
+ * a WKWebView's quota after only a handful of games (see the migration
+ * below for the one-time cleanup of rows already written this way).
+ *
+ * `id` is always coerced to a String. normalizeGame() (src/services/
+ * normalizeGame.js) carries through IGDB's numeric `id` unchanged, so any
+ * write path that persists a raw/canonical Game object's `.id` directly
+ * writes a NUMBER — which then silently fails every `String(g.id) ===`
+ * lookup elsewhere in this file (getGameStatus, isGameInList,
+ * getSwipeExcludeIds's String(game.id) callers, etc). Stringifying at the
+ * single choke point here is cheaper than auditing every read site.
+ *
+ * `year` / `genre` / `rating` are kept (not just id/title/image/addedAt)
+ * because they're genuinely read for display/signal elsewhere —
+ * swipeService.getTasteSignal() and dnaService both read genre/rating/year
+ * off "played"/backlog library rows. Nothing bigger than that (no arrays
+ * of objects, no free-text description, no screenshots) belongs here.
+ */
+function toSlimLibraryGame(game, addedAt) {
+  return {
+    id: String(game.id),
+    title: game.title || '',
+    image: game.image || game.coverUrl || null,
+    addedAt: addedAt || game.addedAt || new Date().toISOString(),
+    year: game.year ?? null,
+    genre: game.genre ?? null,
+    rating: game.rating ?? null,
+  }
+}
+
+/**
+ * Re-slim every game row across every list, IN PLACE, on the exact object
+ * passed in (never re-reads from storage — that could race with whatever
+ * in-memory mutation the caller is about to persist and silently drop it).
+ * Used by saveLibrary()'s prune-and-retry and by the one-time migration
+ * below, which additionally measures before/after.
+ *
+ * Never drops a row — only sheds fields on rows that are already objects
+ * with an `id`. A malformed row (no id) is left untouched rather than
+ * guessed at.
+ *
+ * @returns {boolean} true if anything was actually rewritten (i.e. some row
+ *   wasn't already in the slim shape) — callers use this to know whether
+ *   the retry is even worth attempting.
+ */
+function slimLibraryInPlace(library) {
+  let changed = false
+  const slimList = (list) => {
+    if (!list || !Array.isArray(list.games)) return
+    list.games = list.games.map((g) => {
+      if (!g || g.id == null) return g
+      const slim = toSlimLibraryGame(g)
+      const isAlreadySlim =
+        typeof g.id === 'string' &&
+        Object.keys(g).length <= Object.keys(slim).length &&
+        Object.keys(g).every((k) => k in slim)
+      if (!isAlreadySlim) changed = true
+      return slim
+    })
+  }
+  Object.values(library.lists || {}).forEach(slimList)
+  Object.values(library.customLists || {}).forEach(slimList)
+  return changed
+}
+
+/**
+ * Cap backlogClears_v1 at MAX_BACKLOG_CLEARS, oldest-first eviction.
+ * @returns {boolean} true if anything was evicted.
+ */
+function pruneBacklogClears() {
+  try {
+    const stored = localStorage.getItem(BACKLOG_CLEARS_KEY)
+    if (!stored) return false
+    const clears = JSON.parse(stored)
+    if (!Array.isArray(clears) || clears.length <= MAX_BACKLOG_CLEARS) return false
+    const trimmed = clears.slice(clears.length - MAX_BACKLOG_CLEARS)
+    localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(trimmed))
+    return true
+  } catch {
+    return false
+  }
+}
 
 const DEFAULT_LISTS = {
   'currently-playing': { name: STATUS_META.currently.label, games: [] },
@@ -195,7 +322,13 @@ export function recordBacklogClear(gameId) {
   const stored = localStorage.getItem(BACKLOG_CLEARS_KEY)
   const clears = stored ? JSON.parse(stored) : []
   clears.push({ gameId: String(gameId), clearedAt: new Date().toISOString() })
-  localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(clears))
+  // Cap inline (not just via the app-start prune) so a single very long
+  // session can't grow this unbounded between app starts either.
+  const capped =
+    clears.length > MAX_BACKLOG_CLEARS
+      ? clears.slice(clears.length - MAX_BACKLOG_CLEARS)
+      : clears
+  localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(capped))
 }
 
 /**
@@ -231,8 +364,12 @@ export function initializeLibrary() {
 
   let missing = false
   for (const [key, def] of Object.entries(DEFAULT_LISTS)) {
-    if (!existing.lists[key]) {
+    const list = existing.lists[key]
+    if (!list || typeof list !== 'object' || Array.isArray(list)) {
       existing.lists[key] = { name: def.name, games: [] }
+      missing = true
+    } else if (!Array.isArray(list.games)) {
+      list.games = []
       missing = true
     }
   }
@@ -249,9 +386,147 @@ export function getLibrary() {
   return null
 }
 
-// Save library
+function tryWriteLibrary(library) {
+  try {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(library))
+    return true
+  } catch (err) {
+    if (!isQuotaExceededError(err)) {
+      console.error('[library] saveLibrary failed (non-quota):', err)
+    }
+    return false
+  }
+}
+
+/**
+ * Save library. Returns true on success, false if the write could not be
+ * persisted even after a prune-and-retry (previously this threw
+ * QuotaExceededError straight out of localStorage.setItem — callers that
+ * didn't wrap it in try/catch, e.g. addGameToList()'s callers in
+ * SwipeDeck/AddToListButton, would crash rather than degrade).
+ *
+ * On quota exhaustion:
+ *   1. Re-slim the EXACT object being saved (see slimLibraryInPlace) and
+ *      cap backlogClears_v1 — the two unbounded stores this file owns.
+ *      (Cannot reach into swipeService's gt:swipes:v1 here: swipeService
+ *      already imports FROM this file, so calling back into it would be
+ *      circular. Its own writeStore() does the equivalent prune-and-retry
+ *      independently — see swipeService.js.)
+ *   2. Retry the write once.
+ *   3. If it still fails, this is a genuine, materially-full device quota
+ *      (Fix 1/2/3 should make this rare) — surface a distinct, honest
+ *      toast from here, the one place every library write funnels
+ *      through, so it fires regardless of which caller (status tile,
+ *      backlog add, custom list) triggered it, and record it via
+ *      getLastLibraryError() so a caller with its own toast (e.g.
+ *      addGameToBacklog below, GameDetail's status tiles) can show this
+ *      message instead of a generic "could not update" one.
+ */
 export function saveLibrary(library) {
-  localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(library))
+  if (tryWriteLibrary(library)) {
+    lastLibraryError = null
+    return true
+  }
+
+  let recovered = false
+  try {
+    if (slimLibraryInPlace(library)) recovered = true
+  } catch (err) {
+    console.error('[library] slimLibraryInPlace during quota recovery failed:', err)
+  }
+  try {
+    if (pruneBacklogClears()) recovered = true
+  } catch (err) {
+    console.error('[library] pruneBacklogClears during quota recovery failed:', err)
+  }
+
+  if (tryWriteLibrary(library)) {
+    lastLibraryError = recovered
+      ? { code: 'quota-recovered', message: 'Freed up on-device storage automatically.' }
+      : null
+    return true
+  }
+
+  const message =
+    "Your device is out of storage for GameTracker. Free up space (Settings → General → iPhone Storage) and try again."
+  lastLibraryError = { code: 'quota', message }
+  console.error('[library] saveLibrary failed after prune-and-retry: quota exceeded')
+  try {
+    showToast(message, 'error', 4000)
+  } catch {
+    // Toast host not mounted yet — non-fatal.
+  }
+  return false
+}
+
+/**
+ * One-time (but always safe to re-run — fully idempotent) migration:
+ * rewrite every game row in gameLibrary down to the slim shape defined by
+ * toSlimLibraryGame(), reclaiming whatever bloat (full IGDB payloads,
+ * mostly) has accumulated from a historical write path that spread a raw
+ * game object into a list. Never drops a game — array lengths in and out
+ * are always equal; only fields are shed.
+ *
+ * Safe to call on every app start: a library that's already fully slim
+ * is detected (slimLibraryInPlace returns false) and this becomes a
+ * cheap no-op read with byte counts equal before/after.
+ *
+ * @returns {{
+ *   ran: boolean,            // false only when there was no library to migrate
+ *   changed: boolean,        // true if any row was actually rewritten
+ *   bytesBefore: number,
+ *   bytesAfter: number,
+ *   bytesReclaimed: number,
+ *   countsBefore: Record<string, number>,  // listId → game count
+ *   countsAfter: Record<string, number>,
+ * }}
+ */
+export function migrateLibraryToSlimShape() {
+  const raw = localStorage.getItem(LIBRARY_STORAGE_KEY)
+  if (!raw) return { ran: false, changed: false, bytesBefore: 0, bytesAfter: 0, bytesReclaimed: 0, countsBefore: {}, countsAfter: {} }
+
+  const bytesBefore = raw.length * 2 // UTF-16
+  const library = JSON.parse(raw)
+
+  const countGames = (lib) => {
+    const counts = {}
+    for (const [listId, list] of Object.entries(lib.lists || {})) {
+      counts[listId] = Array.isArray(list.games) ? list.games.length : 0
+    }
+    for (const [listId, list] of Object.entries(lib.customLists || {})) {
+      counts[listId] = Array.isArray(list.games) ? list.games.length : 0
+    }
+    return counts
+  }
+
+  const countsBefore = countGames(library)
+  const changed = slimLibraryInPlace(library)
+  const countsAfter = countGames(library)
+
+  if (!changed) {
+    return { ran: true, changed: false, bytesBefore, bytesAfter: bytesBefore, bytesReclaimed: 0, countsBefore, countsAfter }
+  }
+
+  const nextRaw = JSON.stringify(library)
+  const bytesAfter = nextRaw.length * 2
+  // Direct write (not saveLibrary/tryWriteLibrary): if THIS write somehow
+  // still hits quota — the migration is actively trying to shrink the
+  // payload, so a smaller-but-still-too-big result is a real edge case —
+  // fall back to the exact same prune-and-retry saveLibrary already does
+  // rather than duplicating it.
+  if (!tryWriteLibrary(library)) {
+    saveLibrary(library)
+  }
+
+  return {
+    ran: true,
+    changed: true,
+    bytesBefore,
+    bytesAfter,
+    bytesReclaimed: bytesBefore - bytesAfter,
+    countsBefore,
+    countsAfter,
+  }
 }
 
 /**
@@ -282,50 +557,47 @@ export function clearLibrary() {
 // Get games from a specific list
 export function getGamesFromList(listId) {
   const library = getLibrary() || initializeLibrary()
-  
-  if (library.lists[listId]) {
-    return library.lists[listId].games || []
-  }
-  
-  if (library.customLists[listId]) {
-    return library.customLists[listId].games || []
-  }
-  
+  const fromDefault = library.lists?.[listId]?.games
+  if (Array.isArray(fromDefault)) return fromDefault.filter(Boolean)
+  const fromCustom = library.customLists?.[listId]?.games
+  if (Array.isArray(fromCustom)) return fromCustom.filter(Boolean)
   return []
 }
 
 // Add game to a list
 export function addGameToList(listId, game) {
   const library = getLibrary() || initializeLibrary()
-  
-  // Check if game already exists in the list
-  const existingGame = getGamesFromList(listId).find(g => g.id === game.id)
+
+  // Check if game already exists in the list. String-compared: `game.id`
+  // can arrive as a number (any caller passing a raw/canonical Game
+  // object through) while stored rows are always String (toSlimLibraryGame
+  // below) — a strict === here would silently allow a numeric-id duplicate.
+  const existingGame = getGamesFromList(listId).find(g => String(g.id) === String(game.id))
   if (existingGame) {
     return false // Game already in list
   }
-  
+
+  // Slim at the write path itself, not at each call site — see
+  // toSlimLibraryGame's doc comment. This is the fix for the fat-object /
+  // numeric-id bloat: no caller of addGameToList, present or future, can
+  // persist a raw IGDB/canonical Game object into a list anymore.
+  const slimGame = toSlimLibraryGame(game)
+
   if (library.lists[listId]) {
     if (!library.lists[listId].games) {
       library.lists[listId].games = []
     }
-    library.lists[listId].games.push({
-      ...game,
-      addedAt: new Date().toISOString(),
-    })
+    library.lists[listId].games.push(slimGame)
   } else if (library.customLists[listId]) {
     if (!library.customLists[listId].games) {
       library.customLists[listId].games = []
     }
-    library.customLists[listId].games.push({
-      ...game,
-      addedAt: new Date().toISOString(),
-    })
+    library.customLists[listId].games.push(slimGame)
   } else {
     return false // List doesn't exist
   }
-  
-  saveLibrary(library)
-  return true
+
+  return saveLibrary(library)
 }
 
 /**
@@ -402,28 +674,37 @@ export async function addGameToBacklog(game) {
     })
   }
 
-  showToast(
-    added ? `Added "${game.title}" to backlog` : `"${game.title}" is already in your backlog`,
-    added ? 'success' : 'error',
-    2500
-  )
+  // A quota failure surfaces through the exact same `added === false` path
+  // as "already in your backlog" — check getLastLibraryError() so a full
+  // device says so honestly instead of implying the game was a duplicate.
+  // saveLibrary() already fired its own toast for the quota case; skip
+  // showing a second, contradictory one here.
+  const quotaFailure = !added && getLastLibraryError()?.code === 'quota'
+  if (!quotaFailure) {
+    showToast(
+      added ? `Added "${game.title}" to backlog` : `"${game.title}" is already in your backlog`,
+      added ? 'success' : 'error',
+      2500
+    )
+  }
   return added
 }
 
 // Remove game from a list
 export function removeGameFromList(listId, gameId) {
   const library = getLibrary() || initializeLibrary()
-  
+
+  // String-compared — see isGameInList's comment above.
   if (library.lists[listId]) {
     library.lists[listId].games = (library.lists[listId].games || []).filter(
-      g => g.id !== gameId
+      g => String(g.id) !== String(gameId)
     )
   } else if (library.customLists[listId]) {
     library.customLists[listId].games = (library.customLists[listId].games || []).filter(
-      g => g.id !== gameId
+      g => String(g.id) !== String(gameId)
     )
   }
-  
+
   saveLibrary(library)
 }
 
@@ -441,10 +722,8 @@ export function createCustomList(listName, description = '', initialGames = []) 
   library.customLists[listId] = {
     name: listName,
     description: description,
-    games: initialGames.map(game => ({
-      ...game,
-      addedAt: new Date().toISOString(),
-    })),
+    // Slim shape, same as addGameToList — see toSlimLibraryGame.
+    games: initialGames.map(game => toSlimLibraryGame(game)),
     createdAt: new Date().toISOString(),
   }
   
@@ -512,7 +791,10 @@ export function getAllLists() {
 // Check if game is in a list
 export function isGameInList(listId, gameId) {
   const games = getGamesFromList(listId)
-  return games.some(g => g.id === gameId)
+  // String-compared for the same reason as addGameToList's duplicate check
+  // above — stored rows are always String post-migration, but a caller can
+  // still pass a numeric id (e.g. straight off a canonical Game object).
+  return games.some(g => String(g.id) === String(gameId))
 }
 
 // Get list info
@@ -576,10 +858,16 @@ export function getGameStatus(gameId) {
  *   "first-time-ever-Played per game" semantics from the design spec.
  */
 export function setGameStatus(gameId, newStatus, game = null) {
+  // TEMPORARY device debug — remove this call with the import above.
+  debugClearSetStatusError()
   try {
     const id = String(gameId)
     const targetList = STATUS_LIST_MAP[newStatus]
-    if (!targetList) return false
+    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
+    if (!targetList) {
+      debugNoteSetStatusError(`returned false: no targetList for ${newStatus}`)
+      return false
+    }
 
     const currentStatus = getGameStatus(id)
     if (currentStatus === newStatus) return true
@@ -589,31 +877,66 @@ export function setGameStatus(gameId, newStatus, game = null) {
     let gameObj = game
     for (const listId of Object.keys(LIST_STATUS_MAP)) {
       const list = library.lists[listId]
-      if (!list || !list.games) continue
-      const idx = list.games.findIndex(g => String(g.id) === id)
+      if (!list || !Array.isArray(list.games)) continue
+      const idx = list.games.findIndex(g => g && String(g.id) === id)
       if (idx !== -1) {
         gameObj = list.games[idx]
         list.games.splice(idx, 1)
       }
     }
 
-    if (!gameObj) return false
+    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
+    if (!gameObj) {
+      debugNoteSetStatusError('returned false: no gameObj')
+      return false
+    }
 
-    if (!library.lists[targetList].games) {
+    if (!library.lists[targetList] || typeof library.lists[targetList] !== 'object') {
+      library.lists[targetList] = {
+        name: DEFAULT_LISTS[targetList]?.name || targetList,
+        games: [],
+      }
+    }
+    if (!Array.isArray(library.lists[targetList].games)) {
       library.lists[targetList].games = []
     }
     library.lists[targetList].games.push({
-      ...gameObj,
+      // String(): gameObj can be the raw/canonical game object passed in
+      // by the caller (first-ever status set for this game — the loop
+      // above never found it in an existing list to pull the already-
+      // slim/already-String stored row from instead). Left un-stringified
+      // this is exactly how Palworld/Portal 2-style numeric ids got into
+      // gameLibrary — see toSlimLibraryGame's doc comment.
+      id: String(gameObj.id),
+      title: gameObj.title || '',
+      image: gameObj.image || gameObj.coverUrl || null,
       addedAt: gameObj.addedAt || new Date().toISOString(),
     })
 
     // Track clearance for the "clear-it" progress meter.
     if (currentStatus === 'want') {
-      recordBacklogClear(id)
+      try {
+        recordBacklogClear(id)
+      } catch (clearErr) {
+        console.error('[library] recordBacklogClear failed:', clearErr)
+      }
     }
 
-    saveLibrary(library)
-    syncStatusToServer(id, newStatus, gameObj)
+    // TEMPORARY device debug — remove the debugNote line; keep `return false`.
+    // saveLibrary() no longer throws on quota exhaustion (it prunes/retries
+    // internally and fires its own distinct toast) — it returns false
+    // instead, so this check is what makes a genuine storage failure still
+    // come back to the status tile as `false`, exactly like before.
+    if (!saveLibrary(library)) {
+      debugNoteSetStatusError(getLastLibraryError()?.message || 'saveLibrary returned false')
+      return false
+    }
+
+    // Side effects must not flip a successful write into a false return —
+    // GameDetail now toasts on false, which made a post-save throw look
+    // like every tile was broken.
+    try {
+      syncStatusToServer(id, newStatus, gameObj)
 
     if (newStatus === 'currently') {
       updateGameProgress(id, { lastPlayedAt: new Date().toISOString() })
@@ -724,6 +1047,23 @@ export function setGameStatus(gameId, newStatus, game = null) {
               metadata: baseMeta,
             })
           })
+      } else if (eventType === ACTIVITY_EVENT_TYPES.COMPLETED) {
+        // BUG 3 fix: this is the second, previously-unguarded writer of
+        // 'completed' rows — ReviewNew's "Mark as completed" already
+        // goes through logCompletedEventOnce (see ReviewNew.jsx). Every
+        // played -> playing -> played cycle used to call the plain
+        // logActivityEvent above and insert a brand-new 'completed' row
+        // each time, producing two genuinely separate completion cards
+        // (or FeedGroupRow joining a title with itself). Same idempotent
+        // guard, same (actor_user_id, entity_id) existence check — a
+        // repeat transition now returns the ORIGINAL row untouched
+        // instead of double-writing; a first-time completion still
+        // inserts exactly the row logActivityEvent used to, with the
+        // same type/entityId/metadata shape.
+        logCompletedEventOnce({
+          entityId: String(gameId),
+          metadata: baseMeta,
+        })
       } else {
         logActivityEvent({
           type: eventType,
@@ -732,10 +1072,15 @@ export function setGameStatus(gameId, newStatus, game = null) {
         })
       }
     }
+    } catch (sideErr) {
+      console.error('[library] setGameStatus side effects failed:', sideErr)
+    }
 
     return true
   } catch (err) {
     console.error('setGameStatus failed:', err)
+    // TEMPORARY device debug — remove this line; keep the console.error and return.
+    debugNoteSetStatusError(err?.message || String(err))
     return false
   }
 }

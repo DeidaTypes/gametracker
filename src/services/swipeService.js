@@ -40,8 +40,26 @@
 
 import { getGamesFromList } from './libraryService'
 import { supabase } from './supabase'
+import { showToast } from '../components/Toast'
+import { isQuotaExceededError } from '../utils/storageQuota'
 
 const STORAGE_KEY = 'gt:swipes:v1'
+
+// gt:swipes:v1 grew one entry per swipe with NO eviction — on a physical
+// device with a much smaller localStorage quota than a desktop browser,
+// this was one of the writes that threw QuotaExceededError, which
+// recordSwipe's writeStore() swallowed silently. The card's id then never
+// made it into getSwipeExcludeIds()'s set, so it resurfaced on the very
+// next batch even though the swipe genuinely happened — the "swipe right
+// doesn't stick" bug.
+//
+// Cap chosen: 300. Each entry carries title + genres[] + themeIds[] +
+// themeNames[] + ts/action/year/rating — call it ~250-400 bytes worst
+// case, so 300 entries is at most ~120KB, comfortably inside even a
+// constrained WKWebView quota while covering months of active swiping
+// (getTasteSignal() only ever reads the union of these, so older entries
+// beyond the cap cost taste-signal precision, not correctness).
+const MAX_SWIPE_ENTRIES = 300
 
 export const SWIPE_ACTIONS = Object.freeze({
   BACKLOG: 'backlog',
@@ -109,10 +127,94 @@ function readStore() {
   }
 }
 
+/**
+ * Prune `store.swipes` IN PLACE:
+ *   - drop any entry already past its own action's TTL (skip: 30d,
+ *     not_interested: 365d) — getSwipeExcludeIds() already stops excluding
+ *     these once they age out, so keeping the row costs bytes for zero
+ *     behavioral benefit.
+ *   - 'backlog' has no TTL of its own (it's excluded forever — the game is
+ *     genuinely in the library), so it's only subject to the hard cap
+ *     below, oldest-first.
+ *   - once still over MAX_SWIPE_ENTRIES after TTL pruning, evict the
+ *     oldest entries (by `ts`) until at the cap.
+ *
+ * @returns {number} entries removed.
+ */
+function pruneSwipes(store) {
+  if (!store || !store.swipes) return 0
+  const now = Date.now()
+  const entries = Object.entries(store.swipes)
+
+  const kept = entries.filter(([, row]) => {
+    if (!row || !row.action) return false
+    const ts = Date.parse(row.ts || '')
+    const age = Number.isFinite(ts) ? now - ts : 0
+    if (row.action === SWIPE_ACTIONS.NOT_INTERESTED) return age < NOT_INTERESTED_TTL_MS
+    if (row.action === SWIPE_ACTIONS.SKIP) return age < SKIP_TTL_MS
+    return true // backlog — no TTL, subject only to the cap below
+  })
+
+  if (kept.length > MAX_SWIPE_ENTRIES) {
+    kept.sort((a, b) => (Date.parse(a[1]?.ts || '') || 0) - (Date.parse(b[1]?.ts || '') || 0))
+    kept.splice(0, kept.length - MAX_SWIPE_ENTRIES)
+  }
+
+  const removed = entries.length - kept.length
+  if (removed > 0) {
+    store.swipes = Object.fromEntries(kept)
+  }
+  return removed
+}
+
+/**
+ * One-time-per-call, always-safe-to-repeat prune of gt:swipes:v1. Exported
+ * so app start (see main.jsx) can shrink an already-bloated store
+ * immediately, rather than waiting for the next recordSwipe() to trigger
+ * writeStore()'s own inline prune.
+ *
+ * @returns {{ before: number, after: number, removed: number }}
+ */
+export function pruneSwipeHistory() {
+  const store = readStore()
+  const before = Object.keys(store.swipes).length
+  const removed = pruneSwipes(store)
+  if (removed > 0) writeStore(store)
+  return { before, after: before - removed, removed }
+}
+
 function writeStore(store) {
+  // Every write self-prunes first — this is what makes the cap actually
+  // bounded rather than "bounded starting from the next call."
+  pruneSwipes(store)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-  } catch { /* storage full — non-fatal, swipes just won't persist */ }
+    return
+  } catch (err) {
+    if (!isQuotaExceededError(err)) {
+      console.error('[swipeService] writeStore failed (non-quota):', err)
+      return
+    }
+  }
+
+  // Quota exceeded even after pruning down to MAX_SWIPE_ENTRIES — a
+  // genuinely full device. Previously this was swallowed completely
+  // (comment used to read "storage full — non-fatal, swipes just won't
+  // persist"), which is exactly why a swipe could vanish with zero
+  // feedback. recordSwipe() is fire-and-forget from SwipeDeck, so this is
+  // the one place left that can say so — a toast here doesn't touch the
+  // deck's advance/render logic at all, it only tells the user the write
+  // didn't stick.
+  console.error('[swipeService] writeStore failed: quota exceeded even after pruning')
+  try {
+    showToast(
+      "Storage is full — this swipe couldn't be saved. Free up space on your device.",
+      'error',
+      4000,
+    )
+  } catch {
+    // Toast host not mounted yet — non-fatal.
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

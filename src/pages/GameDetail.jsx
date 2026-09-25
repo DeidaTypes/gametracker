@@ -21,15 +21,19 @@ import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
 import { getCommentCountsForReviews } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
 import { addViewedGame } from '../services/userPreferences'
-import { getGameStatus, setGameStatus } from '../services/libraryService'
+import { getGameStatus, setGameStatus, getLastLibraryError } from '../services/libraryService'
+// TEMPORARY device debug — remove this import and the debugLog calls in
+// handleStatusPillTap when the iOS status-tile investigation is done.
+import { debugLog, debugLogLibraryMembership, debugTakeSetStatusError } from '../utils/deviceDebug'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { completeGameWithRating } from '../services/completionService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
-import { hapticImpact } from '../utils/haptics'
+import { tap, success } from '../services/moments'
+import { maybeOpenRateItSheet } from '../services/ratePrompt'
+import { getCurrentCelebration } from '../services/celebrationService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { getManualSessionsForGame } from '../services/sessionService'
-import RatingSheet from '../components/RatingSheet'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
 import DmShareSheet from '../components/DmShareSheet'
@@ -504,11 +508,6 @@ function GameDetail() {
   const [composeSheetOpen, setComposeSheetOpen] = useState(false)
   const [journalModalOpen, setJournalModalOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
-  // RatingSheet — opened FIRST when either status-setting surface below
-  // (the pill grid or AddToListButton's hidden sheet) sets status to
-  // Played, instead of writing the completion immediately. `game` is
-  // already in scope, so this only needs an open flag.
-  const [ratingSheetOpen, setRatingSheetOpen] = useState(false)
   const [ratingDistSheetOpen, setRatingDistSheetOpen] = useState(false)
 
   const refreshSessions = useCallback(async () => {
@@ -569,49 +568,59 @@ function GameDetail() {
   // Mirrors AddToListButton's internal handleStatusTap exactly — same
   // store call + same libraryUpdated dispatch — so the inline pills and
   // the sheet stay in sync via the one unchanged status store. 'played'
-  // is the one exception: it opens RatingSheet FIRST instead of writing
-  // the status immediately (see openRatingSheet below) — the completion
-  // write happens when that sheet resolves.
+  // writes immediately (Finish), then the shared Rate it? sheet opens
+  // after the celebration closes if this user has no rating.
   const handleStatusPillTap = useCallback((statusKey) => {
-    if (!game || status === statusKey) return
-    hapticImpact('Medium')
+    // TEMPORARY device debug — remove the debugLog / debugLogLibraryMembership
+    // / debugTakeSetStatusError lines in this callback when the iOS
+    // status-tile investigation is done. Do not remove the original guards.
+    debugLog(`a. tap statusKey=${statusKey}`)
+    debugLog(`b. status=${status == null ? 'null' : status} game=${game ? game.id : 'none'}`)
+    if (!game || status === statusKey) {
+      debugLog(`b. GUARD FIRED ${!game ? 'no game' : 'status===statusKey'}`)
+      return
+    }
+    debugLog('b. guard passed')
     if (statusKey === 'played') {
-      setRatingSheetOpen(true)
+      completeGameWithRating({ gameId: game.id, game, rating: 0 }).then(({ ok }) => {
+        // TEMPORARY device debug — remove these three lines with the block above.
+        debugLog(`c. setGameStatus returned ${ok} (via completeGameWithRating)`)
+        if (!ok) debugLog(`d. error: ${debugTakeSetStatusError() || '(none stashed)'}`)
+        debugLogLibraryMembership(game.id, statusKey)
+        if (!ok) {
+          // A quota failure already showed its own distinct, honest toast
+          // from saveLibrary() (libraryService.js) — don't stack a second,
+          // contradictory "try again" on top of it.
+          if (getLastLibraryError()?.code !== 'quota') {
+            showToast('Could not update — try again', 'error')
+          }
+          return
+        }
+        success()
+        refreshFromStore()
+        const head = getCurrentCelebration()
+        if (!head || String(head.igdbGameId) !== String(game.id)) {
+          maybeOpenRateItSheet(game)
+        }
+      })
       return
     }
+    tap()
     const ok = setGameStatus(game.id, statusKey, game)
+    // TEMPORARY device debug — remove these three lines with the block above.
+    debugLog(`c. setGameStatus returned ${ok}`)
+    if (!ok) debugLog(`d. error: ${debugTakeSetStatusError() || '(none stashed)'}`)
+    debugLogLibraryMembership(game.id, statusKey)
+    refreshFromStore()
     if (!ok) {
-      showToast('Could not update — try again', 'error')
+      // See the completeGameWithRating branch above — same reasoning.
+      if (getLastLibraryError()?.code !== 'quota') {
+        showToast('Could not update — try again', 'error')
+      }
       return
     }
-    refreshFromStore()
     window.dispatchEvent(new Event('libraryUpdated'))
   }, [game, status, refreshFromStore])
-
-  // RatingSheet resolve — Done/Skip/any-dismissal all land here with
-  // `rating` 0 for everything except a Done with stars picked. Writes
-  // the completion via the same setGameStatus call handleStatusPillTap
-  // used to make directly, plus an optional rating (see
-  // completionService.completeGameWithRating).
-  const handleRatingSheetResolve = useCallback(async ({ rating, hoursPlayed }) => {
-    if (!game) return
-    const { ok, ratingError } = await completeGameWithRating({
-      gameId: game.id,
-      game,
-      rating,
-      hoursPlayed,
-    })
-    if (!ok) {
-      showToast('Could not update — try again', 'error')
-      return
-    }
-    if (ratingError) {
-      showToast('Could not save your rating — try again', 'error', 5000, {
-        label: 'Retry',
-        onClick: () => handleRatingSheetResolve({ rating, hoursPlayed }),
-      })
-    }
-  }, [game])
 
   const handleShare = () => {
     setDmShareOpen(true)
@@ -1323,16 +1332,6 @@ function GameDetail() {
         isOpen={journalModalOpen}
         onClose={() => setJournalModalOpen(false)}
         game={game}
-      />
-
-      {/* ── RatingSheet — opened by the status pills / status sheet's
-           "Played" tile, before the completion writes. ── */}
-      <RatingSheet
-        isOpen={ratingSheetOpen}
-        game={game}
-        onResolve={handleRatingSheetResolve}
-        onClose={() => setRatingSheetOpen(false)}
-        onWriteReview={() => openReviewComposer()}
       />
 
       <RatingDistributionSheet
