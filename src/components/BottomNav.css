@@ -184,6 +184,10 @@ body.nav-hidden .bottom-nav {
 
 /* Icon wrap stays above the pill so it visually rides on top of the
    cobalt fill. */
+.bottom-nav-icon-wrap.is-fly-pulse {
+  animation: navTabPop 200ms ease;
+}
+
 .bottom-nav-icon-wrap {
   position: relative;
   z-index: 1;
@@ -241,5 +245,9 @@ body.nav-hidden .bottom-nav {
   .bottom-nav-icon,
   .bottom-nav-pill {
     transition: none;
+  }
+
+  .bottom-nav-icon-wrap.is-fly-pulse {
+    animation: none;
   }
 }

@@ -19,7 +19,7 @@ function CoverSkeleton() {
   )
 }
 
-export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], onSeeAll }) {
+export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], similarGameIds = [], onSeeAll }) {
   const navigate = useNavigate()
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +30,7 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
     async function load() {
       setLoading(true)
       try {
-        const results = await fetchSimilarGamesForRow(gameId, genreIds, themeIds)
+        const results = await fetchSimilarGamesForRow(gameId, genreIds, themeIds, similarGameIds)
         if (!cancelled) setGames(results)
       } catch {
         if (!cancelled) setGames([])
@@ -41,7 +41,7 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
 
     load()
     return () => { cancelled = true }
-  }, [gameId])
+  }, [gameId, genreIds, themeIds, similarGameIds])
 
   if (!loading && games.length === 0) return null
 
@@ -88,9 +88,11 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
                   </button>
                   <p className="sgr-title">{game.title}</p>
                   {/* Only rendered when the backing data actually carries a
-                      per-item match score — fetchSimilarGamesForRow (IGDB
-                      similar_games, filtered by genre/theme) does not compute
-                      one today, so this is a no-op until a real source exists.
+                      per-item match score. fetchSimilarGamesForRow resolves
+                      IGDB's own `similar_games` relation first (falling back
+                      to a genre/theme query only when similar_games is
+                      sparse/empty) — neither path computes a match score
+                      today, so this is a no-op until a real source exists.
                       Never fabricate a percentage here. */}
                   {typeof game.matchPercent === 'number' && (
                     <p className="sgr-match">{Math.round(game.matchPercent)}% match</p>

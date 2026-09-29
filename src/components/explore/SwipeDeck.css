@@ -10,18 +10,28 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  /* Enough horizontal room for the fanned card shadow on small screens */
-  padding: 0 16px;
+  padding: 0 14px;
 }
 
-/* ---- Card scene — sized to fit card + stack overflow ---- */
+/* ---- Card scene — sized for drop-card peek on 844pt viewports ---- */
 
 .swipe-deck__scene {
   position: relative;
-  width: min(84vw, 320px);
-  /* Portrait card (~1.42 ratio) + room for the stack's 20px translateY */
-  height: calc(min(84vw, 320px) * 1.42 + 22px);
+  width: 100%;
+  max-width: min(calc(100vw - 28px), 360px);
+  aspect-ratio: 3 / 4;
+  /* On an 844pt-tall viewport, leave ~44pt of "This week's drop" visible
+     below the swipe card without scrolling (header + safe-area accounted). */
+  max-height: calc(
+    100dvh
+    - var(--safe-area-inset-top, 0px)
+    - 88px
+    - 44px
+  );
   margin: 0 auto;
+  /* Room for the back-card stack translateY */
+  padding-bottom: 22px;
+  box-sizing: content-box;
 }
 
 /* ---- Loading skeletons ---- */
@@ -31,7 +41,7 @@
   inset: 0;
   width: 100%;
   height: calc(100% - 22px);
-  border-radius: 22px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
   animation: swipeSkelPulse 1.6s ease-in-out infinite;
 }
@@ -75,9 +85,9 @@
 .swipe-deck__empty-icon {
   width: 60px;
   height: 60px;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1.5px solid rgba(59, 130, 246, 0.35);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--accent) 35%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,9 +97,9 @@
 }
 
 .swipe-deck__empty-icon--done {
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.35);
-  color: var(--status-success);
+  background: color-mix(in srgb, var(--accent-review) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent-review) 35%, transparent);
+  color: var(--accent-review);
 }
 
 .swipe-deck__empty-title {
@@ -111,7 +121,7 @@
 .swipe-deck__retry-btn {
   margin-top: 6px;
   padding: 10px 20px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1.5px solid var(--accent);
   background: transparent;
   color: var(--accent);
@@ -122,7 +132,7 @@
 }
 
 .swipe-deck__retry-btn:active {
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* ---- prefers-reduced-motion ---- */

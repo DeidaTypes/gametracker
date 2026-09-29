@@ -1,11 +1,23 @@
 import React from 'react'
 import { LuLayers } from 'react-icons/lu'
+import { coverUrl, coverSizeForDisplay, imageIdFromCoverUrl } from '../services/igdbImage'
 import { getSizedImageUrl } from '../services/imageUtils'
 import './ListCoverCluster.css'
 
 const MOSAIC_COVERS = 4
 const FAN_PLATES = 3
 const POSTER_PLATES = 3
+/** Library Lists tab poster stacks render at ~140px wide. */
+const LIBRARY_LIST_COVER_DISPLAY_PX = 140
+
+function libraryListCoverUrl(url) {
+  if (!url) return null
+  const imageId = imageIdFromCoverUrl(url)
+  if (imageId) {
+    return coverUrl(imageId, coverSizeForDisplay(LIBRARY_LIST_COVER_DISPLAY_PX))
+  }
+  return getSizedImageUrl(url, LIBRARY_LIST_COVER_DISPLAY_PX)
+}
 
 /**
  * Cover cluster for a list, in one of two variants.
@@ -55,22 +67,22 @@ function ListCoverCluster({
 
   if (variant === 'poster') {
     const posterCovers = coverImageUrl
-      ? [coverImageUrl]
-      : games.map((g) => getSizedImageUrl(g?.image, 240)).filter(Boolean).slice(0, POSTER_PLATES)
+      ? [libraryListCoverUrl(coverImageUrl)].filter(Boolean)
+      : games.map((g) => libraryListCoverUrl(g?.image)).filter(Boolean).slice(0, POSTER_PLATES)
     return renderPosterStack(posterCovers, label)
   }
 
   // A game can exist in a list without artwork, so count usable covers
   // rather than games — that's what decides the treatment.
   const covers = games
-    .map((g) => getSizedImageUrl(g?.image, 96))
+    .map((g) => getSizedImageUrl(g?.image, 38))
     .filter(Boolean)
     .slice(0, MOSAIC_COVERS)
 
   if (coverImageUrl) {
     return (
       <div className={`lcc lcc--single${sizeClass}`}>
-        <img src={coverImageUrl} alt={label} className="lcc__fill" loading="lazy" />
+        <img src={coverImageUrl} alt={label} className="lcc__fill" loading="lazy" draggable={false} />
       </div>
     )
   }
@@ -87,7 +99,7 @@ function ListCoverCluster({
     return (
       <div className={`lcc lcc--mosaic${sizeClass}`} role="img" aria-label={label}>
         {covers.map((src, i) => (
-          <img key={src || i} src={src} alt="" className="lcc__cell" loading="lazy" />
+          <img key={src || i} src={src} alt="" className="lcc__cell" loading="lazy" draggable={false} />
         ))}
       </div>
     )
@@ -99,7 +111,7 @@ function ListCoverCluster({
       {Array.from({ length: FAN_PLATES }, (_, i) => (
         <span key={i} className="lcc__plate" data-depth={i}>
           {covers[i] ? (
-            <img src={covers[i]} alt="" className="lcc__fill" loading="lazy" />
+            <img src={covers[i]} alt="" className="lcc__fill" loading="lazy" draggable={false} />
           ) : null}
         </span>
       ))}
@@ -132,7 +144,7 @@ function renderPosterStack(covers, label) {
     <div className="lcc lcc--poster" role="img" aria-label={label}>
       {slots.map((slot) => (
         <span key={slot.pos} className={`lcc__poster-plate lcc__poster-plate--${slot.pos}`}>
-          <img src={slot.src} alt="" className="lcc__fill" loading="lazy" />
+          <img src={slot.src} alt="" className="lcc__fill" loading="lazy" draggable={false} />
         </span>
       ))}
     </div>

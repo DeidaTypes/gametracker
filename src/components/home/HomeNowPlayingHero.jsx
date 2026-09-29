@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { LuClock, LuCheck } from 'react-icons/lu'
 import { Gamepad2, ChevronRight } from 'lucide-react'
-import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import { getDominantColor } from '../../services/colorExtract'
-import { getTracker } from '../../services/hoursService'
+import { getManualSessionsForGame } from '../../services/sessionService'
+import { getCachedTimeToBeatSync } from '../../services/timeToBeatService'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getGameNavStub } from '../../utils/gameNavStub'
 import './HomeNowPlayingHero.css'
@@ -19,10 +19,30 @@ function humanTimeAgo(dateStr) {
   }
 }
 
-function statusLine(hoursPlayed, lastPlayedAt) {
-  if (hoursPlayed == null) return null
-  if (hoursPlayed <= 0) return 'Just started'
-  return humanTimeAgo(lastPlayedAt) || 'Just started'
+function buildHeroSubline(sessions, mainStoryHours) {
+  if (sessions == null) return null
+
+  const segments = []
+  const sessionCount = sessions.length
+  const totalHours = Math.round(
+    sessions.reduce((sum, s) => sum + (Number(s.hours) || 0), 0)
+  )
+
+  if (sessionCount === 0) {
+    segments.push('Just started')
+    segments.push('0h logged')
+  } else {
+    const lastDate = sessions[0]?.playedOn || sessions[0]?.createdAt || sessions[0]?.startedAt
+    const relative = humanTimeAgo(lastDate)
+    if (relative) segments.push(`Last played ${relative}`)
+    if (totalHours > 0) segments.push(`${totalHours}h logged`)
+  }
+
+  if (mainStoryHours != null) {
+    segments.push(`Main story ~${mainStoryHours}h`)
+  }
+
+  return segments.length ? segments.join(' · ') : null
 }
 
 // ── Backlog nudge — fallback #2, shown when there's no active Playing game ──
@@ -75,7 +95,8 @@ function BacklogNudge({ game, onOpen }) {
 function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish }) {
   const navigate = useNavigate()
   const [color, setColor] = useState(null)
-  const [hoursPlayed, setHoursPlayed] = useState(null)
+  const [sessions, setSessions] = useState(null)
+  const [mainStoryHours, setMainStoryHours] = useState(null)
   const [finishing, setFinishing] = useState(false)
 
   useEffect(() => {
@@ -93,23 +114,35 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   useEffect(() => {
     let cancelled = false
     if (!activeGame?.id) {
-      setHoursPlayed(null)
+      setSessions(null)
+      setMainStoryHours(null)
       return undefined
     }
 
-    const fetchHours = () => {
-      getTracker(activeGame.id).then((tracker) => {
+    const cachedTtb = getCachedTimeToBeatSync(activeGame.id)
+    if (cachedTtb === undefined) {
+      setMainStoryHours(null)
+    } else if (cachedTtb?.normallySeconds != null) {
+      setMainStoryHours(Math.round(cachedTtb.normallySeconds / 3600))
+    } else {
+      setMainStoryHours(null)
+    }
+
+    const fetchSessions = () => {
+      getManualSessionsForGame(activeGame.id).then((rows) => {
         if (cancelled) return
-        setHoursPlayed(tracker?.hours_played != null ? Number(tracker.hours_played) : 0)
+        setSessions(rows)
       })
     }
 
-    setHoursPlayed(null)
-    fetchHours()
-    window.addEventListener('libraryUpdated', fetchHours)
+    setSessions(null)
+    fetchSessions()
+    window.addEventListener('libraryUpdated', fetchSessions)
+    window.addEventListener('activityUpdated', fetchSessions)
     return () => {
       cancelled = true
-      window.removeEventListener('libraryUpdated', fetchHours)
+      window.removeEventListener('libraryUpdated', fetchSessions)
+      window.removeEventListener('activityUpdated', fetchSessions)
     }
   }, [activeGame?.id])
 
@@ -124,7 +157,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   }
 
   const dominantStyle = color ? { '--dominant-rgb': `${color.r} ${color.g} ${color.b}` } : undefined
-  const line = statusLine(hoursPlayed, activeGame.lastPlayedAt)
+  const line = buildHeroSubline(sessions, mainStoryHours)
 
   const goToGame = () => {
     navigate(`/game/${activeGame.id}`, { state: getGameNavStub(activeGame) })
@@ -144,10 +177,10 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   }
 
   return (
-    <ReviewCardShell as="section" className="nph" aria-label={`Now playing: ${activeGame.title}`}>
+    <section className="nph" aria-label={`Now playing: ${activeGame.title}`}>
       <button
         type="button"
-        className="nph__cover-header"
+        className="nph__upper"
         style={dominantStyle}
         onClick={goToGame}
         aria-label={`View ${activeGame.title}`}
@@ -155,31 +188,31 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
         <img
           src={activeGame.image || COVER_FALLBACK}
           alt=""
-          className="nph__cover-thumb"
+          className="nph__cover"
           loading="eager"
           onError={(e) => { e.target.src = COVER_FALLBACK }}
         />
         <div className="nph__meta">
           <span className="nph__eyebrow">Now Playing</span>
           <h2 className="nph__title">{activeGame.title}</h2>
-          <div className="nph__stats">
+          <div className="nph__status">
             {line ? (
-              <span className="nph__stats-text">{line}</span>
+              <span className="nph__status-text">{line}</span>
             ) : (
-              <span className="skeleton nph__stats-skeleton" aria-hidden="true" />
+              <span className="skeleton nph__status-skeleton" aria-hidden="true" />
             )}
           </div>
         </div>
       </button>
 
-      <div className="nph__actions">
+      <div className="nph__lower">
         <button type="button" className="nph__btn nph__btn--primary" onClick={handleLogSession}>
           <LuClock size={16} aria-hidden="true" />
           Log a session
         </button>
         <button
           type="button"
-          className="nph__btn nph__btn--secondary"
+          className="nph__btn nph__btn--ghost"
           onClick={handleFinish}
           disabled={finishing}
         >
@@ -187,7 +220,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
           Finish
         </button>
       </div>
-    </ReviewCardShell>
+    </section>
   )
 }
 

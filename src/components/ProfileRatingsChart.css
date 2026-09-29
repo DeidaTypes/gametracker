@@ -25,10 +25,9 @@
 }
 
 .prc-section-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-display);
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
@@ -36,8 +35,8 @@
 
 .prc-avg {
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -84,7 +83,7 @@
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .prc-bar-btn--active .prc-bar-count {
@@ -109,7 +108,7 @@
   background: linear-gradient(
     180deg,
     var(--accent) 0%,
-    color-mix(in srgb, var(--accent) 62%, var(--accent-journal)) 100%
+    color-mix(in srgb, var(--accent) 70%, black) 100%
   );
   transition: height var(--transition-normal);
 }
@@ -120,11 +119,11 @@
 
 .prc-bar-label {
   font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
+  font-size: 12px;
+  font-weight: var(--font-weight-normal);
   line-height: 1;
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -152,9 +151,9 @@
 }
 
 .prc-modal-title {
-  font-family: var(--font-display, 'DM Serif Display', serif);
+  font-family: var(--font-body);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
@@ -222,7 +221,7 @@
 }
 
 .prc-modal-cover--placeholder span {
-  font-family: var(--font-display, 'DM Serif Display', serif);
+  font-family: var(--font-body);
   font-size: 18px;
   color: var(--text-tertiary);
 }

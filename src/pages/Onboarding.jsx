@@ -1249,7 +1249,7 @@ function RateFromMemorySlide({
  */
 function RateCoverArt({ game }) {
   const [failed, setFailed] = useState(false)
-  const url = failed ? null : getBestImageUrl(game, 130)
+  const url = failed ? null : getBestImageUrl(game, 28)
 
   if (!url) {
     return (

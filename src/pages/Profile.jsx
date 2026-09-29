@@ -14,6 +14,7 @@ import {
   LuCheck,
   LuShare2,
   LuPin,
+  LuPinOff,
   LuArrowUpDown,
   LuUserPen,
   LuSparkles,
@@ -22,8 +23,14 @@ import {
   LuUserX,
   LuFlag,
 } from 'react-icons/lu'
-import { HiOutlineHeart, HiOutlineChat } from 'react-icons/hi'
-import { PenLine, List, BookOpen, Plus } from 'lucide-react'
+import {
+  HiOutlineHeart,
+  HiHeart,
+  HiOutlineChat,
+  HiDotsVertical,
+  HiOutlinePencil,
+} from 'react-icons/hi'
+import { PenLine, List, Plus } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -31,8 +38,8 @@ import {
   FaTiktok,
 } from 'react-icons/fa6'
 import { useAuth } from '../contexts/AuthContext'
-import { useSession } from '../contexts/SessionContext'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
+import { useSession } from '../contexts/SessionContext'
 import { usePresence } from '../hooks/usePresence'
 import { getSettings } from '../services/userSettingsService'
 import { getReviewsForUser } from '../services/reviewService'
@@ -86,20 +93,24 @@ import GamePickerSheet from '../components/GamePickerSheet'
 import GoalRing from '../components/GoalRing'
 import ChallengeCard from '../components/ChallengeCard'
 import SetGoalSheet from '../components/SetGoalSheet'
-import ReviewCard from '../components/ReviewCard'
-import ListCoverCluster from '../components/ListCoverCluster'
+import StarRatingDisplay from '../components/StarRatingDisplay'
+import Pressable from '../components/Pressable'
+import { useLikeState, publishLikeState } from '../hooks/useLikeState'
+import { likeReview, unlikeReview } from '../services/likeService'
+import { getSizedImageUrl } from '../services/imageUtils'
+import { COVER_FALLBACK } from '../utils/coverFallback'
 import EmptyState from '../components/EmptyState'
 import FavoriteGamesRow from '../components/FavoriteGamesRow'
 import ReorderPinsModal from '../components/ReorderPinsModal'
 import SortSheet from '../components/SortSheet'
 import BioEditModal from '../components/BioEditModal'
+import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
-import ProfileTasteMatchBanner from '../components/ProfileTasteMatchBanner'
 import BadgesRow from '../components/BadgesRow'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
@@ -248,30 +259,52 @@ function sortLists(lists, key) {
 }
 
 /* ============================================================
-   Review row → ReviewCard prop adapter (shared with the rest of
-   Sprint 5: TimelineFeed, GameReviewsAll, GameDetail).
+   V4-06 — Profile Reviews tab helpers
    ============================================================ */
 
-function rowToReviewCard(row, likeCounts, commentCounts) {
+const REVIEW_VIBE_LABELS = {
+  masterpiece: 'Masterpiece',
+  underrated:  'Underrated',
+  mid:         'Mid',
+  rage_quit:   'Rage Quit',
+  comfort:     'Comfort',
+}
+
+function reviewHasText(row) {
+  return !!(row?.body || '').trim()
+}
+
+/** Keep the newest row per (user_id, igdb_game_id). */
+function dedupeReviewsByGame(reviews) {
+  const byGame = new Map()
+  for (const row of reviews || []) {
+    if (row.igdb_game_id == null) continue
+    const key = `${row.user_id}:${row.igdb_game_id}`
+    const prev = byGame.get(key)
+    if (!prev || new Date(row.created_at) > new Date(prev.created_at)) {
+      byGame.set(key, row)
+    }
+  }
+  return Array.from(byGame.values())
+}
+
+function profileReviewGameStub(row) {
+  return {
+    id: String(row.igdb_game_id || ''),
+    title: row.game_title || 'Unknown Game',
+    image: row.game_image || '',
+  }
+}
+
+/** ReviewCard-shaped object for the edit-review composer. */
+function rowToEditShape(row) {
   return {
     id: row.id,
-    userId: row.user_id,
     game: {
       id: String(row.igdb_game_id || ''),
-      name: row.game_title || 'Unknown Game',
+      name: row.game_title || '',
       coverUrl: row.game_image || '',
-      developer: '',
     },
-    author: {
-      // Keep the raw username so ReviewCard can navigate correctly.
-      // ReviewCard falls back to /user/id/:userId when username is null.
-      username: row.users?.username || null,
-      displayName: row.users?.display_name || 'Anonymous',
-      userId: row.user_id,
-      avatarUrl: row.users?.avatar_url || '',
-      highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
-    },
-    title: null,
     body: row.body || '',
     rating: Number(row.rating) || 0,
     hoursPlayed: Number(row.hours_played) || 0,
@@ -279,9 +312,6 @@ function rowToReviewCard(row, likeCounts, commentCounts) {
     hasSpoilers: !!row.has_spoilers,
     vibeStamp: row.vibe_stamp || null,
     lifeContext: row.life_context || null,
-    likeCount: likeCounts?.get(row.id) || 0,
-    commentCount: commentCounts?.get(row.id) || 0,
-    createdAt: row.created_at,
   }
 }
 
@@ -391,11 +421,11 @@ function Profile() {
   const location = useLocation()
   const { username: paramUsername, userId: paramUserId } = useParams()
   const { user } = useAuth()
+  const { unreadCount } = useUnreadMessages()
   const { session: activeSession } = useSession()
   const { enabled: presenceEnabled, playingNow } = usePresence()
   // Drives the unread dot on the profile-header Messages entry point —
   // same count/token as the Profile bottom-nav tab dot (BottomNav.jsx).
-  const { unreadCount } = useUnreadMessages()
   const reducedMotion = useReducedMotion()
 
   // ── Username → userId resolution ───────────────────────────────────────
@@ -774,6 +804,15 @@ function Profile() {
     if (isOwnProfile) {
       const userProfile = getProfile() || initializeProfile()
       setProfile(userProfile)
+      // Backfill favorites from Supabase when localStorage is stale.
+      if (targetUserId && !(userProfile.favoriteGames || []).length) {
+        safeWithTimeout(getUserById(targetUserId), null).then((row) => {
+          if (Array.isArray(row?.favorite_games) && row.favorite_games.length > 0) {
+            const updated = updateProfile({ favoriteGames: row.favorite_games })
+            setProfile(updated)
+          }
+        })
+      }
     } else if (resolvedUser) {
       setProfile({
         displayName: resolvedUser.display_name || resolvedUser.username || '',
@@ -1100,18 +1139,29 @@ function Profile() {
     [pinnedRows]
   )
 
-  const sortedReviews = useMemo(
-    () =>
-      sortReviews(allReviews, activeSort.reviews, reviewLikeCounts).filter(
-        (r) => !pinnedIdSet.has(r.id)
-      ),
-    [allReviews, activeSort.reviews, reviewLikeCounts, pinnedIdSet]
+  const dedupedReviews = useMemo(
+    () => dedupeReviewsByGame(allReviews),
+    [allReviews]
   )
 
-  const sortedLists = useMemo(
-    () => sortLists(customLists, activeSort.lists),
-    [customLists, activeSort.lists]
+  const sortedReviews = useMemo(
+    () =>
+      sortReviews(dedupedReviews, activeSort.reviews, reviewLikeCounts).filter(
+        (r) => !pinnedIdSet.has(r.id)
+      ),
+    [dedupedReviews, activeSort.reviews, reviewLikeCounts, pinnedIdSet]
   )
+
+  const sortedLists = useMemo(() => {
+    const sorted = sortLists(customLists, activeSort.lists)
+    return [...sorted].sort((a, b) => {
+      const pinDiff = (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)
+      if (pinDiff !== 0) return pinDiff
+      const da = new Date(a.updatedAt || a.createdAt || 0)
+      const db = new Date(b.updatedAt || b.createdAt || 0)
+      return db - da
+    })
+  }, [customLists, activeSort.lists])
 
   const visibleReviews = useMemo(
     () => sortedReviews.slice(0, reviewsPage * REVIEWS_PAGE_SIZE),
@@ -1181,12 +1231,6 @@ function Profile() {
 
   /* ── Bio overflow measurement ─────────────────────────────────── */
 
-  // Measure scrollHeight vs clientHeight on the collapsed paragraph to
-  // determine whether the bio actually exceeds the 3-line clamp. We
-  // only measure while collapsed; expanding the bio removes the clamp
-  // so the measurement would always read "no overflow" and the toggle
-  // would lose its "less" affordance. Re-running on bio text changes
-  // keeps the toggle accurate after Edit Profile saves.
   useLayoutEffect(() => {
     if (!bioRef.current) return
     if (bioExpanded) return
@@ -1563,7 +1607,6 @@ function Profile() {
   if (resolving || (!profile && !userNotFound)) {
     return (
       <div className="profile-page" aria-hidden="true">
-        <div className="profile-header-strip" />
         <div className="profile-ig-hero profile-ig-hero--skeleton">
           <div className="skeleton profile-ig-hero__avatar-sk" />
           <span className="skeleton profile-ig-hero__name-sk" />
@@ -1690,13 +1733,6 @@ function Profile() {
           onFollowersClick={() => navigate(`/user/${profilePathSegment}/followers`)}
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}
           onGamesClick={
-            // Own profile goes to the real (localStorage-backed) Library
-            // page, never this screen's read-only copy of it. Other
-            // profiles get the new grid, seeded with the Games count
-            // already showing on the card — UserLibrary compares that
-            // hint against its own fresh RLS-gated query so a "this
-            // library isn't visible to you" state can be told apart from
-            // a genuinely empty one (see UserLibrary.jsx).
             isOwnProfile
               ? () => navigate('/library')
               : () => navigate(`/user/${profilePathSegment}/library`, {
@@ -1712,7 +1748,6 @@ function Profile() {
             card and the tabs.
             ═════════════════════════════════════════════════════════ */}
         <section className="profile-ig-hero">
-          {/* ── Bio — 3-line clamp + more/less toggle ── */}
           {profile.bio ? (
             <div className="profile-ig-hero__bio-wrap">
               <p
@@ -1758,7 +1793,6 @@ function Profile() {
             )
           )}
 
-          {/* Social links — shown only when at least one handle is set */}
           {setSocials.length > 0 && (
             <div className="profile-ig-hero__socials">
               {setSocials.map((p) => {
@@ -1782,19 +1816,10 @@ function Profile() {
             </div>
           )}
 
-          {/* Visitor-only E0 taste-match readout — never on your own
-              profile, hides entirely when the engine hasn't computed
-              a match for this viewer↔owner pair yet. */}
           {!isOwnProfile && (
             <ProfileTasteMatchBanner viewerId={user?.id} ownerId={targetUserId} />
           )}
 
-          {/* ── Visitor action row — Follow/Following is a bordered
-              toggle, never the primary fill; Message is the one primary
-              action and always uses the blue→green gradient
-              (--grad-cta), never a flat cobalt fill. On your own
-              profile, editing lives on the avatar and in the ⋯ menu, so
-              this row doesn't render at all. ── */}
           {!isOwnProfile && (
             <div className="profile-ig-hero__actions">
               <button
@@ -1992,11 +2017,8 @@ function Profile() {
                 <ListsTab
                   lists={sortedLists}
                   isOwnProfile={isOwnProfile}
-                  displayName={profile.displayName || profile.username || ''}
                   onTapList={(id) => navigate(`/list/${id}`)}
                   onCreateList={() => setShowCreateListModal(true)}
-                  onPinList={isOwnProfile ? handlePinList : undefined}
-                  onUnpinList={isOwnProfile ? handleUnpinList : undefined}
                 />
               )}
 
@@ -2004,9 +2026,7 @@ function Profile() {
                 <DiaryTab
                   userId={targetUserId}
                   entries={journalEntries}
-                  lifeReviews={allReviews.filter((r) => !!r.life_context)}
                   onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
-                  onReviewClick={(reviewId) => navigate(`/reviews/${reviewId}/comments`)}
                 />
               )}
             </motion.div>
@@ -2165,83 +2185,89 @@ function ProfileChallengeSection({
   hasGoal,
   currentYear,
   onSetGoal,
-  mergeBadges = false,
+  showChallengeRow = true,
   badgesUserId = null,
   onSeeMoreBadges,
 }) {
+  const showBadges = !!badgesUserId
+
+  if (!showChallengeRow && !showBadges) return null
+
   return (
     <section
       className="profile-home__section profile-home__section--card profile-challenge-cell"
-      aria-label={`${currentYear} challenge`}
+      aria-label={showChallengeRow ? `${currentYear} challenge` : 'Badges'}
     >
-      {goalProgress === null ? (
-        <div className="profile-challenge" aria-busy="true">
-          <Skeleton variant="circle" width={52} height={52} />
-          <div className="profile-challenge__info">
-            <Skeleton variant="text" width={160} height={18} />
-            <Skeleton variant="text" width={110} height={13} style={{ marginTop: 6 }} />
+      {showChallengeRow && (
+        goalProgress === null ? (
+          <div className="profile-challenge" aria-busy="true">
+            <Skeleton variant="circle" width={44} height={44} />
+            <div className="profile-challenge__info">
+              <Skeleton variant="text" width={160} height={18} />
+              <Skeleton variant="text" width={110} height={13} style={{ marginTop: 6 }} />
+            </div>
           </div>
-        </div>
-      ) : hasGoal ? (
-        <ChallengeCard
-          className="profile-challenge profile-challenge--tappable"
-          year={goalProgress.year}
-          current={goalProgress.current}
-          target={goalProgress.target}
-          profilePathSegment={profilePathSegment}
-          ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
-        >
-          <GoalRing
+        ) : hasGoal ? (
+          <ChallengeCard
+            className="profile-challenge profile-challenge--tappable"
+            year={goalProgress.year}
             current={goalProgress.current}
             target={goalProgress.target}
-            year={goalProgress.year}
-            tier={goalProgress.tier}
-            variant="compact"
-          />
-          <span className="profile-challenge__info">
-            <span className="profile-challenge__headline">
-              {goalProgress.year} Challenge{goalProgress.tier > 1 ? ` · Tier ${goalProgress.tier}` : ''} · {goalProgress.current}/{goalProgress.target}
+            profilePathSegment={profilePathSegment}
+            ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
+          >
+            <GoalRing
+              current={goalProgress.current}
+              target={goalProgress.target}
+              year={goalProgress.year}
+              tier={goalProgress.tier}
+              variant="compact"
+            />
+            <span className="profile-challenge__info">
+              <span className="profile-challenge__headline">
+                {goalProgress.year} Challenge · {goalProgress.current} of {goalProgress.target}
+              </span>
+              <span
+                className={`profile-challenge__sub${remaining === 0 ? ' profile-challenge__sub--reached' : ''}`}
+              >
+                {circleRank != null && (
+                  <>
+                    #{circleRank} in your circle
+                    {remaining > 0 ? ' · ' : ''}
+                  </>
+                )}
+                {remaining === 0 ? 'Goal reached!' : `${remaining} to go`}
+              </span>
             </span>
-            <span
-              className={`profile-challenge__sub${remaining === 0 ? ' profile-challenge__sub--reached' : ''}`}
-            >
-              {circleRank != null && (
-                <>
-                  {circleRank === 1 ? '🥇 ' : ''}#{circleRank} in your circle
-                  {remaining > 0 ? ' · ' : ''}
-                </>
-              )}
-              {remaining === 0 ? 'Goal reached!' : `${remaining} to go`}
-            </span>
-          </span>
-          <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
-        </ChallengeCard>
-      ) : onSetGoal ? (
-        <div className="profile-challenge">
-          <GoalRing
-            current={0}
-            target={null}
-            year={goalProgress.year}
-            variant="compact"
-            onSet={onSetGoal}
-          />
-          <div className="profile-challenge__info">
-            <span className="profile-challenge__headline">
-              {goalProgress.year} Challenge
-            </span>
-            <button
-              type="button"
-              className="profile-challenge__set-goal"
-              onClick={onSetGoal}
-            >
-              Set a {goalProgress.year} goal
-            </button>
+            <LuChevronRight size={18} className="profile-challenge__chevron" aria-hidden="true" />
+          </ChallengeCard>
+        ) : onSetGoal ? (
+          <div className="profile-challenge">
+            <GoalRing
+              current={0}
+              target={null}
+              year={goalProgress.year}
+              variant="compact"
+              onSet={onSetGoal}
+            />
+            <div className="profile-challenge__info">
+              <span className="profile-challenge__headline">
+                {goalProgress.year} Challenge
+              </span>
+              <button
+                type="button"
+                className="profile-challenge__set-goal"
+                onClick={onSetGoal}
+              >
+                Set a {goalProgress.year} goal
+              </button>
+            </div>
           </div>
-        </div>
-      ) : null}
-      {mergeBadges && (
+        ) : null
+      )}
+      {showBadges && (
         <BadgesRow
-          embedded
+          embedded={showChallengeRow}
           userId={badgesUserId}
           onSeeMore={onSeeMoreBadges}
         />
@@ -2358,12 +2384,7 @@ function HomeTab({
   const ratedCount = (allReviews || []).filter((r) => Number(r.rating) > 0).length
   const ratingsVisible = ratedCount >= MIN_RATINGS_FOR_CHART
   const showTasteRatingsCard = tasteLoading || tasteVisible || ratingsVisible
-  // Own profile always shows the challenge cell (Set Goal when empty).
-  // Visitors only see it while loading or when the owner has a public goal.
-  // Badges are separate: every profile gets the teaser, keyed by that
-  // profile's id, including visitors who have no public goal.
-  const showChallengeSection = isOwnProfile || goalProgress === null || hasGoal
-  const showBadges = !!targetUserId
+  const showChallengeRow = isOwnProfile || goalProgress === null || hasGoal
 
   return (
     <div className="profile-home profile-home--condensed">
@@ -2397,7 +2418,7 @@ function HomeTab({
         </section>
       )}
 
-      {(showChallengeSection || showBadges) && (
+      {(showChallengeRow || targetUserId) && (
         <ProfileChallengeSection
           goalProgress={goalProgress}
           profilePathSegment={profilePathSegment}
@@ -2406,7 +2427,7 @@ function HomeTab({
           hasGoal={hasGoal}
           currentYear={currentYear}
           onSetGoal={isOwnProfile ? onSetGoal : undefined}
-          mergeBadges={showBadges}
+          showChallengeRow={showChallengeRow}
           badgesUserId={targetUserId}
           onSeeMoreBadges={onSeeMoreBadges}
         />
@@ -2416,8 +2437,252 @@ function HomeTab({
 }
 
 /* ============================================================
-   ── Reviews tab
+   ── Reviews tab (V4-06 two-size rows)
    ============================================================ */
+
+function ProfileReviewRow({
+  row,
+  likeCounts,
+  commentCounts,
+  isOwn,
+  isPinned,
+  onEdit,
+  onPin,
+  onUnpin,
+}) {
+  const navigate = useNavigate()
+  const [expanded, setExpanded] = useState(false)
+  const [bodyOverflows, setBodyOverflows] = useState(false)
+  const [kebabOpen, setKebabOpen] = useState(false)
+  const kebabRef = useRef(null)
+  const quoteRef = useRef(null)
+  const isFull = reviewHasText(row)
+  const vibeLabel = row.vibe_stamp
+    ? REVIEW_VIBE_LABELS[row.vibe_stamp] || row.vibe_stamp
+    : null
+  const likeState = useLikeState(row.id)
+  const displayedLikeCount = likeCounts?.get(row.id) ?? likeState.count
+  const displayedCommentCount = commentCounts?.get(row.id) ?? 0
+  const when = formatActivityDate(row.created_at)
+  const coverSize = isFull ? 52 : 34
+  const coverSrc = row.game_image
+    ? getSizedImageUrl(row.game_image, coverSize)
+    : COVER_FALLBACK
+  const gameTitle = row.game_title || 'Unknown Game'
+
+  const goToGame = (e) => {
+    e?.stopPropagation?.()
+    if (!row.igdb_game_id) return
+    navigate(`/game/${row.igdb_game_id}`, {
+      state: getGameNavStub(profileReviewGameStub(row)),
+    })
+  }
+
+  const goToComments = (e) => {
+    e?.stopPropagation?.()
+    navigate(`/reviews/${row.id}/comments`)
+  }
+
+  const handleLike = async (e) => {
+    e.stopPropagation()
+    const next = { liked: !likeState.liked, count: likeState.count + (likeState.liked ? -1 : 1) }
+    publishLikeState(row.id, next)
+    try {
+      if (likeState.liked) await unlikeReview(row.id)
+      else await likeReview(row.id)
+    } catch {
+      publishLikeState(row.id, likeState)
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (!isFull || expanded || !quoteRef.current) return
+    setBodyOverflows(quoteRef.current.scrollHeight > quoteRef.current.clientHeight + 1)
+  }, [isFull, expanded, row.body])
+
+  useEffect(() => {
+    if (!kebabOpen) return undefined
+    const close = (ev) => {
+      if (kebabRef.current && !kebabRef.current.contains(ev.target)) setKebabOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [kebabOpen])
+
+  const reactions = (
+    <div className="profile-review-row__reactions">
+      <Pressable
+        className="profile-review-row__react"
+        onClick={handleLike}
+        aria-label={likeState.liked ? 'Unlike' : 'Like'}
+        aria-pressed={likeState.liked}
+      >
+        {likeState.liked ? <HiHeart aria-hidden="true" /> : <HiOutlineHeart aria-hidden="true" />}
+        {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
+      </Pressable>
+      <Pressable
+        className="profile-review-row__react"
+        onClick={goToComments}
+        aria-label="Comments"
+      >
+        <HiOutlineChat aria-hidden="true" />
+        {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
+      </Pressable>
+    </div>
+  )
+
+  const kebab = isOwn ? (
+    <div className="profile-review-row__kebab-wrap" ref={kebabRef}>
+      <button
+        type="button"
+        className="profile-review-row__kebab"
+        onClick={(e) => {
+          e.stopPropagation()
+          setKebabOpen((v) => !v)
+        }}
+        aria-label="More options"
+        aria-expanded={kebabOpen}
+      >
+        <HiDotsVertical aria-hidden="true" />
+      </button>
+      {kebabOpen && (
+        <div className="profile-review-row__kebab-menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation()
+              setKebabOpen(false)
+              onEdit?.()
+            }}
+          >
+            <HiOutlinePencil aria-hidden="true" />
+            Edit review
+          </button>
+          {isPinned ? (
+            onUnpin && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setKebabOpen(false)
+                  onUnpin()
+                }}
+              >
+                <LuPinOff aria-hidden="true" />
+                Unpin from profile
+              </button>
+            )
+          ) : (
+            onPin && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setKebabOpen(false)
+                  onPin()
+                }}
+              >
+                <LuPin aria-hidden="true" />
+                Pin to profile
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  ) : null
+
+  if (!isFull) {
+    return (
+      <article className="profile-review-row profile-review-row--compact">
+        <button
+          type="button"
+          className="profile-review-row__cover-btn profile-review-row__cover-btn--compact"
+          onClick={goToGame}
+          aria-label={`Open ${gameTitle}`}
+        >
+          <img
+            className="profile-review-row__cover profile-review-row__cover--compact"
+            src={coverSrc}
+            alt=""
+            loading="lazy"
+            onError={(e) => { e.target.src = COVER_FALLBACK }}
+          />
+        </button>
+        <div className="profile-review-row__compact-main">
+          <button type="button" className="profile-review-row__title-btn" onClick={goToGame}>
+            <h3 className="profile-review-row__title profile-review-row__title--compact">
+              {gameTitle}
+            </h3>
+          </button>
+          <div className="profile-review-row__stars profile-review-row__stars--compact">
+            <StarRatingDisplay rating={Number(row.rating) || 0} size={14} />
+          </div>
+        </div>
+        <time className="profile-review-row__when profile-review-row__when--compact" dateTime={row.created_at}>
+          {when}
+        </time>
+        {kebab}
+      </article>
+    )
+  }
+
+  const bodyText = (row.body || '').trim()
+
+  return (
+    <article className="profile-review-row profile-review-row--full">
+      <button
+        type="button"
+        className="profile-review-row__cover-btn profile-review-row__cover-btn--full"
+        onClick={goToGame}
+        aria-label={`Open ${gameTitle}`}
+      >
+        <img
+          className="profile-review-row__cover profile-review-row__cover--full"
+          src={coverSrc}
+          alt=""
+          loading="lazy"
+          onError={(e) => { e.target.src = COVER_FALLBACK }}
+        />
+      </button>
+      <div className="profile-review-row__full-body">
+        <button type="button" className="profile-review-row__title-btn" onClick={goToGame}>
+          <h3 className="profile-review-row__title profile-review-row__title--full">{gameTitle}</h3>
+        </button>
+        <div className="profile-review-row__rating-row">
+          <StarRatingDisplay rating={Number(row.rating) || 0} size={14} />
+          {vibeLabel && (
+            <span className="profile-review-row__tier">{vibeLabel}</span>
+          )}
+        </div>
+        <blockquote
+          className={`profile-review-row__quote${expanded ? ' profile-review-row__quote--expanded' : ''}`}
+        >
+          <p ref={quoteRef}>{bodyText}</p>
+        </blockquote>
+        {!expanded && bodyOverflows && (
+          <button
+            type="button"
+            className="profile-review-row__expand"
+            onClick={() => setExpanded(true)}
+          >
+            Read more
+          </button>
+        )}
+        <footer className="profile-review-row__footer">
+          {reactions}
+          <div className="profile-review-row__footer-right">
+            <time className="profile-review-row__when" dateTime={row.created_at}>{when}</time>
+            {kebab}
+          </div>
+        </footer>
+      </div>
+    </article>
+  )
+}
 
 function ReviewsTab({
   reviews,
@@ -2460,11 +2725,25 @@ function ReviewsTab({
     )
   }
 
+  const renderRow = (row, { pinned = false } = {}) => {
+    const own = currentUserId && row.user_id === currentUserId
+    return (
+      <ProfileReviewRow
+        key={row.id}
+        row={row}
+        likeCounts={likeCounts}
+        commentCounts={commentCounts}
+        isOwn={!!own}
+        isPinned={pinned}
+        onEdit={own ? () => onEditReview(rowToEditShape(row)) : undefined}
+        onPin={own && !pinned ? () => onPinReview(row) : undefined}
+        onUnpin={own && pinned ? () => onUnpinReview(row.id) : undefined}
+      />
+    )
+  }
+
   return (
     <div className="profile-reviews">
-      {/* Sprint 6 P3 — Pinned section. Appears above the divider when
-          the profile has at least one pinned review. Reorder kebab is
-          only shown to the profile owner with 2+ pins. */}
       {hasPins && (
         <>
           <section className="profile-pinned" aria-label="Pinned reviews">
@@ -2486,20 +2765,7 @@ function ReviewsTab({
               )}
             </div>
             <div className="profile-reviews__list">
-              {pinnedRows.map(({ review: row }) => {
-                const own = currentUserId && row.user_id === currentUserId
-                return (
-                  <ReviewCard
-                    key={row.id}
-                    review={rowToReviewCard(row, likeCounts, commentCounts)}
-                    variant="profilerow"
-                    isOwn={!!own}
-                    isPinned
-                    onEdit={own ? onEditReview : undefined}
-                    onUnpin={own ? () => onUnpinReview(row.id) : undefined}
-                  />
-                )
-              })}
+              {pinnedRows.map(({ review: row }) => renderRow(row, { pinned: true }))}
             </div>
           </section>
           <div className="profile-pinned__divider" aria-hidden="true" />
@@ -2507,20 +2773,7 @@ function ReviewsTab({
       )}
 
       <div className="profile-reviews__list">
-        {reviews.map((row) => {
-          const own = currentUserId && row.user_id === currentUserId
-          return (
-            <ReviewCard
-              key={row.id}
-              review={rowToReviewCard(row, likeCounts, commentCounts)}
-              variant="profilerow"
-              isOwn={!!own}
-              isPinned={false}
-              onEdit={own ? onEditReview : undefined}
-              onPin={own ? () => onPinReview(row) : undefined}
-            />
-          )
-        })}
+        {reviews.map((row) => renderRow(row))}
       </div>
       {hasMore && (
         <div ref={sentinelRef} className="profile-reviews__sentinel" aria-hidden="true" />
@@ -2530,78 +2783,57 @@ function ReviewsTab({
 }
 
 /* ============================================================
-   ── Lists tab
+   ── Lists tab (V4-06)
    ============================================================ */
 
-function ListsTab({
-  lists,
-  isOwnProfile,
-  displayName,
-  onTapList,
-  onCreateList,
-  onPinList,
-  onUnpinList,
-}) {
-  if (lists.length === 0) {
+function ProfileListStackThumb({ games = [], coverImageUrl = null, name = '' }) {
+  const label = name ? `${name} covers` : 'List covers'
+  const covers = coverImageUrl
+    ? [coverImageUrl]
+    : (games || [])
+        .map((g) => getSizedImageUrl(g?.image, 38))
+        .filter(Boolean)
+        .slice(0, 3)
+
+  if (covers.length === 0) {
     return (
-      <div className="profile-lists">
-        <div className="profile-empty">
-          {isOwnProfile ? (
-            <EmptyState
-              icon={List}
-              title="No lists yet."
-              body="Create themed collections — cozy games, RPGs, anything."
-              cta="Create your first list"
-              onCta={onCreateList}
-            />
-          ) : (
-            <EmptyState
-              icon={List}
-              title={`${displayName || 'They'} hasn't made any lists.`}
-            />
-          )}
-        </div>
+      <div className="profile-list-stack profile-list-stack--empty" aria-hidden="true">
+        <List size={20} aria-hidden="true" />
       </div>
     )
   }
 
   return (
-    <div className="profile-lists">
-      <ul className="profile-lists__stack" role="list">
-        {lists.map((list) => (
-          <li key={list.id}>
-            <ListRow
-              list={list}
-              onTap={() => onTapList(list.id)}
-              isOwnProfile={isOwnProfile}
-              onPin={onPinList ? () => onPinList(list) : undefined}
-              onUnpin={onUnpinList ? () => onUnpinList(list.id) : undefined}
-            />
-          </li>
-        ))}
-      </ul>
+    <div className="profile-list-stack" role="img" aria-label={label}>
+      {covers.map((src, i) => (
+        <img
+          key={`${src}-${i}`}
+          className="profile-list-stack__cover"
+          style={{ '--stack-index': i }}
+          src={src}
+          alt=""
+          loading="lazy"
+        />
+      ))}
     </div>
   )
 }
 
-/* Compact list row: cover cluster left, then name, "N games · updated
-   {date}", and an engagement footer. Hairline-separated rather than
-   boxed so several lists fit on screen at once. The cluster is
-   ListCoverCluster's "poster" variant — the same true --cover-ratio
-   fanned stack Library's Lists tab uses — so every row gets one
-   consistent cluster treatment regardless of cover count, instead of
-   forking between a fan and a 2x2 mosaic.
-   Like/comment are display-only until Sprint 6 wires list engagement;
-   the pin button is live and owner-only. */
-function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
+function ProfileStartListCard({ onCreateList }) {
+  return (
+    <button type="button" className="profile-lists__start-card" onClick={onCreateList}>
+      <span className="profile-lists__start-title">+ Start a list</span>
+      <span className="profile-lists__start-body">
+        Lists show up here and in Discover&rsquo;s Collections when public
+      </span>
+    </button>
+  )
+}
+
+function ListRow({ list, onTap }) {
   const gameCount = list.gameCount || 0
-  const updated = formatActivityDate(list.updatedAt || list.createdAt)
-  const meta = [
-    `${gameCount} ${gameCount === 1 ? 'game' : 'games'}`,
-    updated && `updated ${updated}`,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const updated = formatActivityDate(list.updatedAt || list.createdAt, { pulse: true })
+  const meta = `${gameCount} ${gameCount === 1 ? 'game' : 'games'} · updated ${updated}`
 
   return (
     <article
@@ -2616,19 +2848,20 @@ function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
         }
       }}
     >
-      <div className="profile-list-row__stack">
-        <ListCoverCluster
-          games={list.previewGames}
-          coverImageUrl={list.coverImageUrl}
-          name={list.name}
-          variant="poster"
-        />
-      </div>
+      <ProfileListStackThumb
+        games={list.previewGames || list.games}
+        coverImageUrl={list.coverImageUrl}
+        name={list.name}
+      />
 
       <div className="profile-list-row__body">
-        <h3 className="profile-list-row__name">{list.name}</h3>
+        <div className="profile-list-row__title-row">
+          <h3 className="profile-list-row__name">{list.name}</h3>
+          {list.isPinned && (
+            <span className="profile-list-row__pinned-chip">Pinned</span>
+          )}
+        </div>
         <p className="profile-list-row__meta">{meta}</p>
-
         <div className="profile-list-row__engagement">
           <span className="profile-list-row__stat">
             <HiOutlineHeart aria-hidden="true" />
@@ -2636,243 +2869,209 @@ function ListRow({ list, onTap, isOwnProfile, onPin, onUnpin }) {
           </span>
           <span className="profile-list-row__stat">
             <HiOutlineChat aria-hidden="true" />
-            {shouldShowCount(list.commentCount) && list.commentCount}
           </span>
-
-          {isOwnProfile && (
-            <button
-              type="button"
-              className={`profile-list-row__pin-btn${
-                list.isPinned ? ' profile-list-row__pin-btn--active' : ''
-              }`}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (list.isPinned) onUnpin?.()
-                else onPin?.()
-              }}
-              aria-label={list.isPinned ? 'Unpin list from profile' : 'Pin list to profile'}
-              aria-pressed={!!list.isPinned}
-              title={list.isPinned ? 'Unpin' : 'Pin to profile'}
-            >
-              <LuPin size={15} aria-hidden="true" />
-            </button>
-          )}
         </div>
       </div>
 
-      <LuChevronRight
-        className="profile-list-row__chevron"
-        size={18}
-        aria-hidden="true"
-      />
+      <LuChevronRight className="profile-list-row__chevron" size={18} aria-hidden="true" />
     </article>
   )
 }
 
-/* ============================================================
-   ── Diary tab
-   All journal entries for this user, across all games, newest first.
-   Each row = game cover + title + date + snippet, tappable to game detail.
-   Hides cleanly (empty state) when there are no entries.
-   ============================================================ */
-
-const DIARY_VIBE_LABELS = {
-  masterpiece: 'Masterpiece',
-  underrated:  'Underrated',
-  mid:         'Mid',
-  rage_quit:   'Rage Quit',
-  comfort:     'Comfort',
-}
-
-const DIARY_LIFE_LABELS = {
-  childhood:   'Childhood',
-  teen_years:  'Teen Years',
-  college:     'College',
-  burnout:     'Burnout',
-  healing:     'Healing',
-  traveling:   'Traveling',
-  new_chapter: 'New Chapter',
-}
-
-const DiaryChevron = () => (
-  <svg
-    className="profile-diary__chevron"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-)
-
-function DiaryTab({ userId, entries, lifeReviews = [], onEntryClick, onReviewClick }) {
-  // Merge journal entries and life-tagged reviews, sorted newest-first.
-  const merged = React.useMemo(() => {
-    const journalItems = (entries || []).map((e) => ({ ...e, _type: 'journal' }))
-    const reviewItems = (lifeReviews || []).map((r) => ({ ...r, _type: 'review' }))
-    return [...journalItems, ...reviewItems].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    )
-  }, [entries, lifeReviews])
-
-  if (merged.length === 0) {
-    return (
-      <div className="profile-diary">
-        <EmptyState
-          icon={BookOpen}
-          size="compact"
-          title="No diary entries yet."
-          body="Add journal notes while playing, or tag a review with a life moment."
-        />
-      </div>
-    )
+function ListsTab({
+  lists,
+  isOwnProfile,
+  onTapList,
+  onCreateList,
+}) {
+  if (lists.length === 0 && !isOwnProfile) {
+    return <div className="profile-lists profile-lists--empty" />
   }
 
   return (
-    <div className="profile-diary">
-      {/* On This Day — hides itself when there are no prior-year matches */}
-      {userId && <OnThisDaySection userId={userId} />}
-
-      <ul className="profile-diary__list" aria-label="Diary">
-        {merged.map((item) => {
-          if (item._type === 'review') {
-            const lifeLabel = DIARY_LIFE_LABELS[item.life_context] || item.life_context
-            const vibeLabel = item.vibe_stamp ? DIARY_VIBE_LABELS[item.vibe_stamp] : null
-            return (
-              <li key={`review-${item.id}`} className="profile-diary__row profile-diary__row--review">
-                <button
-                  type="button"
-                  className="profile-diary__row-btn"
-                  onClick={() => onReviewClick?.(item.id)}
-                  aria-label={`Review of ${item.game_title || 'game'} — ${lifeLabel}`}
-                >
-                  {item.game_image ? (
-                    <img
-                      src={item.game_image}
-                      alt={item.game_title || ''}
-                      className="profile-diary__cover"
-                    />
-                  ) : (
-                    <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
-                  )}
-                  <div className="profile-diary__meta">
-                    <p className="profile-diary__game-title">
-                      {item.game_title || 'Unknown game'}
-                    </p>
-                    <div className="profile-diary__life-row">
-                      <span className="profile-diary__life-pill">{lifeLabel}</span>
-                      {vibeLabel && (
-                        <span
-                          className="profile-diary__vibe-pill"
-                          data-vibe={item.vibe_stamp}
-                        >
-                          {vibeLabel}
-                        </span>
-                      )}
-                    </div>
-                    <time
-                      className="profile-diary__date"
-                      dateTime={item.created_at}
-                      title={new Date(item.created_at).toLocaleString()}
-                    >
-                      {formatDiaryDate(item.created_at)}
-                    </time>
-                    {item.body ? (
-                      <p className="profile-diary__snippet">
-                        {item.body.slice(0, 100)}{item.body.length > 100 ? '…' : ''}
-                      </p>
-                    ) : null}
-                  </div>
-                  <DiaryChevron />
-                </button>
-              </li>
-            )
-          }
-
-          // Journal entry row
-          const moodMeta = item.mood ? getMoodMeta(item.mood) : null
-          const hoursLabel = item.hours_played != null
-            ? `${item.hours_played} hr${item.hours_played !== 1 ? 's' : ''}`
-            : null
-
-          return (
-            <li key={`journal-${item.id}`} className="profile-diary__row">
-              <button
-                type="button"
-                className="profile-diary__row-btn"
-                onClick={() => onEntryClick(item.id)}
-                aria-label={`Open journal entry: ${item.title || item.game_title || 'entry'}`}
-              >
-                {item.game_image ? (
-                  <img
-                    src={item.game_image}
-                    alt={item.game_title || ''}
-                    className="profile-diary__cover"
-                  />
-                ) : (
-                  <div className="profile-diary__cover profile-diary__cover--placeholder" aria-hidden="true" />
-                )}
-                <div className="profile-diary__meta">
-                  <p className="profile-diary__game-title">
-                    {item.game_title || 'Unknown game'}
-                  </p>
-                  {item.title && (
-                    <p className="profile-diary__entry-title">{item.title}</p>
-                  )}
-                  {/* Mood + hours inline pills */}
-                  {(moodMeta || hoursLabel) && (
-                    <div className="profile-diary__pills-row">
-                      {moodMeta && (
-                        <span className="profile-diary__mood-pill">
-                          {moodMeta.emoji} {moodMeta.label}
-                        </span>
-                      )}
-                      {hoursLabel && (
-                        <span className="profile-diary__hours-pill">⏱ {hoursLabel}</span>
-                      )}
-                    </div>
-                  )}
-                  <time
-                    className="profile-diary__date"
-                    dateTime={item.created_at}
-                    title={new Date(item.created_at).toLocaleString()}
-                  >
-                    {formatDiaryDate(item.created_at)}
-                  </time>
-                  {item.is_spoiler ? (
-                    <p className="profile-diary__snippet profile-diary__snippet--spoiler">
-                      [spoiler]
-                    </p>
-                  ) : item.body ? (
-                    <p className="profile-diary__snippet">
-                      {item.body.slice(0, 100)}{item.body.length > 100 ? '…' : ''}
-                    </p>
-                  ) : null}
-                </div>
-                <DiaryChevron />
-              </button>
+    <div className="profile-lists">
+      {lists.length > 0 && (
+        <ul className="profile-lists__stack" role="list">
+          {lists.map((list) => (
+            <li key={list.id}>
+              <ListRow list={list} onTap={() => onTapList(list.id)} />
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
+      {isOwnProfile && onCreateList && (
+        <ProfileStartListCard onCreateList={onCreateList} />
+      )}
     </div>
   )
 }
 
-function formatDiaryDate(isoString) {
+/* ============================================================
+   ── Diary tab (V4-06 — grouped by calendar day)
+   ============================================================ */
+
+function diaryDayKey(isoString) {
+  const d = new Date(isoString)
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function formatDiaryDayHeader(isoString) {
   if (!isoString) return ''
   const date = new Date(isoString)
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  if (Number.isNaN(date.getTime())) return ''
+
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const today = startOfDay(new Date())
+  const then = startOfDay(date)
+  const dayDiff = Math.round((today - then) / (86400000))
+
+  if (dayDiff === 0) return 'Today'
+  if (dayDiff === 1) return 'Yesterday'
+
+  const fmt = { month: 'short', day: 'numeric' }
+  if (date.getFullYear() !== today.getFullYear()) fmt.year = 'numeric'
+  return date.toLocaleDateString('en-US', fmt)
+}
+
+function groupDiaryEntriesByDay(entries) {
+  const groups = new Map()
+  for (const entry of entries || []) {
+    const key = diaryDayKey(entry.created_at)
+    if (!key) continue
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(entry)
+  }
+
+  return [...groups.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([dayKey, dayEntries]) => ({
+      dayKey,
+      header: formatDiaryDayHeader(dayEntries[0]?.created_at),
+      entries: [...dayEntries].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      ),
+    }))
+}
+
+function DiaryEntryRow({ entry, onEntryClick, onCoverClick }) {
+  const moodMeta = entry.mood ? getMoodMeta(entry.mood) : null
+  const hoursLabel = entry.hours_played != null
+    ? `${entry.hours_played} hr${entry.hours_played !== 1 ? 's' : ''}`
+    : null
+  const platform = entry.platform || null
+  const coverSrc = entry.game_image
+    ? getSizedImageUrl(entry.game_image, 46)
+    : COVER_FALLBACK
+  const gameTitle = entry.game_title || 'Unknown game'
+
+  return (
+    <li className="profile-diary__row">
+      <button
+        type="button"
+        className="profile-diary__cover-hit"
+        onClick={(e) => {
+          e.stopPropagation()
+          onCoverClick(entry)
+        }}
+        aria-label={`Open ${gameTitle}`}
+      >
+        <img
+          className="profile-diary__cover"
+          src={coverSrc}
+          alt=""
+          loading="lazy"
+          onError={(e) => { e.target.src = COVER_FALLBACK }}
+        />
+      </button>
+      <button
+        type="button"
+        className="profile-diary__row-main"
+        onClick={() => onEntryClick(entry.id)}
+        aria-label={`Open journal entry for ${gameTitle}`}
+      >
+        <h3 className="profile-diary__game-title">{gameTitle}</h3>
+        {platform && (
+          <p className="profile-diary__platform">{platform}</p>
+        )}
+        {(moodMeta || hoursLabel) && (
+          <div className="profile-diary__chips">
+            {moodMeta && (
+              <span className="profile-diary__chip profile-diary__chip--mood">
+                {moodMeta.emoji} {moodMeta.label}
+              </span>
+            )}
+            {hoursLabel && (
+              <span className="profile-diary__chip profile-diary__chip--hours">
+                {hoursLabel}
+              </span>
+            )}
+          </div>
+        )}
+        {entry.is_spoiler ? (
+          <p className="profile-diary__note profile-diary__note--spoiler">[spoiler]</p>
+        ) : entry.body ? (
+          <p className="profile-diary__note">{entry.body}</p>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className="profile-diary__chevron-btn"
+        onClick={() => onEntryClick(entry.id)}
+        aria-label={`Open journal entry for ${gameTitle}`}
+      >
+        <LuChevronRight className="profile-diary__chevron" size={16} aria-hidden="true" />
+      </button>
+    </li>
+  )
+}
+
+function DiaryTab({ userId, entries, onEntryClick }) {
+  const navigate = useNavigate()
+  const dayGroups = useMemo(
+    () => groupDiaryEntriesByDay(entries),
+    [entries]
+  )
+
+  const goToGame = useCallback((entry) => {
+    if (!entry?.igdb_game_id) return
+    navigate(`/game/${entry.igdb_game_id}`, {
+      state: getGameNavStub({
+        id: String(entry.igdb_game_id),
+        title: entry.game_title || '',
+        image: entry.game_image || '',
+      }),
+    })
+  }, [navigate])
+
+  if (dayGroups.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="profile-diary">
+      {userId && <OnThisDaySection userId={userId} />}
+
+      {dayGroups.map((group) => (
+        <section key={group.dayKey} className="profile-diary__day">
+          <h3 className="profile-diary__day-header">{group.header}</h3>
+          <ul className="profile-diary__list" aria-label={`Diary entries for ${group.header}`}>
+            {group.entries.map((entry) => (
+              <DiaryEntryRow
+                key={entry.id}
+                entry={entry}
+                onEntryClick={onEntryClick}
+                onCoverClick={goToGame}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
 }
 
 export default Profile

@@ -48,8 +48,8 @@ export default function GoalRing({
   className = '',
 }) {
   const isFull = variant === 'full'
-  const size   = isFull ? 100 : 52
-  const stroke = isFull ? 8 : 5
+  const size   = isFull ? 100 : 44
+  const stroke = isFull ? 8 : 4
   const r      = (size - stroke) / 2
   const circ   = 2 * Math.PI * r
   const cx     = size / 2
@@ -64,11 +64,13 @@ export default function GoalRing({
   // 100% reached — the current tier's "Goal reached!" celebration.
   const complete = hasGoal && current >= target
   const prestige = isPrestigeTier(tier)
-  const fillStroke = complete
-    ? 'var(--accent-review)'
-    : prestige
-      ? `url(#${gradientId})`
-      : tierColorVar(tier)
+  const fillStroke = isFull
+    ? (complete
+        ? 'var(--accent-review)'
+        : prestige
+          ? `url(#${gradientId})`
+          : tierColorVar(tier))
+    : 'var(--accent-review)'
 
   if (!hasGoal) {
     return (
@@ -160,7 +162,6 @@ export default function GoalRing({
       ) : (
         <div className="goal-ring__label-compact">
           <span className="goal-ring__count-compact">{current}</span>
-          <span className="goal-ring__target-compact">/{target}</span>
         </div>
       )}
     </div>

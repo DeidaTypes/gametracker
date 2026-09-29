@@ -1,34 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { getTasteVector } from '../services/tasteEngineService'
-import { genreColorVar, genreShortLabel } from '../utils/genreColors'
+import { getSWR, peekSWR } from '../services/swrCache'
+import { genreShortLabel } from '../utils/genreColors'
 import Skeleton from './Skeleton'
 import './ProfileTasteDNA.css'
 
-// Below this many genre-tagged signal games, a taste bar would be reading
-// noise (1-2 games) rather than a real taste shape — hide instead of
-// drawing a misleading bar. Mirrors the engine's own MIN_SIGNAL floor
-// used by get_taste_match (see supabase/taste_engine.sql).
 const MIN_SIGNAL_FOR_TASTE = 3
 const TOP_GENRE_COUNT = 4
 
+const RANK_GENRE_TOKENS = ['--genre-1', '--genre-2', '--genre-3', '--genre-4']
+
+const TASTE_VECTOR_TTL_MS = 60 * 1000
+
 /**
- * ProfileTasteDNA — the "Your Taste" / "Their Taste" section on the
- * Profile Home tab. Label reads "Your Taste" on your own profile and
- * "Their Taste" when viewing someone else's — same bar, same genre
- * tokens, only the heading changes.
- *
- * A single stacked bar of the user's top genres plus an inline legend of
- * percentages, read from the cached B1 taste vector (`getTasteVector`) —
- * never a live IGDB call, and never fabricated when the engine has
- * nothing computed yet.
- *
- * The engine returns L2-normalized affinity weights, not percentages, so
- * the displayed figures are the top-N weights renormalized to sum to 100.
- *
- * Renders nothing at all (not even a header) when the user has too little
- * signal for a real taste shape. While the vector is in flight it renders
- * a skeleton at the section's true height, so the sections below it don't
- * shift once the bar arrives.
+ * ProfileTasteDNA — "Your taste" bar on Profile Home. Same card for
+ * self and visitor; hidden when the engine has too little signal.
  */
 export default function ProfileTasteDNA({
   userId,
@@ -36,19 +22,21 @@ export default function ProfileTasteDNA({
   embedded = false,
   onResolved,
 }) {
-  const [vector, setVector] = useState(null)
-  const [loaded, setLoaded] = useState(false)
-  const title = isOwnProfile ? 'Your Taste' : 'Their Taste'
+  const cacheKey = userId ? `taste-vector:${userId}` : null
+  const [vector, setVector] = useState(() => (cacheKey ? peekSWR(cacheKey) ?? null : null))
+  const [loaded, setLoaded] = useState(() => !!cacheKey && peekSWR(cacheKey) !== undefined)
+  const title = isOwnProfile ? 'Your taste' : 'Their taste'
 
   useEffect(() => {
     let alive = true
-    setLoaded(false)
     if (!userId) {
       setVector(null)
       setLoaded(true)
       return undefined
     }
-    getTasteVector(userId).then((v) => {
+    const key = `taste-vector:${userId}`
+    if (peekSWR(key) === undefined) setLoaded(false)
+    getSWR(key, () => getTasteVector(userId), { ttlMs: TASTE_VECTOR_TTL_MS }).then((v) => {
       if (alive) {
         setVector(v)
         setLoaded(true)
@@ -83,7 +71,7 @@ export default function ProfileTasteDNA({
         aria-busy="true"
       >
         <h3 className="ptd__title">{title}</h3>
-        <Skeleton height={10} className="ptd__bar-skeleton" />
+        <Skeleton height={12} className="ptd__bar-skeleton" />
         <div className="ptd__legend">
           <Skeleton variant="text" width={92} height={14} />
           <Skeleton variant="text" width={72} height={14} />
@@ -112,19 +100,25 @@ export default function ProfileTasteDNA({
           .map(([g, w]) => `${genreShortLabel(g)} ${pct(w)}%`)
           .join(', ')}`}
       >
-        {topGenres.map(([g, w]) => (
+        {topGenres.map(([g, w], index) => (
           <span
             key={g}
             className="ptd__seg"
-            style={{ width: `${(w / totalWeight) * 100}%`, background: genreColorVar(g) }}
+            style={{
+              width: `${(w / totalWeight) * 100}%`,
+              background: `var(${RANK_GENRE_TOKENS[index] ?? '--genre-default'})`,
+            }}
           />
         ))}
       </div>
 
       <div className="ptd__legend" aria-hidden="true">
-        {topGenres.map(([g, w]) => (
+        {topGenres.map(([g, w], index) => (
           <span key={g} className="ptd__legend-item">
-            <span className="ptd__legend-dot" style={{ background: genreColorVar(g) }} />
+            <span
+              className="ptd__legend-dot"
+              style={{ background: `var(${RANK_GENRE_TOKENS[index] ?? '--genre-default'})` }}
+            />
             {genreShortLabel(g)} {pct(w)}%
           </span>
         ))}

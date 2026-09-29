@@ -11,6 +11,7 @@ import {
   getSessionAddCount,
   SESSION_ADD_COUNT_CHANGED_EVENT,
 } from '../services/swipeService'
+import { partOfDay } from '../utils/partOfDay'
 import './Explore.css'
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ function Explore() {
         <div className="explore-header__actions">
           {addedTonight > 0 && (
             <span className="discover-payoff-indicator" aria-live="polite">
-              {addedTonight} added tonight
+              {addedTonight} added {partOfDay()}
             </span>
           )}
           <button

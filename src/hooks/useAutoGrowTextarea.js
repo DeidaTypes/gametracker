@@ -3,9 +3,10 @@ import { useEffect } from 'react'
 /**
  * Auto-grows a textarea to fit its content on every keystroke, capped at
  * `maxHeight`, so it doesn't need its own scrollHeight math. Shared by every
- * comment composer (List Comments, Review Detail, Review/Activity Comments)
- * so the "grows with input, caps at N px, then scrolls internally" behavior
- * can never drift between them the way the surrounding CSS spec once did.
+ * comment/DM composer (List Comments, Review Detail, Review/Activity
+ * Comments, Messages) so the "grows with input, caps at N px, then scrolls
+ * internally" behavior can never drift — cap must match .composer__input's
+ * max-height in styles/keyboard.css.
  *
  * Pair with `overflow-y: hidden` and `box-sizing: border-box` on the
  * textarea's own CSS — those keep the browser's native scroll handle from

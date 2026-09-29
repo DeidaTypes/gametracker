@@ -1,8 +1,8 @@
 /* =============================================
    SwipeCard — Tinder-style game card in the
    "Swipe to discover" deck. Cover fills the frame;
-   a frosted bottom overlay holds title + year +
-   reason and the ✕ / ♥ actions.
+   a frosted bottom overlay holds title + meta +
+   circle social line and the ✕ / ♥ actions.
    ============================================= */
 
 .swipe-card {
@@ -10,12 +10,12 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: 22px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-surface);
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.45),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+    0 10px 30px color-mix(in srgb, var(--bg-base) 45%, transparent),
+    0 2px 8px color-mix(in srgb, var(--bg-base) 30%, transparent);
   z-index: 1;
   will-change: transform;
 }
@@ -51,6 +51,21 @@
   user-select: none;
 }
 
+/* Progressive top-card swap: t_cover_big → t_cover_big_2x, same frame, no layout shift */
+.swipe-card__img--hd {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.swipe-card__img--hd-ready {
+  opacity: 1;
+}
+
+.swipe-card__img--hd-crossfade.swipe-card__img--hd-ready {
+  transition: opacity 120ms ease;
+}
+
 .swipe-card__placeholder {
   width: 100%;
   height: 100%;
@@ -74,9 +89,9 @@
   height: 62%;
   background: linear-gradient(
     to top,
-    rgba(10, 15, 31, 0.96) 0%,
-    rgba(10, 15, 31, 0.78) 32%,
-    rgba(10, 15, 31, 0.35) 66%,
+    color-mix(in srgb, var(--bg-base) 96%, transparent) 0%,
+    color-mix(in srgb, var(--bg-base) 78%, transparent) 32%,
+    color-mix(in srgb, var(--bg-base) 35%, transparent) 66%,
     transparent 100%
   );
   pointer-events: none;
@@ -89,10 +104,10 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 18px 18px 18px;
+  padding: var(--space-16) var(--space-16) var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-4);
 }
 
 .swipe-card__title {
@@ -102,7 +117,6 @@
   line-height: var(--line-height-title);
   color: var(--text-primary);
   margin: 0;
-  /* Max 2 lines, ellipsis on overflow */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -110,64 +124,78 @@
   pointer-events: none;
 }
 
+/* Meta: "{year} · genres · ~{n}h main" — 13px muted */
 .swipe-card__meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-4);
   margin: 0;
-  min-height: 18px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-caption);
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
-.swipe-card__year {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
-}
-
-.swipe-card__dot {
+.swipe-card__meta-sep {
   color: var(--text-tertiary);
-  font-size: var(--font-size-caption);
 }
 
-/* ---- 'like {seed}' recommendation reason ---- */
+.swipe-card__meta-genres {
+  color: color-mix(in srgb, var(--accent) 72%, var(--text-secondary));
+}
 
-.swipe-card__why {
-  display: inline-flex;
+/* Social line — circle Want to Play / Played */
+.swipe-card__social {
+  display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-8);
+  pointer-events: none;
+}
+
+.swipe-card__social-avatars {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.swipe-card__social-avatar.avatar {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  font-size: 9px;
+  border: 2px solid var(--bg-base);
+  flex-shrink: 0;
+}
+
+.swipe-card__social-avatar + .swipe-card__social-avatar {
+  margin-left: -6px;
+}
+
+.swipe-card__social-text {
+  margin: 0;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
-  color: var(--accent);
-  line-height: 1.3;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: var(--line-height-caption);
+  color: var(--text-primary);
 }
 
-.swipe-card__why-spark {
-  font-size: 10px;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-/* ---- On-card action buttons (frosted over the art) ---- */
+/* ---- On-card action buttons ---- */
 
 .swipe-card__actions {
   display: flex;
   justify-content: center;
-  gap: 24px;
-  margin-top: 12px;
+  gap: 34px;
+  margin-top: var(--space-12);
 }
 
 .swipe-card__act {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,9 +203,7 @@
   line-height: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .swipe-card__act:active {
@@ -185,31 +211,22 @@
 }
 
 .swipe-card__act--skip {
-  background: rgba(20, 26, 44, 0.55);
-  border: 1.5px solid rgba(248, 113, 113, 0.55);
-  color: var(--status-danger);
-}
-
-.swipe-card__act--skip:hover {
-  background: rgba(248, 113, 113, 0.22);
+  background: color-mix(in srgb, var(--bg-base) 50%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--text-secondary) 50%, transparent);
+  color: var(--text-secondary);
 }
 
 .swipe-card__act--add {
-  background: rgba(59, 130, 246, 0.32);
-  border: 1.5px solid rgba(59, 130, 246, 0.7);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-
-.swipe-card__act--add:hover {
-  background: rgba(59, 130, 246, 0.5);
+  background: var(--accent);
+  border: 1.5px solid var(--accent);
+  color: var(--color-on-accent);
 }
 
 /* ---- Direction badges ---- */
 
 .swipe-card__badge {
   position: absolute;
-  top: 24px;
+  top: var(--space-24);
   padding: 6px 14px;
   border-radius: var(--radius-chip);
   border: 2.5px solid;
@@ -219,24 +236,23 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   pointer-events: none;
-  /* opacity controlled inline via drag delta */
   transition: opacity 0.08s linear;
   z-index: 2;
 }
 
 .swipe-card__badge--right {
-  left: 18px;
-  border-color: var(--status-success);
-  color: var(--status-success);
-  background: rgba(52, 211, 153, 0.14);
+  left: var(--space-16);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   transform: rotate(-14deg);
 }
 
 .swipe-card__badge--left {
-  right: 18px;
-  border-color: var(--status-danger);
-  color: var(--status-danger);
-  background: rgba(248, 113, 113, 0.14);
+  right: var(--space-16);
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-base) 55%, transparent);
   transform: rotate(14deg);
 }
 
@@ -248,6 +264,10 @@
   }
 
   .swipe-card__act {
+    transition: none;
+  }
+
+  .swipe-card__img--hd-crossfade.swipe-card__img--hd-ready {
     transition: none;
   }
 }

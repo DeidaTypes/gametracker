@@ -14,6 +14,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../services/supabase'
 import { igdbRequest } from '../services/igdb'
+import { coverUrl, rewriteCoverToken } from '../services/igdbImage'
 import { getReviewsForGame } from '../services/reviewService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeDNAPortrait } from '../services/dnaService'
@@ -86,14 +87,9 @@ function getSeed(cadence) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function coverUrlFromImageId(imageId) {
-  if (!imageId) return null
-  return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
-}
-
-function bgUrlFromCoverUrl(coverUrl) {
-  if (!coverUrl) return null
-  return coverUrl.replace('t_cover_big', 't_cover_big_2x')
+function bgUrlFromCoverUrl(url) {
+  if (!url) return null
+  return rewriteCoverToken(url, 'cover_big_2x')
 }
 
 /**
@@ -117,10 +113,10 @@ async function enrichGame(igdbGameId) {
     igdbResult.status === 'fulfilled' ? igdbResult.value?.[0] ?? null : null
   if (!igdbGame) return null // IGDB data is mandatory; skip this game
 
-  const coverUrl = igdbGame.cover?.image_id
-    ? coverUrlFromImageId(igdbGame.cover.image_id)
+  const gameCoverUrl = igdbGame.cover?.image_id
+    ? coverUrl(igdbGame.cover.image_id)
     : null
-  const bgUrl = bgUrlFromCoverUrl(coverUrl)
+  const bgUrl = bgUrlFromCoverUrl(gameCoverUrl)
   const year = igdbGame.first_release_date
     ? new Date(igdbGame.first_release_date * 1000).getFullYear()
     : null
@@ -173,7 +169,7 @@ async function enrichGame(igdbGameId) {
     personalizedBlurb,
     title: igdbGame.name,
     year,
-    coverUrl,
+    coverUrl: gameCoverUrl,
     bgUrl,
     avgRating,
     reviewCount: ratedReviews.length,

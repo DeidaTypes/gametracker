@@ -663,101 +663,15 @@
   color: var(--color-text-primary);
 }
 
-.dm-thread__composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  width: 100%;
-}
-
 /* ── Composer ───────────────────────────────────────────────────────── */
 
-/* Rest position only. The keyboard lift comes from the shared .kb-lift class
-   (styles/keyboard.css), applied via <KeyboardAwareView mode="composer">. */
+/* Rest position + shell chrome: styles/keyboard.css (.kb-composer-bar /
+   .composer-bar / .composer__*). This class only stacks attachment UI
+   above the shared composer row. */
 .dm-thread__composer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--bottom-nav-safe-area);
-  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 10px var(--page-padding) max(10px, env(safe-area-inset-bottom));
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  border-top: 1px solid var(--color-border);
-}
-
-/* Deliberately taller than the review/list comment composers'
-   min-height:36/max-height:90 (ListComments.css, ReviewDetail.css,
-   ReviewComments.css): DMs are full back-and-forth messages rather than
-   short comments, so the rest height and growth cap are both larger. Same
-   pill radius and token palette otherwise — this is the one intentional
-   size difference between the four composers, not silent drift. */
-.dm-thread__input {
-  flex: 1;
-  min-height: 44px;
-  max-height: 152px;
-  padding: 11px 16px;
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  line-height: 22px;
-  resize: none;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.dm-thread__input::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.dm-thread__input:focus {
-  border-color: var(--color-border-focus);
-}
-
-.dm-thread__input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Gradient (blue → green) send button — circular icon button that sits
-   beside the pill input. Dims rather than recolors when disabled so the
-   gradient identity stays recognizable at rest. This is the app-wide
-   canonical send-button treatment: List Comments, Review Detail and
-   Review/Activity Comments all mirror this 44x44 / --grad-cta / box-shadow
-   recipe on their own *-composer__send classes rather than the old 34px
-   flat-color button. */
-.dm-thread__send {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--radius-full);
-  background: var(--grad-cta);
-  color: var(--color-on-accent);
-  cursor: pointer;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
-  transition: filter var(--transition-fast), opacity var(--transition-fast),
-    transform var(--transition-fast);
-}
-
-.dm-thread__send:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.dm-thread__send:disabled {
-  opacity: 0.4;
-  box-shadow: none;
-  cursor: not-allowed;
 }
 
 .dm-thread__send-spinner {
@@ -920,8 +834,6 @@
   .dm-thread__back,
   .dm-thread__overflow,
   .dm-thread__partner,
-  .dm-thread__input,
-  .dm-thread__send,
   .dm-thread__composer,
   .dm-bubble__context-btn,
   .dm-bubble__emoji-btn,

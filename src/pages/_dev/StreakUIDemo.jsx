@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
-import HomeStreakStrip from '../../components/home/HomeStreakStrip'
+import ProgressStrip from '../../components/home/ProgressStrip'
 import StreakDetailSheet from '../../components/streak/StreakDetailSheet'
 import UnlockCelebration from '../../components/celebration/UnlockCelebration'
 import { buildStreakMilestoneView } from '../../services/streakMilestoneState'
-import '../../components/home/HomeStreakStrip.css'
+import '../../components/home/ProgressStrip.css'
 import './StreakUIDemo.css'
 
 const MOCK_WEEK = [
@@ -22,48 +22,41 @@ function MockHomeStrip({ view }) {
     currentTier,
     nextTier,
     daysToNextTier,
-    progressToNext,
     weekCells,
-    hasRestDayShield,
     hasStreak,
   } = view
-  const progressPct = Math.round(progressToNext * 100)
+
+  const line2Parts = []
+  if (!hasStreak) {
+    line2Parts.push('Start a streak')
+  } else if (nextTier && daysToNextTier != null) {
+    line2Parts.push(`${daysToNextTier} days to ${nextTier.name}`)
+  }
+  const line2 = line2Parts.join(' · ')
 
   return (
-    <div
-      className={['hss', !hasStreak ? 'hss--zero' : ''].filter(Boolean).join(' ')}
-    >
-      <div className="hss-hero">
-        <div className="hss-hero-left">
-          <span className="hss-count text-display-l">{currentStreak}</span>
+    <div className="ps ps--single">
+      <div className={['ps-streak', !hasStreak ? 'ps-streak--zero' : ''].filter(Boolean).join(' ')}>
+        <div className="ps-streak__head">
+          <span className="ps-streak__count">{currentStreak}</span>
+          {hasStreak && currentTier && (
+            <span className="ps-streak__tier text-label">{currentTier.name}</span>
+          )}
         </div>
-        {currentTier && <span className="hss-tier-pill text-label">{currentTier.name}</span>}
-      </div>
-      {nextTier && hasStreak && (
-        <div className="hss-progress-block">
-          <div className="hss-progress-track">
-            <div className="hss-progress-fill" style={{ width: `${progressPct}%` }} />
-          </div>
-          <p className="hss-next text-caption">{daysToNextTier} days to {nextTier.name}</p>
-        </div>
-      )}
-      <div className="hss-calendar">
-        <div className="hss-pips">
+        <div className="ps-streak__pips">
           {weekCells.map((cell) => (
             <span
               key={cell.key}
               className={[
-                'hss-pip',
-                hasStreak && cell.active ? 'hss-pip--active' : '',
-                cell.isToday ? 'hss-pip--today' : '',
+                'ps-streak__pip',
+                hasStreak && cell.active ? 'ps-streak__pip--active' : '',
+                cell.isToday ? 'ps-streak__pip--today' : '',
               ].filter(Boolean).join(' ')}
             />
           ))}
         </div>
+        {line2 && <p className="ps-streak__line2 text-caption">{line2}</p>}
       </div>
-      {hasRestDayShield && (
-        <div className="hss-shield text-label">Rest-day shield available</div>
-      )}
     </div>
   )
 }
@@ -159,8 +152,8 @@ export default function StreakUIDemo() {
       />
 
       <section>
-        <h2 className="text-title">Live HomeStreakStrip (needs auth + data)</h2>
-        <HomeStreakStrip />
+        <h2 className="text-title">Live ProgressStrip (needs auth + data)</h2>
+        <ProgressStrip />
       </section>
     </div>
   )

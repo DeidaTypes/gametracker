@@ -13,6 +13,7 @@ import { initAppLifecycle } from './services/appLifecycle'
 import { captureWebReferral } from './services/inviteService'
 import { migrateLibraryToSlimShape } from './services/libraryService'
 import { pruneSwipeHistory } from './services/swipeService'
+import { freeAbandonedLocalStorage } from './utils/storageQuota'
 
 // Capture ?ref= invite param from the URL before React mounts so it
 // survives the /login → /signup redirect chain.
@@ -66,6 +67,10 @@ initKeyboardInset()
 // swipeService.js for the fixes this backs. Runs on every app start; on an
 // already-slim/-capped device this is a cheap no-op (both functions
 // detect "nothing to do" and skip the write).
+// Drop abandoned caches and an already-migrated reviews blob first, so the
+// slim rewrite below has room to replace gameLibrary. WebKit will not
+// replace a large key while the old copy still occupies the quota.
+freeAbandonedLocalStorage()
 migrateLibraryToSlimShape()
 pruneSwipeHistory()
 

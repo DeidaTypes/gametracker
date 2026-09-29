@@ -4,25 +4,21 @@ import CenteredModal from './CenteredModal'
 import { HALF_STAR_BUCKETS, toHalfStarBucket } from '../utils/ratingBuckets'
 import './ProfileRatingsChart.css'
 
-/* ----------------------------------------------------------------
-   Ten half-star buckets (0.5–5.0). Each bucket holds the raw Supabase
-   review rows that belong to it, so tapping a bar can list its games.
-
-   RatingsHistogram.jsx already buckets by Math.round(r * 2) but is an
-   unused SVG with no tap-through, counts, or mean — this chart keeps
-   those and shares the same snap via toHalfStarBucket. Do not
-   Math.round(rating) here: that dumps 3.5 into the 4-star bar while
-   the header mean still shows the raw fraction.
-   ---------------------------------------------------------------- */
-const CHART_HEIGHT_PX = 72
+const CHART_HEIGHT_PX = 90
 const MIN_BAR_PX = 3
+const WHOLE_STAR_BUCKETS = [1, 2, 3, 4, 5]
 
-// A histogram over one or two ratings describes the sample, not the
-// person. Below this the section hides rather than drawing a chart that
-// is almost entirely empty.
-export const MIN_RATINGS_FOR_CHART = 3
+/** Kept for callers that gate the taste/rate card wrapper. */
+export const MIN_RATINGS_FOR_CHART = 1
 
-function buildBuckets(reviews) {
+function hasHalfStarRatings(reviews) {
+  return reviews.some((r) => {
+    const n = Number(r.rating)
+    return Number.isFinite(n) && n > 0 && n % 1 !== 0
+  })
+}
+
+function buildHalfStarBuckets(reviews) {
   const map = new Map(HALF_STAR_BUCKETS.map((b) => [b, []]))
   for (const r of reviews) {
     const snapped = toHalfStarBucket(r.rating)
@@ -32,8 +28,17 @@ function buildBuckets(reviews) {
   return HALF_STAR_BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
 }
 
-/** Mean of the real ratings, from the raw values rather than the
- *  snapped buckets so the readout matches the player card's Avg ★. */
+function buildWholeStarBuckets(reviews) {
+  const map = new Map(WHOLE_STAR_BUCKETS.map((b) => [b, []]))
+  for (const r of reviews) {
+    const n = Number(r.rating)
+    if (!Number.isFinite(n) || n <= 0) continue
+    const bucket = Math.min(5, Math.max(1, Math.round(n)))
+    map.get(bucket).push(r)
+  }
+  return WHOLE_STAR_BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
+}
+
 function meanRating(reviews) {
   const values = reviews
     .map((r) => Number(r.rating))
@@ -42,17 +47,20 @@ function meanRating(reviews) {
   return values.reduce((s, n) => s + n, 0) / values.length
 }
 
-function starLabel(rating) {
+function starLabel(rating, useHalfStars) {
+  if (useHalfStars) {
+    return rating === 1 ? '1 star' : `${rating} stars`
+  }
   return rating === 1 ? '1 star' : `${rating} stars`
 }
 
-function axisLabel(rating) {
-  return String(rating)
+function axisLabel(rating, useHalfStars) {
+  if (useHalfStars) return String(rating)
+  return `${rating}*`
 }
 
-/* ---- Filtered list inside the bucket tap-through modal ---- */
-function BucketModal({ bucket, onReviewTap, onClose }) {
-  const label = starLabel(bucket.rating)
+function BucketModal({ bucket, useHalfStars, onReviewTap, onClose }) {
+  const label = starLabel(bucket.rating, useHalfStars)
   return (
     <>
       <div className="prc-modal-header">
@@ -112,36 +120,25 @@ function BucketModal({ bucket, onReviewTap, onClose }) {
   )
 }
 
-/* ---- Main export ----
-   "How I Rate" — the rating-distribution histogram on Profile Home.
-   Ten half-star columns with the count above each bar, a baseline
-   under them, and the real average in the section header. Tapping a
-   bar with reviews behind it opens the list of those games.
-
-   Hides itself entirely below MIN_RATINGS_FOR_CHART so a brand-new
-   account never sees a chart that is one bar and four gaps. */
 export default function ProfileRatingsChart({ reviews, onReviewTap, embedded = false }) {
-  /* ---- ALL hooks first — React Rules of Hooks ---- */
   const [selectedBucket, setSelectedBucket] = useState(null)
 
-  /* ---- Derived data ---- */
   const rated = (reviews || []).filter((r) => Number(r.rating) > 0)
   const avg = meanRating(rated)
 
-  /* ---- Too little data to chart — after all hooks ---- */
-  if (rated.length < MIN_RATINGS_FOR_CHART) return null
+  if (rated.length === 0) return null
 
-  const buckets = buildBuckets(rated)
+  const useHalfStars = hasHalfStarRatings(rated)
+  const buckets = useHalfStars ? buildHalfStarBuckets(rated) : buildWholeStarBuckets(rated)
   const overallMax = Math.max(...buckets.map((b) => b.reviews.length), 1)
 
-  /* ---- Render ---- */
   return (
     <section
       className={`prc-section${embedded ? ' prc-section--embedded' : ''}`}
       aria-label="How I rate"
     >
       <div className="prc-header">
-        <h3 className="prc-section-title">How I Rate</h3>
+        <h3 className="prc-section-title">How I rate</h3>
         {avg != null && (
           <span className="prc-avg">
             avg {avg.toFixed(1)}
@@ -172,28 +169,27 @@ export default function ProfileRatingsChart({ reviews, onReviewTap, embedded = f
               className={`prc-bar-btn${isClickable ? ' prc-bar-btn--active' : ''}`}
               onClick={() => { if (isClickable) setSelectedBucket(bucket) }}
               disabled={!isClickable}
-              aria-label={`${starLabel(bucket.rating)}: ${count} review${count !== 1 ? 's' : ''}`}
+              aria-label={`${starLabel(bucket.rating, useHalfStars)}: ${count} review${count !== 1 ? 's' : ''}`}
             >
               <span className="prc-bar-count" aria-hidden="true">{count}</span>
               <span className="prc-bar-stack">
                 <span className="prc-bar-fill" style={{ height: `${heightPx}px` }} />
               </span>
               <span className="prc-bar-label" aria-hidden="true">
-                {axisLabel(bucket.rating)}
+                {axisLabel(bucket.rating, useHalfStars)}
               </span>
             </button>
           )
         })}
       </div>
 
-      {/* Tap-through modal — lists games in the tapped bucket */}
       <CenteredModal
         isOpen={selectedBucket !== null}
         onClose={() => setSelectedBucket(null)}
         onExited={() => setSelectedBucket(null)}
         ariaLabel={
           selectedBucket
-            ? `${starLabel(selectedBucket.rating)} reviews`
+            ? `${starLabel(selectedBucket.rating, useHalfStars)} reviews`
             : 'Rating reviews'
         }
         maxWidth={400}
@@ -201,6 +197,7 @@ export default function ProfileRatingsChart({ reviews, onReviewTap, embedded = f
         {selectedBucket && (
           <BucketModal
             bucket={selectedBucket}
+            useHalfStars={useHalfStars}
             onReviewTap={onReviewTap}
             onClose={() => setSelectedBucket(null)}
           />

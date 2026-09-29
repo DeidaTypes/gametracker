@@ -1,21 +1,25 @@
 /* =============================================
    HOME NOW PLAYING HERO
-   Sits directly under Home's compact header. Reuses the shared
-   ReviewCardShell box + the Sprint 5 "cover header" dominant-color tint
-   pattern so it reads as the same design language as the rest of Home.
+   Single rounded card with two flush internal zones:
+   upper (tinted cover + meta) and lower (action buttons).
    Namespace: nph-*
    ============================================= */
 
 .nph {
   --nph-cover-size: 96px;
-  padding: 0;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   gap: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
 }
 
-/* ---------------- Cover header (cover + title + stats) ---------------- */
+/* ---------------- Upper zone — tinted cover header ---------------- */
 
-.nph__cover-header {
+.nph__upper {
   --dominant-rgb: 40 50 80;
   display: grid;
   grid-template-columns: var(--nph-cover-size) 1fr;
@@ -23,28 +27,29 @@
   align-items: center;
   width: 100%;
   min-height: var(--nph-cover-size);
-  padding: var(--space-12);
+  margin: 0;
+  padding: var(--space-16);
   border: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   cursor: pointer;
   text-align: left;
   background: linear-gradient(
     90deg,
-    rgba(var(--dominant-rgb) / 0.4) 0%,
-    rgba(var(--dominant-rgb) / 0.4) 30%,
-    var(--color-bg-tertiary) 100%
+    rgba(var(--dominant-rgb) / 0.38) 0%,
+    rgba(var(--dominant-rgb) / 0.38) 28%,
+    var(--bg-surface-2) 100%
   );
   transition: background var(--transition-normal);
   -webkit-tap-highlight-color: transparent;
 }
 
-.nph__cover-thumb {
+.nph__cover {
   width: var(--nph-cover-size);
   height: var(--nph-cover-size);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   object-fit: cover;
   display: block;
   flex-shrink: 0;
-  box-shadow: var(--shadow-cover);
 }
 
 .nph__meta {
@@ -75,51 +80,51 @@
   white-space: nowrap;
 }
 
-.nph__stats {
+.nph__status {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
   min-height: var(--space-16);
 }
 
-.nph__stats-text {
+.nph__status-text {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nph__stats-skeleton {
+.nph__status-skeleton {
   width: 90px;
   height: 12px;
   border-radius: var(--radius-sm);
 }
 
-/* ---------------- Actions ---------------- */
+/* ---------------- Lower zone — action buttons ---------------- */
 
-.nph__actions {
+.nph__lower {
   display: flex;
-  gap: var(--space-8);
-  padding: 0 var(--space-12) var(--space-12);
+  gap: var(--space-12);
+  margin: 0;
+  padding: var(--space-12) var(--space-16) var(--space-16);
+  background: var(--bg-surface);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .nph__btn {
-  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  height: 40px;
+  height: var(--space-40);
   border-radius: var(--radius-md);
-  border: none;
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .nph__btn:disabled {
@@ -128,26 +133,26 @@
 }
 
 .nph__btn--primary {
-  /* Cobalt → green primary fill. --grad-primary is not a token;
-     --grad-cta is the named cobalt-to-green CTA gradient. */
-  background: var(--grad-cta);
+  flex: 3;
+  border: none;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-review) 100%);
   color: var(--color-on-accent);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .nph__btn--primary:not(:disabled):hover {
   opacity: 0.92;
 }
 
-.nph__btn--secondary {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+.nph__btn--ghost {
+  flex: 2;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--color-text-primary);
 }
 
-.nph__btn--secondary:not(:disabled):hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+.nph__btn--ghost:not(:disabled):hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-surface);
 }
 
 .nph__btn:not(:disabled):active {
@@ -155,10 +160,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nph__cover-header,
+  .nph__upper,
   .nph__btn {
     transition: none;
   }
+
   .nph__btn:not(:disabled):active {
     transform: none;
   }

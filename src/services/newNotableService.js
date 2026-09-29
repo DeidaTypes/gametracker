@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { coverUrl } from './igdbImage'
 
 /**
  * New & Notable — read layer.
@@ -27,17 +28,10 @@ import { supabase } from './supabase'
  * surface would show it.
  */
 
-const COVER_BASE = 'https://images.igdb.com/igdb/image/upload/t_cover_big'
-
 // Mirrors themedDropsService's short in-memory memo: Explore can mount more
 // than once per session, and the rail changes at most once a day.
 const CACHE_TTL_MS = 5 * 60 * 1000
 let railCache = null
-
-function coverUrlFromImageId(imageId) {
-  if (!imageId) return null
-  return `${COVER_BASE}/${imageId}.jpg`
-}
 
 /**
  * Small pill label reflecting WHY a game is here — never a score. Chosen
@@ -58,7 +52,7 @@ function shapeRailRow(row) {
   return {
     id: Number(row.igdb_game_id),
     title: row.title ?? null,
-    image: coverUrlFromImageId(row.cover_image_id),
+    image: coverUrl(row.cover_image_id),
     releaseDate,
     year: releaseDate ? releaseDate.getFullYear() : null,
     lane: row.lane ?? null,
@@ -73,7 +67,7 @@ function shapePageRow(row) {
   return {
     id: Number(row.igdb_game_id),
     title: row.name ?? null,
-    image: coverUrlFromImageId(row.cover_image_id),
+    image: coverUrl(row.cover_image_id),
     releaseDate,
     year: releaseDate ? releaseDate.getFullYear() : null,
     lane: row.lane ?? null,

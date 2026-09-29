@@ -140,7 +140,11 @@ export async function getListsForUser(userId) {
   return dedupeInFlight(`lists:forUser:${userId}`, async () => {
     const { data, error } = await supabase
       .from('lists')
-      .select('*, is_pinned, pinned_at, list_games(igdb_game_id, game_title, game_image, position, added_at)')
+      .select(
+        '*, is_pinned, pinned_at,' +
+          ' list_games(igdb_game_id, game_title, game_image, position, added_at),' +
+          ' users(username, display_name, avatar_url)'
+      )
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
     if (error) {
@@ -288,6 +292,42 @@ export async function getSaveCountsForLists(listIds) {
     counts.set(row.list_id, row.save_count || 0)
   }
   return counts
+}
+
+/**
+ * Lists a user has SAVED (bookmarked from Discover Collections) — distinct
+ * from lists they created (getListsForUser) and from is_pinned (profile
+ * pinning). Reads list_saves joined to the full list shape.
+ *
+ * list_saves has been owner-only under RLS since 20260803000000
+ * (`list_saves_select_own` — `auth.uid() = user_id`): a caller can only
+ * ever read their OWN save rows, full stop. So this call naturally
+ * returns `[]` for any `userId` other than the signed-in caller — no
+ * separate "is this visible to me" check is needed, RLS already enforces
+ * it. Callers viewing someone else's profile should still avoid calling
+ * this at all (skip a request guaranteed to come back empty) rather than
+ * relying on the empty result.
+ *
+ * @param {string} userId
+ * @returns {Promise<Array>} Full list shape (rowToList), newest-saved first.
+ */
+export async function getSavedListsForUser(userId) {
+  if (!userId) return []
+  const { data, error } = await supabase
+    .from('list_saves')
+    .select(
+      'created_at,' +
+        ' lists(*, list_games(igdb_game_id, game_title, game_image, position, added_at), users(username, display_name, avatar_url))'
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('[lists] getSavedListsForUser failed:', error.message)
+    return []
+  }
+  return (data || [])
+    .filter((row) => row.lists)
+    .map((row) => rowToList(row.lists))
 }
 
 /**

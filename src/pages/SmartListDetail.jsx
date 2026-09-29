@@ -88,7 +88,7 @@ function SmartListDetail() {
         ) : (
           <ul className="sld-list">
             {games.map((game, idx) => {
-              const imgUrl = getBestImageUrl(game, 200) || game.image
+              const imgUrl = getBestImageUrl(game, 48) || game.image
               return (
               <li
                 key={game.id}

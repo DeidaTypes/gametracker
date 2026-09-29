@@ -145,6 +145,15 @@ export function syncProfileFromSupabase(row) {
     updates.avatarUrl = row.avatar_url
     updates.avatar = { type: 'url', data: row.avatar_url }
   }
+  // Backfill favorites when the local mirror is empty but Supabase has
+  // saved picks (e.g. onboarding wrote server-side before localStorage
+  // was cleared or never mirrored).
+  if (Array.isArray(row.favorite_games) && row.favorite_games.length > 0) {
+    const localFavs = profile.favoriteGames || []
+    if (localFavs.length === 0) {
+      updates.favoriteGames = row.favorite_games
+    }
+  }
   if (Object.keys(updates).length === 0) return profile
   return updateProfile(updates)
 }

@@ -1,5 +1,7 @@
 // User Preferences Service - stores user interests, genres, and search history
 
+import { setLocalStorageItem } from '../utils/storageQuota'
+
 const PREFERENCES_KEY = 'userPreferences'
 const SEARCH_HISTORY_KEY = 'userSearchHistory'
 const VIEWED_GAMES_KEY = 'viewedGames'
@@ -31,7 +33,7 @@ export function getPreferences() {
 
 // Save user preferences
 export function savePreferences(preferences) {
-  localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences))
+  setLocalStorageItem(PREFERENCES_KEY, JSON.stringify(preferences))
 }
 
 /**
@@ -78,7 +80,7 @@ export function addToSearchHistory(searchTerm) {
   // Remove duplicates and add to front
   const filtered = history.filter(term => term.toLowerCase() !== searchTerm.toLowerCase())
   const updated = [searchTerm, ...filtered].slice(0, 20) // Keep last 20 searches
-  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated))
+  setLocalStorageItem(SEARCH_HISTORY_KEY, JSON.stringify(updated))
   
   // Also update preferences
   const prefs = getPreferences() || initializePreferences()
@@ -108,7 +110,7 @@ export function addViewedGame(gameId, gameTitle, gameImage = null) {
     },
     ...filtered,
   ].slice(0, 50)
-  localStorage.setItem(VIEWED_GAMES_KEY, JSON.stringify(updated))
+  setLocalStorageItem(VIEWED_GAMES_KEY, JSON.stringify(updated))
   
   // Also update preferences
   const prefs = getPreferences() || initializePreferences()

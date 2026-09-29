@@ -17,7 +17,7 @@ import { createList, addGameToList } from '../services/listService'
 import { logSession } from '../services/sessionService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
-import { hapticImpact } from '../utils/haptics'
+import { add } from '../services/moments'
 import './HomeFAB.css'
 
 // ── Radial item positions (from FAB center) ────────────────────────────────
@@ -156,7 +156,7 @@ function HomeFAB() {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        hapticImpact('Medium')
+        add()
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {
         showToast('Could not log session — try again', 'error', 5000, {

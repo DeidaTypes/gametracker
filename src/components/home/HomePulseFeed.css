@@ -62,8 +62,23 @@
 .pulse-feed__list {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 0;
   padding: 0 var(--container-padding);
+}
+
+/* 10px gap between a compact row and a card (either direction). */
+.pulse-feed__item--full + .pulse-feed__item,
+.pulse-feed__item + .pulse-feed__item--full {
+  margin-top: 10px;
+}
+
+/* Hairline between consecutive compact rows, inset 14px. */
+.pulse-feed__item--compact + .pulse-feed__item--compact::before {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--color-border);
+  margin: 0 14px;
 }
 
 /* ── Find people nudge (secondary CTA) ── */
@@ -113,24 +128,31 @@
   color: var(--color-text-tertiary);
 }
 
-/* ── Skeleton ── */
+/* ── Skeleton ──
+   Three poster-shaped FULL-card skeletons (task 6) — a cover block +
+   two text bars, echoing HomeReviewCard's own cover + title + body
+   shape, instead of a generic avatar-and-lines placeholder. */
 .pulse-feed__skeleton {
   display: flex;
   flex-direction: column;
+  gap: var(--section-gap);
+  padding: 0 var(--container-padding);
 }
 
-.pulse-feed__skeleton-card {
+.pulse-feed__skeleton-card--poster {
   display: flex;
   gap: var(--space-12);
-  padding: var(--space-12) var(--container-padding);
-  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
+  padding: var(--space-12);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
-.pulse-feed__skeleton-avatar {
+.pulse-feed__skeleton-cover {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
+  width: 44px;
+  aspect-ratio: var(--cover-ratio-thumb);
+  border-radius: var(--cover-radius);
 }
 
 .pulse-feed__skeleton-lines {

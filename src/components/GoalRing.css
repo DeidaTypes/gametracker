@@ -20,7 +20,7 @@
 
 /* SVG track ring */
 .goal-ring__track {
-  stroke: var(--goal-track);
+  stroke: var(--border-subtle);
 }
 
 /* Progress arc — emerald goal ring */
@@ -46,12 +46,12 @@
   stroke: var(--accent-review);
 }
 
-/* ── Compact variant (TodayCard, 52×52) ─────── */
+/* ── Compact variant (Profile challenge row, 44×44) ─────── */
 
 .goal-ring--compact {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
 }
 
 .goal-ring__label-compact {
@@ -66,16 +66,9 @@
 
 .goal-ring__count-compact {
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.goal-ring__target-compact {
-  font-family: var(--font-body);
   font-size: 10px;
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
 }
 
 /* ── Full variant (Profile, 100×100) ─────────── */
@@ -150,8 +143,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   border: 1.5px dashed var(--border-strong);
   font-size: 18px;

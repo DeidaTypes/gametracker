@@ -12,7 +12,7 @@ import { supabase } from './supabase'
 import { recomputeBadges } from './badgeService'
 import { showToast } from '../components/Toast'
 import { STATUS_META } from '../components/StatusChip'
-import { isQuotaExceededError } from '../utils/storageQuota'
+import { claimStorageFullAnnouncement, setLocalStorageItem } from '../utils/storageQuota'
 
 // Map tracker status → Pulse activity_event type. 'want' maps to
 // 'backlogged' — Home-hub sprint: this is surfaced on the viewer's own
@@ -149,8 +149,7 @@ function pruneBacklogClears() {
     const clears = JSON.parse(stored)
     if (!Array.isArray(clears) || clears.length <= MAX_BACKLOG_CLEARS) return false
     const trimmed = clears.slice(clears.length - MAX_BACKLOG_CLEARS)
-    localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(trimmed))
-    return true
+    return setLocalStorageItem(BACKLOG_CLEARS_KEY, JSON.stringify(trimmed)).ok
   } catch {
     return false
   }
@@ -329,7 +328,7 @@ export function recordBacklogClear(gameId) {
     clears.length > MAX_BACKLOG_CLEARS
       ? clears.slice(clears.length - MAX_BACKLOG_CLEARS)
       : clears
-  localStorage.setItem(BACKLOG_CLEARS_KEY, JSON.stringify(capped))
+  setLocalStorageItem(BACKLOG_CLEARS_KEY, JSON.stringify(capped))
 }
 
 /**
@@ -387,16 +386,25 @@ export function getLibrary() {
   return null
 }
 
+// Set by the most recent tryWriteLibrary(). saveLibrary uses it so a
+// non-quota failure is not announced as "out of storage".
+let lastWriteWasQuota = false
+
 function tryWriteLibrary(library) {
+  let raw
   try {
-    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(library))
-    return true
+    raw = JSON.stringify(library)
   } catch (err) {
-    if (!isQuotaExceededError(err)) {
-      console.error('[library] saveLibrary failed (non-quota):', err)
-    }
+    console.error('[library] saveLibrary failed (non-quota):', err)
+    lastWriteWasQuota = false
     return false
   }
+  const { ok, quota } = setLocalStorageItem(LIBRARY_STORAGE_KEY, raw)
+  lastWriteWasQuota = !ok && quota
+  if (!ok && !quota) {
+    console.error('[library] saveLibrary failed (non-quota)')
+  }
+  return ok
 }
 
 /**
@@ -448,14 +456,22 @@ export function saveLibrary(library) {
     return true
   }
 
+  if (!lastWriteWasQuota) {
+    lastLibraryError = { code: 'unknown', message: 'Could not save your library.' }
+    console.error('[library] saveLibrary failed after prune-and-retry (non-quota)')
+    return false
+  }
+
   const message =
     "Your device is out of storage for GameTracker. Free up space (Settings → General → iPhone Storage) and try again."
   lastLibraryError = { code: 'quota', message }
   console.error('[library] saveLibrary failed after prune-and-retry: quota exceeded')
-  try {
-    showToast(message, 'error', 4000)
-  } catch {
-    // Toast host not mounted yet — non-fatal.
+  if (claimStorageFullAnnouncement()) {
+    try {
+      showToast(message, 'error', 4000)
+    } catch {
+      // Toast host not mounted yet — non-fatal.
+    }
   }
   return false
 }
@@ -835,7 +851,7 @@ function getAllProgress() {
 }
 
 function saveAllProgress(progress) {
-  localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress))
+  setLocalStorageItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress))
 }
 
 /**

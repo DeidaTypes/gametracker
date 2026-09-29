@@ -360,6 +360,12 @@ body[data-larger-text='true'] {
   --genre-arcade:     #DA6CDA;  /* magenta / orchid */
   --genre-default:    #7C89A8;  /* neutral slate — unchanged, never orange */
 
+  /* Rank-order taste bar (Profile Home — top 4 genres by weight) */
+  --genre-1: var(--accent);
+  --genre-2: #22c1a3; /* mint */
+  --genre-3: #a855f7; /* violet */
+  --genre-4: #e879a6; /* rose */
+
   /* Review / Journal button accent colors — vivid fills, bright text */
   --accent-review: #0a9e6a;
   --accent-review-text: #b6fde0;

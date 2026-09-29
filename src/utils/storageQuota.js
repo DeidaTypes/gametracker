@@ -69,3 +69,124 @@ export function getLocalStorageSizes() {
 export function getTotalLocalStorageBytes() {
   return getLocalStorageSizes().reduce((sum, row) => sum + row.bytes, 0)
 }
+
+// Caches and abandoned blobs. Safe to drop under pressure: the next read
+// refetches them. Never put account data here (gameLibrary, profile,
+// settings, swipe history).
+const DISPOSABLE_LOCAL_STORAGE_KEYS = [
+  'search_cache_v1', // abandoned by searchService (now search_cache_v3)
+  'search_cache_v2',
+  'search_cache_v3',
+  'gameColorCache_v1',
+  'gt:ttb:v1',
+  'gt:ttb:v2',
+  'gt:igdb-genres:v1',
+  'gt:igdb-themes:v1',
+  'search:browse-categories',
+]
+
+// reviewService copies this blob to Supabase once, then leaves it in place.
+// Once the marker exists the copy is redundant and is often the thing
+// still filling a WKWebView quota.
+const LEGACY_REVIEWS_KEY = 'gameReviews'
+const LEGACY_REVIEWS_MIGRATED_KEY = 'gameReviews_migratedToSupabase'
+
+/**
+ * Drop abandoned keys, and the legacy reviews blob once it has already
+ * been migrated. Called on startup so a full disk is cleared before the
+ * first user action, not only after a write fails.
+ */
+export function freeAbandonedLocalStorage() {
+  try {
+    localStorage.removeItem('search_cache_v1')
+    localStorage.removeItem('search_cache_v2')
+    localStorage.removeItem('gt:ttb:v1')
+    if (localStorage.getItem(LEGACY_REVIEWS_MIGRATED_KEY)) {
+      localStorage.removeItem(LEGACY_REVIEWS_KEY)
+    }
+  } catch {
+    // storage unavailable — nothing to free
+  }
+}
+
+function evictDisposableLocalStorage() {
+  try {
+    for (const key of DISPOSABLE_LOCAL_STORAGE_KEYS) {
+      localStorage.removeItem(key)
+    }
+    if (localStorage.getItem(LEGACY_REVIEWS_MIGRATED_KEY)) {
+      localStorage.removeItem(LEGACY_REVIEWS_KEY)
+    }
+  } catch {
+    // best-effort
+  }
+}
+
+// One announcement per page load. A full disk used to toast on every status
+// tap, swipe, and save. A later small write succeeding must not re-arm it —
+// those succeed even while gameLibrary itself still cannot be replaced.
+let storageFullAnnounced = false
+
+/** True the first time a quota failure should be shown this page load. */
+export function claimStorageFullAnnouncement() {
+  if (storageFullAnnounced) return false
+  storageFullAnnounced = true
+  return true
+}
+
+/**
+ * localStorage.setItem that survives a WKWebView quota.
+ *
+ * WebKit counts the existing value and the replacement at the same time, so
+ * a shrinking rewrite of a large key (the slim-library migration, a pruned
+ * swipe log) throws QuotaExceededError even when the new value would fit on
+ * its own. Recovery is: drop caches, then remove the key and write it back.
+ * If the new write still fails, the previous value is restored.
+ *
+ * @returns {{ ok: boolean, quota: boolean }}
+ *   ok    — the value is now stored
+ *   quota — the failure (or the recovery) involved a quota error
+ */
+export function setLocalStorageItem(key, value) {
+  const raw = String(value)
+  try {
+    localStorage.setItem(key, raw)
+    return { ok: true, quota: false }
+  } catch (err) {
+    if (!isQuotaExceededError(err)) return { ok: false, quota: false }
+  }
+
+  evictDisposableLocalStorage()
+  try {
+    localStorage.setItem(key, raw)
+    return { ok: true, quota: true }
+  } catch (err) {
+    if (!isQuotaExceededError(err)) return { ok: false, quota: false }
+  }
+
+  let previous
+  try {
+    previous = localStorage.getItem(key)
+  } catch {
+    previous = null
+  }
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // keep going — the set below reports the real outcome
+  }
+  try {
+    localStorage.setItem(key, raw)
+    return { ok: true, quota: true }
+  } catch (err) {
+    if (previous != null) {
+      try {
+        localStorage.setItem(key, previous)
+      } catch {
+        // Both the new value and the backup failed. The caller still holds
+        // the new value in memory and can retry with a smaller payload.
+      }
+    }
+    return { ok: false, quota: isQuotaExceededError(err) }
+  }
+}

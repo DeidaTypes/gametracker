@@ -29,7 +29,7 @@ import './CleanGameTile.css'
 export default function CleanGameTile({ game, tag = null }) {
   const navigate = useNavigate()
 
-  const image = getBestImageUrl(game, 400) || game.image || COVER_FALLBACK
+  const image = getBestImageUrl(game, 120) || game.image || COVER_FALLBACK
   const title = game.title || game.name
 
   return (
@@ -44,10 +44,17 @@ export default function CleanGameTile({ game, tag = null }) {
             src={image}
             alt=""
             loading="lazy"
+            decoding="async"
             onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}
           />
         </SharedCover>
-        {tag && <span className="clean-tile__tag">{tag}</span>}
+        {tag && (
+          <span
+            className={`clean-tile__tag clean-tile__tag--${tag === 'Acclaimed' ? 'acclaimed' : 'popular'}`}
+          >
+            {tag}
+          </span>
+        )}
       </div>
       <span className="clean-tile__title">{title}</span>
     </Pressable>

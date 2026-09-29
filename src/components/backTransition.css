@@ -54,9 +54,8 @@
   width: 100%;
 }
 
-/* The page being popped, whichever element is carrying it — `.swipe-back`
-   during a gesture, `.route-layer--exiting` after a button back. Both paths
-   get the same leading-edge shadow so the outgoing screen reads as a layer
+/* The outgoing `.route-layer` while it is sliding off (gesture or button
+   back). Carries the leading-edge shadow so the screen reads as a layer
    lifting off the one behind it.
 
    will-change is scoped to the transition for the same reason as
@@ -65,6 +64,32 @@
 .back-slide-top {
   will-change: transform;
   box-shadow: var(--shadow-page-edge);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* ── Compositor hygiene during slide ──
+   Translating a subtree that contains backdrop-filter, filter: blur(), or
+   scattered will-change hints forces WebKit to rasterise those layers on every
+   frame. At the longer settle that reads as motion-blur trails — glass headers
+   and hero blurs smearing behind the page. Same trade as keyboard.css
+   (.kb-no-blur-while-animating) and CenteredModal.css (overlay blur dropped
+   during keyboard lift). Scoped to descendants only; the sliding roots above
+   keep their own will-change for the travel tween. */
+/* Outgoing page only — not the snapshot clone (.back-reveal), which must
+   still match the live destination when the cover is removed or headers pop. */
+.back-slide-top * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  will-change: auto !important;
+}
+
+/* Slide travel is on `.route-layer`; neutralise Framer's identity transform on
+   the inner motion.div so the page is one composited texture, not two layers
+   that can desync during the settle. */
+.route-layer.back-slide-top > .page-transition {
+  transform: none !important;
+  will-change: auto !important;
 }
 
 /* Belt-and-braces for the OS-level query. Both entry points gate on

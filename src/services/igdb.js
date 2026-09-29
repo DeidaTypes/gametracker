@@ -6,6 +6,7 @@
 import { normalizeGame, normalizeGames } from './normalizeGame'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 import { buildWhyLine } from './swipeService'
+import { coverUrl, IGDB_COVER_TOKENS, rewriteCoverToken } from './igdbImage'
 
 // IGDB documents a soft cap of ~4 requests/second per Twitch app token with
 // bursts of up to 8 in-flight. We sit well under that with the per-batch
@@ -156,14 +157,19 @@ const inflightRequests = new Map()
 // Exported (in addition to the internal callers below) so
 // rateFromMemoryService.js can build cover URLs from raw IGDB
 // `cover.image_id` fields without duplicating IGDB's URL scheme.
-export function coverUrlFromImageId(imageId) {
-  if (!imageId) return null
-  return `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
+export function coverUrlFromImageId(imageId, size = 'cover_big') {
+  return coverUrl(imageId, size)
 }
 
 function extractCoverUrl(game) {
   if (game.cover?.image_id) return coverUrlFromImageId(game.cover.image_id)
-  if (game.cover?.url) return `https:${game.cover.url.replace('t_thumb', 't_cover_big')}`
+  if (game.cover?.url) {
+    const url = `https:${game.cover.url}`
+    for (const known of IGDB_COVER_TOKENS) {
+      if (url.includes(known)) return rewriteCoverToken(url, 'cover_big')
+    }
+    return url
+  }
   return null
 }
 
@@ -1428,14 +1434,50 @@ function formatGameDetails(game) {
   return normalized
 }
 
+// Below this many real, cover-having games resolved from a game's own
+// `similar_games` relation, the row reads as broken (a 1-2-card "More Like
+// This" next to the usual 8) rather than "this game genuinely has few IGDB
+// similar_games entries" — sparse/empty similar_games is common in real
+// IGDB data, so this is the line where we fall back to the genre/theme
+// query below instead of showing a thin row.
+const SIMILAR_GAMES_MIN_FROM_RELATION = 4
+
 /**
  * Fetch up to 8 similar games for the SimilarGamesRow component.
- * Filters by shared genres (and themes if available), rating > 70 (IGDB scale),
- * and cover presence. Falls back gracefully to an empty array on any error.
+ *
+ * Primary source: IGDB's OWN `similar_games` relation — the ids getGameById
+ * already fetched for this game (passed in as `similarGameIds`, computed
+ * once by getGameById and never re-fetched here). This is IGDB's own
+ * curated "similar to this" judgment, not an approximation built from
+ * shared genres/themes.
+ *
+ * Fallback (unchanged from before): when `similarGameIds` is empty, or
+ * resolves to fewer than SIMILAR_GAMES_MIN_FROM_RELATION real, cover-having
+ * games, falls back to the genre/theme query — filters by shared genres
+ * (and themes if available), rating > 70 (IGDB scale), and cover presence.
+ * Falls back gracefully to an empty array on any error.
  */
-export async function fetchSimilarGamesForRow(gameId, genreIds = [], themeIds = []) {
+export async function fetchSimilarGamesForRow(gameId, genreIds = [], themeIds = [], similarGameIds = []) {
   if (!gameId) return []
 
+  // Primary: resolve IGDB's own similar_games ids into displayable cards.
+  if (similarGameIds.length > 0) {
+    try {
+      const resolved = await getGamesByIds(similarGameIds)
+      const fromRelation = resolved
+        .filter((g) => g.image)
+        .slice(0, 8)
+        .map((g) => ({ id: g.id, title: g.title, image: g.image }))
+      if (fromRelation.length >= SIMILAR_GAMES_MIN_FROM_RELATION) {
+        return fromRelation
+      }
+    } catch (err) {
+      console.error('[fetchSimilarGamesForRow] similar_games resolution failed:', err)
+    }
+  }
+
+  // Fallback: similar_games was empty/sparse/failed — build the row from
+  // shared genres/themes instead, exactly as before.
   const numericGameId = Number(gameId)
   const hasGenres = genreIds.length > 0
   const hasThemes = themeIds.length > 0
@@ -1468,9 +1510,7 @@ limit 8;`
         return (fallbackGames || []).map(g => ({
           id: g.id,
           title: g.name,
-          image: g.cover?.image_id
-            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
-            : null,
+          image: coverUrlFromImageId(g.cover?.image_id),
         })).filter(g => g.image)
       }
       return []
@@ -1479,9 +1519,7 @@ limit 8;`
     return games.map(g => ({
       id: g.id,
       title: g.name,
-      image: g.cover?.image_id
-        ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg`
-        : null,
+      image: coverUrlFromImageId(g.cover?.image_id),
     })).filter(g => g.image)
   } catch (err) {
     console.error('[fetchSimilarGamesForRow] error:', err)
@@ -1937,6 +1975,20 @@ const BROAD_QUALITY_WHERE =
   `total_rating != null & total_rating_count != null & total_rating >= ${BROAD_MIN_RATING}` +
   ` & total_rating_count >= ${BROAD_MIN_RATING_COUNT} & cover != null & version_parent = null`
 
+// Every genre is always sorted `total_rating_count desc`, so offset 0 is
+// always the SAME highest-rating-count games in that genre — that was the
+// "same games every fresh session" bug (cursors start at {} every session,
+// so every genre's first page was always offset 0). This caps how deep a
+// genre's *first* page of a session is allowed to start from — deep enough
+// for real variety across sessions, shallow enough that even genres with
+// thinner quality-gated catalogs (Pinball, Quiz/Trivia, Music, ...) still
+// reliably have SOME rows left past the offset.
+const BROAD_INITIAL_OFFSET_MAX = 30
+
+function randomInitialOffset() {
+  return Math.floor(Math.random() * (BROAD_INITIAL_OFFSET_MAX + 1))
+}
+
 function buildBroadGenreBlock(genre, offset, perGenreLimit) {
   const body =
     `${BROAD_FIELDS}; ` +
@@ -1955,6 +2007,7 @@ function formatBroadGame(g) {
     id: g.id,
     title: g.name,
     image: coverUrlFromImageId(g.cover.image_id),
+    coverImageId: g.cover.image_id,
     year,
     genres,
     genre: genres.join(', ') || null,
@@ -2007,6 +2060,16 @@ function applyTasteOrderBias(cards, genreWeights) {
  * the next page as the user nears the end of the current batch means the
  * deck never dead-ends.
  *
+ * First-page randomization: every genre is sorted `total_rating_count
+ * desc`, so an offset-0 first page is always the same highest-count games
+ * in that genre. A genre with no entry yet in the `cursors` map (a fresh
+ * session — every session starts with `cursors: {}`) gets a random offset
+ * (0–BROAD_INITIAL_OFFSET_MAX) for its first page instead, so repeated
+ * fresh sessions land on genuinely different games, not just a reshuffled
+ * order of the same set. A genre that already has a cursor entry (a
+ * mid-session background refill) always continues sequentially from there
+ * — only the first page per genre per session is randomized.
+ *
  * @param {Object}                 opts
  * @param {Set<string>}            [opts.excludeIds]    already-tracked/seen IGDB ids
  * @param {Record<string,number>}  [opts.cursors]       per-genre-id offset from a previous call
@@ -2024,9 +2087,18 @@ export async function fetchBroadDiscoveryBatch({
   const nextCursors = { ...cursors }
   const genres = BROAD_DISCOVERY_GENRES
 
-  const blocks = genres.map((genre) =>
-    buildBroadGenreBlock(genre, nextCursors[genre.id] || 0, perGenreLimit)
-  )
+  // A genre with NO cursor entry yet means we've never paged it this
+  // session — that's the fresh-session case, so its first page starts at a
+  // random offset instead of always 0 (see BROAD_INITIAL_OFFSET_MAX above).
+  // A genre that already HAS a cursor entry (a background refill continuing
+  // a session already in progress) keeps deterministic sequential paging
+  // from wherever it left off — refills must never re-randomize mid-session,
+  // or they could re-show/skip cards within the same deck.
+  const blocks = genres.map((genre) => {
+    const hasCursor = Object.prototype.hasOwnProperty.call(cursors, genre.id)
+    const offset = hasCursor ? nextCursors[genre.id] : randomInitialOffset()
+    return buildBroadGenreBlock(genre, offset, perGenreLimit)
+  })
 
   // /multiquery caps at 10 sub-queries per request — chunk so every genre
   // still gets queried this batch, just across a couple of HTTP calls.

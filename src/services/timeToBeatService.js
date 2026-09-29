@@ -140,6 +140,32 @@ export async function getTimeToBeat(igdbGameId) {
 }
 
 /**
+ * Read cached time-to-beat data only — memory + localStorage, no network.
+ * Returns `undefined` when nothing is cached yet (caller should omit the
+ * segment). Returns `null` when a prior fetch confirmed IGDB has no entry.
+ *
+ * @param {number|string} igdbGameId
+ * @returns {{ hastilySeconds:number|null, normallySeconds:number|null, completelySeconds:number|null, count:number }|null|undefined}
+ */
+export function getCachedTimeToBeatSync(igdbGameId) {
+  const id = Number(igdbGameId)
+  if (!id) return undefined
+
+  const memEntry = memCache.get(id)
+  if (memEntry && Date.now() < memEntry.expiresAt) {
+    return memEntry.data
+  }
+
+  const lsData = lsGet(id)
+  if (lsData !== undefined) {
+    memCache.set(id, { data: lsData, expiresAt: Date.now() + MEM_TTL_MS })
+    return lsData
+  }
+
+  return undefined
+}
+
+/**
  * Evict a single game from both caches (e.g. after a forced refresh).
  * @param {number|string} igdbGameId
  */

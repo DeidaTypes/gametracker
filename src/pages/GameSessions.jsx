@@ -11,6 +11,7 @@ import {
 import { getTotalHoursForGame } from '../services/hoursService'
 import { getMoodMeta } from '../services/journalService'
 import { hapticImpact } from '../utils/haptics'
+import { add } from '../services/moments'
 import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import LogSessionModal from '../components/LogSessionModal'
@@ -154,7 +155,7 @@ export default function GameSessions() {
       gameImage: targetGame.image,
     }).then((result) => {
       if (result) {
-        hapticImpact('Medium')
+        add()
         refreshSessions()
         showToast(`Logged ${hours}h of ${targetGame.title}`, 'success')
       } else {

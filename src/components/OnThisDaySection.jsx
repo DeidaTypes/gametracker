@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getOnThisDayEntries, getMoodMeta } from '../services/journalService'
+import { getSWR, peekSWR } from '../services/swrCache'
 import './OnThisDaySection.css'
+
+// This section lives inside Profile's Diary tab, which — correctly, see
+// Profile.jsx's tab AnimatePresence — unmounts and remounts each time the
+// user navigates away from and back to the Diary tab. Routing the query
+// through the shared swrCache means a Diary -> Home -> Diary round trip
+// serves the cached rows instantly instead of re-hitting Supabase. "On
+// this day" content only changes across real calendar days or when the
+// user adds a new entry (handled below via an explicit forced refresh),
+// so a generous TTL is safe.
+const ON_THIS_DAY_TTL_MS = 5 * 60 * 1000
 
 /**
  * OnThisDaySection — "On this day" resurface banner for the Diary tab.
@@ -14,26 +25,41 @@ import './OnThisDaySection.css'
  */
 function OnThisDaySection({ userId }) {
   const navigate = useNavigate()
-  const [entries, setEntries] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = userId ? `on-this-day:${userId}` : null
+  // Seed synchronously from cache when available so a Diary tab remount
+  // (leaving and returning) paints the real list on frame one instead of
+  // flashing the loading (null) state again.
+  const [entries, setEntries] = useState(() => (cacheKey ? peekSWR(cacheKey) || [] : []))
+  const [loading, setLoading] = useState(() => !cacheKey || peekSWR(cacheKey) === undefined)
 
   useEffect(() => {
     if (!userId) {
       setLoading(false)
       return
     }
+    const key = `on-this-day:${userId}`
     let cancelled = false
-    getOnThisDayEntries(userId)
+    if (peekSWR(key) === undefined) setLoading(true)
+    getSWR(key, () => getOnThisDayEntries(userId), { ttlMs: ON_THIS_DAY_TTL_MS })
       .then((rows) => { if (!cancelled) { setEntries(rows); setLoading(false) } })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [userId])
 
   // Refresh when a new entry is added (user just wrote and saved one).
+  // Forces past the cache (this is a real change the TTL doesn't know
+  // about yet) and re-seeds it so the next tab remount sees the new entry
+  // too, instead of serving the now-stale cached rows for the rest of the
+  // TTL window.
   useEffect(() => {
     const refresh = () => {
       if (!userId) return
-      getOnThisDayEntries(userId).then(setEntries).catch(() => {})
+      getSWR(`on-this-day:${userId}`, () => getOnThisDayEntries(userId), {
+        ttlMs: ON_THIS_DAY_TTL_MS,
+        force: true,
+      })
+        .then(setEntries)
+        .catch(() => {})
     }
     window.addEventListener('journalEntryAdded', refresh)
     return () => window.removeEventListener('journalEntryAdded', refresh)

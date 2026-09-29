@@ -45,6 +45,7 @@ function GameCard({ game, titleOverlay = true }) {
             alt={game.title}
             className="game-card-image"
             loading="lazy"
+            decoding="async"
             onError={(e) => {
               if (e.target.src !== game.image && game.image) {
                 e.target.src = game.image

@@ -25,7 +25,6 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px var(--page-padding);
-  /* Sit below the safe-area inset with 12px of breathing room. */
   padding-top: calc(var(--safe-area-inset-top) + 12px);
   min-height: 56px;
 }
@@ -431,13 +430,17 @@
    ============================================================ */
 
 .profile-tabs {
+  position: sticky;
+  top: calc(var(--safe-area-inset-top) + 40px);
+  z-index: 5;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: var(--spacing-lg);
   padding: 0 var(--page-padding);
-  margin-top: var(--spacing-md);
-  border-bottom: 1px solid var(--border-subtle);
+  margin-top: var(--space-16);
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Below ~340px four centered tabs would collide; let them scroll rather
@@ -462,7 +465,7 @@
   font-size: 16px;
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
-  color: var(--text-secondary);
+  color: var(--color-text-muted);
   padding: 12px 4px 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -493,7 +496,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile-header-strip__icon-btn,
   .profile-ig-hero__avatar,
   .profile-ig-hero__bio-toggle,
   .profile-ig-hero__bio-cta,
@@ -514,6 +516,20 @@
 
 .profile-tab-content {
   padding: var(--spacing-lg) 0;
+  /* AnimatePresence mode="wait" on the pane inside (Profile.jsx) fully
+     unmounts the outgoing tab before mounting the incoming one, so for
+     one frame this container's only child is whichever pane is briefly
+     present — with real height differences between tabs (Reviews, with
+     a list of cards, is tallest; Diary is often shortest), that reads as
+     a visible jump/collapse even though the swap itself is only ~180ms.
+     A min-height sized to a modest, populated Diary/Lists pane (a couple
+     of rows of content) doesn't fully eliminate the delta against a long
+     Reviews feed, but it absorbs the common case and softens the worst
+     case, without the cost/complexity of measuring and animating exact
+     container height across the swap. Sized in vh, not a --space-*
+     token, since this is a viewport-relative content-area minimum, not
+     spacing. */
+  min-height: 45vh;
 }
 
 /* ── Empty state shared by Reviews + Lists ─────────────────── */
@@ -577,10 +593,10 @@
    flat layout since their internal spacing already bleeds to the
    page edge. */
 .profile-home__section--card {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px;
 }
 
 .profile-home__section-header {
@@ -591,12 +607,11 @@
 }
 
 .profile-home__section-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
   line-height: 1.2;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -643,12 +658,10 @@
   border-color: var(--accent);
 }
 
-/* ── Favorite Games grid (3-up bento cell) ───────────────────── */
+/* ── Favorite Games grid (4-up row) ──────────────────────────── */
 
 .profile-favorites-row {
   display: grid;
-  /* Four slots: up to four covers, or covers plus the add-slot. Matches
-     FavoritesPickerSheet's maxItems. */
   grid-template-columns: repeat(4, 1fr);
   gap: var(--spacing-xs);
 }
@@ -780,9 +793,9 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 
 .profile-favorite-card__name {
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-primary);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -805,7 +818,7 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 /* Why-line — optional one-liner below the developer credit */
 .profile-favorite-card__why {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   color: var(--accent);
   line-height: 1.3;
@@ -1227,16 +1240,302 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
   padding: 0 var(--page-padding);
 }
 
-/* No gap — the rows are hairline-separated (see the profilerow variant
-   in ReviewCard.css) and carry their own vertical padding. */
 .profile-reviews__list {
   display: flex;
   flex-direction: column;
 }
 
+.profile-reviews__list > .profile-review-row + .profile-review-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
 .profile-reviews__sentinel {
   height: 1px;
-  margin-top: var(--spacing-md);
+  margin-top: var(--space-16);
+}
+
+/* ── V4-06 review rows (full + compact) ─────────────────────── */
+
+.profile-review-row {
+  display: flex;
+  gap: var(--space-12);
+  padding: var(--space-12) 0;
+  align-items: flex-start;
+}
+
+.profile-review-row--compact {
+  align-items: center;
+  min-height: 0;
+  max-height: 56px;
+  padding: var(--space-8) 0;
+}
+
+.profile-review-row__cover-btn,
+.profile-review-row__title-btn,
+.profile-review-row__expand,
+.profile-review-row__kebab {
+  min-height: unset;
+  min-width: unset;
+}
+
+.profile-review-row__cover-btn {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.profile-review-row__cover {
+  display: block;
+  object-fit: cover;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+}
+
+.profile-review-row__cover--full {
+  width: 52px;
+}
+
+.profile-review-row__cover--compact {
+  width: 34px;
+}
+
+.profile-review-row__title-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
+}
+
+.profile-review-row__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-review-row__title--full {
+  font-size: var(--font-size-body);
+}
+
+.profile-review-row__title--compact {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.profile-review-row__full-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.profile-review-row__compact-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.profile-review-row__rating-row,
+.profile-review-row__stars--compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.profile-review-row__tier {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-chip);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--accent-review-text);
+  background: color-mix(in srgb, var(--accent-review) 18%, transparent);
+}
+
+.profile-review-row__quote {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.profile-review-row__quote p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-text-primary) 80%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.profile-review-row__quote p::before {
+  content: '\201C';
+}
+
+.profile-review-row__quote p::after {
+  content: '\201D';
+}
+
+.profile-review-row__quote--expanded p {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.profile-review-row__expand {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.profile-review-row__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+}
+
+.profile-review-row__footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.profile-review-row__reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Reset global mobile button min-size (index.css forces 44×44 on all
+   buttons) and native appearance so reactions read as inline icons,
+   not white iOS chrome boxes. */
+.profile-review-row__react {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: unset;
+  min-width: unset;
+  margin-block: -10px;
+  padding: var(--space-8) var(--space-4);
+  border: none;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--accent-journal-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-review-row__react svg {
+  width: 15px;
+  height: 15px;
+}
+
+.profile-review-row__react[aria-pressed='true'] {
+  color: var(--accent-journal);
+}
+
+.profile-review-row__when {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.profile-review-row__when--compact {
+  flex-shrink: 0;
+}
+
+.profile-review-row__kebab-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-review-row__kebab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-review-row__kebab-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-4));
+  z-index: 20;
+  min-width: 168px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-review-row__kebab-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-review-row__expand {
+    transition: none;
+  }
 }
 
 /* ── Pinned section (Sprint 6 P3) ────────────────────────────
@@ -1319,6 +1618,10 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
   padding: 0 var(--page-padding);
 }
 
+.profile-lists--empty {
+  min-height: 0;
+}
+
 /* Hairline-separated rows rather than a gapped stack of boxes, so
    several lists read at a glance. */
 .profile-lists__stack {
@@ -1333,30 +1636,87 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-list-row {
+/* V4-06 — 64×64 stacked-cover thumb (first 3 covers, 38px wide, 13px offset) */
+.profile-list-stack {
+  position: relative;
+  flex: none;
+  width: var(--space-64);
+  height: var(--space-64);
+}
+
+.profile-list-stack--empty {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: 12px 0;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
+}
+
+.profile-list-stack__cover {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--stack-index, 0) * 13px);
+  width: 38px;
+  aspect-ratio: var(--cover-ratio);
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-bg-primary);
+  background: var(--color-bg-secondary);
+  z-index: calc(var(--stack-index, 0) + 1);
+}
+
+.profile-lists__start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  margin-top: var(--space-16);
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--accent-journal) 60%, transparent);
+  border-radius: var(--radius-lg);
+  background: none;
   cursor: pointer;
+  text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Fixed-width column for the poster-stack cover cluster (ListCoverCluster's
-   "poster" variant sizes itself off this width via padding-top, so this is
-   the one place that actually sets the cluster's footprint). 60px matches
-   the row's old square cluster width, and lands the stack's ~53px reserved
-   height close to the Diary tab's 54px single-cover rows just below it. */
-.profile-list-row__stack {
-  flex: none;
-  width: 60px;
+.profile-lists__start-title {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-journal-text);
+}
+
+.profile-lists__start-body {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
+.profile-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-list-row__body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-4);
   flex: 1;
+  min-width: 0;
+}
+
+.profile-list-row__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
   min-width: 0;
 }
 
@@ -1366,17 +1726,29 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: 1.25;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.profile-list-row__pinned-chip {
+  flex: none;
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-chip);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--accent-journal-text);
+  background: color-mix(in srgb, var(--accent-journal) 18%, transparent);
+}
+
 .profile-list-row__meta {
   margin: 0;
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
+  font-size: 13px;
+  color: var(--color-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1385,61 +1757,27 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 .profile-list-row__engagement {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-top: 2px;
-  color: var(--text-tertiary);
+  gap: var(--space-12);
+  margin-top: var(--space-2);
 }
 
 .profile-list-row__stat {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-4);
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--text-tertiary);
+  font-size: 13px;
+  color: var(--accent-journal-text);
 }
 
 .profile-list-row__stat svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Pin / Unpin button — owner-only affordance in the engagement row.
-   Negative block margin keeps the global 44px tap target from padding
-   out the row's height. */
-.profile-list-row__pin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  padding: 0 4px;
-  margin: -10px 0 -10px -4px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.profile-list-row__pin-btn--active {
-  color: var(--accent);
-}
-
-@media (hover: hover) {
-  .profile-list-row__pin-btn:hover {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
-  }
-}
-
-.profile-list-row__pin-btn:active {
-  opacity: 0.6;
+  width: 14px;
+  height: 14px;
 }
 
 .profile-list-row__chevron {
   flex: none;
-  color: var(--text-tertiary);
+  color: var(--color-text-tertiary);
 }
 
 /* ============================================================
@@ -1447,7 +1785,6 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
    ============================================================ */
 
 @media (max-width: 380px) {
-  .profile-header-strip,
   .profile-hero,
   .profile-stats,
   .profile-actions,
@@ -1476,7 +1813,6 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 }
 
 @media (min-width: 769px) {
-  .profile-header-strip,
   .profile-hero,
   .profile-stats,
   .profile-actions,
@@ -1562,7 +1898,7 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 
 .profile-challenge__headline {
   font-family: var(--font-body);
-  font-size: var(--font-size-body);
+  font-size: 15px;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
@@ -1603,12 +1939,24 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 }
 
 /* ============================================================
-   DIARY TAB
-   Journal entries across all games, reverse-chronological.
+   DIARY TAB (V4-06 — grouped by calendar day)
    ============================================================ */
 
 .profile-diary {
-  padding: 0 0 24px;
+  padding: 0 var(--page-padding) var(--space-24);
+}
+
+.profile-diary__day-header {
+  margin: 14px 0 2px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.profile-diary__day:first-child .profile-diary__day-header {
+  margin-top: 0;
 }
 
 .profile-diary__list {
@@ -1618,185 +1966,130 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 }
 
 .profile-diary__row {
-  border-bottom: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.10));
-}
-
-.profile-diary__row:last-child {
-  border-bottom: none;
-}
-
-.profile-diary__row-btn {
-  width: 100%;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 120ms ease;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-12) 0;
 }
 
-.profile-diary__row-btn:active {
-  background: rgba(255, 255, 255, 0.04);
+.profile-diary__list .profile-diary__row + .profile-diary__row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-diary__cover-hit {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-diary__cover {
-  width: 40px;
-  height: 54px;
-  border-radius: 5px;
+  display: block;
+  width: 46px;
+  aspect-ratio: var(--cover-ratio);
   object-fit: cover;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
 }
 
-.profile-diary__cover--placeholder {
-  background: var(--bg-surface-2, #1a2240);
-  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-}
-
-.profile-diary__meta {
+.profile-diary__row-main {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-diary__game-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-diary__platform {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--accent);
+}
+
+.profile-diary__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.profile-diary__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-chip);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+}
+
+.profile-diary__chip--mood {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.profile-diary__chip--hours {
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
+}
+
+.profile-diary__note {
+  margin: var(--space-8) 0 0;
   font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-  white-space: nowrap;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-text-primary) 80%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.profile-diary__entry-title {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-brand-primary, #3b82f6);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
-}
-
-/* Mood + hours pills inside diary rows */
-.profile-diary__pills-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 1px;
-}
-
-.profile-diary__mood-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--accent-brand);
-  background: color-mix(in srgb, var(--accent-brand) 10%, transparent);
-  border-radius: var(--radius-chip);
-  padding: 2px 7px;
-}
-
-.profile-diary__hours-pill {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-  background: rgba(148, 168, 212, 0.08);
-  border-radius: var(--radius-chip);
-  padding: 2px 7px;
-}
-
-.profile-diary__date {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-tertiary);
-  line-height: 1.4;
-}
-
-.profile-diary__snippet {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-diary__snippet--spoiler {
-  color: var(--status-warning, #f59e0b);
+.profile-diary__note--spoiler {
   font-style: italic;
-  font-size: 12px;
+  color: var(--status-warning);
+}
+
+.profile-diary__chevron-btn {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-diary__chevron {
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-  opacity: 0.5;
+  flex: none;
 }
 
-/* Life-context review rows — subtle left accent */
-.profile-diary__row--review {
-  border-left: 2px solid var(--color-brand-primary, #c9873a);
+@media (prefers-reduced-motion: reduce) {
+  .profile-diary__row-main,
+  .profile-diary__cover-hit {
+    transition: none;
+  }
 }
-
-/* Life + vibe pill row */
-.profile-diary__life-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-}
-
-.profile-diary__life-pill {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  padding: 3px 8px;
-  border-radius: var(--radius-chip);
-  background: rgba(148, 168, 212, 0.10);
-  border: 0.5px solid var(--border-subtle, rgba(148, 168, 212, 0.18));
-  color: var(--text-secondary, #94a8d4);
-}
-
-.profile-diary__vibe-pill {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  padding: 3px 8px;
-  border-radius: var(--radius-chip);
-  color: var(--color-bg-primary, #0a0f25);
-  background: var(--color-brand-primary, #c9873a);
-}
-
-/* Masterpiece reads green — amber is retired app-wide. */
-.profile-diary__vibe-pill[data-vibe='masterpiece'] { background: var(--accent-review); color: var(--color-text-primary); }
-.profile-diary__vibe-pill[data-vibe='underrated']  { background: #5b8cf7; color: #fff; }
-.profile-diary__vibe-pill[data-vibe='mid']         { background: var(--color-text-secondary, #94a8d4); }
-.profile-diary__vibe-pill[data-vibe='rage_quit']   { background: #e05a5a; color: #fff; }
-.profile-diary__vibe-pill[data-vibe='comfort']     { background: #5bb88c; color: #fff; }

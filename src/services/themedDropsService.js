@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getAllLists } from './libraryService'
+import { coverUrl } from './igdbImage'
 
 /**
  * Themed Drops — read layer.
@@ -28,19 +29,12 @@ import { getAllLists } from './libraryService'
  * shelf shows: every viewer loses a different subset.
  */
 
-const COVER_BASE = 'https://images.igdb.com/igdb/image/upload/t_cover_big'
-
 // Reads are cheap but Explore can mount several times in a session; a short
 // in-memory cache keeps a tab change from re-querying. Deliberately NOT
 // persisted: the drop expires at a known instant and a stale localStorage copy
 // would outlive it.
 const CACHE_TTL_MS = 5 * 60 * 1000
 let cache = null
-
-function coverUrlFromImageId(imageId) {
-  if (!imageId) return null
-  return `${COVER_BASE}/${imageId}.jpg`
-}
 
 /**
  * IGDB stores completion time in seconds. Round to a readable hour figure —
@@ -59,7 +53,7 @@ function shapeGame(row) {
     id: Number(row.igdb_game_id),
     igdbId: Number(row.igdb_game_id),
     title: row.title ?? null,
-    image: coverUrlFromImageId(row.cover_image_id),
+    image: coverUrl(row.cover_image_id),
     coverImageId: row.cover_image_id ?? null,
     rating: row.total_rating ?? null,
     ratingCount: row.total_rating_count ?? null,

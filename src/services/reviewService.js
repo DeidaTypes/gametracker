@@ -11,6 +11,7 @@ import { getLikeCountsForReviews } from './likeService'
 import { dedupeInFlight } from './swrCache'
 import { ensureProfileExists } from './auth'
 import { recomputeBadges } from './badgeService'
+import { setLocalStorageItem } from '../utils/storageQuota'
 
 /**
  * Review Service — Supabase-backed.
@@ -132,6 +133,35 @@ export function getCachedUserId() {
 
 export function getCachedUserReviews() {
   return _cachedUserReviews
+}
+
+/**
+ * True when the signed-in user already has a reviews.rating > 0 for this
+ * game. Cache-first, then a single-row lookup.
+ */
+export async function hasCurrentUserRatedGame(igdbGameId) {
+  if (igdbGameId == null) return false
+  const target = String(igdbGameId)
+  const cached = (_cachedUserReviews || []).find(
+    (r) => String(r.igdb_game_id) === target && Number(r.rating) > 0
+  )
+  if (cached) return true
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('id, rating')
+    .eq('user_id', user.id)
+    .eq('igdb_game_id', Number(igdbGameId))
+    .gt('rating', 0)
+    .limit(1)
+    .maybeSingle()
+  if (error) return false
+  return !!(data && Number(data.rating) > 0)
 }
 
 /* ============================================================
@@ -829,6 +859,10 @@ export async function migrateLocalReviewsIfNeeded(userId) {
   try {
     const marker = localStorage.getItem(MIGRATED_KEY)
     if (marker === userId) {
+      // Earlier migrations set the marker and left the blob behind. It
+      // serves no reader anymore and is large enough to keep a device
+      // over the WKWebView quota.
+      try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
       return { migrated: 0, skipped: true, reason: 'already-migrated' }
     }
 
@@ -842,12 +876,14 @@ export async function migrateLocalReviewsIfNeeded(userId) {
     try {
       parsed = JSON.parse(stored)
     } catch {
-      // Corrupt blob — mark as migrated so we don't retry forever.
-      localStorage.setItem(MIGRATED_KEY, userId)
+      // Corrupt blob — drop it and mark migrated so we don't retry forever.
+      try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
+      setLocalStorageItem(MIGRATED_KEY, userId)
       return { migrated: 0, skipped: true, reason: 'corrupt-localstorage' }
     }
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(MIGRATED_KEY, userId)
+      try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
+      setLocalStorageItem(MIGRATED_KEY, userId)
       return { migrated: 0, skipped: false, reason: 'empty' }
     }
 
@@ -868,7 +904,8 @@ export async function migrateLocalReviewsIfNeeded(userId) {
       }))
 
     if (rows.length === 0) {
-      localStorage.setItem(MIGRATED_KEY, userId)
+      try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
+      setLocalStorageItem(MIGRATED_KEY, userId)
       return { migrated: 0, skipped: false, reason: 'no-valid-rows' }
     }
 
@@ -879,7 +916,14 @@ export async function migrateLocalReviewsIfNeeded(userId) {
       return { migrated: 0, skipped: false, error }
     }
 
-    localStorage.setItem(MIGRATED_KEY, userId)
+    // The blob is what filled the quota, so a marker write can fail while it
+    // is still there. Drop caches first; if that isn't enough, drop the blob
+    // and write the marker second.
+    if (!setLocalStorageItem(MIGRATED_KEY, userId).ok) {
+      try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
+      setLocalStorageItem(MIGRATED_KEY, userId)
+    }
+    try { localStorage.removeItem(STORAGE_KEY) } catch { /* best-effort */ }
     return { migrated: rows.length, skipped: false }
   } catch (err) {
     console.error('[reviews] migration crashed:', err)

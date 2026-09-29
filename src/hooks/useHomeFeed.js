@@ -6,6 +6,7 @@ import { prefetchLikeStatesForReviews } from './useLikeState'
 import { prefetchReactionsBatch } from './useReactions'
 import { APP_RESUMED_EVENT } from './useAppResume'
 import { getSWR, peekSWR, updateSWR } from '../services/swrCache'
+import { isDuplicateCompletionOrReview } from '../utils/homeFeedDedupe'
 
 const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
 
@@ -164,7 +165,13 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
         const seen = new Set(prev.map((it) => it.id))
         const merged = [...prev]
         for (const item of result.items) {
-          if (!seen.has(item.id)) merged.push(item)
+          if (seen.has(item.id)) continue
+          // Same gap as silentRefresh, reachable on scroll: a page-2+
+          // row can be a 'finished'/'reviewed' twin of something already
+          // rendered from an earlier page (id-based `seen` never catches
+          // this — see isDuplicateCompletionOrReview's doc comment).
+          if (isDuplicateCompletionOrReview(item, merged)) continue
+          merged.push(item)
         }
         return merged
       })
@@ -193,7 +200,14 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       prefetchRowInteractions(result.items)
       setItems((prev) => {
         const seen = new Set(prev.map((it) => it.id))
-        const fresh = result.items.filter((it) => !seen.has(it.id))
+        // BUG 2 fix: id alone doesn't catch a finish + a same-session
+        // review for the same game — an activity_events row and a
+        // reviews row for the same completion have two different ids,
+        // so both used to pass this filter and both sat on screen until
+        // the next full re-fetch replaced the list wholesale.
+        const fresh = result.items.filter(
+          (it) => !seen.has(it.id) && !isDuplicateCompletionOrReview(it, prev)
+        )
         return fresh.length ? [...fresh, ...prev] : prev
       })
       setScope(result.scope)

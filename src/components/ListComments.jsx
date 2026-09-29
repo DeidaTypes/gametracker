@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { LuSend } from 'react-icons/lu'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import {
@@ -98,8 +99,8 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
 
   // Auto-grow textarea — shared with Review Detail / Review Comments so the
   // grow-then-cap behavior can never drift between composers (see
-  // src/hooks/useAutoGrowTextarea.js). Cap matches .lc-composer__input's
-  // max-height in ListComments.css.
+  // src/hooks/useAutoGrowTextarea.js). Cap matches .composer__input's
+  // max-height in styles/keyboard.css.
   useAutoGrowTextarea(textareaRef, draft, 90)
 
   const handleSubmit = async (e) => {
@@ -139,6 +140,47 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
       setSubmitting(false)
     }
   }
+
+  const composerBar =
+    currentUserId ? (
+      <KeyboardAwareView
+        as="form"
+        mode="composer"
+        className="kb-composer-bar composer-bar lc-composer-bar"
+        aria-label="Comment composer"
+        onSubmit={handleSubmit}
+      >
+        <div className="composer__row">
+          <div className="composer__shell">
+            <textarea
+              ref={textareaRef}
+              className="composer__input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Add a comment…"
+              maxLength={2000}
+              rows={1}
+              aria-label="Add a comment"
+              onFocus={handleComposerFocus}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+            />
+            <button
+              type="submit"
+              className="composer__send"
+              disabled={submitting || !draft.trim()}
+              aria-label="Post comment"
+            >
+              <LuSend size={14} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </KeyboardAwareView>
+    ) : null
 
   const handleDelete = async (commentId) => {
     // Optimistic remove
@@ -181,49 +223,10 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
           pinned composer below. */}
       <div ref={listBottomRef} aria-hidden="true" />
 
-      {/* Viewport-anchored composer — shares its rest position/chrome with
-          every other comment screen via .kb-composer-bar, and its keyboard
-          lift via <KeyboardAwareView mode="composer"> (.kb-lift), exactly
-          like ReviewComments/ReviewDetail. It never scrolls with the page;
-          .lc-section's own bottom padding (ListComments.css) reserves the
-          clearance this bar needs so it never covers the last comment. */}
-      {currentUserId && (
-        <KeyboardAwareView
-          as="form"
-          mode="composer"
-          className="kb-composer-bar lc-composer"
-          aria-label="Comment composer"
-          onSubmit={handleSubmit}
-        >
-          <div className="lc-composer__row">
-            <textarea
-              ref={textareaRef}
-              className="lc-composer__input"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Add a comment…"
-              maxLength={2000}
-              rows={1}
-              aria-label="Add a comment"
-              onFocus={handleComposerFocus}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmit(e)
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="lc-composer__send"
-              disabled={submitting || !draft.trim()}
-              aria-label="Post comment"
-            >
-              <LuSend size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </KeyboardAwareView>
-      )}
+      {/* Viewport-anchored composer — portaled to body so position:fixed is not
+          re-parented by PageTransition's motion wrapper on this tall page
+          (see bb2a57a). Keyboard lift + shared chrome match Review Detail. */}
+      {composerBar && createPortal(composerBar, document.body)}
     </section>
   )
 }

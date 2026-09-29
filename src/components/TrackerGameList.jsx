@@ -33,6 +33,7 @@ import {
 } from '../services/libraryService'
 import { getCachedUserReviews } from '../services/reviewService'
 import { hapticImpact } from '../utils/haptics'
+import { add } from '../services/moments'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { logSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
@@ -621,7 +622,7 @@ function TrackerGameList({ listId, games }) {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        hapticImpact('Medium')
+        add()
         handleLogged(game.id, result)
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {

@@ -1,35 +1,75 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { UserPlus, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import useHomeFeed from '../../hooks/useHomeFeed'
 import HomeReviewCard from './HomeReviewCard'
-import HomeCompletionCard from './HomeCompletionCard'
+import FeedRow, { FeedGroupRow } from './FeedRow'
 import EmptyState from '../EmptyState'
 import FindFriendsModal from '../FindFriendsModal'
 import WindowedListItem from '../WindowedListItem'
+import { groupPulseFeedItems } from '../../services/communityService'
+import { coarseRelativeBucket } from '../../utils/formatActivityDate'
 import './HomePulseFeed.css'
 
-// Home is the hub — the stream always includes the viewer's own activity
-// alongside whichever scope communityService.getHomeFeed decided on, so
-// the subline stays honest about that ("your circle" folds the viewer's
-// own activity in too) rather than implying this is only other people's
-// activity.
-const SUBLINE_BY_SCOPE = {
-  following: 'What your circle is up to',
-  mixed: 'What your circle — and the community — is up to',
-  community: 'What the community is up to',
+// V4-01 — read once per mount, before this same mount's own unmount/
+// background handler below overwrites it. This is intentionally the
+// *previous* visit's checkpoint, not "now" — it's the baseline the
+// subline's "{n} new since ___" count and bucket are computed against.
+const LAST_SEEN_KEY = 'pulse:lastSeenAt'
+
+function readLastSeenAt() {
+  try {
+    return localStorage.getItem(LAST_SEEN_KEY)
+  } catch {
+    return null
+  }
 }
 
+function writeLastSeenAt() {
+  try {
+    localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString())
+  } catch {
+    // Soft-fail — worst case the subline falls back to a scope-based
+    // message next visit instead of a real count.
+  }
+}
+
+/**
+ * Real-data-only subline under "The pulse" (task 5): a genuine new-
+ * activity count bucketed against the last time this device saw Home,
+ * else the honest reason there's nothing to count (community fallback
+ * because follows are quiet), else the plain default. Never a
+ * fabricated/sample string.
+ */
+function computeSubline({ items, scope, lastSeenAt }) {
+  if (lastSeenAt) {
+    const newCount = items.filter(
+      (it) => !it.isOwn && new Date(it.createdAt) > new Date(lastSeenAt)
+    ).length
+    if (newCount > 0) {
+      const bucket = coarseRelativeBucket(lastSeenAt)
+      return `${newCount} new from your circle${bucket ? ` since ${bucket}` : ''}`
+    }
+  }
+  if (scope !== 'following') return 'From the community while your circle is quiet'
+  return 'What your circle is up to'
+}
+
+/**
+ * FeedSkeleton — three poster-shaped FULL-card skeletons (task 6): a
+ * 2:3-ish cover block + two text bars, matching the FULL card's own
+ * cover + title + body shape, instead of a generic avatar-and-lines
+ * placeholder that doesn't resemble what's about to render.
+ */
 function FeedSkeleton() {
   return (
     <div className="pulse-feed__skeleton" aria-hidden="true">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="pulse-feed__skeleton-card">
-          <div className="skeleton pulse-feed__skeleton-avatar" />
+        <div key={i} className="pulse-feed__skeleton-card pulse-feed__skeleton-card--poster">
+          <div className="skeleton pulse-feed__skeleton-cover" />
           <div className="pulse-feed__skeleton-lines">
-            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '55%' }} />
-            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '90%' }} />
-            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '70%' }} />
+            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '65%' }} />
+            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '95%' }} />
           </div>
         </div>
       ))}
@@ -41,10 +81,19 @@ function FeedSkeleton() {
  * HomePulseFeed — "The pulse" section, lead content of the Home
  * feed-first spine (v3), formerly "Fresh reviews".
  *
- * Thin presentational wrapper around useHomeFeed. Reviews render
- * through HomeReviewCard; finished/completed items render through
- * HomeCompletionCard. See communityService.getHomeFeed for the
- * following/community/mixed scope decision.
+ * Thin presentational wrapper around useHomeFeed. See
+ * communityService.getHomeFeed for the following/community/mixed scope
+ * decision.
+ *
+ * V4-01 density pass: every fetched item is classified as opinion-
+ * bearing (a rating and/or text) or not — see
+ * communityService.groupPulseFeedItems, which also collapses runs of
+ * same-actor/same-verb non-opinion items within 24h into one grouped
+ * row. Opinion-bearing items render through <HomeReviewCard/> (the FULL
+ * card); everything else renders through <FeedRow/> or, for a grouped
+ * run, <FeedGroupRow/> (both in ./FeedRow.jsx). This is purely a
+ * rendering decision — it doesn't change which rows getHomeFeed
+ * selected or reorder them.
  *
  * Infinite scroll via an IntersectionObserver sentinel.
  *
@@ -72,6 +121,37 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
 
   useImperativeHandle(ref, () => ({ refresh }), [refresh])
 
+  // V4-01 task 5 — captured once on mount, before this same effect's own
+  // cleanup (unmount) overwrites the stored value for next visit.
+  const [lastSeenAt] = useState(readLastSeenAt)
+
+  // Persist the new checkpoint on unmount and on backgrounding
+  // (visibilitychange -> hidden). Best-effort — a killed process with
+  // neither event firing just falls back to the scope-based subline
+  // next launch instead of a real count, same soft-fail convention as
+  // every other localStorage read/write in this file.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') writeLastSeenAt()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      writeLastSeenAt()
+    }
+  }, [])
+
+  const subline = useMemo(
+    () => computeSubline({ items, scope, lastSeenAt }),
+    [items, scope, lastSeenAt]
+  )
+
+  // task 1 (classification) + task 4 (grouping) — display-only reshaping
+  // of the already-fetched, already-ordered `items`; does not change
+  // what getHomeFeed returned or touch stored data. See
+  // communityService.groupPulseFeedItems.
+  const displayList = useMemo(() => groupPulseFeedItems(items), [items])
+
   useEffect(() => {
     const node = sentinelRef.current
     if (!node || !hasMore || loading) return undefined
@@ -98,11 +178,7 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
           {/* Held back until the fetch resolves the scope: the initial
               value is 'following', which would tell a viewer with no
               follows their circle is up to something. */}
-          {!loading && !isEmpty && (
-            <p className="pulse-feed__subline">
-              {SUBLINE_BY_SCOPE[scope] || SUBLINE_BY_SCOPE.following}
-            </p>
-          )}
+          {!loading && !isEmpty && <p className="pulse-feed__subline">{subline}</p>}
         </div>
 
         {loading ? (
@@ -131,15 +207,27 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
         ) : (
           <>
             <div className="pulse-feed__list">
-              {items.map((item) => (
-                <WindowedListItem key={item.id}>
-                  {item.type === 'finished' || item.type === 'completed' ? (
-                    <HomeCompletionCard item={item} />
-                  ) : (
-                    <HomeReviewCard item={item} />
-                  )}
-                </WindowedListItem>
-              ))}
+              {displayList.map((entry) => {
+                if (entry.kind === 'full') {
+                  return (
+                    <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--full">
+                      <HomeReviewCard item={entry.item} />
+                    </WindowedListItem>
+                  )
+                }
+                if (entry.kind === 'group') {
+                  return (
+                    <WindowedListItem key={`group-${entry.items[0].id}`} className="pulse-feed__item pulse-feed__item--compact">
+                      <FeedGroupRow items={entry.items} />
+                    </WindowedListItem>
+                  )
+                }
+                return (
+                  <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--compact">
+                    <FeedRow item={entry.item} />
+                  </WindowedListItem>
+                )
+              })}
             </div>
 
             {scope !== 'following' && (

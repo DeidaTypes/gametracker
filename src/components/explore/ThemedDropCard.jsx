@@ -59,9 +59,10 @@ export default function ThemedDropCard() {
             {preview.map((game) => (
               <div className="themed-drop-card__cover" key={game.id}>
                 <img
-                  src={getBestImageUrl(game, 220) || COVER_FALLBACK}
+                  src={getBestImageUrl(game, 74) || COVER_FALLBACK}
                   alt=""
                   loading="lazy"
+                  decoding="async"
                   onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}
                 />
               </div>

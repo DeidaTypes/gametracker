@@ -13,8 +13,12 @@ import {
   incrementSessionAddCount,
   SWIPE_ACTIONS,
 } from '../../services/swipeService'
+import { getFollowedTrackersForGames } from '../../services/communityService'
+import { getTimeToBeat } from '../../services/timeToBeatService'
 import { hapticImpact } from '../../utils/haptics'
 import { getGameNavStub } from '../../utils/gameNavStub'
+import { prefetchNextSwipeCovers } from '../../utils/swipeCoverPrefetch'
+import { imageIdFromCoverUrl } from '../../services/igdbImage'
 import './SwipeDeck.css'
 
 // sessionStorage key used to preserve deck state when the user taps a card
@@ -79,7 +83,9 @@ function gameToCard(game, topGenres) {
     id: game.id,
     title: game.title,
     image: game.image,
+    coverImageId: game.coverImageId ?? imageIdFromCoverUrl(game.image) ?? null,
     year: game.year ?? null,
+    genres,
     genre: genres.join(', ') || null,
     rating: game.totalRating != null ? game.totalRating / 20 : null,
     matchGenres,
@@ -129,6 +135,8 @@ export function SwipeDeck() {
   const [currentIdx, setCurrentIdx] = useState(0)
   const [loadFailed, setLoadFailed] = useState(false)
   const [refillFailCount, setRefillFailCount] = useState(0)
+  const [circleByGameId, setCircleByGameId] = useState({})
+  const [mainHoursByGameId, setMainHoursByGameId] = useState({})
 
   const libraryIdsRef      = useRef(new Set())
   const cancelRef          = useRef(false)
@@ -137,6 +145,44 @@ export function SwipeDeck() {
   const seenIdsRef         = useRef(new Set())
   const fetchingMoreRef    = useRef(false)
   const reloadTokenRef     = useRef(0)
+  const ttbFetchedRef      = useRef(new Set())
+  const socialFetchTokenRef = useRef(0)
+  const coverPrefetchRef    = useRef(new Map())
+
+  // ── Per-deck-page social + TTB (one trackers query per batch, no per-swipe) ─
+
+  const enrichDeckPage = useCallback(async (cards) => {
+    if (!cards?.length || cancelRef.current) return
+    const ids = cards.map((c) => c.id)
+    const myToken = ++socialFetchTokenRef.current
+
+    const ttbIds = ids.filter((id) => !ttbFetchedRef.current.has(String(id)))
+    for (const id of ttbIds) ttbFetchedRef.current.add(String(id))
+
+    const [circleMap, ...ttbResults] = await Promise.all([
+      getFollowedTrackersForGames(ids),
+      ...ttbIds.map((id) =>
+        getTimeToBeat(id).then((data) => [String(id), data])
+      ),
+    ])
+
+    if (cancelRef.current || myToken !== socialFetchTokenRef.current) return
+
+    setCircleByGameId((prev) => ({ ...prev, ...circleMap }))
+
+    if (ttbResults.length > 0) {
+      const hoursPatch = {}
+      for (const [id, data] of ttbResults) {
+        const secs = data?.normallySeconds
+        if (typeof secs === 'number' && secs > 0) {
+          hoursPatch[id] = Math.round(secs / 3600)
+        }
+      }
+      if (Object.keys(hoursPatch).length > 0) {
+        setMainHoursByGameId((prev) => ({ ...prev, ...hoursPatch }))
+      }
+    }
+  }, [])
 
   // ── Persist / restore deck state across a card-tap → GameDetail → back ────
 
@@ -184,12 +230,13 @@ export function SwipeDeck() {
 
       setPool((prev) => (Array.isArray(prev) ? [...prev, ...newCards] : newCards))
       setRefillFailCount(0)
+      enrichDeckPage(newCards)
     } catch {
       if (!cancelRef.current) setRefillFailCount((n) => n + 1)
     } finally {
       fetchingMoreRef.current = false
     }
-  }, [])
+  }, [enrichDeckPage])
 
   // ── Initial load ──────────────────────────────────────────────────────────
 
@@ -223,6 +270,7 @@ export function SwipeDeck() {
           seenIdsRef.current = new Set(Array.isArray(saved.seenIds) ? saved.seenIds : [])
           setPool(saved.pool)
           setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
+          enrichDeckPage(saved.pool)
           // Taste vector still needed for future refills' order bias.
           try { tasteVectorRef.current = await getTasteVector(user?.id) } catch { tasteVectorRef.current = null }
           return
@@ -256,7 +304,8 @@ export function SwipeDeck() {
     for (const c of cardList) seenIdsRef.current.add(String(c.id))
 
     setPool(cardList)
-  }, [user?.id])
+    enrichDeckPage(cardList)
+  }, [user?.id, enrichDeckPage])
 
   useEffect(() => {
     cancelRef.current = false
@@ -281,6 +330,13 @@ export function SwipeDeck() {
     }
   }, [pool, currentIdx, loadMore, refillFailCount])
 
+  // Warm t_cover_big_2x for the next three cards whenever a page lands or the user swipes.
+  useEffect(() => {
+    if (pool === null || pool.length === 0) return
+    if (currentIdx >= pool.length) return
+    prefetchNextSwipeCovers(coverPrefetchRef, pool, currentIdx)
+  }, [pool, currentIdx])
+
   const handleRetryRefill = useCallback(() => {
     setRefillFailCount(0)
   }, [])
@@ -302,7 +358,6 @@ export function SwipeDeck() {
 
   const handleSwipeRight = useCallback(
     (game) => {
-      hapticImpact('Light')
       // Positive signal (local) + cross-device backlog write.
       recordSwipe(game, SWIPE_ACTIONS.BACKLOG)
       // Real backlog add — counts toward the "N added tonight" payoff
@@ -442,6 +497,8 @@ export function SwipeDeck() {
           <SwipeCard
             key={backGame.id}
             game={backGame}
+            circleSignal={circleByGameId[String(backGame.id)]}
+            mainHours={mainHoursByGameId[String(backGame.id)]}
             stackIndex={2}
             isTop={false}
             onSwipeRight={handleSwipeRight}
@@ -452,6 +509,8 @@ export function SwipeDeck() {
           <SwipeCard
             key={midGame.id}
             game={midGame}
+            circleSignal={circleByGameId[String(midGame.id)]}
+            mainHours={mainHoursByGameId[String(midGame.id)]}
             stackIndex={1}
             isTop={false}
             onSwipeRight={handleSwipeRight}
@@ -462,6 +521,8 @@ export function SwipeDeck() {
           <SwipeCard
             key={topGame.id}
             game={topGame}
+            circleSignal={circleByGameId[String(topGame.id)]}
+            mainHours={mainHoursByGameId[String(topGame.id)]}
             stackIndex={0}
             isTop={true}
             onSwipeRight={handleSwipeRight}

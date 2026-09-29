@@ -9,6 +9,7 @@ import {
   getCurrentCelebration,
   dismissCurrent,
 } from '../../services/celebrationService'
+import { maybeOpenRateItSheet } from '../../services/ratePrompt'
 import { getOrExtractGameColor } from '../../services/gameColorService'
 import { normalizeAccentColor } from '../../services/colorExtract'
 import { getTracker } from '../../services/hoursService'
@@ -124,20 +125,24 @@ export default function CompletionCelebration() {
     }
   }, [head?.igdbGameId, head?.completedAt, user?.id])
 
-  // ESC to dismiss.
+  const handleDone = () => {
+    if (!head) return
+    const game = head.game
+      ? { ...head.game, id: head.game.id || head.igdbGameId }
+      : { id: head.igdbGameId }
+    dismissCurrent()
+    maybeOpenRateItSheet(game)
+  }
+
+  // ESC to dismiss — same path as Done so Rate it? still opens when unrated.
   useEffect(() => {
     if (!head || onReviewComposer) return
     const onKey = (e) => {
-      if (e.key === 'Escape') dismissCurrent()
+      if (e.key === 'Escape') handleDone()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [head?.igdbGameId, onReviewComposer])
-
-  const handleDone = () => {
-    if (!head) return
-    dismissCurrent()
-  }
 
   if (!head || onReviewComposer) return null
 

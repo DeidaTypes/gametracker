@@ -85,7 +85,7 @@
 }
 
 /* =============================================
-   HEADER — title left; search icon (+ avatar) right.
+   HEADER — title left; search icon right.
    ============================================= */
 
 .lib-header {
@@ -972,7 +972,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1.2;
   color: var(--text-primary);
@@ -1006,7 +1006,7 @@
   flex: 1 1 auto;
   width: auto;
   max-width: 70%;
-  height: 16px;
+  height: 13px;
   border-radius: var(--radius-sm);
 }
 

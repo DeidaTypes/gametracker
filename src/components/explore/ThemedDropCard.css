@@ -50,27 +50,12 @@
   gap: 8px;
 }
 
-/* Purple→cobalt gradient text, same accent moment as the swipe deck's
-   payoff indicator. Falls back to solid --accent where background-clip
-   isn't supported. */
 .themed-drop-card__kicker {
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: var(--grad-purple-blue);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-@supports not (background-clip: text) {
-  .themed-drop-card__kicker {
-    background: none;
-    -webkit-text-fill-color: unset;
-    color: var(--accent);
-  }
+  color: var(--accent-journal);
 }
 
 .themed-drop-card__next {

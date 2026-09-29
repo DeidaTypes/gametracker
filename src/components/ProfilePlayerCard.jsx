@@ -154,15 +154,17 @@ export default function ProfilePlayerCard({
               aria-label={
                 followLoading
                   ? 'Followers, loading'
-                  : `${followersCount} followers, view list`
+                  : `${followersCount} ${followersCount === 1 ? 'follower' : 'followers'}, view list`
               }
             >
               {followLoading ? (
                 <Skeleton variant="text" width={12} height={13} className="ppc__follow-skeleton" />
               ) : (
-                <span className="ppc__follow-count">{followersCount}</span>
-              )}{' '}
-              Followers
+                <>
+                  <span className="ppc__follow-count">{followersCount}</span>{' '}
+                  {followersCount === 1 ? 'follower' : 'followers'}
+                </>
+              )}
             </button>
             <span className="ppc__follow-dot" aria-hidden="true">·</span>
             <button
@@ -172,15 +174,17 @@ export default function ProfilePlayerCard({
               aria-label={
                 followLoading
                   ? 'Following, loading'
-                  : `${followingCount} following, view list`
+                  : `${followingCount} ${followingCount === 1 ? 'following' : 'following'}, view list`
               }
             >
               {followLoading ? (
                 <Skeleton variant="text" width={12} height={13} className="ppc__follow-skeleton" />
               ) : (
-                <span className="ppc__follow-count">{followingCount}</span>
-              )}{' '}
-              Following
+                <>
+                  <span className="ppc__follow-count">{followingCount}</span>{' '}
+                  following
+                </>
+              )}
             </button>
           </p>
 

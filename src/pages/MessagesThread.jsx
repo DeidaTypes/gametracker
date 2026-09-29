@@ -35,6 +35,7 @@ import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
+import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -84,8 +85,6 @@ function daySeparatorLabel(date) {
 // prefill) so starting a conversation is a single tap.
 const QUICK_REPLIES = ['👋 Hey!', 'What are you playing?']
 
-const MAX_COMPOSER_LINES = 6
-const COMPOSER_LINE_HEIGHT = 22
 const TYPING_IDLE_MS = 3000
 
 /* ============================================================
@@ -416,16 +415,7 @@ function MessagesThread() {
     el.scrollTop = el.scrollHeight
   }, [messages.length])
 
-  /* ── Composer auto-resize ─────────────────────────────────── */
-
-  useEffect(() => {
-    const el = composerRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    const max = MAX_COMPOSER_LINES * COMPOSER_LINE_HEIGHT + 20
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`
-    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
-  }, [draft])
+  useAutoGrowTextarea(composerRef, draft, 90)
 
   /* ── Typing indicator — broadcast onto the presence channel ──
      Flips `isTyping` true as soon as the composer has content, and
@@ -788,7 +778,7 @@ function MessagesThread() {
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="dm-thread__composer"
+        className="kb-composer-bar composer-bar dm-thread__composer"
         onSubmit={handleSend}
       >
         {pendingAttachment && (
@@ -818,43 +808,45 @@ function MessagesThread() {
             </button>
           </div>
         )}
-        <div className="dm-thread__composer-row">
-          <textarea
-            ref={composerRef}
-            className="dm-thread__input"
-            value={draft}
-            onChange={(e) => handleDraftChange(e.target.value)}
-            placeholder={
-              isSelf
-                ? "You can't message yourself"
-                : partnerBlocked
-                ? "You can't message this user"
-                : pendingAttachment
-                ? 'Add a caption (optional)'
-                : `Message ${headerLabel}`
-            }
-            rows={1}
-            maxLength={4000}
-            disabled={isSelf || !partnerId || partnerBlocked}
-            aria-label="Message body"
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                handleSend(e)
+        <div className="composer__row">
+          <div className="composer__shell">
+            <textarea
+              ref={composerRef}
+              className="composer__input"
+              value={draft}
+              onChange={(e) => handleDraftChange(e.target.value)}
+              placeholder={
+                isSelf
+                  ? "You can't message yourself"
+                  : partnerBlocked
+                  ? "You can't message this user"
+                  : pendingAttachment
+                  ? 'Add a caption (optional)'
+                  : `Message ${headerLabel}`
               }
-            }}
-          />
-          <button
-            type="submit"
-            className="dm-thread__send"
-            disabled={sendDisabled}
-            aria-label={sending ? 'Sending message' : 'Send message'}
-          >
-            {sending ? (
-              <span className="dm-thread__send-spinner" aria-hidden="true" />
-            ) : (
-              <LuArrowUp size={18} aria-hidden="true" />
-            )}
-          </button>
+              rows={1}
+              maxLength={4000}
+              disabled={isSelf || !partnerId || partnerBlocked}
+              aria-label="Message body"
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  handleSend(e)
+                }
+              }}
+            />
+            <button
+              type="submit"
+              className={`composer__send${sending ? ' composer__send--busy' : ''}`}
+              disabled={sendDisabled}
+              aria-label={sending ? 'Sending message' : 'Send message'}
+            >
+              {sending ? (
+                <span className="dm-thread__send-spinner" aria-hidden="true" />
+              ) : (
+                <LuArrowUp size={14} aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
       </KeyboardAwareView>
     </div>

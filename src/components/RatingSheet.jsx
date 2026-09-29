@@ -9,16 +9,13 @@ import { useNavDim } from '../hooks/useNavDim'
 import './RatingSheet.css'
 
 /**
- * RatingSheet — "Finish and rate" bottom sheet.
+ * RatingSheet — finish-adjacent rating bottom sheet.
  *
- * Opened by BOTH existing finish triggers (Home Now Playing hero's
- * Finish button; Game Detail's status tiles / status sheet setting
- * Played) instead of writing the completion immediately. The completion
- * is written when this sheet resolves — Done, Skip, or ANY dismissal
- * (backdrop tap, swipe-down, Escape) all resolve as a completion; only
- * Done additionally carries a rating. A dismissed sheet is still a
- * finish — see `handleDismiss` below, which is the single code path
- * every non-Done exit funnels through.
+ * Two modes:
+ *   1. Default (complete-on-dismiss): Done / Skip / any dismissal all
+ *      call onResolve. Used if a caller still wants rate-then-finish.
+ *   2. rateOnly (post-Finish "Rate it?"): dismiss / Skip / Escape close
+ *      with no writes. Only Done resolves with the picked stars.
  *
  * This component does not talk to Supabase directly for the completion
  * itself — the caller receives `onResolve({ rating, hoursPlayed })`
@@ -31,17 +28,30 @@ import './RatingSheet.css'
  * Props:
  *   isOpen        boolean
  *   game          { id, title, image } — required while open
+ *   title         heading copy — default "Finished it"
+ *   rateOnly      when true, dismiss / Skip / Escape close with no
+ *                 onResolve (no completion, no rating write). Done still
+ *                 resolves with the picked stars.
  *   onResolve     ({ rating: number, hoursPlayed: number }) => void
  *                 Called exactly once per open: on Done, Skip, backdrop
  *                 tap, swipe-down, Escape, or "Write a review". `rating`
  *                 is 0 for every path except Done with stars selected.
+ *                 In rateOnly mode, only Done calls this.
  *   onClose       () => void — always called to close the sheet (paired
  *                 1:1 with onResolve, called immediately after it)
  *   onWriteReview (game) => void — called (after onResolve/onClose) when
  *                 the user taps "Write a review"; caller navigates to
  *                 the existing composer
  */
-function RatingSheet({ isOpen, game, onResolve, onClose, onWriteReview }) {
+function RatingSheet({
+  isOpen,
+  game,
+  title = 'Finished it',
+  rateOnly = false,
+  onResolve,
+  onClose,
+  onWriteReview,
+}) {
   const { reduced } = useMotionPreference()
   const dragControls = useDragControls()
   const [rating, setRating] = useState(0)
@@ -75,20 +85,27 @@ function RatingSheet({ isOpen, game, onResolve, onClose, onWriteReview }) {
   }
 
   // Every non-Done exit — backdrop tap, swipe-down, Escape — is a Skip:
-  // the game still completes, just with no rating.
-  const handleDismiss = () => resolve(0)
+  // the game still completes, just with no rating. rateOnly (post-Finish
+  // "Rate it?") is the exception: dismiss is a no-op write.
+  const closeOnly = () => {
+    if (resolvedRef.current) return
+    resolvedRef.current = true
+    onClose?.()
+  }
+
+  const handleDismiss = () => (rateOnly ? closeOnly() : resolve(0))
 
   const handleDone = () => {
     if (rating <= 0) return
     resolve(rating)
   }
 
-  const handleSkip = () => resolve(0)
+  const handleSkip = () => (rateOnly ? closeOnly() : resolve(0))
 
   const handleWriteReview = () => {
     if (resolvedRef.current) return
     resolvedRef.current = true
-    onResolve?.({ rating: 0, hoursPlayed })
+    if (!rateOnly) onResolve?.({ rating: 0, hoursPlayed })
     onClose?.()
     onWriteReview?.(game)
   }
@@ -124,7 +141,7 @@ function RatingSheet({ isOpen, game, onResolve, onClose, onWriteReview }) {
           onClick={handleDismiss}
           role="dialog"
           aria-modal="true"
-          aria-label="Finished it"
+          aria-label={title}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -155,7 +172,7 @@ function RatingSheet({ isOpen, game, onResolve, onClose, onWriteReview }) {
               <LuCheck size={28} />
             </div>
 
-            <h2 className="rts-heading">Finished it</h2>
+            <h2 className="rts-heading">{title}</h2>
 
             <p className="rts-subline">
               {game.title}{hoursLabel ? ` · ${hoursLabel}` : ''}

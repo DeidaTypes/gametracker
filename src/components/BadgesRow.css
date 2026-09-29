@@ -1,6 +1,5 @@
 /* ============================================================
    BadgesRow — Profile teaser inside the year-challenge card.
-   Five tier-ring slots, earned count, "See all" to full screen.
    ============================================================ */
 
 .badges-row-section {
@@ -23,29 +22,28 @@
 
 .badges-row-section__title {
   margin: 0;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
 }
 
-.badges-row-section__see-all {
+.badges-row-section__count {
   min-height: 44px;
   margin-block: calc(var(--space-12) * -1);
   padding: 0;
   border: none;
   background: none;
-  color: var(--accent);
-  font-weight: var(--font-weight-medium);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: color var(--transition-fast);
 }
 
-.badges-row-section__see-all:hover {
-  color: var(--accent-hover);
-}
-
-.badges-row-section__count {
-  margin: 0;
-  color: var(--text-tertiary);
+.badges-row-section__count:hover {
+  color: var(--text-primary);
 }
 
 .badges-row {
@@ -76,41 +74,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: var(--radius-full);
-  border: 2px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-secondary);
 }
 
-.badges-row__ring--bronze {
-  border-color: var(--tier-bronze);
-  color: var(--tier-bronze);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tier-bronze) 14%, transparent);
-}
-
-.badges-row__ring--silver {
-  border-color: var(--tier-silver);
-  color: var(--tier-silver);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tier-silver) 14%, transparent);
-}
-
-.badges-row__ring--gold {
-  border-color: var(--tier-gold);
-  color: var(--tier-gold);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tier-gold) 16%, transparent);
+.badges-row__ring--earned {
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .badges-row__ring--locked {
-  border-style: dashed;
-  border-color: var(--border-subtle);
+  width: 46px;
+  height: 46px;
+  border: 2px dashed var(--border-subtle);
   color: var(--text-tertiary);
-  opacity: 0.55;
+  opacity: 0.4;
 }
 
 .badges-row__item--locked {
-  opacity: 0.65;
+  opacity: 1;
 }
 
 .badges-row__item--placeholder {
@@ -118,13 +104,13 @@
 }
 
 .badges-row__ring-skeleton {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .badges-row__item--earned,
-  .badges-row-section__see-all {
+  .badges-row-section__count {
     transition: none;
   }
 

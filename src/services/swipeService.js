@@ -41,7 +41,7 @@
 import { getGamesFromList } from './libraryService'
 import { supabase } from './supabase'
 import { showToast } from '../components/Toast'
-import { isQuotaExceededError } from '../utils/storageQuota'
+import { claimStorageFullAnnouncement, setLocalStorageItem } from '../utils/storageQuota'
 
 const STORAGE_KEY = 'gt:swipes:v1'
 
@@ -187,25 +187,26 @@ function writeStore(store) {
   // Every write self-prunes first — this is what makes the cap actually
   // bounded rather than "bounded starting from the next call."
   pruneSwipes(store)
+  let raw
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-    return
+    raw = JSON.stringify(store)
   } catch (err) {
-    if (!isQuotaExceededError(err)) {
-      console.error('[swipeService] writeStore failed (non-quota):', err)
-      return
-    }
+    console.error('[swipeService] writeStore failed (non-quota):', err)
+    return
+  }
+  const { ok, quota } = setLocalStorageItem(STORAGE_KEY, raw)
+  if (ok) return
+  if (!quota) {
+    console.error('[swipeService] writeStore failed (non-quota)')
+    return
   }
 
-  // Quota exceeded even after pruning down to MAX_SWIPE_ENTRIES — a
-  // genuinely full device. Previously this was swallowed completely
-  // (comment used to read "storage full — non-fatal, swipes just won't
-  // persist"), which is exactly why a swipe could vanish with zero
-  // feedback. recordSwipe() is fire-and-forget from SwipeDeck, so this is
-  // the one place left that can say so — a toast here doesn't touch the
-  // deck's advance/render logic at all, it only tells the user the write
-  // didn't stick.
+  // Quota exceeded even after pruning down to MAX_SWIPE_ENTRIES and after
+  // setLocalStorageItem dropped caches / rewrote the key. Previously a
+  // silent failure let the card come back in the next batch. One toast
+  // per full-disk episode — not one per swipe.
   console.error('[swipeService] writeStore failed: quota exceeded even after pruning')
+  if (!claimStorageFullAnnouncement()) return
   try {
     showToast(
       "Storage is full — this swipe couldn't be saved. Free up space on your device.",

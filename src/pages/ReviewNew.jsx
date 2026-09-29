@@ -10,7 +10,7 @@ import { logActivity, ACTIVITY_TYPES } from '../services/activityService'
 import { logCompletedEventOnce } from '../services/activityEventsService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
-import { hapticImpact } from '../utils/haptics'
+import { success } from '../services/moments'
 import './ReviewNew.css'
 
 function ReviewNew() {
@@ -205,7 +205,7 @@ function ReviewNew() {
         }
       }
 
-      hapticImpact('Medium')
+      success()
       window.dispatchEvent(new Event('reviewAdded'))
       showToast(isEditMode ? 'Review updated!' : 'Review saved!', 'success')
       closeWith(() => navigate(-1))

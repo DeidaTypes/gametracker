@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { shouldShowCount } from '../../utils/formatSocialCount'
+import { getSizedImageUrl } from '../../services/imageUtils'
 import './CollectionCard.css'
 
 function curatorName(collection) {
@@ -39,7 +40,14 @@ export default function CollectionCard({ collection }) {
               key={i}
               className={`collection-card__cell${game?.image ? '' : ' collection-card__cell--empty'}`}
             >
-              {game?.image && <img src={game.image} alt="" loading="lazy" />}
+              {game?.image && (
+                <img
+                  src={getSizedImageUrl(game.image, 74)}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
             </div>
           )
         })}

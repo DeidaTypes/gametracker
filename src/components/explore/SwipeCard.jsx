@@ -1,19 +1,58 @@
 import React, { useRef, useState, useCallback } from 'react'
+import Avatar from '../Avatar'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { add } from '../../services/moments'
+import { flyToTab } from '../../utils/flyToTab'
+import { SwipeCardCover } from './SwipeCardCover'
 import './SwipeCard.css'
 
 const SWIPE_THRESHOLD = 80 // px horizontal drag to trigger swipe action
 const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
 
+/** Build "{year} · Genre & Genre · ~{n}h main" — omit missing segments. */
+function buildMetaLine(game, mainHours) {
+  const parts = []
+  if (game.year) parts.push(String(game.year))
+
+  const genreNames = (
+    game.genres?.length
+      ? game.genres
+      : (game.genre ? game.genre.split(',').map((g) => g.trim()) : [])
+  ).filter(Boolean).slice(0, 2)
+  if (genreNames.length > 0) {
+    parts.push(
+      <span key="genres" className="swipe-card__meta-genres">
+        {genreNames.join(', ')}
+      </span>
+    )
+  }
+
+  if (typeof mainHours === 'number' && mainHours > 0) {
+    parts.push(`~${mainHours}h main`)
+  }
+
+  if (parts.length === 0) return null
+
+  return parts.reduce((acc, part, i) => {
+    if (i > 0) acc.push(<span key={`sep-${i}`} className="swipe-card__meta-sep" aria-hidden="true">·</span>)
+    acc.push(part)
+    return acc
+  }, [])
+}
+
+function buildCircleLine(circleSignal) {
+  if (!circleSignal || circleSignal.count <= 0) return null
+  if (circleSignal.lineType === 'want') {
+    return `${circleSignal.count} in your circle want to play this`
+  }
+  return `${circleSignal.count} in your circle played this`
+}
+
 /**
  * SwipeCard — one Tinder-style game card in the "Swipe to discover" deck.
  *
- * The card is slim: cover art fills the frame; a single frosted bottom overlay
- * carries the title, year, and a one-line reason built from the overlap
- * between this game's genres and the user's WHOLE taste vector (matchGenres),
- * plus the ✕ (skip) and ♥ (backlog) actions. Deliberately NOT a single-seed
- * "like {game}" attribution — that framing belongs to the page's "Because
- * You Played" closer rail, not the broad-exploration swipe deck.
+ * Cover art fills the frame; a bottom overlay carries title, meta, optional
+ * circle social line, and the ✕ (skip) / ♥ (backlog) actions.
  *
  * Top card (isTop=true): responds to pointer drag gestures and shows the
  * action buttons. Swiping past SWIPE_THRESHOLD left/right calls the respective
@@ -22,37 +61,40 @@ const TAP_THRESHOLD   = 10 // px — total movement below this = tap, not swipe
  *
  * Stack cards (stackIndex 1-2): visually scaled/offset behind the top card,
  * not interactive.
- *
- * Props
- *   game           { id, title, image, year, matchGenres, matchScore }
- *   stackIndex     0 = top, 1 = mid, 2 = back
- *   isTop          true only for the interactive top card
- *   onSwipeRight   (game) => void  called after exit animation completes (♥)
- *   onSwipeLeft    (game) => void  called after exit animation completes (✕)
- *   onTap          (game) => void  card body tapped → open detail
  */
-export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, onTap }) {
+export function SwipeCard({
+  game,
+  circleSignal,
+  mainHours,
+  stackIndex,
+  isTop,
+  onSwipeRight,
+  onSwipeLeft,
+  onTap,
+}) {
   const { reduced } = useMotionPreference()
 
-  // Drag tracking — ref for latest value (no stale closures in handlers),
-  // state for reactive rendering.
   const dragRef = useRef({ x: 0, y: 0 })
   const [dragDisplay, setDragDisplay] = useState({ x: 0, y: 0 })
   const startRef = useRef(null)
   const draggingRef = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Exit animation state — ref prevents double-trigger from racing gestures.
-  const exitingRef = useRef(null) // 'left' | 'right' | null
+  const exitingRef = useRef(null)
+  const coverRef = useRef(null)
   const [exiting, setExiting] = useState(null)
 
   const triggerSwipe = useCallback(
     (dir) => {
-      if (exitingRef.current) return // already mid-exit
+      if (exitingRef.current) return
       exitingRef.current = dir
 
+      if (dir === 'right') {
+        add()
+        flyToTab(coverRef.current, 'library')
+      }
+
       if (reduced) {
-        // No animation — callback fires immediately.
         exitingRef.current = null
         dir === 'right' ? onSwipeRight(game) : onSwipeLeft(game)
       } else {
@@ -96,30 +138,19 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
     } else if (x < -SWIPE_THRESHOLD) {
       triggerSwipe('left')
     } else if (Math.abs(x) < TAP_THRESHOLD && Math.abs(y) < TAP_THRESHOLD) {
-      // Pure tap — reset drag state then navigate; card stays in deck
       dragRef.current = { x: 0, y: 0 }
       setDragDisplay({ x: 0, y: 0 })
       onTap?.(game)
     } else {
-      // Partial drag — snap card back
       dragRef.current = { x: 0, y: 0 }
       setDragDisplay({ x: 0, y: 0 })
     }
   }, [triggerSwipe, onTap, game])
 
-  const coverUrl = game.image || game.coverUrl || null
+  const metaLine = buildMetaLine(game, mainHours)
+  const circleLine = buildCircleLine(circleSignal)
+  const circleUsers = circleLine ? (circleSignal?.users || []).slice(0, 3) : []
 
-  // Broad taste-vector reason (never a single-seed "like {game}" line —
-  // that framing is reserved for the Because You Played rail). Prefer the
-  // genre overlap; fall back to the match score when no genre overlap was
-  // found so the card still shows *some* honest signal.
-  const reasonText = game.matchGenres?.length
-    ? game.matchGenres.join(' & ')
-    : game.matchScore
-    ? `${Math.round(game.matchScore)}% taste match`
-    : null
-
-  // Compute transform + transition for this card's position in the stack.
   let transform = ''
   let transition = ''
 
@@ -146,11 +177,9 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
     transition = reduced ? 'none' : 'transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
   }
 
-  // Direction badge opacity — fades in linearly as drag approaches threshold.
   const rightOpa = isTop ? Math.min(1, Math.max(0, dragDisplay.x / SWIPE_THRESHOLD)) : 0
   const leftOpa  = isTop ? Math.min(1, Math.max(0, -dragDisplay.x / SWIPE_THRESHOLD)) : 0
 
-  // Buttons must not start a drag or bubble to the card-tap handler.
   const stop = (e) => e.stopPropagation()
 
   return (
@@ -170,45 +199,42 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
       role={isTop ? 'img' : undefined}
       aria-label={
         isTop
-          ? `${game.title}${game.year ? `, ${game.year}` : ''}${reasonText ? `. Matches your taste: ${reasonText}` : ''}`
+          ? `${game.title}${circleLine ? `. ${circleLine}` : ''}`
           : undefined
       }
     >
-      {/* Cover image fills the full card */}
       <div className="swipe-card__cover">
-        {coverUrl ? (
-          <img
-            src={coverUrl}
-            alt=""
-            className="swipe-card__img"
-            draggable="false"
-          />
-        ) : (
-          <div className="swipe-card__placeholder" aria-hidden="true">
-            {game.title?.charAt(0) ?? '?'}
-          </div>
-        )}
+        <SwipeCardCover
+          game={game}
+          isTop={isTop}
+          reduced={reduced}
+          coverRef={coverRef}
+        />
       </div>
 
-      {/* Gradient overlay — fades the bottom so text stays readable */}
       <div className="swipe-card__gradient" aria-hidden="true" />
 
-      {/* Bottom overlay — title + year + reason + on-card actions */}
       <div className="swipe-card__overlay">
         <p className="swipe-card__title">{game.title}</p>
 
-        <p className="swipe-card__meta">
-          {game.year ? <span className="swipe-card__year">{game.year}</span> : null}
-          {game.year && reasonText ? (
-            <span className="swipe-card__dot" aria-hidden="true">·</span>
-          ) : null}
-          {reasonText ? (
-            <span className="swipe-card__why">
-              <span className="swipe-card__why-spark" aria-hidden="true">✦</span>
-              {reasonText}
-            </span>
-          ) : null}
-        </p>
+        {metaLine && (
+          <p className="swipe-card__meta">{metaLine}</p>
+        )}
+
+        {circleLine && (
+          <div className="swipe-card__social">
+            <div className="swipe-card__social-avatars" aria-hidden="true">
+              {circleUsers.map((u) => (
+                <Avatar
+                  key={u.userId}
+                  user={u}
+                  className="swipe-card__social-avatar"
+                />
+              ))}
+            </div>
+            <p className="swipe-card__social-text">{circleLine}</p>
+          </div>
+        )}
 
         {isTop && (
           <div className="swipe-card__actions">
@@ -234,7 +260,6 @@ export function SwipeCard({ game, stackIndex, isTop, onSwipeRight, onSwipeLeft, 
         )}
       </div>
 
-      {/* Direction feedback badges — shown while dragging */}
       {isTop && (
         <>
           <div

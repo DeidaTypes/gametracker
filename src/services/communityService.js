@@ -909,6 +909,78 @@ export async function getFollowedRatingsForGame(igdbGameId) {
 }
 
 /**
+ * Batch circle tracker signals for the Discover swipe deck — followed users'
+ * Want to Play / Played rows for many games in ONE query.
+ *
+ * Distinct from `getFollowedRatingsForGame` (reviews, single game). This
+ * reads `game_trackers` so the swipe card can prefer "{n} in your circle
+ * want to play this" and fall back to played when want count is zero.
+ *
+ * @param {Array<number|string>} igdbGameIds
+ * @returns {Promise<Record<string, {
+ *   wantCount: number,
+ *   playedCount: number,
+ *   lineType: 'want'|'played',
+ *   count: number,
+ *   users: Array<{ userId: string, displayName: string, avatarUrl: string|null }>
+ * }>>}
+ * Empty object when the viewer follows no one or none of them track any
+ * of the requested games — callers hide the social line on a missing key.
+ */
+export async function getFollowedTrackersForGames(igdbGameIds) {
+  try {
+    const followeeIds = await _getCurrentUserFollowees()
+    if (followeeIds.length === 0 || !igdbGameIds?.length) return {}
+
+    const ids = [...new Set(igdbGameIds.map(String))]
+
+    let q = supabase
+      .from('game_trackers')
+      .select(
+        'igdb_game_id, user_id, status, users!game_trackers_user_id_fkey(username, display_name, avatar_url)'
+      )
+      .in('user_id', followeeIds)
+      .in('igdb_game_id', ids)
+      .in('status', ['want_to_play', 'played'])
+    q = await applyBlockFilter(q, 'user_id')
+    const { data, error } = await q
+    if (error) {
+      console.error('[community] getFollowedTrackersForGames failed:', error.message)
+      return {}
+    }
+
+    const buckets = new Map()
+    for (const row of data || []) {
+      const key = String(row.igdb_game_id)
+      if (!buckets.has(key)) buckets.set(key, { want: [], played: [] })
+      const user = {
+        userId: row.user_id,
+        displayName: row.users?.display_name || row.users?.username || 'Player',
+        avatarUrl: row.users?.avatar_url || null,
+      }
+      if (row.status === 'want_to_play') buckets.get(key).want.push(user)
+      else if (row.status === 'played') buckets.get(key).played.push(user)
+    }
+
+    const result = {}
+    for (const [gameId, { want, played }] of buckets) {
+      const wantCount = want.length
+      const playedCount = played.length
+      if (wantCount === 0 && playedCount === 0) continue
+
+      const lineType = wantCount > 0 ? 'want' : 'played'
+      const count = wantCount > 0 ? wantCount : playedCount
+      const users = (wantCount > 0 ? want : played).slice(0, 3)
+      result[gameId] = { wantCount, playedCount, lineType, count, users }
+    }
+    return result
+  } catch (err) {
+    console.error('[community] getFollowedTrackersForGames crashed:', err)
+    return {}
+  }
+}
+
+/**
  * Home feed — "The pulse", the unified community activity feed.
  *
  * `getHomeFeed` never carries a `tasteMatch` field.
@@ -1905,6 +1977,74 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
     console.error('[community] getHomeFeed failed:', err)
     return EMPTY(scope || 'community')
   }
+}
+
+/**
+ * pulseItemHasOpinion — V4-01 display classification. A Pulse item is
+ * "opinion-bearing" (renders as the FULL card) when it carries a rating
+ * or non-empty text; every other item renders as the COMPACT row.
+ *
+ * Display logic only — does not change getHomeFeed's query/selection or
+ * mutate the stored event/review row in any way.
+ */
+export function pulseItemHasOpinion(item) {
+  return Boolean(item?.rating) || Boolean((item?.body || '').trim())
+}
+
+/**
+ * Grouping key for COMPACT items — same event "verb" for grouping
+ * purposes. Plain `type` for every type except `listed`, whose verb
+ * ("created a list" vs "added to a list") depends on `listKind`.
+ */
+function _pulseCompactGroupKey(item) {
+  if (item.type === 'listed') return `listed:${item.listKind || 'added'}`
+  return item.type
+}
+
+const PULSE_GROUP_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/**
+ * groupPulseFeedItems — V4-01 task 4. Walks an ordered Pulse `items`
+ * array and returns a display list of:
+ *   { kind: 'full', item }               — opinion-bearing, never grouped
+ *   { kind: 'compact', item }             — a lone COMPACT event
+ *   { kind: 'group', items: [...] }       — 2+ consecutive COMPACT events
+ *                                            sharing actor + verb, each
+ *                                            within 24h of the previous
+ *
+ * Display-only, like pulseItemHasOpinion above: does not reorder,
+ * fetch, or mutate anything — it only re-packages the already-fetched,
+ * already-ordered `items` array for rendering.
+ */
+export function groupPulseFeedItems(items) {
+  const list = items || []
+  const result = []
+  let i = 0
+  while (i < list.length) {
+    const item = list[i]
+    if (pulseItemHasOpinion(item)) {
+      result.push({ kind: 'full', item })
+      i++
+      continue
+    }
+    const group = [item]
+    let j = i + 1
+    while (
+      j < list.length &&
+      !pulseItemHasOpinion(list[j]) &&
+      list[j].author?.id &&
+      list[j].author.id === item.author?.id &&
+      _pulseCompactGroupKey(list[j]) === _pulseCompactGroupKey(item) &&
+      Math.abs(new Date(list[j].createdAt) - new Date(group[group.length - 1].createdAt)) <=
+        PULSE_GROUP_WINDOW_MS
+    ) {
+      group.push(list[j])
+      j++
+    }
+    result.push(group.length > 1 ? { kind: 'group', items: group } : { kind: 'compact', item })
+    i = j
+  }
+  return result
 }
 
 export { WEEK_MS }

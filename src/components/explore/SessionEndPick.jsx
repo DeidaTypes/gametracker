@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { getGameNavStub } from '../../utils/gameNavStub'
+import { partOfDay } from '../../utils/partOfDay'
 import './SessionEndPick.css'
 
 /**
@@ -93,7 +94,7 @@ function buildSubline(game, stats) {
   }
   if (game.genre && game.genre !== 'Unknown') {
     const first = game.genre.split(',')[0].trim()
-    return `An acclaimed ${first.toLowerCase()} to start tonight`
+    return `An acclaimed ${first.toLowerCase()} to start ${partOfDay()}`
   }
   return null
 }
