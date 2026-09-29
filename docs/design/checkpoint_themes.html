@@ -1,0 +1,299 @@
+<title>Checkpoint Themes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a design-review wall. Intro + screen switcher, then eight theme columns,
+   each = phone mockup + role swatches + button specimen. Page chrome is quiet so the themes carry the color. */
+:root{
+  --page-bg:#eceef2; --page-fg:#14161c; --page-muted:#5a6070; --page-line:rgba(20,24,34,.12);
+  --page-card:#ffffff; --page-accent:#2f5bd8; --page-seg:#dfe2e8;
+  --font:"DM Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page-bg:#0c0d10; --page-fg:#eef0f4; --page-muted:#9aa1b0; --page-line:rgba(230,235,245,.10);
+  --page-card:#15171c; --page-accent:#7fa2ff; --page-seg:#1d2027; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page-bg:#0c0d10; --page-fg:#eef0f4; --page-muted:#9aa1b0; --page-line:rgba(230,235,245,.10);
+  --page-card:#15171c; --page-accent:#7fa2ff; --page-seg:#1d2027; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page-bg);color:var(--page-fg);font-family:var(--font);-webkit-font-smoothing:antialiased;margin:0}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:16px;padding-block:36px 72px}
+.intro{display:grid;gap:10px;max-width:680px}
+.intro h1{font-size:30px;line-height:1.1;font-weight:700;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.intro p{margin:0;color:var(--page-muted);font-size:15px;line-height:1.55}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin:26px 0 28px}
+.seg{display:inline-flex;background:var(--page-seg);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:14px;font-weight:600;border:0;background:transparent;color:var(--page-muted);padding:8px 14px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--page-card);color:var(--page-fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.seg button:focus-visible,.tile:focus-visible{outline:2px solid var(--page-accent);outline-offset:2px}
+.bar .hint{font-size:13px;color:var(--page-muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:36px 24px}
+.theme{display:grid;gap:12px;align-content:start;min-width:0}
+.theme header{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.theme h2{font-size:18px;font-weight:700;margin:0;letter-spacing:-.01em}
+.mode{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--page-muted)}
+.theme .note{font-size:13px;line-height:1.45;color:var(--page-muted);margin:0;min-height:calc(1.45em * 3)}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.sw{display:grid;gap:4px;font-size:10.5px;color:var(--page-muted);text-align:center}
+.sw i{display:block;height:26px;border-radius:6px;border:1px solid var(--page-line)}
+.specimen{border-radius:14px;padding:12px;display:grid;gap:8px;border:1px solid var(--page-line)}
+.specimen .srow{display:flex;gap:8px}
+.specimen .b{flex:1;height:36px;border-radius:10px;display:grid;place-items:center;font-size:12.5px;font-weight:600;white-space:nowrap;padding:0 8px}
+.ships{margin-top:56px;padding-top:28px;border-top:1px solid var(--page-line);display:grid;gap:14px;max-width:760px}
+.ships h2{font-size:20px;margin:0;font-weight:700}
+.ships ul{margin:0;padding-left:18px;display:grid;gap:8px;color:var(--page-muted);font-size:14.5px;line-height:1.55}
+.ships strong{color:var(--page-fg);font-weight:600}
+.ships code{font-size:13px;background:var(--page-seg);padding:1px 5px;border-radius:4px}
+
+/* ---------- phone (all colors come from the per-theme variables set inline) ---------- */
+.phone{position:relative;width:100%;max-width:300px;height:684px;margin:0 auto;border-radius:38px;overflow:hidden;
+  background:var(--base);color:var(--text);border:7px solid #0b0c0f;box-shadow:0 18px 40px rgba(0,0,0,.28);font-size:12px}
+.phone::before{content:"";position:absolute;inset:0 0 auto 0;height:230px;pointer-events:none;
+  background:radial-gradient(70% 70% at 25% 0%,var(--glow),transparent 70%),radial-gradient(60% 60% at 95% 5%,var(--glow2),transparent 70%)}
+.scr{position:relative;height:100%;padding:0 14px}
+.sb{display:flex;justify-content:space-between;align-items:center;padding:12px 8px 8px;font-size:11.5px;font-weight:600}
+.sb .isl{width:78px;height:22px;border-radius:12px;background:#000}
+.hd{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px}
+.hd h3{margin:0;font-size:21px;font-weight:700;letter-spacing:-.02em}
+.hd .ic{display:flex;gap:12px;align-items:center;color:var(--primaryInk)}
+.av{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#0b1220;background:#8ec5ff;flex:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.cv{border-radius:6px;flex:none;position:relative;overflow:hidden}
+.cv::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.35))}
+.k1{background:linear-gradient(160deg,#d8c7ff,#5a3a8f)}.k2{background:linear-gradient(160deg,#6d8fb1,#243447)}.k3{background:linear-gradient(160deg,#ffd166,#c2266b)}
+.k4{background:linear-gradient(160deg,#6a5bd8,#1b1140)}.k5{background:linear-gradient(160deg,#ff8a4c,#5b1414)}.k6{background:linear-gradient(160deg,#9ee0ff,#1c6b3a)}
+.k7{background:linear-gradient(160deg,#ffe066,#2a2a2a)}.k8{background:linear-gradient(160deg,#f5a15c,#1e1b4b)}.k9{background:linear-gradient(160deg,#b8f06a,#14532d)}
+.k10{background:linear-gradient(160deg,#fdba74,#3b1d6e)}.k11{background:linear-gradient(160deg,#f9a8d4,#4c1d95)}.k12{background:linear-gradient(160deg,#7dd3fc,#1e3a8a)}
+.lbl{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.btn{height:34px;border-radius:10px;display:grid;place-items:center;font-weight:600;font-size:12.5px}
+.gp{background:linear-gradient(90deg,var(--primary),var(--review));color:var(--onGrad)}
+.gj{background:linear-gradient(90deg,var(--journal),var(--primary));color:var(--onGrad)}
+.ghost{border:1px solid var(--line);color:var(--text);background:transparent}
+.stars{color:var(--gold);letter-spacing:1px;font-size:11px}
+.stars s{text-decoration:none;color:var(--dim);opacity:.6}
+.chip{display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+.nav{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:236px;height:50px;border-radius:999px;background:var(--navBg);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:var(--shadow);color:var(--muted)}
+.nav .on{width:60px;height:38px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(90deg,var(--primary),var(--journal),var(--review));color:var(--onGrad)}
+.fab{position:absolute;right:16px;bottom:78px;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--primary),var(--journal),var(--review));color:var(--onGrad);font-size:24px;font-weight:300;box-shadow:0 8px 18px var(--glow)}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:block}
+/* home */
+.hero{padding:10px;display:grid;gap:10px}
+.hero .top{display:flex;gap:10px}
+.hero .t{font-size:15px;font-weight:700;margin-top:2px}
+.strip{display:grid;grid-template-columns:1fr auto;margin-top:10px;overflow:hidden}
+.strip>div{padding:9px 10px}
+.strip>div+div{border-left:1px solid var(--line);display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;padding:6px 10px}
+.dots{display:flex;gap:5px}.dots i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--dim);display:block;opacity:.8}
+.dots i.f{background:var(--review);border-color:var(--review);opacity:1}.dots i.t{border-color:var(--primary);opacity:1;box-shadow:0 0 0 2px var(--glow)}
+.ring{width:34px;height:34px;border-radius:50%;display:grid;place-items:center}
+.ring b{width:25px;height:25px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:9px}
+.pulse-h{font-size:17px;font-weight:700;margin:16px 0 2px;background:linear-gradient(90deg,var(--primaryInk),var(--reviewInk));-webkit-background-clip:text;background-clip:text;color:transparent;width:max-content}
+.row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:11.5px;line-height:1.3}
+.row .w{flex:1;min-width:0}
+.fc{padding:9px 10px;border-left:3px solid var(--review);margin-top:8px}
+.fc .txt{font-size:11.5px;line-height:1.4;margin-top:6px}
+.fc .ft{display:flex;justify-content:space-between;margin-top:7px;font-size:10.5px}
+/* discover */
+.swipe{height:300px;border-radius:18px;position:relative;overflow:hidden;background:linear-gradient(165deg,#f0a64a 0%,#7c2d12 38%,#1e1b4b 100%)}
+.swipe::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(5,6,12,.92))}
+.swipe .in{position:absolute;z-index:1;left:14px;right:14px;bottom:12px;color:#f5f6fa}
+.swipe .t{font-size:18px;font-weight:700}
+.swipe .m{font-size:11px;color:rgba(235,238,248,.78);margin-top:2px}
+.swipe .soc{display:flex;gap:6px;align-items:center;margin-top:7px;font-size:11px}
+.swipe .avs{display:flex}.swipe .avs i{width:15px;height:15px;border-radius:50%;border:1.5px solid #10131f;margin-left:-4px;display:block}
+.swipe .avs i:first-child{margin-left:0}
+.swipe .btns{display:flex;justify-content:center;gap:26px;margin-top:11px}
+.swipe .btns b{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:17px}
+.drop{margin-top:12px;padding:10px}
+.drop .cvs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
+.more{border:1px dashed var(--dim);border-radius:6px;display:grid;place-items:center;font-size:10px;color:var(--muted)}
+/* profile */
+.ph{padding:12px}
+.ph .top{display:flex;gap:10px;align-items:flex-start}
+.ph .n{font-size:17px;font-weight:700}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.stat b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat span{font-size:8.5px;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.tabs{display:flex;justify-content:space-around;margin:12px 0 10px;border-bottom:1px solid var(--line);font-weight:600;font-size:12.5px}
+.tabs div{padding:6px 2px 8px;color:var(--muted);border-bottom:2px solid transparent}
+.tabs .on{color:var(--text);border-color:var(--primary)}
+.fav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.taste{display:flex;height:8px;border-radius:99px;overflow:hidden;gap:2px;margin-top:9px}
+.lg{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:7px;font-size:10px;color:var(--muted)}
+.lg i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px}
+/* appearance */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.tile{border-radius:12px;padding:6px;border:1.5px solid var(--line);background:var(--surface);display:grid;gap:5px;position:relative}
+.tile.sel{border-color:var(--primary);box-shadow:0 0 0 2px var(--glow)}
+.tile .mini{height:54px;border-radius:8px;padding:6px;display:grid;gap:4px;align-content:start;border:1px solid rgba(128,128,128,.18)}
+.tile .mini u{display:block;height:9px;border-radius:3px}
+.tile .mini em{display:flex;gap:3px}.tile .mini em i{width:9px;height:9px;border-radius:50%;display:block}
+.tile .nm{font-size:10.5px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.tile .ck{width:14px;height:14px;border-radius:50%;background:var(--primary);color:var(--onPrimary);font-size:9px;display:grid;place-items:center}
+.set{display:flex;justify-content:space-between;align-items:center;padding:10px;margin-top:10px;font-size:12px}
+.tg{width:34px;height:20px;border-radius:99px;background:var(--primary);position:relative}
+.tg::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+@media (prefers-reduced-motion:no-preference){.phone{transition:background-color .2s}}
+</style>
+<div class="wrap">
+  <section class="intro">
+    <h1>Checkpoint themes</h1>
+    <p>Eight launch themes, each shown on the real screens. Every theme keeps the same three color roles: one for the app itself (navigation, selection, status), one for reviews and ratings, one for lists and social. What changes is the hue under each role, chosen so the three stay distinct on that background and every button reads clearly.</p>
+  </section>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Screen shown in every phone">
+      <button type="button" id="v-home" data-view="home" aria-pressed="true">Home</button>
+      <button type="button" id="v-discover" data-view="discover" aria-pressed="false">Discover</button>
+      <button type="button" id="v-profile" data-view="profile" aria-pressed="false">Profile</button>
+      <button type="button" id="v-appearance" data-view="appearance" aria-pressed="false">Theme picker</button>
+    </div>
+    <span class="hint">Switch the screen to compare all eight on the same view.</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <section class="ships">
+    <h2>How this ships</h2>
+    <ul>
+      <li><strong>One block per theme in theme.css.</strong> Each theme redefines the same token names under its own selector, for example <code>[data-app-theme="forest"]</code>. No component changes.</li>
+      <li><strong>The three roles never move.</strong> A review is always the review color, a list is always the list color. Only the hue under the role changes, so Dark Green and Purple swap which hue does which job to avoid clashing with their own background.</li>
+      <li><strong>Light themes add two tokens.</strong> A soft card shadow, since borders alone disappear on white, and darker text versions of each accent so labels stay readable.</li>
+      <li><strong>Stars stay gold everywhere.</strong> They darken slightly on light grounds. Game cover art is never tinted by the theme.</li>
+      <li><strong>No orange in any theme.</strong> The three-accent rule holds across all eight.</li>
+    </ul>
+  </section>
+</div>
+<script>
+const THEMES = [{"id": "navy", "name": "Navy", "mode": "Dark", "note": "The original. Cobalt runs the system, green marks reviews, purple marks lists.", "base": "#0a0f1f", "surface": "#131a35", "surface2": "#1a2244", "line": "rgba(148,168,212,.14)", "text": "#f0f3fa", "muted": "#94a8d4", "dim": "#5f6f97", "primary": "#3b82f6", "onPrimary": "#ffffff", "review": "#0a9e6a", "journal": "#8b32d1", "g4": "#e879a6", "gold": "#f5c542", "onGrad": "#ffffff", "primaryInk": "#7fb0ff", "reviewInk": "#3fd19b", "journalInk": "#c08cf2", "glow": "rgba(59,130,246,.20)", "glow2": "rgba(139,50,209,.16)", "navBg": "rgba(19,26,53,.94)", "shadow": "none"}, {"id": "black", "name": "Black", "mode": "Dark", "note": "True black for OLED screens. Every accent is one step brighter so it holds against pure black.", "base": "#000000", "surface": "#0f0f11", "surface2": "#1a1a1d", "line": "rgba(255,255,255,.09)", "text": "#f5f5f7", "muted": "#a3a3ad", "dim": "#62626b", "primary": "#4a78ff", "onPrimary": "#ffffff", "review": "#0f9d6b", "journal": "#9a45e8", "g4": "#f472b6", "gold": "#f5c542", "onGrad": "#ffffff", "primaryInk": "#86a5ff", "reviewInk": "#3ddc9f", "journalInk": "#c395f5", "glow": "rgba(74,120,255,.10)", "glow2": "rgba(154,69,232,.07)", "navBg": "rgba(15,15,17,.94)", "shadow": "none"}, {"id": "forest", "name": "Dark Green", "mode": "Dark", "note": "Forest ground. Jade takes over as the system color, so reviews move to chartreuse and lists to lavender.", "base": "#08140f", "surface": "#0f2119", "surface2": "#172d23", "line": "rgba(160,210,185,.13)", "text": "#edf6f0", "muted": "#97b8a6", "dim": "#5b7a6a", "primary": "#22b07d", "onPrimary": "#04130c", "review": "#c2d856", "journal": "#a98bf0", "g4": "#5cc8e0", "gold": "#f2c94c", "onGrad": "#04130c", "primaryInk": "#4fd6a0", "reviewInk": "#d4e777", "journalInk": "#c2a9f5", "glow": "rgba(34,176,125,.20)", "glow2": "rgba(194,216,86,.08)", "navBg": "rgba(15,33,25,.94)", "shadow": "none"}, {"id": "purple", "name": "Purple", "mode": "Dark", "note": "Plum ground. Violet becomes the system color, so lists move to magenta and reviews to teal.", "base": "#110a1d", "surface": "#1c1230", "surface2": "#27193f", "line": "rgba(190,170,230,.14)", "text": "#f5f0fd", "muted": "#b4a5d6", "dim": "#71629a", "primary": "#7a55f5", "onPrimary": "#ffffff", "review": "#0f9985", "journal": "#d4478f", "g4": "#6fb6ff", "gold": "#f5c542", "onGrad": "#ffffff", "primaryInk": "#ad97ff", "reviewInk": "#45d6bd", "journalInk": "#f07fb6", "glow": "rgba(122,85,245,.24)", "glow2": "rgba(212,71,143,.12)", "navBg": "rgba(28,18,48,.94)", "shadow": "none"}, {"id": "light", "name": "Light", "mode": "Light", "note": "Cool white with a faint blue bias. Accents are darkened so text stays readable on white.", "base": "#f4f6fa", "surface": "#ffffff", "surface2": "#eceff5", "line": "rgba(20,30,60,.10)", "text": "#111827", "muted": "#525e75", "dim": "#8b93a6", "primary": "#2563eb", "onPrimary": "#ffffff", "review": "#067a55", "journal": "#7c3aed", "g4": "#db2777", "gold": "#d09200", "onGrad": "#ffffff", "primaryInk": "#1d4ed8", "reviewInk": "#047857", "journalInk": "#6d28d9", "glow": "rgba(37,99,235,.10)", "glow2": "rgba(124,58,237,.07)", "navBg": "rgba(255,255,255,.94)", "shadow": "0 1px 2px rgba(16,24,40,.06), 0 6px 16px rgba(16,24,40,.06)"}, {"id": "sky", "name": "Light Blue", "mode": "Light", "note": "Sky ground with white cards. A deeper cobalt keeps buttons from washing into the background.", "base": "#e6f0fb", "surface": "#ffffff", "surface2": "#d8e7f7", "line": "rgba(20,70,130,.12)", "text": "#0b2340", "muted": "#46607f", "dim": "#86a0bd", "primary": "#1a64cc", "onPrimary": "#ffffff", "review": "#0b8066", "journal": "#5b47d6", "g4": "#e0558f", "gold": "#d09200", "onGrad": "#ffffff", "primaryInk": "#1557b5", "reviewInk": "#08705a", "journalInk": "#4a37c4", "glow": "rgba(26,100,204,.14)", "glow2": "rgba(91,71,214,.08)", "navBg": "rgba(255,255,255,.94)", "shadow": "0 1px 2px rgba(11,35,64,.06), 0 6px 16px rgba(11,35,64,.07)"}, {"id": "pink", "name": "Light Pink", "mode": "Light", "note": "Blush ground with white cards. Rose runs the system, with teal reviews as its complement.", "base": "#fcf0f3", "surface": "#ffffff", "surface2": "#f7e0e7", "line": "rgba(120,30,60,.11)", "text": "#35121f", "muted": "#85525f", "dim": "#b58c99", "primary": "#c92a62", "onPrimary": "#ffffff", "review": "#0d8069", "journal": "#7446cf", "g4": "#3b8fd9", "gold": "#d09200", "onGrad": "#ffffff", "primaryInk": "#b3225a", "reviewInk": "#08705c", "journalInk": "#6538c0", "glow": "rgba(201,42,98,.12)", "glow2": "rgba(116,70,207,.07)", "navBg": "rgba(255,255,255,.94)", "shadow": "0 1px 2px rgba(60,10,30,.05), 0 6px 16px rgba(60,10,30,.06)"}, {"id": "cream", "name": "Cream", "mode": "Light", "note": "Paper ground with print colors: ink blue for the system, forest green for reviews, plum for lists.", "base": "#f4ede0", "surface": "#fffaf0", "surface2": "#ebe1cf", "line": "rgba(70,50,20,.12)", "text": "#2a2217", "muted": "#6a5e4a", "dim": "#a0937a", "primary": "#2c5b8a", "onPrimary": "#ffffff", "review": "#3a7648", "journal": "#86427f", "g4": "#4c93a0", "gold": "#b98309", "onGrad": "#ffffff", "primaryInk": "#264f78", "reviewInk": "#2f6a3d", "journalInk": "#7a3874", "glow": "rgba(44,91,138,.08)", "glow2": "rgba(134,66,127,.06)", "navBg": "rgba(255,250,240,.95)", "shadow": "0 1px 2px rgba(60,40,10,.06), 0 6px 16px rgba(60,40,10,.06)"}];
+const ICON = {
+  home:'<svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  compass:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+  lib:'<svg class="i" viewBox="0 0 24 24"><rect x="7" y="3" width="13" height="15" rx="2"/><path d="M4 7v12a2 2 0 0 0 2 2h11"/></svg>',
+  user:'<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  search:'<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  bell:'<svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>',
+  chat:'<svg class="i" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 3.5 6.6L3 20l1.4-4A8 8 0 0 1 4 12z"/></svg>',
+  back:'<svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>'
+};
+const tint = (hex, a) => { const h=hex.replace('#',''); const n=parseInt(h,16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+const vars = t => ['base','surface','surface2','line','text','muted','dim','primary','onPrimary','review','journal','g4','gold','onGrad','primaryInk','reviewInk','journalInk','glow','glow2','navBg','shadow']
+  .map(k => `--${k}:${t[k]}`).join(';');
+const status = '<div class="sb"><span>9:41</span><span class="isl"></span><span>100</span></div>';
+const nav = (on) => {
+  const items=[['home','home'],['discover','compass'],['library','lib'],['profile','user']];
+  return `<div class="nav">${items.map(([k,ic])=> k===on ? `<span class="on">${ICON[ic]}</span>` : `<span>${ICON[ic]}</span>`).join('')}</div>`;
+};
+const chipC = (t,c,ink) => `background:${tint(c,.18)};color:${ink}`;
+
+const screens = {
+  home: t => `${status}
+    <div class="hd"><h3>Checkpoint</h3><div class="ic">${ICON.search}${ICON.bell}</div></div>
+    <div class="card hero">
+      <div class="top">
+        <div class="cv k1" style="width:58px;height:84px"></div>
+        <div><div class="lbl" style="color:var(--primaryInk)">Now playing</div>
+          <div class="t">Tales of Symphonia</div>
+          <div class="muted" style="font-size:10.5px;margin-top:3px">Just started · 0h logged · Main ~40h</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:7px"><div class="btn gp">Log a session</div><div class="btn ghost">Finish</div></div>
+    </div>
+    <div class="card strip">
+      <div><div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--journal);display:block"></span><b style="font-size:14px">5</b><span class="chip" style="${chipC(t,t.journal,t.journalInk)}">Spark</span></span>
+          <span class="dots"><i></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i class="t"></i></span></div>
+        <div class="muted" style="font-size:10px;margin-top:6px">2 days to Ember · shield ready</div></div>
+      <div><span class="ring" style="background:conic-gradient(var(--review) 158deg,${tint(t.dim.startsWith('#')?t.dim:'#888888',.35)} 0)"><b>11</b></span>
+        <span class="muted" style="font-size:9.5px;font-weight:600;white-space:nowrap">11 of 25</span></div>
+    </div>
+    <div class="pulse-h">The pulse</div>
+    <div class="muted" style="font-size:10.5px;margin-bottom:4px">6 new from your circle since last night</div>
+    <div class="row"><span class="av" style="width:22px;height:22px;font-size:10px">G</span>
+      <span class="w">gentenstation <b style="color:var(--primaryInk);font-weight:600">finished</b> MediEvil II and MediEvil<br><span class="dim" style="font-size:10px">Aug 7 · 2 games</span></span>
+      <span class="cv k4" style="width:18px;height:26px"></span></div>
+    <div class="row"><span class="av" style="width:22px;height:22px;font-size:10px;background:#f0b6d6">M</span>
+      <span class="w">moon.nolan <b style="color:var(--journalInk);font-weight:600">added</b> 3 games to <span style="color:var(--journalInk)">Comfort Food</span><br><span class="dim" style="font-size:10px">Aug 6</span></span>
+      <span style="color:var(--journalInk)">♡</span></div>
+    <div class="card fc">
+      <div style="display:flex;gap:8px"><div class="cv k2" style="width:30px;height:44px"></div>
+        <div><b style="font-size:13px">Gundam Versus</b><div class="stars">★★★<s>★★</s></div></div></div>
+      <div class="txt">Better than I expected. The roster carries it.</div>
+      <div class="ft"><span><b style="color:var(--reviewInk);font-weight:600">You reviewed</b> <span class="dim">· 5d</span></span><span style="color:var(--journalInk)">♡ 2 &nbsp; ◌ 1</span></div>
+    </div>
+    <div class="fab">+</div>${nav('home')}`,
+
+  discover: t => `${status}
+    <div class="hd"><h3>Discover</h3><div class="ic">${ICON.search}</div></div>
+    <div class="swipe"><div class="in">
+      <div class="t">Mass Effect 2</div>
+      <div class="m">2010 · Shooter, RPG · ~24h main</div>
+      <div class="soc"><span class="avs"><i style="background:#8ec5ff"></i><i style="background:#f0b6d6"></i><i style="background:#9fe3c4"></i></span>3 in your circle want to play this</div>
+      <div class="btns"><b style="border:1.5px solid rgba(235,238,248,.45);color:rgba(235,238,248,.85);background:rgba(10,12,20,.35)">✕</b><b style="background:var(--primary);color:var(--onPrimary)">♥</b></div>
+    </div></div>
+    <div class="card drop" style="background:linear-gradient(135deg,${tint(t.journal,.16)},var(--surface) 62%)">
+      <div style="display:flex;justify-content:space-between"><span class="lbl" style="color:var(--journalInk)">This week's drop</span><span class="dim" style="font-size:10px">new Thursday</span></div>
+      <div style="font-size:14px;font-weight:700;margin-top:3px">Vampire session?</div>
+      <div class="muted" style="font-size:10.5px">For the ones who game till sunrise</div>
+      <div class="cvs"><div class="cv k11" style="aspect-ratio:2/3"></div><div class="cv k7" style="aspect-ratio:2/3"></div><div class="cv k9" style="aspect-ratio:2/3"></div><div class="cv k5" style="aspect-ratio:2/3"></div><div class="more">+16</div></div>
+    </div>
+    ${nav('discover')}`,
+
+  profile: t => `${status}
+    <div class="card ph" style="margin-top:4px;background:linear-gradient(135deg,var(--surface),${tint(t.journal,.12)})">
+      <div class="top"><span class="av" style="width:48px;height:48px;font-size:19px">T</span>
+        <div style="flex:1;min-width:0"><div class="n">theantifail</div><div class="muted" style="font-size:11px">@theantifail</div>
+          <div style="font-size:11px;margin-top:4px"><b>1</b> <span class="muted">follower</span> · <b>3</b> <span class="muted">following</span></div></div>
+        <span style="display:flex;gap:9px;color:var(--primaryInk)">${ICON.chat}<b style="letter-spacing:1px;color:var(--muted)">⋮</b></span></div>
+      <div class="stat"><div><b>30</b><span>GAMES</span></div><div><b>21<small style="font-size:10px">h</small></b><span>PLAYED</span></div><div><b>8</b><span>REVIEWS</span></div><div><b>3.1</b><span>AVG <span style="color:var(--gold)">★</span></span></div></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--primaryInk);margin-top:10px">Tell people what you play →</div>
+    <div class="tabs"><div class="on">Home</div><div>Reviews</div><div>Lists</div><div>Diary</div></div>
+    <div class="card" style="padding:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Favorite games</b><span style="font-size:11px;color:var(--primaryInk);font-weight:600">Edit</span></div>
+      <div class="fav"><div class="cv k5" style="aspect-ratio:2/3"></div><div class="cv k12" style="aspect-ratio:2/3"></div><div class="cv k10" style="aspect-ratio:2/3"></div><div class="cv k2" style="aspect-ratio:2/3"></div></div>
+      <div style="margin-top:12px"><b style="font-size:13px">Your taste</b></div>
+      <div class="taste"><i style="width:38%;background:var(--primary)"></i><i style="width:29%;background:var(--review)"></i><i style="width:17%;background:var(--journal)"></i><i style="width:16%;background:var(--g4)"></i></div>
+      <div class="lg"><span><i style="background:var(--primary)"></i>RPG 38%</span><span><i style="background:var(--review)"></i>Adventure 29%</span><span><i style="background:var(--journal)"></i>Hack and slash 17%</span><span><i style="background:var(--g4)"></i>Indie 16%</span></div>
+    </div>
+    ${nav('profile')}`,
+
+  appearance: t => `${status}
+    <div class="hd" style="justify-content:flex-start;gap:6px"><span style="color:var(--primaryInk)">${ICON.back}</span><h3 style="font-size:19px">Appearance</h3></div>
+    <div class="lbl muted">Theme</div>
+    <div class="tiles">${THEMES.map(o => `<div class="tile${o.id===t.id?' sel':''}">
+        <div class="mini" style="background:${o.base}"><u style="background:${o.surface};width:80%"></u><u style="background:${o.surface};width:55%"></u>
+          <em><i style="background:${o.primary}"></i><i style="background:${o.review}"></i><i style="background:${o.journal}"></i></em></div>
+        <div class="nm"><span>${o.name}</span>${o.id===t.id?'<span class="ck">✓</span>':''}</div></div>`).join('')}</div>
+    <div class="card set"><span>Match iPhone light and dark</span><span class="tg"></span></div>
+    ${nav('profile')}`
+};
+
+const grid = document.getElementById('grid');
+function render(view){
+  grid.innerHTML = THEMES.map(t => `
+    <article class="theme">
+      <header><h2>${t.name}</h2><span class="mode">${t.mode}</span></header>
+      <p class="note">${t.note}</p>
+      <div class="phone" style="${vars(t)}"><div class="scr">${screens[view](t)}</div></div>
+      <div class="swatches">
+        ${[['Ground',t.base],['Surface',t.surface],['Text',t.text],['App',t.primary],['Reviews',t.review],['Lists',t.journal]]
+          .map(([l,c]) => `<div class="sw"><i style="background:${c}"></i>${l}</div>`).join('')}
+      </div>
+      <div class="specimen" style="${vars(t)};background:${t.surface}">
+        <div class="srow"><span class="b gp">Add a review</span><span class="b gj">Journal entry</span></div>
+        <div class="srow"><span class="b" style="background:${t.primary};color:${t.onPrimary}">Follow</span><span class="b ghost">Following ✓</span></div>
+      </div>
+    </article>`).join('');
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render(b.dataset.view);
+  try { localStorage.setItem('cp-theme-view', b.dataset.view); } catch(e) {}
+}));
+let start = 'home';
+try { const s = localStorage.getItem('cp-theme-view'); if (s && screens[s]) start = s; } catch(e) {}
+document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === start)));
+render(start);
+
+</script>
