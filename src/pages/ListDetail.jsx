@@ -162,15 +162,6 @@ function ListDetailEmpty({ listId, isTracker, onAddGames, onFindGames }) {
   )
 }
 
-function measureClearModeChromeHeight(pageEl) {
-  if (!pageEl) return 0
-  let total = 0
-  pageEl.querySelectorAll('.ld-clear-mode-chrome').forEach((node) => {
-    total += node.offsetHeight
-  })
-  return total
-}
-
 function ListDetail() {
   const { listId } = useParams()
   const navigate = useNavigate()
@@ -239,6 +230,10 @@ function ListDetail() {
   const clearScrollAdjustRef = useRef(null)
   const [clearGridFade, setClearGridFade] = useState(false)
   const prevClearModeRef = useRef(false)
+  const clearModeTransitionReadyRef = useRef(false)
+  const sortRowRef = useRef(null)
+  const descChromeRef = useRef(null)
+  const headerBarRef = useRef(null)
 
   useHideNav(!!listInfo?.isCustom)
   useSwipeBackBlock(isClearMode)
@@ -274,6 +269,15 @@ function ListDetail() {
     }
   }, [isClearMode, reducedMotion])
 
+  const measureClearModeChromeHeight = useCallback(() => {
+    let total = headerBarRef.current?.offsetHeight ?? 0
+    total += sortRowRef.current?.offsetHeight ?? 0
+    if (descChromeRef.current) {
+      total += descChromeRef.current.offsetHeight
+    }
+    return total
+  }, [])
+
   useLayoutEffect(() => {
     const pending = clearScrollAdjustRef.current
     if (!pending) return
@@ -285,13 +289,18 @@ function ListDetail() {
     if (pending.phase === 'enter' && isClearMode) {
       scrollEl.scrollTop = Math.max(0, pending.priorScrollTop - pending.chromeH)
     } else if (pending.phase === 'exit' && !isClearMode) {
-      const chromeH = measureClearModeChromeHeight(pageRef.current)
+      const chromeH = measureClearModeChromeHeight()
       scrollEl.scrollTop = pending.scrollTopBeforeExit + chromeH
     }
     clearScrollAdjustRef.current = null
-  }, [isClearMode])
+  }, [isClearMode, measureClearModeChromeHeight])
 
   useEffect(() => {
+    if (!clearModeTransitionReadyRef.current) {
+      clearModeTransitionReadyRef.current = true
+      prevClearModeRef.current = isClearMode
+      return undefined
+    }
     const prev = prevClearModeRef.current
     prevClearModeRef.current = isClearMode
     if (prev === isClearMode || reducedMotion) return undefined
@@ -299,8 +308,6 @@ function ListDetail() {
     const t = setTimeout(() => setClearGridFade(false), 220)
     return () => clearTimeout(t)
   }, [isClearMode, reducedMotion])
-
-  const headerBarRef = useRef(null)
 
   // Sort + view — same controls and persistence as Library › My Games.
   const [sortKey, setSortKey] = useState('recent')
@@ -314,7 +321,7 @@ function ListDetail() {
 
   const handleEnterClearMode = useCallback(() => {
     if (isTracker || isClearMode) return
-    const chromeH = measureClearModeChromeHeight(pageRef.current)
+    const chromeH = measureClearModeChromeHeight()
     const scrollEl = pageRef.current?.closest('.main-content')
     clearScrollAdjustRef.current = {
       phase: 'enter',
@@ -322,7 +329,7 @@ function ListDetail() {
       priorScrollTop: scrollEl?.scrollTop ?? 0,
     }
     setIsClearMode(true)
-  }, [isClearMode, isTracker])
+  }, [isClearMode, isTracker, measureClearModeChromeHeight])
 
   const handleClearModeExitCapture = useCallback(
     (e) => {
@@ -1307,20 +1314,31 @@ function ListDetail() {
   }
 
   // ── Custom lists — mockup D: compact nav, optional description, grid ─────
+  const ClearGridSurface = isClearMode ? 'div' : React.Fragment
+  const clearGridSurfaceProps = isClearMode
+    ? {
+        className: `ld-clear-grid-surface${
+          clearGridFade && !reducedMotion ? ' ld-clear-grid-surface--fade' : ''
+        }`,
+      }
+    : {}
+
   return (
     <div
       ref={pageRef}
       className={`list-detail-page list-detail-page--custom content-fade-in${
-        showFab && !isClearMode ? ' list-detail-page--fab' : ''
+        showFab ? ' list-detail-page--fab' : ''
       }${isClearMode ? ' list-detail-page--clear-mode' : ''}`}
-      onClickCapture={handleClearModeExitCapture}
+      {...(isClearMode
+        ? { onClickCapture: handleClearModeExitCapture }
+        : {})}
     >
       {isClearMode && (
         <div className="ld-clear-status-fade" aria-hidden="true" />
       )}
 
       {!isClearMode && (
-        <header className="ld-header ld-clear-mode-chrome" ref={headerBarRef}>
+        <header className="ld-header ld-hud" ref={headerBarRef}>
         <button
           type="button"
           className="icon-btn"
@@ -1359,7 +1377,10 @@ function ListDetail() {
       )}
 
       {!isClearMode && isOwner && editingDesc ? (
-        <div className="list-detail-desc-edit-wrap ld-desc-edit ld-clear-mode-chrome">
+        <div
+          className="list-detail-desc-edit-wrap ld-desc-edit ld-hud"
+          ref={descChromeRef}
+        >
           <div className="list-detail-desc-edit-unit">
             <textarea
               ref={descTextareaRef}
@@ -1391,13 +1412,15 @@ function ListDetail() {
       ) : (
         !isClearMode &&
         listInfo.description && (
-          <p className="ld-desc-line ld-clear-mode-chrome">{listInfo.description}</p>
+          <p className="ld-desc-line ld-hud" ref={descChromeRef}>
+            {listInfo.description}
+          </p>
         )
       )}
 
       <div className="list-body">
         {!isClearMode && (
-        <div className="ld-sortrow ld-clear-mode-chrome">
+        <div className="ld-sortrow ld-hud" ref={sortRowRef}>
           <span className="ld-sortrow-byline">
             {author?.username ? (
               <button
@@ -1423,11 +1446,7 @@ function ListDetail() {
         </div>
         )}
 
-        <div
-          className={`ld-clear-grid-surface${
-            clearGridFade && !reducedMotion ? ' ld-clear-grid-surface--fade' : ''
-          }`}
-        >
+        <ClearGridSurface {...clearGridSurfaceProps}>
         {sortedGames.length > 0 ? (
           viewKey === 'list' ? (
             <>
@@ -1555,7 +1574,7 @@ function ListDetail() {
         ) : (
           <ListDetailEmpty listId={listId} isTracker={isTracker} />
         )}
-        </div>
+        </ClearGridSurface>
 
         {/* Slide-up trash target — mounted (via portal) only while this
             viewer could possibly start a drag; visible/armed are what
@@ -1570,11 +1589,13 @@ function ListDetail() {
         )}
 
         {!isClearMode && listInfo.isCustom && (
-          <ListComments
-            listId={listId}
-            currentUserId={currentUserId}
-            isOwner={isOwner}
-          />
+          <div className="ld-hud">
+            <ListComments
+              listId={listId}
+              currentUserId={currentUserId}
+              isOwner={isOwner}
+            />
+          </div>
         )}
       </div>
 
