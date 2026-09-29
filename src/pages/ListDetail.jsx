@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
@@ -73,11 +66,6 @@ import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
-import {
-  hasSeenClearModeHint,
-  markClearModeHintSeen,
-} from '../services/listClearMode'
-import { useSwipeBackBlock } from '../hooks/useSwipeBackBlock'
 
 /** How long a list's contents are reused before the next entry revalidates. */
 const LIST_TTL_MS = 60 * 1000
@@ -218,89 +206,12 @@ function ListDetail() {
 
   // Custom lists render a comment composer (ListComments, below the game
   // grid) — tracker lists (Backlog/Playing/Played/Dropped) never do.
-  // Default keeps the bottom nav visible so the comment bar can sit on it.
-  // Clear mode hides chrome (including the nav) and never persists.
+  // Hide the nav only for the former, and only once we actually know the
+  // list is custom, so it's restored automatically on unmount/navigation.
   // See src/hooks/useHideNav.js.
-  const [isClearMode, setIsClearMode] = useState(false)
-  const [clearHintVisible, setClearHintVisible] = useState(false)
-  const [clearHintFading, setClearHintFading] = useState(false)
-  const clearHintShownRef = useRef(false)
-  const pageRef = useRef(null)
-  const clearScrollAdjustRef = useRef(null)
-  const prevClearModeRef = useRef(false)
-  const clearModeTransitionReadyRef = useRef(false)
-  const sortRowRef = useRef(null)
-  const descChromeRef = useRef(null)
+  useHideNav(!!listInfo?.isCustom)
+
   const headerBarRef = useRef(null)
-
-  useEffect(() => {
-    setIsClearMode(false)
-    setClearHintVisible(false)
-    setClearHintFading(false)
-  }, [listId])
-
-  useHideNav(isClearMode)
-  useSwipeBackBlock(isClearMode)
-
-  useEffect(() => {
-    if (!isClearMode) {
-      setClearHintVisible(false)
-      setClearHintFading(false)
-      return undefined
-    }
-    if (hasSeenClearModeHint() || clearHintShownRef.current) return undefined
-    clearHintShownRef.current = true
-    markClearModeHintSeen()
-    setClearHintVisible(true)
-    setClearHintFading(false)
-    if (reducedMotion) {
-      setClearHintVisible(false)
-      return undefined
-    }
-    const holdMs = 2000
-    const fadeMs = 300
-    const fadeStart = setTimeout(() => setClearHintFading(true), holdMs)
-    const hide = setTimeout(() => setClearHintVisible(false), holdMs + fadeMs)
-    return () => {
-      clearTimeout(fadeStart)
-      clearTimeout(hide)
-    }
-  }, [isClearMode, reducedMotion])
-
-  const measureClearModeChromeHeight = useCallback(() => {
-    let total = headerBarRef.current?.offsetHeight ?? 0
-    total += sortRowRef.current?.offsetHeight ?? 0
-    if (descChromeRef.current) {
-      total += descChromeRef.current.offsetHeight
-    }
-    return total
-  }, [])
-
-  useLayoutEffect(() => {
-    if (!clearModeTransitionReadyRef.current) {
-      clearModeTransitionReadyRef.current = true
-      prevClearModeRef.current = isClearMode
-      return
-    }
-    const prev = prevClearModeRef.current
-    prevClearModeRef.current = isClearMode
-    if (prev === isClearMode) return
-
-    const pending = clearScrollAdjustRef.current
-    if (!pending) return
-    const scrollEl = pageRef.current?.closest('.main-content')
-    if (!scrollEl) {
-      clearScrollAdjustRef.current = null
-      return
-    }
-    if (pending.phase === 'enter' && isClearMode) {
-      scrollEl.scrollTop = Math.max(0, pending.priorScrollTop - pending.chromeH)
-    } else if (pending.phase === 'exit' && !isClearMode) {
-      const chromeH = measureClearModeChromeHeight()
-      scrollEl.scrollTop = pending.scrollTopBeforeExit + chromeH
-    }
-    clearScrollAdjustRef.current = null
-  }, [isClearMode, measureClearModeChromeHeight])
 
   // Sort + view — same controls and persistence as Library › My Games.
   const [sortKey, setSortKey] = useState('recent')
@@ -311,33 +222,6 @@ function ListDetail() {
     setViewKey(key)
     writeLibraryView(key)
   }, [])
-
-  const handleEnterClearMode = useCallback(() => {
-    if (isTracker || isClearMode) return
-    const chromeH = measureClearModeChromeHeight()
-    const scrollEl = pageRef.current?.closest('.main-content')
-    clearScrollAdjustRef.current = {
-      phase: 'enter',
-      chromeH,
-      priorScrollTop: scrollEl?.scrollTop ?? 0,
-    }
-    setIsClearMode(true)
-  }, [isClearMode, isTracker, measureClearModeChromeHeight])
-
-  const handleClearModeExitCapture = useCallback(
-    (e) => {
-      if (!isClearMode) return
-      e.preventDefault()
-      e.stopPropagation()
-      const scrollEl = pageRef.current?.closest('.main-content')
-      clearScrollAdjustRef.current = {
-        phase: 'exit',
-        scrollTopBeforeExit: scrollEl?.scrollTop ?? 0,
-      }
-      setIsClearMode(false)
-    },
-    [isClearMode]
-  )
 
   const openGame = useCallback((game, imageUrl) => {
     navigate(`/game/${game.id}`, {
@@ -708,7 +592,7 @@ function ListDetail() {
   //      passive touch listeners make preventDefault on synthetic pointer
   //      events unreliable in WKWebView, so both backstops stay.
   const handleCoverPointerDown = (e, gameId) => {
-    if (!canDrag || isClearMode) return
+    if (!canDrag) return
     if (dragSessionRef.current) return // one drag session at a time
 
     const captureEl = e.currentTarget
@@ -1030,18 +914,8 @@ function ListDetail() {
     ? [{ label: 'Share', onClick: () => setDmShareOpen(true) }]
     : []
 
-  const clearModeSheetItem = !isTracker
-    ? [
-        {
-          label: 'Clear mode',
-          onClick: handleEnterClearMode,
-        },
-      ]
-    : []
-
   const actionSheetItems = isOwner
     ? [
-        ...clearModeSheetItem,
         ...shareItem,
         { label: 'Edit details', onClick: openDescEdit },
         {
@@ -1063,7 +937,6 @@ function ListDetail() {
         },
       ]
     : [
-        ...clearModeSheetItem,
         ...(listInfo?.isCustom && listInfo?.isPublic && currentUserId
           ? [{ label: isSaved ? 'Unsave' : 'Save', onClick: handleSaveToggle }]
           : []),
@@ -1309,18 +1182,11 @@ function ListDetail() {
   // ── Custom lists — mockup D: compact nav, optional description, grid ─────
   return (
     <div
-      ref={pageRef}
       className={`list-detail-page list-detail-page--custom content-fade-in${
         showFab ? ' list-detail-page--fab' : ''
-      }${isClearMode ? ' list-detail-page--clear-mode is-clear-mode' : ''}`}
-      onClickCapture={handleClearModeExitCapture}
+      }`}
     >
-      {isClearMode && (
-        <div className="ld-clear-status-fade" aria-hidden="true" />
-      )}
-
-      {!isClearMode && (
-      <header className="ld-header ld-hud" ref={headerBarRef}>
+      <header className="ld-header" ref={headerBarRef}>
         <button
           type="button"
           className="icon-btn"
@@ -1356,13 +1222,9 @@ function ListDetail() {
           </button>
         </div>
       </header>
-      )}
 
-      {!isClearMode && (isOwner && editingDesc ? (
-        <div
-          className="list-detail-desc-edit-wrap ld-desc-edit ld-hud"
-          ref={descChromeRef}
-        >
+      {isOwner && editingDesc ? (
+        <div className="list-detail-desc-edit-wrap ld-desc-edit">
           <div className="list-detail-desc-edit-unit">
             <textarea
               ref={descTextareaRef}
@@ -1393,15 +1255,12 @@ function ListDetail() {
         </div>
       ) : (
         listInfo.description && (
-          <p className="ld-desc-line ld-hud" ref={descChromeRef}>
-            {listInfo.description}
-          </p>
+          <p className="ld-desc-line">{listInfo.description}</p>
         )
-      ))}
+      )}
 
       <div className="list-body">
-        {!isClearMode && (
-        <div className="ld-sortrow ld-hud" ref={sortRowRef}>
+        <div className="ld-sortrow">
           <span className="ld-sortrow-byline">
             {author?.username ? (
               <button
@@ -1425,7 +1284,6 @@ function ListDetail() {
             <ChevronDown size={10} strokeWidth={2.5} aria-hidden="true" />
           </button>
         </div>
-        )}
 
         {sortedGames.length > 0 ? (
           viewKey === 'list' ? (
@@ -1559,7 +1417,7 @@ function ListDetail() {
             viewer could possibly start a drag; visible/armed are what
             actually animate it in/out. See handleCoverPointerDown /
             handleCoverPointerMove above for the drag session driving it. */}
-        {canDrag && !isClearMode && (
+        {canDrag && (
           <ReorderTrashTarget
             visible={dragGameId != null}
             armed={trashArmed}
@@ -1567,29 +1425,14 @@ function ListDetail() {
           />
         )}
 
-        {!isClearMode && listInfo.isCustom && (
-          <div className="ld-hud">
-            <ListComments
-              listId={listId}
-              currentUserId={currentUserId}
-              isOwner={isOwner}
-            />
-          </div>
+        {listInfo.isCustom && (
+          <ListComments
+            listId={listId}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+          />
         )}
       </div>
-
-      {clearHintVisible &&
-        createPortal(
-          <p
-            className={`ld-clear-hint text-label${
-              clearHintFading ? ' ld-clear-hint--out' : ''
-            }`}
-            role="status"
-          >
-            Tap anywhere to exit
-          </p>,
-          document.body
-        )}
 
       <AddGamesModal
         isOpen={showAddGames}
@@ -1660,11 +1503,10 @@ function ListDetail() {
       />
 
       {showFab &&
-        !isClearMode &&
         createPortal(
           <button
             type="button"
-            className={`lib-fab lib-fab--lists ld-fab${
+            className={`lib-fab lib-fab--lists${
               dragGameId != null ? ' lib-fab--hidden' : ''
             }`}
             onClick={() => setShowAddGames(true)}
