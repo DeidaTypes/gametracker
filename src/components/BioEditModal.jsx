@@ -88,25 +88,40 @@ function BioEditModal({ isOpen, onClose, currentBio = '', onSave }) {
 
     const trimmed = text.trim()
 
-    // Optimistic update — localStorage is source of truth for the session
-    const updated = updateProfile({ bio: trimmed })
-    onSave(updated)
-    onClose()
-    showToast('Bio updated')
-
-    // Best-effort sync to Supabase
+    // The users row is the source of truth. Only mirror it locally and
+    // report success after that write comes back clean — a later failure
+    // must not turn a finished save into an error, and a real rejection
+    // must not be toasted as "Bio updated".
     try {
       const {
         data: { user },
+        error: userErr,
       } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.from('users').update({ bio: trimmed }).eq('id', user.id)
-      }
-    } catch {
-      // offline / signed-out — localStorage value applies
-    }
+      if (userErr) throw userErr
+      if (!user) throw new Error('Not signed in')
 
-    setSaving(false)
+      const { error } = await supabase
+        .from('users')
+        .update({ bio: trimmed })
+        .eq('id', user.id)
+      if (error) throw error
+
+      const updated = updateProfile({ bio: trimmed })
+      onSave(updated)
+      onClose()
+      showToast('Bio updated', 'success')
+    } catch (err) {
+      const raw = err?.message || ''
+      const offline = /failed to fetch|network|timeout|load failed/i.test(raw)
+      showToast(
+        offline
+          ? "Couldn't save your bio. Check your connection and try again."
+          : (raw || "Couldn't save your bio. Please try again."),
+        'error'
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

@@ -1955,7 +1955,6 @@ function Profile() {
                   }
                   onSeeMoreBadges={() => navigate(`/user/${profilePathSegment}/badges`)}
                   profilePathSegment={profilePathSegment}
-                  user={user}
                   targetUserId={targetUserId}
                   isOwnProfile={isOwnProfile}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
@@ -2332,7 +2331,6 @@ function HomeTab({
   onGameClick,
   onSeeMoreBadges,
   profilePathSegment,
-  user,
   targetUserId,
   isOwnProfile,
   onEditFavorites,
@@ -2362,7 +2360,10 @@ function HomeTab({
   const showTasteRatingsCard = tasteLoading || tasteVisible || ratingsVisible
   // Own profile always shows the challenge cell (Set Goal when empty).
   // Visitors only see it while loading or when the owner has a public goal.
+  // Badges are separate: every profile gets the teaser, keyed by that
+  // profile's id, including visitors who have no public goal.
   const showChallengeSection = isOwnProfile || goalProgress === null || hasGoal
+  const showBadges = !!targetUserId
 
   return (
     <div className="profile-home profile-home--condensed">
@@ -2396,7 +2397,7 @@ function HomeTab({
         </section>
       )}
 
-      {showChallengeSection && (
+      {(showChallengeSection || showBadges) && (
         <ProfileChallengeSection
           goalProgress={goalProgress}
           profilePathSegment={profilePathSegment}
@@ -2405,8 +2406,8 @@ function HomeTab({
           hasGoal={hasGoal}
           currentYear={currentYear}
           onSetGoal={isOwnProfile ? onSetGoal : undefined}
-          mergeBadges={isOwnProfile}
-          badgesUserId={isOwnProfile ? user?.id : null}
+          mergeBadges={showBadges}
+          badgesUserId={targetUserId}
           onSeeMoreBadges={onSeeMoreBadges}
         />
       )}
