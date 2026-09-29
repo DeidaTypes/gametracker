@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
 import PullToRefresh, { PULL_TO_REFRESH_YIELD_EVENT } from '../components/PullToRefresh'
-import Avatar from '../components/Avatar'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
 import { showToast } from '../components/Toast'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
@@ -16,7 +15,6 @@ import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
-import { getProfile } from '../services/profileService'
 import {
   getListsForUser,
   getSaveCountsForLists,
@@ -321,20 +319,6 @@ function Library() {
         .sort((a, b) => new Date(b.pinnedAt || 0) - new Date(a.pinnedAt || 0)),
     [customLists]
   )
-
-  // Header avatar — same local-profile resolution Profile.jsx uses.
-  const avatarUser = useMemo(() => {
-    const profile = getProfile()
-    const stored = profile?.avatar
-    const avatarUrl =
-      stored?.type === 'url' || stored?.type === 'data' ? stored.data : null
-    return {
-      id: user?.id || 'me',
-      avatarUrl,
-      displayName: profile?.displayName || '',
-      username: profile?.username || '',
-    }
-  }, [user?.id])
 
   const isGamesTab = activeTab === 'games'
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sortKey)?.label || 'Recent'
@@ -849,17 +833,7 @@ function Library() {
         <LibraryHeader
           title="Library"
           actions={
-            <>
-              <LibrarySearchToggle open={searchOpen} onToggle={toggleSearch} />
-              <button
-                type="button"
-                className="lib-avatar-btn"
-                onClick={() => navigate('/profile')}
-                aria-label="Open your profile"
-              >
-                <Avatar user={avatarUser} size="sm" />
-              </button>
-            </>
+            <LibrarySearchToggle open={searchOpen} onToggle={toggleSearch} />
           }
         />
         <LibrarySearchPanel

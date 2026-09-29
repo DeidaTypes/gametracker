@@ -1,0 +1,237 @@
+/* ============================================================
+   PROGRESS STRIP — merged streak + challenge (V4-02)
+   Namespace: ps-*
+   ============================================================ */
+
+.ps {
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ps--dual {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.ps-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-12) 14px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.ps-streak:active {
+  background: var(--bg-surface-2);
+}
+
+.ps-streak:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+/* Row 1 — flame, count, tier chip */
+.ps-streak__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ps-streak__flame {
+  flex-shrink: 0;
+  color: var(--accent-journal);
+}
+
+.ps-streak__count {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+.ps-streak__tier {
+  flex-shrink: 1;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--accent-journal) 16%, transparent);
+  color: var(--accent-journal-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row 2 — rolling week dots, always left-aligned under the head row */
+.ps-streak__pips {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.ps-streak__pip {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.ps-streak__pip--active {
+  background: var(--accent-review);
+  border-color: var(--accent-review);
+}
+
+.ps-streak__pip--today {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.ps-streak__pip--today.ps-streak__pip--active {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Row 3 — progress subline */
+.ps-streak__line2 {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-streak--zero .ps-streak__flame,
+.ps-streak--zero .ps-streak__count {
+  color: var(--color-text-tertiary);
+}
+
+.ps-challenge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-12) 14px;
+  margin: 0;
+  border: none;
+  border-left: 1px solid var(--border-subtle);
+  background: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.ps-challenge:active {
+  background: var(--bg-surface-2);
+}
+
+.ps-challenge:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+.ps-challenge-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.ps-challenge-ring__svg {
+  display: block;
+}
+
+.ps-challenge-ring__track {
+  stroke: var(--border);
+}
+
+.ps-challenge-ring__fill {
+  stroke: var(--accent-review);
+  transition: stroke-dasharray 0.35s ease;
+}
+
+.ps-challenge-ring__num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-text-primary);
+  pointer-events: none;
+}
+
+.ps-challenge__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ps-challenge__ratio {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.15;
+  color: var(--color-text-primary);
+}
+
+.ps-challenge__rank {
+  color: var(--color-text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-streak,
+  .ps-challenge {
+    transition: none;
+  }
+
+  .ps-challenge-ring__fill {
+    transition: none;
+  }
+}
+
+[data-reduce-motion='true'] .ps-streak,
+[data-reduce-motion='true'] .ps-challenge {
+  transition: none;
+}
+
+[data-reduce-motion='true'] .ps-challenge-ring__fill {
+  transition: none;
+}
