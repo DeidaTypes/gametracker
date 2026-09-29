@@ -855,23 +855,18 @@
   }
 }
 
-/* ── Clear mode — HUD-free cover grid (toggle via ⋯ overflow menu) ── */
-.list-detail-page--clear-mode.list-detail-page--hud-hidden,
-.list-detail-page--clear-mode.list-detail-page--hud-hidden.list-detail-page--fab {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+/* ── Clear mode — cover grid only; chrome unmounted in JSX ── */
+.list-detail-page--clear-mode {
+  padding-bottom: 0;
 }
 
-.list-detail-page--clear-mode .game-grid,
-.list-detail-page--clear-mode .lib-grid3,
-.list-detail-page--clear-mode .lib-gamelist {
+.list-detail-page--clear-mode .ld-clear-grid-surface .game-grid,
+.list-detail-page--clear-mode .ld-clear-grid-surface .lib-grid3,
+.list-detail-page--clear-mode .ld-clear-grid-surface .lib-gamelist {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-16));
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-}
-
-.list-detail-page--clear-mode.list-detail-page--hud-hidden .game-grid,
-.list-detail-page--clear-mode.list-detail-page--hud-hidden .lib-grid3,
-.list-detail-page--clear-mode.list-detail-page--hud-hidden .lib-gamelist {
-  padding-top: calc(var(--safe-area-inset-top) + var(--space-8));
 }
 
 .list-detail-page--clear-mode .game-title,
@@ -880,18 +875,29 @@
   display: none;
 }
 
-.list-detail-page--clear-mode .ld-hud {
-  transition:
-    opacity 220ms ease,
-    transform 220ms ease,
-    visibility 220ms ease;
+.ld-clear-status-fade {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(env(safe-area-inset-top, 0px) + 14px);
+  background: linear-gradient(to bottom, var(--bg-base) 55%, transparent);
+  pointer-events: none;
+  z-index: 1005;
 }
 
-.list-detail-page--clear-mode.list-detail-page--hud-hidden .ld-hud {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(calc(-1 * var(--space-8)));
-  pointer-events: none;
+.ld-clear-grid-surface--fade {
+  animation: ld-clear-grid-fade-in 220ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes ld-clear-grid-fade-in {
+  from {
+    opacity: 0.4;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .ld-clear-hint {
@@ -903,31 +909,24 @@
   margin: 0;
   padding: var(--space-8) var(--space-12);
   border-radius: var(--radius-full);
-  background: var(--color-bg-elevated);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   color: var(--text-secondary);
-  box-shadow: var(--shadow-md);
   pointer-events: none;
-  animation: ld-clear-hint-fade 2s ease forwards;
+  opacity: 1;
+  transition: opacity 300ms ease;
 }
 
-@keyframes ld-clear-hint-fade {
-  0%,
-  70% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-  }
+.ld-clear-hint--out {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .list-detail-page--clear-mode .ld-hud {
-    transition: none;
+  .ld-clear-grid-surface--fade {
+    animation: none;
   }
 
   .ld-clear-hint {
-    animation: none;
-    opacity: 0;
+    transition: none;
   }
 }

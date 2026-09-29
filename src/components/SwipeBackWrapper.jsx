@@ -7,6 +7,7 @@ import {
   finishBack,
   teardownBack,
 } from './backTransition'
+import { isSwipeBackBlocked } from '../hooks/useSwipeBackBlock'
 import './SwipeBackWrapper.css'
 
 // Native-feeling left-edge swipe-to-go-back.
@@ -78,7 +79,7 @@ export default function SwipeBackWrapper({ children }) {
     }
 
     const onStart = (e) => {
-      if (state.navigating) return
+      if (state.navigating || isSwipeBackBlocked()) return
       const t = e.touches[0]
       if (!t || t.clientX > EDGE) return
       state.active = true
