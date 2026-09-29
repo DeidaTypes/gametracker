@@ -66,6 +66,12 @@ import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
+import {
+  readListClearMode,
+  writeListClearMode,
+  hasSeenClearModeHint,
+  markClearModeHintSeen,
+} from '../services/listClearMode'
 
 /** How long a list's contents are reused before the next entry revalidates. */
 const LIST_TTL_MS = 60 * 1000
@@ -208,8 +214,35 @@ function ListDetail() {
   // grid) — tracker lists (Backlog/Playing/Played/Dropped) never do.
   // Hide the nav only for the former, and only once we actually know the
   // list is custom, so it's restored automatically on unmount/navigation.
+  // In clear mode the nav stays hidden while the HUD is hidden; a tap that
+  // restores the HUD also restores the nav pill until the HUD is hidden again.
   // See src/hooks/useHideNav.js.
-  useHideNav(!!listInfo?.isCustom)
+  const [clearMode, setClearMode] = useState(() => readListClearMode(listId))
+  const [hudVisible, setHudVisible] = useState(() => !readListClearMode(listId))
+  const [clearHintVisible, setClearHintVisible] = useState(false)
+  const clearHintShownRef = useRef(false)
+
+  useEffect(() => {
+    const mode = readListClearMode(listId)
+    setClearMode(mode)
+    setHudVisible(!mode)
+  }, [listId])
+
+  useHideNav(!!listInfo?.isCustom && (!clearMode || !hudVisible))
+
+  useEffect(() => {
+    if (!clearMode || hudVisible) {
+      setClearHintVisible(false)
+      return undefined
+    }
+    if (hasSeenClearModeHint() || clearHintShownRef.current) return undefined
+    clearHintShownRef.current = true
+    markClearModeHintSeen()
+    setClearHintVisible(true)
+    const fadeMs = reducedMotion ? 0 : 2000
+    const t = setTimeout(() => setClearHintVisible(false), fadeMs)
+    return () => clearTimeout(t)
+  }, [clearMode, hudVisible, reducedMotion])
 
   const headerBarRef = useRef(null)
 
@@ -222,6 +255,27 @@ function ListDetail() {
     setViewKey(key)
     writeLibraryView(key)
   }, [])
+
+  const handleClearModeToggle = useCallback(() => {
+    setClearMode((prev) => {
+      const next = !prev
+      writeListClearMode(listId, next)
+      setHudVisible(!next)
+      return next
+    })
+  }, [listId])
+
+  const handleClearModeSurfaceClick = useCallback((e) => {
+    if (!clearMode) return
+    if (
+      e.target.closest(
+        '.gg-cover-tap, .lib-gamerow-cover-tap, .lib-gamerow-body, a, button, input, textarea'
+      )
+    ) {
+      return
+    }
+    setHudVisible((v) => !v)
+  }, [clearMode])
 
   const openGame = useCallback((game, imageUrl) => {
     navigate(`/game/${game.id}`, {
@@ -592,7 +646,7 @@ function ListDetail() {
   //      passive touch listeners make preventDefault on synthetic pointer
   //      events unreliable in WKWebView, so both backstops stay.
   const handleCoverPointerDown = (e, gameId) => {
-    if (!canDrag) return
+    if (!canDrag || clearMode) return
     if (dragSessionRef.current) return // one drag session at a time
 
     const captureEl = e.currentTarget
@@ -914,8 +968,18 @@ function ListDetail() {
     ? [{ label: 'Share', onClick: () => setDmShareOpen(true) }]
     : []
 
+  const clearModeSheetItem = !isTracker
+    ? [
+        {
+          label: clearMode ? 'Exit clear mode' : 'Clear mode',
+          onClick: handleClearModeToggle,
+        },
+      ]
+    : []
+
   const actionSheetItems = isOwner
     ? [
+        ...clearModeSheetItem,
         ...shareItem,
         { label: 'Edit details', onClick: openDescEdit },
         {
@@ -937,6 +1001,7 @@ function ListDetail() {
         },
       ]
     : [
+        ...clearModeSheetItem,
         ...(listInfo?.isCustom && listInfo?.isPublic && currentUserId
           ? [{ label: isSaved ? 'Unsave' : 'Save', onClick: handleSaveToggle }]
           : []),
@@ -1180,13 +1245,17 @@ function ListDetail() {
   }
 
   // ── Custom lists — mockup D: compact nav, optional description, grid ─────
+  const hudHidden = clearMode && !hudVisible
+
   return (
     <div
       className={`list-detail-page list-detail-page--custom content-fade-in${
         showFab ? ' list-detail-page--fab' : ''
+      }${clearMode ? ' list-detail-page--clear-mode' : ''}${
+        hudHidden ? ' list-detail-page--hud-hidden' : ''
       }`}
     >
-      <header className="ld-header" ref={headerBarRef}>
+      <header className="ld-header ld-hud" ref={headerBarRef}>
         <button
           type="button"
           className="icon-btn"
@@ -1224,7 +1293,7 @@ function ListDetail() {
       </header>
 
       {isOwner && editingDesc ? (
-        <div className="list-detail-desc-edit-wrap ld-desc-edit">
+        <div className="list-detail-desc-edit-wrap ld-desc-edit ld-hud">
           <div className="list-detail-desc-edit-unit">
             <textarea
               ref={descTextareaRef}
@@ -1255,12 +1324,12 @@ function ListDetail() {
         </div>
       ) : (
         listInfo.description && (
-          <p className="ld-desc-line">{listInfo.description}</p>
+          <p className="ld-desc-line ld-hud">{listInfo.description}</p>
         )
       )}
 
-      <div className="list-body">
-        <div className="ld-sortrow">
+      <div className="list-body" onClick={handleClearModeSurfaceClick}>
+        <div className="ld-sortrow ld-hud">
           <span className="ld-sortrow-byline">
             {author?.username ? (
               <button
@@ -1426,13 +1495,23 @@ function ListDetail() {
         )}
 
         {listInfo.isCustom && (
-          <ListComments
-            listId={listId}
-            currentUserId={currentUserId}
-            isOwner={isOwner}
-          />
+          <div className="ld-hud">
+            <ListComments
+              listId={listId}
+              currentUserId={currentUserId}
+              isOwner={isOwner}
+            />
+          </div>
         )}
       </div>
+
+      {clearHintVisible &&
+        createPortal(
+          <p className="ld-clear-hint text-caption" role="status">
+            Tap anywhere to show controls
+          </p>,
+          document.body
+        )}
 
       <AddGamesModal
         isOpen={showAddGames}
@@ -1507,7 +1586,7 @@ function ListDetail() {
           <button
             type="button"
             className={`lib-fab lib-fab--lists${
-              dragGameId != null ? ' lib-fab--hidden' : ''
+              dragGameId != null || hudHidden ? ' lib-fab--hidden' : ''
             }`}
             onClick={() => setShowAddGames(true)}
             aria-label="Add games"

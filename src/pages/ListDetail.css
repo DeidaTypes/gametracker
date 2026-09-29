@@ -854,3 +854,80 @@
     margin-right: auto;
   }
 }
+
+/* ── Clear mode — HUD-free cover grid (toggle via ⋯ overflow menu) ── */
+.list-detail-page--clear-mode.list-detail-page--hud-hidden,
+.list-detail-page--clear-mode.list-detail-page--hud-hidden.list-detail-page--fab {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.list-detail-page--clear-mode .game-grid,
+.list-detail-page--clear-mode .lib-grid3,
+.list-detail-page--clear-mode .lib-gamelist {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.list-detail-page--clear-mode.list-detail-page--hud-hidden .game-grid,
+.list-detail-page--clear-mode.list-detail-page--hud-hidden .lib-grid3,
+.list-detail-page--clear-mode.list-detail-page--hud-hidden .lib-gamelist {
+  padding-top: calc(var(--safe-area-inset-top) + var(--space-8));
+}
+
+.list-detail-page--clear-mode .game-title,
+.list-detail-page--clear-mode .lib-gamecard-title,
+.list-detail-page--clear-mode .lib-gamerow-body {
+  display: none;
+}
+
+.list-detail-page--clear-mode .ld-hud {
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    visibility 220ms ease;
+}
+
+.list-detail-page--clear-mode.list-detail-page--hud-hidden .ld-hud {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(calc(-1 * var(--space-8)));
+  pointer-events: none;
+}
+
+.ld-clear-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-32));
+  transform: translateX(-50%);
+  z-index: 1006;
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: ld-clear-hint-fade 2s ease forwards;
+}
+
+@keyframes ld-clear-hint-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-detail-page--clear-mode .ld-hud {
+    transition: none;
+  }
+
+  .ld-clear-hint {
+    animation: none;
+    opacity: 0;
+  }
+}

@@ -64,6 +64,8 @@ const RAW_LOCAL_STORAGE_KEYS = [
   'gt:reactions:v1', // src/components/ActivityTimeline.jsx — reactions keyed by activity id
   'gt:profile-sort:v1', // src/pages/Profile.jsx — reviews-tab sort preference
   'gt:library-view:v1', // src/components/library/libraryConstants.js — Library grid/list view
+  'gt:list-clear-mode:v1', // src/services/listClearMode.js — per-list immersive cover view
+  'gt:list-clear-mode-hint:v1', // src/services/listClearMode.js — one-time clear-mode hint
   'gt:recents:v1', // src/utils/recentSearches.js — per-tab Search screen recents
   'gameWishlist', // src/pages/Wishlist.jsx
 ]
