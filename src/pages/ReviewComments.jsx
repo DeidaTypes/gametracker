@@ -20,8 +20,9 @@ import {
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
-import HomeReviewCard from '../components/home/HomeReviewCard'
+import HomeReviewCard, { EVENT_REACTION_EMOJI } from '../components/home/HomeReviewCard'
 import HomeCompletionCard from '../components/home/HomeCompletionCard'
+import { useLikedBy } from '../components/LikedBy'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
 import ActionSheet from '../components/ActionSheet'
@@ -53,6 +54,8 @@ import {
   unpinReview,
 } from '../services/pinService'
 import { useAuth } from '../contexts/AuthContext'
+import { useLikeState } from '../hooks/useLikeState'
+import { useReactions } from '../hooks/useReactions'
 import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
@@ -374,7 +377,7 @@ function ReviewComments() {
   const targetType = reviewId ? 'review' : 'activity'
   const targetId = reviewId || activityId
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   // This screen always has a comment composer (pinned or disabled while
   // signed out) — the bottom nav is hidden for the whole lifetime of the
@@ -407,8 +410,8 @@ function ReviewComments() {
   const composerInputRef = useRef(null)
   // Auto-grow textarea — shared with List Comments / Review Detail (see
   // src/hooks/useAutoGrowTextarea.js) so the grow-then-cap behavior can
-  // never drift between composers. Cap matches .rc-composer__input's
-  // max-height in ReviewComments.css.
+  // never drift between composers. Cap matches .composer__input's
+  // max-height in styles/keyboard.css.
   useAutoGrowTextarea(composerInputRef, draft, 90)
   // Keep a ref in sync with editingComment so handleComposerFocus can
   // read the current value without being a stale closure.
@@ -442,6 +445,34 @@ function ReviewComments() {
   const [pinnedReviewIds, setPinnedReviewIds] = useState(() => new Set())
 
   const isAuthed = !!user
+
+  const reviewLikeState = useLikeState(targetType === 'review' ? targetId : null)
+  const activityReactions = useReactions(
+    targetType === 'activity' ? 'activity' : null,
+    targetType === 'activity' ? targetId : null
+  )
+  const activityHeart = activityReactions.reactions.find(
+    (r) => r.emoji === EVENT_REACTION_EMOJI
+  )
+  const likedByViewer = useMemo(
+    () =>
+      user
+        ? {
+            id: user.id,
+            username: profile?.username || user.user_metadata?.username || null,
+            avatarUrl: profile?.avatarUrl || user.user_metadata?.avatar_url || null,
+          }
+        : null,
+    [user, profile]
+  )
+  const likedBy = useLikedBy(
+    targetType,
+    targetId,
+    targetType === 'review'
+      ? `${reviewLikeState.liked}:${reviewLikeState.count}`
+      : `${activityHeart?.reacted}:${activityHeart?.count}`,
+    likedByViewer
+  )
 
   // Keep ref in sync so handleComposerFocus sees the latest value.
   useEffect(() => {
@@ -1086,16 +1117,31 @@ function ReviewComments() {
                 This review is no longer available.
               </div>
             ) : (
-              <HomeReviewCard item={reviewFeedItem} linkToThread={false} />
+              <HomeReviewCard
+                item={reviewFeedItem}
+                linkToThread={false}
+                onCommentClick={focusComposer}
+                likedBy={likedBy}
+              />
             )
           ) : reviewMissing || !activityFeedItem ? (
             <div className="rc-review-missing">
               This activity is no longer available.
             </div>
           ) : activityFeedItem.type === 'finished' || activityFeedItem.type === 'completed' ? (
-            <HomeCompletionCard item={activityFeedItem} linkToThread={false} />
+            <HomeCompletionCard
+              item={activityFeedItem}
+              linkToThread={false}
+              onCommentClick={focusComposer}
+              likedBy={likedBy}
+            />
           ) : (
-            <HomeReviewCard item={activityFeedItem} linkToThread={false} />
+            <HomeReviewCard
+              item={activityFeedItem}
+              linkToThread={false}
+              onCommentClick={focusComposer}
+              likedBy={likedBy}
+            />
           )}
         </div>
 
@@ -1184,7 +1230,7 @@ function ReviewComments() {
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="kb-composer-bar rc-composer"
+        className="kb-composer-bar composer-bar rc-composer"
         onSubmit={handleSubmit}
       >
         {/* Edit-mode strip — shown above the composer when editing a comment */}
@@ -1217,37 +1263,39 @@ function ReviewComments() {
             </button>
           </div>
         )}
-        <div className="rc-composer__row">
-          <textarea
-            ref={composerInputRef}
-            className="rc-composer__input"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={
-              isAuthed ? 'Add a comment…' : 'Sign in to leave a comment'
-            }
-            rows={1}
-            maxLength={2000}
-            disabled={!isAuthed || posting}
-            aria-label={editingComment ? 'Edit comment text' : 'Comment text'}
-            onFocus={handleComposerFocus}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                handleSubmit(e)
+        <div className="composer__row">
+          <div className="composer__shell">
+            <textarea
+              ref={composerInputRef}
+              className="composer__input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={
+                isAuthed ? 'Add a comment…' : 'Sign in to leave a comment'
               }
-            }}
-          />
-          <button
-            type="submit"
-            className="rc-composer__send"
-            disabled={!isAuthed || posting || !draft.trim()}
-            aria-label={editingComment ? 'Save edit' : 'Send comment'}
-          >
-            {editingComment
-              ? <LuCheck size={18} aria-hidden="true" />
-              : <LuSend size={18} aria-hidden="true" />
-            }
-          </button>
+              rows={1}
+              maxLength={2000}
+              disabled={!isAuthed || posting}
+              aria-label={editingComment ? 'Edit comment text' : 'Comment text'}
+              onFocus={handleComposerFocus}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  handleSubmit(e)
+                }
+              }}
+            />
+            <button
+              type="submit"
+              className="composer__send"
+              disabled={!isAuthed || posting || !draft.trim()}
+              aria-label={editingComment ? 'Save edit' : 'Send comment'}
+            >
+              {editingComment
+                ? <LuCheck size={14} aria-hidden="true" />
+                : <LuSend size={14} aria-hidden="true" />
+              }
+            </button>
+          </div>
         </div>
       </KeyboardAwareView>
     </div>

@@ -25,6 +25,7 @@ import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
 import StreakFlair from './streak/StreakFlair'
+import LikedBy from './LikedBy'
 import { hapticImpact } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
 import './ReviewCard.css'
@@ -66,7 +67,7 @@ const LIFE_LABELS = {
  * RecentActivityCard), so the bounded box is pixel-identical everywhere
  * even though each surface's content differs.
  *
- * Visual sections (top to bottom), for variant "default" / "compact" / "detail":
+ * Visual sections (top to bottom), for variant "default" / "compact":
  *   1. Optional "Your review" pill
  *   2. Cover header — color-tinted gradient pulled from the cover image
  *   3. Optional review title
@@ -77,9 +78,15 @@ const LIFE_LABELS = {
  * This cover-header-first / author-at-bottom ordering is an intentional,
  * documented exception to the shared <ReviewCardShellHeader/> one-line
  * actor pattern (see ReviewCardShell.jsx) — it's the locked, cross-screen
- * Sprint 5 layout reused identically by Profile/thread/both "all reviews"
+ * Sprint 5 layout reused identically by Profile and both "all reviews"
  * screens, so it is NOT reordered here; only the surrounding shell (this
  * component's root element) is shared.
+ *
+ * variant="detail" is ReviewDetail-only (the /review/:id thread). It drops
+ * the nested cover-header panel and stacks a flat header (cover + title +
+ * stars + byline) above the body, matching Pulse's attribution-before-text
+ * order. Do not reuse this condensed layout on default/compact/gamedetail
+ * /profilerow — those surfaces keep the layouts below.
  *
  * variant="profilerow" is the compact row used by the Profile Reviews
  * tab. It is the only variant that is not a bounded <ReviewCardShell/>
@@ -117,6 +124,8 @@ function ReviewCard({
   isPinned = false,
   onPin,
   onUnpin,
+  onCommentClick,
+  likedBy,
 }) {
   const navigate = useNavigate()
   const { reduced } = useMotionPreference()
@@ -144,16 +153,17 @@ function ReviewCard({
 
   // Pull the dominant swatch for the cover-header gradient. Cached at the
   // service layer so timeline scroll doesn't re-extract the same image.
+  // Detail drops the tinted panel, so it never needs a swatch.
   useEffect(() => {
     let cancelled = false
-    if (!coverThumbUrl) return undefined
+    if (variant === 'detail' || !coverThumbUrl) return undefined
     getDominantColor(coverThumbUrl).then((c) => {
       if (!cancelled && c) setColor(c)
     })
     return () => {
       cancelled = true
     }
-  }, [coverThumbUrl])
+  }, [coverThumbUrl, variant])
 
   // Detect whether the body actually overflows the clamp so we only
   // render "Read more..." when there's hidden content.
@@ -230,6 +240,13 @@ function ReviewCard({
     if (variant === 'detail') return
     navigate(`/reviews/${review.id}/comments`)
   }
+  const handleComment = () => {
+    if (onCommentClick) {
+      onCommentClick()
+      return
+    }
+    goToReview()
+  }
   const goToGame = (e) => {
     e.stopPropagation()
     navigate(`/game/${review.game.id}`, { state: getGameNavStub(review.game) })
@@ -304,15 +321,47 @@ function ReviewCard({
       ) : (
         <HiOutlineHeart className="review-card__heart-icon" />
       )}
-      {shouldShowCount(displayedLikeCount) && <span>{displayedLikeCount}</span>}
+      {shouldShowCount(displayedLikeCount) && (
+        <span>{displayedLikeCount}</span>
+      )}
     </Pressable>
   )
 
   const commentButton = (
-    <Pressable onClick={(e) => { e.stopPropagation(); goToReview() }} aria-label="Comment">
+    <Pressable onClick={(e) => { e.stopPropagation(); handleComment() }} aria-label="Comment">
       <HiOutlineChat />
       {shouldShowCount(displayedCommentCount) && <span>{displayedCommentCount}</span>}
     </Pressable>
+  )
+
+  // Detail-only pills: same 34px Home shape (journal-purple liked, "Like"
+  // at zero, count from 1). Own reviews keep the like pill visible but
+  // inert. While useLikeState is still the cold {count:0} default the
+  // numeral stays off — never a false 0.
+  const detailLikeCount = likeState.count
+  const detailLikeLabel = detailLikeCount > 0 ? String(detailLikeCount) : 'Like'
+  const detailCommentLabel = displayedCommentCount > 0 ? String(displayedCommentCount) : 'Comment'
+  const detailLikeClass = [
+    'review-card__detail-pill',
+    'review-card__detail-pill--like',
+    likeState.liked && !isOwn ? 'review-card__detail-pill--like-active' : '',
+    isOwn ? 'review-card__detail-pill--inert' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const detailHeartClass = [
+    'review-card__detail-pill-icon',
+    heartPulse ? 'review-card__detail-pill-icon--pop' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const detailLikeInner = (
+    <>
+      <span className={detailHeartClass} aria-hidden="true">
+        {likeState.liked ? <HiHeart /> : <HiOutlineHeart />}
+      </span>
+      <span className="review-card__detail-pill-label">{detailLikeLabel}</span>
+    </>
   )
 
   const kebabControl = (
@@ -423,6 +472,7 @@ function ReviewCard({
       'review-card',
       variant === 'gamedetail' && 'review-card--gamedetail',
       variant === 'profilerow' && 'review-card--profilerow',
+      variant === 'detail' && 'review-card--detail',
     ]
       .filter(Boolean)
       .join(' '),
@@ -476,6 +526,106 @@ function ReviewCard({
               {rowMeta && <span className="review-card__pr-meta">{rowMeta}</span>}
               {kebabControl}
             </div>
+          </div>
+        </>
+      ) : variant === 'detail' ? (
+        <>
+          <div className="review-card__detail-head">
+            <Pressable
+              className="review-card__detail-cover-btn"
+              onClick={goToGame}
+              aria-label={`View ${review.game.name}`}
+            >
+              {coverThumbUrl ? (
+                <img
+                  src={coverThumbUrl}
+                  className="review-card__detail-cover"
+                  alt=""
+                  loading="lazy"
+                />
+              ) : (
+                <span className="review-card__detail-cover review-card__detail-cover--empty" aria-hidden="true" />
+              )}
+            </Pressable>
+            <div className="review-card__detail-meta">
+              <Pressable className="review-card__detail-game" onClick={goToGame}>
+                {review.game.name}
+              </Pressable>
+              <div className="review-card__detail-stars">
+                <StarRatingDisplay rating={review.rating} size="xs" />
+                {review.hoursPlayed > 0 && (
+                  <span
+                    className="review-card__hours-chip"
+                    aria-label={`${review.hoursPlayed} hours played`}
+                  >
+                    {formatHours(review.hoursPlayed)}
+                  </span>
+                )}
+              </div>
+              <div className="review-card__detail-byline">
+                <button
+                  type="button"
+                  className="review-card__detail-author"
+                  onClick={handleAuthorClick}
+                >
+                  by{' '}
+                  <span className="review-card__detail-username">
+                    {review.author.username || review.author.displayName || 'Anonymous'}
+                  </span>
+                </button>
+                <StreakFlair milestoneDays={review.author.highestStreakMilestone} />
+              </div>
+            </div>
+          </div>
+
+          {review.title && (
+            <h3 className="review-card__title">{review.title}</h3>
+          )}
+
+          {(review.vibeStamp || review.lifeContext) && (
+            <div className="review-card__stamps">
+              {review.vibeStamp && (
+                <span className="review-card__vibe-pill" data-vibe={review.vibeStamp}>
+                  {vibeLabel}
+                </span>
+              )}
+              {review.lifeContext && (
+                <span className="review-card__life-pill">
+                  {LIFE_LABELS[review.lifeContext] || review.lifeContext}
+                </span>
+              )}
+            </div>
+          )}
+
+          {bodyContent}
+
+          <LikedBy total={likedBy?.total} likers={likedBy?.likers} />
+
+          <div className="review-card__detail-actions">
+            {isOwn ? (
+              <span className={detailLikeClass} aria-disabled="true" aria-label={detailLikeLabel}>
+                {detailLikeInner}
+              </span>
+            ) : (
+              <Pressable
+                className={detailLikeClass}
+                onClick={(e) => { e.stopPropagation(); handleLike() }}
+                aria-pressed={likeState.liked}
+                aria-label={likeState.liked ? 'Unlike' : 'Like'}
+              >
+                {detailLikeInner}
+              </Pressable>
+            )}
+            <Pressable
+              className="review-card__detail-pill review-card__detail-pill--comment"
+              onClick={(e) => { e.stopPropagation(); handleComment() }}
+              aria-label={displayedCommentCount > 0 ? `${displayedCommentCount} comments` : 'Comment'}
+            >
+              <span className="review-card__detail-pill-icon" aria-hidden="true">
+                <HiOutlineChat />
+              </span>
+              <span className="review-card__detail-pill-label">{detailCommentLabel}</span>
+            </Pressable>
           </div>
         </>
       ) : variant === 'gamedetail' ? (

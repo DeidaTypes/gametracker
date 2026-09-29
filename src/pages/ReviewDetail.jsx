@@ -28,6 +28,8 @@ import {
   getCommentLikeStates,
 } from '../services/commentService'
 import { useAuth } from '../contexts/AuthContext'
+import { useLikeState } from '../hooks/useLikeState'
+import { useLikedBy } from '../components/LikedBy'
 import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
 import DmShareSheet from '../components/DmShareSheet'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -424,7 +426,7 @@ function CommentRow({
                   <HiOutlineHeart size={14} aria-hidden="true" />
                 )}
               </span>
-              {shouldShowCount(localLike.count) && localLike.count}
+              {localLike.count > 0 && localLike.count}
             </button>
 
             {!isReply && (
@@ -561,7 +563,7 @@ function ThreadGroup({
 function ReviewDetail() {
   const { id: reviewId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   // This screen always has a comment composer pinned to the bottom — hide
   // the nav for the whole lifetime of the screen and restore it on
@@ -604,6 +606,24 @@ function ReviewDetail() {
   const [resumeKey, setResumeKey] = useState(0)
 
   const isAuthed = !!user
+  const reviewLikeState = useLikeState(reviewId)
+  const likedByViewer = useMemo(
+    () =>
+      user
+        ? {
+            id: user.id,
+            username: profile?.username || user.user_metadata?.username || null,
+            avatarUrl: profile?.avatarUrl || user.user_metadata?.avatar_url || null,
+          }
+        : null,
+    [user, profile]
+  )
+  const likedBy = useLikedBy(
+    'review',
+    reviewId,
+    `${reviewLikeState.liked}:${reviewLikeState.count}`,
+    likedByViewer
+  )
 
   /* ── Load ─────────────────────────────────────────────────── */
 
@@ -1020,6 +1040,9 @@ function ReviewDetail() {
             <ReviewCard
               review={reviewCardShape}
               variant="detail"
+              isOwn={!!user && review?.user_id === user.id}
+              onCommentClick={openComposer}
+              likedBy={likedBy}
             />
           )}
         </div>

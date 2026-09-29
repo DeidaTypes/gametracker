@@ -9,6 +9,7 @@ import { useReactions } from '../../hooks/useReactions'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import { ActionRow, EVENT_REACTION_EMOJI } from './HomeReviewCard'
+import LikedBy from '../LikedBy'
 import './HomeCompletionCard.css'
 
 /**
@@ -21,7 +22,7 @@ import './HomeCompletionCard.css'
  *
  * Does not change HomeReviewCard.
  */
-export default function HomeCompletionCard({ item, linkToThread = true }) {
+export default function HomeCompletionCard({ item, linkToThread = true, onCommentClick, likedBy }) {
   const navigate = useNavigate()
   const eventReactions = useReactions('activity', item.reactionTargetId)
 
@@ -55,6 +56,15 @@ export default function HomeCompletionCard({ item, linkToThread = true }) {
   const goToReply = (e) => {
     e?.stopPropagation?.()
     navigate(`/activity/${item.id}/comments`)
+  }
+
+  const handleComment = (e) => {
+    e?.stopPropagation?.()
+    if (onCommentClick) {
+      onCommentClick()
+      return
+    }
+    goToReply(e)
   }
 
   const handleHeartClick = (e) => {
@@ -125,13 +135,15 @@ export default function HomeCompletionCard({ item, linkToThread = true }) {
         </div>
       </div>
 
+      <LikedBy total={likedBy?.total} likers={likedBy?.likers} />
+
       <ActionRow
         likeActive={heartActive}
         likeInteractive={!item.isOwn}
         likeCount={heartCount}
         commentCount={item.commentCount}
         onLike={handleHeartClick}
-        onComment={goToReply}
+        onComment={handleComment}
       />
     </ReviewCardShell>
   )

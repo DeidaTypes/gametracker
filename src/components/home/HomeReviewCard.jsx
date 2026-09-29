@@ -15,6 +15,7 @@ import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import StreakFlair from '../streak/StreakFlair'
+import LikedBy from '../LikedBy'
 import StatusChip from '../StatusChip'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { hapticImpact } from '../../utils/haptics'
@@ -458,7 +459,7 @@ function GameZone({
  *   listPreviewCovers?, reactionTargetId, durationSeconds? (all
  *   optional/omitted rather than fabricated).
  */
-export default function HomeReviewCard({ item, linkToThread = true }) {
+export default function HomeReviewCard({ item, linkToThread = true, onCommentClick, likedBy }) {
   const navigate = useNavigate()
   const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
@@ -530,6 +531,15 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
     e?.stopPropagation?.()
     if (isReviewType) navigate(`/reviews/${item.id}/comments`)
     else navigate(`/activity/${item.id}/comments`)
+  }
+
+  const handleComment = (e) => {
+    e?.stopPropagation?.()
+    if (onCommentClick) {
+      onCommentClick()
+      return
+    }
+    goToReply(e)
   }
 
   // Tapping the body: a review/rating has its own detail page distinct
@@ -639,13 +649,15 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
         </div>
       </div>
 
+      <LikedBy total={likedBy?.total} likers={likedBy?.likers} />
+
       <ActionRow
         likeActive={heartActive}
         likeInteractive={!item.isOwn}
         likeCount={heartCount}
         commentCount={item.commentCount}
         onLike={handleHeartClick}
-        onComment={goToReply}
+        onComment={handleComment}
       />
     </ReviewCardShell>
   )

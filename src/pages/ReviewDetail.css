@@ -148,9 +148,9 @@
 }
 
 .rd-review-skel__cover {
-  width: 64px;
-  height: 86px;
-  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 54px;
+  border-radius: 5px;
   flex-shrink: 0;
 }
 
@@ -424,11 +424,11 @@
 }
 
 .rd-comment__like-btn--liked {
-  color: var(--color-accent-rust, #f87171);
+  color: var(--accent-journal-text);
 }
 
 .rd-comment__like-btn--liked:hover {
-  color: var(--color-accent-rust, #f87171);
+  color: var(--accent-journal-text);
 }
 
 .rd-comment__like-icon {

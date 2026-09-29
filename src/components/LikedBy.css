@@ -1,0 +1,52 @@
+/* LikedBy — avatar stack + muted caption. Hidden entirely when total is 0
+   (the component returns null). 18px faces and the −6px overlap are the
+   mockup's physical sizes, not spacing-scale steps. */
+
+.liked-by {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  /* Mockup: 10px above the pills, not a grid step. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.liked-by__stack {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.liked-by__stack .liked-by__avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  box-shadow: 0 0 0 2px var(--color-bg-tertiary);
+  /* Mockup: 6px overlap on 18px faces. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  margin-left: -6px;
+}
+
+.liked-by__stack .liked-by__avatar:first-child {
+  margin-left: 0;
+}
+
+.liked-by__stack .liked-by__avatar:nth-child(1) { z-index: 3; }
+.liked-by__stack .liked-by__avatar:nth-child(2) { z-index: 2; }
+.liked-by__stack .liked-by__avatar:nth-child(3) { z-index: 1; }
+
+.liked-by__text {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.3;
+  color: var(--color-text-tertiary);
+}
+
+.liked-by__name {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
