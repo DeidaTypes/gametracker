@@ -665,12 +665,27 @@ function AppContent() {
   const restoreRef = useRef({ key: null, cancel: null })
   const attemptedKeysRef = useRef(new Set())
 
-  useEffect(() => {
+  // Record the outgoing offset, then reset to a clean baseline BEFORE paint.
+  //
+  // The reset has to be a layout effect so a PUSH never paints one frame at
+  // the previous page's leftover scrollTop. The record has to be that same
+  // effect's cleanup: a useEffect cleanup runs after this reset (passive
+  // effects flush after the layout phase) and was storing 0 for every
+  // departure, so back navigation always landed at the top. A layout cleanup
+  // runs before the next layout setup — the outgoing offset is still on
+  // `.main-content` — and after AnimatedRoutes (a child) has already read it
+  // for the back-transition snapshot.
+  //
+  // POP then sits at top, hidden under that snapshot, until attemptRestore
+  // writes the saved offset once and the reveal lifts.
+  useLayoutEffect(() => {
     const el = mainContentRef.current
     if (!el) return undefined
     const key = location.key
+    el.scrollTop = 0
     return () => {
-      scrollOffsetsRef.current.set(key, el.scrollTop)
+      const node = mainContentRef.current
+      if (node) scrollOffsetsRef.current.set(key, node.scrollTop)
       // The page we're leaving is going away — any restore attempt still
       // polling for it is now moot.
       if (restoreRef.current.key === key) {
@@ -678,16 +693,6 @@ function AppContent() {
         restoreRef.current = { key: null, cancel: null }
       }
     }
-  }, [location.key])
-
-  // Reset to a clean, correct baseline BEFORE paint. This alone fixes PUSH
-  // (which never had a saved offset to restore, so top is simply correct)
-  // and puts POP navigations at top for the duration of the fade — the
-  // real POP restore, if any, only ever happens later, in attemptRestore.
-  useLayoutEffect(() => {
-    const el = mainContentRef.current
-    if (!el) return
-    el.scrollTop = 0
   }, [location.key])
 
   const attemptRestore = useCallback(

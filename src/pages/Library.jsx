@@ -23,7 +23,7 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeLibraryView } from '../components/library/libraryConstants'
+import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeLibraryView, writeLibraryUi, writeLibraryHistoryUi, resolveLibraryUiForMount } from '../components/library/libraryConstants'
 import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
 import LibraryHeader from '../components/library/LibraryHeader'
 import LibraryTabs from '../components/library/LibraryTabs'
@@ -50,17 +50,6 @@ const GRID_REFLOW_MS = 250
 // Must match ReorderTrashTarget.css slide-in transition duration.
 const TRASH_ENTER_MS = 220
 
-/**
- * Which segment the user last had open, remembered for the session.
- *
- * Navigating away from Library unmounts it, so without this the tab
- * silently snaps back to the default tab every time — open a game from
- * My Games, press back, and you are somewhere you never chose to be.
- * Module scope (rather than state lifted into a parent) keeps the memory
- * local to this screen and resets naturally on a full reload.
- */
-let lastActiveTab = 'games'
-
 // Synchronous localStorage read — same data initializeLibrary/
 // getGamesFromList always had available, just previously read one tick
 // late (inside a useEffect) so first paint rendered the empty-state/
@@ -81,10 +70,20 @@ function Library() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [activeTab, setActiveTabState] = useState(lastActiveTab)
+  // Tab + status are resolved synchronously, before the first paint.
+  // A useEffect restore would paint All and then switch, which is the
+  // stutter against the back-transition snapshot. See
+  // resolveLibraryUiForMount: a history entry we already stamped restores
+  // both; a fresh entry (bottom-nav Link) keeps the remembered tab and
+  // starts the status filter on All, which is what a remount did before
+  // this fix. Sort stays useState('recent') — it has never been persisted.
+  // Grid/list stays the localStorage preference readLibraryView().
+  const [initialUi] = useState(resolveLibraryUiForMount)
+  const [activeTab, setActiveTabState] = useState(initialUi.tab)
   const setActiveTab = useCallback((tab) => {
-    lastActiveTab = tab
-    setActiveTabState(tab)
+    const next = writeLibraryUi({ tab })
+    writeLibraryHistoryUi(next)
+    setActiveTabState(next.tab)
   }, [])
 
   const [trackerLists, setTrackerLists] = useState(readTrackerLists)
@@ -103,7 +102,14 @@ function Library() {
   const [hasReviews, setHasReviews] = useState(() => getAllReviews().length > 0)
 
   // null = All. Tapping the active cell again returns here.
-  const [activeStatus, setActiveStatus] = useState(null)
+  const [activeStatus, setActiveStatusState] = useState(initialUi.status)
+  const setActiveStatus = useCallback((statusOrUpdater) => {
+    setActiveStatusState((current) => {
+      const next = typeof statusOrUpdater === 'function' ? statusOrUpdater(current) : statusOrUpdater
+      writeLibraryHistoryUi(writeLibraryUi({ status: next }))
+      return next
+    })
+  }, [])
   const {
     open: searchOpen,
     query: searchQuery,

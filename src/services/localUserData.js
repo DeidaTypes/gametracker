@@ -73,6 +73,7 @@ const RAW_LOCAL_STORAGE_KEYS = [
 const RAW_SESSION_STORAGE_KEYS = [
   'gt:swipe-deck-state:v1', // src/components/explore/SwipeDeck.jsx
   'gt:swipe-session-adds:v1', // src/services/swipeService.js — per-session backlog add count
+  'gt:library-ui:v1', // src/components/library/libraryConstants.js — Library tab + status filter
 ]
 
 // Deliberately NOT cleared:
