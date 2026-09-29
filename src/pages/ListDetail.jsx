@@ -66,6 +66,7 @@ import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
+import ClearModeOverlay from '../components/ClearModeOverlay'
 
 /** How long a list's contents are reused before the next entry revalidates. */
 const LIST_TTL_MS = 60 * 1000
@@ -170,6 +171,7 @@ function ListDetail() {
   const [dmShareOpen, setDmShareOpen] = useState(false)
   const [collaborators, setCollaborators] = useState(cachedList?.collaborators || [])
   const [showCollaboratorSheet, setShowCollaboratorSheet] = useState(false)
+  const [isClearMode, setIsClearMode] = useState(false)
 
   // ── Pagination (custom list game grid only — see GAMES_PAGE_SIZE) ────────
   const [visibleGamesCount, setVisibleGamesCount] = useState(GAMES_PAGE_SIZE)
@@ -917,6 +919,7 @@ function ListDetail() {
   const actionSheetItems = isOwner
     ? [
         ...shareItem,
+        { label: 'Clear mode', onClick: () => setIsClearMode(true) },
         { label: 'Edit details', onClick: openDescEdit },
         {
           label: 'Manage collaborators',
@@ -941,6 +944,7 @@ function ListDetail() {
           ? [{ label: isSaved ? 'Unsave' : 'Save', onClick: handleSaveToggle }]
           : []),
         ...shareItem,
+        { label: 'Clear mode', onClick: () => setIsClearMode(true) },
         {
           label: 'Report list',
           onClick: () => setReportSheetOpen(true),
@@ -1517,6 +1521,13 @@ function ListDetail() {
           </button>,
           document.body
         )}
+
+      {isClearMode && (
+        <ClearModeOverlay
+          games={visibleGames}
+          onClose={() => setIsClearMode(false)}
+        />
+      )}
     </div>
   )
 }
