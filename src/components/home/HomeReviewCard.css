@@ -16,10 +16,10 @@
      B. Body (home-review-card__body) — the review text at full card
         width, free to grow, clamped only at 6 lines with an inline
         "more". Absent entirely when the event has no text.
-     C. Byline (home-review-card__byline) — small avatar + muted
-        username + type-colored verb + compact timestamp. Caption-sized
-        by design: it must never compete with the game title above.
-     D. Actions (home-review-card__actions) — like + comment only.
+     C. Footer (home-review-card__footer) — byline only (small avatar +
+        muted username + type-colored verb + compact timestamp).
+     D. Actions (home-review-card__actions) — Like + Reply pills below
+        a top rule.
 
    Nothing here sets a height. Card height follows content: a bare
    rating is a short card, a long review is a tall one.
@@ -53,7 +53,8 @@
      instead an explicit margin on the zone that follows, so a zone the
      event doesn't have costs no space at all. */
   gap: 0;
-  padding: var(--space-12);
+  padding-block: var(--space-12);
+  padding-inline: 14px;
 }
 
 .home-review-card--reviewed,
@@ -113,17 +114,14 @@
    the poster ratio, it would introduce a crop that doesn't exist today. */
 .home-review-card__cover {
   flex-shrink: 0;
-  width: 44px;
-  aspect-ratio: var(--cover-ratio-thumb);
-  border-radius: var(--cover-radius);
+  width: 48px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--color-bg-secondary);
-}
-
-/* A rating with no review text has no body zone to carry weight, so
-   the cover grows and the stars render large instead. */
-.home-review-card--rating-only .home-review-card__cover {
-  width: 56px;
+  /* Part of the header tap target (cover + title -> /game/:id — see
+     HomeReviewCard.jsx's onGameClick on this element). */
+  cursor: pointer;
 }
 
 /* list_created's mosaic/fallback-icon "cover" — same footprint as a
@@ -161,21 +159,17 @@
   gap: 6px;
 }
 
-/* The headline of the card. Wraps at word boundaries when long — never
-   clipped mid-word — and is the only text on the card at title size. */
+/* The headline of the card — one line, ellipsis when long. */
 .home-review-card__game-title {
   position: relative;
   font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  line-height: var(--line-height-title);
+  font-size: 16px;
+  line-height: 1.3;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  white-space: normal;
-  overflow-wrap: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Review / completion titles are a <button>. Reset chrome so type
@@ -202,11 +196,10 @@ button.home-review-card__game-title {
 }
 
 .home-review-card__game-title-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
   overflow: hidden;
-  overflow-wrap: break-word;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Hit slop: grow the tap box without moving the text. Bottom stays
@@ -225,15 +218,12 @@ button.home-review-card__game-title:focus-visible {
   border-radius: var(--radius-sm);
 }
 
-.home-review-card--opens-thread {
-  cursor: pointer;
-}
-
 .home-review-card__rating {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: 14px;
 }
 
 .home-review-card__score {
@@ -313,7 +303,14 @@ button.home-review-card__game-title:focus-visible {
    so a two-line review renders as two lines with no reserved gap. ── */
 .home-review-card__body {
   position: relative;
-  margin-top: 11px;
+  margin-top: var(--space-8);
+}
+
+/* Tap routes to the review's own detail (else /game/:id) — see
+   HomeReviewCard.jsx's goToBody. Not applied when the card has no
+   click target for its body (ReviewComments' linkToThread=false use). */
+.home-review-card__body--clickable {
+  cursor: pointer;
 }
 
 .home-review-card__body-text {
@@ -327,7 +324,7 @@ button.home-review-card__game-title:focus-visible {
 
 .home-review-card__body-text--clamped {
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -372,6 +369,11 @@ button.home-review-card__game-title:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+/* ── C — FOOTER: byline metadata below the body / game zone. ── */
+.home-review-card__footer {
+  margin-top: 10px;
+}
+
 /* ── C — BYLINE: who did it, demoted to metadata. Caption-sized and
    muted so the eye lands on the game title and the review body first.
    One line, never wraps; only the username clips under width pressure
@@ -381,19 +383,18 @@ button.home-review-card__game-title:focus-visible {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  margin-top: 12px;
+  flex: 1;
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-caption);
+  font-size: 13px;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
 /* index.css inflates every <button> to a 44px minimum on mobile. That is
-   right for the action row, but here it would pad the 22px avatar out to
-   a 44px box — leaving a dead gap before the username — and stretch this
-   metadata row to 44px tall. The byline's buttons keep their visual size
-   and recover the tap target through hit-slop pseudo-elements instead,
-   the same way .home-review-card__action does. */
+   right for the action pills, but here it would pad the 22px avatar out
+   to a 44px box — leaving a dead gap before the username — and stretch
+   this metadata row to 44px tall. The byline's buttons keep their visual
+   size and recover the tap target through hit-slop pseudo-elements. */
 .home-review-card__avatar-btn {
   position: relative;
   flex-shrink: 0;
@@ -407,6 +408,12 @@ button.home-review-card__game-title:focus-visible {
   cursor: pointer;
   border-radius: 50%;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-review-card__avatar-btn .avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
 }
 
 .home-review-card__avatar-btn::after,
@@ -424,7 +431,7 @@ button.home-review-card__game-title:focus-visible {
   min-height: 0;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   -webkit-tap-highlight-color: transparent;
@@ -449,19 +456,6 @@ button.home-review-card__game-title:focus-visible {
   white-space: nowrap;
 }
 
-.home-review-card--listed .home-review-card__verb {
-  color: var(--accent-journal-text);
-}
-
-.home-review-card--backlogged .home-review-card__verb,
-.home-review-card--finished .home-review-card__verb,
-.home-review-card--started .home-review-card__verb,
-.home-review-card--played .home-review-card__verb,
-.home-review-card--favorited .home-review-card__verb,
-.home-review-card--journaled .home-review-card__verb {
-  color: var(--accent-hover);
-}
-
 .home-review-card__dot,
 .home-review-card__time {
   flex-shrink: 0;
@@ -469,76 +463,101 @@ button.home-review-card__game-title:focus-visible {
   white-space: nowrap;
 }
 
-/* ── D — ACTIONS: like + comment, nothing else. Each count sits beside
-   its own icon; a count below the app-wide visibility threshold (see
-   formatSocialCount) renders no numeral at all, so a quiet card shows
-   bare icons rather than "0". A thin hairline separates the row from
-   whatever zone precedes it. ── */
+/* ── D — ACTIONS: Like + Reply pills below a top rule. ── */
 .home-review-card__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-8);
   margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-border);
-  padding-top: 6px;
 }
 
-.home-review-card__action {
-  position: relative;
+.home-review-card__social-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  padding: 8px;
-  margin: 0;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 13px;
   border-radius: var(--radius-full);
-  color: var(--accent-journal-text);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--color-text-secondary);
   cursor: pointer;
+  min-width: 0;
+  min-height: 0;
   -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
-/* Keeps a full 44px effective tap target without pushing any sibling
-   in the flex row. */
-.home-review-card__action::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
+.home-review-card__social-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
 }
 
-.home-review-card__action svg {
-  width: 18px;
-  height: 18px;
+.home-review-card__social-pill-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.home-review-card__social-pill-icon--pop {
+  animation: home-review-card-heart-pop 180ms ease;
+}
+
+@keyframes home-review-card-heart-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.25);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.home-review-card__social-pill-label {
   flex-shrink: 0;
 }
 
-.home-review-card__action-count {
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
-}
-
-.home-review-card__action:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 1px;
-}
-
-/* Own cards: like becomes a read-only icon (no self-reactions) — its
-   accurate count still shows, so it stays full-opacity. Rendered as a
-   <span>, not a button, so removing the pointer affordance is enough to
-   communicate "not interactive"; the hit-slop pseudo-element is
-   harmless left in place since nothing listens for clicks on a span. */
-.home-review-card__action--readonly {
-  cursor: default;
-}
-
-.home-review-card__heart-icon--active {
+.home-review-card__social-pill--like-active {
+  background: var(--bg-surface-2);
+  background: color-mix(in srgb, var(--accent-journal) 16%, transparent);
+  border-color: var(--color-border);
+  border-color: color-mix(in srgb, var(--accent-journal) 55%, transparent);
   color: var(--accent-journal-text);
 }
 
+.home-review-card__social-pill--inert {
+  cursor: default;
+  color: var(--color-text-tertiary);
+}
+
+.home-review-card__social-pill--inert.home-review-card__social-pill--like-active {
+  background: var(--bg-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-tertiary);
+}
+
+@media (hover: hover) {
+  .home-review-card__social-pill:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .home-review-card__action {
-    transition: none;
+  .home-review-card__social-pill-icon--pop {
+    animation: none;
   }
 }

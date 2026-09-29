@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HiOutlineHeart, HiHeart, HiChevronDown } from 'react-icons/hi'
+import { HiOutlineHeart, HiHeart, HiOutlineChat, HiChevronDown } from 'react-icons/hi'
 import Avatar from '../Avatar'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
@@ -130,7 +130,24 @@ function CoverStack({ items }) {
   )
 }
 
-function RowText({ actorLabel, verbText, category, objectNode, subline }) {
+function RowMeta({ when, commentCount }) {
+  return (
+    <span className="feed-row__line2">
+      <span className="feed-row__when">{when}</span>
+      {commentCount > 0 && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span className="feed-row__comments-meta" aria-hidden="true">
+            <HiOutlineChat />
+            <span>{commentCount}</span>
+          </span>
+        </>
+      )}
+    </span>
+  )
+}
+
+function RowText({ actorLabel, verbText, category, objectNode, when, commentCount, subline }) {
   return (
     <span className="feed-row__text">
       <span className="feed-row__line1">
@@ -138,7 +155,11 @@ function RowText({ actorLabel, verbText, category, objectNode, subline }) {
         <span className={`feed-row__verb feed-row__verb--${category}`}>{verbText}</span>{' '}
         {objectNode}
       </span>
-      {subline && <span className="feed-row__line2">{subline}</span>}
+      {subline != null ? (
+        <span className="feed-row__line2">{subline}</span>
+      ) : (
+        when != null && <RowMeta when={when} commentCount={commentCount ?? 0} />
+      )}
     </span>
   )
 }
@@ -161,9 +182,23 @@ function RowTrailing({ children }) {
  */
 export default function FeedRow({ item, indented = false }) {
   const navigate = useNavigate()
+  const { reduced } = useMotionPreference()
   const { reactions, toggle } = useReactions('activity', item.reactionTargetId)
   const reaction = reactions.find((r) => r.emoji === EVENT_REACTION_EMOJI)
   const active = reaction?.reacted || false
+  const likeCount = reaction?.count || 0
+  const [heartPop, setHeartPop] = useState(false)
+  const prevActiveRef = useRef(active)
+
+  useEffect(() => {
+    if (active && !prevActiveRef.current && !item.isOwn && !reduced) {
+      setHeartPop(true)
+      const t = window.setTimeout(() => setHeartPop(false), 180)
+      prevActiveRef.current = active
+      return () => window.clearTimeout(t)
+    }
+    prevActiveRef.current = active
+  }, [active, item.isOwn, reduced])
 
   const { text: verbText, category } = verbFor(item)
   const actorLabel = item.isOwn ? 'You' : item.author?.displayName || 'Player'
@@ -202,10 +237,6 @@ export default function FeedRow({ item, indented = false }) {
   // HomeReviewCard). The heart is still a real sibling <button> with a
   // 44px hit area so the tap is swallowed here — a handler-less control
   // (or a 13px span) lets iOS activate the row overlay instead.
-  const handleOwnHeartClick = (e) => {
-    e.stopPropagation()
-  }
-
   const rowAction = isListed ? goToList : goToComments
   const rowAria = isListed
     ? ariaLabel
@@ -241,7 +272,8 @@ export default function FeedRow({ item, indented = false }) {
               onGameClick={isListed ? undefined : goToGame}
             />
           }
-          subline={when}
+          when={when}
+          commentCount={item.commentCount}
         />
 
         <RowCover item={item} />
@@ -251,17 +283,29 @@ export default function FeedRow({ item, indented = false }) {
         className={`feed-row__heart-btn${active ? ' feed-row__heart-btn--active' : ''}${
           item.isOwn ? ' feed-row__heart-btn--own' : ''
         }`}
-        onClick={item.isOwn ? handleOwnHeartClick : handleHeartClick}
+        onClick={item.isOwn ? undefined : handleHeartClick}
+        disabled={item.isOwn}
+        aria-disabled={item.isOwn ? true : undefined}
         aria-pressed={item.isOwn ? undefined : active}
         aria-label={
           item.isOwn
-            ? (active ? 'Liked' : 'Like')
-            : (active ? 'Remove reaction' : 'React')
+            ? likeCount > 0
+              ? `${likeCount} likes`
+              : 'Like'
+            : active
+              ? 'Remove reaction'
+              : 'React'
         }
       >
-        <span className="feed-row__heart" aria-hidden="true">
+        <span
+          className={`feed-row__heart${heartPop ? ' feed-row__heart--pop' : ''}`}
+          aria-hidden="true"
+        >
           {active ? <HiHeart /> : <HiOutlineHeart />}
         </span>
+        {likeCount > 0 && (
+          <span className="feed-row__heart-count text-label">{likeCount}</span>
+        )}
       </Pressable>
     </div>
   )

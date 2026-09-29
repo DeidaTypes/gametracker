@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiHeart, HiOutlineChat, HiCheck } from 'react-icons/hi'
 import { List as ListIcon } from 'lucide-react'
@@ -16,17 +16,18 @@ import { showToast } from '../Toast'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import StreakFlair from '../streak/StreakFlair'
 import StatusChip from '../StatusChip'
-import { shouldShowCount } from '../../utils/formatSocialCount'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { hapticImpact } from '../../utils/haptics'
+import { useMotionPreference } from '../../hooks/useMotionPreference'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
 // (target_type: 'activity' — see supabase/reactions.sql) renders as a
 // plain heart control, visually matching the review react button
 // (which is backed by review_likes, a different table, for 'reviewed'/
-// 'rated' items).
-const EVENT_REACTION_EMOJI = '\u2764\uFE0F'
+// 'rated' items). Exported so FeedRow.jsx's COMPACT rows react against
+// the exact same emoji key — one heart, shared by both card shapes.
+export const EVENT_REACTION_EMOJI = '\u2764\uFE0F'
 
 const REVIEW_TYPES = new Set(['reviewed', 'rated'])
 
@@ -134,7 +135,7 @@ const TRACKER_STATUS_BY_TYPE = {
  * layout rather than guessed from character count — a 6-line clamp at a
  * fluid width can't be predicted from the string.
  */
-function ExpandableBody({ text }) {
+function ExpandableBody({ text, onClick }) {
   const ref = useRef(null)
   const [expanded, setExpanded] = useState(false)
   const [overflows, setOverflows] = useState(false)
@@ -150,7 +151,10 @@ function ExpandableBody({ text }) {
   }, [text, expanded])
 
   return (
-    <div className="home-review-card__body">
+    <div
+      className={`home-review-card__body${onClick ? ' home-review-card__body--clickable' : ''}`}
+      onClick={onClick}
+    >
       <p
         ref={ref}
         className={
@@ -178,56 +182,91 @@ function ExpandableBody({ text }) {
 }
 
 /**
- * ActionRow — like + comment, and nothing else. Each count renders
- * beside its own icon rather than as a separate right-aligned cluster,
- * and goes through `shouldShowCount` — the app-wide zero-state rule, so
- * nothing here ever reads "0 likes" / "1 comment".
- *
- * The heart is a real toggle on other people's cards and a plain,
- * non-focusable <span> on the viewer's own (nothing to press, so nothing
- * pretends to be pressable) — own cards still show accurate fill state
- * and engagement from others, just no self-likes.
+ * ActionRow — Like + Reply pills beneath a top rule. Counts show from 1;
+ * at zero the verb labels ("Like" / "Reply") show instead.
  */
-function ActionRow({ likeActive, likeInteractive, likeCount, commentCount, onLike, onComment }) {
-  const heartIcon = likeActive ? (
-    <HiHeart className="home-review-card__heart-icon home-review-card__heart-icon--active" />
-  ) : (
-    <HiOutlineHeart className="home-review-card__heart-icon" />
+export function ActionRow({
+  likeActive,
+  likeInteractive,
+  likeCount,
+  commentCount,
+  onLike,
+  onComment,
+}) {
+  const { reduced } = useMotionPreference()
+  const [heartPop, setHeartPop] = useState(false)
+  const prevLikeActive = useRef(likeActive)
+
+  useEffect(() => {
+    if (likeActive && !prevLikeActive.current && likeInteractive && !reduced) {
+      setHeartPop(true)
+      const t = window.setTimeout(() => setHeartPop(false), 180)
+      prevLikeActive.current = likeActive
+      return () => window.clearTimeout(t)
+    }
+    prevLikeActive.current = likeActive
+  }, [likeActive, likeInteractive, reduced])
+
+  const likeLabel = likeCount > 0 ? String(likeCount) : 'Like'
+  const commentLabel = commentCount > 0 ? String(commentCount) : 'Reply'
+
+  const likePillClass = [
+    'home-review-card__social-pill',
+    'home-review-card__social-pill--like',
+    likeActive && likeInteractive ? 'home-review-card__social-pill--like-active' : '',
+    !likeInteractive ? 'home-review-card__social-pill--inert' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const heartIconClass = [
+    'home-review-card__social-pill-icon',
+    heartPop ? 'home-review-card__social-pill-icon--pop' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const likeInner = (
+    <>
+      <span className={heartIconClass} aria-hidden="true">
+        {likeActive ? <HiHeart /> : <HiOutlineHeart />}
+      </span>
+      <span className="home-review-card__social-pill-label">{likeLabel}</span>
+    </>
   )
 
   return (
     <div className="home-review-card__actions">
       {likeInteractive ? (
         <Pressable
-          className="home-review-card__action"
-          onClick={onLike}
+          className={likePillClass}
+          onClick={(e) => {
+            onLike(e)
+            if (e.detail !== 0) e.currentTarget.blur()
+          }}
           aria-pressed={likeActive}
-          aria-label={likeActive ? 'Remove reaction' : 'React'}
+          aria-label={likeActive ? 'Remove reaction' : 'Like'}
         >
-          {heartIcon}
-          {shouldShowCount(likeCount) && (
-            <span className="home-review-card__action-count">{likeCount}</span>
-          )}
+          {likeInner}
         </Pressable>
       ) : (
-        <span
-          className="home-review-card__action home-review-card__action--readonly"
-          aria-label={
-            shouldShowCount(likeCount) ? `${likeCount} likes` : likeActive ? 'Liked' : 'Like'
-          }
-        >
-          {heartIcon}
-          {shouldShowCount(likeCount) && (
-            <span className="home-review-card__action-count">{likeCount}</span>
-          )}
+        <span className={likePillClass} aria-disabled="true" aria-label={likeLabel}>
+          {likeInner}
         </span>
       )}
 
-      <Pressable className="home-review-card__action" onClick={onComment} aria-label="Reply">
-        <HiOutlineChat />
-        {shouldShowCount(commentCount) && (
-          <span className="home-review-card__action-count">{commentCount}</span>
-        )}
+      <Pressable
+        className="home-review-card__social-pill home-review-card__social-pill--comment"
+        onClick={(e) => {
+          onComment(e)
+          if (e.detail !== 0) e.currentTarget.blur()
+        }}
+        aria-label={commentCount > 0 ? `${commentCount} replies` : 'Reply'}
+      >
+        <span className="home-review-card__social-pill-icon" aria-hidden="true">
+          <HiOutlineChat />
+        </span>
+        <span className="home-review-card__social-pill-label">{commentLabel}</span>
       </Pressable>
     </div>
   )
@@ -273,7 +312,7 @@ function GameZone({
       >
         <span className="home-review-card__cover home-review-card__cover--mosaic" aria-hidden="true">
           {covers.length > 0 ? (
-            covers.map((src, i) => <img key={i} src={getSizedImageUrl(src, 62)} alt="" loading="lazy" />)
+            covers.map((src, i) => <img key={i} src={getSizedImageUrl(src, 24)} alt="" loading="lazy" />)
           ) : (
             <ListIcon size={18} />
           )}
@@ -293,7 +332,11 @@ function GameZone({
 
   if (!item.game) return null
 
-  const showRating = REVIEW_TYPES.has(item.type) && item.rating != null
+  // Any rating renders large stars in the header, regardless of event
+  // type — only 'reviewed'/'rated' (from `reviews`) and 'finished' (via
+  // _attachFinishedRatings) ever carry a `rating`, so this is exactly
+  // the FULL-card population (see communityService.pulseItemHasOpinion).
+  const showRating = item.rating != null
   // The stored rating is 0.5–5.0; the same value on the 10-point scale is
   // exactly rating × 2 — a rescale of real data, not a second metric.
   const score = showRating ? Math.round(Number(item.rating) * 20) / 10 : null
@@ -308,6 +351,7 @@ function GameZone({
         className="home-review-card__cover"
         alt=""
         loading="lazy"
+        onClick={onGameClick}
         onError={handleImgError}
       />
       <span className="home-review-card__game-meta">
@@ -321,7 +365,7 @@ function GameZone({
 
         {showRating && (
           <span className="home-review-card__rating">
-            <StarRatingDisplay rating={item.rating} size={ratingOnly ? 'md' : 'xs'} />
+            <StarRatingDisplay rating={item.rating} size={14} />
             {ratingOnly && <span className="home-review-card__score">{score} / 10</span>}
           </span>
         )}
@@ -370,13 +414,21 @@ function GameZone({
  *      free to grow. Clamped only at 6 lines with an inline "more" that
  *      expands in place. Absent entirely for types with no text, so a
  *      bare rating is a genuinely short card. See <ExpandableBody/>.
- *   C. BYLINE — small avatar (22px) + username in muted caption weight
- *      + the type-colored verb + a compact timestamp. Deliberately
- *      secondary metadata: it must never compete with the game title.
- *   D. ACTIONS — like + comment only. See <ActionRow/>.
+ *      Tap routes to the review's own detail (`/review/:id`) when one
+ *      exists, else `/game/:id` — see goToBody.
+ *   C+D. FOOTER — one line: byline (small avatar + username + the
+ *      type-colored verb + compact timestamp) on the left, like +
+ *      comment inline on the right — no divider between them. See
+ *      <ActionRow inline/>.
  *
  * Card height follows content: nothing is fixed-height and nothing
  * reserves space for a zone the event doesn't have.
+ *
+ * Tap targets: header (cover or title) -> `/game/:id`; actor (avatar
+ * or name) -> their profile; body -> the review's own detail, else
+ * `/game/:id`; comment icon -> the comment thread. There is no
+ * whole-card fallback tap target — every zone routes somewhere
+ * specific, or (stars/pills) nowhere.
  *
  * Every type renders inside the identical <ReviewCardShell/> — one
  * surface, one hairline border, one radius/padding — with a 3px left
@@ -396,9 +448,9 @@ function GameZone({
  * thread page (see goToReply).
  *
  * Own cards (`item.isOwn`): "You" replaces the author name in the
- * byline, and the heart becomes read-only (no self-reactions, but
- * engagement from others is still visible via its count). The comment
- * affordance is untouched by `isOwn`.
+ * byline. Review hearts stay tappable (same toggle as the review
+ * page). Non-review activity hearts stay read-only on own cards.
+ * The comment affordance is untouched by `isOwn`.
  *
  * @param {{ item: object }} props  See communityService.getHomeFeed's
  *   doc comment for the full item shape. Non-review types add: listId,
@@ -423,15 +475,18 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
     item.listPreviewCovers ||
     (listPreview?.previewGames || []).map((g) => g.image).filter(Boolean)
 
-  const when = formatActivityDate(item.createdAt, { compactAbsolute: true })
+  const when = formatActivityDate(item.createdAt, { pulse: true })
   const body = (item.body || '').trim()
-  // A rating with no review text is the compact card — its cover grows and
-  // its stars render large, since the rating IS the whole content.
-  const ratingOnly = isReviewType && !body && item.rating != null
+  // A rating with no review text renders as the shorter rating-only
+  // layout — cover grows, stars render large, since the rating IS the
+  // whole content. Not gated to isReviewType: a rated 'finished' item
+  // (rating attached via _attachFinishedRatings, no body of its own)
+  // reads the same way.
+  const ratingOnly = !body && item.rating != null
   // 44x60 (or 56x76 when rating-only) cover — sized down from the full
   // t_cover_big the game data carries, not requested at that size.
   const img = item.game?.image
-    ? getSizedImageUrl(item.game.image, ratingOnly ? 76 : 60)
+    ? getSizedImageUrl(item.game.image, 48)
     : COVER_FALLBACK
   const displayedLikeCount = likeState.count || item.likeCount || 0
 
@@ -440,7 +495,7 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
   const eventCount = eventReaction?.count || 0
 
   const heartCount = isReviewType ? displayedLikeCount : eventCount
-  const heartActive = isReviewType ? likeState.liked : !item.isOwn && eventReacted
+  const heartActive = isReviewType ? likeState.liked : eventReacted
 
   // The list-add mosaic — the destination list's other covers, so the
   // card shows what the game was added *to*. Omitted when the preview
@@ -475,6 +530,19 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
     e?.stopPropagation?.()
     if (isReviewType) navigate(`/reviews/${item.id}/comments`)
     else navigate(`/activity/${item.id}/comments`)
+  }
+
+  // Tapping the body: a review/rating has its own detail page distinct
+  // from its comment thread (see App.jsx's /review/:id route); no other
+  // event type has one, so those fall back to the game page instead of
+  // fabricating a destination. Scoped to `linkToThread` (the Home-feed
+  // context) — ReviewComments.jsx renders this same component with
+  // linkToThread=false while already showing that exact detail, where
+  // tapping the body to navigate to itself would be a dead loop.
+  const goToBody = (e) => {
+    e?.stopPropagation?.()
+    if (isReviewType) navigate(`/review/${item.id}`)
+    else goToGame(e)
   }
 
   const handleReviewReact = async (e) => {
@@ -516,8 +584,7 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
     <ReviewCardShell
       className={`home-review-card home-review-card--${item.type}${
         ratingOnly ? ' home-review-card--rating-only' : ''
-      }${linkToThread ? ' home-review-card--opens-thread' : ''}`}
-      onClick={linkToThread ? goToReply : undefined}
+      }`}
     >
       {/* A — GAME ZONE: cover + title + the type's content zone. */}
       <GameZone
@@ -539,37 +606,39 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
           aria-label={`View ${listName || 'list'}`}
         >
           {mosaicCovers.map((src, i) => (
-            <img key={i} src={getSizedImageUrl(src, 60)} alt="" loading="lazy" />
+            <img key={i} src={getSizedImageUrl(src, 44)} alt="" loading="lazy" />
           ))}
         </Pressable>
       )}
 
-      {/* B — BODY: full width, expands to fit, clamps at 6 lines. */}
-      {body && <ExpandableBody text={body} />}
+      {/* B — BODY: full width, expands to fit, clamps at 6 lines. Tap
+          routes to the review's own detail (else /game/:id) — only
+          wired in the Home-feed context (linkToThread), see goToBody. */}
+      {body && <ExpandableBody text={body} onClick={linkToThread ? goToBody : undefined} />}
 
-      {/* C — BYLINE: demoted author metadata, never the headline. */}
-      <div className="home-review-card__byline">
-        <button
-          type="button"
-          className="home-review-card__avatar-btn"
-          onClick={goToAuthor}
-          tabIndex={-1}
-          aria-hidden="true"
-        >
-          <Avatar user={item.author} size="xs" />
-        </button>
-        <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
-          {item.isOwn ? 'You' : item.author.displayName}
-        </button>
-        {!item.isOwn && <StreakFlair milestoneDays={item.author.highestStreakMilestone} />}
-        <span className="home-review-card__verb">{bylineVerb(item)}</span>
-        <span className="home-review-card__dot" aria-hidden="true">
-          {'\u00b7'}
-        </span>
-        <span className="home-review-card__time">{when}</span>
+      <div className="home-review-card__footer">
+        <div className="home-review-card__byline">
+          <button
+            type="button"
+            className="home-review-card__avatar-btn"
+            onClick={goToAuthor}
+            tabIndex={-1}
+            aria-hidden="true"
+          >
+            <Avatar user={item.author} size="xs" />
+          </button>
+          <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
+            {item.isOwn ? 'You' : item.author.displayName}
+          </button>
+          {!item.isOwn && <StreakFlair milestoneDays={item.author.highestStreakMilestone} />}
+          <span className="home-review-card__verb">{bylineVerb(item)}</span>
+          <span className="home-review-card__dot" aria-hidden="true">
+            {'\u00b7'}
+          </span>
+          <span className="home-review-card__time">{when}</span>
+        </div>
       </div>
 
-      {/* D — ACTIONS: like + comment only. */}
       <ActionRow
         likeActive={heartActive}
         likeInteractive={!item.isOwn}
