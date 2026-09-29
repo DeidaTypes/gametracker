@@ -189,7 +189,7 @@ function ReviewCard({
 
     const prev = likeState
     const wasLiked = prev.liked
-    hapticImpact('Light')
+    if (!wasLiked) hapticImpact('Light')
     // Optimistic flip — push the new state into the shared cache so
     // every mounted ReviewCard rendering this review id updates in
     // lockstep (Home timeline + Profile Reviews tab, etc.).

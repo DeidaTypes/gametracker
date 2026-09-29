@@ -484,7 +484,7 @@ export default function HomeReviewCard({ item, linkToThread = true }) {
 
     const prev = likeState
     const wasLiked = prev.liked
-    hapticImpact('Light')
+    if (!wasLiked) hapticImpact('Light')
     publishLikeState(item.id, {
       liked: !wasLiked,
       count: wasLiked ? Math.max(0, prev.count - 1) : prev.count + 1,

@@ -6,6 +6,11 @@ import { getLikeCountsForReviews } from './likeService'
 import { getCommentCountsForReviews, getCommentCountsForEvents } from './commentService'
 import { getFlaggedContentIds } from './reportService'
 import { dedupeInFlight } from './swrCache'
+import { prefetchReactionsBatch } from '../hooks/useReactions'
+
+// Finished/activity likes are the heart glyph only (U+2764 U+FE0F).
+// Other reaction emojis are not likes.
+const ACTIVITY_LIKE_EMOJI = '\u2764\uFE0F'
 
 /**
  * Community Service — REAL cross-user activity for the Explore/Discover page.
@@ -1312,8 +1317,20 @@ function _authorFromActorJoin(actor) {
  * commentService.js) — every non-review card is now first-class
  * commentable, same as a review, so this can no longer be hardcoded to
  * 0 the way it was before comments became polymorphic.
+ *
+ * `likeCount` is the ❤️ count from the page's single getReactionsBatch
+ * (via prefetchReactionsBatch). Missing or failed batches stay 0.
  */
-function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCounts = null } = {}) {
+function activityHeartCount(batchMap, eventId) {
+  const summary = batchMap?.get(eventId) || []
+  const heart = summary.find((row) => row.emoji === ACTIVITY_LIKE_EMOJI)
+  return heart?.count || 0
+}
+
+function _homeFeedItemFromEventRow(
+  row,
+  { isOwn, viewerAuthor = null, commentCounts = null, likeCount = 0 } = {}
+) {
   const meta = row.metadata || {}
   const author = isOwn ? viewerAuthor : _authorFromActorJoin(row.actor)
   const base = {
@@ -1321,7 +1338,7 @@ function _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor = null, commentCou
     createdAt: row.created_at,
     isOwn,
     author,
-    likeCount: 0,
+    likeCount,
     commentCount: commentCounts ? commentCounts.get(row.id) || 0 : 0,
     reactionTargetId: row.id,
   }
@@ -1539,13 +1556,94 @@ export async function getActivityEventForCard(activityEventId) {
       }
     }
 
-    const commentCounts = await getCommentCountsForEvents([row.id])
-    const item = _homeFeedItemFromEventRow(row, { isOwn, viewerAuthor, commentCounts })
+    const [commentCounts, eventReactions] = await Promise.all([
+      getCommentCountsForEvents([row.id]),
+      prefetchReactionsBatch('activity', [row.id]),
+    ])
+    const item = _homeFeedItemFromEventRow(row, {
+      isOwn,
+      viewerAuthor,
+      commentCounts,
+      likeCount: activityHeartCount(eventReactions, row.id),
+    })
     const [enriched] = await _attachFinishedRatings(item ? [item] : [])
     return enriched || item
   } catch (err) {
     console.error('[community] getActivityEventForCard crashed:', err)
     return null
+  }
+}
+
+function emptyLikers() {
+  return { total: 0, likers: [] }
+}
+
+function _shapeLikerRows(rows) {
+  return (rows || []).map((row) => {
+    const user = Array.isArray(row.users) ? row.users[0] : row.users
+    return {
+      userId: row.user_id,
+      username: user?.username ?? null,
+      avatarUrl: user?.avatar_url ?? null,
+    }
+  })
+}
+
+/**
+ * Who liked a review, newest first. Nothing in the UI calls this yet.
+ * RLS already hides likes from blocked users, so `total` is block-aware.
+ * Soft-fails to { total: 0, likers: [] }.
+ */
+export async function getReviewLikers(reviewId, limit = 3) {
+  if (!reviewId) return emptyLikers()
+  try {
+    const { data, error, count } = await supabase
+      .from('review_likes')
+      .select(
+        'user_id, users!review_likes_user_id_fkey(username, avatar_url)',
+        { count: 'exact' }
+      )
+      .eq('review_id', reviewId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) {
+      console.error('[community] getReviewLikers failed:', error.message)
+      return emptyLikers()
+    }
+    return { total: count ?? 0, likers: _shapeLikerRows(data) }
+  } catch (err) {
+    console.error('[community] getReviewLikers failed:', err)
+    return emptyLikers()
+  }
+}
+
+/**
+ * Who hearted a finished/activity post, newest first. Hearts only —
+ * other emojis are not likes. Nothing in the UI calls this yet.
+ * Soft-fails to { total: 0, likers: [] }.
+ */
+export async function getActivityLikers(eventId, limit = 3) {
+  if (!eventId) return emptyLikers()
+  try {
+    const { data, error, count } = await supabase
+      .from('reactions')
+      .select(
+        'user_id, users!reactions_user_id_fkey(username, avatar_url)',
+        { count: 'exact' }
+      )
+      .eq('target_type', 'activity')
+      .eq('target_id', eventId)
+      .eq('emoji', ACTIVITY_LIKE_EMOJI)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) {
+      console.error('[community] getActivityLikers failed:', error.message)
+      return emptyLikers()
+    }
+    return { total: count ?? 0, likers: _shapeLikerRows(data) }
+  } catch (err) {
+    console.error('[community] getActivityLikers failed:', err)
+    return emptyLikers()
   }
 }
 
@@ -1730,13 +1828,28 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       }
     }
     const allEventIds = [...otherEventRows, ...ownEventRows].map((row) => row.id)
-    const eventCommentCounts = await getCommentCountsForEvents(allEventIds)
+    // One reactions batch for the page. prefetchReactionsBatch seeds the
+    // useReactions cache (and marks ids in-flight) so the cards mounting
+    // after this returns do not issue a second query for the same ids.
+    const [eventCommentCounts, eventReactions] = await Promise.all([
+      getCommentCountsForEvents(allEventIds),
+      prefetchReactionsBatch('activity', allEventIds),
+    ])
 
     const otherEventItems = otherEventRows.map((row) =>
-      _homeFeedItemFromEventRow(row, { isOwn: false, commentCounts: eventCommentCounts })
+      _homeFeedItemFromEventRow(row, {
+        isOwn: false,
+        commentCounts: eventCommentCounts,
+        likeCount: activityHeartCount(eventReactions, row.id),
+      })
     )
     const ownEventItems = ownEventRows.map((row) =>
-      _homeFeedItemFromEventRow(row, { isOwn: true, viewerAuthor, commentCounts: eventCommentCounts })
+      _homeFeedItemFromEventRow(row, {
+        isOwn: true,
+        viewerAuthor,
+        commentCounts: eventCommentCounts,
+        likeCount: activityHeartCount(eventReactions, row.id),
+      })
     )
 
     // Merge every shaped source first, then suppress nearby

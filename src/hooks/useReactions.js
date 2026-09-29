@@ -6,6 +6,11 @@ import {
   getReactionsBatch,
 } from '../services/reactionService'
 import { hapticImpact } from '../utils/haptics'
+import { showToast } from '../components/Toast'
+
+// Same glyph activity hearts are stored as (U+2764 U+FE0F). Other emojis
+// are not likes.
+const ACTIVITY_LIKE_EMOJI = '\u2764\uFE0F'
 
 /**
  * useReactions — shared reaction state for all surfaces.
@@ -107,31 +112,45 @@ export function seedReactionsBatch(targetType, batchMap) {
  * hooks mounting a tick later skip their own fetch and simply wait for
  * this batch to publish.
  *
- * Ids already cached are skipped. Targets with no reactions are published
- * as empty arrays so they don't get re-fetched on the next mount.
+ * Ids already cached are skipped (no second query for the same ids).
+ * Targets with no reactions are published as empty arrays so they don't
+ * get re-fetched on the next mount.
+ *
+ * Returns Map<targetId, Array<{emoji, count, reacted}>> covering every
+ * requested id that was cached or just fetched. Callers that need the
+ * heart count (getHomeFeed) read this map instead of querying again.
  *
  * @param {string} targetType
  * @param {Array<string>} targetIds
+ * @returns {Promise<Map<string, Array<{emoji, count, reacted}>>>}
  */
 export async function prefetchReactionsBatch(targetType, targetIds) {
-  if (!targetType || !targetIds || targetIds.length === 0) return
+  const result = new Map()
+  if (!targetType || !targetIds || targetIds.length === 0) return result
 
-  const fresh = [
-    ...new Set(
-      targetIds.filter((id) => id && !stateCache.has(cacheKey(targetType, id)))
-    ),
-  ]
-  if (fresh.length === 0) return
+  const unique = [...new Set(targetIds.filter(Boolean))]
+  const fresh = []
+  for (const id of unique) {
+    const key = cacheKey(targetType, id)
+    if (stateCache.has(key)) result.set(id, readCache(targetType, id))
+    else fresh.push(id)
+  }
+  if (fresh.length === 0) return result
 
+  // Synchronous — MessagesThread relies on this happening before the
+  // first await so mounted hooks see the ids as in-flight.
   for (const id of fresh) inFlight.add(cacheKey(targetType, id))
   try {
-    seedReactionsBatch(targetType, await getReactionsBatch(targetType, fresh))
+    const batch = await getReactionsBatch(targetType, fresh)
+    seedReactionsBatch(targetType, batch)
+    for (const [id, summary] of batch.entries()) result.set(id, summary)
   } catch {
     // Soft-fail — cards keep their empty array, same as a failed
     // individual fetch.
   } finally {
     for (const id of fresh) inFlight.delete(cacheKey(targetType, id))
   }
+  return result
 }
 
 export function useReactions(targetType, targetId) {
@@ -173,9 +192,13 @@ export function useReactions(targetType, targetId) {
       const prev = readCache(targetType, targetId)
       const existing = prev.find((r) => r.emoji === emoji)
       const wasReacted = existing?.reacted ?? false
+      const isActivityLike = targetType === 'activity' && emoji === ACTIVITY_LIKE_EMOJI
 
-      // Haptic feedback — fire-and-forget, never blocks
-      hapticImpact('Light')
+      // Activity hearts haptic only when the like is added, and before
+      // the write so it feels instant. Removing a like is silent.
+      // Every other reaction (comment emoji pills included) keeps the
+      // existing tap haptic.
+      if (!isActivityLike || !wasReacted) hapticImpact('Light')
 
       // Optimistic update
       let optimistic
@@ -207,6 +230,7 @@ export function useReactions(targetType, targetId) {
         // Roll back
         publishReactionState(targetType, targetId, prev)
         console.error('[useReactions] toggle failed, rolled back:', err.message)
+        if (isActivityLike) showToast("Couldn't save your like. Try again.")
       } finally {
         mutationInFlight.delete(mutationKey)
       }
