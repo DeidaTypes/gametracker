@@ -218,9 +218,8 @@ function ListDetail() {
 
   // Custom lists render a comment composer (ListComments, below the game
   // grid) — tracker lists (Backlog/Playing/Played/Dropped) never do.
-  // Hide the nav only for the former, and only once we actually know the
-  // list is custom, so it's restored automatically on unmount/navigation.
-  // In clear mode the nav stays hidden; restored automatically on unmount.
+  // Default keeps the bottom nav visible so the comment bar can sit on it.
+  // Clear mode hides chrome (including the nav) and never persists.
   // See src/hooks/useHideNav.js.
   const [isClearMode, setIsClearMode] = useState(false)
   const [clearHintVisible, setClearHintVisible] = useState(false)
@@ -228,21 +227,20 @@ function ListDetail() {
   const clearHintShownRef = useRef(false)
   const pageRef = useRef(null)
   const clearScrollAdjustRef = useRef(null)
-  const [clearGridFade, setClearGridFade] = useState(false)
   const prevClearModeRef = useRef(false)
   const clearModeTransitionReadyRef = useRef(false)
   const sortRowRef = useRef(null)
   const descChromeRef = useRef(null)
   const headerBarRef = useRef(null)
 
-  useHideNav(!!listInfo?.isCustom)
-  useSwipeBackBlock(isClearMode)
-
   useEffect(() => {
     setIsClearMode(false)
     setClearHintVisible(false)
     setClearHintFading(false)
   }, [listId])
+
+  useHideNav(isClearMode)
+  useSwipeBackBlock(isClearMode)
 
   useEffect(() => {
     if (!isClearMode) {
@@ -279,6 +277,15 @@ function ListDetail() {
   }, [])
 
   useLayoutEffect(() => {
+    if (!clearModeTransitionReadyRef.current) {
+      clearModeTransitionReadyRef.current = true
+      prevClearModeRef.current = isClearMode
+      return
+    }
+    const prev = prevClearModeRef.current
+    prevClearModeRef.current = isClearMode
+    if (prev === isClearMode) return
+
     const pending = clearScrollAdjustRef.current
     if (!pending) return
     const scrollEl = pageRef.current?.closest('.main-content')
@@ -294,20 +301,6 @@ function ListDetail() {
     }
     clearScrollAdjustRef.current = null
   }, [isClearMode, measureClearModeChromeHeight])
-
-  useEffect(() => {
-    if (!clearModeTransitionReadyRef.current) {
-      clearModeTransitionReadyRef.current = true
-      prevClearModeRef.current = isClearMode
-      return undefined
-    }
-    const prev = prevClearModeRef.current
-    prevClearModeRef.current = isClearMode
-    if (prev === isClearMode || reducedMotion) return undefined
-    setClearGridFade(true)
-    const t = setTimeout(() => setClearGridFade(false), 220)
-    return () => clearTimeout(t)
-  }, [isClearMode, reducedMotion])
 
   // Sort + view — same controls and persistence as Library › My Games.
   const [sortKey, setSortKey] = useState('recent')
@@ -1314,31 +1307,20 @@ function ListDetail() {
   }
 
   // ── Custom lists — mockup D: compact nav, optional description, grid ─────
-  const ClearGridSurface = isClearMode ? 'div' : React.Fragment
-  const clearGridSurfaceProps = isClearMode
-    ? {
-        className: `ld-clear-grid-surface${
-          clearGridFade && !reducedMotion ? ' ld-clear-grid-surface--fade' : ''
-        }`,
-      }
-    : {}
-
   return (
     <div
       ref={pageRef}
       className={`list-detail-page list-detail-page--custom content-fade-in${
         showFab ? ' list-detail-page--fab' : ''
-      }${isClearMode ? ' list-detail-page--clear-mode' : ''}`}
-      {...(isClearMode
-        ? { onClickCapture: handleClearModeExitCapture }
-        : {})}
+      }${isClearMode ? ' list-detail-page--clear-mode is-clear-mode' : ''}`}
+      onClickCapture={handleClearModeExitCapture}
     >
       {isClearMode && (
         <div className="ld-clear-status-fade" aria-hidden="true" />
       )}
 
       {!isClearMode && (
-        <header className="ld-header ld-hud" ref={headerBarRef}>
+      <header className="ld-header ld-hud" ref={headerBarRef}>
         <button
           type="button"
           className="icon-btn"
@@ -1376,7 +1358,7 @@ function ListDetail() {
       </header>
       )}
 
-      {!isClearMode && isOwner && editingDesc ? (
+      {!isClearMode && (isOwner && editingDesc ? (
         <div
           className="list-detail-desc-edit-wrap ld-desc-edit ld-hud"
           ref={descChromeRef}
@@ -1410,13 +1392,12 @@ function ListDetail() {
           </div>
         </div>
       ) : (
-        !isClearMode &&
         listInfo.description && (
           <p className="ld-desc-line ld-hud" ref={descChromeRef}>
             {listInfo.description}
           </p>
         )
-      )}
+      ))}
 
       <div className="list-body">
         {!isClearMode && (
@@ -1446,7 +1427,6 @@ function ListDetail() {
         </div>
         )}
 
-        <ClearGridSurface {...clearGridSurfaceProps}>
         {sortedGames.length > 0 ? (
           viewKey === 'list' ? (
             <>
@@ -1574,7 +1554,6 @@ function ListDetail() {
         ) : (
           <ListDetailEmpty listId={listId} isTracker={isTracker} />
         )}
-        </ClearGridSurface>
 
         {/* Slide-up trash target — mounted (via portal) only while this
             viewer could possibly start a drag; visible/armed are what
@@ -1685,7 +1664,7 @@ function ListDetail() {
         createPortal(
           <button
             type="button"
-            className={`lib-fab lib-fab--lists${
+            className={`lib-fab lib-fab--lists ld-fab${
               dragGameId != null ? ' lib-fab--hidden' : ''
             }`}
             onClick={() => setShowAddGames(true)}
