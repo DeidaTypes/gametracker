@@ -7,6 +7,10 @@ import {
   finishBack,
   teardownBack,
 } from './backTransition'
+import {
+  consumeSettingsSearchBack,
+  settingsSearchBackActive,
+} from '../config/settingsSearchBack'
 import './SwipeBackWrapper.css'
 
 // Native-feeling left-edge swipe-to-go-back.
@@ -110,7 +114,9 @@ export default function SwipeBackWrapper({ children }) {
         // Mount the reveal on the first horizontal frame, not on touchstart:
         // an edge tap that turns out to be a scroll never pays for a clone
         // being inserted and then removed.
-        if (!reducedRef.current) {
+        // Search open: this swipe dismisses the field. Don't reveal
+        // the screen underneath — a second swipe is the one that leaves.
+        if (!reducedRef.current && !settingsSearchBackActive()) {
           state.width = beginBack({ topLayer: el }) || el.offsetWidth
           state.dragging = true
         }
@@ -137,6 +143,11 @@ export default function SwipeBackWrapper({ children }) {
       const commit = state.dx > THRESHOLD || velocity > VELOCITY
       const dragging = state.dragging
       reset()
+
+      if (commit && consumeSettingsSearchBack()) {
+        if (dragging) finishBack({ commit: false })
+        return
+      }
 
       if (!dragging) {
         // Reduced motion: no gesture animation at all, just the navigation.

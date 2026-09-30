@@ -100,16 +100,19 @@ function SettingsAccessibility() {
       <div className="settings-page__body">
         <SettingsGroup>
           <SettingsRow
+            settingId="color-blind"
             label="Color-blind mode"
             value={pickerLabel(COLOR_BLIND_OPTIONS, settings.colorBlindMode)}
             onClick={() => setCbmSheetOpen(true)}
           />
           <SettingsSwitchRow
+            settingId="reduce-motion"
             label="Reduce motion"
             checked={settings.reduceMotion}
             onChange={handleReduceMotionToggle}
           />
           <SettingsSwitchRow
+            settingId="larger-text"
             label="Larger text"
             checked={settings.largerText}
             onChange={handleLargerTextToggle}

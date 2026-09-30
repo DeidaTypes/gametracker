@@ -151,7 +151,7 @@ function SettingsAppearance() {
 
         <section className="appearance-match">
           <div className="settings-group__rows">
-            <div className="settings-row settings-row--toggle">
+            <div className="settings-row settings-row--toggle" data-setting-id="match-iphone">
               <span className="settings-row__label">Match iPhone light and dark</span>
               <span className="settings-row__trailing">
                 <IOSSwitch

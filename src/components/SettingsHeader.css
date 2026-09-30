@@ -43,6 +43,25 @@
   background: var(--theme-fill);
 }
 
+.settings-header--in-chrome {
+  position: static;
+}
+
+.settings-header__title-slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 180ms ease;
+}
+
+.settings-header__title-slot.is-collapsed {
+  grid-template-rows: 0fr;
+}
+
+.settings-header__title-clip {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .settings-header__large {
   margin: 0;
   /* Hub title aligns with the 14px page inset from the approved mockup. */
@@ -64,11 +83,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .settings-header__back {
+  .settings-header__back,
+  .settings-header__title-slot {
     transition: none;
   }
 }
 
-body[data-reduce-motion='true'] .settings-header__back {
+body[data-reduce-motion='true'] .settings-header__back,
+body[data-reduce-motion='true'] .settings-header__title-slot {
   transition: none !important;
 }

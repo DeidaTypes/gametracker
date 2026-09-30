@@ -33,10 +33,31 @@
   padding-top: 0;
 }
 
-/* Search is visual only until settings search is wired. */
-.settings-search {
+.settings-hub-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-base);
+}
+
+.settings-search-row {
   display: flex;
   align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  /* Approved hub inset is 14px, not a 4px-grid step. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: 0 14px var(--space-16);
+}
+
+.settings-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: var(--space-8);
   height: 36px;
   padding: 0 var(--space-12);
@@ -51,6 +72,116 @@
 .settings-search__icon {
   flex: none;
   color: var(--text-tertiary);
+}
+
+.settings-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  letter-spacing: inherit;
+  caret-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.settings-search__input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.settings-search__input:focus {
+  outline: none;
+}
+
+.settings-search:has(.settings-search__clear) .settings-search__input {
+  padding-right: var(--space-24);
+}
+
+.settings-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateY(-50%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-search__clear-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
+  color: var(--bg-base);
+}
+
+.settings-search__cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: 44px;
+  margin: 0;
+  padding: 0 var(--space-4);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-result {
+  align-items: center;
+}
+
+.settings-result__copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-result__copy .settings-result__label {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-primary);
+}
+
+.settings-result__match {
+  font-weight: var(--font-weight-semibold);
+}
+
+.settings-result__copy .settings-result__section {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-tertiary);
+}
+
+.settings-search-empty {
+  margin: 0;
+  padding: var(--space-48) var(--space-16);
+  text-align: center;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-tertiary);
+}
+
+.settings-row[data-setting-id] {
+  scroll-margin-top: calc(var(--safe-area-inset-top) + 44px + var(--space-8));
 }
 
 /* ============================================================
@@ -140,6 +271,19 @@
 .settings-row--tappable:hover:not(:disabled),
 .settings-row--tappable:active:not(:disabled) {
   background: var(--theme-fill);
+}
+
+.settings-row[data-setting-highlight='on'],
+.settings-row--tappable[data-setting-highlight='on']:hover:not(:disabled),
+.settings-row--tappable[data-setting-highlight='on']:active:not(:disabled) {
+  background-color: var(--theme-primary-soft);
+  transition: none;
+  animation: settings-highlight-fade 1s linear forwards;
+}
+
+@keyframes settings-highlight-fade {
+  from { background-color: var(--theme-primary-soft); }
+  to { background-color: transparent; }
 }
 
 .settings-row--disabled {
@@ -269,12 +413,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .settings-row--tappable,
-  .settings-me {
+  .settings-me,
+  .settings-row[data-setting-highlight='on'],
+  .settings-row--tappable[data-setting-highlight='on']:hover,
+  .settings-row--tappable[data-setting-highlight='on']:active {
     transition: none;
+    animation: none;
   }
 }
 
 body[data-reduce-motion='true'] .settings-row--tappable,
-body[data-reduce-motion='true'] .settings-me {
+body[data-reduce-motion='true'] .settings-me,
+body[data-reduce-motion='true'] .settings-row[data-setting-highlight='on'],
+body[data-reduce-motion='true'] .settings-row--tappable[data-setting-highlight='on']:hover,
+body[data-reduce-motion='true'] .settings-row--tappable[data-setting-highlight='on']:active {
   transition: none !important;
+  animation: none !important;
 }

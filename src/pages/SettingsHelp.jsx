@@ -35,11 +35,11 @@ function SettingsHelp() {
 
       <div className="settings-page__body">
         <SettingsGroup>
-          <SettingsRow label="Send feedback" onClick={handleFeedback} />
-          <SettingsRow label="Rate the app" onClick={handleRateApp} />
-          <SettingsRow label="Privacy Policy" onClick={handlePrivacyPolicy} />
-          <SettingsRow label="Terms of Service" onClick={handleTerms} />
-          <SettingsRow label="Version" value={`v${APP_VERSION} (build ${APP_BUILD})`} />
+          <SettingsRow settingId="feedback" label="Send feedback" onClick={handleFeedback} />
+          <SettingsRow settingId="rate" label="Rate the app" onClick={handleRateApp} />
+          <SettingsRow settingId="privacy-policy" label="Privacy Policy" onClick={handlePrivacyPolicy} />
+          <SettingsRow settingId="terms" label="Terms of Service" onClick={handleTerms} />
+          <SettingsRow settingId="version" label="Version" value={`v${APP_VERSION} (build ${APP_BUILD})`} />
         </SettingsGroup>
       </div>
     </div>

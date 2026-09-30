@@ -21,6 +21,7 @@ function SettingsRow({
   trailing = null,
   destructive = false,
   disabled = false,
+  settingId = null,
 }) {
   const Element = onClick ? 'button' : 'div'
   const className = [
@@ -41,6 +42,7 @@ function SettingsRow({
       className={className}
       onClick={onClick}
       disabled={onClick ? disabled : undefined}
+      data-setting-id={settingId || undefined}
     >
       {icon && (
         <span className="settings-row__icon" aria-hidden="true">
@@ -65,13 +67,14 @@ function SettingsRow({
  * Whole-row switch. The row owns role="switch"; the visual toggle is
  * presentational so there is only one switch in the accessibility tree.
  */
-function SettingsSwitchRow({ label, checked, onChange }) {
+function SettingsSwitchRow({ label, checked, onChange, settingId = null }) {
   return (
     <button
       type="button"
       className="settings-row settings-row--tappable settings-row--switch"
       role="switch"
       aria-checked={checked}
+      data-setting-id={settingId || undefined}
       onClick={() => onChange(!checked)}
     >
       <span className="settings-row__label text-body">{label}</span>

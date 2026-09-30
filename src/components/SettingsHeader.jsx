@@ -1,6 +1,7 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
+import { useSettingsHighlight } from '../hooks/useSettingsHighlight'
 import './SettingsHeader.css'
 
 /**
@@ -35,18 +36,29 @@ function BackButton({ onClick }) {
  * variant "large" — hub: back row, then a left-aligned Display L title.
  * variant "sub" — centered Body title with the back button on the left.
  */
-function SettingsHeader({ title, variant = 'sub' }) {
+function SettingsHeader({ title, variant = 'sub', titleCollapsed = false, inChrome = false }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  useSettingsHighlight()
   const onBack = () => goBack(navigate, pathname)
 
   if (variant === 'large') {
+    const headerClass = [
+      'settings-header',
+      'settings-header--large',
+      inChrome ? 'settings-header--in-chrome' : '',
+    ].filter(Boolean).join(' ')
+
     return (
-      <header className="settings-header settings-header--large">
+      <header className={headerClass}>
         <div className="settings-header__bar">
           <BackButton onClick={onBack} />
         </div>
-        <h1 className="settings-header__large text-display-l">{title}</h1>
+        <div className={`settings-header__title-slot${titleCollapsed ? ' is-collapsed' : ''}`}>
+          <div className="settings-header__title-clip">
+            <h1 className="settings-header__large text-display-l">{title}</h1>
+          </div>
+        </div>
       </header>
     )
   }

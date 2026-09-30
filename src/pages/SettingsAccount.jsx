@@ -36,12 +36,13 @@ function SettingsAccount() {
 
       <div className="settings-page__body">
         <SettingsGroup>
-          <SettingsRow label="Email" onClick={() => navigate('/settings/email')} />
-          <SettingsRow label="Password" onClick={() => navigate('/settings/password')} />
+          <SettingsRow settingId="email" label="Email" onClick={() => navigate('/settings/email')} />
+          <SettingsRow settingId="password" label="Password" onClick={() => navigate('/settings/password')} />
         </SettingsGroup>
 
         <SettingsGroup>
           <SettingsRow
+            settingId="delete-account"
             label="Delete account"
             onClick={() => setDeleteSheetOpen(true)}
             destructive

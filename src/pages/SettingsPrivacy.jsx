@@ -57,11 +57,13 @@ function SettingsPrivacy() {
       <div className="settings-page__body">
         <SettingsGroup title="Who can">
           <SettingsRow
+            settingId="message-me"
             label="Message me"
             value={pickerLabel(MESSAGE_PRIVACY_OPTIONS, settings.messagePrivacy)}
             onClick={() => setMsgSheetOpen(true)}
           />
           <SettingsRow
+            settingId="see-activity"
             label="See my activity"
             value={pickerLabel(ACTIVITY_PRIVACY_OPTIONS, settings.activityPrivacy)}
             onClick={() => setActSheetOpen(true)}
@@ -70,6 +72,7 @@ function SettingsPrivacy() {
 
         <SettingsGroup footer="Blocked people can't see your profile, message you, or find you in search.">
           <SettingsRow
+            settingId="blocked"
             label="Blocked users"
             value={blockedCount == null ? undefined : String(blockedCount)}
             onClick={() => navigate('/settings/blocked')}
