@@ -240,21 +240,75 @@ body[data-larger-text='true'] {
   --share-space-160: 160px;
 
   /* =============================================
-     COLOR SYSTEM — Deep Midnight + Cobalt Blue
-     ============================================= */
+     COLOR SYSTEM — theme palette
+     =============================================
+     Navy is the default (this :root block). The other seven themes
+     reassign the --theme-* tokens on html[data-app-theme="…"] below
+     :root. Components keep using the existing names; those names point
+     at the theme tokens so the active theme follows automatically.
 
-  /* ---- Cobalt Modern shorthand tokens ---- */
-  --bg-base:      #0a0f1f;   /* deep midnight, full-page background */
-  --bg-surface:   #131a35;   /* cards, sheets, raised surfaces */
-  --bg-surface-2: #1a2240;   /* secondary surface (modals, popovers) */
-  --accent:       #3b82f6;   /* cobalt — primary interactive accent */
-  --accent-hover: #60a5fa;   /* lighter cobalt for hover */
-  --accent-press: #2563eb;   /* darker cobalt for press */
-  --color-on-accent: #fff;   /* text/icon color on a solid accent-color fill (badges, filled buttons) */
-  --text-primary:   #f0f3fa; /* primary text */
-  --text-secondary: #94a8d4; /* muted text */
-  --text-tertiary:  #5c6b8a; /* hint text / placeholders */
-  --border-subtle: rgba(148, 168, 212, 0.12);
+     Built-in form controls and scrollbars follow the theme's mode.
+     ===================================================== */
+  color-scheme: dark;
+
+  /* ---- Theme palette (Navy) ----
+     Four Navy values differ from the approved mockup by more than
+     rounding, so Navy keeps the colors already shipping:
+       --theme-surface-2  #1a2240   (mockup #1a2244)
+       --theme-line       rgba(148, 168, 212, 0.12)   (mockup 0.14)
+       --theme-dim        #5c6b8a   (mockup #5f6f97)
+       --theme-gold       #f5b50a   (mockup #f5c542)
+     Every other Navy value matches the mockup. */
+  --theme-base: #0a0f1f;
+  --theme-surface: #131a35;
+  --theme-surface-2: #1a2240;
+  --theme-line: rgba(148, 168, 212, 0.12);
+  --theme-text: #f0f3fa;
+  --theme-muted: #94a8d4;
+  --theme-dim: #5c6b8a;
+  --theme-primary: #3b82f6;
+  --theme-review: #0a9e6a;
+  --theme-journal: #8b32d1;
+  --theme-primary-ink: #7fb0ff;
+  --theme-review-ink: #3fd19b;
+  --theme-journal-ink: #c08cf2;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #f5b50a;
+  --theme-g4: #e879a6;
+  --theme-glow: rgba(59, 130, 246, 0.20);
+  --theme-glow-2: rgba(139, 50, 209, 0.16);
+  --theme-nav-bg: rgba(19, 26, 53, 0.94);
+  --theme-shadow: none;
+
+  /* Soft tint / soft fill / gradients / taste-bar stops.
+     Defined once. Light themes override only the two mix amounts. */
+  --theme-tint: 16%;
+  --theme-fill-mix: 6%;
+  --theme-primary-soft: color-mix(in srgb, var(--theme-primary) var(--theme-tint), transparent);
+  --theme-review-soft: color-mix(in srgb, var(--theme-review) var(--theme-tint), transparent);
+  --theme-journal-soft: color-mix(in srgb, var(--theme-journal) var(--theme-tint), transparent);
+  --theme-fill: color-mix(in srgb, var(--theme-text) var(--theme-fill-mix), transparent);
+  --theme-grad-main: linear-gradient(90deg, var(--theme-primary) 0%, var(--theme-review) 100%);
+  --theme-grad-list: linear-gradient(90deg, var(--theme-journal) 0%, var(--theme-primary) 100%);
+  --theme-grad-brand: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-journal) 50%, var(--theme-review) 100%);
+  --theme-genre-1: var(--theme-primary);
+  --theme-genre-2: var(--theme-review);
+  --theme-genre-3: var(--theme-journal);
+  --theme-genre-4: var(--theme-g4);
+
+  /* ---- Existing names, pointed at the active theme ---- */
+  --bg-base:      var(--theme-base);
+  --bg-surface:   var(--theme-surface);
+  --bg-surface-2: var(--theme-surface-2);
+  --accent:       var(--theme-primary);
+  --accent-hover: #60a5fa;   /* lighter cobalt for hover — not a theme role */
+  --accent-press: #2563eb;   /* darker cobalt for press — not a theme role */
+  --color-on-accent: var(--theme-on-primary);
+  --text-primary:   var(--theme-text);
+  --text-secondary: var(--theme-muted);
+  --text-tertiary:  var(--theme-dim);
+  --border-subtle: var(--theme-line);
   --border-strong: rgba(148, 168, 212, 0.24);
   /* Status colors — distinct from brand accent */
   --status-success: #34d399;
@@ -262,10 +316,10 @@ body[data-larger-text='true'] {
   --status-danger:  #f87171;
 
   /* Backgrounds — layered depth */
-  --color-bg-primary: #0a0f1f;      /* deep midnight */
-  --color-bg-secondary: #131a35;    /* nav surfaces */
-  --color-bg-tertiary: #131a35;     /* cards, panels */
-  --color-bg-elevated: #1a2240;     /* highest elevation */
+  --color-bg-primary: var(--theme-base);
+  --color-bg-secondary: var(--theme-surface);
+  --color-bg-tertiary: var(--theme-surface);
+  --color-bg-elevated: var(--theme-surface-2);
 
   /* Ambient app gradient — base midnight ±3% lightness */
   --color-bg-gradient-top: #0e1428;     /* base +3% lightness */
@@ -278,13 +332,13 @@ body[data-larger-text='true'] {
   );
 
   /* Text — cool-white spectrum */
-  --color-text-primary: #f0f3fa;    /* near-white */
-  --color-text-secondary: #94a8d4;  /* muted cobalt-gray */
-  --color-text-tertiary: #5c6b8a;   /* dim */
-  --color-text-muted: #3a4a66;      /* very dim */
+  --color-text-primary: var(--theme-text);
+  --color-text-secondary: var(--theme-muted);
+  --color-text-tertiary: var(--theme-dim);
+  --color-text-muted: #3a4a66;      /* very dim — darker than --theme-dim; not a theme role */
 
-  /* Brand — cobalt blue */
-  --color-brand-primary: #3b82f6;
+  /* Brand — app color */
+  --color-brand-primary: var(--theme-primary);
   --color-brand-secondary: #60a5fa;
   --color-brand-primary-dark: #2563eb;   /* cobalt -15% lightness, for vertical gradients */
   --color-brand-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
@@ -364,12 +418,12 @@ body[data-larger-text='true'] {
   --genre-1: var(--accent);
   --genre-2: #22c1a3; /* mint */
   --genre-3: #a855f7; /* violet */
-  --genre-4: #e879a6; /* rose */
+  --genre-4: var(--theme-g4);
 
   /* Review / Journal button accent colors — vivid fills, bright text */
-  --accent-review: #0a9e6a;
+  --accent-review: var(--theme-review);
   --accent-review-text: #b6fde0;
-  --accent-journal: #8b32d1;
+  --accent-journal: var(--theme-journal);
   --accent-journal-text: #e4c2ff;
 
   /* =============================================
@@ -404,8 +458,8 @@ body[data-larger-text='true'] {
      for the Home multi-hue pass; safe to reuse anywhere the same
      "system → reviews" or "system + reviews + social" story applies.
      ============================================= */
-  /* Headline gradient text (background-clip:text) — cobalt to green */
-  --grad-headline: linear-gradient(90deg, var(--accent) 0%, var(--accent-review) 100%);
+  /* Headline gradient text (background-clip:text) — app color to review color */
+  --grad-headline: var(--theme-grad-main);
   /* Primary-action fill — cobalt to green, matches the onboarding
      picker's "Done" CTA recipe (see Onboarding.css .ob-picker__btn--primary) */
   --grad-cta: linear-gradient(120deg, var(--accent) 0%, var(--accent-review) 100%);
@@ -475,13 +529,13 @@ body[data-larger-text='true'] {
   --color-surface-active: rgba(148, 168, 212, 0.13);
 
   /* Borders — cobalt tint */
-  --color-border: rgba(148, 168, 212, 0.12);
+  --color-border: var(--theme-line);
   --color-border-hover: rgba(148, 168, 212, 0.30);
   --color-border-focus: rgba(59, 130, 246, 0.60);
 
   /* Glass */
   --glass-bg: rgba(10, 15, 31, 0.85);
-  --glass-border: rgba(148, 168, 212, 0.12);
+  --glass-border: var(--theme-line);
 
   /* ---- Border Radius ---- */
   --radius-xs: 4px;
@@ -613,12 +667,212 @@ body[data-larger-text='true'] {
   --streak-tier-wildfire: var(--accent-journal-deep);
 
   /* ---- Rating Stars — intentional exception to the all-cobalt rule ---- */
-  --star:       #f5b50a;                    /* rich gold — filled/half stars only */
+  --star:       var(--theme-gold);          /* filled/half stars only */
   --star-empty: rgba(148, 168, 212, 0.30); /* neutral muted — unfilled star ring */
 
   /* ---- Goal Ring — yearly-goal progress wheel ---- */
   --goal:       #22c55e; /* goal ring fill  */
   --goal-track: #1f2937; /* unfilled track  */
+}
+
+/* =============================================
+   THEMES
+   Navy is :root above (no attribute, or data-app-theme="navy").
+   Each other theme reassigns the same --theme-* tokens. Soft tints,
+   soft fill, gradients, and taste-bar stops are NOT repeated here —
+   they read the tokens above and follow automatically.
+   Light themes only override the two mix amounts and color-scheme.
+   ============================================= */
+html[data-app-theme="black"] {
+  --theme-base: #000000;
+  --theme-surface: #0f0f11;
+  --theme-surface-2: #1a1a1d;
+  --theme-line: rgba(255, 255, 255, 0.09);
+  --theme-text: #f5f5f7;
+  --theme-muted: #a3a3ad;
+  --theme-dim: #62626b;
+  --theme-primary: #4a78ff;
+  --theme-review: #0f9d6b;
+  --theme-journal: #9a45e8;
+  --theme-primary-ink: #86a5ff;
+  --theme-review-ink: #3ddc9f;
+  --theme-journal-ink: #c395f5;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #f5c542;
+  --theme-g4: #f472b6;
+  --theme-glow: rgba(74, 120, 255, 0.10);
+  --theme-glow-2: rgba(154, 69, 232, 0.07);
+  --theme-nav-bg: rgba(15, 15, 17, 0.94);
+  --theme-shadow: none;
+}
+
+html[data-app-theme="forest"] {
+  --theme-base: #08140f;
+  --theme-surface: #0f2119;
+  --theme-surface-2: #172d23;
+  --theme-line: rgba(160, 210, 185, 0.13);
+  --theme-text: #edf6f0;
+  --theme-muted: #97b8a6;
+  --theme-dim: #5b7a6a;
+  --theme-primary: #22b07d;
+  --theme-review: #c2d856;
+  --theme-journal: #a98bf0;
+  --theme-primary-ink: #4fd6a0;
+  --theme-review-ink: #d4e777;
+  --theme-journal-ink: #c2a9f5;
+  --theme-on-primary: #04130c;
+  --theme-on-grad: #04130c;
+  --theme-gold: #f2c94c;
+  --theme-g4: #5cc8e0;
+  --theme-glow: rgba(34, 176, 125, 0.20);
+  --theme-glow-2: rgba(194, 216, 86, 0.08);
+  --theme-nav-bg: rgba(15, 33, 25, 0.94);
+  --theme-shadow: none;
+}
+
+html[data-app-theme="purple"] {
+  --theme-base: #110a1d;
+  --theme-surface: #1c1230;
+  --theme-surface-2: #27193f;
+  --theme-line: rgba(190, 170, 230, 0.14);
+  --theme-text: #f5f0fd;
+  --theme-muted: #b4a5d6;
+  --theme-dim: #71629a;
+  --theme-primary: #7a55f5;
+  --theme-review: #0f9985;
+  --theme-journal: #d4478f;
+  --theme-primary-ink: #ad97ff;
+  --theme-review-ink: #45d6bd;
+  --theme-journal-ink: #f07fb6;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #f5c542;
+  --theme-g4: #6fb6ff;
+  --theme-glow: rgba(122, 85, 245, 0.24);
+  --theme-glow-2: rgba(212, 71, 143, 0.12);
+  --theme-nav-bg: rgba(28, 18, 48, 0.94);
+  --theme-shadow: none;
+}
+
+html[data-app-theme="light"] {
+  --theme-base: #f4f6fa;
+  --theme-surface: #ffffff;
+  --theme-surface-2: #eceff5;
+  --theme-line: rgba(20, 30, 60, 0.10);
+  --theme-text: #111827;
+  --theme-muted: #525e75;
+  --theme-dim: #8b93a6;
+  --theme-primary: #2563eb;
+  --theme-review: #067a55;
+  --theme-journal: #7c3aed;
+  --theme-primary-ink: #1d4ed8;
+  --theme-review-ink: #047857;
+  --theme-journal-ink: #6d28d9;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #d09200;
+  --theme-g4: #db2777;
+  --theme-glow: rgba(37, 99, 235, 0.10);
+  --theme-glow-2: rgba(124, 58, 237, 0.07);
+  --theme-nav-bg: rgba(255, 255, 255, 0.94);
+  --theme-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.06);
+}
+
+html[data-app-theme="sky"] {
+  --theme-base: #cfe2f6;
+  --theme-surface: #eaf3fd;
+  --theme-surface-2: #bcd6f0;
+  --theme-line: rgba(20, 70, 130, 0.16);
+  --theme-text: #0b2340;
+  --theme-muted: #3f5877;
+  --theme-dim: #7a93b0;
+  --theme-primary: #1a64cc;
+  --theme-review: #0b8066;
+  --theme-journal: #5b47d6;
+  --theme-primary-ink: #1557b5;
+  --theme-review-ink: #066650;
+  --theme-journal-ink: #4a37c4;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #d09200;
+  --theme-g4: #e0558f;
+  --theme-glow: rgba(26, 100, 204, 0.20);
+  --theme-glow-2: rgba(91, 71, 214, 0.10);
+  --theme-nav-bg: rgba(234, 243, 253, 0.95);
+  --theme-shadow: 0 1px 2px rgba(11, 35, 64, 0.06), 0 6px 16px rgba(11, 35, 64, 0.07);
+}
+
+html[data-app-theme="pink"] {
+  --theme-base: #f5d3de;
+  --theme-surface: #fcecf1;
+  --theme-surface-2: #eec3d1;
+  --theme-line: rgba(120, 30, 60, 0.16);
+  --theme-text: #35121f;
+  --theme-muted: #7c4655;
+  --theme-dim: #ab7c8b;
+  --theme-primary: #c92a62;
+  --theme-review: #0d8069;
+  --theme-journal: #7446cf;
+  --theme-primary-ink: #b3225a;
+  --theme-review-ink: #055f4d;
+  --theme-journal-ink: #6538c0;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #d09200;
+  --theme-g4: #3b8fd9;
+  --theme-glow: rgba(201, 42, 98, 0.18);
+  --theme-glow-2: rgba(116, 70, 207, 0.10);
+  --theme-nav-bg: rgba(252, 236, 241, 0.95);
+  --theme-shadow: 0 1px 2px rgba(60, 10, 30, 0.05), 0 6px 16px rgba(60, 10, 30, 0.06);
+}
+
+html[data-app-theme="cream"] {
+  --theme-base: #e8dcc2;
+  --theme-surface: #f7efdf;
+  --theme-surface-2: #dccdb0;
+  --theme-line: rgba(70, 50, 20, 0.16);
+  --theme-text: #2a2217;
+  --theme-muted: #62563f;
+  --theme-dim: #948668;
+  --theme-primary: #2c5b8a;
+  --theme-review: #3a7648;
+  --theme-journal: #86427f;
+  --theme-primary-ink: #264f78;
+  --theme-review-ink: #275c34;
+  --theme-journal-ink: #7a3874;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #b98309;
+  --theme-g4: #4c93a0;
+  --theme-glow: rgba(44, 91, 138, 0.12);
+  --theme-glow-2: rgba(134, 66, 127, 0.08);
+  --theme-nav-bg: rgba(247, 239, 223, 0.96);
+  --theme-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 6px 16px rgba(60, 40, 10, 0.06);
+}
+
+/* Light themes: readable ink needs a lighter tint, and the phone's
+   own controls (fields, scrollbars) switch to light. */
+html[data-app-theme="light"],
+html[data-app-theme="sky"],
+html[data-app-theme="pink"],
+html[data-app-theme="cream"] {
+  color-scheme: light;
+  --theme-tint: 12%;
+  --theme-fill-mix: 5%;
+}
+
+/* The Navy page wash is the existing ambient gradient. Every other
+   theme paints a flat background in that theme's base color, so the
+   Navy gradient does not sit on top of Light or Cream. */
+html[data-app-theme="black"] body,
+html[data-app-theme="forest"] body,
+html[data-app-theme="purple"] body,
+html[data-app-theme="light"] body,
+html[data-app-theme="sky"] body,
+html[data-app-theme="pink"] body,
+html[data-app-theme="cream"] body {
+  background-image: none;
 }
 
 /* Comment composer screens (Comments sub-screen, List Detail, Review
@@ -658,6 +912,17 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+/* A theme change fades the page background and text together.
+   Scoped to the page (html, body, #root), not to every element.
+   Instant when Reduce Motion is on, from the system or the in-app toggle. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(:has(body[data-reduce-motion='true'])),
+  html:not(:has(body[data-reduce-motion='true'])) body,
+  html:not(:has(body[data-reduce-motion='true'])) #root {
+    transition: background-color 200ms ease, color 200ms ease;
+  }
 }
 
 /* Soften the gradient on small screens — the ±3% spread can read as a hard band
