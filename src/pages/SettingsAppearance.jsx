@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { LuCheck, LuChevronLeft } from 'react-icons/lu'
+import { LuCheck } from 'react-icons/lu'
+import SettingsHeader from '../components/SettingsHeader'
 import IOSSwitch from '../components/IOSSwitch'
 import {
   getThemeSettings,
@@ -90,7 +90,6 @@ function ThemeSection({ label, themes, settings, showingId, onSelect }) {
 }
 
 function SettingsAppearance() {
-  const navigate = useNavigate()
   const [settings, setSettings] = useState(getThemeSettings)
   const [prefersDark, setPrefersDark] = useState(systemPrefersDark)
 
@@ -132,18 +131,7 @@ function SettingsAppearance() {
 
   return (
     <div className="settings-page">
-      <header className="settings-header">
-        <button
-          type="button"
-          className="settings-header__back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
-          <LuChevronLeft size={22} aria-hidden="true" />
-        </button>
-        <h1 className="settings-header__title">Appearance</h1>
-        <span className="settings-header__spacer" aria-hidden="true" />
-      </header>
+      <SettingsHeader title="Appearance" />
 
       <div className="settings-page__body">
         <ThemeSection

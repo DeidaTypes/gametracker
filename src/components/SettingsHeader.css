@@ -1,0 +1,74 @@
+/* Settings header — solid page background. No blur, no translucent bar. */
+
+.settings-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-base);
+  padding-top: var(--safe-area-inset-top);
+}
+
+.settings-header__bar {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-left: var(--space-4);
+}
+
+.settings-header--sub {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 44px;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.settings-header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease;
+}
+
+.settings-header__back:hover {
+  background: var(--theme-fill);
+}
+
+.settings-header__large {
+  margin: 0;
+  /* Hub title aligns with the 14px page inset from the approved mockup. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: var(--space-4) 14px var(--space-12);
+  text-align: left;
+}
+
+.settings-header__title {
+  margin: 0;
+  text-align: center;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.settings-header__spacer {
+  width: 44px;
+  height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-header__back {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .settings-header__back {
+  transition: none !important;
+}

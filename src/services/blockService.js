@@ -296,6 +296,16 @@ export function isMutuallyBlocked(targetUserId) {
   return _cache.all.has(targetUserId)
 }
 
+/**
+ * How many users the current user has blocked, if the block cache is
+ * already hydrated. Null when it isn't — callers must not show 0 for
+ * "not loaded yet".
+ */
+export function getSelfBlockedCountSync() {
+  if (!_cache) return null
+  return _cache.selfBlocked.size
+}
+
 /* ============================================================
    Cross-surface change event
    ============================================================ */

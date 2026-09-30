@@ -63,6 +63,10 @@ import SettingsBlocked from './pages/SettingsBlocked'
 import SettingsEmail from './pages/SettingsEmail'
 import SettingsPassword from './pages/SettingsPassword'
 import SettingsAppearance from './pages/SettingsAppearance'
+import SettingsAccessibility from './pages/SettingsAccessibility'
+import SettingsAccount from './pages/SettingsAccount'
+import SettingsPrivacy from './pages/SettingsPrivacy'
+import SettingsHelp from './pages/SettingsHelp'
 import Stats from './pages/Stats'
 import ActivityCalendar from './pages/ActivityCalendar'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
@@ -1299,9 +1303,9 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-            {/* Sprint 7 — dedicated Settings surface. /edit-profile remains
-                a thin alias that funnels users back to the existing edit-
-                profile modal hosted on the Profile page (via location state). */}
+            {/* Settings hub. Sub-screens are one push away and swipe back
+                here. /edit-profile is unused: nothing links to it. The
+                redirect stays so an old deep link still opens the modal. */}
             <Route
               path="/settings"
               element={
@@ -1348,6 +1352,46 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><SettingsAppearance /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/accessibility"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsAccessibility /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/account"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsAccount /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/privacy"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsPrivacy /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/help"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsHelp /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

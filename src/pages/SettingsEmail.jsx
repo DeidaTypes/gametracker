@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LuChevronLeft } from 'react-icons/lu'
+import SettingsHeader from '../components/SettingsHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import { showToast } from '../components/Toast'
@@ -59,18 +59,7 @@ function SettingsEmail() {
 
   return (
     <div className="settings-page">
-      <header className="settings-header">
-        <button
-          type="button"
-          className="settings-header__back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
-          <LuChevronLeft size={22} aria-hidden="true" />
-        </button>
-        <h1 className="settings-header__title">Email</h1>
-        <span className="settings-header__spacer" aria-hidden="true" />
-      </header>
+      <SettingsHeader title="Email" />
 
       <div className="settings-page__body">
         <form className="settings-form" onSubmit={handleSubmit}>

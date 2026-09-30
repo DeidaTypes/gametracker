@@ -13,13 +13,28 @@ import './IOSSwitch.css'
  *   checked    – boolean
  *   onChange   – (next: boolean) => void
  *   disabled   – boolean (optional)
- *   label      – aria-label string for screen readers when no visible label
- *   id         – optional id for label[for] association
+ *   label           – aria-label string for screen readers when no visible label
+ *   id              – optional id for label[for] association
+ *   presentational  – render only the track. The parent row owns
+ *                     role="switch" and the toggle.
  */
-function IOSSwitch({ checked, onChange, disabled = false, label, id }) {
+function IOSSwitch({ checked, onChange, disabled = false, label, id, presentational = false }) {
   const handleChange = (e) => {
     if (!onChange) return
     onChange(e.target.checked)
+  }
+
+  if (presentational) {
+    return (
+      <span
+        className={`ios-switch${checked ? ' ios-switch--on' : ''}`}
+        aria-hidden="true"
+      >
+        <span className="ios-switch__track">
+          <span className="ios-switch__thumb" />
+        </span>
+      </span>
+    )
   }
 
   return (

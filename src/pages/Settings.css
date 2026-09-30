@@ -1,77 +1,56 @@
-/* ============================================================
-   Settings — iOS 26 grouped-list pattern.
-   Top bar with back chevron + centered title, then a
-   scrollable column of grouped sections each rendered as a
-   surface-card stack of rows.
-   ============================================================ */
+/* Settings hub and sub-screens. Grouped rows on the page background. */
 
 .settings-page {
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 0 0 calc(var(--bottom-nav-safe-area) + 16px);
-  background: transparent;
+  padding: 0 0 calc(var(--bottom-nav-safe-area) + var(--space-16));
+  background: var(--bg-base);
   display: flex;
   flex-direction: column;
-}
-
-.settings-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  align-items: center;
-  padding: 12px 16px;
-  padding-top: calc(12px + var(--safe-area-inset-top));
-  background: rgba(10, 15, 31, 0.78);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.settings-header__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color 140ms ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.settings-header__back:hover {
-  background: rgba(148, 168, 212, 0.08);
-}
-
-.settings-header__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-  text-align: center;
-}
-
-.settings-header__spacer {
-  width: 40px;
-  height: 40px;
 }
 
 .settings-page__body {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: 16px 16px 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-16);
+  /* Approved hub inset is 14px, not a 4px-grid step. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: var(--space-16) 14px 0;
+}
+
+.settings-page--hub {
+  /* The scroll container already clears the bottom nav. A second
+     nav-sized pad plus min-height: 100vh made the short hub scroll. */
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.settings-page--hub .settings-page__body {
+  padding-top: 0;
+}
+
+/* Search is visual only until settings search is wired. */
+.settings-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 36px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-md);
+  background: var(--theme-fill);
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.settings-search__icon {
+  flex: none;
+  color: var(--text-tertiary);
 }
 
 /* ============================================================
@@ -81,35 +60,32 @@
 .settings-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Room for the sticky header when a hash deep-link (from the profile
-     Settings sheet's Privacy/About rows) scrolls a section into view. */
-  scroll-margin-top: 84px;
+  gap: var(--space-8);
 }
 
 .settings-group__title {
-  margin: 0 8px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: 0 14px;
+  text-transform: none;
+  letter-spacing: var(--letter-spacing-body);
+  font-weight: var(--font-weight-normal);
   color: var(--text-tertiary);
 }
 
 .settings-group__rows {
   background: var(--bg-surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--surface-1-shadow);
   display: flex;
   flex-direction: column;
 }
 
 .settings-group__footer {
-  margin: 0 8px;
-  font-size: 12px;
-  line-height: 1.4;
+  margin: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: 0 14px;
+  font-weight: var(--font-weight-normal);
   color: var(--text-tertiary);
 }
 
@@ -118,25 +94,42 @@
    ============================================================ */
 
 .settings-row {
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: var(--space-48);
   background: transparent;
   border: 0;
-  border-bottom: 0.5px solid var(--border-subtle);
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   text-align: left;
   cursor: default;
+  gap: var(--space-12);
   -webkit-tap-highlight-color: transparent;
-  gap: 12px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: 0 14px;
 }
 
-.settings-row:last-child {
-  border-bottom: 0;
+.settings-row + .settings-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-subtle);
+  /* Hairline starts at the text, which is the row inset when there is no icon. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  left: 14px;
+}
+
+/* Icon rows: inset the hairline to the label, past the 18px glyph. */
+.settings-group--icons .settings-row + .settings-row::before {
+  /* 14px inset + 18px icon + 12px gap. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  left: 44px;
 }
 
 .settings-row--tappable {
@@ -144,51 +137,33 @@
   transition: background-color 140ms ease;
 }
 
-.settings-row--tappable:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.04);
-}
-
+.settings-row--tappable:hover:not(:disabled),
 .settings-row--tappable:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.settings-row--toggle {
-  cursor: default;
+  background: var(--theme-fill);
 }
 
 .settings-row--disabled {
   opacity: 0.5;
 }
 
-.settings-row--centered {
-  justify-content: center;
-  text-align: center;
-}
-
-.settings-row--destructive {
+.settings-row--destructive,
+.settings-row--destructive .settings-row__label {
   color: var(--status-danger);
-  font-weight: 600;
-}
-
-.settings-row--destructive .settings-row__signout-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .settings-row__label {
   flex: 0 1 auto;
   min-width: 0;
-  font-weight: 500;
-  color: inherit;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
 }
 
 .settings-row__value {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
   text-align: right;
-  font-size: 14px;
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -207,62 +182,99 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-tertiary);
   margin-left: auto;
+  color: var(--text-tertiary);
 }
 
-.settings-row--centered .settings-row__chevron,
-.settings-row--centered .settings-row__value {
-  display: none;
-}
-
-/* When a value AND a chevron are both rendered, push the chevron out
-   to the very edge with a small gap from the value text. */
-.settings-row--tappable .settings-row__value + .settings-row__chevron {
-  margin-left: 4px;
+.settings-row__value + .settings-row__chevron {
+  margin-left: var(--space-8);
 }
 
 .settings-row__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--text-tertiary);
-}
-
-/* ============================================================
-   Footnote
-   ============================================================ */
-
-.settings-footnote {
-  margin: 16px 8px 24px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.settings-footnote span {
+  flex: none;
+  width: 18px;
+  height: 18px;
   color: var(--text-secondary);
 }
 
 /* ============================================================
-   Larger-text scaling (extra padding so 17px body still
-   fits comfortably in 48px tall rows).
+   Your card
    ============================================================ */
-body[data-larger-text='true'] .settings-row {
-  min-height: 52px;
-  font-size: 16px;
+
+.settings-me {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms ease;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: var(--space-12) 14px;
 }
 
-body[data-larger-text='true'] .settings-row__value {
-  font-size: 15px;
+.settings-me:hover,
+.settings-me:active {
+  background: var(--theme-fill);
+}
+
+.settings-me .avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.settings-me__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.settings-me__name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.settings-me__hint {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-secondary);
+}
+
+.settings-me__chevron {
+  flex: none;
+  color: var(--text-tertiary);
 }
 
 /* ============================================================
-   Reduced-motion override (when in-app toggle is on).
+   Footer
    ============================================================ */
-body[data-reduce-motion='true'] .settings-row,
-body[data-reduce-motion='true'] .settings-header__back {
+
+.settings-footnote {
+  margin: 0;
+  text-align: center;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-tertiary);
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-row--tappable,
+  .settings-me {
+    transition: none;
+  }
+}
+
+body[data-reduce-motion='true'] .settings-row--tappable,
+body[data-reduce-motion='true'] .settings-me {
   transition: none !important;
 }

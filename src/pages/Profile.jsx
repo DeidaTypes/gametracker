@@ -1081,22 +1081,17 @@ function Profile() {
     [loadProfileData, loadFollowState]
   )
 
-  // Sprint 7 — open the Edit Profile modal when this page is reached
-  // via the /edit-profile redirect (Settings page deep link). Replace
-  // the history entry so a back-tap doesn't loop us back through the
-  // redirect → modal cycle.
+  // /edit-profile still redirects here with openEditModal. Consume that
+  // once per history entry. Clearing it with navigate({ replace }) minted
+  // a new location.key and remounted this page.
+  const consumedEditKeyRef = useRef(null)
   useEffect(() => {
     if (!isOwnProfile) return
-    if (location.state?.openEditModal) {
-      setShowEditModal(true)
-      // Preserve `?tab=` (if any) — this only clears the one-shot
-      // navigation state, not which profile tab is active.
-      navigate(
-        { pathname: location.pathname, search: location.search },
-        { replace: true, state: null }
-      )
-    }
-  }, [isOwnProfile, location.state, location.pathname, location.search, navigate])
+    if (!location.state?.openEditModal) return
+    if (consumedEditKeyRef.current === location.key) return
+    consumedEditKeyRef.current = location.key
+    setShowEditModal(true)
+  }, [isOwnProfile, location.key, location.state])
 
   // When the signed-in user follows / unfollows ANYONE (eg. via the
   // Search Users tab), refresh the count on the currently-viewed

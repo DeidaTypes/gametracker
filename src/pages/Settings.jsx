@@ -1,49 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  LuChevronLeft,
+  LuAccessibility,
   LuChevronRight,
-  LuLogOut,
-  LuShare2,
-  LuStar,
+  LuCircleHelp,
+  LuContrast,
+  LuSearch,
+  LuShield,
+  LuUser,
+  LuUserPlus,
 } from 'react-icons/lu'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import ActionSheet from '../components/ActionSheet'
-import IOSSwitch from '../components/IOSSwitch'
-import SettingsPickerSheet from '../components/SettingsPickerSheet'
-import DeleteAccountSheet from '../components/DeleteAccountSheet'
-import { deleteAccount } from '../services/deleteAccountService'
-import {
-  getSettings,
-  setColorBlindMode,
-  setReduceMotion,
-  setLargerText,
-  setMessagePrivacy,
-  setActivityPrivacy,
-  COLOR_BLIND_OPTIONS,
-  MESSAGE_PRIVACY_OPTIONS,
-  ACTIVITY_PRIVACY_OPTIONS,
-  applySettingsToDom,
-  SETTINGS_CHANGED_EVENT,
-} from '../services/userSettingsService'
+import EditProfileModal from '../components/EditProfileModal'
+import SettingsHeader from '../components/SettingsHeader'
+import { SettingsGroup, SettingsRow } from '../components/SettingsRows'
+import Avatar from '../components/Avatar'
+import { getProfile, initializeProfile } from '../services/profileService'
 import { getThemeSettings } from '../services/themeService'
 import { getTheme } from '../styles/themePreview'
 import { buildInviteUrl } from '../services/inviteService'
 import { shareContent } from '../utils/share'
-import { hapticImpact } from '../utils/haptics'
 import packageJson from '../../package.json'
 import './Settings.css'
 
 const APP_VERSION = packageJson.version || '0.7.5'
-const APP_BUILD = import.meta.env.VITE_BUILD_NUMBER || '1'
-const PRIVACY_URL = 'https://gametracker.app/privacy'
-const TERMS_URL = 'https://gametracker.app/terms'
-const FEEDBACK_EMAIL = 'feedback@gametracker.app'
-// Sprint 8 will replace this with the real App Store ID once the
-// app ships. Keeping the deep link wired so the row is functional
-// the moment that constant flips.
-const APP_STORE_ID = '0000000000'
 const SHARE_URL = 'https://gametracker.app'
 
 function maskEmail(email) {
@@ -54,155 +36,40 @@ function maskEmail(email) {
   return `${local[0]}***@${domain}`
 }
 
-function pickerLabel(options, value) {
-  return options.find((o) => o.value === value)?.label || ''
-}
-
-/* ============================================================
-   Color-blind mode preview swatches
-   Renders three core tokens (accent, status-success,
-   status-danger) in a tiny strip so the user sees what the
-   selected mode does before tapping Done.
-   ============================================================ */
-function ColorBlindPreview({ mode }) {
-  // We map each mode to the same hex values the global CSS uses so
-  // the preview accurately reflects the runtime swap.
-  const palettes = {
-    off: { accent: '#3b82f6', success: '#34d399', danger: '#f87171' },
-    deutan: { accent: '#2563eb', success: '#06b6d4', danger: '#f97316' },
-    protan: { accent: '#3b82f6', success: '#06b6d4', danger: '#f97316' },
-    tritan: { accent: '#3b82f6', success: '#16a34a', danger: '#dc2626' },
+function profileAvatarUrl(profile) {
+  const avatar = profile?.avatar
+  if (avatar && (avatar.type === 'url' || avatar.type === 'data') && avatar.data) {
+    return avatar.data
   }
-  const p = palettes[mode] || palettes.off
-  return (
-    <div className="cbm-preview">
-      <div className="cbm-preview__group">
-        <div className="cbm-preview__swatches">
-          <span
-            className="cbm-preview__swatch"
-            style={{ background: p.accent }}
-            aria-label="Accent"
-          />
-          <span
-            className="cbm-preview__swatch"
-            style={{ background: p.success }}
-            aria-label="Success"
-          />
-          <span
-            className="cbm-preview__swatch"
-            style={{ background: p.danger }}
-            aria-label="Danger"
-          />
-        </div>
-        <span className="cbm-preview__label">Live preview</span>
-      </div>
-    </div>
-  )
+  return profile?.avatarUrl || null
 }
-
-/* ============================================================
-   Reusable row primitives
-   ============================================================ */
-function SettingsGroup({ id, title, children, footer = null }) {
-  return (
-    <section id={id} className="settings-group">
-      {title && <h2 className="settings-group__title">{title}</h2>}
-      <div className="settings-group__rows">{children}</div>
-      {footer && <p className="settings-group__footer">{footer}</p>}
-    </section>
-  )
-}
-
-function SettingsRow({
-  label,
-  value,
-  onClick,
-  trailing,
-  destructive = false,
-  centered = false,
-  disabled = false,
-}) {
-  const Element = onClick ? 'button' : 'div'
-  const className = [
-    'settings-row',
-    onClick ? 'settings-row--tappable' : '',
-    destructive ? 'settings-row--destructive' : '',
-    centered ? 'settings-row--centered' : '',
-    disabled ? 'settings-row--disabled' : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  return (
-    <Element
-      type={onClick ? 'button' : undefined}
-      className={className}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <span className="settings-row__label">{label}</span>
-      {value !== undefined && value !== null && (
-        <span className="settings-row__value">{value}</span>
-      )}
-      {trailing && <span className="settings-row__trailing">{trailing}</span>}
-      {onClick && !trailing && !destructive && !centered && (
-        <span className="settings-row__chevron" aria-hidden="true">
-          <LuChevronRight size={18} />
-        </span>
-      )}
-    </Element>
-  )
-}
-
-/* ============================================================
-   Settings page
-   ============================================================ */
 
 function Settings() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logOut } = useAuth()
 
-  const [settings, setSettings] = useState(getSettings)
-  const [cbmSheetOpen, setCbmSheetOpen] = useState(false)
-  const [msgSheetOpen, setMsgSheetOpen] = useState(false)
-  const [actSheetOpen, setActSheetOpen] = useState(false)
+  const [profile, setProfile] = useState(() => getProfile() || initializeProfile())
+  const [editOpen, setEditOpen] = useState(false)
   const [signOutSheetOpen, setSignOutSheetOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  // Live-preview state for the color-blind sub-sheet. We mirror it
-  // onto <body> in real time and snap back to `settings.colorBlindMode`
-  // if the user cancels.
-  const [cbmPreview, setCbmPreview] = useState(settings.colorBlindMode)
 
   useEffect(() => {
-    const onChange = () => setSettings(getSettings())
-    window.addEventListener(SETTINGS_CHANGED_EVENT, onChange)
-    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, onChange)
+    const refresh = () => setProfile(getProfile() || initializeProfile())
+    window.addEventListener('profileUpdated', refresh)
+    return () => window.removeEventListener('profileUpdated', refresh)
   }, [])
 
+  // Profile ⋯ still deep-links the old section hashes. Send them to the
+  // sub-screen that now owns that content. replace so backing out of the
+  // sub-screen doesn't land on the hash and bounce forward again.
   useEffect(() => {
-    if (cbmSheetOpen) setCbmPreview(settings.colorBlindMode)
-  }, [cbmSheetOpen, settings.colorBlindMode])
-
-  // Deep-link support — the profile Settings sheet's Privacy/About
-  // rows route here with a #settings-section-* hash so the tap
-  // lands on the relevant section instead of the generic page top.
-  useEffect(() => {
-    if (!location.hash) return
-    const id = location.hash.slice(1)
-    const el = document.getElementById(id)
-    if (!el) return
-    const t = setTimeout(() => {
-      el.scrollIntoView({
-        behavior: settings.reduceMotion ? 'auto' : 'smooth',
-        block: 'start',
-      })
-    }, 80)
-    return () => clearTimeout(t)
-  }, [location.hash, settings.reduceMotion])
+    if (location.hash === '#settings-section-privacy') {
+      navigate('/settings/privacy', { replace: true })
+    } else if (location.hash === '#settings-section-about') {
+      navigate('/settings/help', { replace: true })
+    }
+  }, [location.hash, navigate])
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])
@@ -211,45 +78,9 @@ function Settings() {
     ? 'Match iPhone'
     : getTheme(themeSettings.theme).name
 
-  /* ============================================================
-     Handlers
-     ============================================================ */
-
-  const handleColorBlindPreview = (mode) => {
-    setCbmPreview(mode)
-    applySettingsToDom({ ...settings, colorBlindMode: mode })
-  }
-
-  const handleColorBlindApply = (mode) => {
-    setColorBlindMode(mode)
-  }
-
-  const handleColorBlindCancel = () => {
-    setCbmPreview(settings.colorBlindMode)
-    applySettingsToDom(settings)
-  }
-
-  const handleReduceMotionToggle = (next) => {
-    hapticImpact('Light')
-    setReduceMotion(next)
-  }
-
-  const handleLargerTextToggle = (next) => {
-    hapticImpact('Light')
-    setLargerText(next)
-  }
-
-  const handleMsgApply = async (value) => {
-    const result = await setMessagePrivacy(value)
-    if (result?.ok) showToast('Updated', 'success', 1800)
-    else showToast("Couldn't update. Try again.", 'error')
-  }
-
-  const handleActApply = async (value) => {
-    const result = await setActivityPrivacy(value)
-    if (result?.ok) showToast('Updated', 'success', 1800)
-    else showToast("Couldn't update. Try again.", 'error')
-  }
+  const displayName = profile?.displayName || profile?.username || ''
+  const versionLabel = `Version ${APP_VERSION}`
+  const footerText = maskedEmail ? `${maskedEmail} · ${versionLabel}` : versionLabel
 
   const handleInviteFriends = async () => {
     const inviteUrl = buildInviteUrl(user?.id) || SHARE_URL
@@ -264,42 +95,9 @@ function Settings() {
     }
   }
 
-  const openExternal = (url) => {
-    // Capacitor Browser plugin isn't installed in this build (Sprint 8
-    // will add it). window.open in a Capacitor WKWebView opens Safari
-    // automatically, which is exactly what we want for legal/marketing
-    // links so the user keeps the app's session intact.
-    try {
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } catch {
-      window.location.href = url
-    }
-  }
-
-  const handlePrivacyPolicy = () => openExternal(PRIVACY_URL)
-  const handleTerms = () => openExternal(TERMS_URL)
-  const handleFeedback = () => {
-    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Checkpoint Feedback')}`
-  }
-  const handleRateApp = () => {
-    window.location.href = `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}`
-  }
-
-  const handleDeleteAccount = async (reason) => {
-    if (isDeleting) return
-    setIsDeleting(true)
-    try {
-      await deleteAccount(reason)
-      // Edge Function revoked the session; clear local state and redirect.
-      await logOut().catch(() => {})
-      setDeleteSheetOpen(false)
-      navigate('/login', { replace: true, state: { accountDeleted: true } })
-    } catch (err) {
-      console.error('[settings] delete-account failed:', err)
-      showToast(err?.message || 'Could not delete account. Try again.', 'error')
-    } finally {
-      setIsDeleting(false)
-    }
+  const handleProfileUpdate = (updatedProfile) => {
+    setProfile(updatedProfile)
+    window.dispatchEvent(new Event('profileUpdated'))
   }
 
   const handleSignOut = async () => {
@@ -316,190 +114,86 @@ function Settings() {
   }
 
   return (
-    <div className="settings-page">
-      <header className="settings-header">
-        <button
-          type="button"
-          className="settings-header__back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
-          <LuChevronLeft size={22} aria-hidden="true" />
-        </button>
-        <h1 className="settings-header__title">Settings</h1>
-        <span className="settings-header__spacer" aria-hidden="true" />
-      </header>
+    <div className="settings-page settings-page--hub">
+      <SettingsHeader title="Settings" variant="large" />
 
       <div className="settings-page__body">
-        {/* No Display/App section and no Notifications row on this
-            page, so Appearance leads, above Account. */}
+        <div className="settings-search" aria-hidden="true">
+          <LuSearch className="settings-search__icon" size={15} strokeWidth={1.6} />
+          <span>Search</span>
+        </div>
+
         <SettingsGroup>
+          <button type="button" className="settings-me" onClick={() => setEditOpen(true)}>
+            <Avatar
+              avatarUrl={profileAvatarUrl(profile)}
+              name={displayName}
+              seed={user?.id || displayName}
+              size="md"
+            />
+            <span className="settings-me__text">
+              {displayName ? (
+                <span className="settings-me__name text-body">{displayName}</span>
+              ) : null}
+              <span className="settings-me__hint text-caption">Edit profile</span>
+            </span>
+            <LuChevronRight className="settings-me__chevron" size={16} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </SettingsGroup>
+
+        <SettingsGroup icons>
           <SettingsRow
+            icon={<LuContrast size={18} strokeWidth={1.6} />}
             label="Appearance"
             value={appearanceValue}
             onClick={() => navigate('/settings/appearance')}
           />
-        </SettingsGroup>
-
-        {/* ─── ACCOUNT ────────────────────────────────────── */}
-        <SettingsGroup title="Account">
           <SettingsRow
-            label="Edit Profile"
-            onClick={() => navigate('/edit-profile')}
+            icon={<LuAccessibility size={18} strokeWidth={1.6} />}
+            label="Accessibility"
+            onClick={() => navigate('/settings/accessibility')}
           />
           <SettingsRow
-            label="Email"
-            value={maskedEmail || 'Not set'}
-            onClick={() => navigate('/settings/email')}
+            icon={<LuUser size={18} strokeWidth={1.6} />}
+            label="Account"
+            onClick={() => navigate('/settings/account')}
           />
           <SettingsRow
-            label="Password"
-            onClick={() => navigate('/settings/password')}
-          />
-          <SettingsRow
-            label="Delete account"
-            onClick={() => setDeleteSheetOpen(true)}
-            destructive
+            icon={<LuShield size={18} strokeWidth={1.6} />}
+            label="Privacy & safety"
+            onClick={() => navigate('/settings/privacy')}
           />
         </SettingsGroup>
 
-        {/* ─── ACCESSIBILITY ─────────────────────────────── */}
-        <SettingsGroup title="Accessibility">
+        <SettingsGroup icons>
           <SettingsRow
-            label="Color-blind mode"
-            value={pickerLabel(COLOR_BLIND_OPTIONS, settings.colorBlindMode)}
-            onClick={() => setCbmSheetOpen(true)}
-          />
-          <div className="settings-row settings-row--toggle">
-            <span className="settings-row__label">Reduce motion</span>
-            <span className="settings-row__trailing">
-              <IOSSwitch
-                checked={settings.reduceMotion}
-                onChange={handleReduceMotionToggle}
-                label="Reduce motion"
-              />
-            </span>
-          </div>
-          <div className="settings-row settings-row--toggle">
-            <span className="settings-row__label">Larger text</span>
-            <span className="settings-row__trailing">
-              <IOSSwitch
-                checked={settings.largerText}
-                onChange={handleLargerTextToggle}
-                label="Larger text"
-              />
-            </span>
-          </div>
-        </SettingsGroup>
-
-        {/* ─── PRIVACY & SAFETY ──────────────────────────── */}
-        <SettingsGroup id="settings-section-privacy" title="Privacy & Safety">
-          <SettingsRow
-            label="Blocked users"
-            onClick={() => navigate('/settings/blocked')}
-          />
-          <SettingsRow
-            label="Who can message me"
-            value={pickerLabel(MESSAGE_PRIVACY_OPTIONS, settings.messagePrivacy)}
-            onClick={() => setMsgSheetOpen(true)}
-          />
-          <SettingsRow
-            label="Who can see my activity"
-            value={pickerLabel(ACTIVITY_PRIVACY_OPTIONS, settings.activityPrivacy)}
-            onClick={() => setActSheetOpen(true)}
-          />
-        </SettingsGroup>
-
-        {/* ─── INVITE FRIENDS ────────────────────────────── */}
-        <SettingsGroup title="Invite Friends">
-          <SettingsRow
+            icon={<LuUserPlus size={18} strokeWidth={1.6} />}
             label="Invite friends"
             onClick={handleInviteFriends}
-            trailing={
-              <span className="settings-row__icon" aria-hidden="true">
-                <LuShare2 size={18} />
-              </span>
-            }
+          />
+          <SettingsRow
+            icon={<LuCircleHelp size={18} strokeWidth={1.6} />}
+            label="Help & about"
+            onClick={() => navigate('/settings/help')}
           />
         </SettingsGroup>
 
-        {/* ─── ABOUT ─────────────────────────────────────── */}
-        <SettingsGroup id="settings-section-about" title="About">
-          <SettingsRow
-            label="Version"
-            value={`v${APP_VERSION} (build ${APP_BUILD})`}
-          />
-          <SettingsRow label="Privacy Policy" onClick={handlePrivacyPolicy} />
-          <SettingsRow label="Terms of Service" onClick={handleTerms} />
-          <SettingsRow label="Send feedback" onClick={handleFeedback} />
-          <SettingsRow
-            label="Rate the App"
-            onClick={handleRateApp}
-            trailing={
-              <span className="settings-row__icon" aria-hidden="true">
-                <LuStar size={18} />
-              </span>
-            }
-          />
-        </SettingsGroup>
-
-        {/* ─── SIGN OUT ──────────────────────────────────── */}
         <SettingsGroup>
           <SettingsRow
-            label={
-              <span className="settings-row__signout-label">
-                <LuLogOut size={16} aria-hidden="true" />
-                Sign out
-              </span>
-            }
+            label="Sign out"
             onClick={() => setSignOutSheetOpen(true)}
             destructive
-            centered
           />
         </SettingsGroup>
 
-        <p className="settings-footnote">
-          Signed in as <span>{email || 'guest'}</span>
-        </p>
+        <p className="settings-footnote text-caption">{footerText}</p>
       </div>
 
-      {/* ───────── Sub-sheets ───────── */}
-
-      <SettingsPickerSheet
-        isOpen={cbmSheetOpen}
-        onClose={() => setCbmSheetOpen(false)}
-        onCancel={handleColorBlindCancel}
-        title="Color-blind mode"
-        description="Adjusts the accent and status colors so they remain distinguishable for the most common forms of color blindness."
-        value={settings.colorBlindMode}
-        options={COLOR_BLIND_OPTIONS.map((o) => ({
-          value: o.value,
-          label: o.label.split(' (')[0],
-          description: o.label.includes(' (')
-            ? o.label.slice(o.label.indexOf('(') + 1, -1)
-            : null,
-        }))}
-        onPreview={handleColorBlindPreview}
-        onApply={handleColorBlindApply}
-        previewSlot={<ColorBlindPreview mode={cbmPreview} />}
-      />
-
-      <SettingsPickerSheet
-        isOpen={msgSheetOpen}
-        onClose={() => setMsgSheetOpen(false)}
-        title="Who can message me"
-        value={settings.messagePrivacy}
-        options={MESSAGE_PRIVACY_OPTIONS}
-        onApply={handleMsgApply}
-      />
-
-      <SettingsPickerSheet
-        isOpen={actSheetOpen}
-        onClose={() => setActSheetOpen(false)}
-        title="Who can see my activity"
-        value={settings.activityPrivacy}
-        options={ACTIVITY_PRIVACY_OPTIONS}
-        onApply={handleActApply}
+      <EditProfileModal
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        profile={profile}
+        onUpdate={handleProfileUpdate}
       />
 
       <ActionSheet
@@ -514,13 +208,6 @@ function Settings() {
             disabled: signingOut,
           },
         ]}
-      />
-
-      <DeleteAccountSheet
-        isOpen={deleteSheetOpen}
-        onClose={() => !isDeleting && setDeleteSheetOpen(false)}
-        onConfirm={handleDeleteAccount}
-        isDeleting={isDeleting}
       />
     </div>
   )
