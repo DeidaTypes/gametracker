@@ -56,11 +56,11 @@
 
 .blocked-row__btn {
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: 44px;
   padding: 6px 14px;
   border: 0;
   border-radius: var(--radius-full);
-  background: rgba(248, 113, 113, 0.14);
+  background: color-mix(in srgb, var(--status-danger) 14%, transparent);
   color: var(--status-danger);
   font-family: var(--font-body);
   font-size: 13px;
@@ -71,7 +71,7 @@
 }
 
 .blocked-row__btn:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.22);
+  background: color-mix(in srgb, var(--status-danger) 22%, transparent);
 }
 
 .blocked-row__btn:disabled {

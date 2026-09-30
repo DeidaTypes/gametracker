@@ -59,11 +59,11 @@
    scrollTop. pointer-events: none means it's purely visual for the
    short remainder of its exit animation.
 
-   `top` and `height` are set inline by AnimatedRoutes on a sliding back exit
+   `top` and `height` are set inline by AnimatedRoutes on every exit
    (never `bottom`, which would over-constrain them): leaving the flow costs
-   this layer the scroll offset it had as a child of .main-content, and a
-   300ms slide of a fully-opaque page would otherwise snap to top the instant
-   the back began. The fade exit leaves them at 0.
+   this layer the scroll offset it had as a child of .main-content. Fades
+   and slides both hold that offset, so the page leaves from where it was
+   instead of snapping to the top.
 
    On a sliding back exit this element carries a transform, applied by
    backTransition.js. That makes it a containing block for any

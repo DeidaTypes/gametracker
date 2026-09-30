@@ -1,8 +1,7 @@
 /* ============================================================
-   SettingsSheet — grouped bottom sheet for the profile "⋯" overflow
-   menu (signed-in user's own profile only). Cobalt design system:
-   icon tiles use the three accent tokens (cobalt / purple / green)
-   plus a neutral tone for Support rows — no orange/amber anywhere.
+   SettingsSheet — own-profile "⋯" sheet. Four rows, 18px line
+   icons in the muted color, hairlines inset to the label.
+   Settings is the only row with a chevron.
    ============================================================ */
 .settings-sheet-overlay {
   position: fixed;
@@ -26,7 +25,7 @@
   box-shadow:
     0 -4px 40px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-20));
   outline: none;
 }
 
@@ -35,23 +34,15 @@
   height: 4px;
   border-radius: var(--radius-full);
   background: var(--border-strong);
-  margin: 12px auto 4px;
+  margin: var(--space-12) auto var(--space-4);
 }
 
 .settings-sheet__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 20px 16px;
-}
-
-.settings-sheet__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--font-size-display-l);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--text-primary);
+  justify-content: flex-end;
+  min-height: 44px;
+  padding-right: var(--space-4);
 }
 
 .settings-sheet__close {
@@ -59,8 +50,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: transparent;
@@ -71,59 +62,28 @@
 }
 
 .settings-sheet__close:hover {
-  background: var(--color-surface-hover);
+  background: var(--theme-fill);
 }
 
 .settings-sheet__close:active {
-  background: var(--color-surface-active);
+  background: var(--theme-fill);
 }
 
 .settings-sheet__body {
-  padding: 0 20px 8px;
+  padding: 0 0 var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
-/* ============================================================
-   Group
-   ============================================================ */
-.settings-sheet__group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.settings-sheet__group-title {
-  margin: 0 4px;
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.settings-sheet__group-rows {
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--surface-1-shadow);
-}
-
-/* ============================================================
-   Row
-   ============================================================ */
 .settings-sheet__row {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
-  min-height: 64px;
-  padding: 10px 16px;
-  gap: 14px;
+  min-height: var(--space-48);
+  padding: 0 var(--space-16);
+  gap: var(--space-12);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   font-family: var(--font-body);
   text-align: left;
@@ -132,16 +92,12 @@
   transition: background-color 140ms ease;
 }
 
-.settings-sheet__row:last-child {
-  border-bottom: 0;
-}
-
 .settings-sheet__row:hover:not(:disabled) {
-  background: var(--color-surface-hover);
+  background: var(--theme-fill);
 }
 
 .settings-sheet__row:active:not(:disabled) {
-  background: var(--color-surface-active);
+  background: var(--theme-fill);
 }
 
 .settings-sheet__row--disabled,
@@ -150,74 +106,45 @@
   cursor: default;
 }
 
-.settings-sheet__tile {
-  flex: 0 0 auto;
+.settings-sheet__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-}
-
-.settings-sheet__tile--cobalt {
-  background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
-  color: var(--accent-hover);
-}
-
-.settings-sheet__tile--purple {
-  background: color-mix(in srgb, var(--accent-journal) 22%, var(--bg-surface));
-  color: var(--accent-journal);
-}
-
-.settings-sheet__tile--green {
-  background: color-mix(in srgb, var(--accent-review) 22%, var(--bg-surface));
-  color: var(--accent-review);
-}
-
-.settings-sheet__tile--neutral {
-  background: var(--color-surface);
+  flex: none;
+  width: 18px;
+  height: 18px;
+  align-self: center;
   color: var(--text-secondary);
+}
+
+/* Hairline lives on the label column so it starts at the text,
+   past the 18px icon. */
+.settings-sheet__main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  min-height: var(--space-48);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.settings-sheet__row:first-child .settings-sheet__main {
+  border-top: 0;
 }
 
 .settings-sheet__label {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-body);
   color: var(--text-primary);
 }
 
 .settings-sheet__chevron {
   flex: 0 0 auto;
   color: var(--text-tertiary);
-}
-
-/* ============================================================
-   Log out — distinct destructive treatment, separated from the
-   grouped cards above it (no icon tile, no chevron — matches the
-   plain centered destructive row used elsewhere, e.g. Settings.css
-   .settings-row--destructive.settings-row--centered).
-   ============================================================ */
-.settings-sheet__logout {
-  display: block;
-  width: 100%;
-  margin-top: 4px;
-  padding: 14px 0 6px;
-  background: transparent;
-  border: 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
-  color: var(--status-danger);
-  text-align: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.settings-sheet__logout:active {
-  opacity: 0.7;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1843,11 +1843,9 @@ function Profile() {
 
         {/* ═════════════════════════════════════════════════════════
             OVERFLOW SHEET (⋯) — self vs visitor get entirely different
-            components. Own profile opens the grouped Settings sheet
-            (ACCOUNT / PREFERENCES / SUPPORT + Log out, matching the
-            Sprint 5 mockup). Visitor profile keeps its own flat
-            ActionSheet action set (Message / Share / Copy link /
-            Block / Report).
+            components. Own profile: Edit profile, Share profile,
+            Your Wrapped, Settings. Visitor profile keeps its own flat
+            ActionSheet (Message / Share / Copy link / Block / Report).
             ═════════════════════════════════════════════════════════ */}
         {isOwnProfile ? (
           <SettingsSheet

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   LuAccessibility,
   LuChevronRight,
@@ -87,7 +87,6 @@ function profileAvatarUrl(profile) {
 
 function Settings() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { user, logOut } = useAuth()
 
   const [profile, setProfile] = useState(() => getProfile() || initializeProfile())
@@ -104,17 +103,6 @@ function Settings() {
     window.addEventListener('profileUpdated', refresh)
     return () => window.removeEventListener('profileUpdated', refresh)
   }, [])
-
-  // Profile ⋯ still deep-links the old section hashes. Send them to the
-  // sub-screen that now owns that content. replace so backing out of the
-  // sub-screen doesn't land on the hash and bounce forward again.
-  useEffect(() => {
-    if (location.hash === '#settings-section-privacy') {
-      navigate('/settings/privacy', { replace: true })
-    } else if (location.hash === '#settings-section-about') {
-      navigate('/settings/help', { replace: true })
-    }
-  }, [location.hash, navigate])
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])

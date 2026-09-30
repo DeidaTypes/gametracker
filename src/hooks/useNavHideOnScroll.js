@@ -24,11 +24,20 @@ const SCROLL_DOWN_THRESHOLD_PX = 12
  * Separate from LIST_REORDER_DRAG_EVENT (Library drag-to-delete), which hides
  * the nav via its own class while a reorder drag is active.
  *
+ * /settings and /settings/* opt out. The nav stays visible there, so a
+ * push between settings screens never pops it back in. Other screens
+ * are unchanged.
+ *
  * @param {HTMLElement | null} container  Hydrated `.main-content` element
  * @returns {boolean} hidden
  */
+function isSettingsRoute(pathname) {
+  return pathname === '/settings' || pathname.startsWith('/settings/')
+}
+
 export function useNavHideOnScroll(container) {
   const location = useLocation()
+  const settingsRoute = isSettingsRoute(location.pathname)
   const [hidden, setHidden] = useState(false)
 
   const stateRef = useRef({
@@ -47,7 +56,7 @@ export function useNavHideOnScroll(container) {
   }, [location.pathname, container])
 
   useEffect(() => {
-    if (!container) return undefined
+    if (!container || settingsRoute) return undefined
 
     const s = stateRef.current
     s.lastY = container.scrollTop
@@ -82,7 +91,7 @@ export function useNavHideOnScroll(container) {
 
     container.addEventListener('scroll', onScroll, { passive: true })
     return () => container.removeEventListener('scroll', onScroll)
-  }, [container])
+  }, [container, settingsRoute])
 
-  return hidden
+  return settingsRoute ? false : hidden
 }

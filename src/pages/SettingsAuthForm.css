@@ -54,7 +54,7 @@
 
 .settings-form__input--readonly {
   color: var(--text-secondary);
-  background: rgba(148, 168, 212, 0.04);
+  background: var(--theme-fill);
   cursor: default;
 }
 
@@ -71,7 +71,7 @@
   border: 0;
   border-radius: var(--radius-md);
   background: var(--accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: 15px;
   font-weight: 600;

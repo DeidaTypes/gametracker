@@ -60,15 +60,15 @@
 }
 
 .settings-picker-sheet__option:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--theme-fill);
 }
 
 .settings-picker-sheet__option:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--theme-text) 10%, transparent);
 }
 
 .settings-picker-sheet__option--selected {
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--theme-primary-soft);
 }
 
 .settings-picker-sheet__labels {
@@ -125,17 +125,17 @@
 }
 
 .settings-picker-sheet__btn--secondary {
-  background: rgba(148, 168, 212, 0.08);
+  background: var(--theme-fill);
   color: var(--color-text-primary);
 }
 
 .settings-picker-sheet__btn--secondary:hover {
-  background: rgba(148, 168, 212, 0.14);
+  background: color-mix(in srgb, var(--theme-text) 12%, transparent);
 }
 
 .settings-picker-sheet__btn--primary {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .settings-picker-sheet__btn--primary:hover {
@@ -165,7 +165,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 0 var(--border-subtle);
 }
 
 .cbm-preview__label {

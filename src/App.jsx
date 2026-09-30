@@ -366,10 +366,10 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
         // seam against the revealed screen desyncs by a frame.
         exitMode: sliding ? 'slide' : 'fade',
         // Pulled out of flow into `position: fixed`, an exiting layer loses
-        // the scroll offset it had as a child of `.main-content`. A 220ms fade
-        // could get away with that; a 300ms slide where the page stays fully
-        // opaque cannot — it would snap to top the instant the back began.
-        exitScrollTop: sliding ? prevScrollTop : 0,
+        // the scroll offset it had as a child of `.main-content`. Hold it on
+        // fades and slides alike — a forward fade included — so the page
+        // leaves from where it was instead of snapping to the top.
+        exitScrollTop: prevScrollTop,
       }
       return [outgoing, incoming]
     })
@@ -427,14 +427,14 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
                   : 'route-layer'
             }
             style={
-              isSlidingOut
+              isExiting
                 ? {
                     zIndex: onTop ? 2 : 1,
                     // Hold the page at the offset it was scrolled to. `height`
                     // grows to match so `overflow: hidden` still clips at the
                     // bottom of the viewport rather than short of it.
-                    top: `${-layer.exitScrollTop}px`,
-                    height: `calc(100% + ${layer.exitScrollTop}px)`,
+                    top: `${-(layer.exitScrollTop || 0)}px`,
+                    height: `calc(100% + ${layer.exitScrollTop || 0}px)`,
                   }
                 : { zIndex: onTop ? 2 : 1 }
             }
