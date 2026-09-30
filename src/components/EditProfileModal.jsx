@@ -361,9 +361,8 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         setErrors({ username: err.message })
         return
       }
-      // Network / unknown — still write locally so the user's own device
-      // reflects the change.
-      showToast("Saved locally. Couldn't sync to the server — try again later.", 'error')
+      showToast(err?.message || "Couldn't save. Try again.", 'error')
+      return
     }
 
     const updated = updateProfile({

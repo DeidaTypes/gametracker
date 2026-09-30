@@ -219,6 +219,7 @@ function Settings() {
   }
 
   const handleColorBlindCancel = () => {
+    setCbmPreview(settings.colorBlindMode)
     applySettingsToDom(settings)
   }
 
@@ -232,14 +233,16 @@ function Settings() {
     setLargerText(next)
   }
 
-  const handleMsgApply = (value) => {
-    setMessagePrivacy(value)
-    showToast('Updated', 'success', 1800)
+  const handleMsgApply = async (value) => {
+    const result = await setMessagePrivacy(value)
+    if (result?.ok) showToast('Updated', 'success', 1800)
+    else showToast("Couldn't update. Try again.", 'error')
   }
 
-  const handleActApply = (value) => {
-    setActivityPrivacy(value)
-    showToast('Updated', 'success', 1800)
+  const handleActApply = async (value) => {
+    const result = await setActivityPrivacy(value)
+    if (result?.ok) showToast('Updated', 'success', 1800)
+    else showToast("Couldn't update. Try again.", 'error')
   }
 
   const handleInviteFriends = async () => {
@@ -448,10 +451,8 @@ function Settings() {
 
       <SettingsPickerSheet
         isOpen={cbmSheetOpen}
-        onClose={() => {
-          handleColorBlindCancel()
-          setCbmSheetOpen(false)
-        }}
+        onClose={() => setCbmSheetOpen(false)}
+        onCancel={handleColorBlindCancel}
         title="Color-blind mode"
         description="Adjusts the accent and status colors so they remain distinguishable for the most common forms of color blindness."
         value={settings.colorBlindMode}

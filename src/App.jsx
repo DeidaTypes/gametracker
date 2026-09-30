@@ -100,7 +100,7 @@ import { SessionProvider } from './contexts/SessionContext'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
-import { useAppResume } from './hooks/useAppResume'
+import { useAppResume, APP_RESUMED_EVENT } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
 import './styles/tokens.css'
 import './styles/theme.css'
@@ -539,6 +539,22 @@ function AppContent() {
   // without a force-quit. (See useAppResume for the full rationale.)
   useAppResume()
 
+  // Settings hydrate on app start and sign-in. This used to run inside
+  // the onboarding effect below, which depends on location.pathname, so
+  // every navigation refetched and could overwrite a privacy value the
+  // server had already accepted. Foreground resume hydrates again.
+  const settingsUserId = user?.id ?? null
+  useEffect(() => {
+    if (authLoading) return
+    initSettings()
+  }, [authLoading, settingsUserId])
+
+  useEffect(() => {
+    const onResume = () => initSettings()
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [])
+
   // Native deep-link navigation — appLifecycle.js dispatches 'app:deeplink'
   // after parsing an appUrlOpen / getLaunchUrl URL. We handle it here
   // inside the Router context so we have access to navigate().
@@ -576,11 +592,9 @@ function AppContent() {
 
     initializeProfile()
 
-    // Sprint 7 — kick off Supabase-backed sync for accessibility/privacy
-    // prefs and hydrate the per-user blocked-users cache so every read
-    // path that filters blocked users (reviews, comments, DMs, activity)
-    // sees a non-null cache by the time it queries.
-    initSettings()
+    // Hydrate the per-user blocked-users cache so every read path that
+    // filters blocked users (reviews, comments, DMs, activity) sees a
+    // non-null cache by the time it queries.
     loadBlockedIds()
 
     // Primary gate: Supabase-backed onboarded_at (set by Sprint 7.6).

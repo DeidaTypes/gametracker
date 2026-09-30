@@ -278,7 +278,7 @@ export async function listBlockedUsers() {
 
   if (error) {
     console.error('[blocks] listBlockedUsers failed:', error.message)
-    return []
+    throw new Error(error.message)
   }
   return data || []
 }

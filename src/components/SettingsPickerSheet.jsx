@@ -17,7 +17,9 @@ import './SettingsPickerSheet.css'
  *
  * Props:
  *   isOpen         – boolean
- *   onClose        – () => void  (reverts to initial value first)
+ *   onClose        – () => void  (close only; does not revert)
+ *   onCancel       – optional () => void. Cancel, backdrop, and Escape
+ *                    call this before onClose. Done does not.
  *   title          – string
  *   description    – optional string under the title
  *   value          – currently committed value
@@ -33,6 +35,7 @@ import './SettingsPickerSheet.css'
 function SettingsPickerSheet({
   isOpen,
   onClose,
+  onCancel,
   title,
   description,
   value,
@@ -82,7 +85,9 @@ function SettingsPickerSheet({
   }
 
   const handleCancel = () => {
-    if (onPreview && pending !== initialValueRef.current) {
+    if (onCancel) {
+      onCancel()
+    } else if (onPreview && pending !== initialValueRef.current) {
       onPreview(initialValueRef.current)
     }
     setPending(initialValueRef.current)

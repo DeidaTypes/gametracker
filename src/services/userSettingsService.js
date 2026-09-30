@@ -3,20 +3,14 @@ import { supabase } from './supabase'
 /**
  * User Settings Service — accessibility + privacy preferences.
  *
- * Source of truth is localStorage so the chosen values apply
- * instantly on every screen and survive offline use. Where it makes
- * sense (privacy + color-blind mode) we ALSO best-effort sync to the
- * `users` row so the same account on another device picks the prefs
- * up after sign-in.
+ * Accessibility prefs (color-blind mode, reduce motion, larger text)
+ * live in localStorage and apply on this device. Message privacy and
+ * activity privacy are server-authoritative: the UI keeps an optimistic
+ * copy, but localStorage is only kept after `users` accepts the write,
+ * and initSettings() hydrates both from get_my_settings().
  *
- * The Supabase write soft-fails: if the column doesn't exist yet
- * (sync SQL migration not applied) we swallow the error rather than
- * spam the console — the local value still applies and the next
- * boot's hydrate is a clean no-op.
- *
- * SQL migration that adds the matching columns to the `users` table
- * lives at `supabase/user_settings_columns.sql`. Run it once to
- * enable cross-device sync.
+ * Color-blind mode and presence still best-effort sync. A failed sync
+ * leaves the local value in place.
  */
 
 const STORAGE_KEY = 'gametracker.settings.v1'
@@ -156,42 +150,72 @@ export function applySettingsToDom(settings) {
 
 /**
  * Boot-time hydration. Reads localStorage, migrates the legacy key,
- * applies <body> data-attributes, and (best effort) refreshes the
- * blob from the Supabase users row when an authenticated user is
- * present. Safe to call before auth resolves — the Supabase fetch
- * is a no-op without a session.
+ * applies <body> data-attributes, and refreshes account-scoped prefs
+ * from get_my_settings() when a session exists. Safe to call before
+ * auth resolves — the Supabase fetch is a no-op without a session.
+ *
+ * A privacy key with a server write still in flight is left alone.
+ * When a server value differs from localStorage, the local copy is
+ * replaced and gtSettingsChanged is emitted.
  */
 export async function initSettings() {
   migrateLegacy()
   const local = getSettings()
   applySettingsToDom(local)
 
-  // Soft-fetch from Supabase so cross-device sync wins on next boot.
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return local
 
-    // activity_privacy and presence_opt_in are not column-readable by the API
-    // roles, so they come back through a definer RPC scoped to auth.uid().
-    // colorBlindMode and messagePrivacy stay local-only — those columns do not
-    // exist on users yet (supabase/user_settings_columns.sql is unapplied).
-    const { data, error } = await supabase.rpc('get_my_settings').maybeSingle()
-    if (error || !data) return local
+    const epochAtFetch = {
+      messagePrivacy: privacyEpoch.messagePrivacy,
+      activityPrivacy: privacyEpoch.activityPrivacy,
+    }
 
-    const merged = { ...local }
-    if (ACTIVITY_PRIVACY.includes(data.activity_privacy)) {
-      merged.activityPrivacy = data.activity_privacy
+    const { data, error } = await supabase.rpc('get_my_settings').maybeSingle()
+    if (error || !data) return getSettings()
+
+    if (canApplyServerPrivacy('messagePrivacy', epochAtFetch) && MESSAGE_PRIVACY.includes(data.message_privacy)) {
+      await hydrateMessagePrivacy(data.message_privacy, epochAtFetch)
     }
-    if (typeof data.presence_opt_in === 'boolean') {
-      merged.presenceOptIn = data.presence_opt_in
+
+    const latest = getSettings()
+    const next = { ...latest }
+    let changed = false
+
+    if (
+      canApplyServerPrivacy('activityPrivacy', epochAtFetch) &&
+      ACTIVITY_PRIVACY.includes(data.activity_privacy) &&
+      latest.activityPrivacy !== data.activity_privacy
+    ) {
+      next.activityPrivacy = data.activity_privacy
+      changed = true
     }
-    writeRaw(merged)
-    applySettingsToDom(merged)
-    return merged
+
+    if (
+      canApplyServerPrivacy('messagePrivacy', epochAtFetch) &&
+      MESSAGE_PRIVACY.includes(data.message_privacy) &&
+      latest.messagePrivacy !== data.message_privacy
+    ) {
+      next.messagePrivacy = data.message_privacy
+      changed = true
+    }
+
+    if (typeof data.presence_opt_in === 'boolean' && latest.presenceOptIn !== data.presence_opt_in) {
+      next.presenceOptIn = data.presence_opt_in
+      changed = true
+    }
+
+    if (!changed) return latest
+
+    writeRaw(next)
+    applySettingsToDom(next)
+    emitChange(next)
+    return next
   } catch {
-    return local
+    return getSettings()
   }
 }
 
@@ -211,6 +235,86 @@ function emitChange(next) {
   }
 }
 
+const MSG_PRIVACY_UPLOADED_KEY = 'cp:msgPrivacyUploaded'
+
+// Privacy writes in flight. initSettings skips these keys so a hydrate
+// that started against the old server value cannot clobber the optimistic
+// row. The epoch catches a write that finishes during the hydrate.
+const privacyInflight = new Set()
+const privacyEpoch = { messagePrivacy: 0, activityPrivacy: 0 }
+
+function canApplyServerPrivacy(key, epochAtFetch) {
+  return !privacyInflight.has(key) && privacyEpoch[key] === epochAtFetch[key]
+}
+
+function hasUploadedMessagePrivacy() {
+  try {
+    return localStorage.getItem(MSG_PRIVACY_UPLOADED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markMessagePrivacyUploaded() {
+  try {
+    localStorage.setItem(MSG_PRIVACY_UPLOADED_KEY, '1')
+  } catch {
+    // Storage unavailable. The next hydrate retries the one-time upload.
+  }
+}
+
+/**
+ * First hydrate after message_privacy shipped: a tester's non-default
+ * local choice would otherwise be replaced by the column default
+ * ('everyone'). Push that local value up once, and only while the
+ * server still holds the default. After the flag is set, the server wins.
+ */
+async function hydrateMessagePrivacy(serverValue, epochAtFetch) {
+  if (!canApplyServerPrivacy('messagePrivacy', epochAtFetch)) return
+  if (hasUploadedMessagePrivacy()) return
+
+  const localValue = getSettings().messagePrivacy
+  if (localValue !== 'everyone' && serverValue === 'everyone' && MESSAGE_PRIVACY.includes(localValue)) {
+    privacyEpoch.messagePrivacy += 1
+    const epoch = privacyEpoch.messagePrivacy
+    privacyInflight.add('messagePrivacy')
+    try {
+      const result = await writeUsersPatch(
+        { message_privacy: localValue },
+        { message_privacy: 'everyone' }
+      )
+      if (result.ok && privacyEpoch.messagePrivacy === epoch) {
+        markMessagePrivacyUploaded()
+      }
+    } finally {
+      if (privacyEpoch.messagePrivacy === epoch) privacyInflight.delete('messagePrivacy')
+    }
+    return
+  }
+
+  markMessagePrivacyUploaded()
+}
+
+async function writeUsersPatch(patch, match) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { ok: false, error: new Error('Not signed in') }
+    let query = supabase.from('users').update(patch).eq('id', user.id)
+    if (match) {
+      for (const [column, value] of Object.entries(match)) {
+        query = query.eq(column, value)
+      }
+    }
+    const { error } = await query
+    if (error) return { ok: false, error }
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error }
+  }
+}
+
 async function softSyncToSupabase(supabasePatch) {
   try {
     const {
@@ -222,14 +326,37 @@ async function softSyncToSupabase(supabasePatch) {
       .update(supabasePatch)
       .eq('id', user.id)
     if (error) {
-      // Column likely missing — log once at debug level only.
       console.debug(
         '[settings] supabase sync skipped:',
         error.message
       )
     }
   } catch {
-    /* offline / signed out — fine, localStorage is canonical. */
+    // Offline or signed out. The local value still applies.
+  }
+}
+
+async function commitPrivacy(key, column, value, allowed) {
+  if (!allowed.includes(value)) {
+    return { ok: false, error: new Error('Invalid privacy value') }
+  }
+  const previous = getSettings()[key]
+  const next = { ...getSettings(), [key]: value }
+  privacyEpoch[key] += 1
+  const epoch = privacyEpoch[key]
+  privacyInflight.add(key)
+  writeRaw(next)
+  emitChange(next)
+  try {
+    const result = await writeUsersPatch({ [column]: value })
+    if (!result.ok && privacyEpoch[key] === epoch) {
+      const rolled = { ...getSettings(), [key]: previous }
+      writeRaw(rolled)
+      emitChange(rolled)
+    }
+    return result
+  } finally {
+    if (privacyEpoch[key] === epoch) privacyInflight.delete(key)
   }
 }
 
@@ -269,23 +396,11 @@ export function setLargerText(value) {
 }
 
 export function setMessagePrivacy(value) {
-  if (!MESSAGE_PRIVACY.includes(value)) return
-  const current = getSettings()
-  const next = { ...current, messagePrivacy: value }
-  writeRaw(next)
-  softSyncToSupabase({ message_privacy: value })
-  emitChange(next)
-  return next
+  return commitPrivacy('messagePrivacy', 'message_privacy', value, MESSAGE_PRIVACY)
 }
 
 export function setActivityPrivacy(value) {
-  if (!ACTIVITY_PRIVACY.includes(value)) return
-  const current = getSettings()
-  const next = { ...current, activityPrivacy: value }
-  writeRaw(next)
-  softSyncToSupabase({ activity_privacy: value })
-  emitChange(next)
-  return next
+  return commitPrivacy('activityPrivacy', 'activity_privacy', value, ACTIVITY_PRIVACY)
 }
 
 /**
