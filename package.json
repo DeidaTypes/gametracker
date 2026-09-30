@@ -22,6 +22,7 @@
     "@capacitor/ios": "^7.4.4",
     "@capacitor/keyboard": "^7.0.6",
     "@capacitor/share": "^7.0.4",
+    "@capacitor/status-bar": "^7.0.6",
     "@fontsource/dm-sans": "^5.2.8",
     "@formkit/auto-animate": "^0.9.0",
     "@supabase/supabase-js": "^2.105.1",

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint — Settings hub v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f1f; --surface:#131a35; --surface-2:#1a2244;
+  --app:#3b82f6; --journal:#8b32d1; --danger:#f87171;
+  --text:#f0f3fa; --muted:#94a8d4; --dim:#5d6d94;
+  --hair:rgba(148,168,212,.10);
+  --r-md:12px; --r-lg:16px; --r-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05070d;color:var(--text);font-family:'DM Sans',system-ui,sans-serif;padding:40px 20px 80px;-webkit-font-smoothing:antialiased}
+.head{max-width:1300px;margin:0 auto}
+.head h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.sub{font-size:14px;line-height:1.6;color:var(--muted);max-width:80ch;margin-top:8px}
+.sub b{color:var(--text);font-weight:600}
+
+.grid{max-width:1300px;margin:30px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:30px 24px}
+.col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.cap{width:300px}
+.cap .k{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--dim)}
+.cap h2{font-size:15px;font-weight:600;margin-top:3px}
+.cap p{font-size:12.5px;line-height:1.55;color:var(--muted);margin-top:6px}
+
+/* phone */
+.phone{position:relative;width:300px;height:740px;background:var(--bg);border-radius:40px;overflow:hidden;
+  box-shadow:0 0 0 1px #1c2447,0 24px 60px rgba(0,0,0,.55)}
+.sb{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;font-size:13px;font-weight:600}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:88px;height:25px;border-radius:var(--r-full);background:#000}
+.topbar{height:36px;display:flex;align-items:center;padding:0 10px;position:relative}
+.topbar .back{width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.topbar .title{position:absolute;left:0;right:0;text-align:center;font-size:15px;font-weight:600;pointer-events:none}
+.large{font-size:28px;font-weight:700;letter-spacing:-.02em;padding:2px 18px 12px}
+.pad{padding:0 14px}
+svg{display:block}
+.i{width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.chev{width:7px;height:12px;stroke:var(--dim);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.search{display:flex;align-items:center;gap:8px;height:36px;border-radius:10px;background:rgba(148,168,212,.08);padding:0 10px;font-size:14px;color:var(--dim);margin-bottom:18px}
+.search .i{width:15px;height:15px;stroke:var(--dim)}
+.search.on{color:var(--text)}
+.search .clear{margin-left:auto;width:16px;height:16px;border-radius:50%;background:var(--dim);display:flex;align-items:center;justify-content:center}
+.search .clear svg{width:8px;height:8px;stroke:var(--bg);stroke-width:2.2;fill:none}
+.caret{display:inline-block;width:1.5px;height:17px;background:var(--app);margin-left:1px;vertical-align:-3px}
+.cancel{font-size:14px;color:var(--muted);margin-left:12px;white-space:nowrap}
+
+.group{background:var(--surface);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.row{display:flex;align-items:center;gap:13px;min-height:46px;padding:0 14px;position:relative;font-size:14.5px}
+.row + .row::before{content:"";position:absolute;top:0;left:45px;right:0;height:1px;background:var(--hair)}
+.row.noicon + .row.noicon::before,.noicons .row + .row::before{left:14px}
+.row .v{margin-left:auto;font-size:13.5px;color:var(--muted)}
+.row .v + .chev{margin-left:8px}
+.push{margin-left:auto}
+.row.danger{color:var(--danger)}
+.row.hit{background:rgba(59,130,246,.10)}
+
+.me{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b32d1);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;flex:none}
+.me .n{font-size:15px;font-weight:600}
+.me .h{font-size:12.5px;color:var(--muted);margin-top:1px}
+
+.foot{text-align:center;font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:-4px}
+.label{font-size:12px;color:var(--dim);padding:0 14px 7px;letter-spacing:.01em}
+.hint{font-size:12px;color:var(--dim);line-height:1.45;padding:0 14px;margin:-10px 0 18px}
+
+.res .t{font-size:14.5px}
+.res .w{font-size:12px;color:var(--dim);margin-top:1px}
+.res b{font-weight:600;color:var(--text)}
+.res{padding-top:7px;padding-bottom:7px}
+
+.sw{width:44px;height:26px;border-radius:var(--r-full);background:rgba(148,168,212,.18);position:relative;margin-left:auto;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw.on{background:var(--app)}
+.sw.on::after{left:20px}
+
+.nav{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:176px;height:46px;border-radius:var(--r-full);
+  background:rgba(19,26,53,.92);box-shadow:0 0 0 1px var(--hair),0 8px 24px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.nav .i{stroke:var(--muted)}
+.nav .on{width:48px;height:32px;border-radius:var(--r-full);background:linear-gradient(120deg,var(--app),var(--journal));display:flex;align-items:center;justify-content:center}
+.nav .on .i{stroke:#fff}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(3,5,12,.55)}
+.ghost{position:absolute;inset:46px 0 0 0;padding:14px}
+.ghost div{background:var(--surface);border-radius:var(--r-lg);margin-bottom:12px;opacity:.5}
+.sheet{position:absolute;left:8px;right:8px;bottom:8px;background:var(--surface);border-radius:26px;padding:8px 0 10px;box-shadow:0 -1px 0 var(--hair)}
+.grab{width:36px;height:4px;border-radius:var(--r-full);background:rgba(148,168,212,.3);margin:2px auto 8px}
+.sheet .row + .row::before{left:45px}
+
+.notes{max-width:1300px;margin:36px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.note{border-top:1px solid #1c2447;padding-top:12px}
+.note h3{font-size:12.5px;font-weight:600}
+.note p{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:5px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="chev" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="x" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6"/></symbol>
+    <symbol id="appearance" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17" /><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none" opacity=".0"/></symbol>
+    <symbol id="access" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="8" r="1.2"/><path d="M8 10.5h8M12 10.5v3.5l-2.2 3.5M12 14l2.2 3.5"/></symbol>
+    <symbol id="account" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/></symbol>
+    <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3.5l7 2.8v5.2c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.3z"/></symbol>
+    <symbol id="invite" viewBox="0 0 24 24"><circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 19.5c1.1-3.1 3.6-4.8 6.5-4.8 1.6 0 3 .5 4.2 1.4M18 13v6M15 16h6"/></symbol>
+    <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.8 9.6a2.3 2.3 0 0 1 4.4.8c0 1.6-2.2 2-2.2 3.4"/><path d="M12 16.6v.1"/></symbol>
+    <symbol id="edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+    <symbol id="share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12"/></symbol>
+    <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+    <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M4.2 7.5l1.9 1.1M17.9 15.4l1.9 1.1M4.2 16.5l1.9-1.1M17.9 8.6l1.9-1.1"/><circle cx="12" cy="12" r="6.8"/></symbol>
+    <symbol id="home" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M15 9l-1.8 4.2L9 15l1.8-4.2z"/></symbol>
+    <symbol id="lib" viewBox="0 0 24 24"><rect x="5" y="4" width="11" height="14" rx="1.5"/><path d="M8 20h10a1 1 0 0 0 1-1V7"/></symbol>
+    <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/></symbol>
+  </defs>
+</svg>
+
+<div class="head">
+  <h1>Settings hub v2: same routing, tighter design</h1>
+  <p class="sub">The routing is the same one you approved: one way in from Profile ⋯, a short hub with search, and one level of
+  sub-screens that always lead back. The <b>visuals</b> are rebuilt to match the rest of Checkpoint: thin line icons in the muted
+  color instead of colored tiles, iOS-style inset groups with hairline dividers that start at the text, a large title, and
+  accent color only where something is active.</p>
+</div>
+
+<div class="grid">
+
+  <!-- 1 hub -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="sb"><span>10:22</span><span>68</span></div>
+      <div class="topbar"><span class="back"><svg class="i" style="stroke:var(--text);width:22px;height:22px"><use href="#back"/></svg></span></div>
+      <div class="large">Settings</div>
+      <div class="pad">
+        <div class="search"><svg class="i"><use href="#search"/></svg>Search</div>
+
+        <div class="group">
+          <div class="me"><div class="av">T</div>
+            <div><div class="n">theantifail</div><div class="h">Edit profile</div></div>
+            <svg class="chev push"><use href="#chev"/></svg></div>
+        </div>
+
+        <div class="group">
+          <div class="row"><svg class="i"><use href="#appearance"/></svg>Appearance<span class="v">Cream</span><svg class="chev"><use href="#chev"/></svg></div>
+          <div class="row"><svg class="i"><use href="#access"/></svg>Accessibility<svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row"><svg class="i"><use href="#account"/></svg>Account<svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row"><svg class="i"><use href="#shield"/></svg>Privacy &amp; safety<svg class="chev push"><use href="#chev"/></svg></div>
+        </div>
+
+        <div class="group">
+          <div class="row"><svg class="i"><use href="#invite"/></svg>Invite friends<svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row"><svg class="i"><use href="#help"/></svg>Help &amp; about<svg class="chev push"><use href="#chev"/></svg></div>
+        </div>
+
+        <div class="group noicons"><div class="row danger">Sign out</div></div>
+        <div class="foot">r***@gmail.com · Version 1.0.0</div>
+      </div>
+      <div class="nav"><svg class="i"><use href="#home"/></svg><svg class="i"><use href="#compass"/></svg><svg class="i"><use href="#lib"/></svg><div class="on"><svg class="i"><use href="#user"/></svg></div></div>
+    </div>
+    <div class="cap"><div class="k">01 · HUB</div><h2>Everything on one screen</h2>
+      <p>Your card sits on top. Four settings areas come next, then two extras, then Sign out on its own. Values show only where they help
+      (Appearance: Cream). No section labels needed, because the groups do the work.</p></div>
+  </div>
+
+  <!-- 2 search -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="sb"><span>10:23</span><span>68</span></div>
+      <div class="pad" style="padding-top:8px">
+        <div style="display:flex;align-items:center;margin-bottom:16px">
+          <div class="search on" style="flex:1;margin:0"><svg class="i"><use href="#search"/></svg>priv<span class="caret"></span>
+            <span class="clear"><svg><use href="#x"/></svg></span></div>
+          <span class="cancel">Cancel</span>
+        </div>
+        <div class="group">
+          <div class="row res"><svg class="i"><use href="#shield"/></svg><div><div class="t"><b>Priv</b>acy &amp; safety</div></div><svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row res"><svg class="i"><use href="#shield"/></svg><div><div class="t">Who can see my activity</div><div class="w">Privacy &amp; safety</div></div><svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row res"><svg class="i"><use href="#shield"/></svg><div><div class="t">Who can message me</div><div class="w">Privacy &amp; safety</div></div><svg class="chev push"><use href="#chev"/></svg></div>
+          <div class="row res"><svg class="i"><use href="#help"/></svg><div><div class="t"><b>Priv</b>acy Policy</div><div class="w">Help &amp; about</div></div><svg class="chev push"><use href="#chev"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><div class="k">02 · SEARCH</div><h2>Type it, go straight there</h2>
+      <p>Tapping Search slides the title away and pins the field to the top with Cancel, like iOS Settings. Matched letters are
+      bold, and the grey line underneath says where each setting lives. A tap on a result opens its screen with the row briefly lit.</p></div>
+  </div>
+
+  <!-- 3 sub-screen -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="sb"><span>10:23</span><span>68</span></div>
+      <div class="topbar"><span class="back"><svg class="i" style="stroke:var(--text);width:22px;height:22px"><use href="#back"/></svg></span><span class="title">Privacy &amp; safety</span></div>
+      <div class="pad" style="padding-top:14px">
+        <div class="label">Who can</div>
+        <div class="group noicons">
+          <div class="row noicon">Message me<span class="v">Everyone</span><svg class="chev"><use href="#chev"/></svg></div>
+          <div class="row noicon hit">See my activity<span class="v">Everyone</span><svg class="chev"><use href="#chev"/></svg></div>
+        </div>
+        <div class="group noicons">
+          <div class="row noicon">Blocked users<span class="v">2</span><svg class="chev"><use href="#chev"/></svg></div>
+        </div>
+        <div class="hint">Blocked people can't see your profile, message you, or find you in search.</div>
+
+        <div class="label" style="margin-top:26px">Accessibility (another sub-screen)</div>
+        <div class="group noicons">
+          <div class="row noicon">Color-blind mode<span class="v">Protanopia</span><svg class="chev"><use href="#chev"/></svg></div>
+          <div class="row noicon">Reduce motion<span class="sw"></span></div>
+          <div class="row noicon">Larger text<span class="sw on"></span></div>
+        </div>
+      </div>
+      <div class="nav"><svg class="i"><use href="#home"/></svg><svg class="i"><use href="#compass"/></svg><svg class="i"><use href="#lib"/></svg><div class="on"><svg class="i"><use href="#user"/></svg></div></div>
+    </div>
+    <div class="cap"><div class="k">03 · SUB-SCREEN</div><h2>Same header, same way out</h2>
+      <p>A centered title, a back chevron and swipe-back to the hub. Inside, rows drop the icons, because the screen title already says
+      what they are. Full-size iOS switches with the whole row tappable. The faint highlight is where a search result landed.</p></div>
+  </div>
+
+  <!-- 4 profile sheet -->
+  <div class="col">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="sb"><span>10:22</span><span>68</span></div>
+      <div class="ghost"><div style="height:120px"></div><div style="height:44px"></div><div style="height:200px"></div><div style="height:120px"></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="row"><svg class="i"><use href="#edit"/></svg>Edit profile</div>
+        <div class="row"><svg class="i"><use href="#share"/></svg>Share profile</div>
+        <div class="row"><svg class="i"><use href="#spark"/></svg>Your Wrapped</div>
+        <div class="row"><svg class="i"><use href="#gear"/></svg>Settings<svg class="chev push"><use href="#chev"/></svg></div>
+      </div>
+    </div>
+    <div class="cap"><div class="k">04 · THE ONE DOOR</div><h2>Profile ⋯, four items</h2>
+      <p>This is a floating sheet with the same line icons. Settings is the only row with a chevron, because it's the only one that goes
+      somewhere deeper. The sheet no longer duplicates Privacy, Notifications, Feedback or Log out.</p></div>
+  </div>
+
+</div>
+
+<div class="notes">
+  <div class="note"><h3>What changed from v1</h3><p>The colored icon tiles and emoji glyphs are gone, replaced by 18px line icons in muted grey. There are no uppercase
+  section labels, no bordered cards, and no blue "Edit profile ›" link. The type is larger and quieter (14.5px rows, 28px title), and the hairlines are inset to the text.</p></div>
+  <div class="note"><h3>Color</h3><p>Accent appears only on active things: switches, the search caret, the nav pill. Sign out uses the danger token
+  (not orange). Everything reads from theme tokens, so it works on Cream and Light Pink with no navy bar.</p></div>
+  <div class="note"><h3>Routing (unchanged from v1)</h3><p>Hub → Appearance · Accessibility · Account · Privacy &amp; safety · Invite · Help &amp; about.
+  Edit profile opens in place. The Notifications row stays hidden until it exists. "Sign out" everywhere.</p></div>
+</div>
+
+</body>
+</html>

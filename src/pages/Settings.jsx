@@ -27,6 +27,8 @@ import {
   applySettingsToDom,
   SETTINGS_CHANGED_EVENT,
 } from '../services/userSettingsService'
+import { getThemeSettings } from '../services/themeService'
+import { getTheme } from '../styles/themePreview'
 import { buildInviteUrl } from '../services/inviteService'
 import { shareContent } from '../utils/share'
 import { hapticImpact } from '../utils/haptics'
@@ -204,6 +206,10 @@ function Settings() {
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])
+  const themeSettings = getThemeSettings()
+  const appearanceValue = themeSettings.matchSystem
+    ? 'Match iPhone'
+    : getTheme(themeSettings.theme).name
 
   /* ============================================================
      Handlers
@@ -325,6 +331,16 @@ function Settings() {
       </header>
 
       <div className="settings-page__body">
+        {/* No Display/App section and no Notifications row on this
+            page, so Appearance leads, above Account. */}
+        <SettingsGroup>
+          <SettingsRow
+            label="Appearance"
+            value={appearanceValue}
+            onClick={() => navigate('/settings/appearance')}
+          />
+        </SettingsGroup>
+
         {/* ─── ACCOUNT ────────────────────────────────────── */}
         <SettingsGroup title="Account">
           <SettingsRow

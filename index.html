@@ -5,6 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="Track your video games, write reviews, and discover new titles. Your personal game library." />
     <meta name="theme-color" content="#0a0f1f" />
+    <!-- First-frame theme. Colors here match src/styles/themePreview.js
+         bases so the page is the saved color before the bundle's CSS
+         arrives. theme.css takes over once it loads. -->
+    <style id="theme-boot">
+      html, body, #root { background-color: var(--boot-bg, #0a0f1f); color-scheme: dark; }
+      html[data-app-theme="light"],
+      html[data-app-theme="sky"],
+      html[data-app-theme="pink"],
+      html[data-app-theme="cream"] { color-scheme: light; }
+    </style>
+    <script>
+      (function () {
+        var KEY = 'gametracker.theme.v1'
+        var BG = {
+          navy: '#0a0f1f',
+          black: '#000000',
+          forest: '#08140f',
+          purple: '#110a1d',
+          light: '#f4f6fa',
+          sky: '#e6f0fb',
+          pink: '#fcf0f3',
+          cream: '#f4ede0'
+        }
+        var theme = 'navy'
+        try {
+          var stored = JSON.parse(localStorage.getItem(KEY) || 'null')
+          if (stored && typeof stored === 'object') {
+            if (stored.matchSystem === true) {
+              var dark = false
+              try {
+                dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+              } catch (e) {}
+              var pick = dark ? stored.lastDark : stored.lastLight
+              if (BG[pick]) theme = pick
+            } else if (BG[stored.theme]) {
+              theme = stored.theme
+            }
+          }
+        } catch (e) {}
+        var root = document.documentElement
+        root.setAttribute('data-app-theme', theme)
+        root.style.setProperty('--boot-bg', BG[theme])
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', BG[theme])
+      })()
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:type"        content="website" />

@@ -14,6 +14,7 @@ import { captureWebReferral } from './services/inviteService'
 import { migrateLibraryToSlimShape } from './services/libraryService'
 import { pruneSwipeHistory } from './services/swipeService'
 import { freeAbandonedLocalStorage } from './utils/storageQuota'
+import { initTheme } from './services/themeService'
 
 // Capture ?ref= invite param from the URL before React mounts so it
 // survives the /login → /signup redirect chain.
@@ -76,6 +77,10 @@ pruneSwipeHistory()
 
 // Start Supabase auth lifecycle management (native-only; no-op on web).
 initAppLifecycle()
+
+// index.html already marked the saved theme for the first frame. This
+// sets the browser theme-color and, on iPhone, the status bar style.
+initTheme()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

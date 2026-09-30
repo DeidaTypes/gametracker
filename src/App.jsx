@@ -62,6 +62,7 @@ import Settings from './pages/Settings'
 import SettingsBlocked from './pages/SettingsBlocked'
 import SettingsEmail from './pages/SettingsEmail'
 import SettingsPassword from './pages/SettingsPassword'
+import SettingsAppearance from './pages/SettingsAppearance'
 import Stats from './pages/Stats'
 import ActivityCalendar from './pages/ActivityCalendar'
 import CurrentlyPlaying from './pages/CurrentlyPlaying'
@@ -1337,6 +1338,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><SettingsPassword /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/appearance"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><SettingsAppearance /></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
