@@ -252,11 +252,10 @@ body[data-larger-text='true'] {
   color-scheme: dark;
 
   /* ---- Theme palette (Navy) ----
-     Four Navy values differ from the approved mockup by more than
+     Three Navy values differ from the approved mockup by more than
      rounding, so Navy keeps the colors already shipping:
        --theme-surface-2  #1a2240   (mockup #1a2244)
        --theme-line       rgba(148, 168, 212, 0.12)   (mockup 0.14)
-       --theme-dim        #5c6b8a   (mockup #5f6f97)
        --theme-gold       #f5b50a   (mockup #f5c542)
      Every other Navy value matches the mockup. */
   --theme-base: #0a0f1f;
@@ -265,7 +264,11 @@ body[data-larger-text='true'] {
   --theme-line: rgba(148, 168, 212, 0.12);
   --theme-text: #f0f3fa;
   --theme-muted: #94a8d4;
-  --theme-dim: #5c6b8a;
+  --theme-dim: #6b7995;
+  --theme-review-text: #b6fde0;
+  --theme-journal-text: #e4c2ff;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
   --theme-primary: #3b82f6;
   --theme-review: #0a9e6a;
   --theme-journal: #8b32d1;
@@ -311,9 +314,9 @@ body[data-larger-text='true'] {
   --border-subtle: var(--theme-line);
   --border-strong: rgba(148, 168, 212, 0.24);
   /* Status colors — distinct from brand accent */
-  --status-success: #34d399;
+  --status-success: var(--theme-success);
   --status-warning: #fbbf24;
-  --status-danger:  #f87171;
+  --status-danger:  var(--theme-danger);
 
   /* Backgrounds — layered depth */
   --color-bg-primary: var(--theme-base);
@@ -335,7 +338,7 @@ body[data-larger-text='true'] {
   --color-text-primary: var(--theme-text);
   --color-text-secondary: var(--theme-muted);
   --color-text-tertiary: var(--theme-dim);
-  --color-text-muted: #3a4a66;      /* very dim — darker than --theme-dim; not a theme role */
+  --color-text-muted: var(--theme-dim);
 
   /* Brand — app color */
   --color-brand-primary: var(--theme-primary);
@@ -422,9 +425,9 @@ body[data-larger-text='true'] {
 
   /* Review / Journal button accent colors — vivid fills, bright text */
   --accent-review: var(--theme-review);
-  --accent-review-text: #b6fde0;
+  --accent-review-text: var(--theme-review-text);
   --accent-journal: var(--theme-journal);
-  --accent-journal-text: #e4c2ff;
+  --accent-journal-text: var(--theme-journal-text);
 
   /* =============================================
      TRACKER STATUS COLOR MAP
@@ -690,7 +693,11 @@ html[data-app-theme="black"] {
   --theme-line: rgba(255, 255, 255, 0.09);
   --theme-text: #f5f5f7;
   --theme-muted: #a3a3ad;
-  --theme-dim: #62626b;
+  --theme-dim: #717179;
+  --theme-review-text: #a8efd4;
+  --theme-journal-text: #e1cafa;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
   --theme-primary: #4a78ff;
   --theme-review: #0f9d6b;
   --theme-journal: #9a45e8;
@@ -714,7 +721,11 @@ html[data-app-theme="forest"] {
   --theme-line: rgba(160, 210, 185, 0.13);
   --theme-text: #edf6f0;
   --theme-muted: #97b8a6;
-  --theme-dim: #5b7a6a;
+  --theme-dim: #658373;
+  --theme-review-text: #ecf4c2;
+  --theme-journal-text: #e0d4fa;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
   --theme-primary: #22b07d;
   --theme-review: #c2d856;
   --theme-journal: #a98bf0;
@@ -738,7 +749,11 @@ html[data-app-theme="purple"] {
   --theme-line: rgba(190, 170, 230, 0.14);
   --theme-text: #f5f0fd;
   --theme-muted: #b4a5d6;
-  --theme-dim: #71629a;
+  --theme-dim: #7c6da2;
+  --theme-review-text: #abede1;
+  --theme-journal-text: #f8bfdb;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
   --theme-primary: #7a55f5;
   --theme-review: #0f9985;
   --theme-journal: #d4478f;
@@ -762,7 +777,11 @@ html[data-app-theme="light"] {
   --theme-line: rgba(20, 30, 60, 0.10);
   --theme-text: #111827;
   --theme-muted: #525e75;
-  --theme-dim: #8b93a6;
+  --theme-dim: #767e90;
+  --theme-review-text: #047857;
+  --theme-journal-text: #6d28d9;
+  --theme-success: #047857;
+  --theme-danger: #c63738;
   --theme-primary: #2563eb;
   --theme-review: #067a55;
   --theme-journal: #7c3aed;
@@ -786,7 +805,11 @@ html[data-app-theme="sky"] {
   --theme-line: rgba(20, 70, 130, 0.16);
   --theme-text: #0b2340;
   --theme-muted: #3f5877;
-  --theme-dim: #7a93b0;
+  --theme-dim: #556e8b;
+  --theme-review-text: #066650;
+  --theme-journal-text: #4a37c4;
+  --theme-success: #066650;
+  --theme-danger: #a3343c;
   --theme-primary: #1a64cc;
   --theme-review: #0b8066;
   --theme-journal: #5b47d6;
@@ -810,11 +833,15 @@ html[data-app-theme="pink"] {
   --theme-line: rgba(120, 30, 60, 0.16);
   --theme-text: #35121f;
   --theme-muted: #7c4655;
-  --theme-dim: #ab7c8b;
+  --theme-dim: #885c6b;
+  --theme-review-text: #055f4d;
+  --theme-journal-text: #6538c0;
+  --theme-success: #055f4d;
+  --theme-danger: #a22d31;
   --theme-primary: #c92a62;
   --theme-review: #0d8069;
   --theme-journal: #7446cf;
-  --theme-primary-ink: #b3225a;
+  --theme-primary-ink: #a62054;
   --theme-review-ink: #055f4d;
   --theme-journal-ink: #6538c0;
   --theme-on-primary: #ffffff;
@@ -834,7 +861,11 @@ html[data-app-theme="cream"] {
   --theme-line: rgba(70, 50, 20, 0.16);
   --theme-text: #2a2217;
   --theme-muted: #62563f;
-  --theme-dim: #948668;
+  --theme-dim: #73674f;
+  --theme-review-text: #275c34;
+  --theme-journal-text: #7a3874;
+  --theme-success: #275c34;
+  --theme-danger: #9f322f;
   --theme-primary: #2c5b8a;
   --theme-review: #3a7648;
   --theme-journal: #86427f;
