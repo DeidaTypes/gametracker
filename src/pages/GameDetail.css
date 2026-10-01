@@ -113,12 +113,43 @@
   left: -40px;
   right: -40px;
   bottom: -60vh;
-  background: rgba(0, 0, 0, 0.42);
+  /* Fill is theme-scoped below. Dark themes keep rgba(0, 0, 0, 0.42). */
   z-index: 1;
   /* Decorative only — must not intercept taps on buttons below the hero. */
   pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
           mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 92%);
+}
+
+/* Navy (no attribute or data-app-theme="navy"), Black, Dark Green, Purple. */
+html:not([data-app-theme="light"]):not([data-app-theme="sky"]):not([data-app-theme="pink"]):not([data-app-theme="cream"]) .gd-hero-overlay {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* Light themes: tint of the page color, solid page color at the bottom
+   so the scrim meets the body with no grey band. The dark-theme mask
+   would fade that last stop back to transparent, so it is cleared here. */
+html[data-app-theme="light"] .gd-hero-overlay,
+html[data-app-theme="sky"] .gd-hero-overlay,
+html[data-app-theme="pink"] .gd-hero-overlay,
+html[data-app-theme="cream"] .gd-hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--theme-base) 55%, transparent) 0%,
+    color-mix(in srgb, var(--theme-base) 82%, transparent) 45%,
+    var(--theme-base) 100%
+  );
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The vignette is a second black scrim. On light themes it repaints the
+   grey band on top of the page-colored overlay. */
+html[data-app-theme="light"] .gd-hero::after,
+html[data-app-theme="sky"] .gd-hero::after,
+html[data-app-theme="pink"] .gd-hero::after,
+html[data-app-theme="cream"] .gd-hero::after {
+  background: none;
 }
 
 /* Second gradient layer: a soft radial vignette around the poster + a
@@ -1220,11 +1251,11 @@
   color: var(--color-accent-steel);
 }
 
-/* Long — needs more time: status-danger tint */
+/* Long — needs more time: app-color role (danger was a warm red) */
 .gd-weekend-read--long {
-  background: color-mix(in srgb, var(--status-danger) 10%, transparent);
-  border-color: color-mix(in srgb, var(--status-danger) 22%, transparent);
-  color: var(--status-danger);
+  background: var(--theme-primary-soft);
+  border-color: color-mix(in srgb, var(--theme-primary) 35%, transparent);
+  color: var(--theme-primary-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1467,6 +1498,65 @@
 
 .gd-action-pair-btn--journal:hover {
   background: linear-gradient(120deg, var(--accent) 0%, var(--accent-journal) 100%);
+}
+
+/* Light themes: hero copy and chrome sit on the page-colored scrim,
+   so they use the text/surface aliases. Dark themes keep the white
+   rgba values declared above so Navy is unchanged. */
+html[data-app-theme="light"] .gd-subtitle,
+html[data-app-theme="sky"] .gd-subtitle,
+html[data-app-theme="pink"] .gd-subtitle,
+html[data-app-theme="cream"] .gd-subtitle {
+  color: var(--color-text-secondary);
+}
+
+html[data-app-theme="light"] .gd-publisher,
+html[data-app-theme="sky"] .gd-publisher,
+html[data-app-theme="pink"] .gd-publisher,
+html[data-app-theme="cream"] .gd-publisher {
+  color: var(--color-text-tertiary);
+}
+
+html[data-app-theme="light"] .gd-glass-btn,
+html[data-app-theme="sky"] .gd-glass-btn,
+html[data-app-theme="pink"] .gd-glass-btn,
+html[data-app-theme="cream"] .gd-glass-btn {
+  background-color: color-mix(in srgb, var(--theme-surface) 80%, transparent);
+  color: var(--theme-text);
+}
+
+html[data-app-theme="light"] .gd-glass-btn:hover,
+html[data-app-theme="sky"] .gd-glass-btn:hover,
+html[data-app-theme="pink"] .gd-glass-btn:hover,
+html[data-app-theme="cream"] .gd-glass-btn:hover {
+  background-color: color-mix(in srgb, var(--theme-surface) 92%, transparent);
+}
+
+html[data-app-theme="light"] .gd-pulse-label,
+html[data-app-theme="sky"] .gd-pulse-label,
+html[data-app-theme="pink"] .gd-pulse-label,
+html[data-app-theme="cream"] .gd-pulse-label,
+html[data-app-theme="light"] .gd-pulse-rank-num,
+html[data-app-theme="sky"] .gd-pulse-rank-num,
+html[data-app-theme="pink"] .gd-pulse-rank-num,
+html[data-app-theme="cream"] .gd-pulse-rank-num {
+  color: var(--color-text-primary);
+}
+
+html[data-app-theme="light"] .gd-pulse-sub,
+html[data-app-theme="sky"] .gd-pulse-sub,
+html[data-app-theme="pink"] .gd-pulse-sub,
+html[data-app-theme="cream"] .gd-pulse-sub {
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-theme="light"] .gd-glass-btn:active,
+  html[data-app-theme="sky"] .gd-glass-btn:active,
+  html[data-app-theme="pink"] .gd-glass-btn:active,
+  html[data-app-theme="cream"] .gd-glass-btn:active {
+    background-color: color-mix(in srgb, var(--theme-primary) 35%, transparent);
+  }
 }
 
 /* Status tile active-state gradient override REMOVED — it painted all

@@ -170,6 +170,26 @@
   }
 }
 
+/* Light themes: labels muted, the hour/rating numeral is text (including
+   the empty 0), hints stay dim. Background stays --color-surface. */
+html[data-app-theme="light"] .gd-stat-strip__label,
+html[data-app-theme="sky"] .gd-stat-strip__label,
+html[data-app-theme="pink"] .gd-stat-strip__label,
+html[data-app-theme="cream"] .gd-stat-strip__label {
+  color: var(--color-text-secondary);
+}
+
+html[data-app-theme="light"] .gd-stat-strip__value,
+html[data-app-theme="sky"] .gd-stat-strip__value,
+html[data-app-theme="pink"] .gd-stat-strip__value,
+html[data-app-theme="cream"] .gd-stat-strip__value,
+html[data-app-theme="light"] .gd-stat-strip__value--muted,
+html[data-app-theme="sky"] .gd-stat-strip__value--muted,
+html[data-app-theme="pink"] .gd-stat-strip__value--muted,
+html[data-app-theme="cream"] .gd-stat-strip__value--muted {
+  color: var(--color-text-primary);
+}
+
 @media (max-width: 359px) {
   .gd-stat-strip__half {
     padding: var(--space-8) var(--space-8) var(--space-8);
