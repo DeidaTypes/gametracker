@@ -479,6 +479,13 @@ function CommentRow({
                       Report
                     </button>
                   )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => setKebabOpen(false)}
+                  >
+                    Cancel
+                  </button>
                 </div>
               )}
             </div>
@@ -586,6 +593,7 @@ function ReviewDetail() {
   const [replyTo, setReplyTo] = useState(null)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
 
   // ── Refs ────────────────────────────────────────────────────
   /** The textarea inside the inline composer. */
@@ -987,7 +995,13 @@ function ReviewDetail() {
         <button
           type="button"
           className="rd-back"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (draft.trim()) {
+              setDiscardOpen(true)
+              return
+            }
+            navigate(-1)
+          }}
           aria-label="Go back"
         >
           <LuChevronLeft size={22} aria-hidden="true" />
@@ -1177,6 +1191,20 @@ function ReviewDetail() {
         isOpen={dmShareOpen}
         onClose={() => setDmShareOpen(false)}
         attachment={dmShareAttachment}
+      />
+
+      <ActionSheet
+        isOpen={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        title="Discard message?"
+        cancelLabel="Keep editing"
+        items={[
+          {
+            label: 'Discard',
+            destructive: true,
+            onClick: () => navigate(-1),
+          },
+        ]}
       />
     </div>
   )

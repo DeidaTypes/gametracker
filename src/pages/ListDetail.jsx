@@ -169,6 +169,8 @@ function ListDetail() {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [reportSheetOpen, setReportSheetOpen] = useState(false)
   const [dmShareOpen, setDmShareOpen] = useState(false)
+  const [commentUnsent, setCommentUnsent] = useState(false)
+  const [discardCommentOpen, setDiscardCommentOpen] = useState(false)
   const [collaborators, setCollaborators] = useState(cachedList?.collaborators || [])
   const [showCollaboratorSheet, setShowCollaboratorSheet] = useState(false)
   const [isClearMode, setIsClearMode] = useState(false)
@@ -1194,7 +1196,13 @@ function ListDetail() {
         <button
           type="button"
           className="icon-btn"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (commentUnsent) {
+              setDiscardCommentOpen(true)
+              return
+            }
+            navigate(-1)
+          }}
           aria-label="Go back"
         >
           <ChevronLeft size={14} strokeWidth={2.5} aria-hidden="true" />
@@ -1434,6 +1442,7 @@ function ListDetail() {
             listId={listId}
             currentUserId={currentUserId}
             isOwner={isOwner}
+            onUnsentChange={setCommentUnsent}
           />
         )}
       </div>
@@ -1454,6 +1463,20 @@ function ListDetail() {
         isOpen={showActionSheet}
         onClose={() => setShowActionSheet(false)}
         items={actionSheetItems}
+      />
+
+      <ActionSheet
+        isOpen={discardCommentOpen}
+        onClose={() => setDiscardCommentOpen(false)}
+        title="Discard message?"
+        cancelLabel="Keep editing"
+        items={[
+          {
+            label: 'Discard',
+            destructive: true,
+            onClick: () => navigate(-1),
+          },
+        ]}
       />
 
       <DeleteConfirmModal

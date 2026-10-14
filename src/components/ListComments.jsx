@@ -64,7 +64,7 @@ function CommentRow({ comment, canDelete, onDelete }) {
  *   currentUserId — auth.uid() or null
  *   isOwner      — true if the viewer owns the list (can moderate/delete any comment)
  */
-export default function ListComments({ listId, currentUserId, isOwner }) {
+export default function ListComments({ listId, currentUserId, isOwner, onUnsentChange }) {
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
@@ -102,6 +102,12 @@ export default function ListComments({ listId, currentUserId, isOwner }) {
   // src/hooks/useAutoGrowTextarea.js). Cap matches .composer__input's
   // max-height in styles/keyboard.css.
   useAutoGrowTextarea(textareaRef, draft, 90)
+
+  useEffect(() => {
+    onUnsentChange?.(draft.trim().length > 0)
+  }, [draft, onUnsentChange])
+
+  useEffect(() => () => onUnsentChange?.(false), [onUnsentChange])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

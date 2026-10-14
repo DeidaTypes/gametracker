@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { LuChevronRight } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import KeyboardAwareView from './KeyboardAwareView'
@@ -35,13 +35,14 @@ import './ActionSheet.css'
  *                  label may be a string or JSX element.
  *                  Items are rendered before the Cancel row.
  *
- * The sheet always renders a "Cancel" row at the bottom separated
- * by a 1px divider.
+ * The sheet always renders a dismiss row at the bottom separated
+ * by a 1px divider. Label defaults to "Cancel".
  */
-function ActionSheet({ isOpen, onClose, title, items = [] }) {
+function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel' }) {
   const sheetRef = useRef(null)
   const titleId = title ? 'action-sheet-title' : undefined
   const { reduced } = useMotionPreference()
+  const dragControls = useDragControls()
 
   useEffect(() => {
     if (!isOpen) return
@@ -64,6 +65,10 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
   const sheetTransition = reduced
     ? { duration: 0 }
     : { type: 'spring', stiffness: 380, damping: 32 }
+
+  const handleDragEnd = (_e, info) => {
+    if (info.offset.y > 110 || info.velocity.y > 600) onClose()
+  }
 
   return createPortal(
     <AnimatePresence>
@@ -90,8 +95,21 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
             animate={{ y: 0 }}
             exit={reduced ? { y: 0 } : { y: '100%' }}
             transition={sheetTransition}
+            drag={reduced ? false : 'y'}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={handleDragEnd}
           >
-            <div className="action-sheet__handle" aria-hidden="true" />
+            <div
+              className="action-sheet__drag-zone"
+              onPointerDown={(e) => {
+                if (!reduced) dragControls.start(e)
+              }}
+            >
+              <div className="action-sheet__handle" aria-hidden="true" />
+            </div>
             {title && (
               <p id={titleId} className="action-sheet__title">{title}</p>
             )}
@@ -147,7 +165,7 @@ function ActionSheet({ isOpen, onClose, title, items = [] }) {
               onClick={onClose}
               role="menuitem"
             >
-              Cancel
+              {cancelLabel}
             </button>
           </motion.div>
           </KeyboardAwareView>

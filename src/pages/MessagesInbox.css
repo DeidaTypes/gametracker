@@ -22,10 +22,8 @@
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
   padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  border-bottom: 1px solid var(--color-border);
+  background: var(--theme-base);
+  border-bottom: 1px solid var(--theme-line);
 }
 
 .dm-inbox__back,
@@ -33,12 +31,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
+  color: var(--theme-text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background var(--transition-fast);
@@ -50,12 +48,12 @@
 }
 
 .dm-inbox__title {
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
-  letter-spacing: var(--letter-spacing-display);
-  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--theme-text);
   text-align: center;
   margin: 0;
 }
@@ -231,7 +229,7 @@
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
   padding: var(--spacing-md) var(--page-padding);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--theme-line);
   flex-shrink: 0;
 }
 
@@ -239,12 +237,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: transparent;
   border: none;
-  color: var(--color-text-primary);
+  color: var(--theme-text);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -257,15 +255,15 @@
 .dm-compose__title {
   margin: 0;
   text-align: center;
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: var(--theme-text);
 }
 
 .dm-compose__spacer {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
 }
 
 .dm-compose__search {

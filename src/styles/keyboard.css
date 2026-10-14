@@ -93,7 +93,7 @@ body.keyboard-open {
    above the safe area, not the nav.
    The keyboard lift itself is layered on top via .kb-lift, applied
    alongside this class through <KeyboardAwareView mode="composer">; this
-   class only owns the rest position and the glass chrome. Apply it via
+   class only owns the rest position and the solid page chrome. Apply it via
    `className="kb-composer-bar <screen>-composer"` and put screen-specific
    padding/sizing on the second class — do NOT re-declare `position: fixed`
    / `bottom: var(--bottom-nav-safe-area)` per screen. That duplication is
@@ -105,10 +105,8 @@ body.keyboard-open {
   right: 0;
   bottom: var(--bottom-nav-safe-area, 80px);
   z-index: 6;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
-  border-top: 1px solid var(--color-border);
+  background: var(--theme-base);
+  border-top: 1px solid var(--theme-line);
 }
 
 /* ── Unified composer chrome (all comment + DM surfaces) ─────────────────
@@ -141,15 +139,15 @@ body.keyboard-open {
   min-width: 0;
   min-height: 32px;
   padding: var(--space-4) var(--space-8);
-  background: var(--bg-surface);
-  border: 1px solid var(--color-border);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--theme-line);
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast);
   box-sizing: border-box;
 }
 
 .composer__shell:focus-within {
-  border-color: var(--accent);
+  border-color: var(--theme-primary);
 }
 
 .composer__input {
@@ -162,7 +160,7 @@ body.keyboard-open {
   background: transparent;
   border: none;
   border-radius: 0;
-  color: var(--color-text-primary);
+  color: var(--theme-text);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   line-height: 1.3;
@@ -174,7 +172,7 @@ body.keyboard-open {
 }
 
 .composer__input::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--theme-dim);
 }
 
 .composer__input:disabled {
@@ -192,20 +190,18 @@ body.keyboard-open {
   padding: 0;
   border: none;
   border-radius: var(--radius-full);
-  background: var(--grad-purple-blue);
-  color: var(--color-on-accent);
+  background: transparent;
+  color: var(--theme-primary);
   cursor: pointer;
   /* Opt out of the global 44px tap-target rule — nested in the shell. */
   min-width: 0;
   min-height: 0;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-journal) 28%, transparent);
   transition:
     filter var(--transition-fast),
     opacity var(--transition-fast),
     background var(--transition-fast),
-    color var(--transition-fast),
-    box-shadow var(--transition-fast);
+    color var(--transition-fast);
 }
 
 .composer__send:hover:not(:disabled) {
@@ -214,17 +210,15 @@ body.keyboard-open {
 
 .composer__send:disabled {
   background: transparent;
-  color: var(--text-tertiary);
-  box-shadow: none;
+  color: var(--theme-muted);
   cursor: not-allowed;
   opacity: 1;
 }
 
-/* In-flight send — keep gradient visible while the spinner runs. */
+/* In-flight send — keep the active icon color while the spinner runs. */
 .composer__send.composer__send--busy {
-  background: var(--grad-purple-blue);
-  color: var(--color-on-accent);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-journal) 28%, transparent);
+  background: transparent;
+  color: var(--theme-primary);
   opacity: 0.88;
   cursor: wait;
 }

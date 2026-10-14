@@ -182,6 +182,7 @@ function MessagesThread() {
   const [blockPending, setBlockPending] = useState(false)
   const [reportProfileOpen, setReportProfileOpen] = useState(false)
   const [partnerBlocked, setPartnerBlocked] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
 
   // Empty-state identity stats ("142 games · follows you") — both parts
   // are independently optional, see getPartnerHighlights.
@@ -585,13 +586,21 @@ function MessagesThread() {
     return items
   }, [messages])
 
+  const requestLeave = () => {
+    if (draft.trim() || pendingAttachment) {
+      setDiscardOpen(true)
+      return
+    }
+    navigate(-1)
+  }
+
   return (
     <div className="dm-thread">
       <header className="dm-thread__header">
         <button
           type="button"
           className="dm-thread__back"
-          onClick={() => navigate(-1)}
+          onClick={requestLeave}
           aria-label="Go back"
         >
           <LuChevronLeft size={22} aria-hidden="true" />
@@ -771,6 +780,20 @@ function MessagesThread() {
             destructive: true,
             disabled: blockPending,
             onClick: handleToggleBlock,
+          },
+        ]}
+      />
+
+      <ActionSheet
+        isOpen={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        title="Discard message?"
+        cancelLabel="Keep editing"
+        items={[
+          {
+            label: 'Discard',
+            destructive: true,
+            onClick: () => navigate(-1),
           },
         ]}
       />
@@ -1059,6 +1082,14 @@ function Bubble({ message, isOutgoing, onReport }) {
                 Report
               </button>
             )}
+            <button
+              type="button"
+              role="menuitem"
+              className="dm-bubble__context-btn"
+              onClick={() => setContextMenuOpen(false)}
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>

@@ -355,6 +355,13 @@ function CommentRow({
                     Report
                   </button>
                 )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setKebabOpen(false)}
+                >
+                  Cancel
+                </button>
               </div>
             )}
           </div>
@@ -439,6 +446,7 @@ function ReviewComments() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [deletingPost, setDeletingPost] = useState(false)
   const [sharingQuote, setSharingQuote] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
   // Only populated for the review branch, and only once we know the
   // viewer owns this review — a visitor's own-pins list is meaningless
   // here and would just be a wasted read.
@@ -1075,7 +1083,13 @@ function ReviewComments() {
         <button
           type="button"
           className="rc-back"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            if (draft.trim()) {
+              setDiscardOpen(true)
+              return
+            }
+            navigate(-1)
+          }}
           aria-label="Go back"
         >
           <LuChevronLeft size={22} aria-hidden="true" />
@@ -1216,6 +1230,20 @@ function ReviewComments() {
             destructive: true,
             disabled: deletingPost,
             onClick: handleDeletePost,
+          },
+        ]}
+      />
+
+      <ActionSheet
+        isOpen={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        title="Discard message?"
+        cancelLabel="Keep editing"
+        items={[
+          {
+            label: 'Discard',
+            destructive: true,
+            onClick: () => navigate(-1),
           },
         ]}
       />
