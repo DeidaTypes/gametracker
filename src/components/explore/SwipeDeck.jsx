@@ -5,6 +5,8 @@ import { getTasteVector } from '../../services/tasteEngineService'
 import { fetchBroadDiscoveryBatch } from '../../services/igdb'
 import { getAllLists, addGameToList, TRACKER_STATUS } from '../../services/libraryService'
 import { supabase } from '../../services/supabase'
+import { mutateSWR, peekSWR, peekSWRInFlight } from '../../services/swrCache'
+import { useCachedResource } from '../../hooks/useCachedResource'
 import { showToast } from '../Toast'
 import { SwipeCard } from './SwipeCard'
 import {
@@ -22,13 +24,27 @@ import { imageIdFromCoverUrl } from '../../services/igdbImage'
 import './SwipeDeck.css'
 
 // sessionStorage key used to preserve deck state when the user taps a card
-// to view its detail page and then navigates back.
+// to view its detail page and then navigates back. Folded into the
+// discover:deck:{uid} swrCache entry on the way back (or adopted from here
+// if the WebView was killed on the detail page and the memory cache is gone).
 const DECK_SESSION_KEY = 'gt:swipe-deck-state:v1'
 
+// In-memory session deck. Survives Discover unmount (Home → Discover, and
+// card tap → Game Detail → back) so the same next card paints on the first
+// frame. Never localStorage.
+const DECK_CACHE_TTL_MS = 12 * 60 * 60 * 1000
+
+function deckCacheKey(userId) {
+  return userId ? `discover:deck:${userId}` : null
+}
+
 // How many un-swiped cards must remain before we background-fetch the next
-// page of the broad discovery pool. Large enough that the fetch (a couple of
-// batched /multiquery requests) has time to land before the user runs dry.
+// page. One refill at a time, and never while the cold load is in flight.
 const REFILL_THRESHOLD = 8
+
+// One refill per deck key, including across an unmount mid-request, so a
+// remount cannot start a second batch beside the one already running.
+const deckRefillInFlight = new Map()
 
 // After this many consecutive failed/empty refill attempts, stop auto-retrying
 // and show an honest "couldn't load more" state with a manual retry button —
@@ -92,6 +108,108 @@ function gameToCard(game, topGenres) {
   }
 }
 
+function readTapSnapshot() {
+  let raw
+  try {
+    raw = sessionStorage.getItem(DECK_SESSION_KEY)
+  } catch {
+    return null
+  }
+  if (!raw) return null
+  try { sessionStorage.removeItem(DECK_SESSION_KEY) } catch { /* ignore */ }
+  try {
+    const saved = JSON.parse(raw)
+    if (!Array.isArray(saved.pool) || saved.pool.length === 0) return null
+    return {
+      pool: saved.pool,
+      currentIdx: typeof saved.currentIdx === 'number' ? saved.currentIdx : 0,
+      cursors: saved.cursors && typeof saved.cursors === 'object' ? saved.cursors : {},
+      seenIds: Array.isArray(saved.seenIds) ? saved.seenIds.map(String) : [],
+      genreWeights: saved.genreWeights && typeof saved.genreWeights === 'object'
+        ? saved.genreWeights
+        : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Memory cache wins. A tap snapshot is adopted only when the cache is cold. */
+function adoptTapSnapshot(key) {
+  if (!key) return
+  if (peekSWR(key) !== undefined) {
+    try { sessionStorage.removeItem(DECK_SESSION_KEY) } catch { /* ignore */ }
+    return
+  }
+  const snap = readTapSnapshot()
+  if (snap) mutateSWR(key, snap)
+}
+
+async function fetchTrackedGameIds(userId) {
+  const { data, error } = await supabase
+    .from('game_trackers')
+    .select('igdb_game_id')
+    .eq('user_id', userId)
+  if (error) throw error
+  const ids = []
+  for (const row of data ?? []) {
+    if (row.igdb_game_id) ids.push(String(row.igdb_game_id))
+  }
+  return ids
+}
+
+async function buildColdDeck(userId) {
+  const libraryIds = buildLocalLibraryIds()
+  const started = performance.now()
+
+  const [trackedIds, vector] = await Promise.all([
+    fetchTrackedGameIds(userId).catch(() => []),
+    getTasteVector(userId).catch(() => null),
+  ])
+  for (const id of trackedIds) libraryIds.add(String(id))
+
+  const excludeIds = new Set([
+    ...libraryIds,
+    ...getSwipeExcludeIds(),
+  ])
+
+  let cards
+  let cursors
+  let igdbRequests = 0
+  try {
+    const batch = await fetchBroadDiscoveryBatch({
+      excludeIds,
+      cursors: {},
+      genreWeights: vector?.genreWeights || null,
+    })
+    cards = batch.cards
+    cursors = batch.cursors
+    igdbRequests = batch.igdbRequests
+  } catch (err) {
+    igdbRequests = err?.igdbRequests || igdbRequests
+    if (import.meta.env.DEV) {
+      const ms = Math.round(performance.now() - started)
+      console.info(`[discover] cold deck IGDB requests: ${igdbRequests} (${ms}ms)`)
+    }
+    throw err
+  }
+
+  if (import.meta.env.DEV) {
+    const ms = Math.round(performance.now() - started)
+    console.info(`[discover] cold deck IGDB requests: ${igdbRequests} (${ms}ms, ${cards.length} cards)`)
+  }
+
+  const topGenres = topGenreNames(vector)
+  const pool = cards.map((g) => gameToCard(g, topGenres))
+  return {
+    pool,
+    currentIdx: 0,
+    seenIds: pool.map((c) => String(c.id)),
+    cursors,
+    genreWeights: vector?.genreWeights || null,
+  }
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 /**
@@ -115,10 +233,10 @@ function gameToCard(game, topGenres) {
  * and also passed to fetchBroadDiscoveryBatch so they're never re-fetched.
  *
  * Infinite supply: because the pool is the whole catalog rather than a small
- * precomputed list, we background-fetch the next page (advancing a
- * per-genre offset cursor) once the user gets within REFILL_THRESHOLD cards
- * of the end of the current batch — the deck should never dead-end in a
- * normal session. Every swipe is persisted via swipeService.recordSwipe:
+ * precomputed list, we background-fetch the next page (one multiquery,
+ * cursors advanced per group) once the user gets within REFILL_THRESHOLD
+ * cards of the end of the current batch — the deck should never dead-end
+ * in a normal session. Every swipe is persisted via swipeService.recordSwipe:
  *   • ✕ Skip     → negative signal (recorded locally).
  *   • ♥ Backlog  → positive signal (recorded locally) AND written to the
  *                  cross-device library + game_trackers.
@@ -131,21 +249,41 @@ export function SwipeDeck() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [pool, setPool]             = useState(null) // null = initial loading
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const [loadFailed, setLoadFailed] = useState(false)
+  const deckKey = deckCacheKey(user?.id)
+  const adoptedKeyRef = useRef(null)
+  if (deckKey && adoptedKeyRef.current !== deckKey) {
+    adoptedKeyRef.current = deckKey
+    adoptTapSnapshot(deckKey)
+  }
+
+  const loadDeck = useCallback(async () => {
+    const existing = peekSWR(deckKey)
+    if (existing?.pool?.length) return existing
+    return buildColdDeck(user.id)
+  }, [deckKey, user?.id])
+
+  const {
+    data: deck,
+    error: deckError,
+    refresh: refreshDeck,
+    mutate: mutateDeck,
+  } = useCachedResource(deckKey, loadDeck, {
+    enabled: !!deckKey,
+    revalidateAfterMs: DECK_CACHE_TTL_MS,
+  })
+
+  // null pool = cold load still in flight. A cached deck is set before paint.
+  const pool = deck ? deck.pool : null
+  const currentIdx = deck?.currentIdx ?? 0
+  const loadFailed = !!deckError && pool === null
+
   const [refillFailCount, setRefillFailCount] = useState(0)
   const [circleByGameId, setCircleByGameId] = useState({})
   const [mainHoursByGameId, setMainHoursByGameId] = useState({})
 
-  const libraryIdsRef      = useRef(new Set())
   const cancelRef          = useRef(false)
-  const tasteVectorRef     = useRef(null)
-  const genreCursorsRef    = useRef({})
-  const seenIdsRef         = useRef(new Set())
-  const fetchingMoreRef    = useRef(false)
-  const reloadTokenRef     = useRef(0)
   const ttbFetchedRef      = useRef(new Set())
+  const enrichedIdsRef     = useRef(new Set())
   const socialFetchTokenRef = useRef(0)
   const coverPrefetchRef    = useRef(new Map())
 
@@ -184,153 +322,133 @@ export function SwipeDeck() {
     }
   }, [])
 
-  // ── Persist / restore deck state across a card-tap → GameDetail → back ────
+  // ── Persist deck across a card-tap → GameDetail → back ───────────────────
+  // The live queue already sits in swrCache. This snapshot is only for a
+  // WebView kill while Game Detail is open; adoptTapSnapshot folds it back.
 
-  const persistSessionState = useCallback((poolArg, idxArg) => {
+  const persistSessionState = useCallback(() => {
+    const saved = peekSWR(deckKey)
+    if (!saved?.pool?.length) return
     try {
       sessionStorage.setItem(
         DECK_SESSION_KEY,
         JSON.stringify({
-          pool: poolArg,
-          currentIdx: idxArg,
-          cursors: genreCursorsRef.current,
-          seenIds: Array.from(seenIdsRef.current),
+          pool: saved.pool,
+          currentIdx: saved.currentIdx,
+          cursors: saved.cursors,
+          seenIds: saved.seenIds,
+          genreWeights: saved.genreWeights || null,
         })
       )
     } catch { /* storage full — non-fatal */ }
-  }, [])
+  }, [deckKey])
 
-  // ── Background refill ─────────────────────────────────────────────────────
+  // ── Background refill — one at a time, never during the cold load ────────
 
   const loadMore = useCallback(async () => {
-    if (fetchingMoreRef.current || cancelRef.current) return
-    fetchingMoreRef.current = true
-    try {
-      const excludeIds = new Set([
-        ...libraryIdsRef.current,
-        ...getSwipeExcludeIds(),
-        ...seenIdsRef.current,
-      ])
-      const { cards, cursors } = await fetchBroadDiscoveryBatch({
-        excludeIds,
-        cursors: genreCursorsRef.current,
-        genreWeights: tasteVectorRef.current?.genreWeights || null,
-      })
-      genreCursorsRef.current = cursors
-      if (cancelRef.current) return
+    if (!deckKey) return
+    if (deckRefillInFlight.has(deckKey)) return
+    if (peekSWRInFlight(deckKey)) return
 
-      if (cards.length === 0) {
-        setRefillFailCount((n) => n + 1)
-        return
-      }
+    const run = (async () => {
+      const current = peekSWR(deckKey)
+      if (!current?.pool?.length) return
 
-      const topGenres = topGenreNames(tasteVectorRef.current)
-      const newCards = cards.map((g) => gameToCard(g, topGenres))
-      for (const c of newCards) seenIdsRef.current.add(String(c.id))
-
-      setPool((prev) => (Array.isArray(prev) ? [...prev, ...newCards] : newCards))
-      setRefillFailCount(0)
-      enrichDeckPage(newCards)
-    } catch {
-      if (!cancelRef.current) setRefillFailCount((n) => n + 1)
-    } finally {
-      fetchingMoreRef.current = false
-    }
-  }, [enrichDeckPage])
-
-  // ── Initial load ──────────────────────────────────────────────────────────
-
-  const load = useCallback(async () => {
-    const myToken = ++reloadTokenRef.current
-    setLoadFailed(false)
-    libraryIdsRef.current = buildLocalLibraryIds()
-
-    if (user?.id) {
+      const libraryIds = buildLocalLibraryIds()
       try {
-        const { data } = await supabase
-          .from('game_trackers')
-          .select('igdb_game_id')
-          .eq('user_id', user.id)
-        for (const row of data ?? []) {
-          if (row.igdb_game_id) {
-            libraryIdsRef.current.add(String(row.igdb_game_id))
-          }
-        }
+        const tracked = await fetchTrackedGameIds(user.id)
+        for (const id of tracked) libraryIds.add(id)
       } catch { /* non-fatal */ }
-    }
 
-    // Restore deck state when returning from a card-tap to GameDetail.
-    try {
-      const raw = sessionStorage.getItem(DECK_SESSION_KEY)
-      if (raw) {
-        sessionStorage.removeItem(DECK_SESSION_KEY)
-        const saved = JSON.parse(raw)
-        if (Array.isArray(saved.pool) && saved.pool.length > 0 && !cancelRef.current) {
-          genreCursorsRef.current = saved.cursors && typeof saved.cursors === 'object' ? saved.cursors : {}
-          seenIdsRef.current = new Set(Array.isArray(saved.seenIds) ? saved.seenIds : [])
-          setPool(saved.pool)
-          setCurrentIdx(typeof saved.currentIdx === 'number' ? saved.currentIdx : 0)
-          enrichDeckPage(saved.pool)
-          // Taste vector still needed for future refills' order bias.
-          try { tasteVectorRef.current = await getTasteVector(user?.id) } catch { tasteVectorRef.current = null }
-          return
-        }
+      if (peekSWRInFlight(deckKey)) return
+
+      const latest = peekSWR(deckKey) || current
+      const excludeIds = new Set([
+        ...libraryIds,
+        ...getSwipeExcludeIds(),
+        ...(latest.seenIds || []),
+      ])
+      const { cards, cursors, igdbRequests } = await fetchBroadDiscoveryBatch({
+        excludeIds,
+        cursors: latest.cursors || {},
+        genreWeights: latest.genreWeights || null,
+      })
+      if (import.meta.env.DEV) {
+        console.info(`[discover] refill IGDB requests: ${igdbRequests}`)
       }
-    } catch { /* non-fatal — fall through to fresh fetch */ }
 
-    let vector = null
-    try { vector = await getTasteVector(user?.id) } catch { vector = null }
-    if (cancelRef.current || myToken !== reloadTokenRef.current) return
-    tasteVectorRef.current = vector
+      if (peekSWRInFlight(deckKey)) return
 
-    const excludeIds = new Set([
-      ...libraryIdsRef.current,
-      ...getSwipeExcludeIds(),
-    ])
+      const topGenres = topGenreNames({ genreWeights: latest.genreWeights })
+      const newCards = cards.map((g) => gameToCard(g, topGenres))
 
-    genreCursorsRef.current = {}
-    seenIdsRef.current = new Set()
+      let appended = 0
+      mutateDeck((prev) => {
+        if (!prev?.pool) return prev
+        const seen = new Set(prev.seenIds || [])
+        const extra = []
+        for (const card of newCards) {
+          const id = String(card.id)
+          if (seen.has(id)) continue
+          seen.add(id)
+          extra.push(card)
+        }
+        appended = extra.length
+        return {
+          ...prev,
+          pool: extra.length ? [...prev.pool, ...extra] : prev.pool,
+          seenIds: Array.from(seen),
+          cursors,
+        }
+      })
 
-    const { cards, cursors } = await fetchBroadDiscoveryBatch({
-      excludeIds,
-      cursors: {},
-      genreWeights: vector?.genreWeights || null,
-    })
-    if (cancelRef.current || myToken !== reloadTokenRef.current) return
+      if (appended === 0) setRefillFailCount((n) => n + 1)
+      else setRefillFailCount(0)
+    })()
 
-    genreCursorsRef.current = cursors
-    const topGenres = topGenreNames(vector)
-    const cardList = cards.map((g) => gameToCard(g, topGenres))
-    for (const c of cardList) seenIdsRef.current.add(String(c.id))
-
-    setPool(cardList)
-    enrichDeckPage(cardList)
-  }, [user?.id, enrichDeckPage])
+    deckRefillInFlight.set(deckKey, run)
+    try {
+      await run
+    } catch {
+      setRefillFailCount((n) => n + 1)
+    } finally {
+      if (deckRefillInFlight.get(deckKey) === run) deckRefillInFlight.delete(deckKey)
+    }
+  }, [deckKey, user?.id, mutateDeck])
 
   useEffect(() => {
     cancelRef.current = false
-
-    load().catch(() => {
-      if (!cancelRef.current) {
-        setPool([])
-        setLoadFailed(true)
-      }
-    })
-
     return () => { cancelRef.current = true }
-  }, [load])
+  }, [])
 
-  // Background-fetch the next page once the user is close to the end of the
-  // current batch, so the deck never dead-ends in a normal session.
   useEffect(() => {
-    if (pool === null || pool.length === 0) return
+    setCircleByGameId({})
+    setMainHoursByGameId({})
+    enrichedIdsRef.current = new Set()
+    ttbFetchedRef.current = new Set()
+  }, [deckKey])
+
+  // Social + time-to-beat for cards that just arrived. Swipes don't re-run this.
+  useEffect(() => {
+    if (!pool?.length) return
+    const fresh = pool.filter((card) => !enrichedIdsRef.current.has(String(card.id)))
+    if (fresh.length === 0) return
+    for (const card of fresh) enrichedIdsRef.current.add(String(card.id))
+    enrichDeckPage(fresh)
+  }, [pool, enrichDeckPage])
+
+  // Next page only once the cold deck is on screen and the user is near the end.
+  useEffect(() => {
+    if (!deckKey || pool === null || pool.length === 0) return
+    if (peekSWRInFlight(deckKey)) return
+    if (deckRefillInFlight.has(deckKey)) return
     if (refillFailCount >= MAX_REFILL_RETRIES) return
     if (pool.length - currentIdx <= REFILL_THRESHOLD) {
       loadMore()
     }
-  }, [pool, currentIdx, loadMore, refillFailCount])
+  }, [deckKey, pool, currentIdx, loadMore, refillFailCount])
 
-  // Warm t_cover_big_2x for the next three cards whenever a page lands or the user swipes.
+  // Warm the next two covers at the size the card displays.
   useEffect(() => {
     if (pool === null || pool.length === 0) return
     if (currentIdx >= pool.length) return
@@ -342,19 +460,17 @@ export function SwipeDeck() {
   }, [])
 
   const handleRetryLoad = useCallback(() => {
-    load().catch(() => {
-      if (!cancelRef.current) {
-        setPool([])
-        setLoadFailed(true)
-      }
-    })
-  }, [load])
+    refreshDeck().catch(() => {})
+  }, [refreshDeck])
 
   // ── Swipe handlers ─────────────────────────────────────────────────────────
 
   const advance = useCallback(() => {
-    setCurrentIdx((i) => i + 1)
-  }, [])
+    mutateDeck((prev) => {
+      if (!prev) return prev
+      return { ...prev, currentIdx: (prev.currentIdx || 0) + 1 }
+    })
+  }, [mutateDeck])
 
   const handleSwipeRight = useCallback(
     (game) => {
@@ -409,16 +525,17 @@ export function SwipeDeck() {
   // Tap the card body → open game detail (preserve deck to restore on back).
   const handleTap = useCallback(
     (game) => {
-      persistSessionState(pool, currentIdx)
+      persistSessionState()
       navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
     },
-    [navigate, pool, currentIdx, persistSessionState]
+    [navigate, persistSessionState]
   )
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // Initial loading skeleton
-  if (pool === null) {
+  // Initial loading skeleton — same scene box as the live deck, so the
+  // card does not jump when it arrives. A cached revisit skips this.
+  if (pool === null && !loadFailed) {
     return (
       <div className="swipe-deck">
         <div className="swipe-deck__scene" aria-busy="true" aria-label="Loading games">

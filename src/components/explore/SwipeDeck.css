@@ -36,11 +36,13 @@
 
 /* ---- Loading skeletons ---- */
 
+/* Same box as .swipe-card (inset 0 / height 100% of the scene). A shorter
+   skeleton jumps when the real card replaces it. */
 .swipe-deck__skel {
   position: absolute;
   inset: 0;
   width: 100%;
-  height: calc(100% - 22px);
+  height: 100%;
   border-radius: var(--radius-lg);
   background: var(--bg-surface);
   animation: swipeSkelPulse 1.6s ease-in-out infinite;

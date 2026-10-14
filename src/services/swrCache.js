@@ -5,7 +5,8 @@
 // read revalidates in the background. `peekSWR` always returns the last
 // value, including after the TTL and after a stale mark.
 //
-//   app:resumed       mark every entry stale (revalidate on next read)
+//   app:resumed       mark every entry stale (revalidate on next read),
+//                     except discover:deck: (in-progress swipe queue)
 //   libraryUpdated    mark library-dependent keys stale (see below)
 //   sign-out / account switch / account deletion
 //                     clearSWRCache() via clearAllLocalUserData()
@@ -269,7 +270,10 @@ export function markSWRStaleByPrefix(prefix) {
 }
 
 export function markAllSWRStale() {
-  for (const key of store.keys()) markSWRStale(key)
+  for (const key of store.keys()) {
+    if (key.startsWith('discover:deck:')) continue
+    markSWRStale(key)
+  }
 }
 
 /**
@@ -305,6 +309,10 @@ function isWriteImmune(key) {
   if (key.startsWith('game:')) return true
   if (key.startsWith('search:browse-categories')) return true
   if (key.startsWith('explore:new-releases')) return true
+  // Live swipe queue. A library write (including swipe-right itself) must
+  // not mark it stale — the next read would rebuild the deck and change
+  // the card the user is on.
+  if (key.startsWith('discover:deck:')) return true
   return false
 }
 
@@ -329,6 +337,7 @@ function isWriteImmune(key) {
  *   game:<igdbId>             IGDB metadata
  *   search:browse-categories
  *   explore:new-releases
+ *   discover:deck:            in-progress swipe queue
  *   messages:inbox:
  *   comments:
  *   profile:follows:

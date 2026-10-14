@@ -58,10 +58,9 @@ function Explore() {
     // Pull-to-refresh force-refetches every rail below (New & Notable,
     // Collections, the themed drop — see refetchAllExploreSections) by
     // bypassing the swrCache the same way resume already does. The swipe
-    // deck deliberately sits outside this:
-    // it's a full-catalog IGDB queue with its own background pagination,
-    // not a cached "feed" — resetting an in-progress deck of un-swiped
-    // cards on every pull would be destructive, not refreshing.
+    // deck deliberately sits outside this: its queue lives in
+    // discover:deck:{uid} for the session, and resetting un-swiped cards
+    // on every pull would be destructive, not refreshing.
     <PullToRefresh onRefresh={refetchAllExploreSections}>
     <div className="explore-page">
 

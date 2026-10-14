@@ -35,7 +35,7 @@ async function loadAndDecode(url) {
  * SwipeCardCover — cover art for a swipe deck card.
  *
  * With a cover image_id: loads t_cover_big_2x in the background for every
- * card in the stack (prefetch in SwipeDeck warms the next three). Shows
+ * card in the stack (prefetch in SwipeDeck warms the next two). Shows
  * t_cover_big until retina cover is decoded, then swaps — 120ms crossfade
  * on the top card only (instant under reduced motion). When a stack card
  * promotes to top, an already-decoded cover_big_2x stays visible — no

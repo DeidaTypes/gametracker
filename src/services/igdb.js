@@ -1989,14 +1989,6 @@ function randomInitialOffset() {
   return Math.floor(Math.random() * (BROAD_INITIAL_OFFSET_MAX + 1))
 }
 
-function buildBroadGenreBlock(genre, offset, perGenreLimit) {
-  const body =
-    `${BROAD_FIELDS}; ` +
-    `where ${BROAD_QUALITY_WHERE} & genres = (${genre.id}); ` +
-    `sort total_rating_count desc; limit ${perGenreLimit}; offset ${offset};`
-  return { genre, offset, endpoint: 'games', name: `genre_${genre.id}`, body }
-}
-
 function formatBroadGame(g) {
   if (!g?.id || !g?.name || !g?.cover?.image_id) return null
   const year = g.first_release_date
@@ -2037,140 +2029,64 @@ function applyTasteOrderBias(cards, genreWeights) {
     .map((x) => x.card)
 }
 
-/**
- * fetchBroadDiscoveryBatch — one page of the full-genre-catalog swipe pool.
- *
- * Queries EVERY genre in BROAD_DISCOVERY_GENRES (chunked into ≤10-block
- * /multiquery requests — 3 HTTP calls total for 23 genres, well under the
- * 4 req/s ceiling since this only runs on initial load / background
- * refill, never per-card), quality-gated by total_rating/total_rating_count
- * only. No genre is ever skipped because the user hasn't shown affinity
- * for it.
- *
- * Results are interleaved round-robin across genres before returning, so a
- * single batch is never accidentally dominated by whichever genre happens
- * to have the deepest catalog (e.g. RPG/Adventure) — every genre that
- * returned results gets a fair turn in the mix.
- *
- * Pagination: pass the returned `cursors` back in on the next call to page
- * further into each genre's catalog (a genre's offset only advances when it
- * returned a full page, so a thin genre never gets skipped past). This is
- * what gives the deck infinite supply — the candidate pool is the whole
- * real IGDB catalog, not a small precomputed list, so background-fetching
- * the next page as the user nears the end of the current batch means the
- * deck never dead-ends.
- *
- * First-page randomization: every genre is sorted `total_rating_count
- * desc`, so an offset-0 first page is always the same highest-count games
- * in that genre. A genre with no entry yet in the `cursors` map (a fresh
- * session — every session starts with `cursors: {}`) gets a random offset
- * (0–BROAD_INITIAL_OFFSET_MAX) for its first page instead, so repeated
- * fresh sessions land on genuinely different games, not just a reshuffled
- * order of the same set. A genre that already has a cursor entry (a
- * mid-session background refill) always continues sequentially from there
- * — only the first page per genre per session is randomized.
- *
- * @param {Object}                 opts
- * @param {Set<string>}            [opts.excludeIds]    already-tracked/seen IGDB ids
- * @param {Record<string,number>}  [opts.cursors]       per-genre-id offset from a previous call
- * @param {number}                 [opts.perGenreLimit] rows requested per genre per page
- * @param {Record<string,number>|null} [opts.genreWeights] taste vector genre
- *        weights (0–1), used ONLY to nudge order — never to exclude a genre.
- * @returns {Promise<{ cards: Array, cursors: Record<string,number> }>}
- */
-export async function fetchBroadDiscoveryBatch({
-  excludeIds = new Set(),
-  cursors = {},
-  perGenreLimit = 5,
-  genreWeights = null,
-} = {}) {
-  const nextCursors = { ...cursors }
-  const genres = BROAD_DISCOVERY_GENRES
+// One /multiquery holds at most 10 sub-queries. 23 genres are folded into
+// that many OR-groups so a cold deck or a refill is a single HTTP call.
+const BROAD_GROUP_COUNT = 10
+const BROAD_PER_GROUP_LIMIT = 4
+// Below this, one widened games query (no genre filter) runs. 9 is just
+// above the deck refill threshold (8), so a usable multiquery page does
+// not immediately start a second batch.
+const BROAD_MIN_BATCH = 9
+const BROAD_WIDE_LIMIT = 24
+// Hard ceiling for one batch: the grouped multiquery, one widen, and one
+// spare. There is no per-genre fallback.
+const BROAD_IGDB_REQUEST_CAP = 3
+const BROAD_WIDE_CURSOR = 'wide'
 
-  // A genre with NO cursor entry yet means we've never paged it this
-  // session — that's the fresh-session case, so its first page starts at a
-  // random offset instead of always 0 (see BROAD_INITIAL_OFFSET_MAX above).
-  // A genre that already HAS a cursor entry (a background refill continuing
-  // a session already in progress) keeps deterministic sequential paging
-  // from wherever it left off — refills must never re-randomize mid-session,
-  // or they could re-show/skip cards within the same deck.
-  const blocks = genres.map((genre) => {
-    const hasCursor = Object.prototype.hasOwnProperty.call(cursors, genre.id)
-    const offset = hasCursor ? nextCursors[genre.id] : randomInitialOffset()
-    return buildBroadGenreBlock(genre, offset, perGenreLimit)
+function broadGenreGroups() {
+  const groups = Array.from({ length: BROAD_GROUP_COUNT }, () => [])
+  BROAD_DISCOVERY_GENRES.forEach((genre, i) => {
+    groups[i % BROAD_GROUP_COUNT].push(genre)
   })
+  return groups
+}
 
-  // /multiquery caps at 10 sub-queries per request — chunk so every genre
-  // still gets queried this batch, just across a couple of HTTP calls.
-  const chunks = []
-  for (let i = 0; i < blocks.length; i += 10) chunks.push(blocks.slice(i, i + 10))
+function buildBroadGroupBlock(group, groupIndex, offset, limit) {
+  const ids = group.map((genre) => genre.id).join(',')
+  const body =
+    `${BROAD_FIELDS}; ` +
+    `where ${BROAD_QUALITY_WHERE} & genres = [${ids}]; ` +
+    `sort total_rating_count desc; limit ${limit}; offset ${offset};`
+  return { groupIndex, offset, endpoint: 'games', name: `g${groupIndex}`, body }
+}
 
-  const genreBuckets = new Map(genres.map((g) => [g.id, []]))
-
-  const applyChunkResult = (block, rows) => {
-    genreBuckets.get(block.genre.id).push(...(rows || []))
-    // Only advance the cursor when the genre returned a full page — a short
-    // page means we've hit the end of that genre's quality-gated catalog,
-    // so re-querying the same offset next time is harmless (dedup handles
-    // any repeats via excludeIds).
-    if (Array.isArray(rows) && rows.length >= perGenreLimit) {
-      nextCursors[block.genre.id] = block.offset + perGenreLimit
-    }
-  }
-
-  // The chunks are independent, so they go out together. Awaiting them one
-  // at a time serialised three ~1s proxy round-trips into a ~3s stall before
-  // the deck could paint. Three concurrent requests still sits inside the
-  // 4 req/s ceiling that throttleIgdb() enforces.
-  const chunkOutcomes = await Promise.all(
-    chunks.map(async (chunk) => {
-      try {
-        const multi = await igdbMultiQuery(chunk)
-        const byName = new Map(multi.map((r) => [r.name, r.result || []]))
-        return chunk.map((block) => [block, byName.get(block.name)])
-      } catch (err) {
-        // Multiquery unsupported/failed — fall back to parallel per-genre
-        // calls for just this chunk so one bad chunk doesn't sink the batch.
-        if (import.meta.env.DEV) console.warn('[broadDiscovery] multiquery chunk failed, falling back', err)
-        const settled = await Promise.allSettled(chunk.map((b) => igdbRequest('games', b.body)))
-        return chunk.map((block, i) => [
-          block,
-          settled[i].status === 'fulfilled' ? settled[i].value : [],
-        ])
-      }
-    })
+function buildBroadWideBody(offset, limit) {
+  return (
+    `${BROAD_FIELDS}; ` +
+    `where ${BROAD_QUALITY_WHERE}; ` +
+    `sort total_rating_count desc; limit ${limit}; offset ${offset};`
   )
+}
 
-  // Applied after the fan-out so cursor advancement stays deterministic —
-  // it must follow genre order, not whichever request happened to land first.
-  for (const outcome of chunkOutcomes) {
-    for (const [block, rows] of outcome) applyChunkResult(block, rows)
+function takeBroadCards(rows, seen, excludeIds) {
+  const cards = []
+  for (const row of rows || []) {
+    const card = formatBroadGame(row)
+    if (!card) continue
+    const key = String(card.id)
+    if (seen.has(key) || excludeIds.has(key)) continue
+    seen.add(key)
+    cards.push(card)
   }
+  return cards
+}
 
-  // Format + de-dupe + exclude, per genre bucket — kept separate so the
-  // interleave step below still gets a fair per-genre supply to draw from.
-  const seen = new Set()
-  for (const [genreId, rows] of genreBuckets) {
-    const formatted = []
-    for (const row of rows) {
-      const card = formatBroadGame(row)
-      if (!card) continue
-      const key = String(card.id)
-      if (seen.has(key) || excludeIds.has(key)) continue
-      seen.add(key)
-      formatted.push(card)
-    }
-    genreBuckets.set(genreId, formatted)
-  }
-
-  // Round-robin interleave: one pass per "slot" takes one card from every
-  // genre bucket that still has one left, so genre order in the final list
-  // is mixed, not grouped by catalog depth.
+function interleaveBroadBuckets(buckets) {
   const interleaved = []
   let more = true
   while (more) {
     more = false
-    for (const rows of genreBuckets.values()) {
+    for (const rows of buckets) {
       const card = rows.shift()
       if (card) {
         interleaved.push(card)
@@ -2178,10 +2094,104 @@ export async function fetchBroadDiscoveryBatch({
       }
     }
   }
+  return interleaved
+}
+
+/**
+ * fetchBroadDiscoveryBatch — one page of the full-genre-catalog swipe pool.
+ *
+ * ONE IGDB /multiquery. All BROAD_DISCOVERY_GENRES are OR-grouped into
+ * ≤10 sub-queries (`genres = [id, id, …]`), quality-gated only. No genre
+ * is dropped because the user hasn't shown affinity for it.
+ *
+ * If that call throws, or the filtered page is shorter than BROAD_MIN_BATCH,
+ * ONE widened `games` query runs (same quality bar, genre filter dropped).
+ * The per-genre fallback loop is gone. A batch never issues more than
+ * BROAD_IGDB_REQUEST_CAP IGDB requests.
+ *
+ * Results are interleaved round-robin across groups before the widened
+ * rows are appended, so one deep genre cannot occupy the whole page.
+ * `genreWeights` only nudges order (applyTasteOrderBias).
+ *
+ * Pagination: pass `cursors` back. Keys are `g0`…`g9` plus `wide`. An
+ * offset advances only when that sub-query returned a full page. A key
+ * with no cursor yet (fresh session) starts at a random offset so the
+ * first page is not always the same highest-count games.
+ *
+ * @param {Object}                 opts
+ * @param {Set<string>}            [opts.excludeIds]    already-tracked/seen IGDB ids
+ * @param {Record<string,number>}  [opts.cursors]       group/wide offsets from a previous call
+ * @param {Record<string,number>|null} [opts.genreWeights] taste vector genre
+ *        weights (0–1), used ONLY to nudge order — never to exclude a genre.
+ * @returns {Promise<{ cards: Array, cursors: Record<string,number>, igdbRequests: number }>}
+ */
+export async function fetchBroadDiscoveryBatch({
+  excludeIds = new Set(),
+  cursors = {},
+  genreWeights = null,
+} = {}) {
+  const nextCursors = { ...cursors }
+  const groups = broadGenreGroups()
+  let igdbRequests = 0
+  let lastError = null
+
+  const blocks = groups.map((group, groupIndex) => {
+    const cursorKey = `g${groupIndex}`
+    const hasCursor = Object.prototype.hasOwnProperty.call(cursors, cursorKey)
+    const offset = hasCursor ? nextCursors[cursorKey] : randomInitialOffset()
+    return buildBroadGroupBlock(group, groupIndex, offset, BROAD_PER_GROUP_LIMIT)
+  })
+
+  const buckets = groups.map(() => [])
+  const seen = new Set()
+
+  if (isMultiQuerySupported() && igdbRequests < BROAD_IGDB_REQUEST_CAP) {
+    igdbRequests += 1
+    try {
+      const multi = await igdbMultiQuery(blocks)
+      const byName = new Map(multi.map((r) => [r.name, r.result || []]))
+      for (const block of blocks) {
+        const rows = byName.get(block.name) || []
+        buckets[block.groupIndex].push(...takeBroadCards(rows, seen, excludeIds))
+        if (Array.isArray(rows) && rows.length >= BROAD_PER_GROUP_LIMIT) {
+          nextCursors[`g${block.groupIndex}`] = block.offset + BROAD_PER_GROUP_LIMIT
+        }
+      }
+    } catch (err) {
+      lastError = err
+      if (import.meta.env.DEV) console.warn('[broadDiscovery] multiquery failed', err)
+    }
+  }
+
+  let cards = interleaveBroadBuckets(buckets)
+
+  if (cards.length < BROAD_MIN_BATCH && igdbRequests < BROAD_IGDB_REQUEST_CAP) {
+    const hasWide = Object.prototype.hasOwnProperty.call(cursors, BROAD_WIDE_CURSOR)
+    const offset = hasWide ? nextCursors[BROAD_WIDE_CURSOR] : randomInitialOffset()
+    igdbRequests += 1
+    try {
+      const rows = await igdbRequest('games', buildBroadWideBody(offset, BROAD_WIDE_LIMIT))
+      const wideCards = takeBroadCards(rows, seen, excludeIds)
+      if (Array.isArray(rows) && rows.length >= BROAD_WIDE_LIMIT) {
+        nextCursors[BROAD_WIDE_CURSOR] = offset + BROAD_WIDE_LIMIT
+      }
+      cards = cards.concat(wideCards)
+      lastError = null
+    } catch (err) {
+      lastError = err
+      if (import.meta.env.DEV) console.warn('[broadDiscovery] widened query failed', err)
+    }
+  }
+
+  if (cards.length === 0 && lastError) {
+    lastError.igdbRequests = igdbRequests
+    throw lastError
+  }
 
   return {
-    cards: applyTasteOrderBias(interleaved, genreWeights),
+    cards: applyTasteOrderBias(cards, genreWeights),
     cursors: nextCursors,
+    igdbRequests,
   }
 }
 

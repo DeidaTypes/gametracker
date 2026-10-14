@@ -1,6 +1,9 @@
-import { coverUrl, imageIdFromCoverUrl } from '../services/igdbImage'
+import { coverSizeForDisplay, coverUrl, imageIdFromCoverUrl } from '../services/igdbImage'
 
-const PREFETCH_AHEAD = 3
+// Matches `.swipe-deck__scene` max-width. coverSizeForDisplay maps this to
+// t_cover_big_2x — the size the card actually paints. Never t_1080p / original.
+const SWIPE_CARD_DISPLAY_PX = 360
+const PREFETCH_AHEAD = 2
 
 function resolveCoverImageId(game) {
   if (!game) return null
@@ -8,7 +11,7 @@ function resolveCoverImageId(game) {
 }
 
 /**
- * Warm the browser cache for the next `PREFETCH_AHEAD` swipe covers (t_cover_big_2x).
+ * Warm the browser cache for the next 2 swipe covers at the card's display size.
  * Keeps in-flight Image objects in `prefetchRef` keyed by image_id so URLs are
  * never requested twice and loaders are not GC'd mid-flight.
  *
@@ -28,7 +31,7 @@ export function prefetchNextSwipeCovers(prefetchRef, pool, currentIdx) {
 
     const img = new Image()
     img.decoding = 'async'
-    img.src = coverUrl(imageId, 'cover_big_2x')
+    img.src = coverUrl(imageId, coverSizeForDisplay(SWIPE_CARD_DISPLAY_PX))
     prefetchRef.current.set(key, img)
   }
 }
