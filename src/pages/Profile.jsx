@@ -962,11 +962,30 @@ function Profile() {
         // a plain re-mount within the cache window is what gets to skip
         // the network entirely.
         const fetchProfileBundle = async () => {
-          const [rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours] = await Promise.all([
-            safeWithTimeout(getReviewsForUser(targetUserId), []),
+          // Likes and comments need the review ids, so they start as soon as
+          // reviews + pins resolve and overlap the rest of this bundle
+          // instead of waiting until every sibling query has finished.
+          const reviewsWithSocial = (async () => {
+            const [rows, pins] = await Promise.all([
+              safeWithTimeout(getReviewsForUser(targetUserId), []),
+              safeWithTimeout(getPinsForUser(targetUserId), []),
+            ])
+            const idSet = new Set(rows.map((r) => r.id))
+            for (const p of pins) {
+              if (p.review?.id) idSet.add(p.review.id)
+            }
+            const ids = Array.from(idSet)
+            const [counts, cCounts] = await Promise.all([
+              safeWithTimeout(prefetchLikeStatesForReviews(ids), new Map()),
+              safeWithTimeout(getCommentCountsForReviews(ids), new Map()),
+            ])
+            return { rows, pins, counts, cCounts }
+          })()
+
+          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours] = await Promise.all([
+            reviewsWithSocial,
             safeWithTimeout(getListsForUser(targetUserId), []),
             safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
-            safeWithTimeout(getPinsForUser(targetUserId), []),
             safeWithTimeout(getPinnedListsForUser(targetUserId), []),
             // Challenge (yearly goal) — fetched for ANY profile now that
             // user_goals RLS is privacy-aware rather than owner-only (see
@@ -990,21 +1009,20 @@ function Profile() {
             safeWithTimeout(getTotalHoursForUser(targetUserId), null),
           ])
 
-          // Union the unsorted review ids and the pinned-review ids —
-          // a pinned review's row should always be in `rows`, but
-          // defensively de-dupe via Set in case a pin's source review
-          // hasn't propagated yet.
-          const idSet = new Set(rows.map((r) => r.id))
-          for (const p of pins) {
-            if (p.review?.id) idSet.add(p.review.id)
+          return {
+            rows: social.rows,
+            pins: social.pins,
+            counts: social.counts,
+            cCounts: social.cCounts,
+            lists,
+            acts,
+            pinnedListData,
+            gp,
+            journalRows,
+            rd,
+            trackedGames,
+            hours,
           }
-          const ids = Array.from(idSet)
-          const [counts, cCounts] = await Promise.all([
-            safeWithTimeout(prefetchLikeStatesForReviews(ids), new Map()),
-            safeWithTimeout(getCommentCountsForReviews(ids), new Map()),
-          ])
-
-          return { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, counts, cCounts }
         }
 
         const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, counts, cCounts } =

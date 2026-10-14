@@ -139,19 +139,34 @@ export async function getReactions(targetType, targetId) {
  * Returns Map<targetId, Array<{ emoji, count, reacted }>>
  * Every input id is present in the result map (empty array if no reactions).
  */
-export async function getReactionsBatch(targetType, targetIds) {
+export async function getReactionsBatch(targetType, targetIds, viewerId = null) {
   const result = new Map()
   if (!targetType || !targetIds || targetIds.length === 0) return result
   for (const id of targetIds) result.set(id, [])
 
-  const [{ data: rows, error: rowsErr }, userResult] = await Promise.all([
-    supabase
+  const rowsPromise = supabase
+    .from('reactions')
+    .select('target_id, emoji')
+    .eq('target_type', targetType)
+    .in('target_id', targetIds)
+
+  // When the caller already knows the viewer, the "reacted by me" query
+  // starts with the counts. Otherwise it still waits on auth.getUser(),
+  // which runs alongside the counts query — same shape as before.
+  const minePromise = (async () => {
+    const me =
+      viewerId || (await supabase.auth.getUser().catch(() => ({ data: { user: null } })))?.data?.user?.id
+    if (!me) return []
+    const { data } = await supabase
       .from('reactions')
       .select('target_id, emoji')
+      .eq('user_id', me)
       .eq('target_type', targetType)
-      .in('target_id', targetIds),
-    supabase.auth.getUser(),
-  ])
+      .in('target_id', targetIds)
+    return data || []
+  })()
+
+  const [{ data: rows, error: rowsErr }, mine] = await Promise.all([rowsPromise, minePromise])
 
   if (rowsErr) {
     console.error('[reactions] getReactionsBatch failed:', rowsErr.message)
@@ -165,21 +180,12 @@ export async function getReactionsBatch(targetType, targetIds) {
   }
 
   let reactedMap = new Map()
-  const me = userResult?.data?.user
-  if (me) {
-    const { data: mine } = await supabase
-      .from('reactions')
-      .select('target_id, emoji')
-      .eq('user_id', me.id)
-      .eq('target_type', targetType)
-      .in('target_id', targetIds)
-    for (const { target_id, emoji } of mine || []) {
-      // Keyed as a string to match `tid` below, which is sliced out of
-      // the composite count key.
-      const key = String(target_id)
-      if (!reactedMap.has(key)) reactedMap.set(key, new Set())
-      reactedMap.get(key).add(emoji)
-    }
+  for (const { target_id, emoji } of mine || []) {
+    // Keyed as a string to match `tid` below, which is sliced out of
+    // the composite count key.
+    const key = String(target_id)
+    if (!reactedMap.has(key)) reactedMap.set(key, new Set())
+    reactedMap.get(key).add(emoji)
   }
 
   const emojisByTarget = new Map()

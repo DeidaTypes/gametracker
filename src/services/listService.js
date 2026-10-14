@@ -5,7 +5,7 @@ import {
   logActivityEvent,
 } from './activityEventsService'
 import { applyBlockFilter, filterBlockedRows } from './blockService'
-import { dedupeInFlight, mutateSWR, mutateSWRByPrefix } from './swrCache'
+import { dedupeInFlight, mutateSWR, mutateSWRByPrefix, peekSWR } from './swrCache'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -292,6 +292,58 @@ export async function getSaveCountsForLists(listIds) {
     counts.set(row.list_id, row.save_count || 0)
   }
   return counts
+}
+
+/**
+ * A user's lists plus their real save counts.
+ *
+ * get_list_save_counts needs list ids, and list_saves itself is owner-only
+ * under RLS, so embedding saves on the lists select would count only the
+ * viewer's own bookmark — not the public tally. Ids come from the session
+ * cache when this screen has been opened before, otherwise from a slim
+ * `select id` by owner that runs beside the games embed. The counts RPC
+ * then overlaps that embed instead of waiting for it.
+ */
+export async function loadUserListsWithSaveCounts(userId) {
+  if (!userId) return { lists: [], saveCounts: new Map() }
+
+  const cached = peekSWR(`library:lists:${userId}`)
+  if (cached && Array.isArray(cached.lists)) {
+    const knownIds = cached.lists.map((list) => list.id).filter(Boolean)
+    const [lists, counts] = await Promise.all([
+      getListsForUser(userId),
+      getSaveCountsForLists(knownIds),
+    ])
+    const known = new Set(knownIds)
+    const missing = lists.map((list) => list.id).filter((id) => id && !known.has(id))
+    if (missing.length) {
+      const extra = await getSaveCountsForLists(missing)
+      for (const [id, n] of extra) counts.set(id, n)
+    }
+    return { lists, saveCounts: counts }
+  }
+
+  const listsPromise = getListsForUser(userId)
+  let requestedIds = []
+  const countsPromise = (async () => {
+    const { data, error } = await supabase.from('lists').select('id').eq('user_id', userId)
+    if (error) {
+      console.error('[lists] list id lookup failed:', error.message)
+      const lists = await listsPromise
+      requestedIds = lists.map((list) => list.id)
+      return getSaveCountsForLists(requestedIds)
+    }
+    requestedIds = (data || []).map((row) => row.id)
+    return getSaveCountsForLists(requestedIds)
+  })()
+  const [lists, saveCounts] = await Promise.all([listsPromise, countsPromise])
+  const covered = new Set(requestedIds)
+  const missing = lists.map((list) => list.id).filter((id) => id && !covered.has(id))
+  if (missing.length) {
+    const extra = await getSaveCountsForLists(missing)
+    for (const [id, n] of extra) saveCounts.set(id, n)
+  }
+  return { lists, saveCounts }
 }
 
 /**

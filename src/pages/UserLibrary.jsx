@@ -5,7 +5,7 @@ import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import { getGameTrackersForUser } from '../services/statsService'
 import { TRACKER_STATUS } from '../services/libraryService'
 import { getGamesByIds } from '../services/igdb'
-import { getListsForUser, getSaveCountsForLists } from '../services/listService'
+import { loadUserListsWithSaveCounts } from '../services/listService'
 import { useCachedResource } from '../hooks/useCachedResource'
 import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from '../components/EmptyState'
@@ -78,11 +78,10 @@ function UserLibrary() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const listsKey = userId ? `library:lists:${userId}` : null
-  const loadLists = useCallback(async () => {
-    const lists = await getListsForUser(userId)
-    const counts = await getSaveCountsForLists(lists.map((l) => l.id))
-    return { lists, saveCounts: counts }
-  }, [userId])
+  const loadLists = useCallback(
+    () => loadUserListsWithSaveCounts(userId),
+    [userId]
+  )
   const {
     data: listsData,
     error: listsError,

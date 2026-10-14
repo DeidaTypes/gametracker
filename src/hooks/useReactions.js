@@ -124,7 +124,7 @@ export function seedReactionsBatch(targetType, batchMap) {
  * @param {Array<string>} targetIds
  * @returns {Promise<Map<string, Array<{emoji, count, reacted}>>>}
  */
-export async function prefetchReactionsBatch(targetType, targetIds) {
+export async function prefetchReactionsBatch(targetType, targetIds, viewerId = null) {
   const result = new Map()
   if (!targetType || !targetIds || targetIds.length === 0) return result
 
@@ -141,7 +141,7 @@ export async function prefetchReactionsBatch(targetType, targetIds) {
   // first await so mounted hooks see the ids as in-flight.
   for (const id of fresh) inFlight.add(cacheKey(targetType, id))
   try {
-    const batch = await getReactionsBatch(targetType, fresh)
+    const batch = await getReactionsBatch(targetType, fresh, viewerId)
     seedReactionsBatch(targetType, batch)
     for (const [id, summary] of batch.entries()) result.set(id, summary)
   } catch {

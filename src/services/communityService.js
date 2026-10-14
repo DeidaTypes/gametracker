@@ -2,11 +2,12 @@ import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { getRecentCommunityReviews } from './reviewService'
 import { getGamesByIds, getGamesByGenre } from './igdb'
-import { getLikeCountsForReviews } from './likeService'
+import { getLikeCountsForReviews, getViewerLikedReviewIds } from './likeService'
 import { getCommentCountsForReviews, getCommentCountsForEvents } from './commentService'
 import { getFlaggedContentIds } from './reportService'
 import { dedupeInFlight } from './swrCache'
 import { prefetchReactionsBatch } from '../hooks/useReactions'
+import { publishLikeState } from '../hooks/useLikeState'
 
 // Finished/activity likes are the heart glyph only (U+2764 U+FE0F).
 // Other reaction emojis are not likes.
@@ -43,25 +44,29 @@ const FOLLOWEE_CACHE_TTL = 60_000
 // to send one identical `follows` request per caller (measured: 3-4 on Home
 // and Game Detail). dedupeInFlight collapses the concurrent misses into one
 // request without retaining anything past resolution.
-async function _getCurrentUserFollowees() {
+async function _getCurrentUserFollowees(knownUserId = null) {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return []
+    let userId = knownUserId
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      userId = user?.id || null
+    }
+    if (!userId) return []
     const now = Date.now()
     if (
       _followeeCache &&
-      _followeeCacheUid === user.id &&
+      _followeeCacheUid === userId &&
       now - _followeeCacheTime < FOLLOWEE_CACHE_TTL
     ) {
       return _followeeCache
     }
-    return dedupeInFlight(`followees:${user.id}`, async () => {
+    return dedupeInFlight(`followees:${userId}`, async () => {
       const { data } = await supabase
         .from('follows')
         .select('followee_id')
-        .eq('follower_id', user.id)
+        .eq('follower_id', userId)
       _followeeCache = (data || []).map((r) => r.followee_id)
-      _followeeCacheUid = user.id
+      _followeeCacheUid = userId
       _followeeCacheTime = Date.now()
       return _followeeCache
     })
@@ -1399,12 +1404,24 @@ function activityHeartCount(batchMap, eventId) {
   return heart?.count || 0
 }
 
+function _ownAuthorFromEventRow(row, viewerId) {
+  const actor = row.actor || {}
+  return {
+    id: actor.id || viewerId || row.actor_user_id || null,
+    username: actor.username || null,
+    displayName: actor.display_name || actor.username || 'You',
+    avatarUrl: actor.avatar_url || null,
+  }
+}
+
 function _homeFeedItemFromEventRow(
   row,
-  { isOwn, viewerAuthor = null, commentCounts = null, likeCount = 0 } = {}
+  { isOwn, viewerAuthor = null, viewerId = null, commentCounts = null, likeCount = 0 } = {}
 ) {
   const meta = row.metadata || {}
-  const author = isOwn ? viewerAuthor : _authorFromActorJoin(row.actor)
+  const author = isOwn
+    ? viewerAuthor || _ownAuthorFromEventRow(row, viewerId)
+    : _authorFromActorJoin(row.actor)
   const base = {
     id: row.id,
     createdAt: row.created_at,
@@ -1522,7 +1539,61 @@ function _homeFeedItemFromEventRow(
  * Soft-fails to the input list. Picks the newest rating when a
  * (user, game) pair has more than one reviews row.
  */
-async function _attachFinishedRatings(items) {
+function _applyFinishedRatingMap(items, map) {
+  if (!map || map.size === 0) return items
+  return items.map((it) => {
+    if (it.type !== 'finished' || it.rating != null) return it
+    const rating = map.get(`${it.author?.id}:${it.game?.id}`)
+      ?? map.get(`${it.author?.id}:${Number(it.game?.id)}`)
+    return rating != null && Number.isFinite(rating) ? { ...it, rating } : it
+  })
+}
+
+async function _loadFinishedRatingMap(userIds, gameIds) {
+  if (!userIds.length || !gameIds.length) return new Map()
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('user_id, igdb_game_id, rating, created_at')
+      .in('user_id', userIds)
+      .in('igdb_game_id', gameIds)
+      .order('created_at', { ascending: false })
+    if (error || !data) {
+      if (error) console.error('[community] attachFinishedRatings failed:', error.message)
+      return new Map()
+    }
+    const map = new Map()
+    for (const row of data) {
+      if (row.rating == null) continue
+      const key = `${row.user_id}:${row.igdb_game_id}`
+      if (!map.has(key)) map.set(key, Number(row.rating))
+    }
+    return map
+  } catch (err) {
+    console.error('[community] attachFinishedRatings crashed:', err)
+    return new Map()
+  }
+}
+
+function _ratingTargetsFromEvents(eventRows) {
+  const unfinished = (eventRows || []).filter((row) => {
+    if (row.type !== 'completed') return false
+    const metaRating = Number(row.metadata?.rating)
+    if (Number.isFinite(metaRating) && metaRating > 0) return false
+    return row.actor_user_id && row.entity_id != null
+  })
+  return {
+    userIds: [...new Set(unfinished.map((row) => row.actor_user_id))],
+    gameIds: [
+      ...new Set(
+        unfinished.map((row) => Number(row.entity_id)).filter((n) => Number.isFinite(n))
+      ),
+    ],
+  }
+}
+
+async function _attachFinishedRatings(items, prefetchedMap) {
+  if (prefetchedMap) return _applyFinishedRatingMap(items, prefetchedMap)
   const unfinished = (items || []).filter(
     (it) =>
       it.type === 'finished' &&
@@ -1541,34 +1612,7 @@ async function _attachFinishedRatings(items) {
     ),
   ]
   if (userIds.length === 0 || gameIds.length === 0) return items
-
-  try {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('user_id, igdb_game_id, rating, created_at')
-      .in('user_id', userIds)
-      .in('igdb_game_id', gameIds)
-      .order('created_at', { ascending: false })
-    if (error || !data) {
-      if (error) console.error('[community] attachFinishedRatings failed:', error.message)
-      return items
-    }
-    const map = new Map()
-    for (const row of data) {
-      if (row.rating == null) continue
-      const key = `${row.user_id}:${row.igdb_game_id}`
-      if (!map.has(key)) map.set(key, Number(row.rating))
-    }
-    return items.map((it) => {
-      if (it.type !== 'finished' || it.rating != null) return it
-      const rating = map.get(`${it.author?.id}:${it.game?.id}`)
-        ?? map.get(`${it.author?.id}:${Number(it.game?.id)}`)
-      return rating != null && Number.isFinite(rating) ? { ...it, rating } : it
-    })
-  } catch (err) {
-    console.error('[community] attachFinishedRatings crashed:', err)
-    return items
-  }
+  return _applyFinishedRatingMap(items, await _loadFinishedRatingMap(userIds, gameIds))
 }
 
 /**
@@ -1581,8 +1625,9 @@ async function _attachFinishedRatings(items) {
  *
  * Mirrors reviewService.getReviewById's contract (soft-fails to null,
  * same block-filter pass) but needs one extra step reviews don't: the
- * viewer's own profile lookup for `isOwn` rows, same as getHomeFeed
- * does for the feed page itself.
+ * viewer's own profile lookup for `isOwn` rows. The feed page uses the
+ * actor join instead; this single-card path still loads the profile so
+ * the header matches.
  *
  * @param {string} activityEventId
  * @returns {Promise<object|null>} same item shape as getHomeFeed's
@@ -1719,17 +1764,29 @@ export async function getActivityLikers(eventId, limit = 3) {
   }
 }
 
+function _ownHomeFeedRows(viewerId, cursor, limit) {
+  return Promise.all([
+    _fetchHomeFeedReviewRows({ userIds: [viewerId], cursor, limit }),
+    _fetchHomeFeedEventRows({ types: OWN_FEED_EVENT_TYPES, userIds: [viewerId], cursor, limit }),
+  ])
+}
+
 export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FEED_PAGE_SIZE } = {}) {
-  const _t0 = Date.now()
   const EMPTY = (fallbackScope) => ({ items: [], nextCursor: null, scope: fallbackScope, hasMore: false })
   try {
+    // Local session read. auth.getUser() is a network round-trip, and the
+    // feed's later queries already send the access token, so this does not
+    // change which rows come back.
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    const viewerId = user?.id || null
+      data: { session },
+    } = await supabase.auth.getSession()
+    const viewerId = session?.user?.id || null
     if (!viewerId) return EMPTY('community')
 
-    const followeeIds = await _getCurrentUserFollowees()
+    // Own activity only needs the viewer id, so it runs during the followee
+    // lookup and is awaited together with the scope queries below.
+    const ownPromise = _ownHomeFeedRows(viewerId, cursor, limit)
+    const followeeIds = await _getCurrentUserFollowees(viewerId)
     let effectiveScope = scope
     // "Other users'" rows for this page, split by source — kept separate
     // (rather than merged into one opaque array) because each source
@@ -1738,20 +1795,29 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
     let otherReviewRows = []
     let otherEventRows = []
 
+    let ownReviewRows = []
+    let ownEventRows = []
+
     if (effectiveScope === 'following') {
-      ;[otherReviewRows, otherEventRows] = followeeIds.length
-        ? await Promise.all([
-            _fetchHomeFeedReviewRows({ userIds: followeeIds, cursor, limit }),
-            _fetchHomeFeedEventRows({
+      const [followReviewRows, followEventRows, own] = await Promise.all([
+        followeeIds.length
+          ? _fetchHomeFeedReviewRows({ userIds: followeeIds, cursor, limit })
+          : [],
+        followeeIds.length
+          ? _fetchHomeFeedEventRows({
               types: OTHER_FEED_EVENT_TYPES,
               userIds: followeeIds,
               cursor,
               limit,
-            }),
-          ])
-        : [[], []]
+            })
+          : [],
+        ownPromise,
+      ])
+      otherReviewRows = followReviewRows
+      otherEventRows = followEventRows
+      ;[ownReviewRows, ownEventRows] = own
     } else if (effectiveScope === 'community') {
-      ;[otherReviewRows, otherEventRows] = await Promise.all([
+      const [communityReviewRows, communityEventRows, own] = await Promise.all([
         _fetchHomeFeedReviewRows({ excludeUserIds: [viewerId], cursor, limit }),
         _fetchHomeFeedEventRows({
           types: OTHER_FEED_EVENT_TYPES,
@@ -1759,9 +1825,13 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
           cursor,
           limit,
         }),
+        ownPromise,
       ])
+      otherReviewRows = communityReviewRows
+      otherEventRows = communityEventRows
+      ;[ownReviewRows, ownEventRows] = own
     } else if (effectiveScope === 'mixed') {
-      const [followReviewRows, communityReviewRows, followEventRows, communityEventRows] =
+      const [followReviewRows, communityReviewRows, followEventRows, communityEventRows, own] =
         await Promise.all([
           followeeIds.length
             ? _fetchHomeFeedReviewRows({ userIds: followeeIds, cursor, limit })
@@ -1785,7 +1855,9 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
             cursor,
             limit,
           }),
+          ownPromise,
         ])
+      ;[ownReviewRows, ownEventRows] = own
       // Merging two independently-cursored windows can in rare cases skip a
       // row that would have surfaced on a later page (see note above) — an
       // accepted trade-off, consistent with the client-side windowing this
@@ -1801,19 +1873,29 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       // Community-wide is intentional at current graph size.
       if (followeeIds.length === 0) {
         effectiveScope = 'community'
-        ;[otherReviewRows, otherEventRows] = await Promise.all([
+        const [communityReviewRows, communityEventRows, own] = await Promise.all([
           _fetchHomeFeedReviewRows({ excludeUserIds: [viewerId], limit }),
           _fetchHomeFeedEventRows({
             types: OTHER_FEED_EVENT_TYPES,
             excludeUserIds: [viewerId],
             limit,
           }),
+          ownPromise,
         ])
+        otherReviewRows = communityReviewRows
+        otherEventRows = communityEventRows
+        ;[ownReviewRows, ownEventRows] = own
       } else {
-        const [followReviewRows, followEventRows] = await Promise.all([
+        const [followReviewRows, followEventRows, own] = await Promise.all([
           _fetchHomeFeedReviewRows({ userIds: followeeIds, limit }),
-          _fetchHomeFeedEventRows({ types: OTHER_FEED_EVENT_TYPES, userIds: followeeIds, limit }),
+          _fetchHomeFeedEventRows({
+            types: OTHER_FEED_EVENT_TYPES,
+            userIds: followeeIds,
+            limit,
+          }),
+          ownPromise,
         ])
+        ;[ownReviewRows, ownEventRows] = own
         if (followReviewRows.length + followEventRows.length >= HOME_FEED_SPARSE_THRESHOLD) {
           effectiveScope = 'following'
           otherReviewRows = followReviewRows
@@ -1840,17 +1922,6 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       }
     }
 
-    // Own activity — merged into the SAME stream regardless of scope
-    // (see module doc comment). Fetched independently of the
-    // followee-vs-community decision above: it's "Home is the hub", not
-    // a 4th scope.
-    const [ownReviewRows, ownEventRows] = await Promise.all([
-      _fetchHomeFeedReviewRows({ userIds: [viewerId], cursor, limit }),
-      _fetchHomeFeedEventRows({ types: OWN_FEED_EVENT_TYPES, userIds: [viewerId], cursor, limit }),
-    ])
-
-    if (import.meta.env.DEV) console.log(`[⏱ home] getHomeFeed scope=${effectiveScope} query: ${Date.now() - _t0}ms`)
-
     if (
       otherReviewRows.length === 0 &&
       otherEventRows.length === 0 &&
@@ -1860,54 +1931,51 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       return EMPTY(effectiveScope)
     }
 
-    const flaggedIds = await getFlaggedContentIds('review')
     const allReviewRows = [...otherReviewRows, ...ownReviewRows]
-    const cleanReviewRows =
-      flaggedIds.size > 0 ? allReviewRows.filter((r) => !flaggedIds.has(r.id)) : allReviewRows
+    const allEventRows = [...otherEventRows, ...ownEventRows]
+    const reviewIds = allReviewRows.map((r) => r.id)
+    const eventIds = allEventRows.map((row) => row.id)
+    const ratingTargets = _ratingTargetsFromEvents(allEventRows)
 
-    const reviewIds = cleanReviewRows.map((r) => r.id)
-    const [likeCounts, commentCounts] = await Promise.all([
+    // One batch once the page's ids are known: counts, liked-by-me,
+    // comment counts, reactions (including the viewer's own), flagged
+    // ids, and completion ratings. No per-item queries.
+    const [
+      flaggedIds,
+      likeCounts,
+      commentCounts,
+      likedIds,
+      eventCommentCounts,
+      eventReactions,
+      ratingMap,
+    ] = await Promise.all([
+      getFlaggedContentIds('review'),
       getLikeCountsForReviews(reviewIds),
       getCommentCountsForReviews(reviewIds),
+      getViewerLikedReviewIds(viewerId, reviewIds),
+      getCommentCountsForEvents(eventIds),
+      prefetchReactionsBatch('activity', eventIds, viewerId),
+      _loadFinishedRatingMap(ratingTargets.userIds, ratingTargets.gameIds),
     ])
+
+    const cleanReviewRows =
+      flaggedIds.size > 0 ? allReviewRows.filter((r) => !flaggedIds.has(r.id)) : allReviewRows
+    for (const row of cleanReviewRows) {
+      publishLikeState(row.id, {
+        liked: likedIds.has(row.id),
+        count: likeCounts.get(row.id) || 0,
+      })
+    }
 
     const shapedReviewItems = cleanReviewRows
       .map((row) =>
         _homeFeedItemFromRow(row, likeCounts, commentCounts, { isOwn: row.user_id === viewerId })
       )
       .filter((it) => it.type === 'reviewed')
-    const otherReviewItems = shapedReviewItems.filter((it) => !it.isOwn)
-    const ownReviewItems = shapedReviewItems.filter((it) => it.isOwn)
 
-    // Own non-review activity needs the viewer's own profile for the
-    // author avatar/name — one lightweight lookup per call (skipped
-    // entirely when there's nothing to attach it to). Other users'
-    // activity_events rows already carry their author via the actor join
-    // (see _fetchHomeFeedEventRows / _authorFromActorJoin) — no extra
-    // round-trip needed for those.
-    let viewerAuthor = null
-    if (ownEventRows.length > 0) {
-      const { data: viewerProfile } = await supabase
-        .from('users')
-        .select('id, username, display_name, avatar_url')
-        .eq('id', viewerId)
-        .single()
-      viewerAuthor = {
-        id: viewerId,
-        username: viewerProfile?.username || null,
-        displayName: viewerProfile?.display_name || viewerProfile?.username || 'You',
-        avatarUrl: viewerProfile?.avatar_url || null,
-      }
-    }
-    const allEventIds = [...otherEventRows, ...ownEventRows].map((row) => row.id)
-    // One reactions batch for the page. prefetchReactionsBatch seeds the
-    // useReactions cache (and marks ids in-flight) so the cards mounting
-    // after this returns do not issue a second query for the same ids.
-    const [eventCommentCounts, eventReactions] = await Promise.all([
-      getCommentCountsForEvents(allEventIds),
-      prefetchReactionsBatch('activity', allEventIds),
-    ])
-
+    // Own rows take their author from the actor join already on the
+    // activity_events select (explicit FK hint). That is the same profile
+    // a separate users lookup used to fetch.
     const otherEventItems = otherEventRows.map((row) =>
       _homeFeedItemFromEventRow(row, {
         isOwn: false,
@@ -1918,7 +1986,7 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
     const ownEventItems = ownEventRows.map((row) =>
       _homeFeedItemFromEventRow(row, {
         isOwn: true,
-        viewerAuthor,
+        viewerId,
         commentCounts: eventCommentCounts,
         likeCount: activityHeartCount(eventReactions, row.id),
       })
@@ -1937,8 +2005,9 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       .filter((it) => it.isOwn)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
-    const items = await _attachFinishedRatings(
-      _interleaveOwnWithCap(ownItems, otherItems, limit)
+    const items = _applyFinishedRatingMap(
+      _interleaveOwnWithCap(ownItems, otherItems, limit),
+      ratingMap
     )
 
     // A source might still have more beyond this page even if this exact
@@ -1964,13 +2033,6 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       hasMore && tails.length
         ? tails.reduce((oldest, t) => (new Date(t) < new Date(oldest) ? t : oldest))
         : null
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `[⏱ home] getHomeFeed scope=${effectiveScope} TOTAL: ${Date.now() - _t0}ms ` +
-          `(${items.length} items, ${ownItems.length} own)`
-      )
-    }
 
     return { items, nextCursor, scope: effectiveScope, hasMore }
   } catch (err) {

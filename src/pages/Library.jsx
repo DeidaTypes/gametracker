@@ -17,8 +17,7 @@ import { getGameNavStub } from '../utils/gameNavStub'
 import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
 import {
-  getListsForUser,
-  getSaveCountsForLists,
+  loadUserListsWithSaveCounts,
   createList,
   addGameToList,
   LIST_PIN_CHANGED_EVENT,
@@ -89,11 +88,10 @@ function Library() {
 
   const [trackerLists, setTrackerLists] = useState(readTrackerLists)
   const listsKey = user?.id ? `library:lists:${user.id}` : null
-  const loadLists = useCallback(async () => {
-    const lists = await getListsForUser(user.id)
-    const counts = await getSaveCountsForLists(lists.map((l) => l.id))
-    return { lists, saveCounts: counts }
-  }, [user?.id])
+  const loadLists = useCallback(
+    () => loadUserListsWithSaveCounts(user.id),
+    [user?.id]
+  )
   const {
     data: listsData,
     error: listsError,

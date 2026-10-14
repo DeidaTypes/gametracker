@@ -203,6 +203,27 @@ export async function getLikeCountsForReviews(reviewIds) {
   return counts
 }
 
+/**
+ * Which of `reviewIds` the given user has liked. One query, no per-review
+ * round-trip. Soft-fails to an empty set. Callers that already know the
+ * viewer id pass it so this does not wait on auth.getUser().
+ */
+export async function getViewerLikedReviewIds(userId, reviewIds) {
+  const liked = new Set()
+  if (!userId || !reviewIds || reviewIds.length === 0) return liked
+  const { data, error } = await supabase
+    .from('review_likes')
+    .select('review_id')
+    .eq('user_id', userId)
+    .in('review_id', reviewIds)
+  if (error) {
+    console.error('[likes] getViewerLikedReviewIds failed:', error.message)
+    return liked
+  }
+  for (const row of data || []) liked.add(row.review_id)
+  return liked
+}
+
 /* ============================================================
    One-time localStorage → Supabase migration
    ============================================================ */

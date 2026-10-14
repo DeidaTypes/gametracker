@@ -155,6 +155,16 @@ export function useLikeState(reviewId) {
 export async function prefetchLikeStatesForReviews(reviewIds, { knownCounts } = {}) {
   if (!reviewIds || reviewIds.length === 0) return new Map()
 
+  // A page that already seeded every id (the Home feed batches counts and
+  // liked-by-me before it returns) must not issue another round-trip.
+  const ids = reviewIds.filter(Boolean)
+  if (ids.length > 0 && ids.every((id) => stateCache.has(id))) {
+    if (knownCounts) return knownCounts
+    const counts = new Map()
+    for (const id of ids) counts.set(id, stateCache.get(id)?.count || 0)
+    return counts
+  }
+
   // Marked on the synchronous path, before the first await, so cards
   // mounting later in the same tick defer to this batch.
   const pending = reviewIds.filter((id) => id && !stateCache.has(id))
