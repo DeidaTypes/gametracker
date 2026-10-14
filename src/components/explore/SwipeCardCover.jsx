@@ -112,6 +112,8 @@ export function SwipeCardCover({ game, isTop, reduced, coverRef }) {
         alt=""
         ref={isTop ? coverRef : undefined}
         className="swipe-card__img"
+        width={360}
+        height={480}
         draggable="false"
         loading={isTop ? 'eager' : 'lazy'}
         decoding="async"
@@ -137,6 +139,8 @@ export function SwipeCardCover({ game, isTop, reduced, coverRef }) {
           alt=""
           ref={isTop ? coverRef : undefined}
           className="swipe-card__img swipe-card__img--preview"
+          width={360}
+          height={480}
           draggable="false"
           loading={isTop ? 'eager' : 'lazy'}
           decoding="async"
@@ -149,8 +153,12 @@ export function SwipeCardCover({ game, isTop, reduced, coverRef }) {
         aria-hidden={!hdReady ? 'true' : undefined}
         ref={hdReady && isTop ? coverRef : undefined}
         className={hdClass}
+        width={360}
+        height={480}
         draggable="false"
         decoding="async"
+        loading={isTop ? 'eager' : 'lazy'}
+        fetchPriority={isTop ? 'high' : 'auto'}
       />
     </>
   )

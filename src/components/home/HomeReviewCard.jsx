@@ -297,6 +297,7 @@ function GameZone({
   listCovers,
   onGameClick,
   onListClick,
+  coverPriority,
 }) {
   const handleImgError = (e) => {
     e.target.src = COVER_FALLBACK
@@ -313,7 +314,17 @@ function GameZone({
       >
         <span className="home-review-card__cover home-review-card__cover--mosaic" aria-hidden="true">
           {covers.length > 0 ? (
-            covers.map((src, i) => <img key={i} src={getSizedImageUrl(src, 24)} alt="" loading="lazy" />)
+            covers.map((src, i) => (
+              <img
+                key={i}
+                src={getSizedImageUrl(src, 24)}
+                alt=""
+                width={24}
+                height={36}
+                decoding="async"
+                {...(i === 0 ? coverPriority : { loading: 'lazy' })}
+              />
+            ))
           ) : (
             <ListIcon size={18} />
           )}
@@ -351,9 +362,11 @@ function GameZone({
         src={img}
         className="home-review-card__cover"
         alt=""
-        loading="lazy"
+        width={48}
+        height={72}
         onClick={onGameClick}
         onError={handleImgError}
+        {...coverPriority}
       />
       <span className="home-review-card__game-meta">
         <button
@@ -459,7 +472,13 @@ function GameZone({
  *   listPreviewCovers?, reactionTargetId, durationSeconds? (all
  *   optional/omitted rather than fabricated).
  */
-export default function HomeReviewCard({ item, linkToThread = true, onCommentClick, likedBy }) {
+export default function HomeReviewCard({
+  item,
+  linkToThread = true,
+  onCommentClick,
+  likedBy,
+  coverPriority = { loading: 'lazy', decoding: 'async' },
+}) {
   const navigate = useNavigate()
   const isReviewType = REVIEW_TYPES.has(item.type)
   const likeState = useLikeState(isReviewType ? item.id : null)
@@ -606,6 +625,7 @@ export default function HomeReviewCard({ item, linkToThread = true, onCommentCli
         listCovers={listCovers}
         onGameClick={goToGame}
         onListClick={goToList}
+        coverPriority={coverPriority}
       />
 
       {mosaicCovers.length > 0 && (
@@ -616,7 +636,15 @@ export default function HomeReviewCard({ item, linkToThread = true, onCommentCli
           aria-label={`View ${listName || 'list'}`}
         >
           {mosaicCovers.map((src, i) => (
-            <img key={i} src={getSizedImageUrl(src, 44)} alt="" loading="lazy" />
+            <img
+              key={i}
+              src={getSizedImageUrl(src, 44)}
+              alt=""
+              width={44}
+              height={59}
+              loading="lazy"
+              decoding="async"
+            />
           ))}
         </Pressable>
       )}

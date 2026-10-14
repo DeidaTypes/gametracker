@@ -96,6 +96,7 @@ import SetGoalSheet from '../components/SetGoalSheet'
 import StarRatingDisplay from '../components/StarRatingDisplay'
 import Pressable from '../components/Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -111,6 +112,7 @@ import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
+import ReservedSlot from '../components/ReservedSlot'
 import BadgesRow from '../components/BadgesRow'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
@@ -2474,6 +2476,7 @@ function HomeTab({
 }) {
   const [tasteVisible, setTasteVisible] = useState(false)
   const [tasteLoading, setTasteLoading] = useState(true)
+  const { reduced: tasteReduced } = useMotionPreference()
   const handleTasteResolved = useCallback(({ visible, loading }) => {
     setTasteVisible(visible)
     setTasteLoading(loading)
@@ -2486,7 +2489,17 @@ function HomeTab({
 
   const ratedCount = (allReviews || []).filter((r) => Number(r.rating) > 0).length
   const ratingsVisible = ratedCount >= MIN_RATINGS_FOR_CHART
-  const showTasteRatingsCard = tasteLoading || tasteVisible || ratingsVisible
+  const wantsTasteCard = tasteLoading || tasteVisible || ratingsVisible
+  const [tasteCardMounted, setTasteCardMounted] = useState(true)
+  useEffect(() => {
+    if (wantsTasteCard) {
+      setTasteCardMounted(true)
+      return undefined
+    }
+    const ms = tasteReduced ? 0 : 150
+    const id = setTimeout(() => setTasteCardMounted(false), ms)
+    return () => clearTimeout(id)
+  }, [wantsTasteCard, tasteReduced])
   const showChallengeRow = isOwnProfile || goalProgress === null || hasGoal
 
   return (
@@ -2502,23 +2515,25 @@ function HomeTab({
         compactEmpty={isOwnProfile}
       />
 
-      {showTasteRatingsCard && (
-        <section className="profile-home__section profile-home__section--card profile-home__taste-rate">
-          <ProfileTasteDNA
-            userId={targetUserId}
-            isOwnProfile={isOwnProfile}
-            embedded
-            onResolved={handleTasteResolved}
-          />
-          {tasteVisible && ratingsVisible && (
-            <hr className="profile-home__hairline" aria-hidden="true" />
-          )}
-          <ProfileRatingsChart
-            reviews={allReviews}
-            onReviewTap={onReviewTap}
-            embedded
-          />
-        </section>
+      {(wantsTasteCard || tasteCardMounted) && (
+        <ReservedSlot open={wantsTasteCard}>
+          <section className="profile-home__section profile-home__section--card profile-home__taste-rate">
+            <ProfileTasteDNA
+              userId={targetUserId}
+              isOwnProfile={isOwnProfile}
+              embedded
+              onResolved={handleTasteResolved}
+            />
+            {tasteVisible && ratingsVisible && (
+              <hr className="profile-home__hairline" aria-hidden="true" />
+            )}
+            <ProfileRatingsChart
+              reviews={allReviews}
+              onReviewTap={onReviewTap}
+              embedded
+            />
+          </section>
+        </ReservedSlot>
       )}
 
       {(showChallengeRow || targetUserId) && (

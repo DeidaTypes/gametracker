@@ -14,7 +14,22 @@ import { hapticImpact } from '../utils/haptics'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import Avatar from './Avatar'
 import KeyboardAwareView from './KeyboardAwareView'
+import ReservedSlot from './ReservedSlot'
 import './ListComments.css'
+
+function CommentSkeleton() {
+  return (
+    <div className="lc-comment" aria-hidden="true">
+      <span className="skeleton lc-skel-avatar" />
+      <div className="lc-comment-content">
+        <div className="lc-comment-header">
+          <span className="lc-comment-author">&nbsp;</span>
+        </div>
+        <p className="lc-comment-body">&nbsp;</p>
+      </div>
+    </div>
+  )
+}
 
 function CommentRow({ comment, canDelete, onDelete }) {
   const [deleting, setDeleting] = useState(false)
@@ -208,21 +223,23 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
         Comments{shouldShowCount(comments.length) ? ` · ${comments.length}` : ''}
       </h3>
 
-      {!loading && comments.length > 0 && (
+      <ReservedSlot open={loading || comments.length > 0}>
         <div className="lc-list">
-          {comments.map((c) => (
-            <CommentRow
-              key={c.id}
-              comment={c}
-              canDelete={
-                !c.__optimistic &&
-                (c.user_id === currentUserId || isOwner)
-              }
-              onDelete={handleDelete}
-            />
-          ))}
+          {loading || comments.length === 0
+            ? Array.from({ length: 3 }, (_, i) => <CommentSkeleton key={i} />)
+            : comments.map((c) => (
+                <CommentRow
+                  key={c.id}
+                  comment={c}
+                  canDelete={
+                    !c.__optimistic &&
+                    (c.user_id === currentUserId || isOwner)
+                  }
+                  onDelete={handleDelete}
+                />
+              ))}
         </div>
-      )}
+      </ReservedSlot>
 
       {/* Sentinel: scrolled into view after posting and once the keyboard
           has settled on focus, so the thread stays visible above the

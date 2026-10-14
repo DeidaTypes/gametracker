@@ -43,6 +43,8 @@ export default function CleanGameTile({ game, tag = null }) {
           <img
             src={image}
             alt=""
+            width={120}
+            height={180}
             loading="lazy"
             decoding="async"
             onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}

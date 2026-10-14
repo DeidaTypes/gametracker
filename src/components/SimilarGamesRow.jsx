@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchSimilarGamesForRow } from '../services/igdb'
+import { getSizedImageUrl } from '../services/imageUtils'
 import { getGameNavStub } from '../utils/gameNavStub'
+import ReservedSlot from './ReservedSlot'
 import './SimilarGamesRow.css'
 
 const COVER_W = 120
@@ -19,12 +21,20 @@ function CoverSkeleton() {
   )
 }
 
-export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], similarGameIds = [], onSeeAll }) {
+export default function SimilarGamesRow({
+  gameId,
+  genreIds = [],
+  themeIds = [],
+  similarGameIds = [],
+  onSeeAll,
+  fetchEnabled = true,
+}) {
   const navigate = useNavigate()
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!fetchEnabled) return undefined
     let cancelled = false
 
     async function load() {
@@ -41,12 +51,13 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
 
     load()
     return () => { cancelled = true }
-  }, [gameId, genreIds, themeIds, similarGameIds])
+  }, [fetchEnabled, gameId, genreIds, themeIds, similarGameIds])
 
-  if (!loading && games.length === 0) return null
+  const waiting = !fetchEnabled || loading
+  const empty = fetchEnabled && !loading && games.length === 0
 
   return (
-    <>
+    <ReservedSlot open={!empty}>
       <div className="gd-divider" />
       <div className="gd-section">
         <div className="gd-section-header-row">
@@ -66,7 +77,7 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
           )}
         </div>
         <div className="sgr-scroll" role="list" aria-label="More like this">
-          {loading
+          {waiting || empty
             ? Array.from({ length: 8 }).map((_, i) => (
                 <CoverSkeleton key={i} />
               ))
@@ -78,12 +89,13 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
                     aria-label={game.title}
                   >
                     <img
-                      src={game.image}
+                      src={getSizedImageUrl(game.image, COVER_W) || game.image}
                       alt={game.title}
                       className="sgr-cover-img"
                       width={COVER_W}
                       height={COVER_H}
                       loading="lazy"
+                      decoding="async"
                     />
                   </button>
                   <p className="sgr-title">{game.title}</p>
@@ -102,6 +114,6 @@ export default function SimilarGamesRow({ gameId, genreIds = [], themeIds = [], 
           }
         </div>
       </div>
-    </>
+    </ReservedSlot>
   )
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCollections } from '../../hooks/useExploreData'
 import CollectionCard from './CollectionCard'
 import DiscoverSectionHeader from './DiscoverSectionHeader'
+import ReservedSlot from '../ReservedSlot'
 import './SectionScaffold.css'
 import './CollectionCard.css'
 
@@ -27,6 +28,37 @@ const COMMUNITY_LIMIT = 12
  * Hides entirely (no header, no placeholder) when neither pool has a
  * qualifying list.
  */
+function CollectionsPlaceholder() {
+  return (
+    <>
+      <div className="explore-section__pad">
+        <div className="discover-section-entry discover-section-entry--static">
+          <div className="discover-section-entry__left">
+            <h2 className="discover-section-title">&nbsp;</h2>
+            <p className="discover-section-entry__subtitle">&nbsp;</p>
+          </div>
+        </div>
+      </div>
+      <div className="explore-scroll-row">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div className="collection-card" key={i}>
+            <div className="collection-card__mosaic">
+              {Array.from({ length: 4 }, (_, cell) => (
+                <div key={cell} className="collection-card__cell collection-card__cell--empty" />
+              ))}
+            </div>
+            <div className="collection-card__body">
+              <p className="collection-card__title">&nbsp;</p>
+              <p className="collection-card__curator">&nbsp;</p>
+              <p className="collection-card__meta">&nbsp;</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function CollectionsShelf() {
   const navigate = useNavigate()
   const { data, loading } = useCollections()
@@ -42,10 +74,14 @@ export default function CollectionsShelf() {
   const totalKnown = curated.length < CURATED_LIMIT && community.length < COMMUNITY_LIMIT
   const totalCount = totalKnown ? browseTotal : null
 
-  if (loading || collections.length === 0) return null
+  const open = loading || collections.length > 0
 
   return (
-    <section className="explore-section" aria-label="Collections">
+    <ReservedSlot open={open} className="explore-section">
+      {loading || collections.length === 0 ? (
+        <CollectionsPlaceholder />
+      ) : (
+    <section aria-label="Collections">
       <div className="explore-section__pad">
         <DiscoverSectionHeader
           title="Collections"
@@ -63,5 +99,7 @@ export default function CollectionsShelf() {
         ))}
       </div>
     </section>
+      )}
+    </ReservedSlot>
   )
 }

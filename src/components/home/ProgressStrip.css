@@ -60,6 +60,19 @@
   color: var(--accent-journal);
 }
 
+.ps-streak__skel-flame {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.ps-streak__skel-count {
+  width: 28px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+}
+
 .ps-streak__count {
   flex-shrink: 0;
   font-family: var(--font-body);

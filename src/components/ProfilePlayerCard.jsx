@@ -157,14 +157,9 @@ export default function ProfilePlayerCard({
                   : `${followersCount} ${followersCount === 1 ? 'follower' : 'followers'}, view list`
               }
             >
-              {followLoading ? (
-                <Skeleton variant="text" width={12} height={13} className="ppc__follow-skeleton" />
-              ) : (
-                <>
-                  <span className="ppc__follow-count">{followersCount}</span>{' '}
-                  {followersCount === 1 ? 'follower' : 'followers'}
-                </>
-              )}
+              <span className="ppc__follow-count">{followLoading ? '\u00a0' : followersCount}</span>
+              {' '}
+              {followLoading || followersCount !== 1 ? 'followers' : 'follower'}
             </button>
             <span className="ppc__follow-dot" aria-hidden="true">·</span>
             <button
@@ -177,14 +172,9 @@ export default function ProfilePlayerCard({
                   : `${followingCount} ${followingCount === 1 ? 'following' : 'following'}, view list`
               }
             >
-              {followLoading ? (
-                <Skeleton variant="text" width={12} height={13} className="ppc__follow-skeleton" />
-              ) : (
-                <>
-                  <span className="ppc__follow-count">{followingCount}</span>{' '}
-                  following
-                </>
-              )}
+              <span className="ppc__follow-count">{followLoading ? '\u00a0' : followingCount}</span>
+              {' '}
+              following
             </button>
           </p>
 

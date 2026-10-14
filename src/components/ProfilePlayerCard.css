@@ -190,7 +190,11 @@
 }
 
 .ppc__follow-count {
+  display: inline-block;
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-semibold);
+  text-align: right;
   color: var(--text-primary);
 }
 

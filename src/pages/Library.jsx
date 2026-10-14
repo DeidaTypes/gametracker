@@ -897,7 +897,7 @@ function Library() {
                   hasMore={hasMore}
                   onLoadMore={() => setVisibleCount((c) => c + PAGE_SIZE)}
                   ariaLabel="Your games"
-                  renderCard={(g) => {
+                  renderCard={(g, index) => {
                     const isDragged = dragGameId === g.id
                     const isRemoving = removingGameId === g.id
                     const isRestoring = restoringGameId === g.id
@@ -922,6 +922,7 @@ function Library() {
                         <LibraryGameRow
                           key={g.id}
                           game={g}
+                          priorityIndex={index}
                           isDragged={isDragged}
                           isRemoving={isRemoving}
                           isRestoring={isRestoring}
@@ -934,6 +935,7 @@ function Library() {
                       <LibraryGameCard
                         key={g.id}
                         game={g}
+                        priorityIndex={index}
                         cardClassName={`${
                           isDragged ? 'lib-gamecard--dragged' : ''
                         }${isRemoving ? ' lib-gamecard--removing' : ''}${

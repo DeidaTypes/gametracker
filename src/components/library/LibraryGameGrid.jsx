@@ -3,6 +3,7 @@ import Pressable from '../Pressable'
 import SharedCover from '../SharedCover'
 import StatusChip from '../StatusChip'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { GRID_COVER_DISPLAY_PX, coverLoadingProps, getSizedImageUrl } from '../../services/imageUtils'
 
 // Structural note (see ListDetail.jsx's .game-cover / .gg-cover-tap):
 // the pointer-handled element (.lib-cov) must be a plain div and must be
@@ -25,8 +26,10 @@ export function LibraryGameCard({
   onCoverPointerMove,
   onCoverPointerUp,
   onCoverPointerCancel,
+  priorityIndex = 99,
 }) {
   const ariaLabel = game.title ? `Open ${game.title}` : 'Open game'
+  const imageSrc = getSizedImageUrl(game.image, GRID_COVER_DISPLAY_PX) || game.image || COVER_FALLBACK
   return (
     <div
       ref={cardRef}
@@ -60,14 +63,16 @@ export function LibraryGameCard({
           }}
           aria-label={ariaLabel}
         >
-          <SharedCover gameId={game.id} imageSrc={game.image || COVER_FALLBACK}>
+          <SharedCover gameId={game.id} imageSrc={imageSrc}>
             <img
-              src={game.image || COVER_FALLBACK}
+              src={imageSrc}
               alt=""
               className="lib-cov-img"
-              loading="lazy"
+              width={GRID_COVER_DISPLAY_PX}
+              height={138}
               draggable={false}
               onError={(e) => { e.target.src = COVER_FALLBACK }}
+              {...coverLoadingProps(priorityIndex, 9)}
             />
           </SharedCover>
         </Pressable>
@@ -98,8 +103,10 @@ export function LibraryGameRow({
   onCoverPointerMove,
   onCoverPointerUp,
   onCoverPointerCancel,
+  priorityIndex = 99,
 }) {
   const ariaLabel = game.title ? `Open ${game.title}` : 'Open game'
+  const imageSrc = getSizedImageUrl(game.image, 48) || game.image || COVER_FALLBACK
   const rowClass = [
     'lib-gamerow',
     isDragged && 'lib-gamerow--dragged',
@@ -143,14 +150,16 @@ export function LibraryGameRow({
           }}
           aria-label={ariaLabel}
         >
-          <SharedCover gameId={game.id} imageSrc={game.image || COVER_FALLBACK}>
+          <SharedCover gameId={game.id} imageSrc={imageSrc}>
             <img
-              src={game.image || COVER_FALLBACK}
+              src={imageSrc}
               alt=""
               className="lib-gamerow-cover-img"
-              loading="lazy"
+              width={48}
+              height={72}
               draggable={false}
               onError={(e) => { e.target.src = COVER_FALLBACK }}
+              {...coverLoadingProps(priorityIndex, 9)}
             />
           </SharedCover>
         </Pressable>
@@ -197,18 +206,20 @@ export default function LibraryGameGrid({
         aria-label={ariaLabel}
       >
         {renderCard
-          ? games.map(renderCard)
-          : games.map((g) =>
+          ? games.map((g, index) => renderCard(g, index))
+          : games.map((g, index) =>
               isList ? (
                 <LibraryGameRow
                   key={g.id}
                   game={g}
+                  priorityIndex={index}
                   onClick={() => onGameClick?.(g)}
                 />
               ) : (
                 <LibraryGameCard
                   key={g.id}
                   game={g}
+                  priorityIndex={index}
                   onClick={() => onGameClick?.(g)}
                 />
               )

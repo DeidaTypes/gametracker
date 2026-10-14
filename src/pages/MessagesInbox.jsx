@@ -216,9 +216,17 @@ function MessagesInbox() {
       <div className="dm-inbox__body">
         {loading ? (
           <div className="dm-inbox__loading" aria-hidden="true">
-            <span className="skeleton dm-inbox__loading-row" />
-            <span className="skeleton dm-inbox__loading-row" />
-            <span className="skeleton dm-inbox__loading-row" />
+            {Array.from({ length: 3 }, (_, i) => (
+              <div className="dm-inbox-row" key={i}>
+                <span className="skeleton dm-inbox-row__skel-avatar" />
+                <div className="dm-inbox-row__main">
+                  <div className="dm-inbox-row__line1">
+                    <span className="dm-inbox-row__name">&nbsp;</span>
+                  </div>
+                  <p className="dm-inbox-row__preview">&nbsp;</p>
+                </div>
+              </div>
+            ))}
           </div>
         ) : conversations.length === 0 ? (
           <div className="dm-inbox__empty">

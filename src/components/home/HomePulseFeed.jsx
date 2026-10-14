@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, use
 import { UserPlus, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import useHomeFeed from '../../hooks/useHomeFeed'
+import { coverLoadingProps } from '../../services/imageUtils'
 import HomeReviewCard from './HomeReviewCard'
 import FeedRow, { FeedGroupRow } from './FeedRow'
 import EmptyState from '../EmptyState'
@@ -56,20 +57,31 @@ function computeSubline({ items, scope, lastSeenAt }) {
 }
 
 /**
- * FeedSkeleton — three poster-shaped FULL-card skeletons (task 6): a
- * 2:3-ish cover block + two text bars, matching the FULL card's own
- * cover + title + body shape, instead of a generic avatar-and-lines
- * placeholder that doesn't resemble what's about to render.
+ * FeedSkeleton — three FULL cards at HomeReviewCard's own metrics:
+ * shell padding, 48px poster, title + second line, byline, action row.
+ * Same classes as the real card so the feed doesn't grow when items land.
  */
 function FeedSkeleton() {
   return (
     <div className="pulse-feed__skeleton" aria-hidden="true">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="pulse-feed__skeleton-card pulse-feed__skeleton-card--poster">
-          <div className="skeleton pulse-feed__skeleton-cover" />
-          <div className="pulse-feed__skeleton-lines">
-            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '65%' }} />
-            <div className="skeleton pulse-feed__skeleton-line" style={{ width: '95%' }} />
+        <div
+          key={i}
+          className="review-card-shell home-review-card pulse-feed__skeleton-card pulse-feed__item pulse-feed__item--full"
+        >
+          <div className="home-review-card__game">
+            <div className="skeleton pulse-feed__skeleton-cover" />
+            <div className="home-review-card__game-meta">
+              <span className="skeleton pulse-feed__skeleton-line" />
+              <span className="skeleton pulse-feed__skeleton-line pulse-feed__skeleton-line--short" />
+            </div>
+          </div>
+          <div className="home-review-card__footer">
+            <span className="skeleton pulse-feed__skeleton-byline" />
+          </div>
+          <div className="home-review-card__actions">
+            <span className="skeleton pulse-feed__skeleton-pill" />
+            <span className="skeleton pulse-feed__skeleton-pill" />
           </div>
         </div>
       ))}
@@ -207,24 +219,25 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
         ) : (
           <>
             <div className="pulse-feed__list">
-              {displayList.map((entry) => {
+              {displayList.map((entry, index) => {
+                const coverPriority = coverLoadingProps(index, 3)
                 if (entry.kind === 'full') {
                   return (
                     <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--full">
-                      <HomeReviewCard item={entry.item} />
+                      <HomeReviewCard item={entry.item} coverPriority={coverPriority} />
                     </WindowedListItem>
                   )
                 }
                 if (entry.kind === 'group') {
                   return (
                     <WindowedListItem key={`group-${entry.items[0].id}`} className="pulse-feed__item pulse-feed__item--compact">
-                      <FeedGroupRow items={entry.items} />
+                      <FeedGroupRow items={entry.items} coverPriority={coverPriority} />
                     </WindowedListItem>
                   )
                 }
                 return (
                   <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--compact">
-                    <FeedRow item={entry.item} />
+                    <FeedRow item={entry.item} coverPriority={coverPriority} />
                   </WindowedListItem>
                 )
               })}

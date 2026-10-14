@@ -1033,21 +1033,22 @@ html[data-app-theme="cream"] .lib-gamecard-title {
 
 .lib-stack-skeleton {
   width: 100%;
-  padding-top: 88%;
+  height: auto;
+  aspect-ratio: 1 / 0.88;
 }
 
 .lib-sk-name {
   flex: 1 1 auto;
   width: auto;
   max-width: 70%;
-  height: 13px;
+  height: calc(13px * 1.2);
   border-radius: var(--radius-sm);
 }
 
 .lib-sk-meta {
   flex: 0 0 auto;
   width: 48px;
-  height: 11px;
+  height: calc(11.5px * 1.2);
   border-radius: var(--radius-sm);
 }
 

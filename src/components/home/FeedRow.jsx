@@ -100,32 +100,34 @@ function handleImgError(e) {
   e.target.src = COVER_FALLBACK
 }
 
-function RowCover({ item }) {
+function RowCover({ item, coverPriority }) {
   if (!item.game) return null
   return (
     <img
       className="feed-row__cover"
       src={coverSrc(item)}
       alt=""
-      loading="lazy"
-      decoding="async"
+      width={26}
+      height={39}
       onError={handleImgError}
+      {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
     />
   )
 }
 
 /** Two-cover stack for grouped summary rows — oldest behind, next in front. */
-function CoverStack({ items }) {
+function CoverStack({ items, coverPriority }) {
   const withGame = items.filter((it) => it.game)
   if (withGame.length === 0) return null
 
   const back = withGame[withGame.length - 1]
   const front = withGame.length > 1 ? withGame[withGame.length - 2] : back
+  const lazy = { loading: 'lazy', decoding: 'async' }
 
   return (
     <span className="feed-row__cover-stack" aria-hidden="true">
-      <img className="feed-row__cover-stack-img feed-row__cover-stack-img--back" src={coverSrc(back)} alt="" loading="lazy" decoding="async" onError={handleImgError} />
-      <img className="feed-row__cover-stack-img feed-row__cover-stack-img--front" src={coverSrc(front)} alt="" loading="lazy" decoding="async" onError={handleImgError} />
+      <img className="feed-row__cover-stack-img feed-row__cover-stack-img--back" src={coverSrc(back)} alt="" width={26} height={39} onError={handleImgError} {...lazy} />
+      <img className="feed-row__cover-stack-img feed-row__cover-stack-img--front" src={coverSrc(front)} alt="" width={26} height={39} onError={handleImgError} {...(coverPriority || lazy)} />
     </span>
   )
 }
@@ -180,7 +182,7 @@ function RowTrailing({ children }) {
  *   3. Overlay <button> covering everything else → comment thread
  *      (listed rows keep navigating to `/list/:id`)
  */
-export default function FeedRow({ item, indented = false }) {
+export default function FeedRow({ item, indented = false, coverPriority }) {
   const navigate = useNavigate()
   const { reduced } = useMotionPreference()
   const { reactions, toggle } = useReactions('activity', item.reactionTargetId)
@@ -276,7 +278,7 @@ export default function FeedRow({ item, indented = false }) {
           commentCount={item.commentCount}
         />
 
-        <RowCover item={item} />
+        <RowCover item={item} coverPriority={coverPriority} />
       </div>
 
       <Pressable
@@ -316,7 +318,7 @@ export default function FeedRow({ item, indented = false }) {
  * sharing actor + verb within 24h. Same anatomy as FeedRow (avatar →
  * text → cover stack → chevron); hearts live on expanded child rows.
  */
-export function FeedGroupRow({ items }) {
+export function FeedGroupRow({ items, coverPriority }) {
   const [open, setOpen] = useState(false)
   const { reduced } = useMotionPreference()
 
@@ -367,7 +369,7 @@ export function FeedGroupRow({ items }) {
           subline={subline}
         />
 
-        <CoverStack items={items} />
+        <CoverStack items={items} coverPriority={coverPriority} />
 
         <RowTrailing>
           <HiChevronDown

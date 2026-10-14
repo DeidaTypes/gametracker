@@ -76,9 +76,11 @@
   gap: 8px;
 }
 
-.dm-inbox__loading-row {
-  height: 64px;
-  border-radius: var(--radius-md);
+.dm-inbox-row__skel-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
 }
 
 .dm-inbox__empty {

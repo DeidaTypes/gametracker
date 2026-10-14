@@ -77,7 +77,7 @@
 
 .sgr-title-skeleton {
   width: 70%;
-  height: 13px;
-  margin-top: 8px;
+  height: calc(var(--font-size-caption) * var(--line-height-caption));
+  margin-top: var(--space-8);
   border-radius: var(--radius-xs, 4px);
 }

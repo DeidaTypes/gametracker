@@ -3,6 +3,7 @@ import { getTasteVector } from '../services/tasteEngineService'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { genreShortLabel } from '../utils/genreColors'
 import Skeleton from './Skeleton'
+import ReservedSlot from './ReservedSlot'
 import './ProfileTasteDNA.css'
 
 const MIN_SIGNAL_FOR_TASTE = 3
@@ -63,25 +64,29 @@ export default function ProfileTasteDNA({
     return undefined
   }, [loaded, hasEnoughSignal, onResolved])
 
-  if (!loaded) {
+  const skeleton = (
+    <section
+      className={`ptd${embedded ? ' ptd--embedded' : ''}`}
+      aria-label={title}
+      aria-busy="true"
+    >
+      <h3 className="ptd__title">{title}</h3>
+      <Skeleton height={12} className="ptd__bar-skeleton" />
+      <div className="ptd__legend">
+        <Skeleton variant="text" width={92} height={14} />
+        <Skeleton variant="text" width={72} height={14} />
+        <Skeleton variant="text" width={64} height={14} />
+      </div>
+    </section>
+  )
+
+  if (!loaded || !hasEnoughSignal) {
     return (
-      <section
-        className={`ptd${embedded ? ' ptd--embedded' : ''}`}
-        aria-label={title}
-        aria-busy="true"
-      >
-        <h3 className="ptd__title">{title}</h3>
-        <Skeleton height={12} className="ptd__bar-skeleton" />
-        <div className="ptd__legend">
-          <Skeleton variant="text" width={92} height={14} />
-          <Skeleton variant="text" width={72} height={14} />
-          <Skeleton variant="text" width={64} height={14} />
-        </div>
-      </section>
+      <ReservedSlot open={!loaded ? true : hasEnoughSignal}>
+        {skeleton}
+      </ReservedSlot>
     )
   }
-
-  if (!hasEnoughSignal) return null
 
   const topGenres = Object.entries(genreWeights)
     .sort((a, b) => b[1] - a[1])

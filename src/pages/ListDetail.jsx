@@ -24,7 +24,7 @@ import {
 import LibraryGameGrid, { LibraryGameRow } from '../components/library/LibraryGameGrid'
 import SharedCover from '../components/SharedCover'
 import Pressable from '../components/Pressable'
-import { getBestImageUrl } from '../services/imageUtils'
+import { GRID_COVER_DISPLAY_PX, coverLoadingProps, getBestImageUrl } from '../services/imageUtils'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import AddGamesModal from '../components/AddGamesModal'
@@ -1305,12 +1305,13 @@ function ListDetail() {
                 view="list"
                 dragging={dragGameId != null}
                 ariaLabel="List games"
-                renderCard={(game) => {
-                  const imageUrl = getBestImageUrl(game, 800) || game.image
+                renderCard={(game, index) => {
+                  const imageUrl = getBestImageUrl(game, 48) || game.image
                   return (
                     <LibraryGameRow
                       key={game.id}
                       game={{ ...game, image: imageUrl }}
+                      priorityIndex={index}
                       onClick={() => {
                         if (suppressClickRef.current) {
                           suppressClickRef.current = false
@@ -1333,7 +1334,7 @@ function ListDetail() {
                 ref={gridRef}
               >
                 {visibleGames.map((game, originalIndex) => {
-                  const imageUrl = getBestImageUrl(game, 800) || game.image
+                  const imageUrl = getBestImageUrl(game, GRID_COVER_DISPLAY_PX) || game.image
                   const isDragged = dragGameId === game.id
                   const isRemoving = removingGameId === game.id
                   const isDragActive = dragGameId != null
@@ -1397,8 +1398,10 @@ function ListDetail() {
                             <img
                               src={imageUrl}
                               alt={game.title}
-                              loading="lazy"
+                              width={GRID_COVER_DISPLAY_PX}
+                              height={138}
                               draggable={false}
+                              {...coverLoadingProps(originalIndex, 9)}
                               onError={(e) => {
                                 if (e.target.src !== game.image && game.image) {
                                   e.target.src = game.image

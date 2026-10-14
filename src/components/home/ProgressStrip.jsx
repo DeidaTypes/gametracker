@@ -62,12 +62,31 @@ function ChallengeRing({ current, target }) {
  * Left cell: streak count, tier, rolling week dots. Right cell: challenge
  * ring (hidden when no goal is set).
  */
+function ProgressStripPlaceholder() {
+  return (
+    <div className="ps ps--single" aria-hidden="true">
+      <div className="ps-streak">
+        <div className="ps-streak__head">
+          <span className="skeleton ps-streak__skel-flame" />
+          <span className="skeleton ps-streak__skel-count" />
+        </div>
+        <div className="ps-streak__pips">
+          {Array.from({ length: 7 }, (_, i) => (
+            <span key={i} className="ps-streak__pip" />
+          ))}
+        </div>
+        <p className="ps-streak__line2 text-caption">&nbsp;</p>
+      </div>
+    </div>
+  )
+}
+
 function ProgressStrip() {
   const { user, profile } = useAuth()
   const { loading: streakLoading, view, goalProgress, rivalryData } = useStreakMilestoneState()
   const [detailOpen, setDetailOpen] = useState(false)
 
-  if (streakLoading || !view) return null
+  if (streakLoading || !view) return <ProgressStripPlaceholder />
 
   const {
     currentStreak,

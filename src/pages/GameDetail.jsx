@@ -15,6 +15,8 @@ import SharedCover, { getRecentCoverImage } from '../components/SharedCover'
 import GameDetailStatStrip from '../components/GameDetailStatStrip'
 import RatingDistributionSheet from '../components/RatingDistributionSheet'
 import SimilarGamesRow from '../components/SimilarGamesRow'
+import ReservedSlot from '../components/ReservedSlot'
+import { getSizedImageUrl } from '../services/imageUtils'
 import { getReviewsForGame, getRatingDistributionForGame } from '../services/reviewService'
 import { getCirclePulseForGame, getFollowedRatingsForGame } from '../services/communityService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
@@ -291,6 +293,9 @@ function GameDetail() {
   const reviewScrollAttempted = useRef(false)
 
   const [ttb, setTtb] = useState(null)
+  // Time-to-beat arrives on its own request. Until that settles, the
+  // glance rows keep their placeholder height instead of popping in.
+  const [ttbPending, setTtbPending] = useState(true)
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
@@ -427,9 +432,14 @@ function GameDetail() {
   // getTotalHoursForGame — do not re-derive hours here.
   useEffect(() => {
     let cancelled = false
+    setTtbPending(true)
     getTimeToBeat(gameId)
       .catch(() => null)
-      .then((b) => { if (!cancelled) setTtb(b) })
+      .then((b) => {
+        if (cancelled) return
+        setTtb(b)
+        setTtbPending(false)
+      })
     refreshSessions()
     return () => { cancelled = true }
   }, [gameId, refreshSessions])
@@ -589,6 +599,12 @@ function GameDetail() {
     game.publishers.length > 0 ||
     game.platforms.length > 0 ||
     !!game.year
+  const hasTtb = !!(
+    ttb &&
+    (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null)
+  )
+  const hasSubtitle = !!(game.year || game.developers.length > 0)
+  const hasPublisher = game.publishers.length > 0
 
   const effectiveColor = getEffectiveColor(dominantColor)
 
@@ -666,8 +682,13 @@ function GameDetail() {
           <div className="gd-hero-cover">
             <SharedCover gameId={gameId} imageSrc={game.image}>
               <img
-                src={game.image || fallbackCover}
+                src={getSizedImageUrl(game.image, 96) || game.image || fallbackCover}
                 alt={game.title || 'Game cover'}
+                width={96}
+                height={144}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 onError={(e) => { e.target.src = fallbackCover }}
               />
             </SharedCover>
@@ -684,14 +705,18 @@ function GameDetail() {
           ) : (
             <span className="gd-title-skel skeleton" aria-hidden="true" />
           )}
-          {(game.year || game.developers.length > 0) && (
+          <ReservedSlot open={loading || hasSubtitle}>
             <p className="gd-subtitle">
-              {[game.year, game.developers.join(', ')].filter(Boolean).join(' · ')}
+              {hasSubtitle
+                ? [game.year, game.developers.join(', ')].filter(Boolean).join(' · ')
+                : '\u00a0'}
             </p>
-          )}
-          {game.publishers.length > 0 && (
-            <p className="gd-publisher">{game.publishers.join(', ')}</p>
-          )}
+          </ReservedSlot>
+          <ReservedSlot open={loading || hasPublisher}>
+            <p className="gd-publisher">
+              {hasPublisher ? game.publishers.join(', ') : '\u00a0'}
+            </p>
+          </ReservedSlot>
         </div>
       </div>
 
@@ -765,81 +790,101 @@ function GameDetail() {
            Shows up when any of the three sub-rows has real IGDB data.
            Each sub-row is individually hidden when its data is absent —
            nothing is guessed or fabricated. ── */}
-      {(ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) || vibeTags.length > 0) && (
+      <ReservedSlot open={loading || ttbPending || hasTtb || vibeTags.length > 0}>
         <div className="gd-ttb-block">
           <p className="gd-ttb-heading">At a glance</p>
 
-          {/* Length to beat — from IGDB game_time_to_beats */}
-          {ttb && (ttb.hastilySeconds != null || ttb.normallySeconds != null || ttb.completelySeconds != null) && (
-            <div className="gd-ttb-row">
-              {ttb.hastilySeconds != null && (
-                <span className="gd-ttb-item">
-                  Rushed{' '}
-                  <span className="gd-ttb-val">~{Math.round(ttb.hastilySeconds / 3600)}h</span>
-                </span>
-              )}
-              {ttb.normallySeconds != null && (
-                <span className="gd-ttb-item gd-ttb-item--main">
-                  Main{' '}
-                  <span className="gd-ttb-val">~{Math.round(ttb.normallySeconds / 3600)}h</span>
-                </span>
-              )}
-              {ttb.completelySeconds != null && (
-                <span className="gd-ttb-item">
-                  Completionist{' '}
-                  <span className="gd-ttb-val">~{Math.round(ttb.completelySeconds / 3600)}h</span>
-                </span>
-              )}
-            </div>
-          )}
+          {/* Length to beat — from IGDB game_time_to_beats. The row keeps
+              a one-line placeholder until that request settles. */}
+          <ReservedSlot open={loading || ttbPending || hasTtb}>
+            {hasTtb ? (
+              <div className="gd-ttb-row">
+                {ttb.hastilySeconds != null && (
+                  <span className="gd-ttb-item">
+                    Rushed{' '}
+                    <span className="gd-ttb-val">~{Math.round(ttb.hastilySeconds / 3600)}h</span>
+                  </span>
+                )}
+                {ttb.normallySeconds != null && (
+                  <span className="gd-ttb-item gd-ttb-item--main">
+                    Main{' '}
+                    <span className="gd-ttb-val">~{Math.round(ttb.normallySeconds / 3600)}h</span>
+                  </span>
+                )}
+                {ttb.completelySeconds != null && (
+                  <span className="gd-ttb-item">
+                    Completionist{' '}
+                    <span className="gd-ttb-val">~{Math.round(ttb.completelySeconds / 3600)}h</span>
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="gd-ttb-row" aria-hidden="true">
+                <span className="gd-ttb-item">&nbsp;</span>
+              </div>
+            )}
+          </ReservedSlot>
 
           {/* Vibe tags — IGDB themes (atmospheric), deduped, max 6. Genres are
                excluded here; they render as their own chips in the About
                section below. */}
-          {vibeTags.length > 0 && (
-            <div className="gd-vibe-row" aria-label="Vibe tags">
-              {vibeTags.map(tag => (
-                <span key={tag} className="gd-vibe-pill">{tag}</span>
-              ))}
-            </div>
-          )}
+          <ReservedSlot open={loading || vibeTags.length > 0}>
+            {vibeTags.length > 0 ? (
+              <div className="gd-vibe-row" aria-label="Vibe tags">
+                {vibeTags.map(tag => (
+                  <span key={tag} className="gd-vibe-pill">{tag}</span>
+                ))}
+              </div>
+            ) : (
+              <div className="gd-vibe-row" aria-hidden="true">
+                <span className="gd-vibe-pill">&nbsp;</span>
+              </div>
+            )}
+          </ReservedSlot>
 
           {/* Weekend read — derived from main-story hours; omitted when missing */}
-          {weekendBadge && (
-            <div className={`gd-weekend-read gd-weekend-read--${weekendBadge.variant}`}>
-              <svg
-                className="gd-weekend-icon"
-                width="12" height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {weekendBadge.variant === 'yes' && (
-                  <polyline points="20 6 9 17 4 12" />
-                )}
-                {weekendBadge.variant === 'maybe' && (
-                  <>
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <polyline points="19 12 12 19 5 12" />
-                  </>
-                )}
-                {weekendBadge.variant === 'long' && (
-                  <>
-                    <line x1="12" y1="19" x2="12" y2="5" />
-                    <polyline points="5 12 12 5 19 12" />
-                  </>
-                )}
-              </svg>
-              <span>Good for a weekend? </span>
-              <strong>{weekendBadge.text}</strong>
-            </div>
-          )}
+          <ReservedSlot open={loading || ttbPending || !!weekendBadge}>
+            {weekendBadge ? (
+              <div className={`gd-weekend-read gd-weekend-read--${weekendBadge.variant}`}>
+                <svg
+                  className="gd-weekend-icon"
+                  width="12" height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  {weekendBadge.variant === 'yes' && (
+                    <polyline points="20 6 9 17 4 12" />
+                  )}
+                  {weekendBadge.variant === 'maybe' && (
+                    <>
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <polyline points="19 12 12 19 5 12" />
+                    </>
+                  )}
+                  {weekendBadge.variant === 'long' && (
+                    <>
+                      <line x1="12" y1="19" x2="12" y2="5" />
+                      <polyline points="5 12 12 5 19 12" />
+                    </>
+                  )}
+                </svg>
+                <span>Good for a weekend? </span>
+                <strong>{weekendBadge.text}</strong>
+              </div>
+            ) : (
+              <div className="gd-weekend-read gd-weekend-read--long" aria-hidden="true">
+                <svg className="gd-weekend-icon" width="12" height="12" aria-hidden="true" />
+                <span>&nbsp;</span>
+              </div>
+            )}
+          </ReservedSlot>
         </div>
-      )}
+      </ReservedSlot>
 
       {/* ── Community Pulse — circle-scoped signals ──
            Three sub-rows rendered only when they have real data.
@@ -929,36 +974,41 @@ function GameDetail() {
              once loading finishes and there's still nothing — that used to
              leave an "About" label over a blank fade and a "Read more"
              button with nothing to expand. */}
-        {loading ? (
+        <ReservedSlot open={loading || hasDescription}>
           <div className="gd-section">
             <p className="gd-section-label">About</p>
-            <div className="gd-sk-desc skeleton" />
-            <div className="gd-sk-desc gd-sk-desc--short skeleton" />
+            {loading || !hasDescription ? (
+              <>
+                <div className="gd-description-wrapper" aria-hidden="true">
+                  <div className="gd-sk-desc-fill skeleton" />
+                </div>
+                <span className="gd-read-more-btn" aria-hidden="true">&nbsp;</span>
+              </>
+            ) : (
+              <>
+                <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
+                  <p className="gd-description">{game.description}</p>
+                  {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
+                </div>
+                <button
+                  className="gd-read-more-btn"
+                  onClick={() => setDescExpanded(v => !v)}
+                >
+                  {descExpanded ? 'Show less' : 'Read more'}
+                </button>
+              </>
+            )}
           </div>
-        ) : hasDescription && (
-          <div className="gd-section">
-            <p className="gd-section-label">About</p>
-            <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
-              <p className="gd-description">{game.description}</p>
-              {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
-            </div>
-            <button
-              className="gd-read-more-btn"
-              onClick={() => setDescExpanded(v => !v)}
-            >
-              {descExpanded ? 'Show less' : 'Read more'}
-            </button>
-          </div>
-        )}
+        </ReservedSlot>
 
         {/* Genres — single canonical chip set for the whole page. The "At a
              glance" vibe tags above (IGDB themes) are a separate, deliberately
              distinct concept and never duplicate these. */}
-        {game.genres.length > 0 && (
+        <ReservedSlot open={loading || game.genres.length > 0}>
           <div className="gd-section">
             <p className="gd-section-label">Genres</p>
             <div className="gd-genre-row">
-              {game.genres.map((genre) => (
+              {game.genres.length > 0 ? game.genres.map((genre) => (
                 <button
                   key={genre}
                   className="gd-genre-pill"
@@ -966,88 +1016,83 @@ function GameDetail() {
                 >
                   {genre}
                 </button>
-              ))}
+              )) : (
+                <span className="gd-genre-pill" aria-hidden="true">&nbsp;</span>
+              )}
             </div>
           </div>
-        )}
+        </ReservedSlot>
 
         {/* Details — every row is conditional, so the label and its grid
              follow suit rather than sitting over an empty grid for the
              sparser IGDB records. The divider goes with them. */}
-        {hasDetails && (
+        <ReservedSlot open={loading || hasDetails}>
           <>
         <div className="gd-divider" />
 
         <div className="gd-section">
           <p className="gd-section-label">Details</p>
           <div className="gd-details-grid">
-            {game.developers.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Developer</span>
-                <span className="gd-detail-val">{game.developers.join(', ')}</span>
+            {(loading ? [
+              ['Developer', game.developers.join(', ') || '\u00a0'],
+              ['Publisher', game.publishers.join(', ') || '\u00a0'],
+              ['Platforms', game.platforms.join(', ') || '\u00a0'],
+              ['Released', game.year ? String(game.year) : '\u00a0'],
+            ] : [
+              game.developers.length > 0 && ['Developer', game.developers.join(', ')],
+              game.publishers.length > 0 && ['Publisher', game.publishers.join(', ')],
+              game.platforms.length > 0 && ['Platforms', game.platforms.join(', ')],
+              game.year && ['Released', String(game.year)],
+            ].filter(Boolean)).map(([key, val]) => (
+              <div className="gd-detail-item" key={key}>
+                <span className="gd-detail-key">{key}</span>
+                <span className="gd-detail-val">{val}</span>
               </div>
-            )}
-            {game.publishers.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Publisher</span>
-                <span className="gd-detail-val">{game.publishers.join(', ')}</span>
-              </div>
-            )}
-            {game.platforms.length > 0 && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Platforms</span>
-                <span className="gd-detail-val">{game.platforms.join(', ')}</span>
-              </div>
-            )}
-            {game.year && (
-              <div className="gd-detail-item">
-                <span className="gd-detail-key">Released</span>
-                <span className="gd-detail-val">{game.year}</span>
-              </div>
-            )}
+            ))}
           </div>
         </div>
           </>
-        )}
+        </ReservedSlot>
 
         {/* Screenshots — scroll-snap + lightbox. Another field a stub
              genuinely can't provide, so it skeletons (a row of blank
              screenshot-sized tiles) instead of hiding while getGameById is
              still in flight; collapses away entirely if the loaded game
              turns out to have none. */}
-        {loading ? (
-          <div className="gd-section">
-            <p className="gd-section-label">Screenshots</p>
-            <div className="gd-screenshots-scroll" aria-hidden="true">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="gd-screenshot skeleton" />
-              ))}
-            </div>
-          </div>
-        ) : game.screenshots && game.screenshots.length > 0 && (
+        <ReservedSlot open={loading || (game.screenshots && game.screenshots.length > 0)}>
           <>
             <div className="gd-divider" />
             <div className="gd-section">
               <p className="gd-section-label">Screenshots</p>
               <div className="gd-screenshots-scroll">
-                {game.screenshots.slice(0, 8).map((screenshot, index) => (
-                  <button
-                    key={index}
-                    className="gd-screenshot-btn"
-                    onClick={() => setLightboxSrc(screenshot)}
-                    aria-label={`View screenshot ${index + 1} fullscreen`}
-                  >
-                    <img
-                      src={screenshot}
-                      alt={`${game.title} screenshot ${index + 1}`}
-                      className="gd-screenshot"
-                    />
-                  </button>
-                ))}
+                {loading || !(game.screenshots && game.screenshots.length > 0) ? (
+                  [0, 1, 2].map((i) => (
+                    <div key={i} className="gd-screenshot skeleton" aria-hidden="true" />
+                  ))
+                ) : (
+                  game.screenshots.slice(0, 8).map((screenshot, index) => (
+                    <button
+                      key={index}
+                      className="gd-screenshot-btn"
+                      onClick={() => setLightboxSrc(screenshot)}
+                      aria-label={`View screenshot ${index + 1} fullscreen`}
+                    >
+                      <img
+                        src={screenshot}
+                        alt={`${game.title} screenshot ${index + 1}`}
+                        className="gd-screenshot"
+                        width={240}
+                        height={135}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </>
-        )}
+        </ReservedSlot>
 
         {/* From People You Follow — community row above the reviews list.
              Hidden entirely when zero followed users rated this game; no
@@ -1179,19 +1224,18 @@ function GameDetail() {
              empty, see fetchSimilarGamesForRow), so on a cold game this
              used to start competing with the entrance tween for the main
              thread on top of everything else. */}
-        {!loading && transitionComplete && (
-          <SimilarGamesRow
-            gameId={gameId}
-            genreIds={game.genreIds || []}
-            themeIds={game.themeIds || []}
-            similarGameIds={game.similarGameIds || []}
-            onSeeAll={
-              game.genres.length > 0
-                ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
-                : undefined
-            }
-          />
-        )}
+        <SimilarGamesRow
+          gameId={gameId}
+          genreIds={game.genreIds || []}
+          themeIds={game.themeIds || []}
+          similarGameIds={game.similarGameIds || []}
+          fetchEnabled={!loading && transitionComplete}
+          onSeeAll={
+            game.genres.length > 0
+              ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
+              : undefined
+          }
+        />
 
       </div>
 

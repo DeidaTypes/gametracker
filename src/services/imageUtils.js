@@ -2,12 +2,35 @@
 
 import { coverSizeForDisplay, IGDB_COVER_TOKENS, rewriteCoverToken } from './igdbImage'
 
+/** CSS width of a phone 3-up Library / List cover cell. */
+export const GRID_COVER_DISPLAY_PX = 92
+
 // Size (px, the larger of width/height as rendered) → IGDB token suffix.
-// Covers use t_cover_big (<60px display) or t_cover_big_2x (everything else).
-// Never select t_thumb, t_cover_small, t_720p, or t_1080p for cover art.
+// Smallest portrait token that covers 2× the display width. Never
+// t_thumb, t_cover_small, t_720p, or t_1080p for cover art.
 function sizeToToken(size) {
   if (size == null) return 'cover_big'
   return coverSizeForDisplay(size)
+}
+
+/**
+ * loading / fetchPriority for a cover in a list.
+ * The first `eagerCount` images (the first screenful) load immediately;
+ * the first 3 of those are high priority. Everything past that stays lazy.
+ *
+ * @param {number} index
+ * @param {number} eagerCount
+ */
+export function coverLoadingProps(index, eagerCount = 0) {
+  const i = Number(index)
+  if (!Number.isFinite(i) || i < 0 || i >= eagerCount) {
+    return { loading: 'lazy', decoding: 'async' }
+  }
+  return {
+    loading: 'eager',
+    decoding: 'async',
+    ...(i < 3 ? { fetchPriority: 'high' } : {}),
+  }
 }
 
 /**

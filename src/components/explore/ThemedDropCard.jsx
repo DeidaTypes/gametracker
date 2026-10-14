@@ -5,6 +5,7 @@ import { nextDropLabel } from '../../utils/dropSchedule'
 import { getBestImageUrl } from '../../services/imageUtils'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import Pressable from '../Pressable'
+import ReservedSlot from '../ReservedSlot'
 import './ThemedDropCard.css'
 
 // Four covers is enough to read the theme at a glance; the rest are a
@@ -24,19 +25,43 @@ const PREVIEW_COUNT = 4
  * absent, not empty: a placeholder would teach people the slot is
  * decoration, and the drop only works if its presence means something.
  */
+function ThemedDropPlaceholder() {
+  return (
+    <div className="explore-section__pad">
+      <div className="themed-drop-card" aria-hidden="true">
+        <div className="themed-drop-card__top">
+          <span className="themed-drop-card__kicker">&nbsp;</span>
+        </div>
+        <h2 className="themed-drop-card__title">&nbsp;</h2>
+        <p className="themed-drop-card__subtitle">&nbsp;</p>
+        <div className="themed-drop-card__covers">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div className="themed-drop-card__cover skeleton" key={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ThemedDropCard() {
   const navigate = useNavigate()
   const { data: drop, loading } = useActiveThemedDrop()
 
   const games = drop?.games || []
-  if (loading || !drop?.active || !drop.theme || games.length === 0) return null
+  const hasDrop = !loading && drop?.active && drop.theme && games.length > 0
+  const open = loading || hasDrop
 
   const preview = games.slice(0, PREVIEW_COUNT)
   const remaining = games.length - preview.length
-  const nextDrop = nextDropLabel(drop.expiresAt)
+  const nextDrop = hasDrop ? nextDropLabel(drop.expiresAt) : null
 
   return (
-    <section className="explore-section" aria-label="This week's drop">
+    <ReservedSlot open={open} className="explore-section">
+      {!hasDrop ? (
+        <ThemedDropPlaceholder />
+      ) : (
+    <section aria-label="This week's drop">
       <div className="explore-section__pad">
         <Pressable
           className="themed-drop-card"
@@ -61,6 +86,8 @@ export default function ThemedDropCard() {
                 <img
                   src={getBestImageUrl(game, 74) || COVER_FALLBACK}
                   alt=""
+                  width={74}
+                  height={111}
                   loading="lazy"
                   decoding="async"
                   onError={(e) => { e.currentTarget.src = COVER_FALLBACK }}
@@ -74,5 +101,7 @@ export default function ThemedDropCard() {
         </Pressable>
       </div>
     </section>
+      )}
+    </ReservedSlot>
   )
 }

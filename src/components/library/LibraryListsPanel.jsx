@@ -118,7 +118,7 @@ export default function LibraryListsPanel({
     onOpenList(list)
   }
 
-  if (isLoading) return <LibraryListsSkeleton />
+  if (isLoading && !(lists?.length)) return <LibraryListsSkeleton />
 
   if (error) {
     return (

@@ -1,0 +1,35 @@
+/* Height collapse for a section that reserved space and then came
+   back empty. grid-template-rows interpolates; 0fr clips the slot. */
+
+.reserved-slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--reserved-ms, 150ms) ease,
+    margin-top var(--reserved-ms, 150ms) ease;
+}
+
+.reserved-slot--empty {
+  grid-template-rows: 0fr;
+  margin-top: 0;
+}
+
+/* Beat .explore-section + .explore-section (and :first-child) so an
+   empty Discover rail doesn't keep its section gap. */
+.explore-section.reserved-slot--empty {
+  margin-top: 0;
+}
+
+.reserved-slot__clip {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reserved-slot {
+    transition: none;
+  }
+}
+
+[data-reduce-motion='true'] .reserved-slot {
+  transition: none;
+}

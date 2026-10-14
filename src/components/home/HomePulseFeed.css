@@ -129,43 +129,51 @@
 }
 
 /* ── Skeleton ──
-   Three poster-shaped FULL-card skeletons (task 6) — a cover block +
-   two text bars, echoing HomeReviewCard's own cover + title + body
-   shape, instead of a generic avatar-and-lines placeholder. */
+   Same shell as HomeReviewCard (review-card-shell + home-review-card
+   supply padding, border, radius). Cover is the card's 48px poster.
+   Spacing between cards comes from .pulse-feed__item--full. */
 .pulse-feed__skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: 0;
   padding: 0 var(--container-padding);
 }
 
-.pulse-feed__skeleton-card--poster {
-  display: flex;
-  gap: var(--space-12);
-  padding: var(--space-12);
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+.pulse-feed__skeleton-card {
+  pointer-events: none;
 }
 
 .pulse-feed__skeleton-cover {
   flex-shrink: 0;
-  width: 44px;
-  aspect-ratio: var(--cover-ratio-thumb);
-  border-radius: var(--cover-radius);
-}
-
-.pulse-feed__skeleton-lines {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding-top: var(--space-4);
+  width: 48px;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--radius-sm);
 }
 
 .pulse-feed__skeleton-line {
-  height: 10px;
+  display: block;
+  height: calc(16px * 1.3);
+  width: 68%;
   border-radius: var(--radius-sm);
+}
+
+.pulse-feed__skeleton-line--short {
+  height: calc(var(--font-size-caption) * var(--line-height-caption));
+  width: 40%;
+}
+
+.pulse-feed__skeleton-byline {
+  display: block;
+  width: 55%;
+  height: 22px;
+  border-radius: var(--radius-full);
+}
+
+.pulse-feed__skeleton-pill {
+  display: block;
+  width: 72px;
+  height: 34px;
+  border-radius: var(--radius-full);
 }
 
 @media (prefers-reduced-motion: reduce) {

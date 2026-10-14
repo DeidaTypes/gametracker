@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDiscoverGamesNew } from '../../hooks/useExploreData'
 import CleanGameTile from './CleanGameTile'
 import DiscoverSectionHeader from './DiscoverSectionHeader'
+import ReservedSlot from '../ReservedSlot'
 import './SectionScaffold.css'
 
 /**
@@ -22,15 +23,42 @@ import './SectionScaffold.css'
  * /discover/new. Hides entirely when the cache has nothing rather than
  * showing an empty rail.
  */
+function NewNotablePlaceholder() {
+  return (
+    <>
+      <div className="explore-section__pad">
+        <div className="discover-section-entry discover-section-entry--static">
+          <div className="discover-section-entry__left">
+            <h2 className="discover-section-title">&nbsp;</h2>
+            <p className="discover-section-entry__subtitle">&nbsp;</p>
+          </div>
+        </div>
+      </div>
+      <div className="explore-scroll-row">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div className="clean-tile" key={i}>
+            <div className="clean-tile__cover skeleton" />
+            <span className="clean-tile__title">&nbsp;<br />&nbsp;</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function NewNotableRail() {
   const navigate = useNavigate()
   const { data, loading } = useDiscoverGamesNew()
 
   const games = data || []
-  if (loading || games.length === 0) return null
+  const open = loading || games.length > 0
 
   return (
-    <section className="explore-section" aria-label="New & Notable">
+    <ReservedSlot open={open} className="explore-section">
+      {loading || games.length === 0 ? (
+        <NewNotablePlaceholder />
+      ) : (
+    <section aria-label="New & Notable">
       <div className="explore-section__pad">
         <DiscoverSectionHeader
           title="New & Notable"
@@ -48,5 +76,7 @@ export default function NewNotableRail() {
         ))}
       </div>
     </section>
+      )}
+    </ReservedSlot>
   )
 }

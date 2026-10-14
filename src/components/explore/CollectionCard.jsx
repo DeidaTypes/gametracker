@@ -44,6 +44,8 @@ export default function CollectionCard({ collection }) {
                 <img
                   src={getSizedImageUrl(game.image, 74)}
                   alt=""
+                  width={74}
+                  height={74}
                   loading="lazy"
                   decoding="async"
                 />

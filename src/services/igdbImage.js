@@ -27,16 +27,26 @@ export function coverUrl(imageId, size = 'cover_big') {
   return `${IGDB_IMAGE_BASE}/t_${size}/${imageId}.jpg`
 }
 
+/** Pixel width IGDB actually serves for each portrait cover token. */
+const COVER_TOKEN_WIDTH = {
+  cover_big: 264,
+  cover_big_2x: 528,
+}
+
 /**
- * Pick the IGDB cover token for a given CSS display width (px).
- * Under 60px → t_cover_big; everything else → t_cover_big_2x (retina cover).
- * Never use screenshot sizes (t_720p / t_1080p) for portrait cover art.
+ * Pick the IGDB cover token for a CSS display width (px).
+ *
+ * Requests 2× that width for retina, then the smallest portrait token
+ * that still covers it. A 92px library cell (2× = 184) stays on
+ * t_cover_big (264) instead of stepping up to t_cover_big_2x (528).
+ * Never uses t_thumb, t_cover_small, t_720p, or t_1080p for cover art.
  *
  * @param {number} displayWidthPx
  * @returns {string} token suffix without `t_`
  */
 export function coverSizeForDisplay(displayWidthPx) {
-  if (displayWidthPx < 60) return 'cover_big'
+  const need = Math.max(0, Number(displayWidthPx) || 0) * 2
+  if (need <= COVER_TOKEN_WIDTH.cover_big) return 'cover_big'
   return 'cover_big_2x'
 }
 
