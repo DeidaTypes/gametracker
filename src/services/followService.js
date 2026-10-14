@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
-import { dedupeInFlight } from './swrCache'
+import { dedupeInFlight, mutateSWR } from './swrCache'
 
 /**
  * Follow Service — Supabase-backed.
@@ -46,6 +46,26 @@ import { dedupeInFlight } from './swrCache'
  *   detail: { followeeId: string, following: boolean }
  */
 export const FOLLOW_CHANGED_EVENT = 'followChanged'
+
+function patchFollowCache(followeeId, followerId, following) {
+  const delta = following ? 1 : -1
+  mutateSWR(`profile:follows:${followeeId}`, (current) => {
+    if (!current) return current
+    if (!!current.amFollowing === !!following) return current
+    return {
+      ...current,
+      amFollowing: following,
+      followers: Math.max(0, (current.followers || 0) + delta),
+    }
+  })
+  mutateSWR(`profile:follows:${followerId}`, (current) => {
+    if (!current) return current
+    return {
+      ...current,
+      following: Math.max(0, (current.following || 0) + delta),
+    }
+  })
+}
 
 function emitFollowChanged(followeeId, following) {
   try {
@@ -101,6 +121,7 @@ export async function followUser(followeeId) {
     // Postgres unique_violation — already following. Treat as success
     // so callers can rely on the call being idempotent.
     if (error.code === '23505') {
+      patchFollowCache(followeeId, userId, true)
       emitFollowChanged(followeeId, true)
       return
     }
@@ -117,6 +138,7 @@ export async function followUser(followeeId) {
     throw new Error(error.message)
   }
 
+  patchFollowCache(followeeId, userId, true)
   emitFollowChanged(followeeId, true)
 }
 
@@ -143,6 +165,7 @@ export async function unfollowUser(followeeId) {
     throw new Error(error.message)
   }
 
+  patchFollowCache(followeeId, userId, false)
   emitFollowChanged(followeeId, false)
 }
 

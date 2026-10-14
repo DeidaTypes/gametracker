@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { mutateSWR } from './swrCache'
 import { loadBlockedIds, isMutuallyBlocked } from './blockService'
 
 /**
@@ -370,6 +371,26 @@ export async function sendMessage({ recipientId, body, attachment = null }) {
     throw new Error(error.message)
   }
 
+  mutateSWR(`messages:inbox:${userId}`, (current) => {
+    if (!Array.isArray(current)) return current
+    const rest = current.filter((c) => c.partnerId !== recipientId)
+    const existing = current.find((c) => c.partnerId === recipientId)
+    return [
+      {
+        partnerId: recipientId,
+        partner: existing?.partner || {
+          id: recipientId,
+          username: '',
+          display_name: '',
+          avatar_url: null,
+        },
+        lastMessage: data,
+        unreadCount: existing?.unreadCount || 0,
+      },
+      ...rest,
+    ]
+  })
+
   // Tell the rest of the app a new message exists so the unread-count
   // provider, the inbox, and any other surface stays in lockstep
   // without each having to subscribe to realtime independently.
@@ -402,6 +423,13 @@ export async function markThreadAsRead(otherUserId) {
     console.error('[messages] markThreadAsRead failed:', error.message)
     return
   }
+
+  mutateSWR(`messages:inbox:${userId}`, (current) => {
+    if (!Array.isArray(current)) return current
+    return current.map((c) =>
+      c.partnerId === otherUserId ? { ...c, unreadCount: 0 } : c
+    )
+  })
 
   emitMessagesChanged()
 }

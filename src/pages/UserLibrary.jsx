@@ -6,6 +6,7 @@ import { getGameTrackersForUser } from '../services/statsService'
 import { TRACKER_STATUS } from '../services/libraryService'
 import { getGamesByIds } from '../services/igdb'
 import { getListsForUser, getSaveCountsForLists } from '../services/listService'
+import { useCachedResource } from '../hooks/useCachedResource'
 import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from '../components/EmptyState'
 import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCover'
@@ -75,11 +76,25 @@ function UserLibrary() {
   const gamesCountHint = location.state?.gamesCountHint ?? null
 
   const [rows, setRows] = useState([])
-  const [customLists, setCustomLists] = useState([])
-  const [saveCounts, setSaveCounts] = useState(new Map())
   const [loading, setLoading] = useState(true)
-  const [isLoadingLists, setIsLoadingLists] = useState(true)
-  const [errorLists, setErrorLists] = useState(false)
+  const listsKey = userId ? `library:lists:${userId}` : null
+  const loadLists = useCallback(async () => {
+    const lists = await getListsForUser(userId)
+    const counts = await getSaveCountsForLists(lists.map((l) => l.id))
+    return { lists, saveCounts: counts }
+  }, [userId])
+  const {
+    data: listsData,
+    error: listsError,
+    refresh: refreshLists,
+  } = useCachedResource(listsKey, loadLists, {
+    enabled: !!userId && !resolving && !isOwnProfile,
+  })
+  const customLists = listsData?.lists ?? []
+  const saveCounts = listsData?.saveCounts ?? new Map()
+  const isLoadingLists =
+    resolving || (!!userId && !isOwnProfile && listsData === undefined && !listsError)
+  const errorLists = !!listsError && listsData === undefined
   const [activeTab, setActiveTab] = useState('games')
   const [activeStatus, setActiveStatus] = useState(null)
   const [sortKey, setSortKey] = useState('recent')
@@ -113,18 +128,12 @@ function UserLibrary() {
     if (resolving || isOwnProfile) return undefined
     if (!userId) {
       setRows([])
-      setCustomLists([])
-      setSaveCounts(new Map())
       setLoading(false)
-      setIsLoadingLists(false)
-      setErrorLists(false)
       return undefined
     }
 
     let cancelled = false
     setLoading(true)
-    setIsLoadingLists(true)
-    setErrorLists(false)
 
     getGameTrackersForUser(userId)
       .then((data) => {
@@ -137,25 +146,6 @@ function UserLibrary() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
-      })
-
-    getListsForUser(userId)
-      .then(async (lists) => {
-        if (cancelled) return
-        const counts = await getSaveCountsForLists(lists.map((l) => l.id))
-        if (cancelled) return
-        setCustomLists(lists)
-        setSaveCounts(counts)
-      })
-      .catch((err) => {
-        console.error('[user-library] lists load failed:', err)
-        if (!cancelled) {
-          setCustomLists([])
-          setErrorLists(true)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingLists(false)
       })
 
     return () => {
@@ -406,20 +396,9 @@ function UserLibrary() {
                   isLoading={isLoadingLists}
                   error={errorLists}
                   onRetry={() => {
-                    if (!userId) return
-                    setIsLoadingLists(true)
-                    setErrorLists(false)
-                    getListsForUser(userId)
-                      .then(async (lists) => {
-                        setCustomLists(lists)
-                        setSaveCounts(await getSaveCountsForLists(lists.map((l) => l.id)))
-                      })
-                      .catch((err) => {
-                        console.error('[user-library] lists retry failed:', err)
-                        setCustomLists([])
-                        setErrorLists(true)
-                      })
-                      .finally(() => setIsLoadingLists(false))
+                    refreshLists().catch((err) => {
+                      console.error('[user-library] lists retry failed:', err)
+                    })
                   }}
                   onOpenList={(list) => navigate(`/list/${list.id}`)}
                   errorMessage="Couldn't load lists. Tap to retry."

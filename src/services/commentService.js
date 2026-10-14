@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { getFlaggedContentIds } from './reportService'
-import { dedupeInFlight } from './swrCache'
+import { dedupeInFlight, mutateSWR, mutateSWRByPrefix } from './swrCache'
 
 /**
  * Comment Service — Supabase-backed.
@@ -281,6 +281,60 @@ export async function getCommentCountsForEvents(activityEventIds) {
  *   users: { username: string, display_name: string, avatar_url: string } | null,
  * }>}
  */
+export function commentsCacheKey(targetType, targetId) {
+  if (!targetType || !targetId) return null
+  return `comments:${targetType}:${targetId}`
+}
+
+function appendCachedComment(reviewId, activityEventId, row) {
+  const key = reviewId
+    ? commentsCacheKey('review', reviewId)
+    : commentsCacheKey('activity', activityEventId)
+  if (!key || !row?.id) return
+  mutateSWR(key, (current) => {
+    if (!current?.comments) return current
+    if (current.comments.some((c) => c.id === row.id)) return current
+    return { ...current, comments: [...current.comments, row] }
+  })
+  if (reviewId) {
+    mutateSWRByPrefix('game:social:', (current) => {
+      if (!current?.reviews?.some((r) => r.id === reviewId)) return current
+      const commentCounts = new Map(current.commentCounts || [])
+      commentCounts.set(reviewId, (commentCounts.get(reviewId) || 0) + 1)
+      return { ...current, commentCounts }
+    })
+  }
+}
+
+function replaceCachedComment(row) {
+  if (!row?.id) return
+  mutateSWRByPrefix('comments:', (current) => {
+    if (!current?.comments?.some((c) => c.id === row.id)) return current
+    return {
+      ...current,
+      comments: current.comments.map((c) =>
+        c.id === row.id ? { ...c, ...row, users: row.users || c.users } : c
+      ),
+    }
+  })
+}
+
+function removeCachedComment(commentId) {
+  if (!commentId) return
+  mutateSWRByPrefix('comments:', (current) => {
+    if (!current?.comments) return current
+    const remove = new Set([commentId])
+    for (const c of current.comments) {
+      if (c.parent_comment_id === commentId) remove.add(c.id)
+    }
+    if (!current.comments.some((c) => remove.has(c.id))) return current
+    return {
+      ...current,
+      comments: current.comments.filter((c) => !remove.has(c.id)),
+    }
+  })
+}
+
 export async function postComment({
   reviewId = null,
   activityEventId = null,
@@ -344,6 +398,7 @@ export async function postComment({
     throw new Error(error.message)
   }
 
+  appendCachedComment(reviewId, activityEventId, data)
   return data
 }
 
@@ -372,6 +427,7 @@ export async function updateComment(commentId, body) {
     console.error('[comments] updateComment failed:', error.message)
     throw new Error(error.message)
   }
+  replaceCachedComment(data)
   return data
 }
 
@@ -390,6 +446,7 @@ export async function deleteComment(commentId) {
     console.error('[comments] deleteComment failed:', error.message)
     throw new Error(error.message)
   }
+  removeCachedComment(commentId)
 }
 
 /* ============================================================

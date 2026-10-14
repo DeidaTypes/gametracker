@@ -5,6 +5,7 @@ import {
   getLikeCount,
   getLikeCountsForReviews,
 } from '../services/likeService'
+import { mutateSWRByPrefix } from '../services/swrCache'
 
 /**
  * useLikeState — Sprint 6 P0
@@ -67,6 +68,13 @@ export function publishLikeState(reviewId, next) {
   stateCache.set(reviewId, next)
   const subs = subscribers.get(reviewId)
   if (subs) subs.forEach((cb) => cb(next))
+  if (!next || typeof next.count !== 'number') return
+  mutateSWRByPrefix('game:social:', (current) => {
+    if (!current?.reviews?.some((r) => r.id === reviewId)) return current
+    const likeCounts = new Map(current.likeCounts || [])
+    likeCounts.set(reviewId, next.count)
+    return { ...current, likeCounts }
+  })
 }
 
 function subscribe(reviewId, cb) {

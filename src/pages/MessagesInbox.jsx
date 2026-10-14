@@ -4,6 +4,7 @@ import { LuChevronLeft, LuSearch, LuX } from 'react-icons/lu'
 import { Edit3, Gamepad2, ListChecks, MessageCircle, Star, UserX } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getInbox, MESSAGES_CHANGED_EVENT } from '../services/messageService'
+import { useCachedResource } from '../hooks/useCachedResource'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { searchUsers } from '../services/userService'
 import { useDebounce } from '../hooks/useDebounce'
@@ -74,32 +75,23 @@ function MessagesInbox() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [conversations, setConversations] = useState([])
-  const [loading, setLoading] = useState(true)
   const [composeOpen, setComposeOpen] = useState(false)
+  const inboxKey = user?.id ? `messages:inbox:${user.id}` : null
+  const {
+    data: inboxData,
+    error: inboxError,
+    refresh: refreshInbox,
+  } = useCachedResource(inboxKey, () => getInbox(), { enabled: !!user?.id })
+  const conversations = inboxData ?? []
+  const loading = !!user?.id && inboxData === undefined && !inboxError
   // Bumped on app resume so the realtime effect below tears down the dead
   // (post-suspend) channel and re-subscribes onto a fresh socket — same
   // pattern as UnreadMessagesContext / NotificationsContext.
   const [resumeKey, setResumeKey] = useState(0)
 
-  const reload = useCallback(async () => {
-    try {
-      const rows = await getInbox()
-      setConversations(rows)
-    } catch (err) {
-      console.error('[MessagesInbox] load failed:', err)
-      setConversations([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  /* ── Initial + cross-surface refresh ───────────────────────── */
-
-  useEffect(() => {
-    setLoading(true)
-    reload()
-  }, [reload])
+  const reload = useCallback(() => {
+    refreshInbox().catch(() => {})
+  }, [refreshInbox])
 
   /* ── Realtime subscription ──────────────────────────────────
      Subscribe to INSERTs + UPDATEs on direct_messages where the

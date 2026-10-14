@@ -5,7 +5,7 @@ import {
   logActivityEvent,
 } from './activityEventsService'
 import { applyBlockFilter, filterBlockedRows } from './blockService'
-import { dedupeInFlight } from './swrCache'
+import { dedupeInFlight, mutateSWR, mutateSWRByPrefix } from './swrCache'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -434,6 +434,29 @@ export async function createList({ name, description = '', isPublic = true }) {
     console.error('[lists] createList failed:', error.message)
     throw new Error(error.message)
   }
+  mutateSWR(`library:lists:${user.id}`, (current) => {
+    if (!current?.lists) return current
+    if (current.lists.some((l) => l.id === data.id)) return current
+    const now = new Date().toISOString()
+    const list = {
+      id: data.id,
+      userId: user.id,
+      name: data.name,
+      description: description?.trim() || '',
+      isPublic,
+      isCustom: true,
+      coverImageUrl: null,
+      isPinned: false,
+      pinnedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      games: [],
+      gameCount: 0,
+      previewGames: [],
+      author: null,
+    }
+    return { ...current, lists: [list, ...current.lists] }
+  })
   notifyChange()
 
   // Activity log — fire-and-forget AFTER the primary insert succeeds.
@@ -474,6 +497,22 @@ export async function updateList(listId, { name, description, isPublic } = {}) {
     console.error('[lists] updateList failed:', error.message)
     throw new Error(error.message)
   }
+  mutateSWRByPrefix('library:lists:', (current) => {
+    if (!current?.lists?.some((l) => l.id === listId)) return current
+    return {
+      ...current,
+      lists: current.lists.map((l) => {
+        if (l.id !== listId) return l
+        return {
+          ...l,
+          ...(name !== undefined ? { name: name.trim() } : {}),
+          ...(description !== undefined ? { description: description?.trim() || '' } : {}),
+          ...(isPublic !== undefined ? { isPublic } : {}),
+          updatedAt: update.updated_at,
+        }
+      }),
+    }
+  })
   notifyChange()
 }
 
@@ -487,6 +526,16 @@ export async function deleteList(listId) {
     console.error('[lists] deleteList failed:', error.message)
     throw new Error(error.message)
   }
+  mutateSWRByPrefix('library:lists:', (current) => {
+    if (!current?.lists?.some((l) => l.id === listId)) return current
+    const saveCounts = current.saveCounts instanceof Map ? new Map(current.saveCounts) : current.saveCounts
+    if (saveCounts instanceof Map) saveCounts.delete(listId)
+    return {
+      ...current,
+      lists: current.lists.filter((l) => l.id !== listId),
+      saveCounts,
+    }
+  })
   notifyChange()
 }
 

@@ -47,6 +47,7 @@ import { deleteActivityEvent } from '../services/activityEventsService'
 import { shareCard } from '../services/share'
 import { shareContent } from '../utils/share'
 import { hapticImpact } from '../utils/haptics'
+import { useCachedResource } from '../hooks/useCachedResource'
 import {
   MAX_PINS,
   getPinnedReviewIds,
@@ -392,13 +393,30 @@ function ReviewComments() {
   // unmount. See src/hooks/useHideNav.js.
   useHideNav()
 
-  const [review, setReview] = useState(null)
-  const [activityItem, setActivityItem] = useState(null)
-  const [reviewLoading, setReviewLoading] = useState(true)
-  const [reviewMissing, setReviewMissing] = useState(false)
-
-  const [comments, setComments] = useState([])
-  const [commentsLoading, setCommentsLoading] = useState(true)
+  const threadKey = targetId ? `comments:${targetType}:${targetId}` : null
+  const loadThreadResource = useCallback(async () => {
+    const header =
+      targetType === 'review'
+        ? await getReviewById(targetId)
+        : await getActivityEventForCard(targetId)
+    const rows =
+      targetType === 'review'
+        ? await getCommentsForReview(targetId)
+        : await getCommentsForActivityEvent(targetId)
+    return { header: header || null, comments: rows || [], missing: !header }
+  }, [targetId, targetType])
+  const {
+    data: thread,
+    error: threadError,
+    refresh: refreshThread,
+    mutate: mutateThread,
+  } = useCachedResource(threadKey, loadThreadResource, { enabled: !!targetId })
+  const review = targetType === 'review' && thread && !thread.missing ? thread.header : null
+  const activityItem = targetType === 'activity' && thread && !thread.missing ? thread.header : null
+  const comments = thread?.comments ?? []
+  const reviewLoading = !!targetId && thread === undefined && !threadError
+  const commentsLoading = reviewLoading
+  const reviewMissing = !!thread?.missing || (!!threadError && thread === undefined)
 
   // Bumped on app resume so the realtime effect below tears down the dead
   // (post-suspend) channel and re-subscribes onto a fresh socket — same
@@ -487,85 +505,19 @@ function ReviewComments() {
     editingCommentRef.current = editingComment
   }, [editingComment])
 
-  /* ── Load ────────────────────────────────────────────────────── */
-
-  /** Discards responses from a load that a newer one has superseded. */
-  const loadGenerationRef = useRef(0)
-
-  /**
-   * @param {{ silent?: boolean }} [opts] `silent` leaves the loading flags
-   *   alone, so a resume revalidation swaps the thread in underneath the user
-   *   instead of flashing skeletons over content already on screen.
-   */
-  const loadThread = useCallback(
-    ({ silent = false } = {}) => {
-      if (!targetId) return
-      const generation = ++loadGenerationRef.current
-      const isStale = () => generation !== loadGenerationRef.current
-
-      if (!silent) {
-        setReviewLoading(true)
-        setReviewMissing(false)
-      }
-      const headerFetch =
-        targetType === 'review' ? getReviewById(targetId) : getActivityEventForCard(targetId)
-      headerFetch
-        .then((row) => {
-          if (isStale()) return
-          if (!row) {
-            setReviewMissing(true)
-            setReview(null)
-            setActivityItem(null)
-          } else if (targetType === 'review') {
-            setReview(row)
-          } else {
-            setActivityItem(row)
-          }
-        })
-        .catch(() => {
-          if (!isStale()) setReviewMissing(true)
-        })
-        .finally(() => {
-          if (!isStale()) setReviewLoading(false)
-        })
-
-      if (!silent) setCommentsLoading(true)
-      const commentsFetch =
-        targetType === 'review'
-          ? getCommentsForReview(targetId)
-          : getCommentsForActivityEvent(targetId)
-      commentsFetch
-        .then((rows) => {
-          if (isStale()) return
-          setComments(rows)
-        })
-        .catch((err) => {
-          console.error('[ReviewComments] load failed:', err)
-          if (!isStale()) setComments([])
-        })
-        .finally(() => {
-          if (!isStale()) setCommentsLoading(false)
-        })
-    },
-    [targetId, targetType]
-  )
-
-  useEffect(() => {
-    loadThread()
-  }, [loadThread])
-
   /* ── Resume revalidation ──────────────────────────────────────
      The realtime subscription below only carries INSERTs, and it was dead
      while the app was suspended anyway — so edits, deletes, and comments
-     posted in the meantime are only picked up by refetching here. */
+     posted in the meantime are only picked up by refetching here. The
+     cache already painted the last thread; this refresh stays quiet. */
   useEffect(() => {
     const onResume = () => {
       setResumeKey((k) => k + 1)
-      loadThread({ silent: true })
+      refreshThread().catch(() => {})
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
-  }, [loadThread])
+  }, [refreshThread])
 
   /* ── Realtime subscription ──────────────────────────────────────
      INSERT events on review_comments, filtered by whichever target
@@ -605,9 +557,10 @@ function ReviewComments() {
             // next full reload, which is a perfectly acceptable
             // degradation.
           }
-          setComments((prev) => {
-            if (prev.some((c) => c.id === row.id)) return prev
-            return [...prev, { ...row, users: userRow }]
+          mutateThread((current) => {
+            if (!current?.comments) return current
+            if (current.comments.some((c) => c.id === row.id)) return current
+            return { ...current, comments: [...current.comments, { ...row, users: userRow }] }
           })
         }
       )
@@ -618,7 +571,7 @@ function ReviewComments() {
       disposeSubscribe()
       supabase.removeChannel(channel)
     }
-  }, [targetId, targetType, resumeKey])
+  }, [targetId, targetType, resumeKey, mutateThread])
 
   /* ── Threaded view model ────────────────────────────────────── */
 
@@ -992,14 +945,7 @@ function ReviewComments() {
       }
       setPosting(true)
       try {
-        const updated = await updateComment(editingComment.id, trimmed)
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === editingComment.id
-              ? { ...c, ...updated, users: updated.users || c.users }
-              : c
-          )
-        )
+        await updateComment(editingComment.id, trimmed)
         setEditingComment(null)
         setDraft('')
       } catch (err) {
@@ -1017,18 +963,13 @@ function ReviewComments() {
     // ── Normal mode: post a new comment ──────────────────────────
     setPosting(true)
     try {
-      const inserted = await postComment({
+      await postComment({
         reviewId: targetType === 'review' ? targetId : null,
         activityEventId: targetType === 'activity' ? targetId : null,
         body: trimmed,
         parentCommentId: replyTo?.id || null,
       })
       hapticImpact('Medium')
-      // Optimistically append — the realtime echo will be deduped by id.
-      setComments((prev) => {
-        if (prev.some((c) => c.id === inserted.id)) return prev
-        return [...prev, inserted]
-      })
       setDraft('')
       setReplyTo(null)
       // Increment local Conversationalist badge counter on successful post.
@@ -1061,19 +1002,22 @@ function ReviewComments() {
     for (const c of comments) {
       if (c.parent_comment_id === comment.id) removeIds.add(c.id)
     }
-    const prevComments = comments
-    setComments((prev) => prev.filter((c) => !removeIds.has(c.id)))
+    const prevThread = thread
+    mutateThread((current) => {
+      if (!current?.comments) return current
+      return { ...current, comments: current.comments.filter((c) => !removeIds.has(c.id)) }
+    })
     try {
       await deleteComment(comment.id)
     } catch (err) {
       console.error('[ReviewComments] deleteComment failed:', err)
-      setComments(prevComments)
+      if (prevThread) mutateThread(prevThread)
       showToast(
         err?.message || "Couldn't delete your comment. Please try again.",
         'error'
       )
     }
-  }, [comments])
+  }, [comments, thread, mutateThread])
 
   /* ── Render ─────────────────────────────────────────────────── */
 

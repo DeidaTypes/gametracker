@@ -1,12 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Flame } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useStreakMilestoneState } from '../../hooks/useStreakMilestoneState'
-import { getGoalProgress, getRivalryData } from '../../services/goalService'
 import { getProfile } from '../../services/profileService'
 import ChallengeCard, { challengePathSegment } from '../ChallengeCard'
 import StreakDetailSheet from '../streak/StreakDetailSheet'
-import { APP_RESUMED_EVENT } from '../../hooks/useAppResume'
 import './ProgressStrip.css'
 
 function computeCircleRank(goalProgress, rivalryData) {
@@ -66,62 +64,8 @@ function ChallengeRing({ current, target }) {
  */
 function ProgressStrip() {
   const { user, profile } = useAuth()
-  const { loading: streakLoading, view } = useStreakMilestoneState()
+  const { loading: streakLoading, view, goalProgress, rivalryData } = useStreakMilestoneState()
   const [detailOpen, setDetailOpen] = useState(false)
-  const [goalProgress, setGoalProgress] = useState(null)
-  const [rivalryData, setRivalryData] = useState([])
-
-  const refreshGoal = useCallback(() => {
-    if (!user?.id) {
-      setGoalProgress({
-        hasGoal: false,
-        target: null,
-        current: 0,
-        year: new Date().getFullYear(),
-        percent: 0,
-      })
-      setRivalryData([])
-      return
-    }
-    const year = new Date().getFullYear()
-    Promise.all([
-      getGoalProgress(user.id, year),
-      getRivalryData(user.id, year),
-    ])
-      .then(([gp, rivalry]) => {
-        setGoalProgress(gp)
-        setRivalryData(rivalry || [])
-      })
-      .catch(() => {
-        setGoalProgress({
-          hasGoal: false,
-          target: null,
-          current: 0,
-          year,
-          percent: 0,
-        })
-        setRivalryData([])
-      })
-  }, [user?.id])
-
-  useEffect(() => {
-    setGoalProgress(null)
-    refreshGoal()
-  }, [refreshGoal])
-
-  useEffect(() => {
-    function onChange() {
-      refreshGoal()
-    }
-    window.addEventListener('activityUpdated', onChange)
-    window.addEventListener('libraryUpdated', onChange)
-    window.addEventListener(APP_RESUMED_EVENT, onChange)
-    return () => {
-      window.removeEventListener('activityUpdated', onChange)
-      window.removeEventListener('libraryUpdated', onChange)
-      window.removeEventListener(APP_RESUMED_EVENT, onChange)
-    }
-  }, [refreshGoal])
 
   if (streakLoading || !view) return null
 

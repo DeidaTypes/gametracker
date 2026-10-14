@@ -38,6 +38,7 @@ import Avatar from '../components/Avatar'
 import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
+import { useCachedResource } from '../hooks/useCachedResource'
 
 /**
  * Game metadata from IGDB barely changes, so it is held longer than the
@@ -160,6 +161,30 @@ function toReviewCardShape(row, game, likeCounts, commentCounts) {
   }
 }
 
+const EMPTY_LIKE_COUNTS = new Map()
+
+async function loadGameSocial(gameId) {
+  const reviews = await getReviewsForGame(gameId)
+  const ids = reviews.map((r) => r.id)
+  const [likeCounts, commentCounts, ratingDist, circlePulse, followedRatings] = await Promise.all([
+    prefetchLikeStatesForReviews(ids).catch((err) => {
+      console.error('[gameDetail] like/comment count prefetch failed:', err)
+      return new Map()
+    }),
+    getCommentCountsForReviews(ids).catch((err) => {
+      console.error('[gameDetail] like/comment count prefetch failed:', err)
+      return new Map()
+    }),
+    getRatingDistributionForGame(gameId),
+    getCirclePulseForGame(gameId).catch(() => null),
+    getFollowedRatingsForGame(gameId).catch((err) => {
+      console.error('[gameDetail] failed to load followed ratings:', err)
+      return { average: null, count: 0, followers: [] }
+    }),
+  ])
+  return { reviews, likeCounts, commentCounts, ratingDist, circlePulse, followedRatings }
+}
+
 function GameDetail() {
   const { gameId } = useParams()
   const navigate = useNavigate()
@@ -235,17 +260,19 @@ function GameDetail() {
   const [game, setGame] = useState(cachedGame ?? navStub ?? null)
   const [loading, setLoading] = useState(cachedGame === undefined)
   const [error, setError] = useState(null)
-  const [reviews, setReviews] = useState([])
-  // Sprint 6 P0 — Map<reviewId, count> for the visible reviews. Drives
-  // the Top Reviews sort and the count rendered on each card.
-  const [reviewLikeCounts, setReviewLikeCounts] = useState(() => new Map())
-  // Sprint 6 P1 — real comment counts per review id, fetched once per
-  // refresh. The ReviewCard badge consumes these via toReviewCardShape.
-  const [reviewCommentCounts, setReviewCommentCounts] = useState(() => new Map())
-  // Whole-game rating distribution (avg + half-star counts) for the
-  // community rating card — independent of `reviews` above, which is
-  // capped to the 20 most recent rows for the Top Reviews list.
-  const [ratingDist, setRatingDist] = useState(null)
+  // Social block — one session cache entry. A warm peek paints reviews,
+  // the rating distribution, circle pulse, and followed ratings on the
+  // first frame. Cold loads still wait out the page transition.
+  const socialKey = gameId ? `game:social:${gameId}` : null
+  const socialWarm = socialKey != null && peekSWR(socialKey) !== undefined
+  const loadSocial = useCallback(() => loadGameSocial(gameId), [gameId])
+  const { data: social, refresh: refreshSocial } = useCachedResource(socialKey, loadSocial, {
+    enabled: !!gameId && (transitionComplete || socialWarm),
+  })
+  const reviews = social?.reviews ?? []
+  const reviewLikeCounts = social?.likeCounts ?? EMPTY_LIKE_COUNTS
+  const reviewCommentCounts = social?.commentCounts ?? EMPTY_LIKE_COUNTS
+  const ratingDist = social?.ratingDist ?? null
   const [status, setStatus] = useState(null)
   const [dominantColor, setDominantColor] = useState(null)
   // The resolved (real IGDB, not stub) cover URL, set once getGameById
@@ -256,105 +283,17 @@ function GameDetail() {
   const { setSwatches: setGlobalSwatches } = useGameColor()
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
-  const [circlePulse, setCirclePulse] = useState(null)
+  const circlePulse = social?.circlePulse ?? null
   // "From people you follow" row — followed users who rated this game.
   // Hidden entirely when count is 0 (no one followed has rated it).
-  const [followedRatings, setFollowedRatings] = useState(null)
+  const followedRatings = social?.followedRatings ?? null
   const statusChangeInFlight = useRef(false)
   const reviewScrollAttempted = useRef(false)
-  // perf/exit — guards every setState below that lands from a fetch that
-  // can still be in flight when the user navigates away (reviews, rating
-  // distribution, circle pulse, followed ratings). None of these fetches
-  // are aborted (they're cheap reads and worth letting finish for the
-  // cache), but their .then()/async continuations all check this first so
-  // a slow response never calls setState on an unmounted GameDetail.
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
-  }, [])
 
   const [ttb, setTtb] = useState(null)
 
   const refreshFromStore = useCallback(() => {
     setStatus(getGameStatus(gameId))
-  }, [gameId])
-
-  const refreshReviews = useCallback(async () => {
-    try {
-      const rows = await getReviewsForGame(gameId)
-      if (!mountedRef.current) return
-      setReviews(rows)
-      // Seed the in-process useLikeState cache and grab the count
-      // Map for the Top Reviews sort below. Batched alongside the
-      // comment-count fetch so we only round-trip once for both.
-      try {
-        const ids = rows.map((r) => r.id)
-        const [counts, cCounts] = await Promise.all([
-          prefetchLikeStatesForReviews(ids),
-          getCommentCountsForReviews(ids),
-        ])
-        if (!mountedRef.current) return
-        setReviewLikeCounts(counts)
-        setReviewCommentCounts(cCounts)
-      } catch (err) {
-        console.error('[gameDetail] like/comment count prefetch failed:', err)
-        if (!mountedRef.current) return
-        setReviewLikeCounts(new Map())
-        setReviewCommentCounts(new Map())
-      }
-    } catch (err) {
-      console.error('[gameDetail] failed to load reviews:', err)
-      if (!mountedRef.current) return
-      setReviews([])
-      setReviewLikeCounts(new Map())
-      setReviewCommentCounts(new Map())
-    }
-  }, [gameId])
-
-  const refreshFollowedRatings = useCallback(async () => {
-    try {
-      const result = await getFollowedRatingsForGame(gameId)
-      if (!mountedRef.current) return
-      setFollowedRatings(result)
-    } catch (err) {
-      console.error('[gameDetail] failed to load followed ratings:', err)
-      if (!mountedRef.current) return
-      setFollowedRatings({ average: null, count: 0, followers: [] })
-    }
-  }, [gameId])
-
-  // Circle pulse — was previously three copies of the same inline
-  // `getCirclePulseForGame(gameId).then(setCirclePulse).catch(() => {})`
-  // (initial load, reviewAdded handler, resume handler). Centralized here
-  // so all three get the same mountedRef guard instead of each needing it
-  // duplicated.
-  const refreshCirclePulse = useCallback(async () => {
-    try {
-      const p = await getCirclePulseForGame(gameId)
-      if (!mountedRef.current) return
-      setCirclePulse(p)
-    } catch {
-      // Best-effort — leave whatever circlePulse already holds.
-    }
-  }, [gameId])
-
-  const refreshRatingDistribution = useCallback(async () => {
-    // getRatingDistributionForGame never throws — it catches its own
-    // Supabase errors and resolves to a distinct `{ error: true }` shape
-    // rather than a fake "zero ratings" result (see reviewService.js).
-    // This try/catch only guards against something upstream of that
-    // (e.g. gameId itself blowing up) and mirrors the same failure shape
-    // so a thrown error can't get silently reinterpreted as "no ratings".
-    try {
-      const dist = await getRatingDistributionForGame(gameId)
-      if (!mountedRef.current) return
-      setRatingDist(dist)
-    } catch (err) {
-      console.error('[gameDetail] failed to load rating distribution:', err)
-      if (!mountedRef.current) return
-      setRatingDist({ average: null, totalCount: 0, counts: null, error: true })
-    }
   }, [gameId])
 
   useEffect(() => {
@@ -374,7 +313,6 @@ function GameDetail() {
         // cold one is allowed to blank the screen out to a skeleton.
         if (warm === undefined) setLoading(true)
         setError(null)
-        setRatingDist(null)
 
         const gameData = await getSWR(`game:${gameId}`, () => getGameById(gameId), {
           ttlMs: GAME_TTL_MS,
@@ -405,32 +343,6 @@ function GameDetail() {
     return () => { cancelled = true }
   }, [gameId])
 
-  // perf — the social bundle (reviews, rating distribution, circle pulse,
-  // followed ratings). None of it needs the resolved IGDB payload, only
-  // `gameId`, so it used to fire in parallel with getGameById right at
-  // mount — which on a COLD game meant four fetches landing and
-  // re-rendering mid-tween, fighting the entrance animation for the main
-  // thread. Deferred until the transition completes (immediately, under
-  // reduced motion) so it always lands "after", not "during". The visible
-  // effect is these sections popping in a beat later instead of during
-  // the fade — see the individual refresh* callbacks above for the
-  // mountedRef guards that make this safe if the user has already
-  // navigated away by the time any of these resolve.
-  useEffect(() => {
-    if (!gameId || !transitionComplete) return
-    refreshReviews()
-    refreshRatingDistribution()
-    refreshCirclePulse()
-    refreshFollowedRatings()
-  }, [
-    gameId,
-    transitionComplete,
-    refreshReviews,
-    refreshRatingDistribution,
-    refreshCirclePulse,
-    refreshFollowedRatings,
-  ])
-
   // perf — dominant-color + swatch extraction. Canvas pixel work, purely
   // cosmetic (the poster glow + backdrop tint), and cached after the first
   // run — but that first run is real main-thread work with no reason to
@@ -458,10 +370,8 @@ function GameDetail() {
     // Refresh the in-page review list after the composer posts a review and
     // navigates back. ReviewNew (the single composer) dispatches this event.
     const handleReviewAdded = () => {
-      refreshReviews()
+      refreshSocial().catch(() => {})
       refreshFromStore()
-      refreshRatingDistribution()
-      refreshFollowedRatings()
     }
     window.addEventListener('libraryUpdated', handleLibraryUpdate)
     window.addEventListener('storage', handleLibraryUpdate)
@@ -471,7 +381,7 @@ function GameDetail() {
       window.removeEventListener('storage', handleLibraryUpdate)
       window.removeEventListener('reviewAdded', handleReviewAdded)
     }
-  }, [refreshFromStore, refreshReviews, refreshRatingDistribution, refreshFollowedRatings])
+  }, [refreshFromStore, refreshSocial])
 
   // Revert chrome tint when navigating away from this page.
   useEffect(() => {
@@ -534,21 +444,15 @@ function GameDetail() {
     if (!gameId) return undefined
     const onResume = () => {
       refreshFromStore()
-      refreshReviews()
-      refreshRatingDistribution()
-      refreshFollowedRatings()
+      refreshSocial().catch(() => {})
       refreshSessions()
-      refreshCirclePulse()
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [
     gameId,
     refreshFromStore,
-    refreshReviews,
-    refreshRatingDistribution,
-    refreshCirclePulse,
-    refreshFollowedRatings,
+    refreshSocial,
     refreshSessions,
   ])
 

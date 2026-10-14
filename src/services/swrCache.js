@@ -1,259 +1,358 @@
-// Shared stale-while-revalidate cache — Sprint perf pass.
+// Shared stale-while-revalidate cache. In memory only — never localStorage
+// (WKWebView quota). No extra library.
 //
-// WHY THIS EXISTS
-// ----------------
-// There is no page-level cache anywhere in the app (no react-query/SWR),
-// so every navigation to a screen re-fetches all of its data from
-// scratch, even when the user was on that exact screen seconds ago
-// (e.g. Home -> Profile -> back -> Profile again). This module is a
-// small, dependency-free stand-in: a single in-memory Map keyed by
-// "screen+params" strings, with real stale-while-revalidate semantics —
+// An entry stays for the session. `ttlMs` only decides whether the next
+// read revalidates in the background. `peekSWR` always returns the last
+// value, including after the TTL and after a stale mark.
 //
-//   - Cold key (never fetched, or explicitly invalidated): block on the
-//     fetcher, cache the result.
-//   - Warm + fresh (younger than `ttlMs`): return the cached value
-//     synchronously (well, as a resolved Promise) with zero network
-//     calls.
-//   - Warm + stale (older than `ttlMs` but not invalidated): return the
-//     cached value immediately so the screen never blocks on the
-//     network, AND kick a de-duped background refetch so the cache is
-//     fresh for the *next* read.
-//   - Concurrent callers for the same key while a fetch is in flight
-//     share the one in-flight promise instead of firing N requests.
+//   app:resumed       mark every entry stale (revalidate on next read)
+//   libraryUpdated    mark library-dependent keys stale (see below)
+//   sign-out / account switch / account deletion
+//                     clearSWRCache() via clearAllLocalUserData()
 //
-// REVALIDATION
-// ------------
-// Wired directly to the two window events that mean "the data this app
-// holds may now be wrong": `app:resumed` (native app was backgrounded —
-// see src/services/resumeSequence.js) and `libraryUpdated` (the
-// existing cross-app "something in the library/activity graph changed"
-// event, dispatched from src/services/libraryService.js and friends).
-// `app:resumed` invalidates everything. `libraryUpdated` invalidates
-// everything a write can reach, which is every key except the handful
-// backed purely by the IGDB catalog — see WRITE_IMMUNE_KEY_PREFIXES for
-// why that exclusion is safe. Either way the next read for an invalidated
-// key is a real network fetch, which satisfies the "revalidate on resume"
-// requirement without every consuming page having to wire its own resume
-// listener into this cache.
-//
-// Callers that have their OWN more specific "this exact data changed"
-// events (e.g. Profile already listens for `reviewAdded`,
-// `profileUpdated`, pin-changed events, etc.) should call
-// `invalidateSWR(key)` (or pass `{ force: true }` to the next
-// `getSWR` call) from those handlers — this module only owns the two
-// generic, app-wide signals.
-//
-// This intentionally does NOT try to be react-query: no hooks, no
-// subscriptions, no request de-duping across different keys. Just
-// enough to stop identical re-fetches within a short window and to
-// avoid serving hopelessly stale data after a resume.
+// The cache does not know the current user. Callers put the user id in
+// the key when the value is account-shaped. Identity changes must go
+// through clearSWRCache — an in-flight fetch that finishes after a clear
+// is dropped (epoch), so the next account cannot observe the previous
+// account's write.
 
 const DEFAULT_TTL_MS = 60 * 1000
+const MAX_ENTRIES = 200
 
-/** @type {Map<string, { data: any, fetchedAt: number, ttlMs: number, promise?: Promise<any> }>} */
+/** @type {Map<string, { data: any, fetchedAt: number, ttlMs: number, lastAccess: number, promise?: Promise<any> }>} */
 const store = new Map()
+
+/** @type {Map<string, Set<(data: any) => void>>} */
+const subscribers = new Map()
+
+/** Bumped on clear so a fetch that started under the previous account cannot write back. */
+let epoch = 0
+
+/** Per-key generation so a superseded refetch cannot overwrite a newer one. */
+const requestSeq = new Map()
+
+/** Separate from the value cache: coalesces concurrent identical reads, then forgets them. */
+const inFlight = new Map()
 
 function isFresh(entry) {
   return !!entry && entry.data !== undefined && Date.now() - entry.fetchedAt < entry.ttlMs
 }
 
+function notify(key, data) {
+  const set = subscribers.get(key)
+  if (!set) return
+  for (const fn of set) {
+    try {
+      fn(data)
+    } catch (err) {
+      console.error('[swrCache] subscriber failed:', err)
+    }
+  }
+}
+
+function evictLRU() {
+  while (store.size > MAX_ENTRIES) {
+    let victim = null
+    for (const key of store.keys()) {
+      if (subscribers.get(key)?.size) continue
+      if (store.get(key)?.promise) continue
+      victim = key
+      break
+    }
+    if (!victim) victim = store.keys().next().value
+    if (!victim) break
+    store.delete(victim)
+  }
+}
+
+function touch(key) {
+  const entry = store.get(key)
+  if (!entry) return undefined
+  entry.lastAccess = Date.now()
+  store.delete(key)
+  store.set(key, entry)
+  return entry
+}
+
+function commit(key, entry) {
+  const next = {
+    data: entry.data,
+    fetchedAt: entry.fetchedAt,
+    ttlMs: entry.ttlMs,
+    lastAccess: Date.now(),
+  }
+  store.delete(key)
+  store.set(key, next)
+  evictLRU()
+  notify(key, next.data)
+}
+
+function bumpSeq(key) {
+  const seq = (requestSeq.get(key) || 0) + 1
+  requestSeq.set(key, seq)
+  return seq
+}
+
 function refetch(key, fetcher, ttlMs) {
+  const myEpoch = epoch
+  const seq = bumpSeq(key)
   const prior = store.get(key)
 
   const promise = Promise.resolve()
     .then(fetcher)
     .then((data) => {
-      store.set(key, { data, fetchedAt: Date.now(), ttlMs })
+      if (myEpoch !== epoch || requestSeq.get(key) !== seq) return data
+      commit(key, { data, fetchedAt: Date.now(), ttlMs })
       return data
     })
     .catch((err) => {
-      // Keep serving the last good value (if any) rather than wiping the
-      // entry out on a transient failure — just drop the in-flight
-      // promise so the next call retries instead of hanging on a
-      // rejected promise forever.
+      if (myEpoch !== epoch || requestSeq.get(key) !== seq) throw err
       if (prior && prior.data !== undefined) {
-        store.set(key, { data: prior.data, fetchedAt: prior.fetchedAt, ttlMs: prior.ttlMs })
+        const kept = {
+          data: prior.data,
+          fetchedAt: prior.fetchedAt,
+          ttlMs: prior.ttlMs,
+          lastAccess: Date.now(),
+        }
+        store.delete(key)
+        store.set(key, kept)
       } else {
         store.delete(key)
       }
       throw err
     })
 
-  store.set(key, { ...(prior || {}), promise, ttlMs })
+  store.set(key, {
+    ...(prior || {}),
+    data: prior?.data,
+    fetchedAt: prior?.fetchedAt ?? 0,
+    ttlMs,
+    lastAccess: Date.now(),
+    promise,
+  })
   return promise
 }
 
 /**
- * Read-through cache with stale-while-revalidate semantics.
+ * Read-through cache. A warm entry is returned immediately. TTL expiry
+ * and a stale mark both revalidate in the background without dropping
+ * the value `peekSWR` can see.
  *
  * @template T
- * @param {string} key - unique cache key, conventionally `"<screen>:<params>"`
- *   e.g. `"profile:${targetUserId}"` or `"search:browse-categories"`.
- * @param {() => Promise<T>} fetcher - only called on a cache miss / stale
- *   revalidation / forced refresh.
+ * @param {string} key
+ * @param {() => Promise<T>} fetcher
  * @param {{ ttlMs?: number, force?: boolean }} [options]
- *   - ttlMs: how long a value is served with zero network activity.
- *     Defaults to 60s.
- *   - force: skip the cache entirely and block on a fresh fetch (use
- *     from a handler for an event this cache doesn't already know
- *     about, e.g. "this specific review was just posted").
  * @returns {Promise<T>}
  */
 export function getSWR(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } = {}) {
+  if (!key) return Promise.resolve().then(fetcher)
+
   const entry = store.get(key)
 
   if (force) {
     return refetch(key, fetcher, ttlMs)
   }
 
-  // Concurrent callers for a cold/stale key share one request.
-  if (entry?.promise) {
-    return entry.promise
-  }
-
-  if (isFresh(entry)) {
+  if (entry && entry.data !== undefined && isFresh(entry)) {
+    touch(key)
     return Promise.resolve(entry.data)
   }
 
   if (entry && entry.data !== undefined) {
-    // Stale but present — serve it now, revalidate in the background.
-    refetch(key, fetcher, ttlMs).catch(() => {
-      // Swallowed: the caller isn't awaiting this background refresh,
-      // and refetch() already preserved the last good value on failure.
-    })
+    if (!entry.promise) {
+      refetch(key, fetcher, ttlMs).catch((err) => {
+        console.error('[swrCache] background revalidate failed:', key, err)
+      })
+    }
+    touch(key)
     return Promise.resolve(entry.data)
   }
+
+  if (entry?.promise) return entry.promise
 
   return refetch(key, fetcher, ttlMs)
 }
 
 /**
- * Read whatever is already cached for `key` without touching the network.
- *
- * `getSWR` is async even on a hit, so a component that only used it would
- * still render one empty frame before the resolved promise lands — which
- * on a screen transition reads as a flash of blank content. `peekSWR` lets
- * a caller seed its initial state synchronously and paint real content on
- * the first frame, while `getSWR` runs alongside to revalidate.
- *
- * Returns `undefined` when nothing is cached, which callers can safely
- * treat as "we have nothing to show yet, so show a skeleton".
+ * Synchronous read. `undefined` means this key has never resolved during
+ * the session (or was evicted / cleared). A stale entry still returns
+ * its last value.
  */
 export function peekSWR(key) {
-  return store.get(key)?.data
+  if (!key) return undefined
+  const entry = touch(key)
+  if (!entry || entry.data === undefined) return undefined
+  return entry.data
+}
+
+/** True when the entry is inside its TTL and not marked stale. */
+export function isSWRFresh(key) {
+  return isFresh(store.get(key))
+}
+
+/** In-flight revalidation for `key`, if one is running. */
+export function peekSWRInFlight(key) {
+  return store.get(key)?.promise
 }
 
 /**
- * Patch a cached value in place without bumping `fetchedAt` or hitting
- * the network. No-ops when the key is cold. Used to drop a just-deleted
- * Pulse item so returning to Home doesn't resurrect it from a still-fresh
- * page-1 cache.
- *
- * @template T
- * @param {string} key
- * @param {(current: T) => T} updater
- * @returns {T|undefined} the written value, or undefined if nothing was cached
+ * Subscribe to cache writes for `key` (including clears, which publish
+ * `undefined`). Returns an unsubscribe function.
+ */
+export function subscribeSWR(key, listener) {
+  if (!key || typeof listener !== 'function') return () => {}
+  let set = subscribers.get(key)
+  if (!set) {
+    set = new Set()
+    subscribers.set(key, set)
+  }
+  set.add(listener)
+  return () => {
+    set.delete(listener)
+    if (set.size === 0) subscribers.delete(key)
+  }
+}
+
+/**
+ * Replace the cached value and notify every mounted subscriber.
+ * `updater` receives the current value (`undefined` when cold) and may
+ * return `undefined` to leave a cold key untouched.
+ */
+export function mutateSWR(key, updater) {
+  if (!key) return undefined
+  const entry = store.get(key)
+  const current = entry?.data
+  const next = typeof updater === 'function' ? updater(current) : updater
+  if (next === undefined && current === undefined) return undefined
+  const ttlMs = entry?.ttlMs ?? DEFAULT_TTL_MS
+  bumpSeq(key)
+  commit(key, { data: next, fetchedAt: Date.now(), ttlMs })
+  return next
+}
+
+/** Run `mutateSWR` on every key that starts with `prefix`. */
+export function mutateSWRByPrefix(prefix, updater) {
+  if (!prefix) return
+  for (const key of [...store.keys()]) {
+    if (key.startsWith(prefix)) mutateSWR(key, updater)
+  }
+}
+
+/**
+ * Patch a cached value without bumping `fetchedAt` (it stays as fresh
+ * or stale as it was). No-ops when the key is cold.
  */
 export function updateSWR(key, updater) {
   const entry = store.get(key)
   if (!entry || entry.data === undefined) return undefined
   const next = updater(entry.data)
-  store.set(key, { ...entry, data: next })
+  entry.data = next
+  touch(key)
+  notify(key, next)
   return next
 }
 
-/** Drop a single cache entry so the next `getSWR` call for it is a real fetch. */
-export function invalidateSWR(key) {
-  store.delete(key)
+/** Keep the value, but make the next read revalidate. */
+export function markSWRStale(key) {
+  const entry = store.get(key)
+  if (!entry || entry.data === undefined) return
+  entry.fetchedAt = 0
+  entry.promise = undefined
+  bumpSeq(key)
 }
 
-/** Drop every cache entry whose key starts with `prefix` (e.g. `"profile:"`). */
-export function invalidateSWRPrefix(prefix) {
-  for (const k of store.keys()) {
-    if (k.startsWith(prefix)) store.delete(k)
+export function markSWRStaleByPrefix(prefix) {
+  if (!prefix) return
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) markSWRStale(key)
   }
 }
 
-/** Drop the entire cache. Called on app resume and on account teardown. */
+export function markAllSWRStale() {
+  for (const key of store.keys()) markSWRStale(key)
+}
+
+/**
+ * Explicit single-key invalidation. The value is kept so a screen can
+ * still paint it; the next `getSWR` revalidates. Use `clearSWRCache`
+ * to actually drop entries.
+ */
+export function invalidateSWR(key) {
+  markSWRStale(key)
+}
+
+export function invalidateSWRPrefix(prefix) {
+  markSWRStaleByPrefix(prefix)
+}
+
+/** Drop everything. Sign-out, account switch, account deletion. */
 export function clearSWRCache() {
+  epoch += 1
+  const keys = [...store.keys()]
   store.clear()
+  requestSeq.clear()
+  inFlight.clear()
+  for (const key of keys) notify(key, undefined)
 }
 
 /**
- * Key prefixes whose fetcher issues NO Supabase read — pure IGDB catalog
- * data. These are the only entries allowed to survive `libraryUpdated`.
- *
- * The invariant is what makes the narrowing safe, so it is worth stating
- * plainly: a prefix may appear here ONLY if nothing it fetches can be
- * changed by anything a user does in this app. `libraryUpdated` is
- * dispatched from 21 write paths (tracker status, progress, hours,
- * sessions, list membership, list metadata, pins, bulk moves). Not one of
- * them can alter a game's IGDB title, cover, summary, genre tags, or which
- * games IGDB considers popular / upcoming. Every other key still gets
- * cleared exactly as before, so no write path can end up under-invalidated
- * — the narrowing removes work, never invalidation.
- *
- *   game:<igdbId>            → getGameById            (IGDB /games)
- *   search:browse-categories → fetchBrowseBuckets     (IGDB /multiquery)
- *   explore:new-releases     → getUpcomingReleases    (IGDB /games)
- *
- * Deliberately NOT here, even though it is tempting: the rest of
- * `explore:*`. Those rails read reviews, trackers, lists and
- * activity_events, all of which the write paths above do change.
+ * IGDB catalog keys. Nothing a library write does can change them.
+ * `game:social:` is NOT immune — it is viewer-generated — so it is
+ * excluded before the `game:` prefix matches.
  */
-const WRITE_IMMUNE_KEY_PREFIXES = [
-  'game:',
-  'search:browse-categories',
-  'explore:new-releases',
-]
-
 function isWriteImmune(key) {
-  return WRITE_IMMUNE_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))
+  if (key.startsWith('game:social:')) return false
+  if (key.startsWith('game:')) return true
+  if (key.startsWith('search:browse-categories')) return true
+  if (key.startsWith('explore:new-releases')) return true
+  return false
 }
 
 /**
- * Invalidate everything a write could have touched.
+ * Keys a `libraryUpdated` write can make wrong. Marked stale, not
+ * deleted. Everything else (messages, comments, follow counts, handle
+ * resolution, IGDB catalog) is left fresh — those writes go through
+ * `mutateSWR` on their own key.
  *
- * Previously this was a full `store.clear()`, which meant setting a game's
- * status also threw away that game's IGDB metadata and the browse
- * categories — data the write cannot affect, and which then cost a fresh
- * fan-out of IGDB requests on the very next navigation.
+ *   library:lists:     lists + save counts
+ *   list:              list detail
+ *   home:feed:         pulse
+ *   home:progress:     streak / goal / rivalry
+ *   on-this-day:       diary
+ *   taste-vector:      taste DNA
+ *   profile:badges:    badges
+ *   profile:<userId>   profile bundle
+ *   explore:*          except explore:new-releases
+ *   game:social:       reviews, ratings, circle pulse, followed ratings
+ *
+ * Not stale on libraryUpdated:
+ *   game:<igdbId>             IGDB metadata
+ *   search:browse-categories
+ *   explore:new-releases
+ *   messages:inbox:
+ *   comments:
+ *   profile:follows:
+ *   profile:handle:
  */
+function isLibraryDependent(key) {
+  if (isWriteImmune(key)) return false
+  if (key.startsWith('messages:')) return false
+  if (key.startsWith('comments:')) return false
+  if (key.startsWith('profile:follows:')) return false
+  if (key.startsWith('profile:handle:')) return false
+  return true
+}
+
 export function invalidateAfterWrite() {
   for (const key of store.keys()) {
-    if (!isWriteImmune(key)) store.delete(key)
+    if (isLibraryDependent(key)) markSWRStale(key)
   }
 }
 
-/* ──────────────────────────────────────────────────────────────────────
-   In-flight request coalescing
-   ────────────────────────────────────────────────────────────────────── */
-
 /**
- * Share one in-flight promise between concurrent callers asking for the
- * same thing.
- *
- * This is deliberately NOT a cache: the entry is dropped the moment the
- * promise settles, so a later call always goes to the network and no
- * caller can ever observe a value that was already stale when it asked.
- * That makes it safe to wrap read paths that sit behind writes, which is
- * why it exists separately from `getSWR` rather than as a shorter TTL on
- * it.
- *
- * It exists because several independent consumers legitimately need the
- * same data on the same mount — Profile's bundle and its BadgesRow both
- * want the user's reviews, every review card and the feed both want like
- * counts — and each was issuing its own identical request in the same
- * tick. Measured on entry, roughly 40% of the app's requests were exact
- * duplicates already in flight.
- *
- * @template T
- * @param {string} key
- * @param {() => Promise<T>} fn
- * @returns {Promise<T>}
+ * Share one in-flight promise between concurrent callers. Not a cache:
+ * the entry is dropped when the promise settles.
  */
-const inFlight = new Map()
-
 export function dedupeInFlight(key, fn) {
   const existing = inFlight.get(key)
   if (existing) return existing
@@ -269,9 +368,6 @@ export function dedupeInFlight(key, fn) {
 }
 
 if (typeof window !== 'undefined') {
-  // Resume still clears everything: the app was suspended for an unknown
-  // length of time, so even the IGDB-backed entries are worth re-reading,
-  // and this is not a path the user is waiting on a navigation for.
-  window.addEventListener('app:resumed', clearSWRCache)
+  window.addEventListener('app:resumed', markAllSWRStale)
   window.addEventListener('libraryUpdated', invalidateAfterWrite)
 }

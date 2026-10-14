@@ -1,67 +1,74 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getStreakData } from '../services/streakMilestoneService'
 import { getCachedActivityCalendar } from '../services/statsService'
+import { getGoalProgress, getRivalryData } from '../services/goalService'
 import {
   buildRollingWeekCells,
   buildStreakMilestoneView,
 } from '../services/streakMilestoneState'
 import { APP_RESUMED_EVENT } from './useAppResume'
+import { useCachedResource } from './useCachedResource'
 
 /**
- * useStreakMilestoneState — loads streak row + rolling week activity,
- * returns the S16-2 read-model for Home strip and detail sheet.
+ * Home progress strip — streak, yearly goal, and circle rivalry —
+ * cached for the session under `home:progress:{uid}`. A revisit paints
+ * the last value on the first frame and revalidates in the background.
  */
 export function useStreakMilestoneState() {
   const { user } = useAuth()
   const userId = user?.id || null
+  const key = userId ? `home:progress:${userId}` : null
 
-  const [loading, setLoading] = useState(!!userId)
-  const [view, setView] = useState(null)
-
-  const refresh = useCallback(async () => {
-    if (!userId) {
-      setView(null)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    try {
-      const [streakData, calendar] = await Promise.all([
-        getStreakData(userId),
-        getCachedActivityCalendar(userId),
-      ])
-      const weekCells = buildRollingWeekCells(calendar)
-      setView(buildStreakMilestoneView({ streakData, weekCells }))
-    } catch (err) {
-      console.error('[streak] useStreakMilestoneState failed:', err)
-      setView(buildStreakMilestoneView({ streakData: null, weekCells: [] }))
-    } finally {
-      setLoading(false)
+  const fetcher = useCallback(async () => {
+    const year = new Date().getFullYear()
+    const [streakData, calendar, goalProgress, rivalryData] = await Promise.all([
+      getStreakData(userId),
+      getCachedActivityCalendar(userId),
+      getGoalProgress(userId, year),
+      getRivalryData(userId, year),
+    ])
+    return {
+      view: buildStreakMilestoneView({
+        streakData,
+        weekCells: buildRollingWeekCells(calendar),
+      }),
+      goalProgress,
+      rivalryData: rivalryData || [],
     }
   }, [userId])
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  const { data, error, refresh, isRevalidating } = useCachedResource(key, fetcher, {
+    enabled: !!userId,
+  })
 
   useEffect(() => {
     if (!userId) return undefined
-    function onChange() {
-      refresh()
+    const onChange = () => {
+      refresh().catch(() => {})
     }
     window.addEventListener('streakUpdated', onChange)
     window.addEventListener('activityUpdated', onChange)
+    window.addEventListener('libraryUpdated', onChange)
     window.addEventListener(APP_RESUMED_EVENT, onChange)
     return () => {
       window.removeEventListener('streakUpdated', onChange)
       window.removeEventListener('activityUpdated', onChange)
+      window.removeEventListener('libraryUpdated', onChange)
       window.removeEventListener(APP_RESUMED_EVENT, onChange)
     }
   }, [userId, refresh])
 
-  return { loading, view, refresh }
+  const loading = !!userId && data === undefined && !error
+
+  return {
+    loading,
+    view: data?.view ?? null,
+    goalProgress: data?.goalProgress ?? null,
+    rivalryData: data?.rivalryData ?? [],
+    refresh,
+    isRevalidating,
+  }
 }
 
 export default useStreakMilestoneState

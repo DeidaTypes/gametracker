@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { List, Plus, FilterX } from 'lucide-react'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
 import { useAuth } from '../contexts/AuthContext'
+import { useCachedResource } from '../hooks/useCachedResource'
 import CreateListModal from '../components/CreateListModal'
 import EmptyState from '../components/EmptyState'
 import PullToRefresh, { PULL_TO_REFRESH_YIELD_EVENT } from '../components/PullToRefresh'
@@ -87,10 +88,21 @@ function Library() {
   }, [])
 
   const [trackerLists, setTrackerLists] = useState(readTrackerLists)
-  const [customLists, setCustomLists] = useState([])
-  const [saveCounts, setSaveCounts] = useState(new Map())
-  const [isLoadingLists, setIsLoadingLists] = useState(true)
-  const [errorLists, setErrorLists] = useState(false)
+  const listsKey = user?.id ? `library:lists:${user.id}` : null
+  const loadLists = useCallback(async () => {
+    const lists = await getListsForUser(user.id)
+    const counts = await getSaveCountsForLists(lists.map((l) => l.id))
+    return { lists, saveCounts: counts }
+  }, [user?.id])
+  const {
+    data: listsData,
+    error: listsError,
+    refresh: refreshLists,
+  } = useCachedResource(listsKey, loadLists, { enabled: !!user?.id })
+  const customLists = listsData?.lists ?? []
+  const saveCounts = listsData?.saveCounts ?? new Map()
+  const isLoadingLists = !!user?.id && listsData === undefined && !listsError
+  const errorLists = !!listsError && listsData === undefined
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
 
@@ -131,8 +143,8 @@ function Library() {
   // AFTER the ref is attached — whatever is already in the DOM at attach
   // time is the baseline, not an "insertion". trackerLists/customLists are
   // now populated from readTrackerLists()/localStorage synchronously
-  // during render (see the useState initializer above and loadCustomLists
-  // below is still async but Library's own grid data no longer is), so on
+  // during render (see the useState initializer above; custom lists come
+  // from the session cache when this screen has already been opened), so on
   // a plain mount/remount the grid already has its final item set on the
   // very first commit — there is nothing left for GRID_REFLOW_MS to
   // animate in, and it no longer overlaps the 220ms page tween. It still
@@ -163,46 +175,19 @@ function Library() {
     setTrackerLists(readTrackerLists())
   }, [])
 
-  // `background: true` refreshes in place. Pull-to-refresh, library writes
-  // and app resume all run over lists the user is already looking at, and
-  // flipping the loading flag there swapped them for skeletons mid-gesture.
-  const loadCustomLists = useCallback(async ({ background = false } = {}) => {
-    if (!user?.id) {
-      setCustomLists([])
-      setSaveCounts(new Map())
-      setIsLoadingLists(false)
-      setErrorLists(false)
-      return
-    }
-    if (!background) setIsLoadingLists(true)
-    setErrorLists(false)
-    try {
-      const lists = await getListsForUser(user.id)
-      setCustomLists(lists)
-      setSaveCounts(await getSaveCountsForLists(lists.map((l) => l.id)))
-    } catch (err) {
-      console.error('[library] failed to load custom lists:', err)
-      setErrorLists(true)
-    } finally {
-      setIsLoadingLists(false)
-    }
-  }, [user?.id])
-
-  // Pull-to-refresh: re-run both loaders for both tabs regardless of which
-  // is active. Neither goes through swrCache — tracker lists are a plain
-  // localStorage read and custom lists always hit the network directly —
-  // so there's no cache to bypass, just a fresh round-trip.
+  // Pull-to-refresh and library writes refresh in place. The lists panel
+  // reads `library:lists:{uid}` through useCachedResource, so a revisit
+  // paints the last lists immediately and this call only revalidates.
   const handlePullToRefresh = useCallback(async () => {
     loadTrackerLists()
-    await loadCustomLists({ background: true })
-  }, [loadTrackerLists, loadCustomLists])
+    await refreshLists().catch(() => {})
+  }, [loadTrackerLists, refreshLists])
 
   useEffect(() => {
     loadTrackerLists()
-    loadCustomLists()
     const handleUpdate = () => {
       loadTrackerLists()
-      loadCustomLists({ background: true })
+      refreshLists().catch(() => {})
     }
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
@@ -214,7 +199,7 @@ function Library() {
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
       window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
     }
-  }, [loadTrackerLists, loadCustomLists])
+  }, [loadTrackerLists, refreshLists])
 
   // Keep the reviews-exist flag current as reviews are posted/removed in
   // this session — same 'reviewAdded' event reviewService/ReviewNew
@@ -979,7 +964,7 @@ function Library() {
               saveCounts={saveCounts}
               isLoading={isLoadingLists}
               error={errorLists}
-              onRetry={loadCustomLists}
+              onRetry={() => refreshLists().catch(() => {})}
               onOpenList={(list) => navigate(`/list/${list.id}`)}
               empty={
                 <EmptyState

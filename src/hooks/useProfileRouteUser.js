@@ -3,6 +3,20 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getProfile } from '../services/profileService'
 import { getUserById, getUserByUsername } from '../services/userService'
+import { getSWR, mutateSWR, peekSWR } from '../services/swrCache'
+
+function handleCacheKey(username) {
+  const decoded = decodeURIComponent(username || '').trim().toLowerCase()
+  if (!decoded) return null
+  return `profile:handle:${decoded}`
+}
+
+function peekHandle(username) {
+  const key = handleCacheKey(username)
+  if (!key) return undefined
+  const row = peekSWR(key)
+  return row?.id ? row : undefined
+}
 
 /**
  * Resolves the profile-scoped route params (`/user/:username/*` and
@@ -30,16 +44,34 @@ export function useProfileRouteUser() {
   const decodedUsername = decodeURIComponent(username || '')
   const decodedUserId = decodeURIComponent(paramUserId || '')
 
-  const [state, setState] = useState({
-    userId: null,
-    user: null,
-    resolving: true,
-    notFound: false,
-  })
+  const seeded = decodedUsername ? peekHandle(decodedUsername) : undefined
+  const routeKey = decodedUserId
+    ? `id:${decodedUserId}`
+    : decodedUsername
+      ? `username:${decodedUsername.toLowerCase()}`
+      : 'self'
+
+  const [routeKeySeen, setRouteKeySeen] = useState(routeKey)
+  const [state, setState] = useState(() =>
+    seeded
+      ? { userId: seeded.id, user: seeded, resolving: false, notFound: false }
+      : { userId: null, user: null, resolving: true, notFound: false }
+  )
+
+  if (routeKeySeen !== routeKey) {
+    const next = decodedUsername ? peekHandle(decodedUsername) : undefined
+    setRouteKeySeen(routeKey)
+    setState(
+      next
+        ? { userId: next.id, user: next, resolving: false, notFound: false }
+        : { userId: null, user: null, resolving: true, notFound: false }
+    )
+  }
 
   useEffect(() => {
     let cancelled = false
-    setState((s) => ({ ...s, resolving: true, notFound: false }))
+    const warm = decodedUsername ? peekHandle(decodedUsername) : undefined
+    if (!warm) setState((s) => ({ ...s, resolving: true, notFound: false }))
 
     const selfShim = () => {
       const local = getProfile()
@@ -68,8 +100,10 @@ export function useProfileRouteUser() {
         }
         try {
           const row = await getUserById(decodedUserId)
-          if (row?.id) resolved(row)
-          else missing()
+          if (row?.id) {
+            if (row.username) mutateSWR(handleCacheKey(row.username), row)
+            resolved(row)
+          } else missing()
         } catch (err) {
           console.error('[profile-route] resolve by id failed:', err)
           missing()
@@ -97,10 +131,23 @@ export function useProfileRouteUser() {
       }
 
       try {
-        const row = await getUserByUsername(decodedUsername)
+        const row = await getSWR(
+          handleCacheKey(decodedUsername),
+          async () => {
+            const found = await getUserByUsername(decodedUsername)
+            if (!found?.id) {
+              const missingRow = new Error('profile not found')
+              missingRow.code = 'NOT_FOUND'
+              throw missingRow
+            }
+            return found
+          },
+          { ttlMs: 60_000 }
+        )
         if (row?.id) resolved(row)
-        else missing()
+        else if (!warm) missing()
       } catch (err) {
+        if (warm) return
         console.error('[profile-route] resolve by username failed:', err)
         missing()
       }

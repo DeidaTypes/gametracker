@@ -116,7 +116,8 @@ import { getJournalEntriesForUser, getMoodMeta } from '../services/journalServic
 import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
-import { getSWR, peekSWR } from '../services/swrCache'
+import { getSWR, mutateSWR, peekSWR } from '../services/swrCache'
+import { useCachedResource } from '../hooks/useCachedResource'
 import { getGameNavStub } from '../utils/gameNavStub'
 import './Profile.css'
 
@@ -416,6 +417,33 @@ const MAX_FAVORITE_SLOTS = 4
    Main component
    ============================================================ */
 
+function handleCacheKey(username) {
+  const decoded = decodeURIComponent(username || '').trim().toLowerCase()
+  if (!decoded) return null
+  return `profile:handle:${decoded}`
+}
+
+function peekVisitorHandle(username) {
+  const key = handleCacheKey(username)
+  if (!key) return undefined
+  const row = peekSWR(key)
+  return row?.id ? row : undefined
+}
+
+function profileBlobFromPublicRow(row) {
+  return {
+    displayName: row.display_name || row.username || '',
+    username: row.username || '',
+    avatarUrl: row.avatar_url || null,
+    bio: row.bio || '',
+    bannerUrl: null,
+    socialLinks: {},
+    favoriteGames: Array.isArray(row.favorite_games) ? row.favorite_games : [],
+    currentObsessions: Array.isArray(row.current_obsessions) ? row.current_obsessions : [],
+    currentlyPlayingGame: null,
+  }
+}
+
 function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -434,9 +462,17 @@ function Profile() {
   // ({ id, username, display_name, avatar_url, bio }) for other-user
   // profiles, or null when it's the signed-in user's own profile.
   // `userNotFound` is set true when the lookup returns no row.
-  const [resolvedUser, setResolvedUser] = useState(null)
-  // Resolving when either param is present.
-  const [resolving, setResolving] = useState(!!(paramUsername || paramUserId))
+  const seededVisitor = paramUsername ? peekVisitorHandle(paramUsername) : undefined
+  const seededIsSelf = !!(user?.id && seededVisitor?.id === user.id)
+  const [resolvedUser, setResolvedUser] = useState(() =>
+    seededVisitor && !seededIsSelf ? seededVisitor : null
+  )
+  // Resolving when either param is present and we have nothing cached.
+  const [resolving, setResolving] = useState(() => {
+    if (!paramUsername && !paramUserId) return false
+    if (seededVisitor) return false
+    return true
+  })
   const [userNotFound, setUserNotFound] = useState(false)
 
   // Tracks which route param `resolvedUser` / `userNotFound` currently
@@ -448,7 +484,13 @@ function Profile() {
   // render(s) in between would read `resolvedUser` (A's row) as if it
   // were B's — i.e. the wrong profile's data, momentarily. See
   // `resolvedMatchesParams` below.
-  const resolvedForKeyRef = useRef(null)
+  const resolvedForKeyRef = useRef(
+    seededVisitor
+      ? `username:${decodeURIComponent(paramUsername).toLowerCase()}`
+      : !paramUsername && !paramUserId
+        ? 'self'
+        : null
+  )
 
   useEffect(() => {
     // No param → own profile.
@@ -460,7 +502,8 @@ function Profile() {
       return
     }
     let cancelled = false
-    setResolving(true)
+    const warmHandle = paramUsername ? peekVisitorHandle(paramUsername) : undefined
+    if (!warmHandle) setResolving(true)
     setUserNotFound(false)
 
     // /user/id/:userId route — look up by UUID directly.
@@ -482,6 +525,7 @@ function Profile() {
           } else {
             setResolvedUser(row)
             setUserNotFound(false)
+            if (row.username) mutateSWR(handleCacheKey(row.username), row)
           }
         })
         .catch(() => {
@@ -503,22 +547,41 @@ function Profile() {
       return
     }
     // 8-second timeout so a stalled connection doesn't leave resolving=true
-    // (skeleton visible) forever. On timeout, safeWithTimeout resolves to null
-    // which the .then() branch treats as "not found" — clears the skeleton.
-    safeWithTimeout(getUserByUsername(decoded), null, 8_000)
+    // (skeleton visible) forever. A cached handle is returned immediately
+    // and revalidated behind the hero; a timeout with nothing cached
+    // resolves to null, which the branch below treats as not found.
+    const cacheKey = handleCacheKey(decoded)
+    safeWithTimeout(
+      getSWR(cacheKey, async () => {
+        const row = await getUserByUsername(decoded)
+        if (!row?.id) {
+          const missing = new Error('profile not found')
+          missing.code = 'NOT_FOUND'
+          throw missing
+        }
+        return row
+      }, { ttlMs: 60_000 }),
+      warmHandle || null,
+      8_000
+    )
       .then((row) => {
         if (cancelled) return
         resolvedForKeyRef.current = key
-        if (!row) {
+        if (row?.id) {
+          const isSelf = !!(user?.id && row.id === user.id)
+          setResolvedUser(isSelf ? null : row)
+          setUserNotFound(false)
+        } else if (!warmHandle) {
           setUserNotFound(true)
           setResolvedUser(null)
-        } else {
-          setResolvedUser(row)
-          setUserNotFound(false)
         }
       })
       .catch(() => {
-        if (!cancelled) { resolvedForKeyRef.current = key; setUserNotFound(true); setResolvedUser(null) }
+        if (!cancelled && !warmHandle) {
+          resolvedForKeyRef.current = key
+          setUserNotFound(true)
+          setResolvedUser(null)
+        }
       })
       .finally(() => { if (!cancelled) setResolving(false) })
     return () => { cancelled = true }
@@ -583,9 +646,45 @@ function Profile() {
   // see the loading-state gate below, which keys off `profile` being
   // non-null. isOwnProfile is already correct at this point for the
   // plain `/profile` route (paramKey === 'self' needs no async lookup).
-  const [profile, setProfile] = useState(() =>
-    isOwnProfile ? (getProfile() || initializeProfile()) : null
-  )
+  const [profile, setProfile] = useState(() => {
+    if (!paramUsername && !paramUserId) return getProfile() || initializeProfile()
+    if (seededVisitor && !seededIsSelf) return profileBlobFromPublicRow(seededVisitor)
+    if (seededIsSelf) return getProfile() || initializeProfile()
+    return isOwnProfile ? (getProfile() || initializeProfile()) : null
+  })
+
+  // Route param changed since the last render. Apply a cached visitor
+  // (or clear to the skeleton) before paint so we never show user A's
+  // hero on user B's URL.
+  if (resolvedForKeyRef.current !== paramKey) {
+    const nextSeed = paramUsername ? peekVisitorHandle(paramUsername) : undefined
+    const nextIsSelf = !!(user?.id && nextSeed?.id === user.id)
+    if (!paramUsername && !paramUserId) {
+      resolvedForKeyRef.current = 'self'
+      setResolvedUser(null)
+      setResolving(false)
+      setUserNotFound(false)
+      setProfile(getProfile() || initializeProfile())
+    } else if (nextSeed && !nextIsSelf) {
+      resolvedForKeyRef.current = paramKey
+      setResolvedUser(nextSeed)
+      setResolving(false)
+      setUserNotFound(false)
+      setProfile(profileBlobFromPublicRow(nextSeed))
+    } else if (nextIsSelf) {
+      resolvedForKeyRef.current = paramKey
+      setResolvedUser(null)
+      setResolving(false)
+      setUserNotFound(false)
+      setProfile(getProfile() || initializeProfile())
+    } else {
+      resolvedForKeyRef.current = paramKey
+      setResolvedUser(null)
+      setResolving(true)
+      setUserNotFound(false)
+      setProfile(null)
+    }
+  }
 
   // Tabs: 'home' (default), 'reviews', 'lists', 'diary'.
   //
@@ -767,15 +866,27 @@ function Profile() {
   // `following` is the state of the Follow / Following toggle on
   // another user's profile (always false on own). `followPending`
   // debounces rapid taps so the optimistic UI doesn't race itself.
-  const [followersCount, setFollowersCount] = useState(0)
-  const [followingCount, setFollowingCount] = useState(0)
-  const [following, setFollowing] = useState(false)
   const [followPending, setFollowPending] = useState(false)
-  // Mirrors profileLoading's "first load per user" guard so the
-  // followers/following numerals skeleton on initial load only, never
-  // on optimistic follow/unfollow updates.
-  const [followLoading, setFollowLoading] = useState(true)
-  const loadedFollowForUserRef = useRef(null)
+  const followKey = targetUserId ? `profile:follows:${targetUserId}` : null
+  const loadFollowCounts = useCallback(async () => {
+    const [followers, followingCnt, amFollowing] = await Promise.all([
+      getFollowerCount(targetUserId),
+      getFollowingCount(targetUserId),
+      isOwnProfile ? Promise.resolve(false) : fetchIsFollowing(targetUserId),
+    ])
+    return { followers, following: followingCnt, amFollowing }
+  }, [targetUserId, isOwnProfile])
+  const {
+    data: followData,
+    error: followError,
+    refresh: refreshFollows,
+    mutate: mutateFollows,
+  } = useCachedResource(followKey, loadFollowCounts, { enabled: !!targetUserId })
+  const followersCount = followData?.followers ?? 0
+  const followingCount = followData?.following ?? 0
+  const following = followData?.amFollowing ?? false
+  // Numerals skeleton only when this profile has never been cached.
+  const followLoading = !!targetUserId && followData === undefined && !followError
 
   // Sprint 7 — banner URL for non-own profiles fetched from Supabase.
   // Own profile reads bannerUrl directly from the localStorage profile blob.
@@ -1028,57 +1139,24 @@ function Profile() {
   // this profile. Rebuilt as a callback so the FOLLOW_CHANGED_EVENT
   // listener below can invoke it without re-mounting the effect every
   // render.
-  const loadFollowState = useCallback(async () => {
-    if (!targetUserId) {
-      // Same rule as loadProfileData: a null profileUserId (signed out,
-      // still resolving, or a stale resolvedUser from a previously-
-      // viewed profile) always resets the numerals so they never show a
-      // stale/wrong user's counts. Only drop the loading flag once
-      // we're confident there's nothing pending.
-      setFollowersCount(0)
-      setFollowingCount(0)
-      setFollowing(false)
-      if (paramKey === 'self' || (!resolving && resolvedMatchesParams)) {
-        setFollowLoading(false)
-      }
-      return
-    }
-    const isFreshLoadForThisUser = loadedFollowForUserRef.current !== targetUserId
-    if (isFreshLoadForThisUser) setFollowLoading(true)
-    try {
-      const [followers, followingCnt, amFollowing] = await Promise.all([
-        getFollowerCount(targetUserId),
-        getFollowingCount(targetUserId),
-        isOwnProfile ? Promise.resolve(false) : fetchIsFollowing(targetUserId),
-      ])
-      setFollowersCount(followers)
-      setFollowingCount(followingCnt)
-      setFollowing(amFollowing)
-    } catch (err) {
-      console.error('[profile] follow state load failed:', err)
-    }
-    loadedFollowForUserRef.current = targetUserId
-    setFollowLoading(false)
-  }, [targetUserId, isOwnProfile, resolving, paramKey, resolvedMatchesParams])
-
   useEffect(() => {
-    loadFollowState()
-    // Follow counts are the numerals most likely to have moved while the app
-    // was backgrounded, and they're the one part of the hero that
-    // loadProfileData doesn't own. Reloading here skips the spinner because
-    // targetUserId hasn't changed, so the numerals just settle to new values.
-    const onResume = () => loadFollowState()
+    // Follow counts are the numerals most likely to have moved while the
+    // app was backgrounded. The cache already painted the last values;
+    // this refresh settles them if they changed.
+    const onResume = () => {
+      refreshFollows().catch(() => {})
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
-  }, [loadFollowState])
+  }, [refreshFollows])
 
   // Pull-to-refresh: the same two loads the resume listeners above
   // already run in parallel — loadProfileData force-bypasses the shared
   // swrCache bundle (reviews/lists/activities/pins/goal/journal/etc.),
-  // loadFollowState re-hits the (uncached) follower/following counts.
+  // refreshFollows revalidates profile:follows.
   const handlePullToRefresh = useCallback(
-    () => Promise.all([loadProfileData({ force: true }), loadFollowState()]),
-    [loadProfileData, loadFollowState]
+    () => Promise.all([loadProfileData({ force: true }), refreshFollows()]),
+    [loadProfileData, refreshFollows]
   )
 
   // /edit-profile still redirects here with openEditModal. Consume that
@@ -1102,14 +1180,14 @@ function Profile() {
       const followeeId = e?.detail?.followeeId
       if (!followeeId) return
       if (followeeId === targetUserId) {
-        loadFollowState()
+        refreshFollows().catch(() => {})
       }
     }
     window.addEventListener(FOLLOW_CHANGED_EVENT, handleFollowChanged)
     return () => {
       window.removeEventListener(FOLLOW_CHANGED_EVENT, handleFollowChanged)
     }
-  }, [targetUserId, loadFollowState])
+  }, [targetUserId, refreshFollows])
 
   /* ── Live presence status for this profile ─────────────────────── */
 
@@ -1369,9 +1447,17 @@ function Profile() {
     hapticImpact('Light')
 
     // Optimistic toggle — flip the button label and bump the follower
-    // numeral immediately so the UI feels instant.
-    setFollowing(!wasFollowing)
-    setFollowersCount((c) => Math.max(0, c + (wasFollowing ? -1 : 1)))
+    // numeral immediately so the UI feels instant. followUser's own
+    // cache patch no-ops when amFollowing is already the target value.
+    const delta = wasFollowing ? -1 : 1
+    mutateFollows((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        amFollowing: !wasFollowing,
+        followers: Math.max(0, (current.followers || 0) + delta),
+      }
+    })
     setFollowPending(true)
 
     try {
@@ -1382,8 +1468,14 @@ function Profile() {
       }
     } catch (err) {
       // Roll back on failure.
-      setFollowing(wasFollowing)
-      setFollowersCount((c) => Math.max(0, c + (wasFollowing ? 1 : -1)))
+      mutateFollows((current) => {
+        if (!current) return current
+        return {
+          ...current,
+          amFollowing: wasFollowing,
+          followers: Math.max(0, (current.followers || 0) - delta),
+        }
+      })
       console.error('[profile] follow toggle failed:', err)
       showToast(
         err?.message || "Couldn't update follow status. Tap to retry.",
@@ -1394,7 +1486,7 @@ function Profile() {
     } finally {
       setFollowPending(false)
     }
-  }, [targetUserId, isOwnProfile, followPending, following])
+  }, [targetUserId, isOwnProfile, followPending, following, mutateFollows])
 
   /* ── Pin / Unpin / Reorder handlers (Sprint 6 P3) ─────────────── */
 

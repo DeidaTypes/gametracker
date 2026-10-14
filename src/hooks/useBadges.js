@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { BADGES, TIER_RANK } from '../data/badges'
 import { supabase } from '../services/supabase'
+import { useCachedResource } from './useCachedResource'
 
 /**
  * Sprint 16 (S16-4) — Badge state hook, rewritten as a READER.
@@ -29,58 +30,45 @@ import { supabase } from '../services/supabase'
  * stats, loading } — so BadgesRow / UserBadgesPage / BadgeShowcase /
  * BadgeDetailModal (all out of scope here, S16-5) need no changes.
  */
+function shapeBadgeStats(rows) {
+  const next = {}
+  for (const row of rows || []) {
+    next[row.badge_id] = Number(row.current_value) || 0
+    next[`${row.badge_id}__tier`] = row.tier || null
+    next[`${row.badge_id}__celebrated`] = !!row.celebrated_at
+  }
+  return next
+}
+
 export function useBadges(userId) {
-  const [stats, setStats] = useState({})
-  const [loading, setLoading] = useState(!!userId)
-  const requestRef = useRef(0)
+  const key = userId ? `profile:badges:${userId}` : null
+
+  const fetcher = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('user_badges')
+      .select('badge_id, tier, current_value, celebrated_at')
+      .eq('user_id', userId)
+
+    if (error) throw error
+    return shapeBadgeStats(data)
+  }, [userId])
+
+  const { data, error, refresh } = useCachedResource(key, fetcher, { enabled: !!userId })
+  const stats = data ?? {}
+  const loading = !!userId && data === undefined && !error
 
   useEffect(() => {
-    let cancelled = false
-    const myRequest = ++requestRef.current
-
-    if (!userId) {
-      setStats({})
-      setLoading(false)
-      return undefined
+    if (!userId) return undefined
+    const onChange = () => {
+      refresh().catch(() => {})
     }
-
-    setLoading(true)
-
-    async function load() {
-      const { data, error } = await supabase
-        .from('user_badges')
-        .select('badge_id, tier, current_value, celebrated_at')
-        .eq('user_id', userId)
-
-      if (cancelled || myRequest !== requestRef.current) return
-
-      if (error) {
-        console.error('[useBadges] failed to read persisted badge state:', error.message)
-        setStats({})
-      } else {
-        const next = {}
-        for (const row of data || []) {
-          next[row.badge_id] = Number(row.current_value) || 0
-          next[`${row.badge_id}__tier`] = row.tier || null
-          next[`${row.badge_id}__celebrated`] = !!row.celebrated_at
-        }
-        setStats(next)
-      }
-      setLoading(false)
-    }
-
-    load()
-
-    const refresh = () => load()
-    window.addEventListener('storage', refresh)
-    window.addEventListener('badgesUpdated', refresh)
-
+    window.addEventListener('storage', onChange)
+    window.addEventListener('badgesUpdated', onChange)
     return () => {
-      cancelled = true
-      window.removeEventListener('storage', refresh)
-      window.removeEventListener('badgesUpdated', refresh)
+      window.removeEventListener('storage', onChange)
+      window.removeEventListener('badgesUpdated', onChange)
     }
-  }, [userId])
+  }, [userId, refresh])
 
   const partitioned = useMemo(() => {
     const earned = []

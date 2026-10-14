@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { markSWRStaleByPrefix } from './swrCache'
 
 /**
  * Block Service — Supabase-backed user blocking.
@@ -252,6 +253,12 @@ export async function unblockUser(targetUserId) {
     }
   }
   emitBlockChanged({ targetUserId, blocked: false })
+  // Their thread was filtered out of the inbox while blocked, and we
+  // don't have that row locally to splice back in. Mark the inbox and
+  // the viewer-specific social bundles stale so the next open paints
+  // what it has, then revalidates.
+  markSWRStaleByPrefix('messages:inbox:')
+  markSWRStaleByPrefix('game:social:')
 }
 
 /**
