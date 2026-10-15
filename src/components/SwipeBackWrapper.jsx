@@ -36,9 +36,9 @@ import './SwipeBackWrapper.css'
 // the screen behind it from the same number. A back BUTTON press reaches the
 // same controller through AnimatedRoutes' POP handling, so the two produce one
 // visual result rather than two similar ones.
-const EDGE = 28 // px from the left edge where a back-swipe may begin
-const THRESHOLD = 90 // px of travel that commits the back navigation
-const VELOCITY = 0.45 // px/ms flick speed that commits regardless of travel
+const EDGE = 24 // px from the left edge where a back-swipe may begin
+const COMMIT_PROGRESS = 0.35 // fraction of the width that commits
+const VELOCITY = 0.5 // px/ms flick speed that commits regardless of travel
 
 export default function SwipeBackWrapper({ children }) {
   const navigate = useNavigate()
@@ -60,6 +60,9 @@ export default function SwipeBackWrapper({ children }) {
       startY: 0,
       startT: 0,
       dx: 0,
+      vx: 0,
+      lastX: 0,
+      lastT: 0,
       width: 0,
       navigating: false,
       navigated: false,
@@ -79,6 +82,11 @@ export default function SwipeBackWrapper({ children }) {
       state.horizontal = false
       state.dragging = false
       state.dx = 0
+      state.vx = 0
+      el.style.touchAction = ''
+      el.style.webkitUserSelect = ''
+      el.style.userSelect = ''
+      el.classList.remove('swipe-back--dragging')
     }
 
     const onStart = (e) => {
@@ -90,8 +98,11 @@ export default function SwipeBackWrapper({ children }) {
       state.horizontal = false
       state.startX = t.clientX
       state.startY = t.clientY
-      state.startT = Date.now()
+      state.startT = performance.now()
       state.dx = 0
+      state.vx = 0
+      state.lastX = t.clientX
+      state.lastT = state.startT
     }
 
     const onMove = (e) => {
@@ -111,6 +122,12 @@ export default function SwipeBackWrapper({ children }) {
           state.active = false
           return
         }
+        // Synchronous — a class update would land a frame late, and iOS
+        // will have already started selecting text or scrolling.
+        el.style.touchAction = 'none'
+        el.style.webkitUserSelect = 'none'
+        el.style.userSelect = 'none'
+        el.classList.add('swipe-back--dragging')
         // Mount the reveal on the first horizontal frame, not on touchstart:
         // an edge tap that turns out to be a scroll never pays for a clone
         // being inserted and then removed.
@@ -128,6 +145,10 @@ export default function SwipeBackWrapper({ children }) {
       if (e.cancelable) e.preventDefault()
 
       state.dx = dx > 0 ? dx : 0
+      const now = performance.now()
+      state.vx = (t.clientX - state.lastX) / Math.max(1, now - state.lastT)
+      state.lastX = t.clientX
+      state.lastT = now
       if (state.dragging && state.width) {
         setBackProgress(state.dx / state.width)
       }
@@ -138,9 +159,8 @@ export default function SwipeBackWrapper({ children }) {
         reset()
         return
       }
-      const dt = Math.max(Date.now() - state.startT, 1)
-      const velocity = state.dx / dt
-      const commit = state.dx > THRESHOLD || velocity > VELOCITY
+      const progress = state.width ? state.dx / state.width : 0
+      const commit = progress > COMMIT_PROGRESS || state.vx > VELOCITY
       const dragging = state.dragging
       reset()
 

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import { hideKeyboard, isKeyboardOpen } from '../services/keyboardInset'
 import '../styles/keyboard.css'
 import './CenteredModal.css'
@@ -48,6 +49,7 @@ function CenteredModal({
   dismissOnBackdrop = true,
 }) {
   const { reduced } = useMotionPreference()
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   // ── Body scroll lock while open ───────────────────────────────────────
   useEffect(() => {
@@ -77,11 +79,6 @@ function CenteredModal({
     if (dismissOnBackdrop) onClose?.()
   }
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.2 }
-  const cardTransition = reduced
-    ? { duration: 0 }
-    : { duration: 0.25, ease: [0.16, 1, 0.3, 1] }
-
   return createPortal(
     <AnimatePresence onExitComplete={onExited}>
       {isOpen && (
@@ -91,7 +88,7 @@ function CenteredModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={backdropTransition}
+          transition={transition}
         >
           <div className="cm-lift kb-modal-lift">
             <motion.div
@@ -101,11 +98,17 @@ function CenteredModal({
               role="dialog"
               aria-modal="true"
               aria-label={ariaLabel}
-              initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
-              animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
-              transition={cardTransition}
+              initial={reduced ? false : { y: '100dvh' }}
+              animate={{ y: 0 }}
+              exit={reduced ? { y: 0 } : { y: '100dvh' }}
+              transition={transition}
+              {...dragProps}
             >
+              <div
+                className="cm-grab"
+                aria-hidden="true"
+                onPointerDown={startDrag}
+              />
               {children}
             </motion.div>
           </div>

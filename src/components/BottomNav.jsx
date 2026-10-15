@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import { House, Compass, BookCopy, User } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import { hapticImpact } from '../utils/haptics'
@@ -79,7 +79,6 @@ const NAV_ITEMS = [
 
 function BottomNav({ scrollHidden = false }) {
   const location = useLocation()
-  const reduced = useReducedMotion()
   const { unreadCount } = useUnreadMessages()
   const [dragReorderActive, setDragReorderActive] = useState(false)
 
@@ -99,10 +98,8 @@ function BottomNav({ scrollHidden = false }) {
   // Hide on onboarding (App.jsx already guards auth/login screens).
   if (location.pathname === '/onboarding') return null
 
-  // Per spec: spring stiffness 380 / damping 30; instant for reduced-motion.
-  const pillTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 30 }
+  // Tab changes are instant. The pill moves with no travel animation.
+  const pillTransition = { duration: 0 }
 
   const visuallyHidden = dragReorderActive || scrollHidden
 

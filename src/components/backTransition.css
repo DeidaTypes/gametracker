@@ -1,49 +1,28 @@
-/* Back-transition reveal — see backTransition.js for the geometry and for why
-   the previous screen is a snapshot rather than a live route layer. */
+/* Back reveal. The previous screen, captured at push time, sits under the
+   page being popped. The window itself translates from -30% to 0; a dim
+   layer on top of the snapshot fades from 0.12 to 0. The outgoing route
+   layer (see .back-slide-top) travels the other way. */
 
-/* The window. Viewport-sized and clipped, translated so its right edge tracks
-   the outgoing page's left edge; only the strip the top page has vacated is
-   ever visible.
-
-   Appended as a trailing child of `.main-content` on purpose: the exiting
-   route layer is `position: fixed; z-index: 2` inside `.main-content`, which
-   is itself a stacking context, so nothing outside it can paint between the
-   destination layer and the exiting one. `position: fixed` keeps it out of
-   flow, so it never contributes to that container's scrollHeight.
-
-   `position: fixed` here is safe from the "attaches to the nearest transformed
-   ancestor" trap documented at Library.jsx ~958-966: `.main-content` has no
-   transform, and this element is a SIBLING of the transformed page layers
-   rather than a descendant of either.
-
-   Opaque, because it has to hide the live destination page underneath while
-   that page mounts and restores its scroll. The gradient is body's own recipe
-   over a viewport-height box, so the revealed screen's background is identical
-   to the real thing. */
 .back-reveal {
   position: fixed;
   inset: 0;
   z-index: 1;
   overflow: hidden;
-  /* Purely decorative for the length of the transition. */
   pointer-events: none;
   background-color: var(--color-bg-primary);
   background-image: var(--color-bg-gradient);
   background-repeat: no-repeat;
-  transform: translate3d(-100%, 0, 0);
+  transform: translate3d(-30%, 0, 0);
   will-change: transform;
-  /* Keeps the snapshot's layout and paint out of the live page's. */
   contain: layout paint;
 }
 
-/* Carries the parallax translate and the dim. The dim is this element's
-   opacity over the window's navy gradient above — that keeps darkening to one
-   composited property and introduces no new color. */
-.back-reveal__content {
+.back-reveal__dim {
   position: absolute;
   inset: 0;
-  transform: translate3d(0, 0, 0);
-  will-change: transform, opacity;
+  background: var(--sheet-backdrop);
+  opacity: var(--motion-dim);
+  pointer-events: none;
 }
 
 /* The cloned page. `top` is set inline to (host padding-top - scrollTop) so
@@ -55,48 +34,26 @@
 }
 
 /* The outgoing `.route-layer` while it is sliding off (gesture or button
-   back). Carries the leading-edge shadow so the screen reads as a layer
-   lifting off the one behind it.
-
-   will-change is scoped to the transition for the same reason as
-   `.swipe-back--dragging`: left on permanently it would make the element a
-   containing block for `position: fixed` descendants at rest. */
+   back). Leading-edge shadow so the screen reads as a layer. */
 .back-slide-top {
+  z-index: 3;
   will-change: transform;
   box-shadow: var(--shadow-page-edge);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 
-/* ── Compositor hygiene during slide ──
-   Translating a subtree that contains backdrop-filter, filter: blur(), or
-   scattered will-change hints forces WebKit to rasterise those layers on every
-   frame. At the longer settle that reads as motion-blur trails — glass headers
-   and hero blurs smearing behind the page. Same trade as keyboard.css
-   (.kb-no-blur-while-animating) and CenteredModal.css (overlay blur dropped
-   during keyboard lift). Scoped to descendants only; the sliding roots above
-   keep their own will-change for the travel tween. */
-/* Outgoing page only — not the snapshot clone (.back-reveal), which must
-   still match the live destination when the cover is removed or headers pop. */
 .back-slide-top * {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   will-change: auto !important;
 }
 
-/* Slide travel is on `.route-layer`; neutralise Framer's identity transform on
-   the inner motion.div so the page is one composited texture, not two layers
-   that can desync during the settle. */
 .route-layer.back-slide-top > .page-transition {
   transform: none !important;
   will-change: auto !important;
 }
 
-/* Belt-and-braces for the OS-level query. Both entry points gate on
-   useMotionPreference (which also covers the in-app Reduce motion toggle)
-   before a reveal is ever mounted — AnimatedRoutes swaps layers instantly and
-   SwipeBackWrapper skips the gesture animation entirely — so this should be
-   unreachable. It's here so a missed branch can't animate anyway. */
 @media (prefers-reduced-motion: reduce) {
   .back-reveal {
     display: none;
@@ -105,4 +62,8 @@
   .back-slide-top {
     box-shadow: none;
   }
+}
+
+body[data-reduce-motion='true'] .back-reveal {
+  display: none;
 }

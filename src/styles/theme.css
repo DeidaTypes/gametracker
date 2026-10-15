@@ -564,7 +564,10 @@ body[data-larger-text='true'] {
      (matching native iOS push depth). Named rather than inlined because two
      call sites need the identical value — the swipe gesture and the button
      back both apply it via `.back-slide-top`. */
-  --shadow-page-edge: -12px 0 32px rgba(0, 0, 0, 0.45);
+  --shadow-page-edge: -10px 0 30px rgba(0, 0, 0, 0.28);
+  /* Opaque black. The push dim and sheet scrims paint this and animate
+     their own opacity, so light themes darken instead of washing out. */
+  --sheet-backdrop: #000000;
 
   /* ---- Surface Elevations ----
      Surface 1 — default cards: card bg + 1px inner top edge highlight
@@ -578,6 +581,10 @@ body[data-larger-text='true'] {
   --transition-fast: 0.12s ease;
   --transition-normal: 0.22s ease;
   --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* X-style navigation and sheets. One duration, one curve. */
+  --motion-duration: 340ms;
+  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-dim: 0.12;
 
   /* ---- Blur ---- */
   --blur-sm: 8px;
@@ -891,6 +898,9 @@ html[data-app-theme="cream"] {
   color-scheme: light;
   --theme-tint: 12%;
   --theme-fill-mix: 5%;
+  /* A navy-weight edge shadow muddies Light Pink. Keep the same offset,
+     drop the strength so the incoming page still reads as a layer. */
+  --shadow-page-edge: -10px 0 28px rgba(40, 16, 32, 0.18);
 }
 
 /* The Navy page wash is the existing ambient gradient. Every other

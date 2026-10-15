@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { UserPlus, X, Users } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import { getFollowing } from '../services/followService'
 import { addCollaborator, removeCollaborator } from '../services/listService'
 import { showToast } from './Toast'
@@ -90,10 +91,7 @@ function CollaboratorSheet({
     }
   }
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -107,7 +105,7 @@ function CollaboratorSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={backdropTransition}
+          transition={transition}
         >
           <motion.div
             className="collab-sheet"
@@ -115,9 +113,10 @@ function CollaboratorSheet({
             initial={reduced ? false : { y: '100%' }}
             animate={{ y: 0 }}
             exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
+            transition={transition}
+            {...dragProps}
           >
-            <div className="collab-sheet__handle" aria-hidden="true" />
+            <div className="collab-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />
 
             <div className="collab-sheet__header">
               <span className="collab-sheet__title">Collaborators</span>

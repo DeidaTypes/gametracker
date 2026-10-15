@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { motion } from 'motion/react'
 import { PenLine } from 'lucide-react'
 import { getGameById } from '../services/igdb'
 import EmptyState from '../components/EmptyState'
 import { getDominantColor, getGameSwatches } from '../services/colorExtract'
 import { useGameColor } from '../contexts/GameColorContext'
-import { useTransitionComplete, PAGE_TRANSITION_DURATION_MS } from '../components/PageTransition'
-import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useTransitionComplete } from '../components/PageTransition'
+import { runAfterSlide } from '../motion/xMotion'
 import ReviewCard from '../components/ReviewCard'
 import { STATUS_TILES } from '../components/AddToListButton'
 import StatusChip, { STATUS_META } from '../components/StatusChip'
@@ -200,18 +199,6 @@ function GameDetail() {
   // useTransitionComplete's docstring in PageTransition.jsx. Resolves
   // immediately when motion is reduced (there's no tween to wait for).
   const transitionComplete = useTransitionComplete()
-  const { reduced: motionReduced } = useMotionPreference()
-  // The color backdrop used to fade in over its own hardcoded 280ms,
-  // longer than (and unsynchronized with) the page's 220ms tween — two
-  // overlapping fades of different durations finishing at different times
-  // is part of what read as choppy on a cold game. Matching the page
-  // tween's own duration (imported from PageTransition, not re-typed as a
-  // second "0.22") means the two always finish together instead of the
-  // backdrop trailing off after the page has already settled. Also
-  // respects reduced motion, which the old hardcoded transition never did.
-  const backdropTransition = motionReduced
-    ? { duration: 0 }
-    : { duration: PAGE_TRANSITION_DURATION_MS / 1000 }
   // Source cover image for the shared-element flight. Comes either from
   // the navigation state (if the caller passed it) or from a small
   // module-level cache of the most recently rendered cover for this
@@ -312,32 +299,39 @@ function GameDetail() {
     let cancelled = false
 
     async function fetchGame() {
+      let placeholder = false
       try {
         const warm = peekSWR(`game:${gameId}`)
         // A warm game revalidates behind the already-rendered page; only a
         // cold one is allowed to blank the screen out to a skeleton.
         if (warm === undefined) setLoading(true)
         setError(null)
+        // Captured before the request resolves — getSWR writes the cache,
+        // so a peek afterwards would always look warm.
+        placeholder = warm === undefined && !navStub
 
         const gameData = await getSWR(`game:${gameId}`, () => getGameById(gameId), {
           ttlMs: GAME_TTL_MS,
         })
         if (cancelled) return
-        setGame(gameData)
-        // Hands off to the deferred color-extraction effect below — it
-        // waits for both this AND the page transition to finish before
-        // touching the canvas. Deliberately NOT chained here: this keeps
-        // getGameById's own re-render as cheap as a single setGame call.
-        setResolvedImage(gameData.image)
-
-        addViewedGame(gameId, gameData.title, gameData.image)
-        refreshFromStore()
+        // A stub or cached hero is already painted. Hold the fuller payload
+        // until the slide ends so the page doesn't reflow mid-travel.
+        // A cold open with nothing to show applies immediately.
+        runAfterSlide(() => {
+          if (cancelled) return
+          setGame(gameData)
+          setResolvedImage(gameData.image)
+          addViewedGame(gameId, gameData.title, gameData.image)
+          refreshFromStore()
+          setLoading(false)
+        }, { placeholder })
+        if (!placeholder) return
       } catch (err) {
         if (cancelled) return
         console.error('Error fetching game:', err)
         setError('Failed to load game details.')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled && placeholder) setLoading(false)
       }
     }
 
@@ -633,21 +627,11 @@ function GameDetail() {
            gradient shows through with no seam. pointer-events: none so it
            never blocks taps.
 
-           Wrapped in motion.div with an opacity fade timed to MATCH the
-           page's own entrance tween (backdropTransition, above) rather than
-           its own independent 280ms — the two now finish together instead
-           of the backdrop's fade trailing on past the page settling, which
-           was part of what read as choppy on a cold game. Still blooms in
-           WHILE the cover-to-hero layoutId flight is in motion (per spec);
-           it's just no longer a second, differently-timed animation
-           racing the page tween. */}
-      <motion.div
+           Paints with the page. The old opacity fade fought the push slide. */}
+      <div
         className="gd-color-backdrop"
         style={backdropStyle}
         aria-hidden="true"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={backdropTransition}
       />
 
       {/* ── Hero Section ── */}

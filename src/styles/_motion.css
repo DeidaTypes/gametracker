@@ -17,40 +17,112 @@
 }
 
 /* =====================================================
-   PAGE-LEVEL CROSS-FADE + SLIDE WRAPPER
-   Rendered by <PageTransition> for every top-level
-   route (see src/components/PageTransition.jsx).
-   Keep layout-neutral: pages should scroll and size
-   exactly as they did before the wrapper was added.
+   PAGE WRAPPER
+   Layout-neutral. The slide lives on .route-layer, not here —
+   a transform on this node would pin position:fixed composers
+   to the page instead of the viewport once the slide is over.
    ===================================================== */
 
 .page-transition {
   width: 100%;
 }
 
-/* Compositor hint for the page-level fade/slide, applied only while that
-   animation is actually running (PageTransition toggles the class off on
-   animation complete).
-   It cannot be left on permanently: `will-change: transform` makes this
-   wrapper the containing block for every position:fixed descendant, which
-   silently re-anchors the keyboard-aware composer bars to the bottom of
-   the page's content box instead of the viewport. On a tall page that
-   drops the composer hundreds of px below the fold — the wrapper has to
-   stay layout-neutral at rest, as the header above says. */
-.page-transition--animating {
-  will-change: opacity, transform;
-}
-
 /* =====================================================
-   ROUTE LAYER STACK — direction-aware push/pop transitions
-   Rendered by <AnimatedRoutes> (see src/App.jsx). During a navigation,
-   up to two of these are mounted at once: the entering page (plain,
-   in-flow — identical to how <Routes> rendered directly into
-   .main-content before) and, briefly, the previous page mid-exit.
+   ROUTE LAYER STACK — X-style push / pop
+   Rendered by <AnimatedRoutes> (see src/App.jsx). During a
+   navigation, two layers are mounted: the screen underneath
+   and the screen on top. Transform and opacity only.
    ===================================================== */
+
+.route-stack {
+  width: 100%;
+}
 
 .route-layer {
   width: 100%;
+}
+
+.route-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: var(--sheet-backdrop);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.route-dim--dimmed {
+  opacity: var(--motion-dim);
+}
+
+.route-layer--under,
+.route-layer--front {
+  min-height: 100%;
+  background-color: var(--color-bg-primary);
+}
+
+.route-layer--under {
+  position: relative;
+  z-index: 1;
+}
+
+.route-layer--front {
+  position: relative;
+  z-index: 3;
+  box-shadow: var(--shadow-page-edge);
+}
+
+.route-layer--from-right {
+  transform: translate3d(100%, 0, 0);
+}
+
+.route-layer--from-parallax {
+  transform: translate3d(-30%, 0, 0);
+}
+
+.route-stack--run .route-layer--to-rest,
+.route-stack--run .route-layer--to-parallax,
+.route-stack--run .route-layer--to-off {
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+
+.route-stack--run .route-dim--fade-in,
+.route-stack--run .route-dim--fade-out {
+  transition: opacity var(--motion-duration) var(--motion-ease);
+}
+
+.route-stack--run .route-layer--to-rest {
+  transform: translate3d(0, 0, 0);
+}
+
+.route-stack--run .route-layer--to-parallax {
+  transform: translate3d(-30%, 0, 0);
+}
+
+.route-stack--run .route-layer--to-off {
+  transform: translate3d(100%, 0, 0);
+}
+
+.route-stack--run .route-dim--fade-in {
+  opacity: var(--motion-dim);
+}
+
+.route-stack--run .route-dim--fade-out {
+  opacity: 0;
+}
+
+.route-stack--run .route-layer--front,
+.route-stack--run .route-layer--under {
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Blur layers rasterise every frame of a full-screen slide. Drop them
+   for the travel only; the sliding roots keep their own will-change. */
+.route-stack--run .route-layer * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* The exiting layer is pulled out of .main-content's normal flow so it

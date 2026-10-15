@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { LuChevronRight } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
 import KeyboardAwareView from './KeyboardAwareView'
 import './ActionSheet.css'
 
@@ -61,14 +62,10 @@ function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
+  const backdropTransition = sheetTransition(reduced)
+  const sheetMove = sheetTransition(reduced)
 
-  const handleDragEnd = (_e, info) => {
-    if (info.offset.y > 110 || info.velocity.y > 600) onClose()
-  }
+  const handleDragEnd = sheetDragEnd(onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -94,7 +91,7 @@ function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel
             initial={reduced ? false : { y: '100%' }}
             animate={{ y: 0 }}
             exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
+            transition={sheetMove}
             drag={reduced ? false : 'y'}
             dragControls={dragControls}
             dragListener={false}

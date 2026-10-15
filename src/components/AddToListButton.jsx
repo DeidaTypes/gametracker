@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
 import {
   getAllLists,
   addGameToList,
@@ -114,18 +115,12 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, forceOpen, dismiss]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Consistent 300 ms-feel spring shared with the app's other bottom
-  // sheets (ReportSheet). Reduced motion → instant swap.
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.2 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
+  const backdropTransition = sheetTransition(reduced)
+  const sheetMove = sheetTransition(reduced)
 
   // Swipe-down-to-dismiss. Drag is initiated only from the grab handle
   // (dragListener={false}) so the body's own scroll still works.
-  const handleDragEnd = (_e, info) => {
-    if (info.offset.y > 110 || info.velocity.y > 600) dismiss()
-  }
+  const handleDragEnd = sheetDragEnd(dismiss)
 
   const handleStatusTap = (statusKey) => {
     if (!game) return
@@ -217,7 +212,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                 initial={reduced ? false : { y: '100%' }}
                 animate={{ y: 0 }}
                 exit={reduced ? { y: 0 } : { y: '100%' }}
-                transition={sheetTransition}
+                transition={sheetMove}
                 drag={reduced ? false : 'y'}
                 dragControls={dragControls}
                 dragListener={false}

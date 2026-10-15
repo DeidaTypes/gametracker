@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import {
   LuChevronLeft,
   LuChevronRight,
@@ -456,8 +456,6 @@ function Profile() {
   const { enabled: presenceEnabled, playingNow } = usePresence()
   // Drives the unread dot on the profile-header Messages entry point —
   // same count/token as the Profile bottom-nav tab dot (BottomNav.jsx).
-  const reducedMotion = useReducedMotion()
-
   // ── Username → userId resolution ───────────────────────────────────────
   // When arriving via /user/:username we must look up the UUID before we
   // can fetch Supabase data. `resolvedUser` carries the raw Supabase row
@@ -2043,11 +2041,7 @@ function Profile() {
                   <motion.span
                     layoutId="profile-tab-underline"
                     className="profile-tab__underline"
-                    transition={
-                      reducedMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 380, damping: 30 }
-                    }
+                    transition={{ duration: 0 }}
                     aria-hidden="true"
                   />
                 )}
@@ -2065,18 +2059,6 @@ function Profile() {
             plain swap.
             ═════════════════════════════════════════════════════════ */}
         <div className="profile-tab-content">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              initial={reducedMotion ? false : { opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={reducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -12 }}
-              transition={
-                reducedMotion
-                  ? { duration: 0 }
-                  : { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }
-              }
-            >
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
@@ -2134,8 +2116,6 @@ function Profile() {
                   onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
                 />
               )}
-            </motion.div>
-          </AnimatePresence>
         </div>
 
         {/* ═════════════════════════════════════════════════════════

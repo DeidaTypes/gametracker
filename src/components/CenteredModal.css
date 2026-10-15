@@ -39,6 +39,19 @@
   min-height: 0;
 }
 
+/* Swipe-down starts here. The card itself stays centered; the grabber
+   is the dismiss handle so a scrollable body still scrolls. */
+.cm-grab {
+  width: 36px;
+  height: var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-text-tertiary);
+  opacity: 0.45;
+  margin: var(--space-8) auto var(--space-4);
+  flex: none;
+  touch-action: none;
+}
+
 /* ── Centered card ── */
 .cm-card {
   position: relative;

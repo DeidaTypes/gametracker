@@ -62,17 +62,13 @@
  */
 import './backTransition.css'
 
-// Fraction of the viewport the previous screen sits to the left by at rest,
-// matching UINavigationController's reveal.
-const PARALLAX = 0.28
-// The previous screen's opacity at p=0, over the window's own navy gradient.
-// This is the "slightly darkened" part of the native look.
-const DIM_FLOOR = 0.55
+// Fraction of the viewport the previous screen sits to the left while covered.
+const PARALLAX = 0.3
+// Dim over the screen underneath, at rest (covered). Fades to 0 as it returns.
+const DIM_OPACITY = 0.12
 
-// Settle duration and easing for swipe-release and button-back. The curve
-// matches PAGE_TRANSITION_ENTER in PageTransition.jsx so back feels like
-// the inverse of forward — smooth throughout, not front-loaded.
-export const BACK_SETTLE_MS = 400
+// Settle duration and easing. Same 340ms curve as a push.
+export const BACK_SETTLE_MS = 340
 // Button backs defer settleTo by two rAFs so `.route-layer--exiting` commits
 // first; budget that wait when sizing AnimatedRoutes' exit safety timer.
 const BACK_SLIDE_START_DEFER_MS = 34
@@ -80,7 +76,7 @@ const BACK_SETTLE_BUFFER_MS = 20
 /** Full button-back travel time from POP to settleTo completion (worst case). */
 export const BACK_EXIT_ANIM_MS =
   BACK_SLIDE_START_DEFER_MS + BACK_SETTLE_MS + BACK_SETTLE_BUFFER_MS
-const SETTLE_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
+const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const SETTLE = `transform ${BACK_SETTLE_MS}ms ${SETTLE_EASE}, opacity ${BACK_SETTLE_MS}ms ${SETTLE_EASE}`
 
 // One entry per back-stack depth. Three is plenty for back-through-three
@@ -231,13 +227,14 @@ export function clearSnapshots() {
 
 function apply(p) {
   if (!active) return
-  const { width, win, content, topLayer } = active
+  const { width, win, dim, topLayer } = active
   const clamped = p < 0 ? 0 : p > 1 ? 1 : p
   active.progress = clamped
 
-  win.style.transform = `translate3d(${(clamped - 1) * width}px, 0, 0)`
-  content.style.transform = `translate3d(${(1 - clamped) * (1 - PARALLAX) * width}px, 0, 0)`
-  content.style.opacity = String(DIM_FLOOR + (1 - DIM_FLOOR) * clamped)
+  // p=0: underneath parked at -30%, dim at 0.12, top covering the screen.
+  // p=1: underneath home, dim gone, top off to the right.
+  win.style.transform = `translate3d(${-PARALLAX * (1 - clamped) * width}px, 0, 0)`
+  if (dim) dim.style.opacity = String(DIM_OPACITY * (1 - clamped))
   if (topLayer) {
     // AnimatedRoutes re-renders can reset route-layer className and drop a
     // classList-only `.back-slide-top` mid-gesture — re-apply every frame.
@@ -252,7 +249,7 @@ function setTransitioned(on) {
   if (!active) return
   const value = on ? SETTLE : 'none'
   active.win.style.transition = value
-  active.content.style.transition = value
+  if (active.dim) active.dim.style.transition = value
   if (active.topLayer) active.topLayer.style.transition = on ? SETTLE : 'none'
 }
 
@@ -334,17 +331,17 @@ export function beginBack({ topLayer } = {}) {
   win.className = 'back-reveal'
   win.setAttribute('aria-hidden', 'true')
 
-  const content = document.createElement('div')
-  content.className = 'back-reveal__content'
-  win.appendChild(content)
-
   if (snap) {
     // The clone was a child of `.main-content`, so its top edge sat at
     // (padding-top - scrollTop). Reproducing that offset is what makes the
     // revealed screen appear at the scroll position the user left it at.
     snap.node.style.top = `${(parseFloat(snap.padTop) || 0) - snap.scrollTop}px`
-    content.appendChild(snap.node)
+    win.appendChild(snap.node)
   }
+
+  const dim = document.createElement('div')
+  dim.className = 'back-reveal__dim'
+  win.appendChild(dim)
 
   host.appendChild(win)
 
@@ -360,7 +357,7 @@ export function beginBack({ topLayer } = {}) {
 
   active = {
     win,
-    content,
+    dim,
     topLayer: slideTarget,
     width,
     progress: 0,
@@ -485,11 +482,13 @@ function maybeRelease() {
   // One motion only: the settle is the exit. Drop the cover after the scroll
   // restore has had a frame to paint underneath — same-turn destroy can flash
   // one frame at the wrong offset.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (active) destroy()
-    })
-  })
+  const drop = () => {
+    if (active) destroy()
+  }
+  requestAnimationFrame(() => requestAnimationFrame(drop))
+  // A second frame sometimes never arrives in a backgrounded webview, which
+  // used to leave the reveal up until HOLD_CAP_MS.
+  setTimeout(drop, 48)
 }
 
 /**
@@ -572,11 +571,11 @@ export function finishBack({ commit, onDone }) {
  *   'slide'   — a button back: mount the reveal and run the identical slide
  *               over `topLayer` (the layer that's about to become
  *               `.route-layer--exiting`).
- *   'fade'    — no snapshot for this destination. Existing back fade.
+ *   'live'    — no snapshot for this destination. AnimatedRoutes slides the
+ *               live layers (incoming from -30%, outgoing off to the right).
  *
- * A snapshot is only used when its key matches the destination, so a
- * multi-entry back or a history shape we didn't predict degrades to the fade
- * instead of revealing the wrong screen.
+ * A snapshot is only used when its key matches the destination. Anything else
+ * falls through to a live-layer slide so the wrong screen is never revealed.
  */
 export function claimBack(destKey, topLayer) {
   if (pendingCommit) {
@@ -597,33 +596,37 @@ export function claimBack(destKey, topLayer) {
       return 'gesture'
     }
     teardownBack()
-    return 'fade'
+    return 'live'
   }
 
   teardownBack()
 
   const top = stack.length ? stack[stack.length - 1] : null
-  if (!top || top.key !== destKey || !topLayer) return 'fade'
+  if (!top || top.key !== destKey || !topLayer) return 'live'
 
   const width = beginBack({ topLayer })
-  if (!width) return 'fade'
+  if (!width) return 'live'
 
   stack.pop()
   startHold()
 
   // claimBack runs inside AnimatedRoutes' layout effect, before the outgoing
   // layer commits as `.route-layer--exiting` (position: fixed + scroll offset).
-  // Wait two frames so that layout is painted, then run the same settleTo the
-  // swipe release uses — same element, same curve, same duration.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!active || !holdState) return
-      settleTo(1, () => {
-        if (!holdState) return
-        holdState.slideDone = true
-        maybeRelease()
-      })
+  // Wait until that frame has been painted, then run the same settleTo the
+  // swipe release uses. The timeout covers a webview that doesn't schedule
+  // the second animation frame — without it the reveal sits at -30% until
+  // the safety timer cuts the page away.
+  let started = false
+  const start = () => {
+    if (started || !active || !holdState) return
+    started = true
+    settleTo(1, () => {
+      if (!holdState) return
+      holdState.slideDone = true
+      maybeRelease()
     })
-  })
+  }
+  requestAnimationFrame(() => requestAnimationFrame(start))
+  setTimeout(start, 48)
   return 'slide'
 }

@@ -7,6 +7,7 @@ import {
   peekSWRInFlight,
   subscribeSWR,
 } from '../services/swrCache'
+import { runAfterSlide } from '../motion/xMotion'
 
 /**
  * Session cache for one keyed resource.
@@ -34,6 +35,7 @@ export function useCachedResource(key, fetcher, options = {}) {
 
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
+  const displayedRef = useRef(undefined)
 
   const [snap, setSnap] = useState(() => ({
     key: activeKey,
@@ -45,6 +47,7 @@ export function useCachedResource(key, fetcher, options = {}) {
     setSnap({ key: activeKey, data: peeked })
   }
   const data = snap.key === activeKey ? snap.data : peeked
+  displayedRef.current = data
 
   const [error, setError] = useState(null)
   const [errorKey, setErrorKey] = useState(activeKey)
@@ -57,10 +60,18 @@ export function useCachedResource(key, fetcher, options = {}) {
 
   useEffect(() => {
     if (!activeKey) return undefined
-    return subscribeSWR(activeKey, (next) => {
-      setSnap({ key: activeKey, data: next })
-      if (next !== undefined) setError(null)
+    let alive = true
+    const unsub = subscribeSWR(activeKey, (next) => {
+      runAfterSlide(() => {
+        if (!alive) return
+        setSnap({ key: activeKey, data: next })
+        if (next !== undefined) setError(null)
+      }, { placeholder: displayedRef.current === undefined })
     })
+    return () => {
+      alive = false
+      unsub()
+    }
   }, [activeKey])
 
   useEffect(() => {
@@ -70,7 +81,11 @@ export function useCachedResource(key, fetcher, options = {}) {
     if (isSWRFresh(activeKey)) {
       setIsRevalidating(false)
       const cached = peekSWR(activeKey)
-      if (cached !== undefined) setSnap({ key: activeKey, data: cached })
+      if (cached !== undefined) {
+        runAfterSlide(() => {
+          if (!cancelled) setSnap({ key: activeKey, data: cached })
+        }, { placeholder: displayedRef.current === undefined })
+      }
       return undefined
     }
 
@@ -85,8 +100,11 @@ export function useCachedResource(key, fetcher, options = {}) {
     pending
       .then((value) => {
         if (cancelled) return
-        setSnap({ key: activeKey, data: value })
-        setError(null)
+        runAfterSlide(() => {
+          if (cancelled) return
+          setSnap({ key: activeKey, data: value })
+          setError(null)
+        }, { placeholder: displayedRef.current === undefined })
       })
       .catch((err) => {
         if (cancelled) return

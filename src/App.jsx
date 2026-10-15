@@ -9,10 +9,7 @@ import {
   useNavigationType,
 } from 'react-router-dom'
 import { LayoutGroup } from 'motion/react'
-import PageTransition, {
-  PageTransitionPhase,
-  PAGE_TRANSITION_EXIT_DURATION_MS,
-} from './components/PageTransition'
+import PageTransition, { PageTransitionPhase } from './components/PageTransition'
 import {
   BACK_EXIT_ANIM_MS,
   captureSnapshot,
@@ -23,6 +20,7 @@ import {
   registerBackHost,
   teardownBack,
 } from './components/backTransition'
+import { beginContentHold, endContentHold, MOTION_MS } from './motion/xMotion'
 import { useMotionPreference } from './hooks/useMotionPreference'
 import { useNavHideOnScroll } from './hooks/useNavHideOnScroll'
 import TopNav from './components/TopNav'
@@ -214,31 +212,49 @@ const PUBLIC_PATHS = new Set([
  * ever mounted, and no snapshots are taken.
  */
 const EXIT_SAFETY_BUFFER_MS = 100
-const EXIT_SAFETY_MS = PAGE_TRANSITION_EXIT_DURATION_MS + EXIT_SAFETY_BUFFER_MS
+const EXIT_SAFETY_MS = MOTION_MS + EXIT_SAFETY_BUFFER_MS
 // Must exceed BACK_EXIT_ANIM_MS (defer + settle) so the layer isn't torn down mid-slide.
 const BACK_EXIT_SAFETY_MS = BACK_EXIT_ANIM_MS + EXIT_SAFETY_BUFFER_MS
+
+const TAB_ROOTS = new Set(['/', '/discover', '/explore', '/library', '/profile'])
+
+function isTabRoot(pathname) {
+  return TAB_ROOTS.has(pathname)
+}
+
+function motionClass(layer, motion) {
+  if (!layer.role || motion.phase === 'idle' || layer.motionGen !== motion.gen) return ''
+  const run = motion.phase === 'run'
+  if (layer.role === 'push-enter') {
+    return `route-layer--front route-layer--from-right${run ? ' route-layer--to-rest' : ''}`
+  }
+  if (layer.role === 'push-under') {
+    return `route-layer--under${run ? ' route-layer--to-parallax' : ''}`
+  }
+  if (layer.role === 'pop-exit') {
+    return `route-layer--front${run ? ' route-layer--to-off' : ''}`
+  }
+  if (layer.role === 'pop-under') {
+    return `route-layer--under route-layer--from-parallax${run ? ' route-layer--to-rest' : ''}`
+  }
+  return ''
+}
 
 function AnimatedRoutes({ location, navigationType, children, onEnterComplete, scrollRef }) {
   const { reduced } = useMotionPreference()
 
-  // Up to two layers at once: the 'current' (entering/settled) page, and
-  // — only mid-transition — the previous page, held in the tree with
-  // phase 'exiting' just long enough to play its exit animation.
   const [layers, setLayers] = useState(() => [
     { key: location.key, location, phase: 'current' },
   ])
+  const [motion, setMotion] = useState({ gen: 0, phase: 'idle', kind: null })
   const lastKeyRef = useRef(location.key)
+  const lastPathRef = useRef(location.pathname)
   const exitTimersRef = useRef(new Map())
-  // Live DOM node per layer. The back transition needs the outgoing layer's
-  // actual element — to clone it on a push, and to slide it on a pop.
   const layerElsRef = useRef(new Map())
-  // Key of the incoming layer that backTransition.js is about to hold a
-  // snapshot over, or null. Set synchronously below when claimBack returns
-  // 'gesture'/'slide' (a hold is starting) — but the incoming layer's DOM
-  // node doesn't exist until the setLayers() in that same branch commits, so
-  // the actual holdLiveLayer() call happens later, in the ref callback below,
-  // the first time it fires for a layer whose key matches this ref.
   const heldLayerKeyRef = useRef(null)
+  const motionGen = useRef(0)
+  const rafRef = useRef(0)
+  const runTimerRef = useRef(0)
 
   const clearExitTimer = (key) => {
     const t = exitTimersRef.current.get(key)
@@ -253,51 +269,71 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
     setLayers((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev))
   }
 
-  // useLayoutEffect (not useEffect) so the new layer set commits before
-  // paint — otherwise there'd be one frame where `location` has already
-  // moved on but `layers` still reflects the old route.
+  const idleMotion = () => {
+    cancelAnimationFrame(rafRef.current)
+    clearTimeout(runTimerRef.current)
+    const gen = ++motionGen.current
+    setMotion({ gen, phase: 'idle', kind: null })
+    return gen
+  }
+
+  // Park the incoming layer offscreen for one frame, then start the slide.
+  // The first paint is cached content or a sized placeholder — never a wait
+  // on the network. The first animation frame is the parked paint; the
+  // second one starts the transition. The timeout is only there for a
+  // webview that never schedules that second frame.
+  const parkMotion = (kind) => {
+    const gen = ++motionGen.current
+    cancelAnimationFrame(rafRef.current)
+    clearTimeout(runTimerRef.current)
+    setMotion({ gen, phase: 'park', kind })
+    beginContentHold()
+    const start = () => {
+      setMotion((m) => (m.gen === gen && m.phase === 'park' ? { gen, phase: 'run', kind } : m))
+    }
+    rafRef.current = requestAnimationFrame(() => {
+      requestAnimationFrame(start)
+    })
+    runTimerRef.current = setTimeout(start, 100)
+    return gen
+  }
+
   useLayoutEffect(() => {
     if (location.key === lastKeyRef.current) return
     const prevKey = lastKeyRef.current
+    const fromPath = lastPathRef.current
     lastKeyRef.current = location.key
+    lastPathRef.current = location.pathname
 
-    // Read BEFORE AppContent's own layout effect resets it. Child layout
-    // effects flush before their parent's, so this still holds the offset the
-    // page we're leaving was actually at.
     const scrollEl = scrollRef?.current || null
     const prevScrollTop = scrollEl?.scrollTop || 0
     const outgoingEl = layerElsRef.current.get(prevKey) || null
+    const toPath = location.pathname
+    const tabToTab = isTabRoot(fromPath) && isTabRoot(toPath)
+    const tabTap = isTabRoot(toPath) && navigationType !== 'POP'
+    const instant = reduced || tabToTab || tabTap || navigationType === 'REPLACE'
 
-    if (reduced) {
-      // Instant, no overlap — see requirement #4. Anything still mid-exit
-      // is dropped immediately rather than left to finish off-screen.
-      teardownBack()
+    const clearTimers = () => {
       exitTimersRef.current.forEach((t) => clearTimeout(t))
       exitTimersRef.current.clear()
-      setLayers([{ key: location.key, location, phase: 'current' }])
+    }
+
+    if (instant) {
+      teardownBack()
+      clearTimers()
+      idleMotion()
+      endContentHold()
+      setLayers([{ key: location.key, location, phase: 'current', deferWork: false }])
       return
     }
 
-    // PUSH/REPLACE read as 'forward'; POP (back button, hardware back,
-    // navigate(-1), swipe-back) reads as 'back'. Both the exiting and
-    // entering layer of this navigation share the same direction so they
-    // animate as a matched, mirrored pair — see PageTransition's VARIANTS.
     const direction = navigationType === 'POP' ? 'back' : 'forward'
-
-    // 'gesture' — the swipe already performed the slide and the reveal is
-    // mounted and closed; swap layers instantly, there is nothing left to
-    // animate. 'slide' — a button back; the controller is now driving
-    // `outgoingEl` off to the right. 'fade' — no usable snapshot, keep the
-    // previous behaviour. A forward navigation never reveals anything.
-    const claim = direction === 'back' ? claimBack(location.key, outgoingEl) : 'fade'
+    const claim = direction === 'back' ? claimBack(location.key, outgoingEl) : null
     if (direction === 'forward') teardownBack()
 
-    // Only a PUSH deepens the stack, so only a PUSH is worth a snapshot: a
-    // REPLACE discards the entry it replaces (back still goes to the one
-    // before it, which we already hold), and a POP consumes one. Capture
-    // synchronously while the outgoing layer is still mounted — deferring a
-    // frame let a fast swipe-back arrive before the clone existed, which
-    // forced a PageTransition fade on top of the gesture slide.
+    // Snapshot the page we're leaving while it is still mounted and still
+    // at its scroll offset. A later back reveals this instead of a blank
+    // remount. Tab switches never get here.
     if (navigationType === 'PUSH' && outgoingEl && scrollEl) {
       captureSnapshot({
         key: prevKey,
@@ -308,44 +344,47 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
     }
 
     if (claim === 'gesture') {
-      exitTimersRef.current.forEach((t) => clearTimeout(t))
-      exitTimersRef.current.clear()
-      // A hold just started over this key (see backTransition's startHold) —
-      // the incoming layer must not paint until the ref callback below hides
-      // it and the hold later releases it.
+      clearTimers()
+      idleMotion()
+      beginContentHold()
       heldLayerKeyRef.current = location.key
-      setLayers([
-        { key: location.key, location, phase: 'current', direction, enterMode: 'instant' },
-      ])
+      setLayers([{
+        key: location.key,
+        location,
+        phase: 'current',
+        direction,
+        enterMode: 'instant',
+        deferWork: true,
+      }])
       return
     }
 
+    const pushing = direction === 'forward'
+    const livePop = claim === 'live'
+    const sliding = claim === 'slide'
+    const gen = pushing || livePop
+      ? parkMotion(pushing ? 'push' : 'pop')
+      : idleMotion()
+    if (sliding) {
+      heldLayerKeyRef.current = location.key
+      beginContentHold()
+    }
+
     setLayers((prev) => {
-      // Normally there's exactly one 'current' layer to hand off from. If
-      // navigation happens again before a prior exit finished, that stale
-      // exiting layer is dropped (not stacked a third-deep) — its timer
-      // is cleaned up below.
       const outgoingSource = prev.find((l) => l.phase === 'current') || prev[prev.length - 1]
       prev.forEach((l) => {
         if (l.phase === 'exiting' && l.key !== outgoingSource?.key) clearExitTimer(l.key)
       })
 
-      const sliding = claim === 'slide'
-      // Same hold-start signal as the gesture branch above, but only for a
-      // 'slide' claim — a 'fade' claim never mounts a reveal, so the
-      // destination is meant to actually fade in visibly.
-      if (sliding) heldLayerKeyRef.current = location.key
       const incoming = {
         key: location.key,
         location,
         phase: 'current',
         direction,
-        // A sliding back keeps the reveal over the destination for the whole
-        // transition, so the destination has nothing to fade in from — it
-        // renders settled, behind the cover. Its onEnterComplete still fires
-        // (immediately), which is what lets the scroll restore run while it's
-        // hidden instead of racing a visible fade.
         enterMode: sliding ? 'instant' : 'animate',
+        deferWork: true,
+        role: pushing ? 'push-enter' : livePop ? 'pop-under' : null,
+        motionGen: gen,
       }
 
       if (!outgoingSource) return [incoming]
@@ -361,15 +400,10 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
         ...outgoingSource,
         phase: 'exiting',
         direction,
-        // The controller owns this layer's X translate; PageTransition must
-        // not also animate it, or two engines fight over one element and the
-        // seam against the revealed screen desyncs by a frame.
-        exitMode: sliding ? 'slide' : 'fade',
-        // Pulled out of flow into `position: fixed`, an exiting layer loses
-        // the scroll offset it had as a child of `.main-content`. Hold it on
-        // fades and slides alike — a forward fade included — so the page
-        // leaves from where it was instead of snapping to the top.
+        exitMode: sliding ? 'slide' : 'none',
         exitScrollTop: prevScrollTop,
+        role: pushing ? 'push-under' : livePop ? 'pop-exit' : null,
+        motionGen: gen,
       }
       return [outgoing, incoming]
     })
@@ -377,35 +411,52 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
   }, [location, navigationType, reduced])
 
   useEffect(() => {
+    if (motion.phase !== 'run') return undefined
+    const gen = motion.gen
+    const timer = setTimeout(() => {
+      setMotion((m) => (m.gen === gen ? { gen, phase: 'idle', kind: null } : m))
+      endContentHold()
+    // After the travel, and after the exiting layer's own timer has
+    // unmounted it. Dropping the motion classes earlier lets that fixed
+    // layer paint over the page that just arrived.
+    }, MOTION_MS + 160)
+    return () => clearTimeout(timer)
+  }, [motion.phase, motion.gen])
+
+  useEffect(() => {
     const timers = exitTimersRef.current
     return () => {
       timers.forEach((t) => clearTimeout(t))
+      cancelAnimationFrame(rafRef.current)
+      clearTimeout(runTimerRef.current)
       teardownBack()
+      endContentHold()
     }
   }, [])
 
+  const showDim = motion.phase !== 'idle' && (motion.kind === 'push' || motion.kind === 'pop')
+  let dimClass = 'route-dim'
+  if (motion.kind === 'pop') {
+    dimClass = motion.phase === 'run'
+      ? 'route-dim route-dim--dimmed route-dim--fade-out'
+      : 'route-dim route-dim--dimmed'
+  } else if (motion.phase === 'run') {
+    dimClass = 'route-dim route-dim--fade-in'
+  }
+
   return (
-    <>
+    <div className={motion.phase === 'run' ? 'route-stack route-stack--run' : 'route-stack'}>
+      {showDim && <div className={dimClass} aria-hidden="true" />}
       {layers.map((layer) => {
         const isExiting = layer.phase === 'exiting'
         const isSlidingOut = isExiting && layer.exitMode === 'slide'
-        // Whichever layer represents the "deeper" stack entry renders on
-        // top: on a forward push that's the incoming page (it's covering
-        // the one before it); on a pop it's the outgoing page (the one
-        // being popped off was on top before this transition started).
-        const onTop =
-          (layer.direction || 'forward') === 'forward' ? !isExiting : isExiting
+        const extra = motionClass(layer, motion)
         return (
           <div
             key={layer.key}
             ref={(el) => {
               if (el) {
                 layerElsRef.current.set(layer.key, el)
-                // Fires on every render (this ref callback is a fresh
-                // function each time, so React re-invokes it), but only
-                // matches — and only does anything — the one time the layer
-                // a just-started hold is waiting on actually mounts.
-                // holdLiveLayer() itself is idempotent past that.
                 if (heldLayerKeyRef.current === layer.key) {
                   holdLiveLayer(el)
                   heldLayerKeyRef.current = null
@@ -414,47 +465,26 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
                 layerElsRef.current.delete(layer.key)
               }
             }}
-            // `back-slide-top` on button-back exits: React owns it here because
-            // className changes as the layer flips to 'exiting' and would wipe
-            // a classList-only add. Swipe gestures also target this wrapper;
-            // backTransition.js re-applies the class in apply() when a mid-gesture
-            // re-render drops it.
-            className={
-              isSlidingOut
-                ? 'route-layer route-layer--exiting back-slide-top'
-                : isExiting
-                  ? 'route-layer route-layer--exiting'
-                  : 'route-layer'
-            }
+            className={[
+              'route-layer',
+              isExiting ? 'route-layer--exiting' : '',
+              isSlidingOut ? 'back-slide-top' : '',
+              extra,
+            ].filter(Boolean).join(' ')}
             style={
               isExiting
                 ? {
-                    zIndex: onTop ? 2 : 1,
-                    // Hold the page at the offset it was scrolled to. `height`
-                    // grows to match so `overflow: hidden` still clips at the
-                    // bottom of the viewport rather than short of it.
                     top: `${-(layer.exitScrollTop || 0)}px`,
                     height: `calc(100% + ${layer.exitScrollTop || 0}px)`,
                   }
-                : { zIndex: onTop ? 2 : 1 }
+                : undefined
             }
           >
             <LayoutGroup id={layer.key}>
               <PageTransitionPhase.Provider
                 value={{
                   phase: layer.phase,
-                  direction: layer.direction || 'forward',
-                  exitMode: layer.exitMode || 'fade',
-                  enterMode: layer.enterMode || 'animate',
-                  // A sliding exit is driven by backTransition.js on this
-                  // wrapper, not by PageTransition's own tween, so there is no
-                  // inner animation whose completion could unmount the layer —
-                  // the exit timer above owns that.
-                  onExitComplete:
-                    isExiting && !isSlidingOut ? () => removeLayer(layer.key) : undefined,
-                  // Only the entering ('current') layer ever reports this —
-                  // see PageTransition's onEnterComplete and App.jsx's
-                  // attemptRestore, the consumer.
+                  deferWork: !!layer.deferWork && !reduced,
                   onEnterComplete: isExiting ? undefined : () => onEnterComplete?.(layer.key),
                 }}
               >
@@ -464,15 +494,10 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
           </div>
         )
       })}
-    </>
+    </div>
   )
 }
 
-/**
- * Wraps any route that requires authentication. If the user is not
- * logged in, redirect to /login with a redirectTo param so we can
- * restore the originally-requested route after they sign in.
- */
 function RequireAuth({ children }) {
   const { user } = useAuth()
   const location = useLocation()
@@ -701,7 +726,14 @@ function AppContent() {
     const el = mainContentRef.current
     if (!el) return undefined
     const key = location.key
-    el.scrollTop = 0
+    // A pop restores the saved offset before paint, while the outgoing
+    // page still covers the screen, so the underneath layer is already
+    // where the user left it when the slide starts.
+    if (navigationType === 'POP') {
+      el.scrollTop = scrollOffsetsRef.current.get(key) || 0
+    } else {
+      el.scrollTop = 0
+    }
     return () => {
       const node = mainContentRef.current
       if (node) scrollOffsetsRef.current.set(key, node.scrollTop)

@@ -10,9 +10,12 @@
 // Diary schema, journal_entries, shared with "Add to Journal").
 
 import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { updateJournalEntry } from '../services/journalService'
 import { useSession } from '../contexts/SessionContext'
 import { useNavDim } from '../hooks/useNavDim'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import KeyboardAwareView from './KeyboardAwareView'
 import './StopSessionSheet.css'
 
@@ -39,6 +42,7 @@ export default function StopSessionSheet() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const inputRef = useRef(null)
+  const { reduced } = useMotionPreference()
 
   // Reset state whenever a new result arrives
   useEffect(() => {
@@ -51,6 +55,7 @@ export default function StopSessionSheet() {
   // Mounted globally in App.jsx, reachable from every screen — must drop
   // the bottom nav below it while open (see BottomNav.css).
   useNavDim(!!stopResult)
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, () => { void handleDone() })
 
   if (!stopResult) return null
 
@@ -74,14 +79,30 @@ export default function StopSessionSheet() {
   }
 
   return (
-    <div className="sss-backdrop" onClick={handleDone} aria-modal="true" role="dialog">
+    <AnimatePresence>
+    {stopResult && (
+    <motion.div
+      className="sss-backdrop"
+      onClick={handleDone}
+      aria-modal="true"
+      role="dialog"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={transition}
+    >
       <KeyboardAwareView mode="sheet" className="sss-anchor">
-      <div
+      <motion.div
         className="sss-sheet"
         onClick={(e) => e.stopPropagation()}
+        initial={reduced ? false : { y: '100%' }}
+        animate={{ y: 0 }}
+        exit={reduced ? { y: 0 } : { y: '100%' }}
+        transition={transition}
+        {...dragProps}
       >
         {/* Handle */}
-        <div className="sss-handle" aria-hidden="true" />
+        <div className="sss-handle" aria-hidden="true" onPointerDown={startDrag} />
 
         {/* Title */}
         <p className="sss-heading">Session saved</p>
@@ -127,8 +148,10 @@ export default function StopSessionSheet() {
         >
           {saving ? 'Saving…' : 'Done'}
         </button>
-      </div>
+      </motion.div>
       </KeyboardAwareView>
-    </div>
+    </motion.div>
+    )}
+    </AnimatePresence>
   )
 }

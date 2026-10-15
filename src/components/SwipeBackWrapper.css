@@ -7,4 +7,11 @@
    keeps the two layers from desyncing by a frame at their touching edges. */
 .swipe-back {
   width: 100%;
+  touch-action: pan-y;
+}
+
+.swipe-back--dragging,
+.swipe-back--dragging * {
+  -webkit-user-select: none;
+  user-select: none;
 }

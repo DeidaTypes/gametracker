@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'motion/react'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import './SortSheet.css'
 
 export const SORT_OPTIONS = [
@@ -22,6 +25,8 @@ export const SORT_OPTIONS = [
 function SortSheet({ isOpen, onClose, value, onApply }) {
   const [pending, setPending] = useState(value)
   const sheetRef = useRef(null)
+  const { reduced } = useMotionPreference()
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   // Sync pending selection whenever the sheet opens
   useEffect(() => {
@@ -45,23 +50,32 @@ function SortSheet({ isOpen, onClose, value, onApply }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, onClose])
 
-  if (!isOpen) return null
-
   return createPortal(
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
       className="action-sheet-overlay"
       onClick={onClose}
       aria-modal="true"
       role="dialog"
       aria-label="Sort options"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={transition}
     >
-      <div
+      <motion.div
         ref={sheetRef}
         className="action-sheet sort-sheet"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
+        initial={reduced ? false : { y: '100%' }}
+        animate={{ y: 0 }}
+        exit={reduced ? { y: 0 } : { y: '100%' }}
+        transition={transition}
+        {...dragProps}
       >
-        <div className="action-sheet__handle" aria-hidden="true" />
+        <div className="action-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />
         <p className="action-sheet__title">Sort By</p>
 
         <div className="sort-sheet__pills" role="radiogroup" aria-label="Sort order">
@@ -91,8 +105,10 @@ function SortSheet({ isOpen, onClose, value, onApply }) {
             Filter
           </button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   )
 }

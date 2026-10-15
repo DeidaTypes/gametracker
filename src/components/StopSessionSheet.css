@@ -6,20 +6,10 @@
 .sss-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: color-mix(in srgb, var(--sheet-backdrop) 55%, transparent);
   z-index: 500;
   display: flex;
   align-items: flex-end;
-  animation: sss-fade-in 0.2s ease both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sss-backdrop { animation: none; }
-}
-
-@keyframes sss-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
 }
 
 /* Keyboard lift + fixed anchoring come from the shared .kb-sheet-lift wrapper
@@ -41,17 +31,7 @@
   padding: 16px 20px calc(var(--keyboard-safe-bottom) + 20px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: sss-slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sss-sheet { animation: none; }
-}
-
-@keyframes sss-slide-up {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  gap: var(--space-16);
 }
 
 /* Drag handle */

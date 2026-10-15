@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import { useNavDim } from '../hooks/useNavDim'
 import KeyboardAwareView from './KeyboardAwareView'
 import './SetGoalSheet.css'
@@ -61,9 +62,7 @@ export default function SetGoalSheet({ isOpen, onClose, onSave, year, current = 
     if (e.key === 'Enter') handleSave()
   }
 
-  const springProps = reduced
-    ? {}
-    : { type: 'spring', stiffness: 380, damping: 34 }
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   const content = (
     <AnimatePresence>
@@ -75,7 +74,7 @@ export default function SetGoalSheet({ isOpen, onClose, onSave, year, current = 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.15 }}
+            transition={transition}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -90,9 +89,10 @@ export default function SetGoalSheet({ isOpen, onClose, onSave, year, current = 
               initial={reduced ? {} : { y: '100%' }}
               animate={reduced ? {} : { y: 0 }}
               exit={reduced ? {} : { y: '100%' }}
-              transition={springProps}
+              transition={transition}
+              {...dragProps}
             >
-              <div className="sgs-handle" aria-hidden="true" />
+              <div className="sgs-handle" aria-hidden="true" onPointerDown={startDrag} />
 
               <h2 className="sgs-title">Games in {year}</h2>
               <p className="sgs-sub">

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Gamepad2 } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import { useNavDim } from '../hooks/useNavDim'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -136,9 +137,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, onClose])
 
-  const springProps = reduced
-    ? {}
-    : { type: 'spring', stiffness: 380, damping: 34 }
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   function handleActivityTap(activity) {
     const href = getActivityHref(activity)
@@ -157,7 +156,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.15 }}
+            transition={transition}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -170,9 +169,10 @@ export default function DayLogSheet({ dateKey, onClose }) {
             initial={reduced ? {} : { y: '100%' }}
             animate={reduced ? {} : { y: 0 }}
             exit={reduced ? {} : { y: '100%' }}
-            transition={springProps}
+            transition={transition}
+            {...dragProps}
           >
-            <div className="dls-handle" aria-hidden="true" />
+            <div className="dls-handle" aria-hidden="true" onPointerDown={startDrag} />
 
             <div className="dls-header">
               <div className="dls-header-text">

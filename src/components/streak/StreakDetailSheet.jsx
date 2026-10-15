@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { AlertTriangle, Check, Flame, Lock, X } from 'lucide-react'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { useSheetDrag } from '../../motion/useSheetDrag'
 import { useNavDim } from '../../hooks/useNavDim'
 import './StreakDetailSheet.css'
 
@@ -14,6 +15,7 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
   const { reduced } = useMotionPreference()
 
   useNavDim(isOpen)
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -34,8 +36,6 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
     hasRestDayShield,
   } = view
 
-  const springProps = reduced ? {} : { type: 'spring', stiffness: 380, damping: 34 }
-
   const content = (
     <AnimatePresence>
       {isOpen && (
@@ -45,7 +45,7 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.15 }}
+            transition={transition}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -58,9 +58,10 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
             initial={reduced ? {} : { y: '100%' }}
             animate={reduced ? {} : { y: 0 }}
             exit={reduced ? {} : { y: '100%' }}
-            transition={springProps}
+            transition={transition}
+            {...dragProps}
           >
-            <div className="sds-handle" aria-hidden="true" />
+            <div className="sds-handle" aria-hidden="true" onPointerDown={startDrag} />
 
             <header className="sds-header">
               <h2 id="sds-title" className="sds-title text-heading">Your streak</h2>

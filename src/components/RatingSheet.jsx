@@ -5,6 +5,7 @@ import { LuCheck } from 'react-icons/lu'
 import StarRatingInput from './forms/StarRatingInput'
 import { getTracker } from '../services/hoursService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
 import { useNavDim } from '../hooks/useNavDim'
 import './RatingSheet.css'
 
@@ -118,14 +119,10 @@ function RatingSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, hoursPlayed])
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.2 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
+  const backdropTransition = sheetTransition(reduced)
+  const sheetMove = sheetTransition(reduced)
 
-  const handleDragEnd = (_e, info) => {
-    if (info.offset.y > 110 || info.velocity.y > 600) handleDismiss()
-  }
+  const handleDragEnd = sheetDragEnd(handleDismiss)
 
   const ratingHint = rating === 0 ? 'Tap to rate' : `${rating} out of 5`
 
@@ -153,7 +150,7 @@ function RatingSheet({
             initial={reduced ? false : { y: '100%' }}
             animate={{ y: 0 }}
             exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
+            transition={sheetMove}
             drag={reduced ? false : 'y'}
             dragControls={dragControls}
             dragListener={false}

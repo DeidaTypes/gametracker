@@ -11,6 +11,7 @@ import {
   LuSettings,
 } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useSheetDrag } from '../motion/useSheetDrag'
 import './SettingsSheet.css'
 
 function SettingsRow({ icon, label, onClick, disabled = false, chevron = false }) {
@@ -77,10 +78,7 @@ function SettingsSheet({
     fn?.()
   }
 
-  const backdropTransition = reduced ? { duration: 0 } : { duration: 0.15 }
-  const sheetTransition = reduced
-    ? { duration: 0 }
-    : { type: 'spring', stiffness: 380, damping: 32 }
+  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -91,7 +89,7 @@ function SettingsSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={backdropTransition}
+          transition={transition}
         >
           <motion.div
             ref={sheetRef}
@@ -104,9 +102,10 @@ function SettingsSheet({
             initial={reduced ? false : { y: '100%' }}
             animate={{ y: 0 }}
             exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetTransition}
+            transition={transition}
+            {...dragProps}
           >
-            <div className="settings-sheet__handle" aria-hidden="true" />
+            <div className="settings-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />
 
             <div className="settings-sheet__header">
               <button
