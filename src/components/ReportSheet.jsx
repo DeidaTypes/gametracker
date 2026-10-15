@@ -15,6 +15,15 @@ const REASONS = [
   { value: 'other',           label: 'Something else' },
 ]
 
+const SPOILER_REASON = { value: 'unmarked_spoiler', label: 'Unmarked spoiler' }
+
+function reasonsFor(contentType) {
+  if (contentType === 'question' || contentType === 'answer') {
+    return [SPOILER_REASON, ...REASONS]
+  }
+  return REASONS
+}
+
 const DETAILS_MAX = 280
 
 /**
@@ -23,7 +32,7 @@ const DETAILS_MAX = 280
  * Props:
  *   isOpen      – boolean
  *   onClose     – () => void
- *   contentType – 'review' | 'comment' | 'message' | 'profile' | 'list'
+ *   contentType – 'review' | 'comment' | 'message' | 'profile' | 'list' | 'question' | 'answer'
  *   contentId   – uuid string of the content being reported
  */
 function ReportSheet({ isOpen, onClose, contentType, contentId }) {
@@ -65,6 +74,8 @@ function ReportSheet({ isOpen, onClose, contentType, contentId }) {
     }
   }
 
+  const reasons = reasonsFor(contentType)
+
   const displayType = contentType
     ? contentType.charAt(0).toUpperCase() + contentType.slice(1)
     : 'Content'
@@ -86,7 +97,7 @@ function ReportSheet({ isOpen, onClose, contentType, contentId }) {
 
       <div className="report-sheet__scroll cm-scroll">
         <div className="report-sheet__reasons" role="radiogroup" aria-label="Reason for report">
-          {REASONS.map(({ value, label }) => (
+          {reasons.map(({ value, label }) => (
             <label key={value} className="report-sheet__reason-row">
               <input
                 type="radio"

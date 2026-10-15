@@ -120,6 +120,7 @@ import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, mutateSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
+import { canMessageUser } from '../services/messageService'
 import { getGameNavStub } from '../utils/gameNavStub'
 import './Profile.css'
 
@@ -887,6 +888,20 @@ function Profile() {
   const following = followData?.amFollowing ?? false
   // Numerals skeleton only when this profile has never been cached.
   const followLoading = !!targetUserId && followData === undefined && !followError
+
+  // Visitor Message button. Hidden only once can_message_user returns
+  // false. A missing RPC (migration not applied yet) resolves true, so
+  // the button stays as it is today.
+  const canMessageKey =
+    !isOwnProfile && targetUserId ? `messages:can:${targetUserId}` : null
+  const loadCanMessage = useCallback(
+    () => canMessageUser(targetUserId),
+    [targetUserId]
+  )
+  const { data: canMessage } = useCachedResource(canMessageKey, loadCanMessage, {
+    enabled: !!canMessageKey,
+  })
+  const showMessageAction = canMessage !== false
 
   // Sprint 7 — banner URL for non-own profiles fetched from Supabase.
   // Own profile reads bannerUrl directly from the localStorage profile blob.
@@ -1939,14 +1954,16 @@ function Profile() {
               >
                 {following && <LuCheck size={14} aria-hidden="true" />} {following ? 'Following' : 'Follow'}
               </button>
-              <button
-                type="button"
-                className="profile-ig-btn profile-ig-btn--primary"
-                onClick={handleMessageUser}
-                aria-label="Send message"
-              >
-                Message
-              </button>
+              {showMessageAction && (
+                <button
+                  type="button"
+                  className="profile-ig-btn profile-ig-btn--primary"
+                  onClick={handleMessageUser}
+                  aria-label="Send message"
+                >
+                  Message
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -1978,12 +1995,14 @@ function Profile() {
             isOpen={overflowSheetOpen}
             onClose={() => setOverflowSheetOpen(false)}
             items={[
-              {
-                label: 'Message',
-                icon: <LuMessageCircle size={18} />,
-                tone: 'cobalt',
-                onClick: handleMessageUser,
-              },
+              ...(showMessageAction
+                ? [{
+                    label: 'Message',
+                    icon: <LuMessageCircle size={18} />,
+                    tone: 'cobalt',
+                    onClick: handleMessageUser,
+                  }]
+                : []),
               {
                 label: 'Share profile',
                 icon: <LuShare2 size={18} />,

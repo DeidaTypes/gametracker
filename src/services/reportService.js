@@ -7,7 +7,8 @@ import { supabase } from './supabase'
  *   reports (
  *     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  *     reporter_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- *     content_type  text NOT NULL CHECK (content_type IN ('review','comment','message','profile','list')),
+ *     content_type  text NOT NULL CHECK (content_type IN (
+ *       'review','comment','message','profile','list','question','answer')),
  *     content_id    uuid NOT NULL,
  *     reason        text NOT NULL CHECK (reason IN (...)),
  *     details       text,
@@ -22,8 +23,8 @@ import { supabase } from './supabase'
  *   SELECT: reporter_id = auth.uid()
  *
  * Auto-hide: content with 5+ pending reports from distinct reporters
- * is surfaced via flagged_content_view. Read services (reviews,
- * comments, lists) filter that view before returning results.
+ * is surfaced via flagged_content_view.report_count. Read services
+ * (reviews, comments, lists) filter that view before returning results.
  */
 
 const AUTO_HIDE_THRESHOLD = 5
@@ -80,6 +81,7 @@ export async function submitReport({ contentType, contentId, reason, details }) 
     .from('reports')
     .select('id')
     .eq('reporter_id', reporterId)
+    .eq('content_type', contentType)
     .eq('content_id', contentId)
     .maybeSingle()
 
@@ -101,6 +103,11 @@ export async function submitReport({ contentType, contentId, reason, details }) 
   })
 
   if (insertErr) {
+    // Unique (reporter_id, content_type, content_id) — the select above
+    // can lose a race with a second tap. Same outcome as the pre-check.
+    if (insertErr.code === '23505') {
+      return { alreadyReported: true }
+    }
     console.error('[reports] insert failed:', insertErr.message)
     throw insertErr
   }
@@ -152,7 +159,7 @@ export async function getFlaggedContentIds(contentType) {
     .from('flagged_content_view')
     .select('content_id')
     .eq('content_type', contentType)
-    .gte('pending_report_count', AUTO_HIDE_THRESHOLD)
+    .gte('report_count', AUTO_HIDE_THRESHOLD)
 
   if (import.meta.env.DEV) console.log(`[⏱ explore] getFlaggedContentIds(${contentType}): ${Date.now() - _t0}ms`)
   if (error) {

@@ -270,6 +270,46 @@ export async function getUnreadCount() {
    ============================================================ */
 
 /**
+ * dm_insert_self rejected the insert (42501). After
+ * 20261015211100_safety_foundation.sql that is message privacy or a
+ * block. MessagesThread renders this inline and does not toast it.
+ */
+export const MESSAGE_NOT_ACCEPTED = 'message_not_accepted'
+
+// can_message_user ships in the same migration. Until it is applied,
+// PostgREST returns PGRST202. Latch that for the session so every
+// profile does not pay a 404. A reload picks the function up.
+let _canMessageRpcMissing = false
+
+function isMissingRpc(error) {
+  if (!error) return false
+  return error.code === 'PGRST202' || error.code === '42883' ||
+    /could not find the function|function .* does not exist/i.test(error.message || '')
+}
+
+/**
+ * Whether the signed-in user may message `targetId`.
+ * Returns true when the RPC is not deployed yet, so the Message
+ * button keeps today's behavior until the migration is applied.
+ * Throws on any other failure so the caller can leave the button up.
+ */
+export async function canMessageUser(targetId) {
+  if (!targetId || _canMessageRpcMissing) return true
+  const { data, error } = await supabase.rpc('can_message_user', {
+    p_target: targetId,
+  })
+  if (error) {
+    if (isMissingRpc(error)) {
+      _canMessageRpcMissing = true
+      console.warn('[messages] can_message_user is not deployed — message button stays visible')
+      return true
+    }
+    throw error
+  }
+  return data === true
+}
+
+/**
  * INSERT a new message from the current user to `recipientId`.
  *
  * Accepts either a plain-text `body`, a rich `attachment` object, or
@@ -356,17 +396,17 @@ export async function sendMessage({ recipientId, body, attachment = null }) {
 
   if (error) {
     console.error('[messages] sendMessage failed:', error.message)
-    // The isMutuallyBlocked() pre-check above is a fast-path — it only
-    // catches blocks already reflected in our locally-cached block set.
-    // If the partner blocked us (or we blocked them) on another device
-    // since our cache last hydrated, the insert reaches Postgres and the
-    // dm_insert_self RLS policy (block check added in 20260801010205)
-    // rejects it with 42501 (insufficient_privilege —
-    // PostgREST's shape for a WITH CHECK failure). Map that to the same
-    // friendly copy as the pre-check instead of surfacing the raw
-    // "new row violates row-level security policy" text in the toast.
+    // 42501 is PostgREST's shape for a WITH CHECK failure. dm_insert_self
+    // rejects blocked pairs, and — once 20261015211100 is applied — anyone
+    // outside the recipient's message_privacy audience. The thread renders
+    // this inline ("{name} isn't accepting messages right now") and must
+    // not fall through to a generic send-failure toast. The block pre-check
+    // above still throws its own copy when the local block cache already
+    // knows.
     if (error.code === '42501') {
-      throw new Error("You can't message this user.")
+      const denied = new Error("This person isn't accepting messages right now.")
+      denied.code = MESSAGE_NOT_ACCEPTED
+      throw denied
     }
     throw new Error(error.message)
   }

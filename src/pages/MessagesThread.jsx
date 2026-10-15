@@ -16,6 +16,7 @@ import {
   markThreadAsRead,
   getSharedGame,
   getPartnerHighlights,
+  MESSAGE_NOT_ACCEPTED,
 } from '../services/messageService'
 import { getUserByUsername, getUserById } from '../services/userService'
 import { MESSAGES_CHANGED_EVENT } from '../services/messageService'
@@ -182,7 +183,12 @@ function MessagesThread() {
   const [blockPending, setBlockPending] = useState(false)
   const [reportProfileOpen, setReportProfileOpen] = useState(false)
   const [partnerBlocked, setPartnerBlocked] = useState(false)
+  const [notAccepting, setNotAccepting] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
+
+  useEffect(() => {
+    setNotAccepting(false)
+  }, [decodedUsername])
 
   // Empty-state identity stats ("142 games · follows you") — both parts
   // are independently optional, see getPartnerHighlights.
@@ -414,7 +420,7 @@ function MessagesThread() {
     const el = scrollRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [messages.length])
+  }, [messages.length, notAccepting])
 
   useAutoGrowTextarea(composerRef, draft, 90)
 
@@ -488,6 +494,7 @@ function MessagesThread() {
           body: trimmed || undefined,
           attachment,
         })
+        setNotAccepting(false)
         setMessages((prev) => {
           // Replace the optimistic row with the server one. If the
           // realtime echo beat us here, just drop the temp.
@@ -502,6 +509,10 @@ function MessagesThread() {
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
         setDraft(trimmed)
         setPendingAttachment(attachment)
+        if (err?.code === MESSAGE_NOT_ACCEPTED) {
+          setNotAccepting(true)
+          return
+        }
         showToast(
           err?.message || "Couldn't send your message. Please try again.",
           'error'
@@ -693,6 +704,11 @@ function MessagesThread() {
             <p className="dm-empty__starter">
               This is the start of your conversation with {headerLabel}.
             </p>
+            {notAccepting && (
+              <p className="dm-thread__privacy-note text-caption" role="status">
+                {headerLabel} isn&apos;t accepting messages right now.
+              </p>
+            )}
             <div className="dm-empty__chips" role="group" aria-label="Quick replies">
               {QUICK_REPLIES.map((reply) => (
                 <button
@@ -722,6 +738,11 @@ function MessagesThread() {
                   onReport={item.message.sender_id !== currentUserId ? setReportTarget : undefined}
                 />
               )
+            )}
+            {notAccepting && (
+              <li className="dm-thread__privacy-note text-caption" role="status">
+                {headerLabel} isn&apos;t accepting messages right now.
+              </li>
             )}
             {partnerTyping && (
               <li

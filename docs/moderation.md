@@ -6,7 +6,7 @@ _Alpha moderation: manual daily queue review by the developer._
 
 ## Overview
 
-Users can report reviews, comments, direct messages, profiles, and lists.  
+Users can report reviews, comments, direct messages, profiles, lists, questions, and answers.  
 Reports are stored in the `reports` table in Supabase with status `pending`, `reviewed`, `actioned`, or `dismissed`.
 
 **Auto-hide threshold:** If a single piece of content receives **5 or more pending reports** from distinct reporters, it is automatically filtered out of all feeds. It remains in the database but is no longer served to other users until manually reviewed.
@@ -42,8 +42,8 @@ ORDER BY r.created_at;
 ```sql
 SELECT *
 FROM flagged_content_view
-WHERE pending_report_count >= 5
-ORDER BY pending_report_count DESC;
+WHERE report_count >= 5
+ORDER BY report_count DESC;
 ```
 
 ### View a specific report's content

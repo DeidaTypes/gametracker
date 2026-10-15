@@ -336,6 +336,11 @@
   color: var(--color-text-tertiary);
 }
 
+.dm-thread__privacy-note {
+  margin: var(--space-12) 0 0;
+  text-align: center;
+}
+
 /* ── Bubble row ─────────────────────────────────────────────────────── */
 
 .dm-bubble-row {

@@ -1,7 +1,12 @@
 -- ============================================================
+-- SUPERSEDED. Do not run this file.
+-- The live definition is
+-- supabase/migrations/20261015211100_safety_foundation.sql
+-- (question/answer types, unmarked_spoiler, one report per person,
+-- flagged_content_view.report_count + spoiler_report_count).
+-- ============================================================
 -- reports table — user-generated content moderation
 -- Sprint 8: Content reporting system
--- Run in the Supabase SQL editor.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS reports (
