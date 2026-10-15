@@ -525,6 +525,10 @@ body[data-larger-text='true'] {
   --glow-nav-discover: color-mix(in srgb, var(--accent-journal) 40%, transparent);
   --glow-nav-library: color-mix(in srgb, var(--accent-review) 40%, transparent);
   --glow-nav-profile: color-mix(in srgb, var(--accent-journal) 40%, transparent);
+  /* Q&A: list color → review color. Glow is the review stop, same
+     mix the other pills use, so it doesn't share Discover's purple glow. */
+  --grad-nav-qa: linear-gradient(135deg, var(--accent-journal) 0%, var(--accent-review) 100%); /* list → review */
+  --glow-nav-qa: color-mix(in srgb, var(--accent-review) 40%, transparent);
 
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);

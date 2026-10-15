@@ -29,6 +29,7 @@ import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 import Explore from './pages/Explore'
 import Library from './pages/Library'
+import QaHome from './pages/qa/QaHome'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
@@ -76,6 +77,10 @@ import {
   UserFollowing,
   UserLibrary,
   Wishlist,
+  QaGame,
+  QaMine,
+  QaQuestion,
+  QaSearch,
 } from './routes/lazyPages'
 import RouteChunkPlaceholder from './components/RouteChunkPlaceholder'
 // Dev-only visual harnesses. Lazily imported and only registered when
@@ -228,7 +233,7 @@ const EXIT_SAFETY_MS = MOTION_MS + EXIT_SAFETY_BUFFER_MS
 // Must exceed BACK_EXIT_ANIM_MS (defer + settle) so the layer isn't torn down mid-slide.
 const BACK_EXIT_SAFETY_MS = BACK_EXIT_ANIM_MS + EXIT_SAFETY_BUFFER_MS
 
-const TAB_ROOTS = new Set(['/', '/discover', '/explore', '/library', '/profile'])
+const TAB_ROOTS = new Set(['/', '/discover', '/explore', '/library', '/profile', '/qa'])
 
 function isTabRoot(pathname) {
   return TAB_ROOTS.has(pathname)
@@ -1022,6 +1027,60 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition><Library /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            {/* Q&A tab root is static so a tab tap never waits on a chunk.
+                The four screens under it are pushes: they slide in on the
+                stack you were already on (Library → game → questions, back
+                returns to the game). */}
+            <Route
+              path="/qa"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition><QaHome /></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/qa/game/:igdbId"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaGame /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/qa/q/:questionId"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaQuestion /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/qa/mine"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaMine /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/qa/search"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaSearch /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

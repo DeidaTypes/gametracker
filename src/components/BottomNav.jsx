@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { House, Compass, BookCopy, User } from 'lucide-react'
+import { House, Compass, BookCopy, User, MessageCircleQuestionMark as MessageCircleQuestion } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
+import { useAuth } from '../contexts/AuthContext'
+import { useFlagEnabled } from '../hooks/useFlagEnabled'
+import { peekSWR, subscribeSWR } from '../services/swrCache'
+import { qaHomeKey } from '../services/qaService'
 import { hapticImpact } from '../utils/haptics'
 import './BottomNav.css'
 
@@ -15,8 +19,9 @@ export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
 /**
  * Cobalt-Modern floating-pill bottom navigation.
  *
- * Four icon-only tabs (Home, Discover, Library, Profile) sit in a centered
- * pill that floats 12 px above the bottom of the viewport. The active tab
+ * Icon-only tabs (Home, Discover, Library, Profile — plus Q&A when the
+ * `qa` flag is on for this user) sit in a centered pill that floats
+ * 12 px above the bottom of the viewport. The active tab
  * is highlighted with a pill that visually slides from the previously-active
  * tab via Framer Motion's `layoutId` shared element. The nav bar chrome
  * (surface, border, shape, inactive icons) is identical on every screen —
@@ -35,6 +40,35 @@ export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
  *     native iOS shell. The import is dynamic + try/catch so the web
  *     build is a no-op when the plugin is unavailable.
  */
+/**
+ * Last tab root the user landed on. Pushed screens (/game, /qa/game, …)
+ * are not roots, so this stays until the next tab tap. Q&A subroutes
+ * light the Q&A tab only while this is 'qa'. No other tab's isActive
+ * includes /qa/*, same as /game, which no tab claims.
+ */
+let tabOrigin = null
+
+const TAB_ROOT_ORIGIN = {
+  '/': 'home',
+  '/home': 'home',
+  '/discover': 'discover',
+  '/explore': 'discover',
+  '/library': 'library',
+  '/profile': 'profile',
+  '/qa': 'qa',
+}
+
+function rememberTabOrigin(pathname) {
+  const id = TAB_ROOT_ORIGIN[pathname]
+  if (id) tabOrigin = id
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('gt:user-data-cleared', () => {
+    tabOrigin = null
+  })
+}
+
 const NAV_ITEMS = [
   {
     id: 'home',
@@ -77,10 +111,39 @@ const NAV_ITEMS = [
   },
 ]
 
+const QA_ITEM = {
+  id: 'qa',
+  to: '/qa',
+  label: 'Q&A',
+  Icon: MessageCircleQuestion,
+  // /qa always. /qa/* only when the push started on the Q&A tab.
+  // A push from another tab (or a cold deep link) leaves every tab dark.
+  isActive: (path) => path === '/qa' || (path.startsWith('/qa/') && tabOrigin === 'qa'),
+}
+
+function inboxHasNew(data) {
+  return data?.inbox_has_new === true
+}
+
 function BottomNav({ scrollHidden = false }) {
   const location = useLocation()
+  const { user } = useAuth()
   const { unreadCount } = useUnreadMessages()
+  const qaEnabled = useFlagEnabled('qa')
+  const homeKey = qaHomeKey(user?.id)
+  const [inboxNew, setInboxNew] = useState(() => inboxHasNew(homeKey ? peekSWR(homeKey) : undefined))
   const [dragReorderActive, setDragReorderActive] = useState(false)
+
+  rememberTabOrigin(location.pathname)
+
+  useEffect(() => {
+    if (!homeKey) {
+      setInboxNew(false)
+      return undefined
+    }
+    setInboxNew(inboxHasNew(peekSWR(homeKey)))
+    return subscribeSWR(homeKey, (next) => setInboxNew(inboxHasNew(next)))
+  }, [homeKey])
 
   useEffect(() => {
     const handler = (e) => setDragReorderActive(!!e.detail?.active)
@@ -102,16 +165,19 @@ function BottomNav({ scrollHidden = false }) {
   const pillTransition = { duration: 0 }
 
   const visuallyHidden = dragReorderActive || scrollHidden
+  const items = qaEnabled
+    ? [NAV_ITEMS[0], NAV_ITEMS[1], QA_ITEM, NAV_ITEMS[2], NAV_ITEMS[3]]
+    : NAV_ITEMS
 
   return (
     <nav
-      className={`bottom-nav${dragReorderActive ? ' bottom-nav--hidden' : ''}${
-        scrollHidden && !dragReorderActive ? ' bottom-nav--scroll-hidden' : ''
-      }`}
+      className={`bottom-nav${qaEnabled ? ' bottom-nav--five' : ''}${
+        dragReorderActive ? ' bottom-nav--hidden' : ''
+      }${scrollHidden && !dragReorderActive ? ' bottom-nav--scroll-hidden' : ''}`}
       aria-label="Primary"
       aria-hidden={visuallyHidden || undefined}
     >
-      {NAV_ITEMS.map(({ id, to, label, Icon, isActive }) => {
+      {items.map(({ id, to, label, Icon, isActive }) => {
         const active = isActive(location.pathname)
         // Profile tab carries the unread-DM dot — there's no dedicated
         // Messages nav tab (out of scope, see BottomNav module docstring),
@@ -120,6 +186,9 @@ function BottomNav({ scrollHidden = false }) {
         // profile header (ProfilePlayerCard, own profile only), which
         // carries the same dot so the signal is consistent end to end.
         const showUnreadDot = id === 'profile' && unreadCount > 0
+        // Q&A dot reads the cached home payload. Hidden while the tab is
+        // active — the inbox button on the screen carries it then.
+        const showQaDot = id === 'qa' && inboxNew && !active
         return (
           <Link
             key={id}
@@ -146,6 +215,12 @@ function BottomNav({ scrollHidden = false }) {
                 <span
                   className="bottom-nav-unread"
                   aria-label={`${unreadCount} unread messages`}
+                />
+              )}
+              {showQaDot && (
+                <span
+                  className="bottom-nav-unread bottom-nav-unread--qa"
+                  aria-label="New answers"
                 />
               )}
             </span>

@@ -53,6 +53,35 @@ function handleBackground() {
 }
 
 /**
+ * SPA path for an app URL.
+ *
+ * http(s) and capacitor:// keep the pathname (`https://host/qa/q/<id>`).
+ * A custom scheme puts the first segment in the host:
+ * `checkpoint://qa/q/<id>` → `/qa/q/<id>`.
+ * `checkpoint:///qa/q/<id>` (empty host) keeps the pathname.
+ *
+ * @param {URL} parsed
+ * @returns {string}
+ */
+export function pathFromAppUrl(parsed) {
+  const protocol = parsed.protocol
+  const host = parsed.hostname || ''
+  const pathname = parsed.pathname || ''
+  const tail = `${parsed.search || ''}${parsed.hash || ''}`
+
+  if (protocol === 'http:' || protocol === 'https:' || protocol === 'capacitor:') {
+    return `${pathname || '/'}${tail}`
+  }
+
+  if (!host || host === 'localhost') {
+    return `${pathname || '/'}${tail}`
+  }
+
+  const rest = pathname === '/' ? '' : pathname
+  return `/${host}${rest}${tail}`
+}
+
+/**
  * Parse an incoming URL for a ?ref= invite param and a navigable path,
  * then broadcast both to the React layer via custom events.
  *
@@ -83,7 +112,9 @@ function handleAppUrl(url) {
     }
 
     // Broadcast deep-link path so App.jsx can navigate the SPA router.
-    const path = parsed.pathname + parsed.search + parsed.hash
+    // checkpoint://qa/q/<id> puts "qa" in the host and "/q/<id>" in the
+    // pathname — pathname alone would open /q/<id>, which is not a route.
+    const path = pathFromAppUrl(parsed)
     if (path && path !== '/' && typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('app:deeplink', { detail: { path } })

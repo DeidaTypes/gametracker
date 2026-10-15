@@ -332,6 +332,7 @@ function isWriteImmune(key) {
  *   profile:<userId>   profile bundle
  *   explore:*          except explore:new-releases
  *   game:social:       reviews, ratings, circle pulse, followed ratings
+ *   qa:                credibility pills read the viewer's tracker
  *
  * Not stale on libraryUpdated:
  *   game:<igdbId>             IGDB metadata

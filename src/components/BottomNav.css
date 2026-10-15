@@ -117,6 +117,27 @@ body.nav-hidden .bottom-nav {
   }
 }
 
+/* Five tabs (Q&A flag on). Four-tab width above is unchanged.
+   Comes after the 360px rule so a flagged bar stays capped at 320. */
+.bottom-nav--five {
+  width: min(320px, calc(100vw - 32px));
+}
+
+.bottom-nav--five .bottom-nav-item {
+  min-width: 56px;
+  min-height: 44px;
+}
+
+/* Below ~342px the 320px cap gives way to 100vw − 32px, and padding 6 +
+   gap 4 no longer leaves room for five 56px tabs. Drop that chrome so
+   the tabs stay at least 56 wide instead of clipping. */
+@media (max-width: 341px) {
+  .bottom-nav--five {
+    padding: 0;
+    gap: 0;
+  }
+}
+
 /* ---- Tab item ----
    Each tab is at least 44 × 44 px including padding (Apple HIG minimum
    touch target). The layoutId pill sits behind the icon via z-index. */
@@ -182,6 +203,11 @@ body.nav-hidden .bottom-nav {
   box-shadow: 0 4px 14px var(--glow-nav-profile);
 }
 
+.bottom-nav-item[data-tab='qa'] .bottom-nav-pill {
+  background: var(--grad-nav-qa);
+  box-shadow: 0 4px 14px var(--glow-nav-qa);
+}
+
 /* Icon wrap stays above the pill so it visually rides on top of the
    cobalt fill. */
 .bottom-nav-icon-wrap.is-fly-pulse {
@@ -232,6 +258,13 @@ body.nav-hidden .bottom-nav {
     0 0 0 2px var(--bg-surface),
     0 0 6px rgba(251, 191, 36, 0.55);
   pointer-events: none;
+}
+
+/* Q&A inbox dot. Journal, not the warning token — that one stays on
+   the Profile unread-DM dot above. */
+.bottom-nav-unread--qa {
+  background: var(--accent-journal);
+  box-shadow: 0 0 0 var(--space-2) var(--bg-surface);
 }
 
 /* ---- Reduced motion ----

@@ -61,6 +61,10 @@ export const UserFollowers = lazyRoute(() => import('../pages/UserFollowers'))
 export const UserFollowing = lazyRoute(() => import('../pages/UserFollowing'))
 export const UserLibrary = lazyRoute(() => import('../pages/UserLibrary'))
 export const Wishlist = lazyRoute(() => import('../pages/Wishlist'))
+export const QaGame = lazyRoute(() => import('../pages/qa/QaGame'))
+export const QaMine = lazyRoute(() => import('../pages/qa/QaMine'))
+export const QaQuestion = lazyRoute(() => import('../pages/qa/QaQuestion'))
+export const QaSearch = lazyRoute(() => import('../pages/qa/QaSearch'))
 
 /**
  * Warm every pushed-route chunk, plus the libraries those screens pull
