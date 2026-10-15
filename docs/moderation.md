@@ -106,6 +106,25 @@ Supabase RLS **does not** let the anon/service key delete another user's content
 
 After deleting content, update the associated reports to `actioned`.
 
+### Community Q&A (questions and answers)
+
+Q&A content is **removed, not deleted**, so the rest of the thread keeps its place. Set `removed_at` (SQL Editor or service role; clients cannot write it):
+
+```sql
+UPDATE qa_questions SET removed_at = now(), removed_reason = 'spam' WHERE id = '<question_id>';
+UPDATE qa_answers   SET removed_at = now(), removed_reason = 'spam' WHERE id = '<answer_id>';
+-- undo: SET removed_at = NULL
+```
+
+Others stop seeing a removed question entirely and see a one-line "removed" stub for a removed answer; the author still sees their own. Then mark the reports `actioned`.
+
+Q&A auto-hide uses lower thresholds than the 5-report rule above, counted from `pending` reports by distinct reporters:
+
+- **2** `unmarked_spoiler` reports → the item is shown behind a spoiler blur.
+- **3** reports of any kind → the item is hidden from everyone except its author until you review it.
+
+Marking those reports `reviewed`, `dismissed` or `actioned` lifts the auto-hide. Full detail: `docs/qa_data_model.md`.
+
 ---
 
 ## Commitment
