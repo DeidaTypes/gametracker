@@ -9,6 +9,7 @@ import {
   isPasswordBreached,
   getNextPasswordRequirement,
 } from '../../services/passwordPolicy'
+import { supabase } from '../../services/supabase'
 import {
   parseRecoveryParams,
   establishRecoverySession,
@@ -29,7 +30,6 @@ import './ForgotPassword.css'
  * subscribed.
  */
 async function waitForRecoverySession(timeoutMs = 3000) {
-  const { supabase } = await import('../../services/supabase')
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const { data } = await supabase.auth.getSession()

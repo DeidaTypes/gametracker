@@ -1,0 +1,29 @@
+.route-chunk-placeholder {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.route-chunk-placeholder__mark {
+  width: var(--space-32);
+  height: var(--space-32);
+  border-radius: var(--radius-full);
+}
+
+.route-chunk-placeholder__title {
+  width: 48%;
+  height: var(--space-24);
+}
+
+.route-chunk-placeholder__line {
+  width: 100%;
+  height: var(--space-48);
+}
+
+.route-chunk-placeholder__line--short {
+  width: 64%;
+}

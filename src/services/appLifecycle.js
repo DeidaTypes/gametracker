@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 import { capturePendingReferral } from './inviteService'
+import { parseRecoveryParams, establishRecoverySession } from './passwordReset'
 import { runResumeSequence, cancelResumeSequence } from './resumeSequence'
 
 /**
@@ -103,9 +104,6 @@ function handleAppUrl(url) {
  */
 async function handleRecoveryUrl(rawUrl, parsedUrl) {
   try {
-    const { parseRecoveryParams, establishRecoverySession } = await import(
-      './passwordReset'
-    )
     const params = parseRecoveryParams(rawUrl)
     if (params) await establishRecoverySession(params)
   } catch (err) {

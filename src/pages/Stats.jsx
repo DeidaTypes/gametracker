@@ -1,11 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-} from 'recharts'
 import { HiArrowLeft } from 'react-icons/hi'
 import EmptyState from '../components/EmptyState'
 import { useAuth } from '../contexts/AuthContext'
@@ -92,7 +86,10 @@ function pluralize(n, one, many) {
    Donut chart — "Where your time goes"
    ───────────────────────────────────────────────────────────── */
 
+const DONUT_HEIGHT = 260
+
 function HoursByGenreDonut({ hoursByGenre }) {
+  const [charts, setCharts] = useState(null)
   const data = useMemo(() => {
     const entries = Object.entries(hoursByGenre || {})
       .map(([genre, hours]) => ({
@@ -123,6 +120,21 @@ function HoursByGenreDonut({ hoursByGenre }) {
     [data]
   )
 
+  useEffect(() => {
+    if (data.length === 0) return undefined
+    let cancelled = false
+    import('recharts')
+      .then((mod) => {
+        if (!cancelled) setCharts(mod)
+      })
+      .catch((err) => {
+        console.error('[stats] chart failed to load', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [data.length])
+
   if (data.length === 0) {
     return (
       <div className="stats-card">
@@ -137,27 +149,35 @@ function HoursByGenreDonut({ hoursByGenre }) {
   return (
     <div className="stats-card stats-donut-card">
       <div className="stats-donut-chart-wrap">
-        <ResponsiveContainer width="100%" height={260}>
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={72}
-              outerRadius={112}
-              paddingAngle={1}
-              stroke="none"
-              isAnimationActive={false}
-            >
-              {data.map((d) => (
-                <Cell
-                  key={d.name}
-                  fill={d.isOther ? OTHER_COLOR : genreToColor(d.name)}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+        {charts ? (
+          <charts.ResponsiveContainer width="100%" height={DONUT_HEIGHT}>
+            <charts.PieChart>
+              <charts.Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={72}
+                outerRadius={112}
+                paddingAngle={1}
+                stroke="none"
+                isAnimationActive={false}
+              >
+                {data.map((d) => (
+                  <charts.Cell
+                    key={d.name}
+                    fill={d.isOther ? OTHER_COLOR : genreToColor(d.name)}
+                  />
+                ))}
+              </charts.Pie>
+            </charts.PieChart>
+          </charts.ResponsiveContainer>
+        ) : (
+          <div
+            style={{ width: '100%', height: DONUT_HEIGHT }}
+            aria-busy="true"
+            aria-label="Loading chart"
+          />
+        )}
 
         <div className="stats-donut-center" aria-hidden="true">
           <div className="stats-donut-center-num">

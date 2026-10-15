@@ -33,19 +33,6 @@ if (Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
   }
 }
 
-// Register Service Worker for PWA on web only (iOS 15+ and Android 24+)
-if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration)
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError)
-      })
-  })
-}
-
 // ── ONE global keyboard-inset source of truth ──────────────────────────────
 //
 // The implementation moved to services/keyboardInset.js so that the hook, the
@@ -64,17 +51,6 @@ if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
 // Started before React mounts so --keyboard-inset resolves on first paint.
 initKeyboardInset()
 
-// ── One-time (idempotent) storage cleanup — see libraryService.js /
-// swipeService.js for the fixes this backs. Runs on every app start; on an
-// already-slim/-capped device this is a cheap no-op (both functions
-// detect "nothing to do" and skip the write).
-// Drop abandoned caches and an already-migrated reviews blob first, so the
-// slim rewrite below has room to replace gameLibrary. WebKit will not
-// replace a large key while the old copy still occupies the quota.
-freeAbandonedLocalStorage()
-migrateLibraryToSlimShape()
-pruneSwipeHistory()
-
 // Start Supabase auth lifecycle management (native-only; no-op on web).
 initAppLifecycle()
 
@@ -87,3 +63,36 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>,
 )
+
+// After the first paint, on idle. These used to run synchronously before
+// createRoot and held the boot splash off the screen. On an already-slim
+// device both storage passes detect "nothing to do" and skip the write.
+// Abandoned caches go first so a slim rewrite has room to replace
+// gameLibrary — WebKit will not replace a large key while the old copy
+// still occupies the quota.
+function runAfterFirstPaint(fn) {
+  const start = () => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(fn)
+    else setTimeout(fn, 1)
+  }
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(start)
+  else setTimeout(start, 1)
+}
+
+runAfterFirstPaint(() => {
+  freeAbandonedLocalStorage()
+  migrateLibraryToSlimShape()
+  pruneSwipeHistory()
+
+  // Web only. The native shell unregisters any stale worker before paint
+  // (above) so a cached bundle cannot own the first load.
+  if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('SW registered: ', registration)
+      })
+      .catch((registrationError) => {
+        console.log('SW registration failed: ', registrationError)
+      })
+  }
+})

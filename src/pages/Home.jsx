@@ -21,6 +21,7 @@ import { add, success } from '../services/moments'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { prefetchLazyRoutes } from '../routes/lazyPages'
 import './Home.css'
 
 // ── New-user topper ───────────────────────────────────────────────────────────
@@ -213,6 +214,17 @@ function Home() {
       setBacklogGame(readBacklogGame())
     } catch (err) {
       console.error('Error loading home data:', err)
+    }
+  }, [])
+
+  // Home has painted by the time this effect runs. Warm pushed-route
+  // chunks on idle so a later push does not wait on a download.
+  useEffect(() => {
+    const prefetch = () => prefetchLazyRoutes()
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(prefetch, { timeout: 1500 })
+    } else {
+      setTimeout(prefetch, 1)
     }
   }, [])
 

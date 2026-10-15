@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import Lottie from 'lottie-react'
 
 import {
   subscribe as subscribeCelebration,
@@ -18,8 +17,6 @@ import {
   formatPlaythroughSpan,
 } from '../../services/finishStatsService'
 import { useAuth } from '../../contexts/AuthContext'
-
-import celebrationAnimation from '../../assets/lottie/celebration.json'
 
 import './CompletionCelebration.css'
 
@@ -43,6 +40,19 @@ function formatHours(hours) {
   return hours % 1 === 0 ? hours.toFixed(0) : hours.toFixed(1)
 }
 
+function ConfettiBurst({ Lottie, animationData }) {
+  return (
+    <div className="completion-celebration__confetti" aria-hidden="true">
+      <Lottie
+        animationData={animationData}
+        loop={false}
+        autoplay
+        rendererSettings={{ preserveAspectRatio: 'xMidYMin slice' }}
+      />
+    </div>
+  )
+}
+
 /* ============================================================
    CompletionCelebration — single mount in App
    ============================================================ */
@@ -51,11 +61,36 @@ export default function CompletionCelebration() {
   const reduced = useReducedMotion()
   const location = useLocation()
   const { user } = useAuth()
+  const [confetti, setConfetti] = useState(null)
 
   // Pause while the review composer is open so a queued celebration
   // doesn't paint on top of the composer. See original comment above
   // for full rationale.
   const onReviewComposer = location.pathname.startsWith('/review/new')
+
+  // lottie-web is large. Load it only when a celebration is actually
+  // on screen and motion is allowed.
+  useEffect(() => {
+    if (!head || reduced || onReviewComposer || confetti) return undefined
+    let cancelled = false
+    Promise.all([
+      import('lottie-react'),
+      import('../../assets/lottie/celebration.json'),
+    ])
+      .then(([lottieMod, animMod]) => {
+        if (cancelled) return
+        setConfetti({
+          Lottie: lottieMod.default,
+          animationData: animMod.default,
+        })
+      })
+      .catch((err) => {
+        console.error('[celebration] animation failed to load', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [head, reduced, onReviewComposer, confetti])
 
   // The game's extracted accent — cached on game_colors after the first
   // finish of this game (by anyone); read straight from the cache on
@@ -198,19 +233,14 @@ export default function CompletionCelebration() {
             />
           </svg>
         </div>
-      ) : (
-        <div
+      ) : confetti ? (
+        <ConfettiBurst
           key={`confetti-${head.igdbGameId}`}
-          className="completion-celebration__confetti"
-          aria-hidden="true"
-        >
-          <Lottie
-            animationData={celebrationAnimation}
-            loop={false}
-            autoplay
-            rendererSettings={{ preserveAspectRatio: 'xMidYMin slice' }}
-          />
-        </div>
+          Lottie={confetti.Lottie}
+          animationData={confetti.animationData}
+        />
+      ) : (
+        <div className="completion-celebration__confetti" aria-hidden="true" />
       )}
 
       <div className="completion-celebration__content">

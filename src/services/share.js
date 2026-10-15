@@ -1,6 +1,5 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { toPng } from 'html-to-image'
 
 /**
  * Share Service — branded deep-linked card engine.
@@ -84,6 +83,7 @@ export async function buildQrDataUrl(text) {
  * @returns {Promise<string>}      PNG data URL
  */
 export async function captureCard({ variant, data, target }) {
+  const { toPng } = await import('html-to-image')
   // Lazy-import the card component (keeps the service a plain .js file)
   const BrandedShareCard = (await import('../components/BrandedShareCard')).default
 

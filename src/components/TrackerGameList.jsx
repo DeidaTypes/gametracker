@@ -31,7 +31,7 @@ import {
   setGameStatus,
   clearGameStatus,
 } from '../services/libraryService'
-import { getCachedUserReviews } from '../services/reviewService'
+import { getCachedUserReviews, postReview } from '../services/reviewService'
 import { hapticImpact } from '../utils/haptics'
 import { add } from '../services/moments'
 import { getGameNavStub } from '../utils/gameNavStub'
@@ -574,20 +574,18 @@ function TrackerGameList({ listId, games }) {
     for (const id of ids) {
       const game = games.find((g) => String(g.id) === id)
       if (!game) continue
-      import('../services/reviewService').then(({ postReview, getCachedUserReviews }) => {
-        // Don't double-post: check if user already has a review for this game
-        const existing = getCachedUserReviews().find(
-          (r) => String(r.igdb_game_id) === String(id)
-        )
-        if (!existing) {
-          postReview({
-            igdbGameId: id,
-            rating,
-            gameTitle: game.title,
-            gameImage: game.image,
-          }).catch(() => {})
-        }
-      })
+      // Don't double-post: check if user already has a review for this game
+      const existing = getCachedUserReviews().find(
+        (r) => String(r.igdb_game_id) === String(id)
+      )
+      if (!existing) {
+        postReview({
+          igdbGameId: id,
+          rating,
+          gameTitle: game.title,
+          gameImage: game.image,
+        }).catch(() => {})
+      }
       count++
     }
     showToast(`Rating applied to ${count} ${count === 1 ? 'game' : 'games'}`, 'success')

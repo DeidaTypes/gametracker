@@ -28,53 +28,56 @@ import MobileNav from './components/MobileNav'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 import Explore from './pages/Explore'
-import DiscoverReviewsAll from './pages/DiscoverReviewsAll'
-import DiscoverCollectionsAll from './pages/DiscoverCollectionsAll'
-import DiscoverNewAll from './pages/DiscoverNewAll'
-import ThemedDropDetail from './pages/ThemedDropDetail'
-import Search from './pages/Search'
-import CategoryResults from './pages/CategoryResults'
 import Library from './pages/Library'
-import Wishlist from './pages/Wishlist'
-import Reviews from './pages/Reviews'
-import GameDetail from './pages/GameDetail'
-import GameReviewsAll from './pages/GameReviewsAll'
-import GameSessions from './pages/GameSessions'
-import DeveloperDetail from './pages/DeveloperDetail'
 import Profile from './pages/Profile'
-import UserBadgesPage from './pages/UserBadgesPage'
-import UserFollowers from './pages/UserFollowers'
-import UserFollowing from './pages/UserFollowing'
-import UserActivity from './pages/UserActivity'
-import ChallengeDetail from './pages/ChallengeDetail'
-import UserLibrary from './pages/UserLibrary'
-import MessagesInbox from './pages/MessagesInbox'
-import MessagesThread from './pages/MessagesThread'
-import NotificationsInbox from './pages/NotificationsInbox'
-import ReviewComments from './pages/ReviewComments'
-import ReviewDetail from './pages/ReviewDetail'
-import ReviewNew from './pages/ReviewNew'
-import JournalNew from './pages/JournalNew'
-import JournalEntry from './pages/JournalEntry'
-import Settings from './pages/Settings'
-import SettingsBlocked from './pages/SettingsBlocked'
-import SettingsEmail from './pages/SettingsEmail'
-import SettingsPassword from './pages/SettingsPassword'
-import SettingsAppearance from './pages/SettingsAppearance'
-import SettingsAccessibility from './pages/SettingsAccessibility'
-import SettingsAccount from './pages/SettingsAccount'
-import SettingsPrivacy from './pages/SettingsPrivacy'
-import SettingsHelp from './pages/SettingsHelp'
-import Stats from './pages/Stats'
-import ActivityCalendar from './pages/ActivityCalendar'
-import CurrentlyPlaying from './pages/CurrentlyPlaying'
-import SmartListDetail from './pages/SmartListDetail'
-import ListDetail from './pages/ListDetail'
 import Onboarding from './pages/Onboarding'
 import LogIn from './pages/auth/LogIn'
 import SignUp from './pages/auth/SignUp'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import {
+  ActivityCalendar,
+  CategoryResults,
+  ChallengeDetail,
+  CurrentlyPlaying,
+  DeveloperDetail,
+  DiscoverCollectionsAll,
+  DiscoverNewAll,
+  DiscoverReviewsAll,
+  GameDetail,
+  GameReviewsAll,
+  GameSessions,
+  JournalEntry,
+  JournalNew,
+  ListDetail,
+  MessagesInbox,
+  MessagesThread,
+  NotificationsInbox,
+  ReviewComments,
+  ReviewDetail,
+  ReviewNew,
+  Reviews,
+  Search,
+  Settings,
+  SettingsAccessibility,
+  SettingsAccount,
+  SettingsAppearance,
+  SettingsBlocked,
+  SettingsEmail,
+  SettingsHelp,
+  SettingsPassword,
+  SettingsPrivacy,
+  SmartListDetail,
+  Stats,
+  ThemedDropDetail,
+  UserActivity,
+  UserBadgesPage,
+  UserFollowers,
+  UserFollowing,
+  UserLibrary,
+  Wishlist,
+} from './routes/lazyPages'
+import RouteChunkPlaceholder from './components/RouteChunkPlaceholder'
 // Dev-only visual harnesses. Lazily imported and only registered when
 // import.meta.env.DEV is true so they're stripped from production bundles.
 const ReviewCardDemo = import.meta.env.DEV
@@ -130,6 +133,15 @@ const PUBLIC_PATHS = new Set([
   '/forgot-password',
   '/reset-password',
 ])
+
+/** Fallback while a pushed route's chunk resolves. Screen-sized, never a spinner. */
+function LazyScreen({ children }) {
+  return (
+    <React.Suspense fallback={<RouteChunkPlaceholder />}>
+      {children}
+    </React.Suspense>
+  )
+}
 
 /**
  * Animated route outlet — direction-aware push/pop exit + enter.
@@ -946,7 +958,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><DiscoverReviewsAll /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><DiscoverReviewsAll /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -956,7 +968,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><DiscoverCollectionsAll /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><DiscoverCollectionsAll /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -966,7 +978,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ThemedDropDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ThemedDropDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -976,7 +988,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><DiscoverNewAll /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><DiscoverNewAll /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -989,7 +1001,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition><Search /></PageTransition>
+                    <PageTransition><LazyScreen><Search /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -999,7 +1011,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><CategoryResults /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><CategoryResults /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1022,7 +1034,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><Wishlist /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><Wishlist /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1032,7 +1044,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><Reviews /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><Reviews /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1042,7 +1054,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ReviewNew /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ReviewNew /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1052,7 +1064,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><JournalNew /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><JournalNew /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1062,7 +1074,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><JournalEntry /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><JournalEntry /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1072,7 +1084,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><GameDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><GameDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1082,7 +1094,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><GameReviewsAll /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><GameReviewsAll /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1092,7 +1104,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><GameSessions /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><GameSessions /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1102,7 +1114,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><DeveloperDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><DeveloperDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1112,7 +1124,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><CurrentlyPlaying /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><CurrentlyPlaying /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1122,7 +1134,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SmartListDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SmartListDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1132,7 +1144,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ListDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ListDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1182,7 +1194,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserBadgesPage /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserBadgesPage /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1195,7 +1207,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserFollowers /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserFollowers /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1205,7 +1217,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserFollowing /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserFollowing /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1220,7 +1232,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserFollowers /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserFollowers /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1230,7 +1242,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserFollowing /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserFollowing /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1240,7 +1252,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserBadgesPage /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserBadgesPage /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1253,7 +1265,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserActivity /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserActivity /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1263,7 +1275,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserActivity /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserActivity /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1275,7 +1287,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ChallengeDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ChallengeDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1285,7 +1297,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ChallengeDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ChallengeDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1300,7 +1312,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserLibrary /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserLibrary /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1310,7 +1322,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><UserLibrary /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><UserLibrary /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1320,7 +1332,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><Stats /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><Stats /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1330,7 +1342,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ActivityCalendar /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ActivityCalendar /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1343,7 +1355,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><Settings /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><Settings /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1353,7 +1365,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsBlocked /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsBlocked /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1363,7 +1375,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsEmail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsEmail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1373,7 +1385,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsPassword /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsPassword /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1383,7 +1395,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsAppearance /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsAppearance /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1393,7 +1405,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsAccessibility /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsAccessibility /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1403,7 +1415,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsAccount /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsAccount /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1413,7 +1425,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsPrivacy /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsPrivacy /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1423,7 +1435,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><SettingsHelp /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><SettingsHelp /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1438,7 +1450,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ReviewComments /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ReviewComments /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1451,7 +1463,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ReviewComments /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ReviewComments /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1462,7 +1474,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ReviewDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ReviewDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1473,7 +1485,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><ReviewDetail /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><ReviewDetail /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1488,7 +1500,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><NotificationsInbox /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><NotificationsInbox /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1498,7 +1510,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><MessagesInbox /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><MessagesInbox /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
@@ -1512,7 +1524,7 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ErrorBoundary>
-                    <PageTransition swipeBack><MessagesThread /></PageTransition>
+                    <PageTransition swipeBack><LazyScreen><MessagesThread /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
