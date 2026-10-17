@@ -1119,6 +1119,94 @@ html[data-app-theme="cream"] .gd-hero::after {
   .gd-action-pair-btn:active { transform: none; }
 }
 
+/* ── Questions row (Q&A tab entry from game detail, checkpoint C2b) ── */
+.gd-questions-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: calc(100% - var(--space-40));
+  max-width: var(--page-max-width);
+  margin: var(--space-12) auto 0;
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-12);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm, none);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--space-64);
+  box-sizing: border-box;
+}
+
+.gd-questions-row__icon {
+  flex: none;
+  width: var(--space-40);
+  height: var(--space-40);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-journal-soft);
+  color: var(--accent-journal-ink);
+}
+
+.gd-questions-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gd-questions-row__title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+}
+
+.gd-questions-row__subline {
+  margin: 0;
+  color: var(--color-text-secondary);
+  min-height: var(--line-height-caption);
+  opacity: 0;
+}
+
+.gd-questions-row__subline--visible {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.gd-questions-row__open {
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-journal-ink);
+}
+
+.gd-questions-row__chevron {
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.gd-questions-row:active {
+  background: var(--color-surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-questions-row__subline--visible {
+    transition: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .gd-questions-row {
+    width: calc(100% - var(--space-96));
+  }
+}
+
 /* =====================================================
    TIME TO BEAT BLOCK
    Informational section — visible for any game that has

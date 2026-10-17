@@ -40,6 +40,9 @@ import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
+import { useFlagEnabled } from '../hooks/useFlagEnabled'
+import GameDetailQuestionsRow from '../components/GameDetailQuestionsRow'
+import { qaGame, qaGameKey } from '../services/qaService'
 
 /**
  * Game metadata from IGDB barely changes, so it is held longer than the
@@ -258,6 +261,21 @@ function GameDetail() {
   const { data: social, refresh: refreshSocial } = useCachedResource(socialKey, loadSocial, {
     enabled: !!gameId && (transitionComplete || socialWarm),
   })
+  const qaEnabled = useFlagEnabled('qa')
+  const qaPreviewKey =
+    qaEnabled && gameId ? qaGameKey(gameId, 'answered', 'helpful') : null
+  const qaPreviewWarm = qaPreviewKey != null && peekSWR(qaPreviewKey) !== undefined
+  const loadQaPreview = useCallback(
+    () => qaGame(gameId, { filter: 'answered', sort: 'helpful', limit: 1 }),
+    [gameId]
+  )
+  const { data: qaPreview, refresh: refreshQaPreview } = useCachedResource(
+    qaPreviewKey,
+    loadQaPreview,
+    { enabled: !!gameId && qaEnabled && (transitionComplete || qaPreviewWarm) }
+  )
+  const qaHeader = qaPreview?.header
+  const qaCountsReady = qaPreview !== undefined
   const reviews = social?.reviews ?? []
   const reviewLikeCounts = social?.likeCounts ?? EMPTY_LIKE_COUNTS
   const reviewCommentCounts = social?.commentCounts ?? EMPTY_LIKE_COUNTS
@@ -449,6 +467,7 @@ function GameDetail() {
     const onResume = () => {
       refreshFromStore()
       refreshSocial().catch(() => {})
+      if (qaEnabled) refreshQaPreview().catch(() => {})
       refreshSessions()
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
@@ -457,7 +476,9 @@ function GameDetail() {
     gameId,
     refreshFromStore,
     refreshSocial,
+    refreshQaPreview,
     refreshSessions,
+    qaEnabled,
   ])
 
   const openReviewComposer = useCallback((reviewShape) => {
@@ -469,6 +490,10 @@ function GameDetail() {
   const openJournalComposer = useCallback(() => {
     setJournalModalOpen(true)
   }, [])
+
+  const openGameQuestions = useCallback(() => {
+    navigate(`/qa/game/${gameId}`, { state: { game } })
+  }, [navigate, gameId, game])
 
   // Mirrors AddToListButton's internal handleStatusTap exactly — same
   // store call + same libraryUpdated dispatch — so the inline pills and
@@ -769,6 +794,13 @@ function GameDetail() {
         </button>
       </div>
 
+      {qaEnabled ? (
+        <GameDetailQuestionsRow
+          header={qaHeader}
+          ready={qaCountsReady}
+          onOpen={openGameQuestions}
+        />
+      ) : null}
 
       {/* ── At a Glance ── decision helper card.
            Shows up when any of the three sub-rows has real IGDB data.
