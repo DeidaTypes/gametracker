@@ -37,14 +37,12 @@ export function QaCoverRows({ count = 3 }) {
   )
 }
 
-export function QaPlainRows({ count = 4 }) {
-  return (
-    <div className="qa-group">
-      {Array.from({ length: count }, (_, i) => (
-        <Row key={i} cover={false} />
-      ))}
-    </div>
-  )
+export function QaPlainRows({ count = 4, flat = false }) {
+  const rows = Array.from({ length: count }, (_, i) => (
+    <Row key={i} cover={false} />
+  ))
+  if (flat) return rows
+  return <div className="qa-group">{rows}</div>
 }
 
 export function QaQuestionBlock() {

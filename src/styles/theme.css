@@ -530,6 +530,14 @@ body[data-larger-text='true'] {
   --grad-nav-qa: linear-gradient(135deg, var(--accent-journal) 0%, var(--accent-review) 100%); /* list → review */
   --glow-nav-qa: color-mix(in srgb, var(--accent-review) 40%, transparent);
 
+  /* Q&A segmented control + list preview copy (checkpoint_community_qa_v5) */
+  --qa-seg-track: var(--bg-surface);
+  --qa-seg-thumb: var(--bg-surface-2);
+  --qa-seg-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--theme-text) 6%, transparent),
+    var(--shadow-sm);
+  --qa-text-soft: color-mix(in srgb, var(--theme-text) 82%, var(--text-secondary));
+
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);
   --color-surface-hover: rgba(148, 168, 212, 0.09);
@@ -902,6 +910,9 @@ html[data-app-theme="cream"] {
   color-scheme: light;
   --theme-tint: 12%;
   --theme-fill-mix: 5%;
+  --qa-seg-track: var(--bg-surface-2);
+  --qa-seg-thumb: var(--bg-surface);
+  --qa-seg-shadow: var(--shadow-sm);
   /* A navy-weight edge shadow muddies Light Pink. Keep the same offset,
      drop the strength so the incoming page still reads as a layer. */
   --shadow-page-edge: -10px 0 28px rgba(40, 16, 32, 0.18);
@@ -918,6 +929,13 @@ html[data-app-theme="sky"] body,
 html[data-app-theme="pink"] body,
 html[data-app-theme="cream"] body {
   background-image: none;
+}
+
+html[data-app-theme="light"],
+html[data-app-theme="sky"] {
+  --qa-seg-track: var(--bg-surface-2);
+  --qa-seg-thumb: var(--bg-surface);
+  --qa-seg-shadow: var(--shadow-sm);
 }
 
 /* Comment composer screens (Comments sub-screen, List Detail, Review
