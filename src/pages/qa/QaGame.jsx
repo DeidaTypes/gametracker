@@ -24,6 +24,7 @@ import QaQuestionListRow from './QaQuestionListRow'
 import { QaPlainRows } from './QaPlaceholders'
 import { formatGameStatsLine } from './qaFormat'
 import { openQaAsk, qaGamePreset } from './qaComposer'
+import { isQaQuestionHidden, useQaHides } from './qaHides'
 import { useQaGameMeta } from './qaGameMeta'
 import './qa.css'
 
@@ -32,6 +33,7 @@ const PAGE_SIZE = 30
 export default function QaGame() {
   const { igdbId } = useParams()
   const navigate = useNavigate()
+  const { tick: hideTick } = useQaHides()
 
   const [filter, setFilter] = useState('answered')
   const [sort, setSort] = useState('helpful')
@@ -75,18 +77,22 @@ export default function QaGame() {
     setNextBefore(gameData?.next_before ?? null)
   }, [listKey, gameData])
 
-  const listItems = useMemo(() => {
+  const sourceItems = useMemo(() => {
     if (searching) return Array.isArray(searchData) ? searchData : []
-    const first = gameData?.items ?? []
-    return [...first, ...extraItems]
+    return [...(gameData?.items ?? []), ...extraItems]
   }, [searching, searchData, gameData, extraItems])
+
+  const listItems = useMemo(
+    () => sourceItems.filter((item) => item?.id && !isQaQuestionHidden(item.id)),
+    [sourceItems, hideTick],
+  )
 
   const header = gameData?.header
   const listLoaded = searching ? searchData !== undefined : gameData !== undefined
   const activeError = searching ? searchError : listError
   const pending = !listLoaded && !activeError
 
-  const gameMeta = useQaGameMeta(igdbId, listItems, listLoaded)
+  const gameMeta = useQaGameMeta(igdbId, sourceItems, listLoaded)
   const gameTitle = gameMeta?.title
   const coverUrl =
     gameMeta?.coverUrl ||
@@ -255,7 +261,7 @@ export default function QaGame() {
               ) : null}
             </div>
 
-            {activeError && listItems.length === 0 ? (
+            {activeError && sourceItems.length === 0 ? (
               <div className="qa-group">
                 <EmptyState
                   size="compact"
@@ -267,11 +273,11 @@ export default function QaGame() {
                   icon={RefreshCw}
                 />
               </div>
-            ) : pending && listItems.length === 0 ? (
+            ) : pending && sourceItems.length === 0 ? (
               <div className="qa-group" aria-hidden="true">
                 <QaPlainRows count={4} />
               </div>
-            ) : listItems.length === 0 && listLoaded ? (
+            ) : sourceItems.length === 0 && listLoaded ? (
               <EmptyState
                 size="compact"
                 title={searching ? 'No questions match' : 'Nothing here yet'}

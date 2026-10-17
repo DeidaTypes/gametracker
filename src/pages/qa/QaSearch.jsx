@@ -7,6 +7,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey, qaSearch, qaSearchKey } from '../../services/qaService'
 import { openQaAsk, qaGamePreset } from './qaComposer'
+import { isQaQuestionHidden, useQaHides } from './qaHides'
 import { runAfterSlide } from '../../motion/xMotion'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaPlainRows } from './QaPlaceholders'
@@ -114,6 +115,7 @@ function MostAskedBrowse({ games }) {
 export default function QaSearch() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { tick: hideTick } = useQaHides()
   const { user } = useAuth()
   const online = useOnline()
   const inputRef = useRef(null)
@@ -139,7 +141,10 @@ export default function QaSearch() {
     return undefined
   }, [browseMost])
 
-  const items = useMemo(() => (Array.isArray(data) ? data : []), [data])
+  const items = useMemo(
+    () => (Array.isArray(data) ? data : []).filter((item) => item?.id && !isQaQuestionHidden(item.id)),
+    [data, hideTick],
+  )
   const groups = useMemo(() => groupByGame(items), [items])
   const most = asList(home?.most_asked).filter((game) => game?.igdb_game_id != null)
   const showMost = !trimmed && browseMost && most.length > 0

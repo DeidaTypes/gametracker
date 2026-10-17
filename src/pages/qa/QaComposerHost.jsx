@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { showToast } from '../../components/Toast'
 import { useAuth } from '../../contexts/AuthContext'
-import { askQuestion, postAnswer, qaQuestion, qaQuestionKey } from '../../services/qaService'
-import { markSWRStale, mutateSWR } from '../../services/swrCache'
+import { BLOCK_CHANGED_EVENT } from '../../services/blockService'
+import { askQuestion, editAnswer, editQuestion, postAnswer, qaQuestion, qaQuestionKey } from '../../services/qaService'
+import { markSWRStale, markSWRStaleByPrefix, mutateSWR } from '../../services/swrCache'
+import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa } from './qaCache'
 import { getSettings } from '../../services/userSettingsService'
 import QaAnswerForm from './QaAnswerForm'
 import QaAskForm from './QaAskForm'
@@ -15,6 +17,7 @@ import {
   answerIsDirty,
   askIsDirty,
   closeQaComposer,
+  draftUnchanged,
   getQaComposerSession,
   hasAnyQaPost,
   hideQaComposerFor,
@@ -122,7 +125,19 @@ export default function QaComposerHost() {
   }, [location.pathname, session?.hiddenFor])
 
   useEffect(() => {
+    const onBlock = (event) => {
+      const id = event.detail?.targetUserId
+      if (!id) return
+      if (event.detail.blocked) dropBlockedUserFromQa(id)
+      else markSWRStaleByPrefix('qa:')
+    }
+    window.addEventListener(BLOCK_CHANGED_EVENT, onBlock)
+    return () => window.removeEventListener(BLOCK_CHANGED_EVENT, onBlock)
+  }, [])
+
+  useEffect(() => {
     if (!session || !user?.id) return undefined
+    if (session.mode === 'edit-question' || session.mode === 'edit-answer') return undefined
     let cancelled = false
     const kind = session.mode === 'answer' ? 'answer' : 'question'
     const rule = limitRule(profile?.created_at, kind)
@@ -258,11 +273,65 @@ export default function QaComposerHost() {
     showToast('Answer posted', 'success')
   }
 
+  const sendEditQuestion = async () => {
+    const current = getQaComposerSession()
+    const draft = current?.draft
+    if (!current || current.mode !== 'edit-question' || !draft) return
+    const fields = {
+      title: draft.title.trim(),
+      body: draft.body,
+      location: draft.location,
+      topic: draft.topic,
+      platform: draft.platform,
+      isSpoiler: draft.topic === 'story' ? true : !!draft.isSpoiler,
+    }
+    const result = await editQuestion(current.questionId, fields, { igdbGameId: current.igdbGameId })
+    if (result?.error) {
+      await reportError(result.error.code, 'ask')
+      return
+    }
+    const edited = !draftUnchanged(draft, current.baseline, ['title', 'body', 'location', 'topic', 'platform'])
+    applyQuestionEdit(current.questionId, {
+      title: fields.title,
+      body: fields.body.trim(),
+      location: fields.location.trim() || null,
+      topic: fields.topic,
+      platform: fields.platform.trim() || null,
+      is_spoiler: fields.isSpoiler,
+    }, { edited })
+    closeQaComposer()
+  }
+
+  const sendEditAnswer = async () => {
+    const current = getQaComposerSession()
+    if (!current || current.mode !== 'edit-answer') return
+    const body = current.draft.body.trim()
+    const isSpoiler = !!current.draft.isSpoiler
+    const result = await editAnswer(
+      current.answerId,
+      { body, isSpoiler },
+      { questionId: current.questionId, igdbGameId: current.igdbGameId },
+    )
+    if (result?.error) {
+      await reportError(result.error.code, 'answer', current.questionId)
+      return
+    }
+    const edited = !draftUnchanged(current.draft, current.baseline, ['body'])
+    applyAnswerEdit(
+      current.questionId,
+      current.answerId,
+      { body, is_spoiler: isSpoiler },
+      { edited, isBest: current.wasBest },
+    )
+    closeQaComposer()
+  }
+
   const submit = async () => {
     if (posting.current || !online) return
     const current = getQaComposerSession()
     if (!current || current.limit) return
-    if (await mustWarn()) {
+    const editing = current.mode === 'edit-question' || current.mode === 'edit-answer'
+    if (!editing && await mustWarn()) {
       setNoticeOpen(true)
       return
     }
@@ -270,6 +339,8 @@ export default function QaComposerHost() {
     setBusy(true)
     try {
       if (current.mode === 'ask') await sendAsk()
+      else if (current.mode === 'edit-question') await sendEditQuestion()
+      else if (current.mode === 'edit-answer') await sendEditAnswer()
       else await sendAnswer()
     } finally {
       posting.current = false
@@ -291,19 +362,35 @@ export default function QaComposerHost() {
   }
 
   const draft = session?.draft
-  const asking = session?.mode === 'ask'
+  const editingQuestion = session?.mode === 'edit-question'
+  const editingAnswer = session?.mode === 'edit-answer'
+  const asking = session?.mode === 'ask' || editingQuestion
+  const questionReady = draft?.step === 'compose' &&
+    online &&
+    !session?.limit &&
+    !!draft?.game &&
+    !!draft?.topic &&
+    draft.title.trim().length >= QA_TITLE_MIN &&
+    draft.title.trim().length <= QA_TITLE_MAX
   const canSubmit = asking
-    ? draft?.step === 'compose' &&
-      online &&
-      !session.limit &&
-      !!draft.game &&
-      !!draft.topic &&
-      draft.title.trim().length >= QA_TITLE_MIN &&
-      draft.title.trim().length <= QA_TITLE_MAX
+    ? questionReady
     : !!session &&
       online &&
       !session.limit &&
       draft.body.trim().length >= 1
+  const dirty = editingQuestion
+    ? !draftUnchanged(draft, session.baseline, ['title', 'body', 'location', 'topic', 'platform', 'isSpoiler'])
+    : editingAnswer
+      ? !draftUnchanged(draft, session.baseline, ['body', 'isSpoiler'])
+      : asking
+        ? askIsDirty(draft)
+        : answerIsDirty(session)
+
+  let sheetTitle = 'Your answer'
+  if (editingQuestion) sheetTitle = 'Edit question'
+  else if (session?.mode === 'ask') sheetTitle = 'Ask a question'
+  else if (editingAnswer) sheetTitle = 'Edit answer'
+  else if (session) sheetTitle = `Answering ${session.questionTitle}`
 
   return (
     <>
@@ -311,12 +398,12 @@ export default function QaComposerHost() {
         <QaComposerSheet
           open
           covered={!!session.hiddenFor}
-          title={asking ? 'Ask a question' : `Answering ${session.questionTitle}`}
-          submitLabel={asking && draft.step === 'pick' ? 'Next' : 'Post'}
+          title={sheetTitle}
+          submitLabel={editingQuestion || editingAnswer ? 'Save' : asking && draft.step === 'pick' ? 'Next' : 'Post'}
           canSubmit={canSubmit}
           busy={busy}
-          dirty={asking ? askIsDirty(draft) : answerIsDirty(session)}
-          discardTitle={asking ? 'Discard question?' : 'Discard answer?'}
+          dirty={dirty}
+          discardTitle={editingQuestion || editingAnswer ? 'Discard edits?' : asking ? 'Discard question?' : 'Discard answer?'}
           onSubmit={submit}
           onClose={closeQaComposer}
         >
@@ -326,6 +413,7 @@ export default function QaComposerHost() {
               online={online}
               limit={session.limit}
               onOpenMatch={openMatch}
+              editing={editingQuestion}
             />
           ) : (
             <QaAnswerForm session={session} online={online} limit={session.limit} />

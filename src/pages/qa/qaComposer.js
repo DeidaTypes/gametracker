@@ -90,6 +90,27 @@ function blankAskDraft(title, game) {
   }
 }
 
+function questionBaseline(draft) {
+  return {
+    title: draft.title,
+    body: draft.body,
+    location: draft.location,
+    topic: draft.topic,
+    platform: draft.platform,
+    isSpoiler: !!draft.isSpoiler,
+  }
+}
+
+export function draftUnchanged(draft, baseline, keys) {
+  if (!draft || !baseline) return false
+  return keys.every((key) => {
+    const left = draft[key]
+    const right = baseline[key]
+    if (typeof left === 'boolean' || typeof right === 'boolean') return !!left === !!right
+    return String(left ?? '').trim() === String(right ?? '').trim()
+  })
+}
+
 export function openQaAsk({ title = '', game = null } = {}) {
   parked = null
   const presetGame = game ? qaGamePreset(game) : null
@@ -100,6 +121,67 @@ export function openQaAsk({ title = '', game = null } = {}) {
     limit: null,
     presetTitle: String(title || ''),
     draft: blankAskDraft(String(title || ''), presetGame),
+  }
+  emit()
+}
+
+/** Reopens the ask sheet on a question the viewer wrote. */
+export function openQaEditQuestion(question) {
+  if (!question?.id) return
+  parked = null
+  const game = qaGamePreset({
+    igdbId: question.igdb_game_id,
+    title: question.game_title,
+    coverImageId: question.game_cover_image_id,
+  })
+  if (!game) return
+  const draft = {
+    step: 'compose',
+    game,
+    title: question.title || '',
+    body: question.body || '',
+    location: question.location || '',
+    topic: question.topic || '',
+    isSpoiler: question.topic === 'story' ? true : !!question.is_spoiler,
+    search: '',
+    platform: question.platform || '',
+    platformMode: null,
+    platformOptions: [],
+    platformTouched: true,
+  }
+  session = {
+    mode: 'edit-question',
+    openedAt: Date.now(),
+    hiddenFor: null,
+    limit: null,
+    questionId: question.id,
+    igdbGameId: question.igdb_game_id,
+    baseline: questionBaseline(draft),
+    draft,
+  }
+  emit()
+}
+
+export function openQaEditAnswer({ questionId, questionTitle = '', igdbGameId = null, answer } = {}) {
+  if (!questionId || !answer?.id) return
+  if (session?.mode === 'ask' || session?.mode === 'edit-question') parked = session
+  const draft = {
+    body: answer.body || '',
+    isSpoiler: !!answer.is_spoiler,
+    replyOn: false,
+  }
+  session = {
+    mode: 'edit-answer',
+    openedAt: Date.now(),
+    hiddenFor: null,
+    limit: null,
+    questionId,
+    questionTitle: String(questionTitle || ''),
+    igdbGameId: igdbGameId == null || igdbGameId === '' ? null : Number(igdbGameId),
+    answerId: answer.id,
+    wasBest: !!answer.is_best,
+    baseline: { body: draft.body, isSpoiler: draft.isSpoiler },
+    draft,
   }
   emit()
 }

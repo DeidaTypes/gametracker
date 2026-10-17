@@ -29,10 +29,25 @@ function PersonRow({ user, userId, deleted, timeLabel, credibility, youTag }) {
   )
 }
 
-function HelpfulReplyRow({ count, pressed = false, onReply }) {
+function HelpfulReplyRow({
+  count,
+  pressed = false,
+  own = false,
+  onHelpful,
+  onReply,
+  onMore,
+  canMark = false,
+  onMarkBest,
+}) {
   return (
     <div className="qa-acts">
-      <button type="button" className={`qa-act-btn${pressed ? ' qa-act-btn--on' : ''}`} aria-pressed={pressed}>
+      <button
+        type="button"
+        className={`qa-act-btn${pressed ? ' qa-act-btn--on' : ''}`}
+        aria-pressed={pressed}
+        disabled={own}
+        onClick={own ? undefined : onHelpful}
+      >
         <ThumbsUp size={15} aria-hidden="true" />
         Helpful
         {count != null ? <span className="qa-act-btn__n">{count}</span> : null}
@@ -41,7 +56,13 @@ function HelpfulReplyRow({ count, pressed = false, onReply }) {
         Reply
       </button>
       <span className="qa-acts__grow" />
-      <button type="button" className="qa-act-btn qa-act-btn--text" aria-label="More">
+      {canMark ? (
+        <button type="button" className="qa-act-btn qa-act-btn--acc" onClick={onMarkBest}>
+          <Check size={15} strokeWidth={2.6} aria-hidden="true" />
+          Mark as best
+        </button>
+      ) : null}
+      <button type="button" className="qa-act-btn qa-act-btn--text" aria-label="More" onClick={onMore}>
         <MoreHorizontal size={18} aria-hidden="true" />
       </button>
     </div>
@@ -56,7 +77,12 @@ export function QaAnswerRemoved() {
   )
 }
 
-export function QaAnswerRow({ answer, onReply }) {
+function answerTime(answer) {
+  const label = qaTimeAgo(answer.created_at)
+  return answer.edited_at && label ? `${label} · Edited` : label
+}
+
+export function QaAnswerRow({ answer, onReply, onHelpful, onMore, canMark, onMarkBest }) {
   if (answer?.removed) {
     return <QaAnswerRemoved />
   }
@@ -68,14 +94,19 @@ export function QaAnswerRow({ answer, onReply }) {
         user={answer.author}
         userId={answer.author?.id}
         deleted={answer.author_deleted}
-        timeLabel={qaTimeAgo(answer.created_at)}
+        timeLabel={answerTime(answer)}
         credibility={credibility}
       />
       <AnswerBody answer={answer} />
       <HelpfulReplyRow
         count={answer.helpful_count}
         pressed={answer.viewer_helpful}
+        own={answer.is_own === true}
+        onHelpful={onHelpful ? () => onHelpful(answer) : undefined}
         onReply={onReply ? () => onReply(answer) : undefined}
+        onMore={onMore ? () => onMore(answer) : undefined}
+        canMark={canMark}
+        onMarkBest={onMarkBest ? () => onMarkBest(answer) : undefined}
       />
     </article>
   )
@@ -93,7 +124,7 @@ function AnswerBody({ answer }) {
   return <p className="qa-prose text-body">{answer.body}</p>
 }
 
-export function QaBestAnswerCard({ answer, headline, onReply }) {
+export function QaBestAnswerCard({ answer, headline, onReply, onHelpful, onMore, canMark, onMarkBest }) {
   if (!answer || answer.removed) return null
   const credibility = formatCredibilityPill(answer.credibility)
 
@@ -109,14 +140,19 @@ export function QaBestAnswerCard({ answer, headline, onReply }) {
         user={answer.author}
         userId={answer.author?.id}
         deleted={answer.author_deleted}
-        timeLabel={qaTimeAgo(answer.created_at)}
+        timeLabel={answerTime(answer)}
         credibility={credibility}
       />
       <AnswerBody answer={answer} />
       <HelpfulReplyRow
         count={answer.helpful_count}
         pressed={answer.viewer_helpful}
+        own={answer.is_own === true}
+        onHelpful={onHelpful ? () => onHelpful(answer) : undefined}
         onReply={onReply ? () => onReply(answer) : undefined}
+        onMore={onMore ? () => onMore(answer) : undefined}
+        canMark={canMark}
+        onMarkBest={onMarkBest ? () => onMarkBest(answer) : undefined}
       />
     </article>
   )

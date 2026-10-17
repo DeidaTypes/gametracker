@@ -225,7 +225,7 @@ function HighlightedTitle({ text, query }) {
   )
 }
 
-function AskCompose({ draft, online, limit, onOpenMatch }) {
+function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
   const sheetFocus = useComposerFieldFocus()
   const [matches, setMatches] = useState([])
   const [platformOpen, setPlatformOpen] = useState(false)
@@ -253,7 +253,7 @@ function AskCompose({ draft, online, limit, onOpenMatch }) {
   useEffect(() => {
     const title = draft.title.trim()
     const words = title.split(/\s+/).filter(Boolean)
-    if (!game || words.length < 3) {
+    if (editing || !game || words.length < 3) {
       setMatches([])
       return undefined
     }
@@ -272,7 +272,7 @@ function AskCompose({ draft, online, limit, onOpenMatch }) {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [draft.title, game])
+  }, [draft.title, game, editing])
 
   const chooseTopic = (topic) => {
     patchQaDraft({
@@ -460,7 +460,15 @@ function AskCompose({ draft, online, limit, onOpenMatch }) {
   )
 }
 
-export default function QaAskForm({ draft, online, limit, onOpenMatch }) {
+export default function QaAskForm({ draft, online, limit, onOpenMatch, editing = false }) {
   if (draft.step === 'pick') return <AskPick draft={draft} />
-  return <AskCompose draft={draft} online={online} limit={limit} onOpenMatch={onOpenMatch} />
+  return (
+    <AskCompose
+      draft={draft}
+      online={online}
+      limit={limit}
+      onOpenMatch={onOpenMatch}
+      editing={editing}
+    />
+  )
 }

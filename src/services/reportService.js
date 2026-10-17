@@ -116,6 +116,28 @@ export async function submitReport({ contentType, contentId, reason, details }) 
 }
 
 /**
+ * Withdraw the current user's still-pending report. Used by Q&A Undo.
+ * Returns false when the row cannot be deleted (the hide is still lifted
+ * locally). Requires the reporter delete policy in
+ * supabase/migrations/20261017150000_qa_report_withdraw.sql.
+ */
+export async function withdrawReport({ contentType, contentId }) {
+  const reporterId = await getCurrentUserId()
+  if (!reporterId || !contentType || !contentId) return false
+  const { error } = await supabase
+    .from('reports')
+    .delete()
+    .eq('reporter_id', reporterId)
+    .eq('content_type', contentType)
+    .eq('content_id', contentId)
+  if (error) {
+    console.error('[reports] withdraw failed:', error.message)
+    return false
+  }
+  return true
+}
+
+/**
  * Returns true if the current user has already reported content_id.
  * Fails soft (returns false) so the UI doesn't block on a network error.
  */

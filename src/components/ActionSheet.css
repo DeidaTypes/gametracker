@@ -71,6 +71,30 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.action-sheet__title--plain {
+  margin: var(--space-8) var(--space-20) 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-title);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.action-sheet__subtitle {
+  margin: var(--space-4) var(--space-20) var(--space-8);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* ============================================================
    Items — grouped rows with even, consistent heights. Groups
    are separated by .action-sheet__divider (below); there is no
@@ -122,6 +146,45 @@
 .action-sheet__item:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.action-sheet__item--locked:disabled {
+  opacity: 1;
+  color: var(--text-tertiary);
+}
+
+.action-sheet__item-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.action-sheet__item--plain .action-sheet__item-copy {
+  padding: var(--space-8) 0;
+}
+
+.action-sheet__item-detail {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.35;
+  color: var(--text-tertiary);
+  white-space: normal;
+}
+
+.action-sheet__plain-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.action-sheet__item--destructive .action-sheet__plain-icon {
+  color: var(--status-danger);
+}
+
+.action-sheet__item--locked .action-sheet__plain-icon {
+  color: var(--text-tertiary);
 }
 
 .action-sheet__item--destructive {

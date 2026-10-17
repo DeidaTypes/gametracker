@@ -7,6 +7,7 @@ import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey } from '../../services/qaService'
 import { openQaAsk } from './qaComposer'
+import { useQaHides } from './qaHides'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaCoverRows, QaMostAsked } from './QaPlaceholders'
 import { formatGamePlatform } from './qaFormat'
@@ -129,10 +130,12 @@ function FilterSwitch({ filter, helpCount, onSelect }) {
 }
 
 function QuestionGroup({ items, showCover, showAge }) {
-  if (!items.length) return null
+  const hides = useQaHides()
+  const visible = items.filter((item) => item?.id && !hides.hasQuestion(item.id))
+  if (!visible.length) return null
   return (
     <div className="qa-group">
-      {items.map((item, index) => (
+      {visible.map((item, index) => (
         <div key={item.id}>
           {index > 0 ? <div className="qa-hair" /> : null}
           <QaQuestionListRow

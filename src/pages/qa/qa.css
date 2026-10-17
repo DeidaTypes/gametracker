@@ -593,9 +593,42 @@ button.qa-spoil-pv {
   color: var(--text-secondary);
 }
 
-.qa-status__age {
+.qa-status__age,
+.qa-status__detail {
   color: var(--text-tertiary);
   font-weight: var(--font-weight-normal);
+}
+
+.qa-status__check {
+  width: var(--space-16);
+  height: var(--space-16);
+  border-radius: var(--radius-full);
+  background: var(--theme-primary-soft);
+  color: var(--theme-primary-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.qa-status--answered .qa-status__label {
+  color: var(--theme-primary-ink);
+}
+
+.qa-mine-title {
+  margin: 0;
+}
+
+.qa-mine-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.qa-mine-empty {
+  margin-top: var(--space-24);
 }
 
 .qa-sentinel {
@@ -805,6 +838,7 @@ button.qa-spoil-pv {
 .qa-acts {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-8);
 }
 
@@ -829,9 +863,20 @@ button.qa-spoil-pv {
 }
 
 .qa-act-btn--on {
-  background: var(--accent);
+  background: var(--theme-primary-soft);
   border-color: transparent;
-  color: var(--theme-on-primary);
+  color: var(--theme-primary-ink);
+}
+
+.qa-act-btn--acc {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--theme-primary-ink);
+}
+
+.qa-act-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .qa-act-btn--text {

@@ -410,7 +410,7 @@ export function unmarkBest(questionId, options = {}) {
   return setBest(questionId, null, options.igdbGameId)
 }
 
-export async function toggleHelpful(answerId, { questionId, igdbGameId } = {}) {
+export async function toggleHelpful(answerId, { questionId, igdbGameId, want } = {}) {
   const who = await requireUser()
   if (who.error) return who
   if (!answerId) return fail('invalid')
@@ -424,19 +424,23 @@ export async function toggleHelpful(answerId, { questionId, igdbGameId } = {}) {
 
   if (existing.error) return classifyWriteError(existing.error)
 
-  const op = existing.data
-    ? supabase.from('qa_helpful_votes').delete().eq('answer_id', answerId).eq('user_id', who.userId)
-    : supabase.from('qa_helpful_votes').insert({ answer_id: answerId, user_id: who.userId })
+  const on = typeof want === 'boolean' ? want : !existing.data
+  if (on === !!existing.data) return { data: { on } }
+
+  const op = on
+    ? supabase.from('qa_helpful_votes').insert({ answer_id: answerId, user_id: who.userId })
+    : supabase.from('qa_helpful_votes').delete().eq('answer_id', answerId).eq('user_id', who.userId)
 
   const { error } = await op
   const classified = await classifyWriteError(error)
+  if (classified?.error?.code === 'duplicate' && on) return { data: { on: true } }
   if (classified) return classified
 
   staleAfterWrite({ questionId, igdbGameId })
-  return { data: { on: !existing.data } }
+  return { data: { on } }
 }
 
-export async function toggleStuck(questionId, { igdbGameId } = {}) {
+export async function toggleStuck(questionId, { igdbGameId, want } = {}) {
   const who = await requireUser()
   if (who.error) return who
   if (!questionId) return fail('invalid')
@@ -450,16 +454,20 @@ export async function toggleStuck(questionId, { igdbGameId } = {}) {
 
   if (existing.error) return classifyWriteError(existing.error)
 
-  const op = existing.data
-    ? supabase.from('qa_stuck').delete().eq('question_id', questionId).eq('user_id', who.userId)
-    : supabase.from('qa_stuck').insert({ question_id: questionId, user_id: who.userId })
+  const on = typeof want === 'boolean' ? want : !existing.data
+  if (on === !!existing.data) return { data: { on } }
+
+  const op = on
+    ? supabase.from('qa_stuck').insert({ question_id: questionId, user_id: who.userId })
+    : supabase.from('qa_stuck').delete().eq('question_id', questionId).eq('user_id', who.userId)
 
   const { error } = await op
   const classified = await classifyWriteError(error)
+  if (classified?.error?.code === 'duplicate' && on) return { data: { on: true } }
   if (classified) return classified
 
   staleAfterWrite({ questionId, igdbGameId })
-  return { data: { on: !existing.data } }
+  return { data: { on } }
 }
 
 /** Marks the inbox seen and clears qa_home.inbox_has_new in the cache. */

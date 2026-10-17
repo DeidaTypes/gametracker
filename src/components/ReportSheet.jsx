@@ -35,7 +35,7 @@ const DETAILS_MAX = 280
  *   contentType – 'review' | 'comment' | 'message' | 'profile' | 'list' | 'question' | 'answer'
  *   contentId   – uuid string of the content being reported
  */
-function ReportSheet({ isOpen, onClose, contentType, contentId }) {
+function ReportSheet({ isOpen, onClose, contentType, contentId, onSubmitted }) {
   const [selectedReason, setSelectedReason] = useState('')
   const [details, setDetails] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -60,7 +60,9 @@ function ReportSheet({ isOpen, onClose, contentType, contentId }) {
         reason: selectedReason,
         details,
       })
-      if (result.alreadyReported) {
+      if (onSubmitted) {
+        onSubmitted(result)
+      } else if (result.alreadyReported) {
         showToast("You've already reported this. We're reviewing it.", 'info')
       } else {
         showToast("Report submitted. We'll review it within 24 hours.", 'success')

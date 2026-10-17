@@ -36,10 +36,21 @@ import './ActionSheet.css'
  *                  label may be a string or JSX element.
  *                  Items are rendered before the Cancel row.
  *
+ *   subtitle    – optional sentence under the title
+ *   plain       – sentence-case title and bare icons (Q&A overflow menus)
+ *
  * The sheet always renders a dismiss row at the bottom separated
  * by a 1px divider. Label defaults to "Cancel".
  */
-function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel' }) {
+function ActionSheet({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  plain = false,
+  items = [],
+  cancelLabel = 'Cancel',
+}) {
   const sheetRef = useRef(null)
   const titleId = title ? 'action-sheet-title' : undefined
   const { reduced } = useMotionPreference()
@@ -108,8 +119,9 @@ function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel
               <div className="action-sheet__handle" aria-hidden="true" />
             </div>
             {title && (
-              <p id={titleId} className="action-sheet__title">{title}</p>
+              <p id={titleId} className={`action-sheet__title${plain ? ' action-sheet__title--plain' : ''}`}>{title}</p>
             )}
+            {subtitle ? <p className="action-sheet__subtitle">{subtitle}</p> : null}
 
             <div className="action-sheet__items" role="menu">
               {items.map((item, idx) =>
@@ -127,7 +139,13 @@ function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel
                   <button
                     key={idx}
                     type="button"
-                    className={`action-sheet__item${item.icon ? ' action-sheet__item--row' : ''}${item.destructive ? ' action-sheet__item--destructive' : ''}`}
+                    className={[
+                      'action-sheet__item',
+                      item.icon && !plain ? 'action-sheet__item--row' : '',
+                      plain ? 'action-sheet__item--plain' : '',
+                      item.destructive ? 'action-sheet__item--destructive' : '',
+                      item.disabled && item.detail ? 'action-sheet__item--locked' : '',
+                    ].filter(Boolean).join(' ')}
                     onClick={() => {
                       onClose()
                       item.onClick()
@@ -135,20 +153,30 @@ function ActionSheet({ isOpen, onClose, title, items = [], cancelLabel = 'Cancel
                     disabled={item.disabled}
                     role="menuitem"
                   >
-                    {item.icon && (
+                    {item.icon && !plain ? (
                       <span
                         className={`action-sheet__icon-tile action-sheet__icon-tile--${item.tone || 'cobalt'}`}
                         aria-hidden="true"
                       >
                         {item.icon}
                       </span>
-                    )}
-                    <span className="action-sheet__item-label">{item.label}</span>
-                    {item.icon && item.chevron !== false && (
+                    ) : null}
+                    {item.icon && plain ? (
+                      <span className="action-sheet__plain-icon" aria-hidden="true">
+                        {item.icon}
+                      </span>
+                    ) : null}
+                    <span className="action-sheet__item-copy">
+                      <span className="action-sheet__item-label">{item.label}</span>
+                      {item.detail ? (
+                        <span className="action-sheet__item-detail">{item.detail}</span>
+                      ) : null}
+                    </span>
+                    {item.icon && !plain && item.chevron !== false ? (
                       <span className="action-sheet__chevron" aria-hidden="true">
                         <LuChevronRight size={18} />
                       </span>
-                    )}
+                    ) : null}
                   </button>
                 )
               )}
