@@ -1,5 +1,17 @@
 /** Shared formatters for Community Q&A read surfaces. */
 
+export const QA_TOPICS = [
+  'boss',
+  'build',
+  'item',
+  'location',
+  'puzzle',
+  'quest',
+  'story',
+  'strategy',
+  'tech',
+]
+
 const TOPIC_LABELS = {
   boss: 'Boss',
   build: 'Build',
@@ -132,6 +144,16 @@ export function formatGameStatsLine(header) {
   const pctPart =
     pct != null && Number.isFinite(Number(pct)) ? ` · ${Number(pct)}% answered` : ''
   return `${count} question${count === 1 ? '' : 's'}${pctPart}`
+}
+
+/** "Best answer · N helpful" on duplicate suggestions. Hidden when nothing is picked. */
+export function formatSimilarStats(item) {
+  if (!item) return ''
+  if (item.status !== 'best' && item.status !== 'community_pick') return ''
+  const lead = item.status === 'community_pick' ? 'Community pick' : 'Best answer'
+  const helpful = item.helpful_on_best
+  if (helpful == null) return lead
+  return `${lead} · ${helpful} helpful`
 }
 
 export function formatAnsweredListStats(item) {

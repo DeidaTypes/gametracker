@@ -29,7 +29,7 @@ function PersonRow({ user, userId, deleted, timeLabel, credibility, youTag }) {
   )
 }
 
-function HelpfulReplyRow({ count, pressed = false }) {
+function HelpfulReplyRow({ count, pressed = false, onReply }) {
   return (
     <div className="qa-acts">
       <button type="button" className={`qa-act-btn${pressed ? ' qa-act-btn--on' : ''}`} aria-pressed={pressed}>
@@ -37,7 +37,7 @@ function HelpfulReplyRow({ count, pressed = false }) {
         Helpful
         {count != null ? <span className="qa-act-btn__n">{count}</span> : null}
       </button>
-      <button type="button" className="qa-act-btn qa-act-btn--text">
+      <button type="button" className="qa-act-btn qa-act-btn--text" onClick={onReply}>
         Reply
       </button>
       <span className="qa-acts__grow" />
@@ -56,7 +56,7 @@ export function QaAnswerRemoved() {
   )
 }
 
-export function QaAnswerRow({ answer }) {
+export function QaAnswerRow({ answer, onReply }) {
   if (answer?.removed) {
     return <QaAnswerRemoved />
   }
@@ -72,7 +72,11 @@ export function QaAnswerRow({ answer }) {
         credibility={credibility}
       />
       <AnswerBody answer={answer} />
-      <HelpfulReplyRow count={answer.helpful_count} pressed={answer.viewer_helpful} />
+      <HelpfulReplyRow
+        count={answer.helpful_count}
+        pressed={answer.viewer_helpful}
+        onReply={onReply ? () => onReply(answer) : undefined}
+      />
     </article>
   )
 }
@@ -89,7 +93,7 @@ function AnswerBody({ answer }) {
   return <p className="qa-prose text-body">{answer.body}</p>
 }
 
-export function QaBestAnswerCard({ answer, headline }) {
+export function QaBestAnswerCard({ answer, headline, onReply }) {
   if (!answer || answer.removed) return null
   const credibility = formatCredibilityPill(answer.credibility)
 
@@ -109,7 +113,11 @@ export function QaBestAnswerCard({ answer, headline }) {
         credibility={credibility}
       />
       <AnswerBody answer={answer} />
-      <HelpfulReplyRow count={answer.helpful_count} pressed={answer.viewer_helpful} />
+      <HelpfulReplyRow
+        count={answer.helpful_count}
+        pressed={answer.viewer_helpful}
+        onReply={onReply ? () => onReply(answer) : undefined}
+      />
     </article>
   )
 }

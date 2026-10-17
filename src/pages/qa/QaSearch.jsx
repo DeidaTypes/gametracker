@@ -6,14 +6,12 @@ import { useCachedResource } from '../../hooks/useCachedResource'
 import { useDebounce } from '../../hooks/useDebounce'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey, qaSearch, qaSearchKey } from '../../services/qaService'
+import { openQaAsk, qaGamePreset } from './qaComposer'
 import { runAfterSlide } from '../../motion/xMotion'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaPlainRows } from './QaPlaceholders'
 import { useOnline } from './useOnline'
 import './qa.css'
-
-/** Ask sheet is QA-5. These buttons stay, and do not open it yet. */
-function askLater() {}
 
 function asList(value) {
   return Array.isArray(value) ? value : []
@@ -204,7 +202,7 @@ export default function QaSearch() {
         {noMatch ? (
           <div className="qa-empty qa-empty--search">
             <h2 className="text-title qa-empty__title">No questions match</h2>
-            <button type="button" className="qa-btn-block text-body" onClick={askLater}>
+            <button type="button" className="qa-btn-block text-body" onClick={() => openQaAsk({ title: trimmed })}>
               <Plus size={16} aria-hidden="true" />
               Ask about it
             </button>
@@ -237,7 +235,20 @@ export default function QaSearch() {
             <p className="qa-ask-more__body text-caption">
               Ask the {single.game_title} community.
             </p>
-            <button type="button" className="qa-btn-block qa-btn-block--wide text-body" onClick={askLater}>
+            <button
+              type="button"
+              className="qa-btn-block qa-btn-block--wide text-body"
+              onClick={() =>
+                openQaAsk({
+                  title: trimmed,
+                  game: qaGamePreset({
+                    igdbId: single.igdb_game_id,
+                    title: single.game_title,
+                    coverImageId: single.game_cover_image_id,
+                  }),
+                })
+              }
+            >
               <Plus size={16} aria-hidden="true" />
               Ask about {single.game_title}
             </button>

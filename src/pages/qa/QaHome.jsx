@@ -6,14 +6,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey } from '../../services/qaService'
+import { openQaAsk } from './qaComposer'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaCoverRows, QaMostAsked } from './QaPlaceholders'
 import { formatGamePlatform } from './qaFormat'
 import { useOnline } from './useOnline'
 import './qa.css'
-
-/** Ask sheet is QA-5. The button is the CTA and does not navigate. */
-function askLater() {}
 
 /**
  * Answered | Unanswered is screen state, remembered for this JS session.
@@ -55,7 +53,7 @@ function EmptyBoard() {
       <p className="text-body qa-empty__body">
         Stuck on a boss, a puzzle or a build? Players who&apos;ve played it can help.
       </p>
-      <button type="button" className="qa-btn-block text-body" onClick={askLater}>
+      <button type="button" className="qa-btn-block text-body" onClick={() => openQaAsk()}>
         <Plus size={16} aria-hidden="true" />
         Ask a question
       </button>
@@ -199,7 +197,7 @@ export default function QaHome() {
             <Inbox size={20} aria-hidden="true" />
             {inbox ? <span className="qa-badge-dot" aria-hidden="true" /> : null}
           </button>
-          <button type="button" className="qa-ask text-body" onClick={askLater}>
+          <button type="button" className="qa-ask text-body" onClick={() => openQaAsk()}>
             <Plus size={16} aria-hidden="true" />
             Ask
           </button>

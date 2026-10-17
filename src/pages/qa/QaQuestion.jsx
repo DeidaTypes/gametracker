@@ -16,6 +16,7 @@ import { useHideNav } from '../../hooks/useHideNav'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaQuestion, qaQuestionKey } from '../../services/qaService'
+import { openQaAnswer } from './qaComposer'
 import {
   QaAnswerRow,
   QaAskerRow,
@@ -124,6 +125,17 @@ export default function QaQuestion() {
     ? 'Figured it out? Answer it yourself'
     : 'Add your answer…'
 
+  const openAnswer = (reply) => {
+    if (!question) return
+    openQaAnswer({
+      questionId: question.id,
+      questionTitle: question.title,
+      igdbGameId: question.igdb_game_id,
+      replyToUserId: reply?.author?.id || null,
+      replyToUsername: reply?.author?.username || null,
+    })
+  }
+
   if (state === 'not_found' || state === 'removed') {
     const removed = state === 'removed'
     return (
@@ -228,7 +240,7 @@ export default function QaQuestion() {
             ) : (
               <>
                 {bestAnswer ? (
-                  <QaBestAnswerCard answer={bestAnswer} headline={bestHeadline} />
+                  <QaBestAnswerCard answer={bestAnswer} headline={bestHeadline} onReply={openAnswer} />
                 ) : null}
 
                 {otherAnswers.length > 0 ? (
@@ -243,7 +255,7 @@ export default function QaQuestion() {
                 {flatOthers.map((answer, i) => (
                   <div key={answer.id}>
                     {i > 0 || bestAnswer ? <div className="qa-divider" /> : null}
-                    <QaAnswerRow answer={answer} />
+                    <QaAnswerRow answer={answer} onReply={openAnswer} />
                   </div>
                 ))}
 
@@ -265,7 +277,7 @@ export default function QaQuestion() {
       <div className="kb-composer-bar composer-bar qa-composer-dock">
         <div className="composer__row">
           <Avatar user={user} size="sm" className="qa-composer-dock__av" />
-          <button type="button" className="qa-fake-in text-body">
+          <button type="button" className="qa-fake-in text-body" onClick={() => openAnswer(null)}>
             <span>{composerText}</span>
             <span className="qa-fake-in__send" aria-hidden="true">
               <LuSend size={14} />

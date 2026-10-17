@@ -12,6 +12,7 @@ import EmptyState from '../../components/EmptyState'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
+import { getGameStatus } from '../../services/libraryService'
 import {
   qaGame,
   qaGameKey,
@@ -22,6 +23,7 @@ import QaPushBar from './QaPushBar'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaPlainRows } from './QaPlaceholders'
 import { formatGameStatsLine } from './qaFormat'
+import { openQaAsk, qaGamePreset } from './qaComposer'
 import { useQaGameMeta } from './qaGameMeta'
 import './qa.css'
 
@@ -138,12 +140,23 @@ export default function QaGame() {
   const answeredCount = header?.answered_count
   const unansweredCount = header?.unanswered_count
 
+  const askAboutGame = () => {
+    const preset = qaGamePreset({
+      igdbId,
+      title: gameTitle,
+      coverImageId: gameMeta?.coverImageId,
+      coverUrl,
+      fromLibrary: getGameStatus(igdbId) != null,
+    })
+    if (preset) openQaAsk({ game: preset })
+  }
+
   return (
     <div className="qa-screen qa-screen--push" aria-busy={pending || undefined}>
       <QaPushBar
         onBack={() => navigate(-1)}
         ask
-        onAsk={() => {}}
+        onAsk={askAboutGame}
       />
 
       <div className="qa-push-body">
@@ -298,7 +311,7 @@ export default function QaGame() {
             title={gameTitle ? `No questions about ${gameTitle} yet` : 'No questions yet'}
             body="Be the first. Players who've played it will see your question."
             cta={gameTitle ? `Ask about ${gameTitle}` : 'Ask a question'}
-            onCta={() => {}}
+            onCta={askAboutGame}
           />
         ) : null}
       </div>

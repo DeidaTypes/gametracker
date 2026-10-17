@@ -110,6 +110,7 @@ import { NudgesProvider } from './contexts/NudgesContext'
 import { SessionProvider } from './contexts/SessionContext'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
+import QaComposerHost from './pages/qa/QaComposerHost'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import { useAppResume, APP_RESUMED_EVENT } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -1633,6 +1634,7 @@ function AppContent() {
 
       {/* Stop-session confirmation sheet — appears after stopGameSession(). */}
       <StopSessionSheet />
+      <QaComposerHost />
     </div>
   )
 }
