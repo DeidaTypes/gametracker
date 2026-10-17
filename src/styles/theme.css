@@ -428,6 +428,9 @@ body[data-larger-text='true'] {
   --accent-review-text: var(--theme-review-text);
   --accent-journal: var(--theme-journal);
   --accent-journal-text: var(--theme-journal-text);
+  /* Q&A journal ink (badges, "no answers yet"). Follows each theme's
+     --theme-journal-ink, including the light-theme overrides. */
+  --accent-journal-ink: var(--theme-journal-ink);
 
   /* =============================================
      TRACKER STATUS COLOR MAP
@@ -535,8 +538,13 @@ body[data-larger-text='true'] {
   --qa-seg-thumb: var(--bg-surface-2);
   --qa-seg-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--theme-text) 6%, transparent),
-    var(--shadow-sm);
+    0 6px 14px rgba(0, 0, 0, 0.30);
   --qa-text-soft: color-mix(in srgb, var(--theme-text) 82%, var(--text-secondary));
+  /* Count chips sit on cover art, so they stay dark in every theme.
+     Not a warm accent — a scrim so the numeral reads on any image. */
+  --qa-on-cover: #ffffff;
+  --qa-on-cover-scrim: rgba(6, 8, 10, 0.62);
+  --qa-cover-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
 
   /* Surface */
   --color-surface: rgba(148, 168, 212, 0.05);
@@ -912,7 +920,7 @@ html[data-app-theme="cream"] {
   --theme-fill-mix: 5%;
   --qa-seg-track: var(--bg-surface-2);
   --qa-seg-thumb: var(--bg-surface);
-  --qa-seg-shadow: var(--shadow-sm);
+  --qa-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
   /* A navy-weight edge shadow muddies Light Pink. Keep the same offset,
      drop the strength so the incoming page still reads as a layer. */
   --shadow-page-edge: -10px 0 28px rgba(40, 16, 32, 0.18);
@@ -935,7 +943,7 @@ html[data-app-theme="light"],
 html[data-app-theme="sky"] {
   --qa-seg-track: var(--bg-surface-2);
   --qa-seg-thumb: var(--bg-surface);
-  --qa-seg-shadow: var(--shadow-sm);
+  --qa-seg-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 /* Comment composer screens (Comments sub-screen, List Detail, Review

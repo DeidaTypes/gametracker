@@ -22,6 +22,27 @@ export function displayNameFor(user) {
   return user.display_name || user.username || null
 }
 
+/** Short age for list rows ("40m", "2h", "2d"). No "ago". */
+export function qaShortAge(timestamp) {
+  if (!timestamp) return ''
+  const t = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime()
+  if (!Number.isFinite(t)) return ''
+  const diff = Date.now() - t
+  if (diff < 0) return 'now'
+  const m = Math.round(diff / 60000)
+  if (m < 1) return 'now'
+  if (m < 60) return `${m}m`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h}h`
+  const d = Math.round(h / 24)
+  if (d < 7) return `${d}d`
+  const w = Math.round(d / 7)
+  if (w < 5) return `${w}w`
+  const months = Math.round(d / 30)
+  if (months < 12) return `${months}mo`
+  return `${Math.round(d / 365)}y`
+}
+
 export function qaTimeAgo(timestamp) {
   if (!timestamp) return ''
   const t = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime()
@@ -55,6 +76,45 @@ export function formatQuestionTags(question) {
   if (question?.platform) parts.push(question.platform)
   if (question?.location) parts.push(question.location)
   return parts.filter(Boolean).join(' · ')
+}
+
+export function formatGamePlatform(item) {
+  const parts = []
+  if (item?.game_title) parts.push(item.game_title)
+  if (item?.platform) parts.push(item.platform)
+  return parts.join(' · ')
+}
+
+/**
+ * Split `text` into match / plain runs for a search query.
+ * The last word is a prefix, matching qa_search. Words under 2
+ * characters are left alone so "a" doesn't paint the whole title.
+ */
+export function highlightQuery(text, query) {
+  const source = text || ''
+  const words = String(query || '')
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length >= 2)
+  if (!source || words.length === 0) return [{ text: source, match: false }]
+
+  const patterns = words.map((word, index) => {
+    const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const last = index === words.length - 1
+    const prefix = last && /^[A-Za-z0-9]+$/.test(word)
+    return prefix ? `${esc}[A-Za-z0-9]*` : esc
+  })
+  const re = new RegExp(`(${patterns.join('|')})`, 'gi')
+  const parts = []
+  let cursor = 0
+  for (const match of source.matchAll(re)) {
+    const at = match.index ?? 0
+    if (at > cursor) parts.push({ text: source.slice(cursor, at), match: false })
+    parts.push({ text: match[0], match: true })
+    cursor = at + match[0].length
+  }
+  if (cursor < source.length) parts.push({ text: source.slice(cursor), match: false })
+  return parts.length ? parts : [{ text: source, match: false }]
 }
 
 export function formatRowMeta(item, { withAsker = false } = {}) {
