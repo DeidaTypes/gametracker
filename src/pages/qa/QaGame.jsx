@@ -24,6 +24,7 @@ import QaPushBar from './QaPushBar'
 import QaQuestionListRow from './QaQuestionListRow'
 import { QaPlainRows } from './QaPlaceholders'
 import { formatGameStatsLine } from './qaFormat'
+import { useWarmTopQuestions } from './qaCache'
 import { openQaAsk, qaGamePreset } from './qaComposer'
 import { isQaQuestionHidden, useQaHides } from './qaHides'
 import { useQaGameMeta } from './qaGameMeta'
@@ -87,6 +88,7 @@ export default function QaGame() {
     () => sourceItems.filter((item) => item?.id && !isQaQuestionHidden(item.id)),
     [sourceItems, hideTick],
   )
+  useWarmTopQuestions(listItems.map((item) => item.id))
 
   const header = gameData?.header
   const listLoaded = searching ? searchData !== undefined : gameData !== undefined

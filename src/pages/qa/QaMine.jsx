@@ -8,6 +8,7 @@ import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaMarkInboxSeen, qaMine, qaMineKey } from '../../services/qaService'
 import { hapticImpact } from '../../utils/haptics'
+import { seedQaQuestionFromRow, useWarmTopQuestions, warmQaQuestion } from './qaCache'
 import { useQaHides } from './qaHides'
 import { QaCoverRows } from './QaPlaceholders'
 import { formatGamePlatform, qaShortAge } from './qaFormat'
@@ -74,7 +75,13 @@ function AskedRow({ item }) {
   const fresh = Number(item.new_answer_count) || 0
   return (
     <div className="qa-qrow">
-      <Link className="qa-qrow__hit" to={`/qa/q/${item.id}`} aria-label={item.title} />
+      <Link
+        className="qa-qrow__hit"
+        to={`/qa/q/${item.id}`}
+        aria-label={item.title}
+        onPointerDown={() => warmQaQuestion(item)}
+        onClick={() => seedQaQuestionFromRow(item)}
+      />
       <div className="qa-qrow__face">
         <RowCover item={item} />
         <span className="qa-qrow__col">
@@ -104,7 +111,13 @@ function AnsweredRow({ row }) {
   const helpful = Number(answer.helpful_count) || 0
   return (
     <div className="qa-qrow">
-      <Link className="qa-qrow__hit" to={`/qa/q/${question.id}`} aria-label={question.title} />
+      <Link
+        className="qa-qrow__hit"
+        to={`/qa/q/${question.id}`}
+        aria-label={question.title}
+        onPointerDown={() => warmQaQuestion(question)}
+        onClick={() => seedQaQuestionFromRow(question)}
+      />
       <div className="qa-qrow__face">
         <RowCover item={question} />
         <span className="qa-qrow__col">
@@ -185,6 +198,9 @@ export default function QaMine() {
     if (row.answer?.id && hides.hasAnswer(row.answer.id)) return false
     return true
   })
+  useWarmTopQuestions(
+    tab === 'asked' ? asked.map((item) => item.id) : answered.map((row) => row.question.id),
+  )
   return (
     <div className="qa-screen qa-screen--push" aria-busy={pending || undefined}>
       <QaPushBar onBack={() => navigate(-1)} />

@@ -4,7 +4,7 @@ import { Check, EyeOff } from 'lucide-react'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaQuestion } from '../../services/qaService'
 import { hapticImpact } from '../../utils/haptics'
-import { seedQaQuestionFromRow } from './qaCache'
+import { seedQaQuestionFromRow, warmQaQuestion } from './qaCache'
 import {
   formatAnsweredListStats,
   formatRowMeta,
@@ -130,6 +130,7 @@ export default function QaQuestionListRow({
         className="qa-qrow__hit"
         to={`/qa/q/${item.id}`}
         aria-label={item.title}
+        onPointerDown={() => warmQaQuestion(item)}
         onClick={() => seedQaQuestionFromRow(item)}
       />
       <div className="qa-qrow__face">

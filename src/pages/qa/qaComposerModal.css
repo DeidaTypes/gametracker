@@ -210,10 +210,12 @@ button.qa-cmp-platform:active {
   gap: var(--space-8);
 }
 
-/* Title input — .jnc-title-input, grown to wrap long questions */
+/* Title input — .jnc-title-input. Fixed height: one line plus one wrap line
+   (2 × the 1.4 line height), then it scrolls inside. Never grows. */
 .qa-cmp-title-input {
   display: block;
   width: 100%;
+  height: calc(2.8em + var(--space-24) + 1px);
   padding: var(--space-12);
   background: var(--bg-surface);
   border: 0.5px solid var(--border-subtle);
@@ -225,7 +227,8 @@ button.qa-cmp-platform:active {
   line-height: 1.4;
   outline: none;
   resize: none;
-  overflow-y: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;

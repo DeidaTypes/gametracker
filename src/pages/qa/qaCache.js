@@ -1,11 +1,13 @@
+import { useEffect } from 'react'
 import {
+  getSWR,
   markSWRStale,
   markSWRStaleByPrefix,
   mutateSWR,
   mutateSWRByPrefix,
   peekSWR,
 } from '../../services/swrCache'
-import { qaGameKey, qaHomeKey, qaMineKey, qaQuestionKey } from '../../services/qaService'
+import { qaGameKey, qaHomeKey, qaMineKey, qaQuestion, qaQuestionKey } from '../../services/qaService'
 
 /* ------------------------------------------------------------------ */
 /* Just asked                                                          */
@@ -225,6 +227,73 @@ export function seedQaQuestionFromRow(item) {
   if (item.answer_count !== undefined) seed.answer_count = item.answer_count
   mutateSWR(key, seed)
   markSWRStale(key)
+}
+
+/* ------------------------------------------------------------------ */
+/* Warm the full question before the push                              */
+/* ------------------------------------------------------------------ */
+
+const WARM_TOP_ROWS = 5
+
+/** Ids the idle pass has already tried this session. Once per id. */
+const prefetchedIds = new Set()
+
+function loadQuestion(id) {
+  return getSWR(qaQuestionKey(id), () => qaQuestion(id))
+}
+
+/**
+ * Pointer down on a question row: start the full qa_question read now, so it
+ * is usually in the cache by the time the push has slid in. Seeds first (a
+ * seed is only written to a key that holds nothing, and it is stamped stale)
+ * so a press that lands before the read does still paints the row's fields.
+ * getSWR dedupes a read that is already running, never blocks the tap, and a
+ * failure here is silent: the screen runs its own read and shows its own error.
+ */
+export function warmQaQuestion(item) {
+  if (!item?.id) return
+  seedQaQuestionFromRow(item)
+  loadQuestion(item.id).catch(() => {})
+}
+
+function isCachedInFull(id) {
+  return peekSWR(qaQuestionKey(id))?.state === 'ok'
+}
+
+function whenIdle(fn) {
+  if (typeof requestIdleCallback === 'function') {
+    const handle = requestIdleCallback(fn, { timeout: 1500 })
+    return () => cancelIdleCallback(handle)
+  }
+  const handle = setTimeout(fn, 200)
+  return () => clearTimeout(handle)
+}
+
+/**
+ * A Q&A list has rendered its rows. When the app is idle, read the full
+ * question for the first five visible rows that aren't cached yet. Once per
+ * id per session, and not at all while offline.
+ *
+ * `ids` is the visible rows in screen order. The effect is keyed on the first
+ * five, so a list that keeps re-rendering with the same rows schedules once.
+ */
+export function useWarmTopQuestions(ids) {
+  const top = (Array.isArray(ids) ? ids : [])
+    .filter(Boolean)
+    .slice(0, WARM_TOP_ROWS)
+    .join(',')
+
+  useEffect(() => {
+    if (!top) return undefined
+    return whenIdle(() => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+      for (const id of top.split(',')) {
+        if (prefetchedIds.has(id) || isCachedInFull(id)) continue
+        prefetchedIds.add(id)
+        loadQuestion(id).catch(() => {})
+      }
+    })
+  }, [top])
 }
 
 /** Patch the open question. No-ops when that screen has never loaded. */

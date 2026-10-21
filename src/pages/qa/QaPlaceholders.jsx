@@ -91,24 +91,34 @@ export function QaBodyPlaceholder({ lines = 2 }) {
   )
 }
 
-/** Left side of the question footer. The footer row keeps its own height. */
-export function QaFootPlaceholder() {
-  return <span className="skeleton qa-qfoot__bone" aria-hidden="true" />
+/*
+ * The question screen's one placeholder block, for when the full question
+ * isn't there yet (cold deep link, very slow network). The context row, title
+ * and tags come from the seed, so this starts below the asker row: the body
+ * lines and footer inside the card, then the answers area. It is replaced in
+ * one step by the real content, which fades in (qa-swap-in).
+ */
+
+/** Body lines plus the footer row, at the footer's real height. */
+export function QaQuestionTailPlaceholder() {
+  return (
+    <>
+      <QaBodyPlaceholder lines={2} />
+      <div className="qa-qfoot" aria-hidden="true">
+        <span className="skeleton qa-qfoot__bone" />
+      </div>
+    </>
+  )
 }
 
-/** Rows inside the grouped answers card. */
-export function QaAnswerRowsPlaceholder({ count = 2 }) {
+/** The answers area as one block. Never a stack of rows that turns into a different shape. */
+export function QaAnswersPlaceholder() {
   return (
     <div className="qa-agroup" aria-hidden="true">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="qa-ans">
-          <QaPersonPlaceholder />
-          <QaBodyPlaceholder lines={2} />
-          <div className="qa-acts">
-            <span className="skeleton qa-act-bone" />
-          </div>
-        </div>
-      ))}
+      <div className="qa-ans">
+        <QaPersonPlaceholder />
+        <QaBodyPlaceholder lines={2} />
+      </div>
     </div>
   )
 }

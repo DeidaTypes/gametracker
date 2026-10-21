@@ -9,7 +9,7 @@ import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey } from '../../services/qaService'
 import { isSWRFresh, peekSWR } from '../../services/swrCache'
 import { hapticImpact } from '../../utils/haptics'
-import { consumeJustAsked, subscribeJustAsked } from './qaCache'
+import { consumeJustAsked, subscribeJustAsked, useWarmTopQuestions } from './qaCache'
 import { openQaAsk } from './qaComposer'
 import { useQaHides } from './qaHides'
 import QaQuestionListRow from './QaQuestionListRow'
@@ -196,6 +196,10 @@ export default function QaHome() {
   const answeredRows = shown(answered)
   const helpRows = shown(canHelp)
   const newestRows = shown(newest)
+
+  useWarmTopQuestions(
+    (filter === 'answered' ? answeredRows : [...helpRows, ...newestRows]).map((item) => item.id),
+  )
 
   // "Settled": what is cached is either fresh, or a revalidation has finished
   // since this screen opened. A stale pre-post board must never be read as

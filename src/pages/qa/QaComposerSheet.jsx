@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { WifiOff } from 'lucide-react'
 import CenteredModal from '../../components/CenteredModal'
 import './qaComposerModal.css'
@@ -69,21 +68,15 @@ export default function QaComposerSheet({
   )
 }
 
-/** Wrapping single-purpose field (the question title). Grows inside the fixed card. */
+/**
+ * Wrapping single-purpose field (the question title). Its height is fixed in
+ * CSS (one line plus one wrap line); longer text scrolls inside it, so typing
+ * never moves the fields underneath. Nothing here sets a height.
+ */
 export function QaGrowField({ value, maxLength, onChange, className = '', fieldRef, ...rest }) {
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
-  }, [value])
-
   return (
     <textarea
       ref={(el) => {
-        ref.current = el
         if (fieldRef) fieldRef.current = el
       }}
       className={className}

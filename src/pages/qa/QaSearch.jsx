@@ -6,6 +6,7 @@ import { useCachedResource } from '../../hooks/useCachedResource'
 import { useDebounce } from '../../hooks/useDebounce'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey, qaSearch, qaSearchKey } from '../../services/qaService'
+import { useWarmTopQuestions } from './qaCache'
 import { openQaAsk, qaGamePreset } from './qaComposer'
 import { isQaQuestionHidden, useQaHides } from './qaHides'
 import { runAfterSlide } from '../../motion/xMotion'
@@ -146,6 +147,7 @@ export default function QaSearch() {
     [data, hideTick],
   )
   const groups = useMemo(() => groupByGame(items), [items])
+  useWarmTopQuestions(groups.flatMap((group) => group.items.map((item) => item.id)))
   const most = asList(home?.most_asked).filter((game) => game?.igdb_game_id != null)
   const showMost = !trimmed && browseMost && most.length > 0
   const searching = !!trimmed

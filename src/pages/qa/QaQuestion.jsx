@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Award,
@@ -29,6 +29,7 @@ import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { BLOCK_CHANGED_EVENT, blockUser, isMutuallyBlocked } from '../../services/blockService'
 import { coverUrlFromImageId } from '../../services/igdb'
+import { peekSWR, subscribeSWR } from '../../services/swrCache'
 import { withdrawReport } from '../../services/reportService'
 import {
   deleteAnswer,
@@ -58,13 +59,13 @@ import {
 } from './QaAnswerBlock'
 import QaPushBar from './QaPushBar'
 import QaSpoilerBlock from './QaSpoilerBlock'
+import { useOnline } from './useOnline'
 import {
-  QaAnswerRowsPlaceholder,
-  QaBodyPlaceholder,
+  QaAnswersPlaceholder,
   QaContextPlaceholder,
-  QaFootPlaceholder,
   QaHeadPlaceholder,
   QaPersonPlaceholder,
+  QaQuestionTailPlaceholder,
 } from './QaPlaceholders'
 import { bestAnswerHeadline, displayNameFor, topicLabel } from './qaFormat'
 import './qa.css'
@@ -137,19 +138,39 @@ function StatusPill({ pill, spoiler }) {
 
 function QuestionTags({ question }) {
   const topic = topicLabel(question.topic)
-  if (!topic && !question.platform && !question.location) return null
+  if (!topic && !question.platform) return null
   return (
     <div className="qa-tags">
       {topic ? <span className="qa-tag qa-tag--topic">{topic}</span> : null}
       {question.platform ? <span className="qa-tag">{question.platform}</span> : null}
-      {question.location ? (
-        <span className="qa-tag">
-          <MapPin size={12} aria-hidden="true" />
-          {question.location}
-        </span>
-      ) : null}
     </div>
   )
+}
+
+/**
+ * Where in the game. List rows don't carry it, so the seed can never have it:
+ * it is the first line of the body block (which arrives with the full
+ * question), not a tag. The tag row stays exactly what the seed painted.
+ */
+function QuestionLocation({ location }) {
+  if (!location) return null
+  return (
+    <p className="qa-qloc text-caption">
+      <MapPin size={14} aria-hidden="true" />
+      <span>{location}</span>
+    </p>
+  )
+}
+
+/**
+ * A block that arrives after the first paint fades in once (180ms). One that
+ * is already there on the first frame (cache hit, or the seed) never animates.
+ * `armed` is read once, when the block mounts.
+ */
+function SwapIn({ armed, className = '', children }) {
+  const [fade] = useState(armed)
+  const classes = `${className}${fade ? ' qa-swap-in' : ''}`.trim()
+  return <div className={classes || undefined}>{children}</div>
 }
 
 function ContextRow({ question, pill }) {
@@ -230,9 +251,25 @@ export default function QaQuestion() {
   useHideNav()
 
   const key = qaQuestionKey(questionId)
-  const { data, error } = useCachedResource(key, () => qaQuestion(questionId), {
+  const { error, refresh } = useCachedResource(key, () => qaQuestion(questionId), {
     enabled: !!questionId,
   })
+  // The payload is applied the moment it lands in the cache, including mid-slide.
+  // useCachedResource holds replacements until the slide ends; this doesn't.
+  const data = useSyncExternalStore(
+    useCallback((onChange) => subscribeSWR(key, onChange), [key]),
+    () => peekSWR(key),
+  )
+  // False only for the first render. Blocks that mount later fade in.
+  const firstPaint = useRef(true)
+  useEffect(() => {
+    firstPaint.current = false
+  }, [])
+  const armed = !firstPaint.current
+
+  // Opened offline: the seed holds the screen. Coming back online loads the rest.
+  const online = useOnline()
+  const wasOnline = useRef(online)
 
   const [showAllAnswers, setShowAllAnswers] = useState(false)
   const [menu, setMenu] = useState(null)
@@ -248,6 +285,11 @@ export default function QaQuestion() {
   const payload = state === 'ok' ? data : null
   const seed = state === 'seed' ? data : null
   const loaded = !!payload
+
+  useEffect(() => {
+    if (online && !wasOnline.current && !loaded) refresh().catch(() => {})
+    wasOnline.current = online
+  }, [online, loaded, refresh])
   const pending = !loaded && (data === undefined || !!seed) && !error
   const question = payload?.question ?? seed?.question ?? null
   const answers = payload?.answers ?? []
@@ -663,9 +705,7 @@ export default function QaQuestion() {
 
   const showSeedEmpty = !loaded && seedCount === 0 && status === 'open'
   const noAnswers = loaded ? liveCount === 0 : showSeedEmpty
-  const placeholderAnswers = !loaded && !showSeedEmpty
-    ? Math.min(Math.max(seedCount ?? 2, 1), 3)
-    : 0
+  const showAnswers = loaded || showSeedEmpty
   const showWaiting = loaded && pill?.kind === 'waiting'
 
   return (
@@ -678,79 +718,89 @@ export default function QaQuestion() {
       <div className="qa-q-scroll">
         {question || pending ? (
           <div className="qa-push-body">
-            {question ? <ContextRow question={question} pill={pill} /> : <QaContextPlaceholder />}
+            {question ? (
+              <SwapIn armed={armed}>
+                <ContextRow question={question} pill={pill} />
+              </SwapIn>
+            ) : (
+              <QaContextPlaceholder />
+            )}
 
             <article className="qa-qcard">
               {loaded ? (
-                <QaAskerRow question={question} viewerIsAsker={viewerIsAsker} />
+                <SwapIn armed={armed}>
+                  <QaAskerRow question={question} viewerIsAsker={viewerIsAsker} />
+                </SwapIn>
               ) : (
                 <QaPersonPlaceholder large />
               )}
 
               {question?.title ? (
-                <>
+                <SwapIn armed={armed} className="qa-qcard__head">
                   <h1 className="text-heading qa-qcard__title">{question.title}</h1>
                   <QuestionTags question={question} />
-                </>
+                </SwapIn>
               ) : (
                 <QaHeadPlaceholder />
               )}
 
-              {!loaded ? (
-                <QaBodyPlaceholder lines={2} />
-              ) : question.body ? (
-                question.is_spoiler && !viewerIsAsker ? (
-                  <QaSpoilerBlock>
-                    <p className="qa-prose text-body">{question.body}</p>
-                  </QaSpoilerBlock>
-                ) : (
-                  <p className="qa-prose text-body">{question.body}</p>
-                )
-              ) : null}
-
-              <div className="qa-qfoot">
-                {!loaded ? (
-                  <QaFootPlaceholder />
-                ) : viewerIsAsker ? (
-                  <p className="qa-qfoot__meta">
-                    {stuckCount > 0 ? (
-                      <>
-                        <strong>{playersCount(stuckCount)}</strong>
-                        {' stuck with you'}
-                      </>
+              {loaded ? (
+                <SwapIn armed={armed} className="qa-qcard__tail">
+                  <QuestionLocation location={question.location} />
+                  {question.body ? (
+                    question.is_spoiler && !viewerIsAsker ? (
+                      <QaSpoilerBlock>
+                        <p className="qa-prose text-body">{question.body}</p>
+                      </QaSpoilerBlock>
                     ) : (
-                      'Only you so far'
+                      <p className="qa-prose text-body">{question.body}</p>
+                    )
+                  ) : null}
+
+                  <div className="qa-qfoot">
+                    {viewerIsAsker ? (
+                      <p className="qa-qfoot__meta">
+                        {stuckCount > 0 ? (
+                          <>
+                            <strong>{playersCount(stuckCount)}</strong>
+                            {' stuck with you'}
+                          </>
+                        ) : (
+                          'Only you so far'
+                        )}
+                      </p>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={`qa-act-btn${viewerStuck ? ' qa-act-btn--on' : ''}`}
+                          aria-pressed={viewerStuck}
+                          onClick={onStuck}
+                        >
+                          <Users size={15} aria-hidden="true" />
+                          Stuck here too
+                        </button>
+                        {stuckCount > 0 ? (
+                          <p className="qa-qfoot__meta">
+                            <strong>{playersCount(stuckCount)}</strong>
+                            {' stuck'}
+                          </p>
+                        ) : null}
+                      </>
                     )}
-                  </p>
-                ) : (
-                  <>
                     <button
                       type="button"
-                      className={`qa-act-btn${viewerStuck ? ' qa-act-btn--on' : ''}`}
-                      aria-pressed={viewerStuck}
-                      onClick={onStuck}
+                      className="qa-qfoot__share"
+                      aria-label="Share question"
+                      onClick={() => shareQaQuestion(question)}
                     >
-                      <Users size={15} aria-hidden="true" />
-                      Stuck here too
+                      <Share size={18} aria-hidden="true" />
                     </button>
-                    {stuckCount > 0 ? (
-                      <p className="qa-qfoot__meta">
-                        <strong>{playersCount(stuckCount)}</strong>
-                        {' stuck'}
-                      </p>
-                    ) : null}
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="qa-qfoot__share"
-                  aria-label="Share question"
-                  disabled={!question}
-                  onClick={() => shareQaQuestion(question)}
-                >
-                  <Share size={18} aria-hidden="true" />
-                </button>
-              </div>
+                  </div>
+                </SwapIn>
+              ) : (
+                <QaQuestionTailPlaceholder />
+              )}
             </article>
 
             <div className="qa-adiv">
@@ -766,46 +816,50 @@ export default function QaQuestion() {
               <span className="qa-adiv__line" aria-hidden="true" />
             </div>
 
-            {noAnswers && question ? <NoAnswersCard question={question} /> : null}
+            {showAnswers ? (
+              <SwapIn armed={armed} className="qa-answers">
+                {noAnswers && question ? <NoAnswersCard question={question} /> : null}
 
-            {placeholderAnswers > 0 ? <QaAnswerRowsPlaceholder count={placeholderAnswers} /> : null}
+                {showWaiting ? (
+                  <div className="qa-wait" role="note">
+                    <Award size={18} aria-hidden="true" />
+                    <span>Got your answer? Mark it as best so the next player finds it fast.</span>
+                  </div>
+                ) : null}
 
-            {showWaiting ? (
-              <div className="qa-wait" role="note">
-                <Award size={18} aria-hidden="true" />
-                <span>Got your answer? Mark it as best so the next player finds it fast.</span>
-              </div>
-            ) : null}
-
-            {loaded && bestAnswer ? (
-              <MovingAnswer id={bestAnswer.id} reduced={reduced}>
-                <QaBestAnswerCard
-                  answer={bestAnswer}
-                  headline={bestHeadline}
-                  {...answerActions}
-                />
-              </MovingAnswer>
-            ) : null}
-
-            {loaded && flatOthers.length > 0 ? (
-              <div className="qa-agroup">
-                {flatOthers.map((answer) => (
-                  <MovingAnswer key={answer.id} id={answer.id} reduced={reduced}>
-                    <QaAnswerRow answer={answer} {...answerActions} />
+                {loaded && bestAnswer ? (
+                  <MovingAnswer id={bestAnswer.id} reduced={reduced}>
+                    <QaBestAnswerCard
+                      answer={bestAnswer}
+                      headline={bestHeadline}
+                      {...answerActions}
+                    />
                   </MovingAnswer>
-                ))}
-              </div>
-            ) : null}
+                ) : null}
 
-            {loaded && !showAllAnswers && hiddenOthers > 0 ? (
-              <button
-                type="button"
-                className="qa-show-more text-caption"
-                onClick={() => setShowAllAnswers(true)}
-              >
-                Show {hiddenOthers} more answer{hiddenOthers === 1 ? '' : 's'}
-              </button>
-            ) : null}
+                {loaded && flatOthers.length > 0 ? (
+                  <div className="qa-agroup">
+                    {flatOthers.map((answer) => (
+                      <MovingAnswer key={answer.id} id={answer.id} reduced={reduced}>
+                        <QaAnswerRow answer={answer} {...answerActions} />
+                      </MovingAnswer>
+                    ))}
+                  </div>
+                ) : null}
+
+                {loaded && !showAllAnswers && hiddenOthers > 0 ? (
+                  <button
+                    type="button"
+                    className="qa-show-more text-caption"
+                    onClick={() => setShowAllAnswers(true)}
+                  >
+                    Show {hiddenOthers} more answer{hiddenOthers === 1 ? '' : 's'}
+                  </button>
+                ) : null}
+              </SwapIn>
+            ) : (
+              <QaAnswersPlaceholder />
+            )}
           </div>
         ) : null}
       </div>

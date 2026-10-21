@@ -637,6 +637,45 @@ button.qa-spoil-pv {
   padding-bottom: calc(var(--comment-composer-clearance) + var(--bottom-nav-safe-area));
 }
 
+/* The question stack (context row, card, divider, answers) runs on 12. */
+.qa-screen--question .qa-push-body {
+  gap: var(--space-12);
+}
+
+/* Blocks that arrive with the full question keep the stack's rhythm. */
+.qa-qcard__head,
+.qa-qcard__tail,
+.qa-answers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* Anything that mounts after the first paint fades in once, then stays put. */
+.qa-swap-in {
+  animation: qa-swap-in 180ms var(--motion-ease) both;
+}
+
+@keyframes qa-swap-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+body[data-reduce-motion='true'] .qa-swap-in {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qa-swap-in {
+    animation: none;
+  }
+}
+
 .qa-q-empty-page {
   padding-top: var(--space-48);
 }
@@ -838,6 +877,24 @@ button.qa-spoil-pv {
   border-radius: var(--radius-chip);
 }
 
+.qa-qloc {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.qa-qloc svg {
+  flex: none;
+}
+
+.qa-qloc span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .qa-prose {
   margin: 0;
   line-height: var(--line-height-body);
@@ -852,7 +909,7 @@ button.qa-spoil-pv {
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  min-height: calc(44px + var(--space-12));
+  min-height: calc(34px + var(--space-12));
   padding-top: var(--space-12);
   border-top: 0.5px solid var(--border-subtle);
 }
@@ -878,9 +935,10 @@ button.qa-spoil-pv {
 }
 
 .qa-qfoot__share {
+  position: relative;
   margin-left: auto;
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border: 0;
   border-radius: var(--radius-full);
@@ -891,6 +949,17 @@ button.qa-spoil-pv {
   justify-content: center;
   flex: none;
   cursor: pointer;
+}
+
+/* 34px visual, 44px target: the hit area is a larger transparent box. */
+.qa-qfoot__share::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 .qa-person {
@@ -1128,7 +1197,8 @@ button.qa-spoil-pv {
 }
 
 .qa-act-btn {
-  height: 40px;
+  position: relative;
+  height: 32px;
   padding: 0 var(--space-12);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
@@ -1141,6 +1211,17 @@ button.qa-spoil-pv {
   align-items: center;
   gap: var(--space-4);
   cursor: pointer;
+}
+
+/* 32px visual, 44px target. Wider by 4px only: the gap between buttons is 8. */
+.qa-act-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(100% + var(--space-4));
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 .qa-act-btn--on {
@@ -1170,19 +1251,6 @@ button.qa-spoil-pv {
 .qa-act-btn__n {
   font-weight: var(--font-weight-semibold);
   opacity: 0.85;
-}
-
-.qa-act-bone {
-  display: block;
-  width: 96px;
-  height: 40px;
-  border-radius: var(--radius-md);
-}
-
-@media (max-width: 768px) {
-  .qa-act-bone {
-    height: 44px;
-  }
 }
 
 .qa-gone {

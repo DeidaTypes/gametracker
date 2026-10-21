@@ -75,21 +75,6 @@ export function qaTimeAgo(timestamp) {
   return `${Math.round(d / 365)}y ago`
 }
 
-export function formatCredibilityPill(credibility) {
-  if (!credibility?.status) return null
-  const label = credibility.status === 'playing' ? 'Playing' : 'Played'
-  const hours = Number(credibility.hours)
-  const h = Number.isFinite(hours) ? Math.round(hours) : 0
-  return `${label} · ${h}h`
-}
-
-export function formatQuestionTags(question) {
-  const parts = [topicLabel(question?.topic)]
-  if (question?.platform) parts.push(question.platform)
-  if (question?.location) parts.push(question.location)
-  return parts.filter(Boolean).join(' · ')
-}
-
 export function formatGamePlatform(item) {
   const parts = []
   if (item?.game_title) parts.push(item.game_title)
@@ -146,16 +131,6 @@ export function formatGameStatsLine(header) {
   return `${count} question${count === 1 ? '' : 's'}${pctPart}`
 }
 
-/** "Best answer · N helpful" on duplicate suggestions. Hidden when nothing is picked. */
-export function formatSimilarStats(item) {
-  if (!item) return ''
-  if (item.status !== 'best' && item.status !== 'community_pick') return ''
-  const lead = item.status === 'community_pick' ? 'Community pick' : 'Best answer'
-  const helpful = item.helpful_on_best
-  if (helpful == null) return lead
-  return `${lead} · ${helpful} helpful`
-}
-
 export function formatAnsweredListStats(item) {
   if (!item) return ''
   const helpful = item.helpful_on_best
@@ -167,16 +142,6 @@ export function formatAnsweredListStats(item) {
   if (helpful != null) parts.push(`${helpful} helpful`)
   if (answers != null) parts.push(`${answers} answer${answers === 1 ? '' : 's'}`)
   return parts.join(' · ')
-}
-
-export function questionStatusPill({ status, viewerIsAsker, answerCount = 0 }) {
-  if (status === 'best') return { kind: 'answered', label: 'Answered' }
-  if (status === 'community_pick') return { kind: 'community', label: 'Community pick' }
-  if (status === 'open') {
-    if (!answerCount) return { kind: 'open', label: 'No answers yet' }
-    if (viewerIsAsker) return { kind: 'waiting', label: 'Waiting on you' }
-  }
-  return null
 }
 
 export function bestAnswerHeadline({ status, askerUsername, helpfulCount }) {
