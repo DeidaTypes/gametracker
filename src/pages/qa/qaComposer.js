@@ -4,7 +4,7 @@ import { getGameStatus, getGamesFromList } from '../../services/libraryService'
 
 /**
  * Ask / answer composer session.
- * Lives in memory for as long as the sheet is open, including while a
+ * Lives in memory for as long as the popup is open, including while a
  * pushed question covers it and while the app is backgrounded.
  * Not localStorage — closing or discarding drops it.
  */
@@ -30,6 +30,8 @@ let parked = null
 const listeners = new Set()
 let trackerPlatformSupported = true
 let noticeColumn = 'unknown'
+const platformChoiceCache = new Map()
+const platformLabelCache = new Map()
 
 function emit() {
   const snapshot = session
@@ -73,6 +75,22 @@ export function qaGamePreset(game) {
   }
 }
 
+/**
+ * Platform fields for a freshly chosen game, from what earlier lookups this
+ * session already resolved, so the compose step paints its platform label in
+ * the first frame. `fallbackLabel` is the picker row's own platform.
+ */
+export function platformDraftFor(igdbId, fallbackLabel = '') {
+  const key = String(igdbId)
+  const choice = platformChoiceCache.get(key)
+  return {
+    platform: choice?.selected || platformLabelCache.get(key) || fallbackLabel || '',
+    platformMode: choice?.mode ?? null,
+    platformOptions: choice?.options ?? [],
+    platformTouched: false,
+  }
+}
+
 function blankAskDraft(title, game) {
   return {
     step: game ? 'compose' : 'pick',
@@ -83,10 +101,10 @@ function blankAskDraft(title, game) {
     topic: '',
     isSpoiler: false,
     search: '',
-    platform: '',
-    platformMode: null,
-    platformOptions: [],
-    platformTouched: false,
+    focusTitle: !!game,
+    ...(game
+      ? platformDraftFor(game.igdbId)
+      : { platform: '', platformMode: null, platformOptions: [], platformTouched: false }),
   }
 }
 
@@ -125,7 +143,7 @@ export function openQaAsk({ title = '', game = null } = {}) {
   emit()
 }
 
-/** Reopens the ask sheet on a question the viewer wrote. */
+/** Reopens the ask popup on a question the viewer wrote. */
 export function openQaEditQuestion(question) {
   if (!question?.id) return
   parked = null
@@ -359,12 +377,17 @@ export async function loadPlatformChoices(igdbId) {
     loadTagPlatforms(igdbId),
     loadTrackerPlatform(igdbId),
   ])
+  let choice
   if (names.length) {
     const selected = tracked && names.includes(tracked) ? tracked : names[0]
-    return { mode: 'list', options: names, selected }
+    choice = { mode: 'list', options: names, selected }
+  } else if (tracked) {
+    choice = { mode: 'list', options: [tracked], selected: tracked }
+  } else {
+    choice = { mode: 'text', options: [], selected: '' }
   }
-  if (tracked) return { mode: 'list', options: [tracked], selected: tracked }
-  return { mode: 'text', options: [], selected: '' }
+  platformChoiceCache.set(String(igdbId), choice)
+  return choice
 }
 
 export async function loadPlatformLabels(igdbIds) {
@@ -378,7 +401,9 @@ export async function loadPlatformLabels(igdbIds) {
   const map = new Map()
   for (const row of data) {
     const first = cleanNames(row.platform_names)[0]
-    if (first) map.set(String(row.igdb_game_id), first)
+    if (!first) continue
+    map.set(String(row.igdb_game_id), first)
+    platformLabelCache.set(String(row.igdb_game_id), first)
   }
   return map
 }

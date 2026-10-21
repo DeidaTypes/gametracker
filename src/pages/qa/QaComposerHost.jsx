@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { showToast } from '../../components/Toast'
 import { useAuth } from '../../contexts/AuthContext'
@@ -107,9 +107,27 @@ export default function QaComposerHost() {
   const { user, profile } = useAuth()
   const [noticeOpen, setNoticeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [closedKey, setClosedKey] = useState(null)
   const seenQuestion = useRef(null)
   const noticeOk = useRef(false)
   const posting = useRef(false)
+  const pendingRef = useRef(null)
+
+  const closingRef = useRef(null)
+
+  const closeWith = useCallback((action) => {
+    const current = getQaComposerSession()
+    if (!current || closingRef.current === current.openedAt) return
+    closingRef.current = current.openedAt
+    pendingRef.current = action ?? null
+    setClosedKey(current.openedAt)
+  }, [])
+
+  const handleExited = useCallback(() => {
+    const action = pendingRef.current
+    pendingRef.current = null
+    if (action) action()
+  }, [])
 
   useEffect(() => {
     if (!session?.hiddenFor) return
@@ -224,10 +242,12 @@ export default function QaComposerHost() {
       showToast(TOASTS.unknown, 'error')
       return
     }
-    seedQuestion(id, draft, user, profile)
-    closeQaComposer()
-    showToast('Question posted', 'success')
-    navigate(`/qa/q/${id}`)
+    closeWith(() => {
+      seedQuestion(id, draft, user, profile)
+      closeQaComposer()
+      showToast('Question posted', 'success')
+      navigate(`/qa/q/${id}`)
+    })
   }
 
   const sendAnswer = async () => {
@@ -251,7 +271,7 @@ export default function QaComposerHost() {
       return
     }
     const now = new Date().toISOString()
-    appendAnswer(current.questionId, {
+    const answer = {
       id,
       removed: false,
       body: current.draft.body.trim(),
@@ -268,9 +288,12 @@ export default function QaComposerHost() {
       reply_to_username: replyOn ? current.replyToUsername : null,
       helpful_count: 0,
       viewer_helpful: false,
+    }
+    closeWith(() => {
+      appendAnswer(current.questionId, answer)
+      closeQaComposer()
+      showToast('Answer posted', 'success')
     })
-    closeQaComposer()
-    showToast('Answer posted', 'success')
   }
 
   const sendEditQuestion = async () => {
@@ -291,15 +314,17 @@ export default function QaComposerHost() {
       return
     }
     const edited = !draftUnchanged(draft, current.baseline, ['title', 'body', 'location', 'topic', 'platform'])
-    applyQuestionEdit(current.questionId, {
-      title: fields.title,
-      body: fields.body.trim(),
-      location: fields.location.trim() || null,
-      topic: fields.topic,
-      platform: fields.platform.trim() || null,
-      is_spoiler: fields.isSpoiler,
-    }, { edited })
-    closeQaComposer()
+    closeWith(() => {
+      applyQuestionEdit(current.questionId, {
+        title: fields.title,
+        body: fields.body.trim(),
+        location: fields.location.trim() || null,
+        topic: fields.topic,
+        platform: fields.platform.trim() || null,
+        is_spoiler: fields.isSpoiler,
+      }, { edited })
+      closeQaComposer()
+    })
   }
 
   const sendEditAnswer = async () => {
@@ -317,19 +342,21 @@ export default function QaComposerHost() {
       return
     }
     const edited = !draftUnchanged(current.draft, current.baseline, ['body'])
-    applyAnswerEdit(
-      current.questionId,
-      current.answerId,
-      { body, is_spoiler: isSpoiler },
-      { edited, isBest: current.wasBest },
-    )
-    closeQaComposer()
+    closeWith(() => {
+      applyAnswerEdit(
+        current.questionId,
+        current.answerId,
+        { body, is_spoiler: isSpoiler },
+        { edited, isBest: current.wasBest },
+      )
+      closeQaComposer()
+    })
   }
 
   const submit = async () => {
     if (posting.current || !online) return
     const current = getQaComposerSession()
-    if (!current || current.limit) return
+    if (!current || current.limit || closingRef.current === current.openedAt) return
     const editing = current.mode === 'edit-question' || current.mode === 'edit-answer'
     if (!editing && await mustWarn()) {
       setNoticeOpen(true)
@@ -386,26 +413,36 @@ export default function QaComposerHost() {
         ? askIsDirty(draft)
         : answerIsDirty(session)
 
-  let sheetTitle = 'Your answer'
+  let sheetTitle = 'Answer'
   if (editingQuestion) sheetTitle = 'Edit question'
   else if (session?.mode === 'ask') sheetTitle = 'Ask a question'
   else if (editingAnswer) sheetTitle = 'Edit answer'
-  else if (session) sheetTitle = `Answering ${session.questionTitle}`
+
+  let discardMessage = 'Discard this answer?'
+  if (editingQuestion || editingAnswer) discardMessage = 'Discard changes?'
+  else if (asking) discardMessage = 'Discard this question?'
+
+  const handleCancel = () => {
+    if (noticeOpen) return
+    if (dirty && !window.confirm(discardMessage)) return
+    closeWith(closeQaComposer)
+  }
+
+  const open = !!session && closedKey !== session.openedAt && !session.hiddenFor
 
   return (
     <>
       {session ? (
         <QaComposerSheet
-          open
-          covered={!!session.hiddenFor}
+          open={open}
+          picking={asking && draft.step === 'pick'}
           title={sheetTitle}
-          submitLabel={editingQuestion || editingAnswer ? 'Save' : asking && draft.step === 'pick' ? 'Next' : 'Post'}
+          submitLabel={editingQuestion || editingAnswer ? 'Save' : 'Post'}
           canSubmit={canSubmit}
           busy={busy}
-          dirty={dirty}
-          discardTitle={editingQuestion || editingAnswer ? 'Discard edits?' : asking ? 'Discard question?' : 'Discard answer?'}
           onSubmit={submit}
-          onClose={closeQaComposer}
+          onCancel={handleCancel}
+          onExited={handleExited}
         >
           {asking ? (
             <QaAskForm
@@ -413,6 +450,7 @@ export default function QaComposerHost() {
               online={online}
               limit={session.limit}
               onOpenMatch={openMatch}
+              onCancel={handleCancel}
               editing={editingQuestion}
             />
           ) : (

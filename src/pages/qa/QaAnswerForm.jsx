@@ -1,11 +1,38 @@
-import { WifiOff, X } from 'lucide-react'
+import { useEffect, useMemo, useRef } from 'react'
+import { X } from 'lucide-react'
 import IOSSwitch from '../../components/IOSSwitch'
+import { coverUrlFromImageId } from '../../services/igdb'
+import { qaQuestionKey } from '../../services/qaService'
+import { peekSWR } from '../../services/swrCache'
 import { QA_ANSWER_MAX, patchQaDraft } from './qaComposer'
-import { QaCounter, QaGrowField } from './QaComposerSheet'
+import { QaComposerNotices, QaCounter, QaGrowField } from './QaComposerSheet'
+import { topicLabel } from './qaFormat'
+
+const ENTER_SETTLE_MS = 280
 
 export default function QaAnswerForm({ session, online, limit }) {
   const draft = session.draft
   const username = session.replyToUsername
+  const bodyRef = useRef(null)
+
+  const question = useMemo(
+    () => peekSWR(qaQuestionKey(session.questionId))?.question || null,
+    [session.questionId],
+  )
+  const questionTitle = session.questionTitle || question?.title || ''
+  const meta = [question?.game_title, topicLabel(question?.topic)].filter(Boolean).join(' · ')
+  const coverId = question?.game_cover_image_id
+  const coverSrc = coverId ? coverUrlFromImageId(String(coverId), 'cover_small') : null
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const el = bodyRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }, ENTER_SETTLE_MS)
+    return () => clearTimeout(id)
+  }, [])
 
   const removeReply = () => {
     let body = draft.body
@@ -18,50 +45,57 @@ export default function QaAnswerForm({ session, online, limit }) {
 
   return (
     <>
-      {!online ? (
-        <div className="qa-banner qa-ps-banner" role="status">
-          <WifiOff size={18} aria-hidden="true" />
-          <span>You&apos;re offline</span>
-        </div>
-      ) : null}
+      <QaComposerNotices online={online} limit={limit} />
 
-      {limit ? (
-        <div className="qa-banner qa-ps-banner" role="status">
-          <span>{limit.message}</span>
+      {questionTitle ? (
+        <div className="qa-cmp-game-header">
+          {question ? (
+            coverSrc ? (
+              <img src={coverSrc} alt="" className="qa-cmp-game-cover" />
+            ) : (
+              <div className="qa-cmp-game-cover qa-cmp-game-cover--placeholder" aria-hidden="true" />
+            )
+          ) : null}
+          <div className="qa-cmp-game-info">
+            <p className="qa-cmp-question-title">{questionTitle}</p>
+            {meta ? <p className="qa-cmp-game-meta">{meta}</p> : null}
+          </div>
         </div>
       ) : null}
 
       {draft.replyOn && username ? (
-        <span className="qa-reply-chip text-caption">
-          Replying to @{username}
-          <button type="button" className="qa-reply-chip__x" aria-label="Remove reply" onClick={removeReply}>
-            <X size={12} aria-hidden="true" />
-          </button>
-        </span>
+        <div className="qa-cmp-chip-row">
+          <span className="qa-cmp-chip qa-cmp-chip--reply">
+            Replying to @{username}
+            <button type="button" className="qa-cmp-chip-x" aria-label="Remove reply" onClick={removeReply}>
+              <X size={12} aria-hidden="true" />
+            </button>
+          </span>
+        </div>
       ) : null}
 
-      <label className="qa-ps-field">
-        <span className="qa-ps-label-row">
-          <span className="qa-ps-label text-caption">Your answer</span>
-          <QaCounter value={draft.body} max={QA_ANSWER_MAX} />
-        </span>
+      <div className="qa-cmp-textarea-wrap">
         <QaGrowField
-          className="qa-ps-input--area"
+          className="qa-cmp-textarea qa-cmp-textarea--answer"
+          fieldRef={bodyRef}
           value={draft.body}
           maxLength={QA_ANSWER_MAX}
-          autoFocus
+          placeholder="Share what worked for you…"
           aria-label="Your answer"
           onChange={(value) => patchQaDraft({ body: value })}
         />
-      </label>
+        <QaCounter value={draft.body} max={QA_ANSWER_MAX} always />
+      </div>
 
-      <div className="qa-ps-switch">
-        <span className="text-body">Spoiler</span>
-        <IOSSwitch
-          checked={draft.isSpoiler}
-          label="Spoiler"
-          onChange={(next) => patchQaDraft({ isSpoiler: next })}
-        />
+      <div className="qa-cmp-group" role="group" aria-label="Answer options">
+        <div className="qa-cmp-group-row">
+          <span className="qa-cmp-group-label">Contains spoilers</span>
+          <IOSSwitch
+            checked={draft.isSpoiler}
+            label="Contains spoilers"
+            onChange={(next) => patchQaDraft({ isSpoiler: next })}
+          />
+        </div>
       </div>
     </>
   )

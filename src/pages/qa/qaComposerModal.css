@@ -1,0 +1,813 @@
+/* Mirrors .jnc-* and .rnc-*; change them together.
+   ============================================================
+   Q&A ask / answer composer, presented inside CenteredModal.
+   The pick step mirrors GamePickerSheet (.gps-*). The popup shell
+   (.cm-card) owns the surface, rounding, centering and keyboard-aware
+   sizing; these rules only lay out the content. Not imported from
+   ReviewNew.css / JournalNew.css because those live in lazy route chunks.
+   ============================================================ */
+
+/* ── Top row: Cancel | title | Post ─────────────────────────────────────── */
+
+.qa-cmp-topbar {
+  flex-shrink: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-16);
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.qa-cmp-topbar-cancel,
+.qa-cmp-topbar-post {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 120ms ease;
+  min-width: 56px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.qa-cmp-topbar-cancel {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.qa-cmp-topbar-post {
+  font-weight: 700;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.qa-cmp-topbar-post--disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.qa-cmp-topbar-cancel:active,
+.qa-cmp-topbar-post:not(.qa-cmp-topbar-post--disabled):active {
+  opacity: 0.6;
+}
+
+.qa-cmp-topbar-title {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0;
+  flex: 1;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-cmp-post-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: qaCmpSpin 700ms linear infinite;
+}
+
+/* ── Scrollable content ──────────────────────────────────────────────────── */
+
+.qa-cmp-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--space-16);
+}
+
+/* ── Inline notices (offline, daily limit) ───────────────────────────────── */
+
+.qa-cmp-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12) 14px;
+  background: var(--bg-surface-2);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.qa-cmp-notice svg {
+  flex-shrink: 0;
+}
+
+/* ── Game / question header ──────────────────────────────────────────────── */
+
+.qa-cmp-game-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.qa-cmp-game-cover {
+  width: 44px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.qa-cmp-game-cover--placeholder {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.qa-cmp-game-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.qa-cmp-game-title {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-cmp-question-title {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* min-height holds the line while the platform lookup resolves, so the
+   title never shifts when the label fills in. */
+.qa-cmp-game-meta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  min-height: 16px;
+  color: var(--text-secondary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-cmp-platform {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  vertical-align: top;
+  font: inherit;
+  font-weight: 500;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.qa-cmp-platform {
+  cursor: pointer;
+}
+
+button.qa-cmp-platform:active {
+  opacity: 0.6;
+}
+
+/* ── Field blocks ────────────────────────────────────────────────────────── */
+
+.qa-cmp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Title input — .jnc-title-input, grown to wrap long questions */
+.qa-cmp-title-input {
+  display: block;
+  width: 100%;
+  padding: var(--space-12);
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  outline: none;
+  resize: none;
+  overflow-y: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.qa-cmp-title-input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.qa-cmp-title-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.qa-cmp-under {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.qa-cmp-under .qa-cmp-count {
+  margin: 0 0 0 auto;
+}
+
+.qa-cmp-tip {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── "Is this your question?" ────────────────────────────────────────────── */
+
+.qa-cmp-similar {
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: clip;
+}
+
+.qa-cmp-similar-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0;
+  padding: var(--space-12) var(--space-12) var(--space-4);
+}
+
+.qa-cmp-similar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: none;
+  border-top: 0.5px solid var(--border-subtle);
+  color: inherit;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease;
+}
+
+.qa-cmp-similar-row:active {
+  background: var(--theme-fill);
+}
+
+.qa-cmp-similar-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.qa-cmp-similar-title {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.qa-cmp-similar-hl,
+.qa-cmp-similar-ok {
+  color: var(--theme-review-ink);
+  font-weight: 600;
+}
+
+.qa-cmp-similar-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.qa-cmp-similar-chev {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.qa-cmp-similar-keep {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  border-top: 0.5px solid var(--border-subtle);
+}
+
+/* ── Topic chips — .jnc-section-label + .rnc-stamp-pill ──────────────────── */
+
+.qa-cmp-section-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.qa-cmp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.qa-cmp-chip {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-chip);
+  padding: 7px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.qa-cmp-chip--active {
+  color: var(--theme-on-primary);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.qa-cmp-chip:active:not(.qa-cmp-chip--active) {
+  background: var(--theme-fill);
+}
+
+.qa-cmp-chip--reply {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-right: var(--space-8);
+  cursor: default;
+}
+
+.qa-cmp-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: -4px 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Textareas — .rnc-textarea ───────────────────────────────────────────── */
+
+.qa-cmp-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.qa-cmp-textarea {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-12);
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  overflow-y: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  transition: border-color 160ms ease;
+}
+
+.qa-cmp-textarea--answer {
+  min-height: 140px;
+}
+
+.qa-cmp-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.qa-cmp-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.qa-cmp-count {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  margin: var(--space-4) 0 0;
+  text-align: right;
+  align-self: flex-end;
+  flex-shrink: 0;
+  transition: color 120ms ease;
+}
+
+.qa-cmp-count--limit {
+  color: var(--theme-danger);
+  font-weight: 600;
+}
+
+/* ── iOS grouped container — .jnc-group / .rnc-group ─────────────────────── */
+
+.qa-cmp-group {
+  background: var(--bg-surface-2);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  /* clip, not hidden: hidden makes this a scroll container and iOS stops
+     scrolling the focused field into view inside .cm-scroll. */
+  overflow: clip;
+}
+
+.qa-cmp-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  min-height: 48px;
+  gap: var(--space-12);
+}
+
+.qa-cmp-group-label {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.qa-cmp-group-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-8) 0;
+}
+
+.qa-cmp-group-sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.qa-cmp-group-divider {
+  height: 0.5px;
+  background: var(--border-subtle);
+  margin-left: 14px;
+}
+
+.qa-cmp-inline-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  /* 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  text-align: right;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.qa-cmp-inline-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.qa-cmp-option-row {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.qa-cmp-option-row:active {
+  background: var(--theme-fill);
+}
+
+.qa-cmp-option-check {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+/* ── Pick step — mirrors GamePickerSheet (.gps-*) ────────────────────────── */
+
+.qa-cmp-pick-head {
+  flex-shrink: 0;
+  padding: var(--space-16) var(--space-20) var(--space-12);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.qa-cmp-pick-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin: 0 0 var(--space-12);
+}
+
+.qa-cmp-pick-heading {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.qa-cmp-pick-cancel {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.qa-cmp-pick-cancel:active {
+  opacity: 0.6;
+}
+
+.qa-cmp-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.qa-cmp-search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.qa-cmp-search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--space-40);
+  background: var(--theme-fill);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 160ms ease, background 160ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.qa-cmp-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.qa-cmp-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.qa-cmp-search-input:focus {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.qa-cmp-search-clear {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--theme-fill);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.qa-cmp-pick-body {
+  flex: 1;
+  padding: 0;
+}
+
+.qa-cmp-pick-section {
+  padding: var(--space-16) 0 var(--space-4);
+}
+
+.qa-cmp-pick-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-20);
+}
+
+.qa-cmp-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px var(--space-20);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 120ms ease;
+}
+
+.qa-cmp-pick-row:last-child {
+  border-bottom: none;
+}
+
+.qa-cmp-pick-row:active {
+  background: var(--theme-fill);
+}
+
+.qa-cmp-pick-cover {
+  flex-shrink: 0;
+  width: 44px;
+  height: 58px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}
+
+.qa-cmp-pick-cover--placeholder {
+  background: var(--bg-surface);
+}
+
+.qa-cmp-pick-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.qa-cmp-pick-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-cmp-pick-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-cmp-state-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: var(--space-20);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+.qa-cmp-state-row--error {
+  color: var(--theme-danger);
+}
+
+.qa-cmp-state-row--loading {
+  color: var(--text-secondary);
+}
+
+.qa-cmp-state-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--text-primary) 15%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: qaCmpSpin 700ms linear infinite;
+}
+
+/* The private-account notice opens over this popup (.cm-overlay, z-index
+   1100). qa.css is a lazy chunk that loads after this file, hence the
+   extra specificity. */
+body .qa-notice-overlay {
+  z-index: 1110;
+}
+
+@keyframes qaCmpSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .qa-cmp-topbar-cancel,
+  .qa-cmp-topbar-post,
+  .qa-cmp-title-input,
+  .qa-cmp-textarea,
+  .qa-cmp-chip,
+  .qa-cmp-count,
+  .qa-cmp-similar-row,
+  .qa-cmp-search-input,
+  .qa-cmp-pick-row {
+    transition: none;
+  }
+
+  .qa-cmp-post-spinner,
+  .qa-cmp-state-spinner {
+    animation-duration: 1400ms;
+  }
+}
+
+body[data-reduce-motion='true'] .qa-cmp-post-spinner,
+body[data-reduce-motion='true'] .qa-cmp-state-spinner {
+  animation-duration: 1400ms;
+}
