@@ -31,7 +31,8 @@ export default function QaComposerSheet({
       onExited={onExited}
       ariaLabel={picking ? 'Which game is it about?' : title}
       maxWidth={360}
-      className={fill ? 'gps-sheet kb-modal-fill' : ''}
+      className={fill ? 'gps-sheet' : ''}
+      steady={fill ? 'fill' : true}
     >
       {picking ? (
         children

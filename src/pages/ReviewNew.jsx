@@ -315,7 +315,7 @@ function ReviewNew() {
 
   if (loadingGame) {
     return (
-      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Loading game" maxWidth={360}>
+      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Loading game" maxWidth={360} steady>
         <div className="rnc-topbar">
           <button className="rnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
             Cancel
@@ -336,7 +336,7 @@ function ReviewNew() {
 
   if (gameError) {
     return (
-      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Write review" maxWidth={360}>
+      <CenteredModal isOpen={open} onClose={() => closeWith(() => navigate(-1))} onExited={handleExited} ariaLabel="Write review" maxWidth={360} steady>
         <div className="rnc-topbar">
           <button className="rnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
             Cancel
@@ -362,6 +362,7 @@ function ReviewNew() {
       onExited={handleExited}
       ariaLabel={isEditMode ? 'Edit review' : 'Write review'}
       maxWidth={360}
+      steady
     >
       {/* Top row: Cancel | Write review / Edit review | Post / Save */}
       <div className="rnc-topbar">

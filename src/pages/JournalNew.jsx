@@ -128,6 +128,7 @@ function JournalNew() {
         onExited={handleExited}
         ariaLabel="Loading game"
         maxWidth={360}
+        steady
       >
         <div className="jnc-topbar">
           <button className="jnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
@@ -153,6 +154,7 @@ function JournalNew() {
         onExited={handleExited}
         ariaLabel="New journal entry"
         maxWidth={360}
+        steady
       >
         <div className="jnc-topbar">
           <button className="jnc-topbar-cancel" onClick={() => closeWith(() => navigate(-1))} type="button">
@@ -177,6 +179,7 @@ function JournalNew() {
       onExited={handleExited}
       ariaLabel="New journal entry"
       maxWidth={360}
+      steady
     >
       {/* Top row: Cancel | New journal entry | Save */}
       <div className="jnc-topbar">

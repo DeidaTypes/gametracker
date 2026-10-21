@@ -110,3 +110,37 @@
 body.keyboard-open .cm-overlay {
   padding-bottom: 20px;
 }
+
+/* ── Steady submit boxes (CenteredModal `steady`) ──
+   Sized once for the space left WITH the keyboard up: the overlay's resting
+   padding (safe areas included) minus the keyboard reserve CenteredModal
+   writes inline. Nothing here reads --keyboard-inset, so the keyboard only
+   slides the card (.kb-modal-lift) and never resizes it. */
+.cm-card.cm-card--steady {
+  --cm-steady-height: min(
+    80vh,
+    calc(
+      100dvh - 2 * var(--space-20) - var(--safe-area-inset-top) -
+        env(safe-area-inset-bottom, 0px) - var(--cm-keyboard-reserve, 0px)
+    )
+  );
+
+  max-height: var(--cm-steady-height);
+}
+
+.cm-card.cm-card--steady-fill {
+  height: var(--cm-steady-height);
+}
+
+/* Keep the resting padding while the keyboard is up. Collapsing it (rule
+   above) re-centers the card without a transition. */
+body.keyboard-open .cm-overlay.cm-overlay--steady {
+  padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom, 0px));
+}
+
+/* While the card slides in or out the blur would re-raster every frame;
+   the dim alone carries those frames. */
+.cm-overlay.cm-overlay--sliding {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
