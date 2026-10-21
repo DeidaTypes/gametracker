@@ -80,9 +80,39 @@ body.nav-dimmed .bottom-nav {
    pill underneath it to accidentally intercept a tap. `--bottom-nav-safe-area`
    collapses to just the safe-area inset (see theme.css) so every composer/
    page that reserves clearance against the pill automatically reserves
-   clearance against nothing instead. */
-body.nav-hidden .bottom-nav {
-  display: none;
+   clearance against nothing instead.
+
+   nav-hidden is LAYOUT only and keeps the composer screen's full lifetime.
+   The pill's own state is body.nav-pill-away, which useHideNav and
+   backTransition.js toggle on the route timeline: it slides down and out
+   while a push slides in, and back up while a back slides out. Visibility
+   flips only after the slide, so nothing under it is tappable. */
+body.nav-pill-away .bottom-nav {
+  transform: translateX(-50%) translateY(120%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform var(--motion-duration) var(--motion-ease),
+    opacity var(--motion-duration) var(--motion-ease),
+    visibility 0s linear var(--motion-duration);
+}
+
+body.nav-pill-return .bottom-nav {
+  transition:
+    transform var(--motion-duration) var(--motion-ease),
+    opacity var(--motion-duration) var(--motion-ease),
+    visibility 0s;
+}
+
+/* Tab switches, cold starts and reduced motion: no slide. */
+body.nav-pill-snap .bottom-nav {
+  transition: none;
+}
+
+body[data-reduce-motion='true'].nav-pill-away .bottom-nav,
+body[data-reduce-motion='true'].nav-pill-return .bottom-nav {
+  transition: none;
 }
 
 /* Mobile only — replicates the original responsive behavior. */
@@ -277,6 +307,11 @@ body.nav-hidden .bottom-nav {
   .bottom-nav-item,
   .bottom-nav-icon,
   .bottom-nav-pill {
+    transition: none;
+  }
+
+  body.nav-pill-away .bottom-nav,
+  body.nav-pill-return .bottom-nav {
     transition: none;
   }
 

@@ -928,14 +928,23 @@ html[data-app-theme="cream"] {
 
 /* The Navy page wash is the existing ambient gradient. Every other
    theme paints a flat background in that theme's base color, so the
-   Navy gradient does not sit on top of Light or Cream. */
+   Navy gradient does not sit on top of Light or Cream. The back reveal
+   (backTransition.css) paints the same background as body, so the
+   snapshot and the live page match at rest. */
 html[data-app-theme="black"] body,
 html[data-app-theme="forest"] body,
 html[data-app-theme="purple"] body,
 html[data-app-theme="light"] body,
 html[data-app-theme="sky"] body,
 html[data-app-theme="pink"] body,
-html[data-app-theme="cream"] body {
+html[data-app-theme="cream"] body,
+html[data-app-theme="black"] .back-reveal,
+html[data-app-theme="forest"] .back-reveal,
+html[data-app-theme="purple"] .back-reveal,
+html[data-app-theme="light"] .back-reveal,
+html[data-app-theme="sky"] .back-reveal,
+html[data-app-theme="pink"] .back-reveal,
+html[data-app-theme="cream"] .back-reveal {
   background-image: none;
 }
 

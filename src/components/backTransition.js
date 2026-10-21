@@ -43,8 +43,9 @@
  *
  * At p=0 the previous screen sits PARALLAX*W to the left, exactly like
  * UINavigationController; at p=1 both are at rest. The dim is the snapshot's
- * own opacity over the window's opaque midnight-navy gradient, so darkening
- * costs one composited property and introduces no new color.
+ * own opacity over the window's opaque page background (the same one body
+ * paints on the current theme), so darkening costs one composited property
+ * and introduces no new color.
  *
  * ONE ENGINE, DELIBERATELY
  * The window's right edge and the top page's left edge are adjacent, so a
@@ -61,6 +62,7 @@
  * and button back.
  */
 import './backTransition.css'
+import { cancelNavPillRelease, releaseNavPillForBack } from '../hooks/useHideNav'
 
 // Fraction of the viewport the previous screen sits to the left while covered.
 const PARALLAX = 0.3
@@ -182,6 +184,17 @@ function sanitize(root) {
   })
 }
 
+function predecodeImages(root) {
+  // A cloned <img> decodes again once inserted, and lazy ones wait for
+  // intersection, so covers would pop in partway through the slide. Decode
+  // now, while the clone sits on the stack. The live page is untouched.
+  root.querySelectorAll('img').forEach((img) => {
+    img.loading = 'eager'
+    img.decoding = 'sync'
+    img.decode?.().catch(() => {})
+  })
+}
+
 /**
  * Clone the page we're leaving, so a later back can reveal it.
  *
@@ -204,13 +217,23 @@ export function captureSnapshot({ key, layerEl, scrollTop, padTop }) {
 
     const node = layerEl.cloneNode(true)
     sanitize(node)
+    predecodeImages(node)
     copyCanvases(layerEl, node)
 
     // Same history entry pushed twice shouldn't stack twice.
     const existing = stack.findIndex((s) => s.key === key)
     if (existing !== -1) stack.splice(existing, 1)
 
-    stack.push({ key, node, offsets, scrollTop: scrollTop || 0, padTop: padTop || '0px' })
+    stack.push({
+      key,
+      node,
+      offsets,
+      scrollTop: scrollTop || 0,
+      padTop: padTop || '0px',
+      // Captured before the incoming screen mounts, so this is the
+      // outgoing screen's own nav state.
+      navHidden: document.body.classList.contains('nav-hidden'),
+    })
     while (stack.length > MAX_SNAPSHOTS) stack.shift()
   } catch {
     // A snapshot is an enhancement. Never let it break navigation.
@@ -362,6 +385,7 @@ export function beginBack({ topLayer } = {}) {
     width,
     progress: 0,
     snapKey: snap?.key || null,
+    revealsNav: !!snap && !snap.navHidden,
     settleTimer: null,
     settleEndHandler: null,
   }
@@ -538,6 +562,7 @@ export function finishBack({ commit, onDone }) {
   }
 
   const key = active.snapKey
+  if (active.revealsNav) releaseNavPillForBack()
   settleTo(1, () => {
     if (!active) {
       onDone?.()
@@ -552,6 +577,7 @@ export function finishBack({ commit, onDone }) {
       timer: setTimeout(() => {
         // navigate(-1) produced no POP — don't strand the reveal.
         pendingCommit = null
+        cancelNavPillRelease()
         destroy()
       }, COMMIT_SAFETY_MS),
     }
@@ -607,6 +633,7 @@ export function claimBack(destKey, topLayer) {
   const width = beginBack({ topLayer })
   if (!width) return 'live'
 
+  if (active.revealsNav) releaseNavPillForBack()
   stack.pop()
   startHold()
 
