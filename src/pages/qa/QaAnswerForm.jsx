@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import IOSSwitch from '../../components/IOSSwitch'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaQuestionKey } from '../../services/qaService'
 import { peekSWR } from '../../services/swrCache'
+import { hapticImpact } from '../../utils/haptics'
 import { QA_ANSWER_MAX, patchQaDraft } from './qaComposer'
-import { QaComposerNotices, QaCounter, QaGrowField } from './QaComposerSheet'
+import { QaComposerNotices, QaCounter, QaTextarea } from './QaComposerSheet'
 import { topicLabel } from './qaFormat'
-
-const ENTER_SETTLE_MS = 280
 
 export default function QaAnswerForm({ session, online, limit }) {
   const draft = session.draft
   const username = session.replyToUsername
-  const bodyRef = useRef(null)
 
   const question = useMemo(
     () => peekSWR(qaQuestionKey(session.questionId))?.question || null,
@@ -23,16 +21,6 @@ export default function QaAnswerForm({ session, online, limit }) {
   const meta = [question?.game_title, topicLabel(question?.topic)].filter(Boolean).join(' · ')
   const coverId = question?.game_cover_image_id
   const coverSrc = coverId ? coverUrlFromImageId(String(coverId), 'cover_small') : null
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      const el = bodyRef.current
-      if (!el) return
-      el.focus()
-      el.setSelectionRange(el.value.length, el.value.length)
-    }, ENTER_SETTLE_MS)
-    return () => clearTimeout(id)
-  }, [])
 
   const removeReply = () => {
     let body = draft.body
@@ -75,16 +63,16 @@ export default function QaAnswerForm({ session, online, limit }) {
       ) : null}
 
       <div className="qa-cmp-textarea-wrap">
-        <QaGrowField
+        <QaTextarea
           className="qa-cmp-textarea qa-cmp-textarea--answer"
-          fieldRef={bodyRef}
+          data-qa-autofocus=""
           value={draft.body}
           maxLength={QA_ANSWER_MAX}
           placeholder="Share what worked for you…"
           aria-label="Your answer"
           onChange={(value) => patchQaDraft({ body: value })}
         />
-        <QaCounter value={draft.body} max={QA_ANSWER_MAX} always />
+        <QaCounter value={draft.body} max={QA_ANSWER_MAX} />
       </div>
 
       <div className="qa-cmp-group" role="group" aria-label="Answer options">
@@ -93,7 +81,10 @@ export default function QaAnswerForm({ session, online, limit }) {
           <IOSSwitch
             checked={draft.isSpoiler}
             label="Contains spoilers"
-            onChange={(next) => patchQaDraft({ isSpoiler: next })}
+            onChange={(next) => {
+              hapticImpact('Light')
+              patchQaDraft({ isSpoiler: next })
+            }}
           />
         </div>
       </div>

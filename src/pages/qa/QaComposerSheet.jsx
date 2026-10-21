@@ -7,10 +7,13 @@ import './qaComposerModal.css'
  * Ask / answer popup. The same CenteredModal, top bar and body rhythm as
  * ReviewNew and JournalNew; the game-pick step takes GamePickerSheet's size.
  * The host owns `open` and runs its queued action from `onExited`.
+ * `fill` gives the card one fixed height (the Ask flow: pick and compose are
+ * the same size); without it the card hugs its content (Answer).
  */
 export default function QaComposerSheet({
   open,
   picking = false,
+  fill = false,
   title,
   submitLabel = 'Post',
   canSubmit = false,
@@ -28,8 +31,8 @@ export default function QaComposerSheet({
       onClose={onCancel}
       onExited={onExited}
       ariaLabel={picking ? 'Which game is it about?' : title}
-      maxWidth={picking ? 480 : 360}
-      className={picking ? 'gps-sheet kb-modal-fill' : ''}
+      maxWidth={360}
+      className={fill ? 'gps-sheet kb-modal-fill' : ''}
     >
       {picking ? (
         children
@@ -66,6 +69,7 @@ export default function QaComposerSheet({
   )
 }
 
+/** Wrapping single-purpose field (the question title). Grows inside the fixed card. */
 export function QaGrowField({ value, maxLength, onChange, className = '', fieldRef, ...rest }) {
   const ref = useRef(null)
 
@@ -92,6 +96,19 @@ export function QaGrowField({ value, maxLength, onChange, className = '', fieldR
   )
 }
 
+/** Fixed-height textarea. The height lives in CSS; long text scrolls inside it. */
+export function QaTextarea({ value, maxLength, onChange, className = '', ...rest }) {
+  return (
+    <textarea
+      className={className}
+      value={value}
+      maxLength={maxLength}
+      onChange={(event) => onChange(event.target.value.slice(0, maxLength))}
+      {...rest}
+    />
+  )
+}
+
 export function QaComposerNotices({ online, limit }) {
   return (
     <>
@@ -110,9 +127,9 @@ export function QaComposerNotices({ online, limit }) {
   )
 }
 
-export function QaCounter({ value, max, always = false }) {
+/** Always rendered, so it never inserts a row. At the limit it takes the danger token. */
+export function QaCounter({ value, max }) {
   const length = String(value || '').length
-  if (!always && length <= max * 0.8) return null
   return (
     <span className={`qa-cmp-count${length >= max ? ' qa-cmp-count--limit' : ''}`} aria-live="polite">
       {length}/{max}

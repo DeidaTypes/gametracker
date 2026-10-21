@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaMarkInboxSeen, qaMine, qaMineKey } from '../../services/qaService'
+import { hapticImpact } from '../../utils/haptics'
 import { useQaHides } from './qaHides'
 import { QaCoverRows } from './QaPlaceholders'
 import { formatGamePlatform, qaShortAge } from './qaFormat'
@@ -172,6 +173,8 @@ export default function QaMine() {
   }, [data])
 
   const select = (next) => {
+    if (next === tab) return
+    hapticImpact('Light')
     rememberedTab = next
     setTab(next)
   }

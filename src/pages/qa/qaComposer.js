@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { supabase } from '../../services/supabase'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { getGameStatus, getGamesFromList } from '../../services/libraryService'
@@ -47,7 +48,7 @@ export function subscribeQaComposer(fn) {
   return () => listeners.delete(fn)
 }
 
-export function coverImageIdFromUrl(url) {
+function coverImageIdFromUrl(url) {
   if (!url || typeof url !== 'string') return null
   const match = url.match(/\/t_[^/]+\/([^./?#]+)/)
   return match ? match[1] : null
@@ -101,7 +102,6 @@ function blankAskDraft(title, game) {
     topic: '',
     isSpoiler: false,
     search: '',
-    focusTitle: !!game,
     ...(game
       ? platformDraftFor(game.igdbId)
       : { platform: '', platformMode: null, platformOptions: [], platformTouched: false }),
@@ -129,9 +129,36 @@ export function draftUnchanged(draft, baseline, keys) {
   })
 }
 
+/**
+ * Opens a composer and raises the keyboard in the same motion. Must run
+ * inside the tap handler: flushSync commits the popup (portal included) before
+ * the handler returns, then the field takes focus synchronously, so iOS
+ * treats it as part of the user's gesture and the card arrives already
+ * lifted. No timer, ever; a delayed focus is a second motion.
+ */
+function openAndFocus(open) {
+  flushSync(open)
+  const fields = document.querySelectorAll('[data-qa-autofocus]')
+  const el = fields[fields.length - 1]
+  if (!el) return
+  el.focus({ preventScroll: true })
+  try {
+    el.setSelectionRange(el.value.length, el.value.length)
+  } catch {
+    // Not a text field. The focus above is all that mattered.
+  }
+}
+
 export function openQaAsk({ title = '', game = null } = {}) {
-  parked = null
   const presetGame = game ? qaGamePreset(game) : null
+  // Pick step (no game yet): no autofocus, the user taps the search field.
+  // Compose step (a game is already known): the title takes focus now.
+  if (presetGame) openAndFocus(() => startQaAsk(title, presetGame))
+  else startQaAsk(title, null)
+}
+
+function startQaAsk(title, presetGame) {
+  parked = null
   session = {
     mode: 'ask',
     openedAt: Date.now(),
@@ -204,7 +231,12 @@ export function openQaEditAnswer({ questionId, questionTitle = '', igdbGameId = 
   emit()
 }
 
-export function openQaAnswer({
+export function openQaAnswer(options = {}) {
+  if (!options?.questionId) return
+  openAndFocus(() => startQaAnswer(options))
+}
+
+function startQaAnswer({
   questionId,
   questionTitle = '',
   igdbGameId = null,

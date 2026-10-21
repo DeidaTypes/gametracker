@@ -5,6 +5,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { hideKeyboard } from '../../services/keyboardInset'
 import { searchGames } from '../../services/searchService'
 import { qaSimilar } from '../../services/qaService'
+import { hapticImpact } from '../../utils/haptics'
 import {
   QA_BODY_MAX,
   QA_LOCATION_MAX,
@@ -18,10 +19,8 @@ import {
   platformDraftFor,
   qaGamePreset,
 } from './qaComposer'
-import { QaComposerNotices, QaCounter, QaGrowField } from './QaComposerSheet'
+import { QaComposerNotices, QaCounter, QaGrowField, QaTextarea } from './QaComposerSheet'
 import { QA_TOPICS, highlightQuery, topicLabel } from './qaFormat'
-
-const ENTER_SETTLE_MS = 280
 
 function GameCover({ src, className }) {
   if (src) return <img src={src} alt="" className={className} />
@@ -103,7 +102,6 @@ function AskPick({ draft, onCancel }) {
       step: 'compose',
       game: preset,
       search: '',
-      focusTitle: false,
       ...platformDraftFor(preset.igdbId, labels.get(String(preset.igdbId))),
     })
   }
@@ -296,22 +294,7 @@ function PlatformOptions({ draft, onDone }) {
 function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
   const [matches, setMatches] = useState([])
   const [platformOpen, setPlatformOpen] = useState(false)
-  const titleRef = useRef(null)
   const game = draft.game
-
-  useEffect(() => {
-    if (!draft.focusTitle) return undefined
-    const id = setTimeout(() => {
-      const el = titleRef.current
-      if (!el) return
-      el.focus()
-      el.setSelectionRange(el.value.length, el.value.length)
-      patchQaDraft({ focusTitle: false })
-    }, ENTER_SETTLE_MS)
-    return () => clearTimeout(id)
-    // Once, on the open that asked for it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   useEffect(() => {
     if (!game) return undefined
@@ -359,6 +342,8 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
   }, [draft.title, game, editing])
 
   const chooseTopic = (topic) => {
+    if (topic === draft.topic) return
+    hapticImpact('Light')
     patchQaDraft({
       topic,
       isSpoiler: topic === 'story' ? true : draft.isSpoiler,
@@ -368,7 +353,6 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
   const textMode = draft.platformMode === 'text'
   const canChoose = (draft.platformMode === 'list' && draft.platformOptions.length > 1) || textMode
   const platformText = draft.platform || (textMode ? 'Add platform' : '')
-  const titleLong = draft.title.length > QA_TITLE_MAX * 0.8
   const showTip = matches.length === 0
 
   let platformNode = null
@@ -413,7 +397,7 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
       <div className="qa-cmp-field">
         <QaGrowField
           className="qa-cmp-title-input"
-          fieldRef={titleRef}
+          data-qa-autofocus=""
           value={draft.title}
           maxLength={QA_TITLE_MAX}
           placeholder="What are you stuck on?"
@@ -421,16 +405,14 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
           aria-label="Your question"
           onChange={(value) => patchQaDraft({ title: value.replace(/\n/g, ' ') })}
         />
-        {showTip || titleLong ? (
-          <div className="qa-cmp-under">
-            {showTip ? (
-              <p className="qa-cmp-tip">
-                Keep the question spoiler-free. It always shows, even when spoilers are on.
-              </p>
-            ) : null}
-            <QaCounter value={draft.title} max={QA_TITLE_MAX} />
-          </div>
-        ) : null}
+        <div className="qa-cmp-under">
+          {showTip ? (
+            <p className="qa-cmp-tip">
+              Keep the question spoiler-free. It always shows, even when spoilers are on.
+            </p>
+          ) : null}
+          <QaCounter value={draft.title} max={QA_TITLE_MAX} />
+        </div>
         {matches.length > 0 ? (
           <section className="qa-cmp-similar" aria-label="Is this your question?">
             <p className="qa-cmp-similar-label">Is this your question?</p>
@@ -477,7 +459,7 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
       </div>
 
       <div className="qa-cmp-textarea-wrap">
-        <QaGrowField
+        <QaTextarea
           className="qa-cmp-textarea"
           value={draft.body}
           maxLength={QA_BODY_MAX}
@@ -485,7 +467,7 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
           aria-label="Details"
           onChange={(value) => patchQaDraft({ body: value })}
         />
-        <QaCounter value={draft.body} max={QA_BODY_MAX} always />
+        <QaCounter value={draft.body} max={QA_BODY_MAX} />
       </div>
 
       <div className="qa-cmp-group" role="group" aria-label="Question options">
@@ -511,7 +493,10 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
             checked={draft.topic === 'story' ? true : draft.isSpoiler}
             disabled={draft.topic === 'story'}
             label="Contains spoilers"
-            onChange={(next) => patchQaDraft({ isSpoiler: next })}
+            onChange={(next) => {
+              hapticImpact('Light')
+              patchQaDraft({ isSpoiler: next })
+            }}
           />
         </div>
       </div>

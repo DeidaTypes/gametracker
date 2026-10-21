@@ -8,6 +8,7 @@ import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey } from '../../services/qaService'
 import { isSWRFresh, peekSWR } from '../../services/swrCache'
+import { hapticImpact } from '../../utils/haptics'
 import { consumeJustAsked, subscribeJustAsked } from './qaCache'
 import { openQaAsk } from './qaComposer'
 import { useQaHides } from './qaHides'
@@ -220,6 +221,8 @@ export default function QaHome() {
   const showOffline = !online && !!home
 
   const selectFilter = (next) => {
+    if (next === filter) return
+    hapticImpact('Light')
     rememberedFilter = next
     setFilter(next)
   }

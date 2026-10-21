@@ -13,6 +13,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { getGameStatus } from '../../services/libraryService'
+import { hapticImpact } from '../../utils/haptics'
 import {
   qaGame,
   qaGameKey,
@@ -138,6 +139,12 @@ export default function QaGame() {
     return () => obs.disconnect()
   }, [searching, sort, moreAvailable, loadMore])
 
+  const selectFilter = (next) => {
+    if (next === filter) return
+    hapticImpact('Light')
+    setFilter(next)
+  }
+
   const handleRetry = () => {
     if (searching) refreshSearch()
     else refreshList()
@@ -223,7 +230,7 @@ export default function QaGame() {
               role="tab"
               aria-selected={filter === 'answered'}
               className={`qa-seg__btn text-body${filter === 'answered' ? ' qa-seg__btn--on' : ''}`}
-              onClick={() => setFilter('answered')}
+              onClick={() => selectFilter('answered')}
             >
               Answered
               {answeredCount != null ? (
@@ -235,7 +242,7 @@ export default function QaGame() {
               role="tab"
               aria-selected={filter === 'unanswered'}
               className={`qa-seg__btn text-body${filter === 'unanswered' ? ' qa-seg__btn--on' : ''}`}
-              onClick={() => setFilter('unanswered')}
+              onClick={() => selectFilter('unanswered')}
             >
               Unanswered
               {unansweredCount != null ? (

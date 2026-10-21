@@ -417,10 +417,13 @@ button.qa-cmp-platform:active {
   flex-direction: column;
 }
 
+/* Fixed height, like .rnc-textarea / .jnc-textarea: the card never resizes
+   while typing and long text scrolls inside the box. */
 .qa-cmp-textarea {
   display: block;
   width: 100%;
-  min-height: 120px;
+  height: 120px;
+  flex: none;
   padding: var(--space-12);
   background: var(--bg-surface);
   border: 0.5px solid var(--border-subtle);
@@ -433,7 +436,8 @@ button.qa-cmp-platform:active {
   line-height: 1.5;
   resize: none;
   outline: none;
-  overflow-y: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
@@ -441,7 +445,7 @@ button.qa-cmp-platform:active {
 }
 
 .qa-cmp-textarea--answer {
-  min-height: 140px;
+  height: 140px;
 }
 
 .qa-cmp-textarea::placeholder {

@@ -4,10 +4,11 @@ import { showToast } from '../../components/Toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { BLOCK_CHANGED_EVENT } from '../../services/blockService'
 import { askQuestion, editAnswer, editQuestion, postAnswer, qaQuestion, qaQuestionKey } from '../../services/qaService'
-import { markSWRStale, markSWRStaleByPrefix, mutateSWR } from '../../services/swrCache'
+import { markSWRStale, markSWRStaleByPrefix, mutateSWR, peekSWR } from '../../services/swrCache'
 import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa, markJustAsked, seedAskedQuestion } from './qaCache'
 import { getKeyboardInset, hideKeyboard, isKeyboardOpen } from '../../services/keyboardInset'
 import { getSettings } from '../../services/userSettingsService'
+import { hapticSuccess } from '../../utils/haptics'
 import QaAnswerForm from './QaAnswerForm'
 import QaAskForm from './QaAskForm'
 import QaComposerSheet from './QaComposerSheet'
@@ -97,8 +98,8 @@ function authorFrom(user, profile) {
   }
 }
 
-function seedQuestion(id, draft, user, profile) {
-  const now = new Date().toISOString()
+function seedQuestion(row, draft, user, profile) {
+  const id = row.id
   const game = draft.game
   mutateSWR(qaQuestionKey(id), () => ({
     state: 'ok',
@@ -118,7 +119,11 @@ function seedQuestion(id, draft, user, profile) {
       game_title: game.title,
       game_cover_image_id: game.coverImageId,
       is_spoiler: draft.topic === 'story' ? true : !!draft.isSpoiler,
-      created_at: now,
+      best_answer_id: null,
+      best_picked_at: null,
+      is_own: true,
+      // The insert's own created_at, so the cached row matches the server's.
+      created_at: row.created_at,
       edited_at: null,
       asker_deleted: false,
       asker: authorFrom(user, profile),
@@ -126,6 +131,22 @@ function seedQuestion(id, draft, user, profile) {
     },
   }))
   markSWRStale(qaQuestionKey(id))
+}
+
+/**
+ * The viewer's credibility on this question, only when the cached payload
+ * already carries it (they asked it, or they already answered it). Otherwise
+ * null: the chip is a flex sibling that is never taller than the person row,
+ * so it arriving with the real value does not move anything.
+ */
+function viewerCredibility(questionId) {
+  const payload = peekSWR(qaQuestionKey(questionId))
+  if (!payload || payload.state !== 'ok') return null
+  if (payload.viewer_is_asker && payload.question?.asker_credibility) {
+    return payload.question.asker_credibility
+  }
+  const own = (payload.answers || []).find((row) => row?.is_own && row.credibility)
+  return own?.credibility || null
 }
 
 function appendAnswer(questionId, answer) {
@@ -288,9 +309,10 @@ export default function QaComposerHost() {
     await quietKeyboard()
     closeWith(() => {
       seedAskedQuestion({ userId: user?.id, row: result.data, askerUsername: profile?.username })
-      seedQuestion(id, draft, user, profile)
+      seedQuestion(result.data, draft, user, profile)
       markJustAsked()
       closeQaComposer()
+      hapticSuccess()
       showToast('Question posted', 'success', undefined, null, null, POSTED_TOAST)
       navigate(`/qa/q/${id}`)
     })
@@ -329,7 +351,7 @@ export default function QaComposerHost() {
       is_own: true,
       author_deleted: false,
       author: authorFrom(user, profile),
-      credibility: null,
+      credibility: viewerCredibility(current.questionId),
       reply_to_user_id: replyOn ? current.replyToUserId : null,
       reply_to_username: replyOn ? current.replyToUsername : null,
       helpful_count: 0,
@@ -339,6 +361,7 @@ export default function QaComposerHost() {
     closeWith(() => {
       appendAnswer(current.questionId, answer)
       closeQaComposer()
+      hapticSuccess()
       showToast('Answer posted', 'success', undefined, null, null, POSTED_TOAST)
     })
   }
@@ -483,6 +506,7 @@ export default function QaComposerHost() {
         <QaComposerSheet
           open={open}
           picking={asking && draft.step === 'pick'}
+          fill={asking}
           title={sheetTitle}
           submitLabel={editingQuestion || editingAnswer ? 'Save' : 'Post'}
           canSubmit={canSubmit}
