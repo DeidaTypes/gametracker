@@ -16,6 +16,7 @@ import {
   claimBack,
   clearSnapshots,
   holdLiveLayer,
+  notifyBackExited,
   notifyBackSettled,
   registerBackHost,
   teardownBack,
@@ -427,6 +428,12 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, navigationType, reduced])
+
+  // Unmount cleanups (useHideNav's body.nav-hidden pop) run before this
+  // layout effect in the same commit, so the nav layout is final here.
+  useLayoutEffect(() => {
+    if (!layers.some((l) => l.phase === 'exiting')) notifyBackExited()
+  }, [layers])
 
   useEffect(() => {
     if (motion.phase !== 'run') return undefined

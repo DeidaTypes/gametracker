@@ -386,6 +386,7 @@ export function beginBack({ topLayer } = {}) {
     progress: 0,
     snapKey: snap?.key || null,
     revealsNav: !!snap && !snap.navHidden,
+    destNavHidden: snap ? snap.navHidden : null,
     settleTimer: null,
     settleEndHandler: null,
   }
@@ -498,9 +499,23 @@ function detachTopLayer() {
   active.topLayer = null
 }
 
+/**
+ * body.nav-hidden is layout (bottom padding, --bottom-nav-safe-area) and only
+ * comes off when the exiting screen unmounts, after the slide. Dropping the
+ * cover before then shows the live page growing its padding in view. When the
+ * destination's nav state already matches (neither or both hide the nav)
+ * there is nothing to wait for.
+ */
+function navLayoutReady() {
+  if (holdState.exited) return true
+  const dest = active?.destNavHidden
+  if (dest == null) return true
+  return document.body.classList.contains('nav-hidden') === dest
+}
+
 function maybeRelease() {
   if (!holdState) return
-  if (!holdState.slideDone || !holdState.settled) return
+  if (!holdState.slideDone || !holdState.settled || !navLayoutReady()) return
   if (holdState.timer) clearTimeout(holdState.timer)
   holdState = null
   // One motion only: the settle is the exit. Drop the cover after the scroll
@@ -517,16 +532,19 @@ function maybeRelease() {
 
 /**
  * Start holding the reveal over the live destination page. It comes down once
- * the slide has finished AND the page has restored its scroll (App.jsx's
- * attemptRestore calls notifyBackSettled), whichever is later — so the restore
- * write happens behind an opaque cover and the lurch it used to cause is never
- * visible. Capped so a page that never settles can't hold stale content.
+ * the slide has finished, the page has restored its scroll (App.jsx's
+ * attemptRestore calls notifyBackSettled), AND the nav layout matches the
+ * destination (see navLayoutReady / notifyBackExited), whichever is last — so
+ * the restore write and the padding change happen behind an opaque cover.
+ * Capped so a page that never settles can't hold stale content; the cap must
+ * exceed App.jsx's BACK_EXIT_SAFETY_MS.
  */
 function startHold() {
   clearHold()
   holdState = {
     slideDone: false,
     settled: false,
+    exited: false,
     timer: setTimeout(() => {
       holdState = null
       destroy()
@@ -538,6 +556,13 @@ function startHold() {
 export function notifyBackSettled() {
   if (!holdState) return
   holdState.settled = true
+  maybeRelease()
+}
+
+/** Called by AnimatedRoutes once no exiting route layer is left mounted. */
+export function notifyBackExited() {
+  if (!holdState) return
+  holdState.exited = true
   maybeRelease()
 }
 
