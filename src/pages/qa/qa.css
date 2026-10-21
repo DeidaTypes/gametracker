@@ -102,7 +102,7 @@ button.qa-ask {
   gap: var(--space-8);
   height: var(--space-48);
   padding: 0 var(--space-16);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--theme-shadow);
@@ -175,7 +175,7 @@ button.qa-ask {
   position: relative;
   display: block;
   aspect-ratio: var(--cover-ratio-thumb);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--theme-fill);
   box-shadow:
@@ -228,7 +228,7 @@ button.qa-ask {
 .qa-row__cover {
   width: var(--space-48);
   height: var(--space-64);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   flex: none;
 }
 
@@ -374,7 +374,7 @@ button.qa-ask {
   gap: var(--space-4);
   height: var(--space-48);
   padding: var(--space-4);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--qa-seg-track);
   border: 1px solid var(--border-subtle);
 }
@@ -385,7 +385,7 @@ button.qa-ask {
 
 .qa-seg__btn {
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
@@ -394,6 +394,9 @@ button.qa-ask {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
   cursor: pointer;
 }
 
@@ -404,6 +407,7 @@ button.qa-ask {
 }
 
 .qa-seg__count {
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--text-tertiary);
 }
@@ -514,7 +518,7 @@ button.qa-ask {
 .qa-qrow__cover {
   width: var(--space-48);
   height: var(--space-64);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   flex: none;
   background: var(--theme-fill);
@@ -552,7 +556,7 @@ button.qa-spoil-pv {
   height: 30px;
   padding: 0 var(--space-12);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--theme-fill);
   color: var(--text-secondary);
   font-family: inherit;
@@ -989,21 +993,6 @@ button.qa-spoil-pv {
   cursor: pointer;
 }
 
-.qa-seg__pill {
-  min-width: var(--space-20);
-  height: var(--space-20);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-full);
-  background: var(--theme-journal-soft);
-  color: var(--accent-journal-ink);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .qa-count-chip {
   position: absolute;
   left: var(--space-4);
@@ -1080,7 +1069,7 @@ button.qa-spoil-pv {
   height: 52px;
   padding: 0 var(--space-20);
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--theme-grad-list);
   color: var(--theme-on-grad);
   font-family: inherit;

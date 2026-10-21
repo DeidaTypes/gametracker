@@ -126,7 +126,9 @@ function FilterSwitch({ filter, helpCount, onSelect }) {
         onClick={() => onSelect('unanswered')}
       >
         Unanswered
-        {helpCount > 0 ? <span className="qa-seg__pill">{helpCount}</span> : null}
+        {helpCount > 0 ? (
+          <span className="qa-seg__count qa-seg__count--soc">{helpCount}</span>
+        ) : null}
       </button>
     </div>
   )

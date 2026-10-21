@@ -114,7 +114,8 @@ export function QaAnswerRow({ answer, onReply, onHelpful, onMore, canMark, onMar
 
 function AnswerBody({ answer }) {
   if (!answer.body) return null
-  if (answer.is_spoiler) {
+  const own = answer.is_own === true
+  if (answer.is_spoiler && !own) {
     return (
       <QaSpoilerBlock>
         <p className="qa-prose text-body">{answer.body}</p>

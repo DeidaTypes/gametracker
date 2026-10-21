@@ -607,7 +607,7 @@ export default function QaQuestion() {
 
             {question.body ? (
               <div className="qa-q-body">
-                {question.is_spoiler ? (
+                {question.is_spoiler && !viewerIsAsker ? (
                   <QaSpoilerBlock>
                     <p className="qa-prose text-body">{question.body}</p>
                   </QaSpoilerBlock>
