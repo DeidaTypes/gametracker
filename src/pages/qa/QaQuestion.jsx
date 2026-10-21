@@ -8,8 +8,10 @@ import {
   EyeOff,
   Flag,
   Link2,
+  MapPin,
   MessageCircleQuestion,
   Pencil,
+  Share,
   Trash2,
   Upload,
   Users,
@@ -38,7 +40,7 @@ import {
   toggleStuck,
   unmarkBest,
 } from '../../services/qaService'
-import { hapticImpact } from '../../utils/haptics'
+import { hapticImpact, hapticSuccess } from '../../utils/haptics'
 import {
   applyBest,
   removeAnswerLocal,
@@ -56,13 +58,15 @@ import {
 } from './QaAnswerBlock'
 import QaPushBar from './QaPushBar'
 import QaSpoilerBlock from './QaSpoilerBlock'
-import { QaPlainRows, QaQuestionBlock } from './QaPlaceholders'
 import {
-  bestAnswerHeadline,
-  displayNameFor,
-  formatQuestionTags,
-  questionStatusPill,
-} from './qaFormat'
+  QaAnswerRowsPlaceholder,
+  QaBodyPlaceholder,
+  QaContextPlaceholder,
+  QaFootPlaceholder,
+  QaHeadPlaceholder,
+  QaPersonPlaceholder,
+} from './QaPlaceholders'
+import { bestAnswerHeadline, displayNameFor, topicLabel } from './qaFormat'
 import './qa.css'
 
 const INITIAL_ANSWERS = 5
@@ -89,30 +93,113 @@ function leaveQuestion(navigate) {
   else navigate('/qa')
 }
 
+/**
+ * `answerCount` is null when it isn't known yet (a seed without a count), so
+ * an open question shows no pill rather than a guessed one.
+ */
+function statusPill({ status, viewerIsAsker, answerCount }) {
+  if (status === 'best') return { kind: 'answered', label: 'Answered' }
+  if (status === 'community_pick') return { kind: 'community', label: 'Community pick' }
+  if (status !== 'open' || answerCount == null) return null
+  if (answerCount === 0) return { kind: 'open', label: 'No answers yet' }
+  if (viewerIsAsker) {
+    return { kind: 'waiting', label: `${answerCount} answer${answerCount === 1 ? '' : 's'}` }
+  }
+  return null
+}
+
+const PILL_CLASS = {
+  answered: ' qa-pill--review',
+  community: ' qa-pill--review',
+  waiting: ' qa-pill--primary',
+  open: ' qa-pill--journal',
+}
+
 function StatusPill({ pill, spoiler }) {
+  if (!pill && !spoiler) return null
   return (
     <span className="qa-ctx__pills">
       {spoiler ? (
-        <span className="qa-chip">
-          <EyeOff size={12} aria-hidden="true" />
+        <span className="qa-pill">
+          <EyeOff size={13} aria-hidden="true" />
           Spoiler
         </span>
       ) : null}
       {pill ? (
-        <span
-          className={`qa-chip${
-            pill.kind === 'answered'
-              ? ' qa-chip--acc'
-              : pill.kind === 'community' || pill.kind === 'waiting' || pill.kind === 'open'
-                ? ' qa-chip--soc'
-                : ''
-          }`}
-        >
-          {pill.kind === 'answered' ? <Check size={12} strokeWidth={3} aria-hidden="true" /> : null}
+        <span className={`qa-pill${PILL_CLASS[pill.kind] || ''}`}>
+          {pill.kind === 'answered' ? <Check size={13} strokeWidth={2.6} aria-hidden="true" /> : null}
           {pill.label}
         </span>
       ) : null}
     </span>
+  )
+}
+
+function QuestionTags({ question }) {
+  const topic = topicLabel(question.topic)
+  if (!topic && !question.platform && !question.location) return null
+  return (
+    <div className="qa-tags">
+      {topic ? <span className="qa-tag qa-tag--topic">{topic}</span> : null}
+      {question.platform ? <span className="qa-tag">{question.platform}</span> : null}
+      {question.location ? (
+        <span className="qa-tag">
+          <MapPin size={12} aria-hidden="true" />
+          {question.location}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+function ContextRow({ question, pill }) {
+  const coverUrl = question.game_cover_image_id
+    ? coverUrlFromImageId(question.game_cover_image_id, 'cover_small')
+    : null
+  const inner = (
+    <>
+      {coverUrl ? (
+        <img src={coverUrl} alt="" className="qa-ctx__cover" />
+      ) : (
+        <span className="qa-ctx__cover qa-fill" aria-hidden="true" />
+      )}
+      <span className="qa-ctx__title">{question.game_title}</span>
+      <ChevronRight size={14} aria-hidden="true" />
+    </>
+  )
+  return (
+    <div className="qa-ctx">
+      {question.igdb_game_id != null ? (
+        <Link to={`/qa/game/${question.igdb_game_id}`} className="qa-ctx__game">
+          {inner}
+        </Link>
+      ) : (
+        <span className="qa-ctx__game">{inner}</span>
+      )}
+      <StatusPill pill={pill} spoiler={question.is_spoiler === true} />
+    </div>
+  )
+}
+
+function NoAnswersCard({ question }) {
+  return (
+    <div className="qa-noans">
+      <span className="qa-noans__icon" aria-hidden="true">
+        <MessageCircleQuestion size={18} />
+      </span>
+      <div className="qa-noans__col">
+        <h3 className="qa-noans__title">No answers yet</h3>
+        {question.game_title ? (
+          <p className="qa-noans__body text-caption">
+            {`Players who've played ${question.game_title} see it at the top of their Unanswered list.`}
+          </p>
+        ) : null}
+        <button type="button" className="qa-act-btn" onClick={() => shareQaQuestion(question)}>
+          <Share size={15} aria-hidden="true" />
+          Share question
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -129,18 +216,15 @@ function MovingAnswer({ id, reduced, children }) {
   )
 }
 
-function stuckCopy(count) {
+function playersCount(count) {
   const n = Number(count) || 0
-  if (n <= 0) return null
-  const people = n === 1 ? '1 player' : `${n} players`
-  const verb = n === 1 ? 'is stuck here' : 'are stuck here'
-  return { people, verb }
+  return n === 1 ? '1 player' : `${n} players`
 }
 
 export default function QaQuestion() {
   const { questionId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { profile } = useAuth()
   const { reduced } = useMotionPreference()
   const hides = useQaHides()
   useHideNav()
@@ -160,12 +244,14 @@ export default function QaQuestion() {
   const opToken = useRef(new Map())
   const writeChain = useRef(Promise.resolve())
 
-  const pending = data === undefined && !error
   const state = data?.state
   const payload = state === 'ok' ? data : null
-  const question = payload?.question
+  const seed = state === 'seed' ? data : null
+  const loaded = !!payload
+  const pending = !loaded && (data === undefined || !!seed) && !error
+  const question = payload?.question ?? seed?.question ?? null
   const answers = payload?.answers ?? []
-  const status = payload?.status
+  const status = payload ? payload.status : seed?.status
   const viewerIsAsker = payload?.viewer_is_asker === true
   const stuck = payload?.stuck
   const stuckCount = stuck?.count ?? 0
@@ -210,16 +296,13 @@ export default function QaQuestion() {
   const hasAnyAnswers = answers.some((answer) => answer && answer.id)
   const canMark = viewerIsAsker && status === 'open' && liveCount > 0
 
-  const pill = question
-    ? questionStatusPill({
-        status,
-        viewerIsAsker,
-        answerCount: liveCount,
-      })
+  const seedCount = seed?.answer_count != null && Number.isFinite(Number(seed.answer_count))
+    ? Number(seed.answer_count)
     : null
+  const answerCount = loaded ? liveCount : seedCount
 
-  const coverUrl = question?.game_cover_image_id
-    ? coverUrlFromImageId(question.game_cover_image_id, 'cover_small')
+  const pill = question
+    ? statusPill({ status, viewerIsAsker, answerCount })
     : null
 
   const bestHeadline =
@@ -233,7 +316,7 @@ export default function QaQuestion() {
 
   const composerText = viewerIsAsker
     ? 'Figured it out? Answer it yourself'
-    : 'Add your answer…'
+    : 'Answer this question…'
 
   const bump = (id) => {
     const next = (opToken.current.get(id) || 0) + 1
@@ -292,6 +375,7 @@ export default function QaQuestion() {
     const nextOn = !before.on
     const nextCount = Math.max(0, before.count + (nextOn ? 1 : -1))
     setStuck(question.id, { on: nextOn, count: nextCount })
+    hapticImpact('Light')
     enqueue(async () => {
       const result = await toggleStuck(question.id, {
         igdbGameId: question.igdb_game_id,
@@ -311,6 +395,7 @@ export default function QaQuestion() {
     const beforeId = question.best_answer_id || null
     const beforeAnswer = answers.find((row) => row.id === beforeId) || null
     applyBest(question.id, answer.id, { answer, liveCount })
+    hapticSuccess()
     enqueue(async () => {
       const result = await markBest(question.id, answer.id, { igdbGameId: question.igdb_game_id })
       if (opToken.current.get('best') !== token) return
@@ -324,6 +409,7 @@ export default function QaQuestion() {
       onClick: () => {
         const undoToken = bump('best')
         applyBest(question.id, beforeId, { answer: beforeAnswer, liveCount })
+        hapticImpact('Light')
         enqueue(async () => {
           const undoResult = beforeId
             ? await markBest(question.id, beforeId, { igdbGameId: question.igdb_game_id })
@@ -337,11 +423,12 @@ export default function QaQuestion() {
   }
 
   const onUnmark = async () => {
-    if (!question) return
+    if (!question || !question.best_answer_id) return
     const token = bump('best')
-    const beforeId = question.best_answer_id || null
+    const beforeId = question.best_answer_id
     const beforeAnswer = answers.find((row) => row.id === beforeId) || null
     applyBest(question.id, null, { liveCount })
+    hapticImpact('Light')
     enqueue(async () => {
       const result = await unmarkBest(question.id, { igdbGameId: question.igdb_game_id })
       if (opToken.current.get('best') !== token) return
@@ -360,6 +447,7 @@ export default function QaQuestion() {
       return
     }
     removeQaQuestionFromLists(question.id)
+    hapticImpact('Medium')
     showToast('Question deleted', 'success')
     leaveQuestion(navigate)
   }
@@ -375,6 +463,7 @@ export default function QaQuestion() {
       return
     }
     removeAnswerLocal(question.id, answer.id)
+    hapticImpact('Medium')
     showToast('Answer deleted', 'success')
   }
 
@@ -397,6 +486,7 @@ export default function QaQuestion() {
     if (!target?.id) return
     if (target.type === 'question') hideQaQuestion(target.id)
     else hideQaAnswer(target.id)
+    hapticImpact('Medium')
     showToast("Reported. It's hidden for you.", 'success', 5000, {
       label: 'Undo',
       onClick: () => {
@@ -571,148 +661,165 @@ export default function QaQuestion() {
     )
   }
 
-  const noAnswers = liveCount === 0 && !pending
-  const stuckLine = stuckCopy(stuckCount)
-  const showStuck = !!question && !viewerIsAsker
+  const showSeedEmpty = !loaded && seedCount === 0 && status === 'open'
+  const noAnswers = loaded ? liveCount === 0 : showSeedEmpty
+  const placeholderAnswers = !loaded && !showSeedEmpty
+    ? Math.min(Math.max(seedCount ?? 2, 1), 3)
+    : 0
+  const showWaiting = loaded && pill?.kind === 'waiting'
 
   return (
     <div className="qa-screen qa-screen--push qa-screen--question" aria-busy={pending || undefined}>
-      <QaPushBar onBack={() => navigate(-1)} onMore={question ? () => setMenu({ kind: 'question' }) : undefined} />
+      <QaPushBar
+        onBack={() => navigate(-1)}
+        onMore={() => { if (loaded) setMenu({ kind: 'question' }) }}
+      />
 
       <div className="qa-q-scroll">
-        {pending && !question ? (
-          <div className="qa-push-body" aria-hidden="true">
-            <QaQuestionBlock />
-            <QaPlainRows count={3} />
-          </div>
-        ) : null}
-
-        {question ? (
+        {question || pending ? (
           <div className="qa-push-body">
-            <div className="qa-ctx">
-              <Link to={`/qa/game/${question.igdb_game_id}`} className="qa-ctx__game text-caption">
-                {coverUrl ? <img src={coverUrl} alt="" className="qa-ctx__cover" /> : null}
-                <span>{question.game_title}</span>
-                <ChevronRight size={14} aria-hidden="true" />
-              </Link>
-              <StatusPill pill={pill} spoiler={question.is_spoiler} />
-            </div>
+            {question ? <ContextRow question={question} pill={pill} /> : <QaContextPlaceholder />}
 
-            <h1 className="text-heading qa-q-title">{question.title}</h1>
-            <p className="text-caption qa-q-tags">{formatQuestionTags(question)}</p>
+            <article className="qa-qcard">
+              {loaded ? (
+                <QaAskerRow question={question} viewerIsAsker={viewerIsAsker} />
+              ) : (
+                <QaPersonPlaceholder large />
+              )}
 
-            <div className="qa-q-asker">
-              <QaAskerRow question={question} viewerIsAsker={viewerIsAsker} />
-            </div>
+              {question?.title ? (
+                <>
+                  <h1 className="text-heading qa-qcard__title">{question.title}</h1>
+                  <QuestionTags question={question} />
+                </>
+              ) : (
+                <QaHeadPlaceholder />
+              )}
 
-            {question.body ? (
-              <div className="qa-q-body">
-                {question.is_spoiler && !viewerIsAsker ? (
+              {!loaded ? (
+                <QaBodyPlaceholder lines={2} />
+              ) : question.body ? (
+                question.is_spoiler && !viewerIsAsker ? (
                   <QaSpoilerBlock>
                     <p className="qa-prose text-body">{question.body}</p>
                   </QaSpoilerBlock>
                 ) : (
                   <p className="qa-prose text-body">{question.body}</p>
-                )}
-              </div>
-            ) : null}
+                )
+              ) : null}
 
-            {pill?.kind === 'waiting' ? (
-              <div className="qa-banner" role="note">
+              <div className="qa-qfoot">
+                {!loaded ? (
+                  <QaFootPlaceholder />
+                ) : viewerIsAsker ? (
+                  <p className="qa-qfoot__meta">
+                    {stuckCount > 0 ? (
+                      <>
+                        <strong>{playersCount(stuckCount)}</strong>
+                        {' stuck with you'}
+                      </>
+                    ) : (
+                      'Only you so far'
+                    )}
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`qa-act-btn${viewerStuck ? ' qa-act-btn--on' : ''}`}
+                      aria-pressed={viewerStuck}
+                      onClick={onStuck}
+                    >
+                      <Users size={15} aria-hidden="true" />
+                      Stuck here too
+                    </button>
+                    {stuckCount > 0 ? (
+                      <p className="qa-qfoot__meta">
+                        <strong>{playersCount(stuckCount)}</strong>
+                        {' stuck'}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+                <button
+                  type="button"
+                  className="qa-qfoot__share"
+                  aria-label="Share question"
+                  disabled={!question}
+                  onClick={() => shareQaQuestion(question)}
+                >
+                  <Share size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </article>
+
+            <div className="qa-adiv">
+              <span className="qa-adiv__label">
+                Answers
+                {answerCount > 0 ? (
+                  <>
+                    {' · '}
+                    <strong>{answerCount}</strong>
+                  </>
+                ) : null}
+              </span>
+              <span className="qa-adiv__line" aria-hidden="true" />
+            </div>
+
+            {noAnswers && question ? <NoAnswersCard question={question} /> : null}
+
+            {placeholderAnswers > 0 ? <QaAnswerRowsPlaceholder count={placeholderAnswers} /> : null}
+
+            {showWaiting ? (
+              <div className="qa-wait" role="note">
                 <Award size={18} aria-hidden="true" />
                 <span>Got your answer? Mark it as best so the next player finds it fast.</span>
               </div>
             ) : null}
 
-            {showStuck ? (
-              <div className="qa-stuck-row">
-                <button
-                  type="button"
-                  className={`qa-act-btn${viewerStuck ? ' qa-act-btn--on' : ''}`}
-                  aria-pressed={viewerStuck}
-                  onClick={onStuck}
-                >
-                  <Users size={16} aria-hidden="true" />
-                  Stuck here too
-                </button>
-                {stuckLine ? (
-                  <p className="text-caption qa-stuck-row__meta">
-                    <strong>{stuckLine.people}</strong>
-                    {` ${stuckLine.verb}`}
-                  </p>
-                ) : null}
+            {loaded && bestAnswer ? (
+              <MovingAnswer id={bestAnswer.id} reduced={reduced}>
+                <QaBestAnswerCard
+                  answer={bestAnswer}
+                  headline={bestHeadline}
+                  {...answerActions}
+                />
+              </MovingAnswer>
+            ) : null}
+
+            {loaded && flatOthers.length > 0 ? (
+              <div className="qa-agroup">
+                {flatOthers.map((answer) => (
+                  <MovingAnswer key={answer.id} id={answer.id} reduced={reduced}>
+                    <QaAnswerRow answer={answer} {...answerActions} />
+                  </MovingAnswer>
+                ))}
               </div>
             ) : null}
 
-            <div className="qa-divider" />
-
-            {noAnswers ? (
-              <EmptyState
-                size="compact"
-                icon={MessageCircleQuestion}
-                title="No answers yet"
-                body={
-                  question.game_title
-                    ? `Players who've played ${question.game_title} see it at the top of their Unanswered list.`
-                    : undefined
-                }
-                cta="Share question"
-                onCta={() => shareQaQuestion(question)}
-                ctaVariant="secondary"
-              />
-            ) : (
-              <>
-                {bestAnswer ? (
-                  <MovingAnswer id={bestAnswer.id} reduced={reduced}>
-                    <QaBestAnswerCard
-                      answer={bestAnswer}
-                      headline={bestHeadline}
-                      {...answerActions}
-                    />
-                  </MovingAnswer>
-                ) : null}
-
-                {otherAnswers.length > 0 ? (
-                  <div className="qa-answers-head">
-                    <h2 className="text-title">
-                      {bestAnswer
-                        ? `${otherAnswers.length} more answer${otherAnswers.length === 1 ? '' : 's'}`
-                        : `${otherAnswers.length} answer${otherAnswers.length === 1 ? '' : 's'}`}
-                    </h2>
-                    <span className="qa-link-btn text-caption">Most helpful</span>
-                  </div>
-                ) : null}
-
-                {flatOthers.map((answer, i) => (
-                  <div key={answer.id}>
-                    {i > 0 || bestAnswer ? <div className="qa-divider" /> : null}
-                    <MovingAnswer id={answer.id} reduced={reduced}>
-                      <QaAnswerRow answer={answer} {...answerActions} />
-                    </MovingAnswer>
-                  </div>
-                ))}
-
-                {!showAllAnswers && hiddenOthers > 0 ? (
-                  <button
-                    type="button"
-                    className="qa-show-more text-caption"
-                    onClick={() => setShowAllAnswers(true)}
-                  >
-                    Show {hiddenOthers} more answer{hiddenOthers === 1 ? '' : 's'}
-                  </button>
-                ) : null}
-              </>
-            )}
+            {loaded && !showAllAnswers && hiddenOthers > 0 ? (
+              <button
+                type="button"
+                className="qa-show-more text-caption"
+                onClick={() => setShowAllAnswers(true)}
+              >
+                Show {hiddenOthers} more answer{hiddenOthers === 1 ? '' : 's'}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
 
       <div className="kb-composer-bar composer-bar qa-composer-dock">
         <div className="composer__row">
-          <Avatar user={user} size="sm" className="qa-composer-dock__av" />
-          <button type="button" className="qa-fake-in text-body" onClick={() => openAnswer(null)}>
-            <span>{composerText}</span>
-            <span className="qa-fake-in__send" aria-hidden="true">
+          <Avatar user={profile} size="sm" className="qa-composer-dock__av" />
+          <button
+            type="button"
+            className="composer__shell qa-dock-shell"
+            onClick={() => openAnswer(null)}
+          >
+            <span className="qa-dock-shell__text">{composerText}</span>
+            <span className="composer__send" aria-hidden="true">
               <LuSend size={14} />
             </span>
           </button>

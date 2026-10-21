@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EyeOff } from 'lucide-react'
+import { hapticImpact } from '../../utils/haptics'
 import '../../components/SpoilerOverlay.css'
 
 /** Q&A spoiler body — design C7 label with Lucide EyeOff. Per item, per visit. */
@@ -21,6 +22,7 @@ export default function QaSpoilerBlock({ children, className = '' }) {
         onClick={(e) => {
           e.stopPropagation()
           e.preventDefault()
+          hapticImpact('Light')
           setRevealed(true)
         }}
         aria-label="Spoiler · Tap to reveal"

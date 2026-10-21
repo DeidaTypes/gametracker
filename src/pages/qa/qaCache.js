@@ -3,6 +3,7 @@ import {
   markSWRStaleByPrefix,
   mutateSWR,
   mutateSWRByPrefix,
+  peekSWR,
 } from '../../services/swrCache'
 import { qaGameKey, qaHomeKey, qaMineKey, qaQuestionKey } from '../../services/qaService'
 
@@ -186,6 +187,44 @@ export function seedAskedQuestion({ userId, row, askerUsername }) {
   markSWRStale(homeKey)
   markSWRStale(mineKey)
   for (const { key } of gameKeys) markSWRStale(key)
+}
+
+/* ------------------------------------------------------------------ */
+/* Seed the question screen from the row that opens it                 */
+/* ------------------------------------------------------------------ */
+
+const ROW_QUESTION_FIELDS = [
+  'title',
+  'game_title',
+  'game_cover_image_id',
+  'igdb_game_id',
+  'topic',
+  'platform',
+  'is_spoiler',
+  'created_at',
+]
+
+/**
+ * Give qa:question:{id} the list row's fields before the push, so the slide's
+ * first frame already has the title, game and tags. `state: 'seed'` keeps
+ * every writer that expects the full qa_question payload (state 'ok') off it.
+ * A key that already holds anything is left alone. Fields the row doesn't
+ * carry stay absent. The entry is marked stale so the screen fetches the
+ * real payload.
+ */
+export function seedQaQuestionFromRow(item) {
+  if (!item?.id) return
+  const key = qaQuestionKey(item.id)
+  if (peekSWR(key) !== undefined) return
+  const question = { id: item.id }
+  for (const field of ROW_QUESTION_FIELDS) {
+    if (item[field] !== undefined) question[field] = item[field]
+  }
+  const seed = { state: 'seed', question }
+  if (item.status !== undefined) seed.status = item.status
+  if (item.answer_count !== undefined) seed.answer_count = item.answer_count
+  mutateSWR(key, seed)
+  markSWRStale(key)
 }
 
 /** Patch the open question. No-ops when that screen has never loaded. */

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Check, EyeOff } from 'lucide-react'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaQuestion } from '../../services/qaService'
+import { hapticImpact } from '../../utils/haptics'
+import { seedQaQuestionFromRow } from './qaCache'
 import {
   formatAnsweredListStats,
   formatRowMeta,
@@ -59,6 +61,7 @@ function SpoilerPreview({ item, onRevealed }) {
         live[0]
       const line = firstLine(best?.body)
       if (line) {
+        hapticImpact('Light')
         setText(line)
         onRevealed?.()
       }
@@ -123,7 +126,12 @@ export default function QaQuestionListRow({
 
   return (
     <div className={`qa-qrow${showCover ? '' : ' qa-qrow--plain'}`}>
-      <Link className="qa-qrow__hit" to={`/qa/q/${item.id}`} aria-label={item.title} />
+      <Link
+        className="qa-qrow__hit"
+        to={`/qa/q/${item.id}`}
+        aria-label={item.title}
+        onClick={() => seedQaQuestionFromRow(item)}
+      />
       <div className="qa-qrow__face">
         {showCover ? <RowCover item={item} /> : null}
         <span className="qa-qrow__col">
