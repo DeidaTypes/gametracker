@@ -23,6 +23,8 @@
   font-weight: var(--font-weight-medium);
   line-height: 1.3;
   max-width: min(90vw, 380px);
+  /* Set per toast by showToast({ offsetTop }). Unset = no shift. */
+  margin-top: var(--toast-offset-top, 0px);
   box-shadow: var(--shadow-lg);
   animation: toast-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
 }

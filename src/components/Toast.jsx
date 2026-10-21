@@ -14,9 +14,21 @@ let _addToast = () => {}
  * @param {React.ComponentType<{ size?: number }> | null} [icon] - optional lucide-react icon
  *   component. When provided it replaces the default svg glyph — used by
  *   the badge unlock watcher so each celebration shows its own badge icon.
+ * @param {{ offsetTop?: number | string }} [options] - optional.
+ *   `offsetTop` pushes this toast down from its default spot (a number is px,
+ *   a string is any CSS length, e.g. 'calc(var(--space-48) + var(--space-4))').
+ *   Omit it and the toast sits where it always has.
  */
-export function showToast(message, type = 'error', duration = 3500, action = null, icon = null) {
-  _addToast({ message, type, duration, action, icon, id: Date.now() + Math.random() })
+export function showToast(message, type = 'error', duration = 3500, action = null, icon = null, options = null) {
+  _addToast({
+    message,
+    type,
+    duration,
+    action,
+    icon,
+    offsetTop: options?.offsetTop ?? null,
+    id: Date.now() + Math.random(),
+  })
 }
 
 function ToastItem({ toast, onDone }) {
@@ -40,9 +52,17 @@ function ToastItem({ toast, onDone }) {
   }
 
   const CustomIcon = toast.icon
+  const offset = toast.offsetTop
+  const style = offset == null
+    ? undefined
+    : { '--toast-offset-top': typeof offset === 'number' ? `${offset}px` : offset }
 
   return (
-    <div className={`toast toast--${toast.type}${exiting ? ' toast--exiting' : ''}`} role="alert">
+    <div
+      className={`toast toast--${toast.type}${exiting ? ' toast--exiting' : ''}`}
+      style={style}
+      role="alert"
+    >
       {CustomIcon ? (
         <span className="toast-icon" aria-hidden="true">
           <CustomIcon size={18} />

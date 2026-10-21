@@ -1,9 +1,192 @@
 import {
+  markSWRStale,
   markSWRStaleByPrefix,
   mutateSWR,
   mutateSWRByPrefix,
 } from '../../services/swrCache'
-import { qaQuestionKey } from '../../services/qaService'
+import { qaGameKey, qaHomeKey, qaMineKey, qaQuestionKey } from '../../services/qaService'
+
+/* ------------------------------------------------------------------ */
+/* Just asked                                                          */
+/* ------------------------------------------------------------------ */
+
+// Set when the viewer posts a question, read once by the Q&A tab so it opens
+// on Unanswered (a zero-answer question only ever appears there). Module
+// state, not the URL.
+let justAsked = false
+const justAskedListeners = new Set()
+
+export function markJustAsked() {
+  justAsked = true
+  for (const fn of [...justAskedListeners]) {
+    try {
+      fn()
+    } catch (err) {
+      console.error('[qaCache] justAsked listener failed:', err)
+    }
+  }
+}
+
+/** True at most once per post: reads the flag and clears it. */
+export function consumeJustAsked() {
+  const was = justAsked
+  justAsked = false
+  return was
+}
+
+/** A mounted Q&A tab hears about a post while it is still on screen. */
+export function subscribeJustAsked(fn) {
+  justAskedListeners.add(fn)
+  return () => justAskedListeners.delete(fn)
+}
+
+/* ------------------------------------------------------------------ */
+/* Seed the list caches with a question the viewer just posted         */
+/* ------------------------------------------------------------------ */
+
+const HOME_NEWEST_LIMIT = 20 // qa_home: limit 20
+const MINE_ASKED_LIMIT = 100 // qa_mine: limit 100
+const GAME_FILTERS = ['answered', 'unanswered']
+const GAME_SORTS = ['helpful', 'newest']
+
+function asArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
+/**
+ * private.qa_item() for a question nobody has touched yet. Every value is
+ * either the server's own row (the insert's RETURNING) or fixed by the
+ * database for a new question: qa_status() is 'open' (not best, under 7
+ * days), the answer count is 0, and unanswered_label is 'no_answers'.
+ * Returns null unless the row has every column, so nothing is invented.
+ */
+function listItemFrom(row) {
+  if (!row || typeof row !== 'object') return null
+  const required = ['id', 'title', 'igdb_game_id', 'game_title', 'topic', 'created_at']
+  if (required.some((field) => !row[field])) return null
+  if (!('platform' in row) || !('game_cover_image_id' in row)) return null
+  if (typeof row.is_spoiler !== 'boolean') return null
+  return {
+    id: row.id,
+    title: row.title,
+    igdb_game_id: row.igdb_game_id,
+    game_title: row.game_title,
+    game_cover_image_id: row.game_cover_image_id,
+    platform: row.platform,
+    topic: row.topic,
+    is_spoiler: row.is_spoiler,
+    created_at: row.created_at,
+    status: 'open',
+    answer_count: 0,
+    helpful_on_best: null,
+    best_preview: null,
+    unanswered_label: 'no_answers',
+  }
+}
+
+function bumpMostAsked(list, gameId) {
+  if (!Array.isArray(list)) return list
+  return list.map((game) => (
+    game?.igdb_game_id === gameId && Number.isFinite(Number(game.question_count))
+      ? { ...game, question_count: Number(game.question_count) + 1 }
+      : game
+  ))
+}
+
+/** qa_game header after one more open question (same arithmetic as the RPC). */
+function bumpGameHeader(header) {
+  if (!header || typeof header !== 'object') return header
+  const total = Number(header.question_count)
+  const open = Number(header.unanswered_count)
+  const done = Number(header.answered_count)
+  if (![total, open, done].every(Number.isFinite)) return header
+  const nextTotal = total + 1
+  return {
+    ...header,
+    question_count: nextTotal,
+    unanswered_count: open + 1,
+    answered_pct: Math.round((100 * done) / nextTotal),
+  }
+}
+
+/**
+ * Put a just-posted question into the list caches that already exist for
+ * this viewer: qa:home, qa:mine, and the game's qa:game keys. A key that has
+ * never loaded is left alone (never created). Every key is marked stale
+ * again afterwards so the next read replaces the seed with the real rows.
+ *
+ * `row` is the insert's RETURNING row. A key whose row shape we cannot be
+ * certain of is not seeded:
+ *   - no complete row  -> nothing is seeded
+ *   - no asker username -> qa:game keys are skipped (their rows carry it)
+ *
+ * qa:game 'helpful' sort ranks open questions by their top answer's helpful
+ * count, which a list row does not carry. The new row goes in front of the
+ * first zero-answer row (after rows that have answers); the revalidation that
+ * follows settles any tie. 'newest' is exact: it is the first row.
+ */
+export function seedAskedQuestion({ userId, row, askerUsername }) {
+  const item = listItemFrom(row)
+  const homeKey = qaHomeKey(userId)
+  const mineKey = qaMineKey(userId)
+  const gameId = item?.igdb_game_id
+  const gameKeys = gameId
+    ? GAME_FILTERS.flatMap((filter) => GAME_SORTS.map((sort) => ({
+        key: qaGameKey(gameId, filter, sort),
+        filter,
+        sort,
+      })))
+    : []
+
+  if (item) {
+    mutateSWR(homeKey, (current) => {
+      if (!current || typeof current !== 'object' || Array.isArray(current)) return current
+      if (!Array.isArray(current.newest_open)) return current
+      const rest = current.newest_open.filter((existing) => existing?.id !== item.id)
+      return {
+        ...current,
+        newest_open: [item, ...rest].slice(0, HOME_NEWEST_LIMIT),
+        most_asked: bumpMostAsked(current.most_asked, item.igdb_game_id),
+      }
+    })
+
+    mutateSWR(mineKey, (current) => {
+      if (!current || typeof current !== 'object' || !Array.isArray(current.asked)) return current
+      const rest = current.asked.filter((existing) => existing?.id !== item.id)
+      return {
+        ...current,
+        asked: [{ ...item, new_answer_count: 0 }, ...rest].slice(0, MINE_ASKED_LIMIT),
+      }
+    })
+
+    if (typeof askerUsername === 'string' && askerUsername) {
+      const gameItem = { ...item, asker_username: askerUsername }
+      for (const { key, filter, sort } of gameKeys) {
+        mutateSWR(key, (current) => {
+          if (!current || typeof current !== 'object' || !Array.isArray(current.items)) return current
+          const header = bumpGameHeader(current.header)
+          if (filter !== 'unanswered') return { ...current, header }
+          const rest = current.items.filter((existing) => existing?.id !== item.id)
+          let at = 0
+          if (sort === 'helpful') {
+            const firstEmpty = rest.findIndex((existing) => Number(existing?.answer_count) === 0)
+            at = firstEmpty === -1 ? rest.length : firstEmpty
+          }
+          return {
+            ...current,
+            header,
+            items: [...rest.slice(0, at), gameItem, ...rest.slice(at)],
+          }
+        })
+      }
+    }
+  }
+
+  // mutateSWR stamps the entry fresh. Undo that so the next read refetches.
+  markSWRStale(homeKey)
+  markSWRStale(mineKey)
+  for (const { key } of gameKeys) markSWRStale(key)
+}
 
 /** Patch the open question. No-ops when that screen has never loaded. */
 export function writeQaQuestion(id, updater) {

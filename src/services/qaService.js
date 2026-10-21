@@ -237,7 +237,10 @@ export async function askQuestion({ game, topic, title, body = '', platform = nu
   const { data, error } = await supabase
     .from('qa_questions')
     .insert(row)
-    .select('id, igdb_game_id, game_title, game_cover_image_id')
+    // The extra columns are the server's own post-trigger values (trimmed
+    // title/platform, forced spoiler flag, created_at = now()). The post flow
+    // seeds the list caches from this row instead of guessing them.
+    .select('id, igdb_game_id, game_title, game_cover_image_id, platform, topic, title, is_spoiler, created_at')
     .single()
 
   const classified = await classifyWriteError(error, { kind: 'question' })

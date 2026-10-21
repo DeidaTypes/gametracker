@@ -1,11 +1,14 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Inbox, MessageCircle, MessageCircleQuestion, Plus, Search, WifiOff } from 'lucide-react'
+import EmptyState from '../../components/EmptyState'
 import PullToRefresh from '../../components/PullToRefresh'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaHome, qaHomeKey } from '../../services/qaService'
+import { isSWRFresh, peekSWR } from '../../services/swrCache'
+import { consumeJustAsked, subscribeJustAsked } from './qaCache'
 import { openQaAsk } from './qaComposer'
 import { useQaHides } from './qaHides'
 import QaQuestionListRow from './QaQuestionListRow'
@@ -159,8 +162,22 @@ export default function QaHome() {
   const { user } = useAuth()
   const online = useOnline()
   const key = qaHomeKey(user?.id)
-  const { data, error, refresh } = useCachedResource(key, qaHome, { enabled: !!user?.id })
-  const [filter, setFilter] = useState(rememberedFilter)
+  const { data, error, refresh, isRevalidating } = useCachedResource(key, qaHome, { enabled: !!user?.id })
+  const hides = useQaHides()
+  const [filter, setFilter] = useState(() => {
+    // A question was just posted: it has no answers, so it can only be on
+    // Unanswered. Read-and-clear once; the remembered filter takes over after.
+    if (consumeJustAsked()) rememberedFilter = 'unanswered'
+    return rememberedFilter
+  })
+
+  // This tab can still be mounted (the layer the push slides away from) when
+  // the post lands, so it hears about it too.
+  useEffect(() => subscribeJustAsked(() => {
+    if (!consumeJustAsked()) return
+    rememberedFilter = 'unanswered'
+    setFilter('unanswered')
+  }), [])
 
   const home = data && typeof data === 'object' ? data : null
   const pending = !home && !error
@@ -172,6 +189,31 @@ export default function QaHome() {
   const newest = asList(home?.newest_open).filter((item) => !helpIds.has(item.id))
   const helpCount = Number(home?.can_help_count) || 0
   const hasBoard = showMost || answered.length > 0 || canHelp.length > 0 || newest.length > 0
+  const shown = (list) => list.filter((item) => item?.id && !hides.hasQuestion(item.id))
+  const answeredRows = shown(answered)
+  const helpRows = shown(canHelp)
+  const newestRows = shown(newest)
+
+  // "Settled": what is cached is either fresh, or a revalidation has finished
+  // since this screen opened. A stale pre-post board must never be read as
+  // "no questions yet", so an empty stale board waits behind the skeleton.
+  const [settledKey, setSettledKey] = useState(null)
+  const sawRevalidate = useRef(false)
+  useEffect(() => {
+    sawRevalidate.current = false
+    if (!key) {
+      setSettledKey(null)
+      return
+    }
+    setSettledKey(isSWRFresh(key) || peekSWR(key) === undefined ? key : null)
+  }, [key])
+  useEffect(() => {
+    if (!key) return
+    if (isRevalidating) sawRevalidate.current = true
+    else if (sawRevalidate.current) setSettledKey(key)
+  }, [key, isRevalidating])
+  const settled = !!key && settledKey === key
+  const waiting = pending || (!!home && !hasBoard && !settled)
   const inbox = home?.inbox_has_new === true
   const showOffline = !online && !!home
 
@@ -188,7 +230,7 @@ export default function QaHome() {
 
   return (
     <PullToRefresh onRefresh={onRefresh}>
-      <div className="qa-screen qa-screen--tab" aria-busy={pending || undefined}>
+      <div className="qa-screen qa-screen--tab" aria-busy={waiting || undefined}>
         <header className="qa-tabhead">
           <h1 className="text-display-l qa-tabhead__title">Q&amp;A</h1>
           <button
@@ -213,7 +255,7 @@ export default function QaHome() {
 
         {showOffline ? <OfflineBanner /> : null}
 
-        {pending ? (
+        {waiting ? (
           <>
             <section className="qa-home-sec" aria-hidden="true">
               <div className="qa-sec-head">
@@ -239,7 +281,7 @@ export default function QaHome() {
           </div>
         ) : null}
 
-        {home && !hasBoard ? <EmptyBoard /> : null}
+        {home && !hasBoard && settled ? <EmptyBoard /> : null}
 
         {home && hasBoard ? (
           <>
@@ -247,7 +289,7 @@ export default function QaHome() {
 
             <FilterSwitch filter={filter} helpCount={helpCount} onSelect={selectFilter} />
 
-            {filter === 'answered' && answered.length > 0 ? (
+            {filter === 'answered' && answeredRows.length > 0 ? (
               <section className="qa-home-sec">
                 <div className="qa-sec-head">
                   <h2 className="text-label qa-label">Popular this week</h2>
@@ -256,9 +298,19 @@ export default function QaHome() {
               </section>
             ) : null}
 
+            {filter === 'answered' && answeredRows.length === 0 ? (
+              <section className="qa-home-sec">
+                <EmptyState
+                  size="inline"
+                  title="Nothing answered yet"
+                  body="Answered questions show up here."
+                />
+              </section>
+            ) : null}
+
             {filter === 'unanswered' ? (
               <>
-                {canHelp.length > 0 ? (
+                {helpRows.length > 0 ? (
                   <section className="qa-home-sec">
                     <div className="qa-sec-head">
                       <h2 className="text-label qa-label">You can help</h2>
@@ -267,12 +319,21 @@ export default function QaHome() {
                     <QuestionGroup items={canHelp} showCover showAge />
                   </section>
                 ) : null}
-                {newest.length > 0 ? (
+                {newestRows.length > 0 ? (
                   <section className="qa-home-sec">
                     <div className="qa-sec-head">
                       <h2 className="text-label qa-label">Newest</h2>
                     </div>
                     <QuestionGroup items={newest} showCover showAge />
+                  </section>
+                ) : null}
+                {helpRows.length === 0 && newestRows.length === 0 ? (
+                  <section className="qa-home-sec">
+                    <EmptyState
+                      size="inline"
+                      title="No open questions"
+                      body="Ask one and it shows up here."
+                    />
                   </section>
                 ) : null}
               </>

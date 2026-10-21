@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 
 /**
  * Body class toggled while a comment composer owns the bottom of the
@@ -33,7 +33,9 @@ function popNavHidden() {
 }
 
 export function useHideNav(active = true) {
-  useEffect(() => {
+  // Layout effect: body.nav-hidden must be set before the first paint, or the
+  // screen paints once with the nav's safe-area reserved and then shifts.
+  useLayoutEffect(() => {
     if (!active) return undefined
     pushNavHidden()
     return () => popNavHidden()

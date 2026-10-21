@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { BLOCK_CHANGED_EVENT } from '../../services/blockService'
 import { askQuestion, editAnswer, editQuestion, postAnswer, qaQuestion, qaQuestionKey } from '../../services/qaService'
 import { markSWRStale, markSWRStaleByPrefix, mutateSWR } from '../../services/swrCache'
-import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa } from './qaCache'
+import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa, markJustAsked, seedAskedQuestion } from './qaCache'
+import { getKeyboardInset, hideKeyboard, isKeyboardOpen } from '../../services/keyboardInset'
 import { getSettings } from '../../services/userSettingsService'
 import QaAnswerForm from './QaAnswerForm'
 import QaAskForm from './QaAskForm'
@@ -38,6 +39,46 @@ const TOASTS = {
   offline: "You're offline.",
   removed: 'This question was removed.',
   unknown: "Couldn't post. Try again.",
+}
+
+// "Question posted" / "Answer posted" land on the question screen, whose push
+// bar (qa-pushbar) fills the same band as the default toast: 16px below the
+// safe area, with 44px buttons. The toast starts at that same 16px, so
+// 44px (the bar) + 8px (a gap) puts it just under the bar's bottom edge.
+const TOAST_BELOW_PUSHBAR = 'calc(var(--space-48) + var(--space-4))'
+const POSTED_TOAST = { offsetTop: TOAST_BELOW_PUSHBAR }
+
+// Safety net only. keyboardDidHide normally lands well inside this.
+const KEYBOARD_WAIT_CAP_MS = 700
+
+function keyboardIsQuiet() {
+  return !isKeyboardOpen() &&
+    getKeyboardInset() === 0 &&
+    !document.body.classList.contains('keyboard-animating')
+}
+
+/**
+ * Hide the keyboard and resolve once it has finished going down, so the push
+ * that follows never runs while --keyboard-inset / body.keyboard-open are
+ * still changing. When the keyboard is not up this does not wait.
+ */
+async function quietKeyboard() {
+  if (!isKeyboardOpen() && getKeyboardInset() === 0) {
+    void hideKeyboard()
+    return
+  }
+  await hideKeyboard()
+  await new Promise((resolve) => {
+    const startedAt = Date.now()
+    const check = () => {
+      if (keyboardIsQuiet() || Date.now() - startedAt >= KEYBOARD_WAIT_CAP_MS) {
+        resolve()
+        return
+      }
+      setTimeout(check, 16)
+    }
+    check()
+  })
 }
 
 function useQaSession() {
@@ -242,10 +283,15 @@ export default function QaComposerHost() {
       showToast(TOASTS.unknown, 'error')
       return
     }
+    // Order matters: keyboard down, then the popup closes, then (in onExited)
+    // seed, toast and push. Nothing pushes while the keyboard is animating.
+    await quietKeyboard()
     closeWith(() => {
+      seedAskedQuestion({ userId: user?.id, row: result.data, askerUsername: profile?.username })
       seedQuestion(id, draft, user, profile)
+      markJustAsked()
       closeQaComposer()
-      showToast('Question posted', 'success')
+      showToast('Question posted', 'success', undefined, null, null, POSTED_TOAST)
       navigate(`/qa/q/${id}`)
     })
   }
@@ -289,10 +335,11 @@ export default function QaComposerHost() {
       helpful_count: 0,
       viewer_helpful: false,
     }
+    await quietKeyboard()
     closeWith(() => {
       appendAnswer(current.questionId, answer)
       closeQaComposer()
-      showToast('Answer posted', 'success')
+      showToast('Answer posted', 'success', undefined, null, null, POSTED_TOAST)
     })
   }
 
