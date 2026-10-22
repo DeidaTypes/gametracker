@@ -74,9 +74,7 @@ export async function mapRawgToIgdb(rawgGame) {
 
 // Check if IGDB is configured
 function isIgdbConfigured() {
-  const clientId = import.meta.env.VITE_IGDB_CLIENT_ID || ''
-  const clientSecret = import.meta.env.VITE_IGDB_CLIENT_SECRET || ''
-  return clientId && clientId !== 'YOUR_CLIENT_ID' && clientSecret && clientSecret !== 'YOUR_CLIENT_SECRET'
+  return Boolean(import.meta.env.VITE_IGDB_PROXY_URL)
 }
 
 // Map multiple games to IGDB (with timeout and fallback)
