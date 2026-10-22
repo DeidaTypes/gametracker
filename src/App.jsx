@@ -99,6 +99,15 @@ import { initializeProfile } from './services/profileService'
 import { initSettings, applySettingsToDom, getSettings } from './services/userSettingsService'
 import { loadBlockedIds, clearBlockCache } from './services/blockService'
 import { takePendingDeepLink } from './services/appLifecycle'
+import {
+  PUSH_EXPLAINER_EVENT,
+  PUSH_OPEN_EVENT,
+  requestPushPermission,
+  snoozePushExplainer,
+  takePendingPushOpen,
+} from './services/pushService'
+import CenteredModal from './components/CenteredModal'
+import { SecondaryButton, SubmitButton } from './components/forms'
 import ToastHost from './components/Toast'
 import AuthBootSplash from './components/AuthBootSplash'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
@@ -627,6 +636,19 @@ function AppContent() {
     const queued = takePendingDeepLink()
     if (queued) navigate(queued, { replace: true })
     return () => window.removeEventListener('app:deeplink', handler)
+  }, [navigate])
+
+  // Push tap → the screen it is about, as a normal forward push (a REPLACE
+  // would skip the slide). Cold-start taps are queued by pushService.
+  useEffect(() => {
+    const open = (detail) => {
+      if (!detail?.path) return
+      navigate(detail.path, detail.state ? { state: detail.state } : undefined)
+    }
+    const handler = (e) => open(e.detail)
+    window.addEventListener(PUSH_OPEN_EVENT, handler)
+    open(takePendingPushOpen())
+    return () => window.removeEventListener(PUSH_OPEN_EVENT, handler)
   }, [navigate])
 
   const isPublicRoute = PUBLIC_PATHS.has(location.pathname)
@@ -1670,7 +1692,66 @@ function AppContent() {
       <StopSessionSheet />
       <QaComposerHost />
       <TermsGate />
+      <PushExplainer />
     </div>
+  )
+}
+
+/**
+ * Offered by pushService.offerPushExplainer after a follow, a question or a
+ * sent message. Turn on shows the iOS prompt; Not now (or dismissing) waits
+ * 7 days. Uses the TermsGate popup layout.
+ */
+function PushExplainer() {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const show = () => setOpen(true)
+    window.addEventListener(PUSH_EXPLAINER_EVENT, show)
+    return () => window.removeEventListener(PUSH_EXPLAINER_EVENT, show)
+  }, [])
+
+  const handleNotNow = useCallback(() => {
+    if (busy) return
+    snoozePushExplainer()
+    setOpen(false)
+  }, [busy])
+
+  const handleTurnOn = useCallback(async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const state = await requestPushPermission()
+      if (state === 'prompt') snoozePushExplainer()
+    } finally {
+      setBusy(false)
+      setOpen(false)
+    }
+  }, [busy])
+
+  return (
+    <CenteredModal
+      isOpen={open}
+      onClose={handleNotNow}
+      ariaLabel="Turn on notifications"
+      maxWidth={360}
+    >
+      <div className="cm-scroll terms-gate">
+        <h2 className="terms-gate__title text-title">Turn on notifications</h2>
+        <p className="terms-gate__body text-body">
+          Get notified when someone answers you, follows you or messages you.
+        </p>
+        <div className="terms-gate__actions">
+          <SubmitButton type="button" onClick={handleTurnOn} loading={busy}>
+            Turn on
+          </SubmitButton>
+          <SecondaryButton onClick={handleNotNow} disabled={busy}>
+            Not now
+          </SecondaryButton>
+        </div>
+      </div>
+    </CenteredModal>
   )
 }
 

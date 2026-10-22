@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { capturePendingReferral } from './inviteService'
 import { parseRecoveryParams, establishRecoverySession } from './passwordReset'
 import { runResumeSequence, cancelResumeSequence } from './resumeSequence'
+import { initPush } from './pushService'
 
 /**
  * Module-level Capacitor app-lifecycle wiring.
@@ -203,6 +204,10 @@ export function initAppLifecycle() {
 
   // Ensure the auto-refresh timer is running on cold start.
   supabase.auth.startAutoRefresh()
+
+  // Push listeners go on before React mounts; a tap that launched the app is
+  // queued until App.jsx takes it (takePendingPushOpen).
+  void initPush()
 
   ;(async () => {
     try {

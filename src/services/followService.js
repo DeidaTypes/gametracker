@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { dedupeInFlight, mutateSWR } from './swrCache'
+import { offerPushExplainer } from './pushService'
 
 /**
  * Follow Service — Supabase-backed.
@@ -140,6 +141,7 @@ export async function followUser(followeeId) {
 
   patchFollowCache(followeeId, userId, true)
   emitFollowChanged(followeeId, true)
+  void offerPushExplainer('follow')
 }
 
 /**

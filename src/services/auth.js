@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { clearAllLocalUserData, syncLocalDataOwner } from './localUserData'
 import { normalizeUsername, validateUsername } from './usernameRules'
+import { unregisterThisDevice } from './pushService'
 
 /**
  * Auth service — wraps Supabase auth + profile-row bootstrap.
@@ -509,6 +510,8 @@ export async function logIn({ email, password }) {
 }
 
 export async function logOut() {
+  // Needs the session, so it runs before signOut. Bounded inside.
+  await unregisterThisDevice()
   const { error } = await supabase.auth.signOut()
   // Erase the account's local footprint even if the network sign-out
   // failed: the tokens are gone locally either way, and leaving the data

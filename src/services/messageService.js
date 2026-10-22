@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { mutateSWR } from './swrCache'
 import { loadBlockedIds, isMutuallyBlocked } from './blockService'
+import { offerPushExplainer } from './pushService'
 
 /**
  * Direct Messages Service — Supabase-backed.
@@ -435,6 +436,7 @@ export async function sendMessage({ recipientId, body, attachment = null }) {
   // provider, the inbox, and any other surface stays in lockstep
   // without each having to subscribe to realtime independently.
   emitMessagesChanged()
+  void offerPushExplainer('message')
 
   return data
 }

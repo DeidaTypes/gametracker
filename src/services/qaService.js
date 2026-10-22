@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { isFlagEnabled } from './flagService'
+import { offerPushExplainer } from './pushService'
 import {
   markSWRStale,
   markSWRStaleByPrefix,
@@ -268,6 +269,7 @@ export async function askQuestion({ game, topic, title, body = '', platform = nu
   if (classified) return classified
 
   staleAfterWrite({ questionId: data?.id, igdbGameId: snap.igdbGameId })
+  void offerPushExplainer('ask')
   return { data }
 }
 

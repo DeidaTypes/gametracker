@@ -41,6 +41,10 @@
 	<string>Checkpoint uses your camera so you can take a new profile photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Checkpoint uses your photos so you can choose a profile photo or banner.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
