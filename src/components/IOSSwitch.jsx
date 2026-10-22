@@ -1,4 +1,5 @@
 import React from 'react'
+import { hapticImpact } from '../utils/haptics'
 import './IOSSwitch.css'
 
 /**
@@ -16,11 +17,13 @@ import './IOSSwitch.css'
  *   label           – aria-label string for screen readers when no visible label
  *   id              – optional id for label[for] association
  *   presentational  – render only the track. The parent row owns
- *                     role="switch" and the toggle.
+ *                     role="switch", the toggle and its haptic.
  */
 function IOSSwitch({ checked, onChange, disabled = false, label, id, presentational = false }) {
   const handleChange = (e) => {
     if (!onChange) return
+    // The haptic lives here so every switch in the app inherits it.
+    hapticImpact('Light')
     onChange(e.target.checked)
   }
 

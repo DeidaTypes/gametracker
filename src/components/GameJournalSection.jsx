@@ -7,6 +7,8 @@ import {
 } from '../services/journalService'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
+import { deleteConfirm, useConfirmSheet } from './ConfirmSheet'
+import { hapticImpact } from '../utils/haptics'
 import './GameJournalSection.css'
 
 /**
@@ -36,6 +38,7 @@ import './GameJournalSection.css'
  */
 function GameJournalSection({ game, user, status, onAddEntry }) {
   const navigate = useNavigate()
+  const [confirm, confirmSheet] = useConfirmSheet()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [revealedIds, setRevealedIds] = useState(new Set())
@@ -70,6 +73,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
   }, [game, onAddEntry])
 
   const handleReveal = useCallback((id) => {
+    hapticImpact('Light')
     setRevealedIds((prev) => {
       const next = new Set(prev)
       next.add(id)
@@ -78,7 +82,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
   }, [])
 
   const handleDelete = useCallback(async (entryId) => {
-    if (!window.confirm('Delete this journal entry?')) return
+    if (!(await confirm(deleteConfirm('entry')))) return
     setDeletingId(entryId)
     try {
       await deleteJournalEntry(entryId)
@@ -90,7 +94,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
     } finally {
       setDeletingId(null)
     }
-  }, [])
+  }, [confirm])
 
   if (!user) return null
 
@@ -193,6 +197,7 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
         </ul>
       )}
     </div>
+    {confirmSheet}
     </>
   )
 }

@@ -4,13 +4,14 @@ import { StarRatingInput } from '../components/forms'
 import GamePickerSheet from '../components/GamePickerSheet'
 import CenteredModal from '../components/CenteredModal'
 import IOSSwitch from '../components/IOSSwitch'
+import { discardConfirm, useConfirmSheet } from '../components/ConfirmSheet'
 import { getGameById } from '../services/igdb'
 import { postReview, updateReview } from '../services/reviewService'
 import { logActivity, ACTIVITY_TYPES } from '../services/activityService'
 import { logCompletedEventOnce } from '../services/activityEventsService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
-import { success } from '../services/moments'
+import { hapticSuccess } from '../utils/haptics'
 import './ReviewNew.css'
 
 function ReviewNew() {
@@ -50,6 +51,7 @@ function ReviewNew() {
   const [lifeContext, setLifeContext] = useState(isEditMode ? (editReview.lifeContext ?? null) : null)
   const [submitting, setSubmitting] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [confirm, confirmSheet] = useConfirmSheet()
 
   // Drives the popup enter/exit animation.
   const [open, setOpen] = useState(true)
@@ -108,10 +110,10 @@ function ReviewNew() {
       lifeContext !== (editReview.lifeContext ?? null)
     : hasInput
 
-  const handleCancel = useCallback(() => {
-    if (isDirty && !window.confirm(isEditMode ? 'Discard changes?' : 'Discard this review?')) return
+  const handleCancel = useCallback(async () => {
+    if (isDirty && !(await confirm(discardConfirm('review', { editing: isEditMode })))) return
     closeWith(() => navigate(-1))
-  }, [isDirty, isEditMode, navigate, closeWith])
+  }, [isDirty, isEditMode, navigate, closeWith, confirm])
 
   const handleSave = useCallback(async () => {
     if (!canSave) return
@@ -205,7 +207,7 @@ function ReviewNew() {
         }
       }
 
-      success()
+      hapticSuccess()
       window.dispatchEvent(new Event('reviewAdded'))
       showToast(isEditMode ? 'Review updated!' : 'Review saved!', 'success')
       closeWith(() => navigate(-1))
@@ -356,6 +358,7 @@ function ReviewNew() {
   // ── Composer ─────────────────────────────────────────────────────────────
 
   return (
+    <>
     <CenteredModal
       isOpen={open}
       onClose={handleCancel}
@@ -570,6 +573,8 @@ function ReviewNew() {
         </div>
       </div>
     </CenteredModal>
+    {confirmSheet}
+    </>
   )
 }
 

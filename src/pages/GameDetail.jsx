@@ -27,7 +27,7 @@ import { getGameNavStub } from '../utils/gameNavStub'
 import { completeGameWithRating } from '../services/completionService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { shouldShowCount } from '../utils/formatSocialCount'
-import { tap, success } from '../services/moments'
+import { hapticSuccess } from '../utils/haptics'
 import { maybeOpenRateItSheet } from '../services/ratePrompt'
 import { getCurrentCelebration } from '../services/celebrationService'
 import { getTimeToBeat } from '../services/timeToBeatService'
@@ -513,7 +513,7 @@ function GameDetail() {
           }
           return
         }
-        success()
+        hapticSuccess()
         refreshFromStore()
         const head = getCurrentCelebration()
         if (!head || String(head.igdbGameId) !== String(game.id)) {
@@ -522,7 +522,7 @@ function GameDetail() {
       })
       return
     }
-    tap()
+    // Light haptic comes from StatusChip on the tap itself.
     const ok = setGameStatus(game.id, statusKey, game)
     refreshFromStore()
     if (!ok) {

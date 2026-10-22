@@ -6,6 +6,7 @@ import DeleteAccountSheet from '../components/DeleteAccountSheet'
 import SettingsHeader from '../components/SettingsHeader'
 import { SettingsGroup, SettingsRow } from '../components/SettingsRows'
 import { deleteAccount } from '../services/deleteAccountService'
+import { hapticImpact } from '../utils/haptics'
 import './Settings.css'
 
 function SettingsAccount() {
@@ -16,6 +17,7 @@ function SettingsAccount() {
 
   const handleDeleteAccount = async (reason) => {
     if (isDeleting) return
+    hapticImpact('Medium')
     setIsDeleting(true)
     try {
       await deleteAccount(reason)

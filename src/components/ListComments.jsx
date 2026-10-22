@@ -10,7 +10,7 @@ import {
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
-import { hapticImpact } from '../utils/haptics'
+import { hapticSuccess } from '../utils/haptics'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import Avatar from './Avatar'
 import KeyboardAwareView from './KeyboardAwareView'
@@ -129,7 +129,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
     const trimmed = draft.trim()
     if (!trimmed || submitting) return
 
-    hapticImpact('Medium')
+    hapticSuccess()
     setSubmitting(true)
 
     // Optimistic insert with a temp id

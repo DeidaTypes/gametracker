@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { submitReport } from '../services/reportService'
 import { showToast } from './Toast'
 import CenteredModal from './CenteredModal'
+import { hapticImpact } from '../utils/haptics'
 import './ReportSheet.css'
 
 const REASONS = [
@@ -60,6 +61,8 @@ function ReportSheet({ isOpen, onClose, contentType, contentId, onSubmitted }) {
         reason: selectedReason,
         details,
       })
+      // One Medium tap for a report sent; callers (Q&A) must not add their own.
+      hapticImpact('Medium')
       if (onSubmitted) {
         onSubmitted(result)
       } else if (result.alreadyReported) {

@@ -28,6 +28,7 @@ import { shareContent } from '../utils/share'
 import { labelMatchRange, searchSettings } from '../config/settingsIndex'
 import { setSettingsSearchBackHandler } from '../config/settingsSearchBack'
 import { APP_VERSION } from '../config/site'
+import { hapticImpact } from '../utils/haptics'
 import './Settings.css'
 
 function maskEmail(email) {
@@ -182,6 +183,7 @@ function Settings() {
 
   const handleSignOut = async () => {
     if (signingOut) return
+    hapticImpact('Medium')
     setSigningOut(true)
     try {
       await logOut()

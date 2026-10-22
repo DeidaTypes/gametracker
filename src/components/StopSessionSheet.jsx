@@ -16,6 +16,7 @@ import { useSession } from '../contexts/SessionContext'
 import { useNavDim } from '../hooks/useNavDim'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
+import { hapticSuccess } from '../utils/haptics'
 import KeyboardAwareView from './KeyboardAwareView'
 import './StopSessionSheet.css'
 
@@ -68,6 +69,7 @@ export default function StopSessionSheet() {
       try {
         await updateJournalEntry(stopResult.journalEntryId, { body: note.trim() })
         setSaved(true)
+        hapticSuccess()
       } catch {
         // Non-fatal: dismiss anyway — the session's diary entry still
         // exists with a blank body, it just won't have this note.

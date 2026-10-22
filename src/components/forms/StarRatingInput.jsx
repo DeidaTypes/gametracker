@@ -170,8 +170,10 @@ function StarRatingInput({
       dragSessionRef.current = session
 
       // Immediate rating from press position — a tap is just down+up here.
+      // Light tap when the press lands on a different rating (a re-tap of the
+      // selected rating stays silent); drags then tick per step below.
       const next = ratingFromClientXRef.current(e.clientX)
-      applyRatingRef.current(next)
+      applyRatingRef.current(next, { haptic: true })
 
       if (e.pointerType === 'touch') {
         session.onNativeTouchMove = handleNativeTouchMove

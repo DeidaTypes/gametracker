@@ -1,4 +1,5 @@
 import React from 'react'
+import { hapticImpact } from '../utils/haptics'
 import './StatusChip.css'
 
 /**
@@ -12,6 +13,11 @@ import './StatusChip.css'
  * STATUS_META.label is the single source of truth for status DISPLAY
  * labels. Sentence-form backlog copy lives in BACKLOG_COPY so grammar
  * stays consistent ("Add to backlog", not "Add to Backlog list").
+ *
+ * Haptics: a chip that is a button gives one Light tap when it picks a status
+ * it is not already on (re-tapping the active one is silent). 'played' is the
+ * exception — marking a game Played fires Success when the completion is
+ * written (see GameDetail / Home), so the chip stays quiet for it.
  *
  * `variant` controls layout only, not color:
  *   - 'pill' (default) — inline text pill, e.g. Home's byline status pill
@@ -61,12 +67,19 @@ function StatusChip({
   as,
   className = '',
   style,
+  onClick,
   ...rest
 }) {
   const meta = STATUS_META[status]
   if (!meta) return null
 
-  const Component = as || (rest.onClick ? 'button' : 'span')
+  const Component = as || (onClick ? 'button' : 'span')
+  const handleClick = onClick
+    ? (event) => {
+        if (!active && status !== 'played') hapticImpact('Light')
+        onClick(event)
+      }
+    : undefined
   const text = label ?? meta.label
   const classes = [
     'status-chip',
@@ -80,6 +93,7 @@ function StatusChip({
     <Component
       className={classes}
       style={{ '--chip-color': `var(${meta.colorVar})`, ...style }}
+      onClick={handleClick}
       {...rest}
     >
       {icon && <span className="status-chip__icon">{icon}</span>}

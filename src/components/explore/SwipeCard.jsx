@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react'
 import Avatar from '../Avatar'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
-import { add } from '../../services/moments'
+import { hapticImpact } from '../../utils/haptics'
 import { flyToTab } from '../../utils/flyToTab'
 import { SwipeCardCover } from './SwipeCardCover'
 import './SwipeCard.css'
@@ -90,7 +90,7 @@ export function SwipeCard({
       exitingRef.current = dir
 
       if (dir === 'right') {
-        add()
+        hapticImpact('Light')
         flyToTab(coverRef.current, 'library')
       }
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
+import { hapticImpact } from '../utils/haptics'
 import './SortSheet.css'
 
 export const SORT_OPTIONS = [
@@ -88,7 +89,10 @@ function SortSheet({ isOpen, onClose, value, onApply }) {
                 role="radio"
                 aria-checked={isSelected}
                 className={`sort-sheet__pill${isSelected ? ' sort-sheet__pill--active' : ''}`}
-                onClick={() => setPending(opt.value)}
+                onClick={() => {
+                  if (opt.value !== pending) hapticImpact('Light')
+                  setPending(opt.value)
+                }}
               >
                 {opt.label}
               </button>

@@ -9,6 +9,7 @@ import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa, markJustAske
 import { getKeyboardInset, hideKeyboard, isKeyboardOpen } from '../../services/keyboardInset'
 import { getSettings } from '../../services/userSettingsService'
 import { hapticSuccess } from '../../utils/haptics'
+import { discardConfirm, useConfirmSheet } from '../../components/ConfirmSheet'
 import QaAnswerForm from './QaAnswerForm'
 import QaAskForm from './QaAskForm'
 import QaComposerSheet from './QaComposerSheet'
@@ -170,6 +171,7 @@ export default function QaComposerHost() {
   const [noticeOpen, setNoticeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [closedKey, setClosedKey] = useState(null)
+  const [confirm, confirmSheet] = useConfirmSheet()
   const seenQuestion = useRef(null)
   const noticeOk = useRef(false)
   const posting = useRef(false)
@@ -488,13 +490,13 @@ export default function QaComposerHost() {
   else if (session?.mode === 'ask') sheetTitle = 'Ask a question'
   else if (editingAnswer) sheetTitle = 'Edit answer'
 
-  let discardMessage = 'Discard this answer?'
-  if (editingQuestion || editingAnswer) discardMessage = 'Discard changes?'
-  else if (asking) discardMessage = 'Discard this question?'
+  let discardCopy = discardConfirm('answer')
+  if (editingQuestion || editingAnswer) discardCopy = discardConfirm('', { editing: true })
+  else if (asking) discardCopy = discardConfirm('question')
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (noticeOpen) return
-    if (dirty && !window.confirm(discardMessage)) return
+    if (dirty && !(await confirm(discardCopy))) return
     closeWith(closeQaComposer)
   }
 
@@ -534,6 +536,7 @@ export default function QaComposerHost() {
         onAccept={acceptNotice}
         onCancel={() => setNoticeOpen(false)}
       />
+      {confirmSheet}
     </>
   )
 }

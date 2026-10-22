@@ -13,7 +13,7 @@ import {
   setGameStatus,
 } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
-import { hapticImpact } from '../utils/haptics'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { shareContent } from '../utils/share'
 import StatusChip, { STATUS_META } from './StatusChip'
 import './AddToListButton.css'
@@ -126,7 +126,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
   const handleStatusTap = (statusKey) => {
     if (!game) return
     if (currentStatus === statusKey) return
-    hapticImpact('Medium')
+    // Light haptic comes from StatusChip on the tap itself.
     // 'played' is intercepted by the caller (GameDetail) so it can open
     // RatingSheet FIRST — the completion write happens when that sheet
     // resolves, not here. Every other status keeps writing directly.
@@ -136,6 +136,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
       return
     }
     setGameStatus(game.id, statusKey, game)
+    if (statusKey === 'played') hapticSuccess()
     refresh()
     window.dispatchEvent(new Event('libraryUpdated'))
   }
@@ -143,8 +144,10 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
   const handleListToggle = (listId) => {
     if (!game) return
     if (gameInLists[listId]) {
+      hapticImpact('Medium')
       removeGameFromList(listId, game.id)
     } else {
+      hapticImpact('Light')
       addGameToList(listId, game)
     }
     refresh()

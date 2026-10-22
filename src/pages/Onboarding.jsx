@@ -38,6 +38,7 @@ import { showToast } from '../components/Toast'
 import EmptyState from '../components/EmptyState'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useKeyboardOpen } from '../hooks/useKeyboardInset'
+import { hapticImpact } from '../utils/haptics'
 import './Onboarding.css'
 
 /**
@@ -295,12 +296,14 @@ export default function Onboarding() {
   }, [goToStep])
 
   const togglePlatformChip = useCallback((chipId) => {
+    hapticImpact('Light')
     setSelectedPlatformChips((prev) =>
       prev.includes(chipId) ? prev.filter((id) => id !== chipId) : [...prev, chipId]
     )
   }, [])
 
   const toggleEraChip = useCallback((chipId) => {
+    hapticImpact('Light')
     setSelectedEraChips((prev) =>
       prev.includes(chipId) ? prev.filter((id) => id !== chipId) : [...prev, chipId]
     )
@@ -452,6 +455,7 @@ export default function Onboarding() {
 
   const toggleGame = useCallback(
     (game) => {
+      hapticImpact('Light')
       if (isPicked(game.id)) {
         setSelectedGames((prev) =>
           prev.filter((g) => String(g.id) !== String(game.id))
@@ -472,6 +476,7 @@ export default function Onboarding() {
   )
 
   const removeSelected = useCallback((id) => {
+    hapticImpact('Light')
     setSelectedGames((prev) =>
       prev.filter((g) => String(g.id) !== String(id))
     )

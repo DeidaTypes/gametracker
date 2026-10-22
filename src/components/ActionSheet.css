@@ -27,6 +27,17 @@
   margin: 0 auto;
 }
 
+.action-sheet-overlay--top {
+  /* Opens over a CenteredModal (.cm-overlay, z-index 1100) and over the Q&A
+     notice (1110). Below the toast layer. Same file as the base rules and
+     declared after them so it wins at equal specificity. */
+  z-index: 1120;
+}
+
+.action-sheet-anchor--top {
+  z-index: 1121;
+}
+
 .action-sheet {
   width: 100%;
   background: var(--color-bg-elevated);

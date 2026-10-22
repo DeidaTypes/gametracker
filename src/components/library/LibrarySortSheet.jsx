@@ -1,6 +1,7 @@
 import React from 'react'
 import { Check } from 'lucide-react'
 import ActionSheet from '../ActionSheet'
+import { hapticImpact } from '../../utils/haptics'
 import { LIBRARY_SORTS, LIBRARY_VIEWS } from './libraryConstants'
 
 export default function LibrarySortSheet({
@@ -18,7 +19,10 @@ export default function LibrarySortSheet({
         {sortKey === s.key && <Check size={16} aria-hidden="true" />}
       </span>
     ),
-    onClick: () => onSelect(s.key),
+    onClick: () => {
+      if (sortKey !== s.key) hapticImpact('Light')
+      onSelect(s.key)
+    },
   }))
 
   const viewItems =
@@ -33,7 +37,10 @@ export default function LibrarySortSheet({
                 {viewKey === v.key && <Check size={16} aria-hidden="true" />}
               </span>
             ),
-            onClick: () => onViewSelect(v.key),
+            onClick: () => {
+              if (viewKey !== v.key) hapticImpact('Light')
+              onViewSelect(v.key)
+            },
           })),
         ]
       : []

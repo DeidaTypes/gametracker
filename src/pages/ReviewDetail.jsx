@@ -13,10 +13,11 @@ import EmptyState from '../components/EmptyState'
 import ReviewCard from '../components/ReviewCard'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
+import { deleteConfirm, useConfirmSheet } from '../components/ConfirmSheet'
 import { showToast } from '../components/Toast'
 import { supabase } from '../services/supabase'
 import { shouldShowCount } from '../utils/formatSocialCount'
-import { hapticImpact } from '../utils/haptics'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { getReviewById } from '../services/reviewService'
 import {
   getCommentsForReview,
@@ -161,7 +162,11 @@ function SpoilerSegment({ text }) {
     <button
       type="button"
       className={`rd-comment__spoiler${revealed ? ' rd-comment__spoiler--revealed' : ''}`}
-      onClick={() => !revealed && setRevealed(true)}
+      onClick={() => {
+        if (revealed) return
+        hapticImpact('Light')
+        setRevealed(true)
+      }}
       aria-label={revealed ? undefined : 'Tap to reveal spoiler'}
     >
       {text}
@@ -570,6 +575,7 @@ function ThreadGroup({
 function ReviewDetail() {
   const { id: reviewId } = useParams()
   const navigate = useNavigate()
+  const [confirm, confirmSheet] = useConfirmSheet()
   const { user, profile } = useAuth()
 
   // This screen always has a comment composer pinned to the bottom — hide
@@ -818,7 +824,7 @@ function ReviewDetail() {
   const handlePost = useCallback(async () => {
     const trimmed = draft.trim()
     if (!trimmed || posting) return
-    hapticImpact('Medium')
+    hapticSuccess()
     setPosting(true)
 
     const optimisticId = `opt-${Date.now()}`
@@ -941,8 +947,7 @@ function ReviewDetail() {
   }, [])
 
   const handleDelete = useCallback(async (comment) => {
-    const ok = window.confirm('Delete this comment?')
-    if (!ok) return
+    if (!(await confirm(deleteConfirm('comment')))) return
     const removeIds = new Set([comment.id])
     for (const c of comments) {
       if (c.parent_comment_id === comment.id) removeIds.add(c.id)
@@ -959,7 +964,7 @@ function ReviewDetail() {
         'error'
       )
     }
-  }, [comments])
+  }, [comments, confirm])
 
   const handleReport = useCallback((comment) => {
     setReportTarget(comment)
@@ -1192,6 +1197,8 @@ function ReviewDetail() {
         onClose={() => setDmShareOpen(false)}
         attachment={dmShareAttachment}
       />
+
+      {confirmSheet}
 
       <ActionSheet
         isOpen={discardOpen}

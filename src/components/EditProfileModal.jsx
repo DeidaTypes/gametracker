@@ -14,6 +14,7 @@ import FavoritesPickerSheet from './FavoritesPickerSheet'
 import BioEditModal from './BioEditModal'
 import KeyboardAwareView from './KeyboardAwareView'
 import Avatar from './Avatar'
+import { hapticImpact } from '../utils/haptics'
 import './EditProfileModal.css'
 
 const AVATAR_MAX_FILE_MB = 10
@@ -416,6 +417,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
   const handleLogOut = async () => {
     if (loggingOut) return
+    hapticImpact('Medium')
     setLoggingOut(true)
     try {
       await logOut()

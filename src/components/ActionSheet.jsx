@@ -38,6 +38,10 @@ import './ActionSheet.css'
  *
  *   subtitle    – optional sentence under the title
  *   plain       – sentence-case title and bare icons (Q&A overflow menus)
+ *   layer       – 'top' lifts the sheet above CenteredModal (.cm-overlay, 1100)
+ *                 so it can open over a popup (see ConfirmSheet)
+ *   keepFocus   – never move focus into the sheet or off the field beneath
+ *                 it, so a popup's keyboard stays up (see ConfirmSheet)
  *
  * The sheet always renders a dismiss row at the bottom separated
  * by a 1px divider. Label defaults to "Cancel".
@@ -48,6 +52,8 @@ function ActionSheet({
   title,
   subtitle,
   plain = false,
+  layer = 'base',
+  keepFocus = false,
   items = [],
   cancelLabel = 'Cancel',
 }) {
@@ -56,13 +62,18 @@ function ActionSheet({
   const { reduced } = useMotionPreference()
   const dragControls = useDragControls()
 
+  const top = layer === 'top'
+  // Keeps the field beneath focused: a mousedown on a button would otherwise
+  // move focus to it (desktop) and take the keyboard with it.
+  const holdFocus = keepFocus ? (e) => e.preventDefault() : undefined
+
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || keepFocus) return
     const el = sheetRef.current
     if (!el) return
     const id = setTimeout(() => el.focus(), 50)
     return () => clearTimeout(id)
-  }, [isOpen])
+  }, [isOpen, keepFocus])
 
   useEffect(() => {
     if (!isOpen) return
@@ -82,7 +93,7 @@ function ActionSheet({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="action-sheet-overlay"
+          className={`action-sheet-overlay${top ? ' action-sheet-overlay--top' : ''}`}
           onClick={onClose}
           aria-modal="true"
           role="dialog"
@@ -93,7 +104,7 @@ function ActionSheet({
           exit={{ opacity: 0 }}
           transition={backdropTransition}
         >
-          <KeyboardAwareView mode="sheet" className="action-sheet-anchor">
+          <KeyboardAwareView mode="sheet" className={`action-sheet-anchor${top ? ' action-sheet-anchor--top' : ''}`}>
           <motion.div
             ref={sheetRef}
             className="action-sheet"
@@ -150,6 +161,7 @@ function ActionSheet({
                       onClose()
                       item.onClick()
                     }}
+                    onMouseDown={holdFocus}
                     disabled={item.disabled}
                     role="menuitem"
                   >
@@ -188,6 +200,7 @@ function ActionSheet({
               type="button"
               className="action-sheet__item action-sheet__item--cancel"
               onClick={onClose}
+              onMouseDown={holdFocus}
               role="menuitem"
             >
               {cancelLabel}

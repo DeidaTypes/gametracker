@@ -11,7 +11,6 @@ import {
   applySettingsToDom,
   SETTINGS_CHANGED_EVENT,
 } from '../services/userSettingsService'
-import { hapticImpact } from '../utils/haptics'
 import './Settings.css'
 
 function pickerLabel(options, value) {
@@ -84,12 +83,10 @@ function SettingsAccessibility() {
   }
 
   const handleReduceMotionToggle = (next) => {
-    hapticImpact('Light')
     setReduceMotion(next)
   }
 
   const handleLargerTextToggle = (next) => {
-    hapticImpact('Light')
     setLargerText(next)
   }
 

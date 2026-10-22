@@ -24,6 +24,7 @@ import HomeCompletionCard from '../components/home/HomeCompletionCard'
 import { useLikedBy } from '../components/LikedBy'
 import Reactions from '../components/Reactions'
 import ReportSheet from '../components/ReportSheet'
+import { deleteConfirm, useConfirmSheet } from '../components/ConfirmSheet'
 import ActionSheet from '../components/ActionSheet'
 import EmptyState from '../components/EmptyState'
 import { showToast } from '../components/Toast'
@@ -44,7 +45,7 @@ import {
 } from '../services/commentService'
 import { deleteActivityEvent } from '../services/activityEventsService'
 import { shareCard } from '../services/share'
-import { hapticImpact } from '../utils/haptics'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { useCachedResource } from '../hooks/useCachedResource'
 import {
   MAX_PINS,
@@ -143,7 +144,11 @@ function SpoilerSegment({ text }) {
     <button
       type="button"
       className={`rc-comment__spoiler${revealed ? ' rc-comment__spoiler--revealed' : ''}`}
-      onClick={() => !revealed && setRevealed(true)}
+      onClick={() => {
+        if (revealed) return
+        hapticImpact('Light')
+        setRevealed(true)
+      }}
       aria-label={revealed ? undefined : 'Tap to reveal spoiler'}
     >
       {text}
@@ -375,6 +380,7 @@ function CommentRow({
    ============================================================ */
 
 function ReviewComments() {
+  const [confirm, confirmSheet] = useConfirmSheet()
   // This page also powers the Pulse-broadening activity thread at
   // /activity/:activityId/comments — same composer/thread UI, just
   // keyed to whichever target the route carries (never both). See
@@ -715,6 +721,7 @@ function ReviewComments() {
         await deleteActivityEvent(targetId)
       }
       removePulseFeedItem(user?.id, targetId)
+      hapticImpact('Medium')
       showToast(targetType === 'review' ? 'Review deleted' : 'Removed from the pulse', 'success')
       navigate('/')
     } catch (err) {
@@ -942,7 +949,7 @@ function ReviewComments() {
         body: trimmed,
         parentCommentId: replyTo?.id || null,
       })
-      hapticImpact('Medium')
+      hapticSuccess()
       setDraft('')
       setReplyTo(null)
       // Increment local Conversationalist badge counter on successful post.
@@ -963,12 +970,8 @@ function ReviewComments() {
   }, [])
 
   const handleDelete = useCallback(async (comment) => {
-    // Window.confirm is fine here — every delete confirm in the app
-    // (DeleteConfirmModal) is bound to a specific surface and rebuilding
-    // it for comments would be overkill. Mobile UI still shows the
-    // native iOS prompt via Capacitor's web bridge.
-    const ok = window.confirm('Delete this comment?')
-    if (!ok) return
+    // The app's own ConfirmSheet, not the grey iOS system alert.
+    if (!(await confirm(deleteConfirm('comment')))) return
     // Optimistic removal — drop the comment and any of its replies
     // (one level only).
     const removeIds = new Set([comment.id])
@@ -990,7 +993,7 @@ function ReviewComments() {
         'error'
       )
     }
-  }, [comments, thread, mutateThread])
+  }, [comments, thread, mutateThread, confirm])
 
   /* ── Render ─────────────────────────────────────────────────── */
 
@@ -1243,6 +1246,8 @@ function ReviewComments() {
           </div>
         </div>
       </KeyboardAwareView>
+
+      {confirmSheet}
     </div>
   )
 }

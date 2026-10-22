@@ -4,7 +4,6 @@ import IOSSwitch from '../../components/IOSSwitch'
 import { coverUrlFromImageId } from '../../services/igdb'
 import { qaQuestionKey } from '../../services/qaService'
 import { peekSWR } from '../../services/swrCache'
-import { hapticImpact } from '../../utils/haptics'
 import { QA_ANSWER_MAX, patchQaDraft } from './qaComposer'
 import { QaComposerNotices, QaCounter, QaTextarea } from './QaComposerSheet'
 import { topicLabel } from './qaFormat'
@@ -81,10 +80,7 @@ export default function QaAnswerForm({ session, online, limit }) {
           <IOSSwitch
             checked={draft.isSpoiler}
             label="Contains spoilers"
-            onChange={(next) => {
-              hapticImpact('Light')
-              patchQaDraft({ isSpoiler: next })
-            }}
+            onChange={(next) => patchQaDraft({ isSpoiler: next })}
           />
         </div>
       </div>

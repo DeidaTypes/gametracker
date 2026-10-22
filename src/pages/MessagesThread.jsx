@@ -37,6 +37,7 @@ import ActionSheet from '../components/ActionSheet'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -494,6 +495,7 @@ function MessagesThread() {
           body: trimmed || undefined,
           attachment,
         })
+        hapticSuccess()
         setNotAccepting(false)
         setMessages((prev) => {
           // Replace the optimistic row with the server one. If the
@@ -544,6 +546,7 @@ function MessagesThread() {
         showToast('User unblocked.', 'success')
       } else {
         await blockUser(partnerId)
+        hapticImpact('Medium')
         setPartnerBlocked(true)
         showToast('User blocked.', 'success')
         navigate(-1)

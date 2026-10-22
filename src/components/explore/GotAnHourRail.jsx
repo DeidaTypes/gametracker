@@ -5,6 +5,7 @@ import EmptyState from '../EmptyState'
 import { getBestImageUrl } from '../../services/imageUtils'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getGameNavStub } from '../../utils/gameNavStub'
+import { hapticImpact } from '../../utils/haptics'
 import './GotAnHourRail.css'
 
 // ── Buckets ───────────────────────────────────────────────────────────────────
@@ -67,7 +68,10 @@ export function TimeBucketChips({ activeBucket, onChange }) {
           key={b.id}
           type="button"
           className={`ttb-chip${activeBucket === b.id ? ' ttb-chip--active' : ''}`}
-          onClick={() => onChange(b.id)}
+          onClick={() => {
+            if (activeBucket !== b.id) hapticImpact('Light')
+            onChange(b.id)
+          }}
           aria-pressed={activeBucket === b.id}
         >
           {b.label}

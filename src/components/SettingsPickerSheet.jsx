@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { LuCheck } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
+import { hapticImpact } from '../utils/haptics'
 import './SettingsPickerSheet.css'
 
 /**
@@ -76,6 +77,8 @@ function SettingsPickerSheet({
   }, [isOpen])
 
   const select = (next) => {
+    if (next === pending) return
+    hapticImpact('Light')
     setPending(next)
     if (onPreview) onPreview(next)
   }

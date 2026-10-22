@@ -114,7 +114,7 @@ function SettingsAppearance() {
   const refresh = () => setSettings(getThemeSettings())
 
   const handleSelect = (id) => {
-    hapticImpact('Light')
+    if (id !== showingId) hapticImpact('Light')
     setTheme(id)
     refresh()
   }

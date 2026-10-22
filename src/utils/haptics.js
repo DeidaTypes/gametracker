@@ -5,12 +5,20 @@
 // tab taps; every haptic call site in the app should go through here
 // instead of re-implementing the dynamic import locally.
 //
-// Intensity guidance (see .cursorrules "Sprint 5" / haptics polish pass):
-//   - Light  → toggles and low-stakes taps (like, follow, nav tab, switch)
-//   - Medium → confirmations that commit something (status change, save,
-//              submit)
-//   - Success notification → celebratory, one-shot moments (goal reached,
-//              badge/milestone unlocked)
+// The haptic language (one table, app-wide). Fire from the shared component
+// when one exists (IOSSwitch, StarRatingInput, SettingsRows, LibraryTabs,
+// ConfirmSheet...) so every screen inherits it, and never fire two haptics
+// for one action.
+//   - Light   -> selecting a tab/segment (only when it changes), choosing a
+//                status, tapping a star, toggling a switch, choosing a chip,
+//                opening the + FAB, follow/unfollow, like, add to list,
+//                revealing a spoiler, swipe card commit, pull-to-refresh.
+//   - Success -> saving a review, journal entry, session log or list;
+//                marking a game Played; finishing a challenge goal; posting a
+//                comment, question, answer or message; mark as best.
+//   - Medium  -> delete, remove, block, report sent, sign out.
+//   - None    -> scrolling, opening screens, typing, re-tapping the selected
+//                option.
 // Never fire Heavy — this app's haptics read as polish, not buzzing.
 
 export async function hapticImpact(style = 'Light') {
@@ -30,3 +38,6 @@ export async function hapticSuccess() {
     /* no-op on web or when the plugin isn't available */
   }
 }
+
+export const hapticLight = () => hapticImpact('Light')
+export const hapticMedium = () => hapticImpact('Medium')

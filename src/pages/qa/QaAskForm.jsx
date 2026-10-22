@@ -493,10 +493,7 @@ function AskCompose({ draft, online, limit, onOpenMatch, editing }) {
             checked={draft.topic === 'story' ? true : draft.isSpoiler}
             disabled={draft.topic === 'story'}
             label="Contains spoilers"
-            onChange={(next) => {
-              hapticImpact('Light')
-              patchQaDraft({ isSpoiler: next })
-            }}
+            onChange={(next) => patchQaDraft({ isSpoiler: next })}
           />
         </div>
       </div>

@@ -7,6 +7,8 @@ import { useAuth } from '../contexts/AuthContext'
 import JournalEntryModal from '../components/JournalEntryModal'
 import { showToast } from '../components/Toast'
 import { getGameNavStub } from '../utils/gameNavStub'
+import { hapticImpact } from '../utils/haptics'
+import { deleteConfirm, useConfirmSheet } from '../components/ConfirmSheet'
 import './JournalEntry.css'
 
 /**
@@ -24,6 +26,7 @@ import './JournalEntry.css'
 function JournalEntry() {
   const { entryId } = useParams()
   const navigate = useNavigate()
+  const [confirm, confirmSheet] = useConfirmSheet()
   const { user } = useAuth()
 
   const [entry, setEntry] = useState(null)
@@ -64,7 +67,7 @@ function JournalEntry() {
 
   const handleDelete = useCallback(async () => {
     if (!entry) return
-    if (!window.confirm('Delete this journal entry?')) return
+    if (!(await confirm(deleteConfirm('entry')))) return
     setDeleting(true)
     try {
       await deleteJournalEntry(entry.id)
@@ -75,7 +78,7 @@ function JournalEntry() {
       showToast('Could not delete entry.', 'error')
       setDeleting(false)
     }
-  }, [entry, navigate])
+  }, [entry, navigate, confirm])
 
   const isOwner = !!(user && entry && user.id === entry.user_id)
   const isSpoilerBlocked = !!(entry?.is_spoiler && !revealed)
@@ -253,7 +256,10 @@ function JournalEntry() {
               <button
                 type="button"
                 className="je-reveal-btn"
-                onClick={() => setRevealed(true)}
+                onClick={() => {
+                  hapticImpact('Light')
+                  setRevealed(true)
+                }}
                 aria-label="Reveal spoiler content"
               >
                 Tap to reveal spoiler
@@ -338,6 +344,8 @@ function JournalEntry() {
           initialHours={entry.hours_played ?? null}
         />
       )}
+
+      {confirmSheet}
     </div>
   )
 }

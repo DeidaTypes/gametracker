@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { DestructiveButton, SecondaryButton } from './forms'
+import { hapticImpact } from '../utils/haptics'
 import './DeleteConfirmModal.css'
 
 /**
@@ -51,7 +52,12 @@ function DeleteConfirmModal({ isOpen, listName, gameCount, onConfirm, onCancel }
         </p>
 
         <div className="delete-confirm__footer">
-          <DestructiveButton onClick={onConfirm}>
+          <DestructiveButton
+            onClick={() => {
+              hapticImpact('Medium')
+              onConfirm()
+            }}
+          >
             Delete list
           </DestructiveButton>
           {/* autoFocus Cancel so accidental taps don't delete */}

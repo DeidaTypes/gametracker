@@ -8,6 +8,7 @@ import {
 import CenteredModal from './CenteredModal'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { STATUS_META, BACKLOG_COPY } from './StatusChip'
 import './TrackerSearchModal.css'
 
@@ -123,6 +124,8 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
 
     const ok = setGameStatus(game.id, status, game)
     if (ok) {
+      if (status === 'played') hapticSuccess()
+      else hapticImpact('Light')
       showToast(addedToast, 'success', 1800)
     } else {
       showToast('Couldn’t add game. Please try again.', 'error')

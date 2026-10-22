@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Globe, Lock, ChevronLeft, Plus, Check, X, SearchX } from 'lucide-react'
 import { searchGames } from '../services/searchService'
-import { success } from '../services/moments'
+import { hapticSuccess } from '../utils/haptics'
 import CenteredModal from './CenteredModal'
 import EmptyState from './EmptyState'
+import { discardConfirm, useConfirmSheet } from './ConfirmSheet'
 import './CreateListModal.css'
 
 const NAME_MAX = 60
@@ -23,6 +24,7 @@ const SEARCH_DEBOUNCE_MS = 300
  */
 function CreateListModal({ isOpen, onClose, onCreate }) {
   const [step, setStep] = useState(1)
+  const [confirm, confirmSheet] = useConfirmSheet()
 
   // ── Step 1 fields ────────────────────────────────────────────────────────
   const [listName, setListName]     = useState('')
@@ -154,7 +156,7 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
     setSubmitError(null)
     try {
       await onCreate(trimmedName, description.trim(), selectedGames, isPublic)
-      success()
+      hapticSuccess()
       onClose()
     } catch (err) {
       console.error('[CreateListModal] onCreate failed:', err)
@@ -164,10 +166,8 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
   }
 
   /* ─── Cancel / discard ───────────────────────────────────────────────────── */
-  const handleCancel = () => {
-    if (hasAnyInput) {
-      if (!window.confirm('Discard list?')) return
-    }
+  const handleCancel = async () => {
+    if (hasAnyInput && !(await confirm(discardConfirm('list')))) return
     onClose()
   }
 
@@ -179,6 +179,7 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
   }
 
   return (
+    <>
     <CenteredModal
       isOpen={isOpen}
       onClose={handleCancel}
@@ -402,6 +403,8 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
         </div>
       )}
     </CenteredModal>
+    {confirmSheet}
+    </>
   )
 }
 

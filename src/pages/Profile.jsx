@@ -2063,7 +2063,10 @@ function Profile() {
                 role="tab"
                 aria-selected={isActive}
                 className={`profile-tab${isActive ? ' profile-tab--active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (!isActive) hapticImpact('Light')
+                  setActiveTab(tab.id)
+                }}
               >
                 <span className="profile-tab__label">{tab.label}</span>
                 {isActive && (
@@ -2228,6 +2231,7 @@ function Profile() {
                 setBlockPending(true)
                 try {
                   await blockUser(targetUserId)
+                  hapticImpact('Medium')
                   showToast('User blocked.', 'success')
                   navigate(-1)
                 } catch (err) {

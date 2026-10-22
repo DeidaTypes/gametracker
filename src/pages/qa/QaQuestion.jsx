@@ -514,6 +514,7 @@ export default function QaQuestion() {
     setBlockBusy(true)
     try {
       await blockUser(target.id)
+      hapticImpact('Medium')
       showToast(`Blocked ${target.name || 'them'}`, 'success')
       if (target.isAsker && !isMutuallyBlocked(target.id)) setForcedLeave(true)
     } catch (err) {
@@ -528,7 +529,6 @@ export default function QaQuestion() {
     if (!target?.id) return
     if (target.type === 'question') hideQaQuestion(target.id)
     else hideQaAnswer(target.id)
-    hapticImpact('Medium')
     showToast("Reported. It's hidden for you.", 'success', 5000, {
       label: 'Undo',
       onClick: () => {

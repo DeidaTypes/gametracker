@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import CenteredModal from '../components/CenteredModal'
 import IOSSwitch from '../components/IOSSwitch'
+import { discardConfirm, useConfirmSheet } from '../components/ConfirmSheet'
+import { hapticSuccess } from '../utils/haptics'
 import { getGameById } from '../services/igdb'
 import { saveJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { useAuth } from '../contexts/AuthContext'
@@ -27,6 +29,7 @@ function JournalNew() {
   const [mood, setMood] = useState(null)
   const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confirm, confirmSheet] = useConfirmSheet()
 
   // Drives the popup enter/exit animation. We keep the route mounted until
   // the close animation finishes, then run the queued navigation so the popup
@@ -71,10 +74,10 @@ function JournalNew() {
 
   const canSave = !submitting && text.trim().length > 0 && text.length <= MAX_CHARS
 
-  const handleCancel = useCallback(() => {
-    if (text.trim().length > 0 && !window.confirm('Discard this entry?')) return
+  const handleCancel = useCallback(async () => {
+    if (text.trim().length > 0 && !(await confirm(discardConfirm('entry')))) return
     closeWith(() => navigate(-1))
-  }, [text, navigate, closeWith])
+  }, [text, navigate, closeWith, confirm])
 
   const handleSave = useCallback(async () => {
     if (!canSave || !game) return
@@ -98,6 +101,7 @@ function JournalNew() {
         }),
         deadline,
       ])
+      hapticSuccess()
       showToast('Entry saved!', 'success')
       closeWith(() => navigate(-1))
     } catch (err) {
@@ -173,6 +177,7 @@ function JournalNew() {
   // ── Composer ──────────────────────────────────────────────────────────────
 
   return (
+    <>
     <CenteredModal
       isOpen={open}
       onClose={handleCancel}
@@ -291,6 +296,8 @@ function JournalNew() {
         </div>
       </div>
     </CenteredModal>
+    {confirmSheet}
+    </>
   )
 }
 

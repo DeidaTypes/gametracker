@@ -1,6 +1,7 @@
 import React from 'react'
 import { LuChevronRight } from 'react-icons/lu'
 import IOSSwitch from './IOSSwitch'
+import { hapticImpact } from '../utils/haptics'
 
 function SettingsGroup({ id, title, footer = null, icons = false, children }) {
   const className = icons ? 'settings-group settings-group--icons' : 'settings-group'
@@ -75,7 +76,10 @@ function SettingsSwitchRow({ label, checked, onChange, settingId = null }) {
       role="switch"
       aria-checked={checked}
       data-setting-id={settingId || undefined}
-      onClick={() => onChange(!checked)}
+      onClick={() => {
+        hapticImpact('Light')
+        onChange(!checked)
+      }}
     >
       <span className="settings-row__label text-body">{label}</span>
       <span className="settings-row__trailing">

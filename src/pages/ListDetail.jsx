@@ -768,7 +768,7 @@ function ListDetail() {
     try {
       await removeGameFromList(listId, game.id)
       window.dispatchEvent(new Event('libraryUpdated'))
-      hapticSuccess()
+      hapticImpact('Medium')
       showToast('Removed from list', 'success', 4000, {
         label: 'Undo',
         onClick: async () => {
@@ -976,7 +976,7 @@ function ListDetail() {
     setEditingDesc(false)
     try {
       await updateList(listId, { description: trimmed })
-      hapticImpact('Medium')
+      hapticSuccess()
       showToast('Description updated', 'success')
     } catch {
       setListInfo((l) => ({ ...l, description: prev }))

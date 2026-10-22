@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { hapticImpact } from '../utils/haptics'
 import './SpoilerOverlay.css'
 
 /**
@@ -22,6 +23,7 @@ function SpoilerOverlay({ children, label = 'Tap to reveal' }) {
     // review row (e.g. ReviewFeedRow), so revealing doesn't also navigate.
     e.stopPropagation()
     e.preventDefault()
+    hapticImpact('Light')
     setRevealed(true)
   }
 

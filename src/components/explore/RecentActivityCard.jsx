@@ -164,7 +164,10 @@ export default function RecentActivityCard({ item }) {
       image: item.game.image,
     })
     setBacklogging(false)
-    if (added) setBacklogged(true)
+    if (added) {
+      hapticImpact('Light')
+      setBacklogged(true)
+    }
   }
 
   return (

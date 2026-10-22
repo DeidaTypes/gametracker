@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import CenteredModal from './CenteredModal'
 import IOSSwitch from './IOSSwitch'
+import { discardConfirm, useConfirmSheet } from './ConfirmSheet'
+import { hapticSuccess } from '../utils/haptics'
 import { saveJournalEntry, updateJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { showToast } from './Toast'
 import '../pages/JournalNew.css'
@@ -45,6 +47,7 @@ function JournalEntryModal({
   const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const titleRef = useRef(null)
+  const [confirm, confirmSheet] = useConfirmSheet()
 
   // Reset / pre-fill whenever the modal opens.
   useEffect(() => {
@@ -63,13 +66,13 @@ function JournalEntryModal({
 
   const canSave = !submitting && title.trim().length > 0 && title.length <= MAX_TITLE
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     const isDirty = isEditing
       ? title.trim() !== initialTitle.trim() || body.trim() !== initialBody.trim() || isSpoiler !== initialIsSpoiler || mood !== initialMood || String(hours) !== String(initialHours ?? '')
       : title.trim().length > 0 || body.trim().length > 0
-    if (isDirty && !window.confirm(isEditing ? 'Discard changes?' : 'Discard this entry?')) return
+    if (isDirty && !(await confirm(discardConfirm('entry', { editing: isEditing })))) return
     onClose()
-  }, [isEditing, title, body, isSpoiler, mood, hours, initialTitle, initialBody, initialIsSpoiler, initialMood, initialHours, onClose])
+  }, [confirm, isEditing, title, body, isSpoiler, mood, hours, initialTitle, initialBody, initialIsSpoiler, initialMood, initialHours, onClose])
 
   const handleSave = useCallback(async () => {
     if (!canSave) return
@@ -84,6 +87,7 @@ function JournalEntryModal({
           mood,
           hoursPlayed: parsedHours,
         })
+        hapticSuccess()
         showToast('Entry updated!', 'success')
       } else {
         if (!game) return
@@ -97,6 +101,7 @@ function JournalEntryModal({
           mood,
           hoursPlayed: parsedHours,
         })
+        hapticSuccess()
         showToast('Entry saved!', 'success')
       }
       onClose()
@@ -112,6 +117,7 @@ function JournalEntryModal({
   const gameMeta = [game?.year, developer].filter(Boolean).join(' · ')
 
   return (
+    <>
     <CenteredModal
       isOpen={isOpen}
       onClose={handleClose}
@@ -249,6 +255,8 @@ function JournalEntryModal({
         </div>
       </div>
     </CenteredModal>
+    {confirmSheet}
+    </>
   )
 }
 

@@ -46,6 +46,7 @@ import ReviewCard from '../components/ReviewCard'
 import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { hapticImpact } from '../utils/haptics'
 import './Search.css'
 
 const TABS = [
@@ -312,7 +313,10 @@ function RecentsHeader({ onClear }) {
       <button
         type="button"
         className="sp-recents-clear-x"
-        onClick={onClear}
+        onClick={() => {
+          hapticImpact('Medium')
+          onClear()
+        }}
         aria-label="Clear all recent searches"
       >
         <HiX />
@@ -328,6 +332,7 @@ function RemoveButton({ onClick, label }) {
       className="sp-recent-remove"
       onClick={(e) => {
         e.stopPropagation()
+        hapticImpact('Medium')
         onClick()
       }}
       aria-label={label}
@@ -855,6 +860,7 @@ function FollowButton({ targetUserId, targetLabel, currentUserId }) {
       e.stopPropagation()
       if (!targetUserId || !currentUserId || isSelf || pending) return
       const wasFollowing = following
+      hapticImpact('Light')
       setFollowing(!wasFollowing)
       setPending(true)
       try {
@@ -1557,7 +1563,10 @@ function Search() {
               role="tab"
               aria-selected={activeTab === tab.id}
               className={`sp-tab${activeTab === tab.id ? ' sp-tab--active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                if (activeTab !== tab.id) hapticImpact('Light')
+                setActiveTab(tab.id)
+              }}
             >
               {tab.label}
             </button>

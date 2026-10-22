@@ -8,6 +8,7 @@ import React, { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession, useSessionElapsed } from '../contexts/SessionContext'
 import { getGameNavStub } from '../utils/gameNavStub'
+import { hapticImpact } from '../utils/haptics'
 import './SessionPill.css'
 
 function formatElapsed(seconds) {
@@ -24,6 +25,7 @@ export default function SessionPill() {
   const handleStop = useCallback(
     (e) => {
       e.stopPropagation()
+      hapticImpact('Light')
       stopGameSession()
     },
     [stopGameSession]

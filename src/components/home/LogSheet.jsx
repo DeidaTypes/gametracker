@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { LuClock, LuMinus, LuPlus, LuX } from 'react-icons/lu'
 import CenteredModal from '../CenteredModal'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
+import { hapticImpact } from '../../utils/haptics'
 import './LogSheet.css'
 
 const MIN_HOURS = 0.25
@@ -49,6 +50,7 @@ function LogSheet({ isOpen, onClose, game, onLogIt }) {
   const canSave = !!game && clampHours(hours) > 0
 
   const step = (delta) => {
+    hapticImpact('Light')
     setHours((prev) => clampHours((Number(prev) || 0) + delta))
   }
 

@@ -9,6 +9,7 @@ import { showToast } from './Toast'
 import CenteredModal from './CenteredModal'
 import Avatar from './Avatar'
 import EmptyState from './EmptyState'
+import { hapticSuccess } from '../utils/haptics'
 import './DmShareSheet.css'
 
 /**
@@ -82,6 +83,7 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
     setSending(recipient.id)
     try {
       await sendMessage({ recipientId: recipient.id, attachment })
+      hapticSuccess()
       const name = recipient.display_name || recipient.username || 'them'
       showToast(`Sent to ${name}`, 'success')
       onClose()

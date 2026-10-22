@@ -317,8 +317,9 @@ function UserLibrary() {
               gamesCount={0}
               listsCount={0}
               onTabChange={() => {}}
+              haptic={false}
             />
-            <LibraryStatBar counts={{}} activeStatus={null} onStatusTap={() => {}} />
+            <LibraryStatBar counts={{}} activeStatus={null} onStatusTap={() => {}} haptic={false} />
             <div className="lib-grid3" aria-busy="true" aria-hidden="true">
               {Array.from({ length: 9 }, (_, i) => (
                 <div key={i} className="skeleton lib-cov" />

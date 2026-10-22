@@ -17,7 +17,7 @@ import { maybeOpenRateItSheet } from '../services/ratePrompt'
 import { getFollowingCount } from '../services/followService'
 import { logSession } from '../services/sessionService'
 import { showToast } from '../components/Toast'
-import { add, success } from '../services/moments'
+import { hapticSuccess } from '../utils/haptics'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -157,7 +157,7 @@ function Home() {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        add()
+        hapticSuccess()
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {
         showToast('Could not log session — try again', 'error', 5000, {
@@ -187,7 +187,7 @@ function Home() {
       }
       return
     }
-    success()
+    hapticSuccess()
     showToast(`Marked "${game.title}" as Played`, 'success')
     const head = getCurrentCelebration()
     if (!head || String(head.igdbGameId) !== String(game.id)) {

@@ -21,7 +21,7 @@ import EmptyState from '../components/EmptyState'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
 import { showToast } from '../components/Toast'
 import { DestructiveButton, SecondaryButton } from '../components/forms'
-import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { hapticImpact } from '../utils/haptics'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import '../components/CreateListModal.css'
@@ -249,7 +249,7 @@ function ChallengeDetail() {
     setRemovingGameId(game.igdbGameId)
     setPendingRemoval(null)
     setConfirming(false)
-    hapticSuccess()
+    hapticImpact('Medium')
 
     const finishRemove = async () => {
       setGames((prev) => prev.filter((g) => g.igdbGameId !== game.igdbGameId))

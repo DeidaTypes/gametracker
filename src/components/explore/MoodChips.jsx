@@ -1,5 +1,6 @@
 import React from 'react'
 import { MOOD_CHIPS } from '../../services/igdb'
+import { hapticImpact } from '../../utils/haptics'
 import './MoodChips.css'
 
 /**
@@ -29,7 +30,10 @@ export function MoodChips({ activeMood, onSelect, emptyMoods = new Set() }) {
             key={mood.id}
             type="button"
             className={`mood-chip${isActive ? ' mood-chip--active' : ''}`}
-            onClick={() => onSelect(isActive ? null : mood.id)}
+            onClick={() => {
+              hapticImpact('Light')
+              onSelect(isActive ? null : mood.id)
+            }}
             aria-pressed={isActive}
           >
             <span className="mood-chip__emoji" aria-hidden="true">

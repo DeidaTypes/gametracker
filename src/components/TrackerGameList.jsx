@@ -32,8 +32,7 @@ import {
   clearGameStatus,
 } from '../services/libraryService'
 import { getCachedUserReviews, postReview } from '../services/reviewService'
-import { hapticImpact } from '../utils/haptics'
-import { add } from '../services/moments'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { logSession } from '../services/sessionService'
 import ActionSheet from './ActionSheet'
@@ -532,7 +531,7 @@ function TrackerGameList({ listId, games }) {
   // ── Bulk actions ────────────────────────────────────────────────────────────
 
   const handleBulkMove = (targetStatus) => {
-    hapticImpact('Medium')
+    hapticImpact('Light')
     let moved = 0
     for (const id of selectedIds) {
       const game = games.find((g) => String(g.id) === id)
@@ -555,6 +554,7 @@ function TrackerGameList({ listId, games }) {
   }
 
   const handleBulkRemove = () => {
+    hapticImpact('Medium')
     let removed = 0
     for (const id of selectedIds) {
       clearGameStatus(id)
@@ -620,7 +620,7 @@ function TrackerGameList({ listId, games }) {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        add()
+        hapticSuccess()
         handleLogged(game.id, result)
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {

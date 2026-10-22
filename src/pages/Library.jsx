@@ -12,7 +12,7 @@ import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCove
 import { showToast } from '../components/Toast'
 import ReorderTrashTarget from '../components/ReorderTrashTarget'
 import { LIST_REORDER_DRAG_EVENT } from '../components/BottomNav'
-import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { hapticImpact } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { initializeLibrary, getGamesFromList, clearGameStatus, setGameStatus } from '../services/libraryService'
 import { getAllReviews } from '../services/reviewService'
@@ -655,7 +655,7 @@ function Library() {
       showToast('Failed to remove game. Please try again.', 'error')
       return
     }
-    hapticSuccess()
+    hapticImpact('Medium')
     showToast('Removed from library', 'success', 4000, {
       label: 'Undo',
       onClick: () => {

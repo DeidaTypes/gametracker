@@ -1,7 +1,8 @@
 import React from 'react'
 import { STATUS_CELLS } from './libraryConstants'
+import { hapticImpact } from '../../utils/haptics'
 
-export default function LibraryStatBar({ counts, activeStatus, onStatusTap }) {
+export default function LibraryStatBar({ counts, activeStatus, onStatusTap, haptic = true }) {
   return (
     <div className="lib-statbar">
       {STATUS_CELLS.map((cell) => {
@@ -14,7 +15,10 @@ export default function LibraryStatBar({ counts, activeStatus, onStatusTap }) {
             type="button"
             aria-pressed={active}
             className={`lib-statcell lib-statcell--${cell.key}${active ? ' lib-statcell--active' : ''}${isEmpty ? ' lib-statcell--empty' : ''}`}
-            onClick={() => onStatusTap(cell.key)}
+            onClick={() => {
+              if (haptic) hapticImpact('Light')
+              onStatusTap(cell.key)
+            }}
           >
             <span className="lib-statcell-num">{count}</span>
             <span className="lib-statcell-lbl">{cell.label}</span>

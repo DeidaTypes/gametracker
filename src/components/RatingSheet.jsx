@@ -7,6 +7,7 @@ import { getTracker } from '../services/hoursService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
 import { useNavDim } from '../hooks/useNavDim'
+import { hapticSuccess } from '../utils/haptics'
 import './RatingSheet.css'
 
 /**
@@ -98,6 +99,7 @@ function RatingSheet({
 
   const handleDone = () => {
     if (rating <= 0) return
+    hapticSuccess()
     resolve(rating)
   }
 

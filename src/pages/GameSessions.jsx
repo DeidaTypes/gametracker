@@ -10,8 +10,7 @@ import {
 } from '../services/sessionService'
 import { getTotalHoursForGame } from '../services/hoursService'
 import { getMoodMeta } from '../services/journalService'
-import { hapticImpact } from '../utils/haptics'
-import { add } from '../services/moments'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import LogSessionModal from '../components/LogSessionModal'
@@ -108,7 +107,7 @@ export default function GameSessions() {
         playedOn,
       })
       if (result) {
-        hapticImpact('Medium')
+        hapticSuccess()
         await refreshSessions()
         setLogSessionOpen(false)
         setEditingSession(null)
@@ -128,6 +127,7 @@ export default function GameSessions() {
   const handleDeleteSession = useCallback(async (sessionId, mins) => {
     const result = await deleteManualSession(sessionId, gameId, mins)
     if (result) {
+      hapticImpact('Medium')
       setSessions((prev) => prev.filter((s) => s.id !== sessionId))
     } else {
       console.error('[GameSessions] failed to delete session')
@@ -155,7 +155,7 @@ export default function GameSessions() {
       gameImage: targetGame.image,
     }).then((result) => {
       if (result) {
-        add()
+        hapticSuccess()
         refreshSessions()
         showToast(`Logged ${hours}h of ${targetGame.title}`, 'success')
       } else {

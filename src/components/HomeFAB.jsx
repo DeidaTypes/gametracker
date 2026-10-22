@@ -17,7 +17,7 @@ import { createList, addGameToList } from '../services/listService'
 import { logSession } from '../services/sessionService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
-import { add } from '../services/moments'
+import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './HomeFAB.css'
 
 // ── Radial item positions (from FAB center) ────────────────────────────────
@@ -110,7 +110,10 @@ function HomeFAB() {
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openRadial = () => setIsOpen(true)
+  const openRadial = () => {
+    hapticImpact('Light')
+    setIsOpen(true)
+  }
 
   const closeRadial = (returnFocus = true) => {
     setIsOpen(false)
@@ -156,7 +159,7 @@ function HomeFAB() {
       gameImage: game.image,
     }).then((result) => {
       if (result) {
-        add()
+        hapticSuccess()
         showToast(`Logged ${hours}h of ${game.title}`, 'success')
       } else {
         showToast('Could not log session — try again', 'error', 5000, {
