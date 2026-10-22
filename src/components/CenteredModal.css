@@ -12,9 +12,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 8, 18, 0.6);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  backdrop-filter: blur(14px) saturate(160%);
+  /* No backdrop-filter: a full-screen blur re-rasters on every frame of the
+     slide and WebKit shows it at full strength the moment the overlay
+     mounts, so it read as a snap. The dim below carries the backdrop. */
+  background: transparent;
   padding: 20px;
   /* Static padding only. The keyboard lift moved to .cm-lift below, which
      transforms instead of re-laying-out: animating padding-bottom here forced
@@ -29,7 +30,16 @@
    A plain element between the overlay and the card, because Motion owns
    `transform` on both of those for the fade/scale animation. Carries the
    shared .kb-modal-lift class from styles/keyboard.css. */
+/* ── Dim ── faded on its own so the card is never see-through */
+.cm-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 18, 0.6);
+  pointer-events: none;
+}
+
 .cm-lift {
+  position: relative; /* paint above the absolutely positioned dim */
   display: flex;
   justify-content: center;
   /* center, not the default stretch — otherwise the card would grow to the

@@ -187,11 +187,18 @@ function CenteredModal({
           ref={overlayRef}
           className={`cm-overlay kb-no-blur-while-animating${steady ? ' cm-overlay--steady' : ''}`}
           onClick={handleBackdrop}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={transition}
         >
+          {/* Only the dim fades. Fading the overlay itself made the card
+              see-through for the whole slide (the page and nav showed
+              through it). */}
+          <motion.div
+            className="cm-dim"
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={transition}
+          />
           <div className="cm-lift kb-modal-lift">
             <motion.div
               ref={cardRef}

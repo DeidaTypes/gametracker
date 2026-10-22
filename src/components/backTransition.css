@@ -43,6 +43,25 @@
   backface-visibility: hidden;
 }
 
+/* The page being swiped has to paint above the reveal (.back-reveal is
+   position: fixed, z-index 1) for the whole gesture. At rest a .route-layer
+   has no position, so the z-index above does nothing until POP turns it into
+   .route-layer--exiting (position: fixed) — which is why a Back tap looked
+   right and a swipe painted the previous screen over this one. */
+.route-layer.back-slide-top:not(.route-layer--exiting) {
+  position: relative;
+}
+
+/* The swiped page is a sheet of paper over the reveal: opaque and at least
+   a screen tall. Many page roots are transparent at rest (they show the
+   body color), so without this the previous screen showed through every gap
+   between cards while swiping. Same fill a pushed page gets on its way in
+   (.route-layer--front). */
+.route-layer.back-slide-top {
+  background-color: var(--color-bg-primary);
+  min-height: 100dvh;
+}
+
 .back-slide-top * {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
