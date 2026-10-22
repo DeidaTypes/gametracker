@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q&amp;A Composer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Theme tokens (mirrors src/styles/theme.css) ---------- */
+:root, [data-t="navy"] {
+  --base:#0a0f1f; --surface:#131a35; --surface-2:#1a2240;
+  --line:rgba(148,168,212,.12); --line-strong:rgba(148,168,212,.24);
+  --text:#f0f3fa; --muted:#94a8d4; --dim:#6b7995;
+  --primary:#3b82f6; --review:#0a9e6a; --journal:#8b32d1; --gold:#f5b50a;
+  --glow:rgba(59,130,246,.20); --card-shadow:0 24px 60px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.4);
+  --kb:#2b2d33; --kb-key:#4a4c53; --kb-key-dark:#35373d; --kb-text:#fff;
+  --page:#05070f; --page-text:#c9d3ea; --page-dim:#7b88a6;
+  --qa-grad:linear-gradient(135deg,#3b82f6 0%,#8b32d1 100%);
+}
+[data-t="sky"] {
+  --base:#cfe2f6; --surface:#eaf3fd; --surface-2:#bcd6f0;
+  --line:rgba(20,70,130,.16); --line-strong:rgba(20,70,130,.26);
+  --text:#0b2340; --muted:#3f5877; --dim:#556e8b;
+  --primary:#1a64cc; --review:#0b8066; --journal:#5b47d6; --gold:#d09200;
+  --glow:rgba(26,100,204,.20); --card-shadow:0 24px 60px rgba(11,35,64,.30),0 2px 8px rgba(11,35,64,.18);
+  --kb:#d1d4db; --kb-key:#ffffff; --kb-key-dark:#abb0bc; --kb-text:#0b0b0d;
+  --page:#e9eef6; --page-text:#1d2a3d; --page-dim:#5b6b83;
+  --qa-grad:linear-gradient(135deg,#1a64cc 0%,#5b47d6 100%);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'DM Sans',system-ui,sans-serif; background:var(--page); color:var(--page-text); -webkit-font-smoothing:antialiased; padding:28px 16px 64px; }
+.wrap { max-width:1680px; margin:0 auto; }
+header.top { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-bottom:8px; }
+header.top h1 { font-size:26px; font-weight:700; letter-spacing:-.01em; }
+header.top p { color:var(--page-dim); font-size:14px; margin-top:4px; max-width:760px; line-height:1.5; }
+.seg { display:inline-flex; background:color-mix(in srgb,var(--page-text) 8%,transparent); border-radius:10px; padding:3px; }
+.seg button { font:inherit; font-size:13px; font-weight:600; border:0; background:none; color:var(--page-dim); padding:7px 14px; border-radius:8px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--page); color:var(--page-text); box-shadow:0 1px 3px rgba(0,0,0,.15); }
+
+.rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px 28px; margin:18px 0 26px; font-size:13px; color:var(--page-dim); line-height:1.5; }
+.rules b { color:var(--page-text); font-weight:600; }
+
+.grid { display:flex; flex-wrap:wrap; gap:28px 22px; }
+.col { width:390px; max-width:100%; }
+.cap { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--page-text); margin-bottom:4px; }
+.cap small { display:block; text-transform:none; letter-spacing:0; font-weight:400; color:var(--page-dim); font-size:12.5px; margin-top:3px; line-height:1.45; }
+.cap .tag { display:inline-block; font-size:10.5px; letter-spacing:.06em; padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:2px; background:color-mix(in srgb,var(--page-text) 10%,transparent); color:var(--page-dim); }
+.cap .tag.new { background:color-mix(in srgb,#3b82f6 22%,transparent); color:#3b82f6; }
+
+/* ---------- Phone ---------- */
+.phone { position:relative; width:390px; height:844px; border-radius:46px; overflow:hidden; background:var(--base); box-shadow:0 0 0 10px #0c0d10, 0 0 0 11px #2a2c33, 0 30px 60px rgba(0,0,0,.35); margin:12px 0 0 11px; transform-origin:top left; }
+@media (max-width:430px){ .phone{ transform:scale(.86); margin-bottom:-118px; } }
+.status { position:absolute; top:0; left:0; right:0; height:54px; display:flex; align-items:center; justify-content:space-between; padding:6px 30px 0 40px; font-size:16px; font-weight:600; color:var(--text); z-index:5; }
+.island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:124px; height:36px; border-radius:20px; background:#000; z-index:6; }
+.status .r { display:flex; gap:6px; align-items:center; font-size:13px; }
+.batt { width:25px; height:12px; border-radius:4px; background:#34c759; color:#fff; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+/* background screen: Q&A home */
+.bgscreen { position:absolute; inset:0; padding:64px 16px 0; background:var(--base); }
+.bgscreen::before { content:""; position:absolute; inset:0 0 auto 0; height:260px; background:radial-gradient(120% 80% at 20% 0%,var(--glow),transparent 70%); }
+.bg-h { position:relative; display:flex; align-items:center; justify-content:space-between; margin-top:14px; }
+.bg-h h2 { font-size:28px; font-weight:700; color:var(--text); }
+.bg-ask { background:var(--primary); color:#fff; font-size:14px; font-weight:600; padding:8px 14px; border-radius:999px; }
+.bg-sub { position:relative; color:var(--muted); font-size:13px; margin-top:4px; }
+.bg-search { position:relative; margin-top:16px; height:40px; border-radius:12px; background:var(--surface); border:.5px solid var(--line); }
+.bg-seg { position:relative; margin-top:14px; height:36px; border-radius:10px; background:var(--surface-2); }
+.bg-row { position:relative; margin-top:14px; height:78px; border-radius:14px; background:var(--surface); border:.5px solid var(--line); }
+.bg-nav { position:absolute; left:50%; transform:translateX(-50%); bottom:30px; width:268px; height:62px; border-radius:999px; background:var(--surface); border:.5px solid var(--line); }
+
+/* CenteredModal shell — mirrors CenteredModal.css */
+.cm-overlay { position:absolute; inset:0; z-index:3; display:flex; align-items:center; justify-content:center; background:rgba(5,8,18,.6); -webkit-backdrop-filter:blur(14px) saturate(160%); backdrop-filter:blur(14px) saturate(160%); padding:74px 20px 20px; }
+.cm-overlay.kb { align-items:flex-end; padding-bottom:356px; } /* card lifted above keyboard */
+.cm-card { width:100%; max-width:360px; background:var(--surface); border:.5px solid var(--line); border-radius:16px; box-shadow:var(--card-shadow); display:flex; flex-direction:column; overflow:clip; max-height:100%; }
+.cm-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.cm-scroll::-webkit-scrollbar { display:none; }
+
+/* Top bar — identical to .rnc-topbar / .jnc-topbar */
+.topbar { flex-shrink:0; height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:.5px solid var(--line); }
+.topbar button { font:inherit; font-size:16px; background:none; border:0; color:var(--primary); min-width:56px; padding:6px 0; cursor:pointer; }
+.topbar .cancel { text-align:left; }
+.topbar .post { font-weight:700; text-align:right; }
+.topbar .post.off { opacity:.4; pointer-events:none; }
+.topbar .title { flex:1; text-align:center; font-size:16px; font-weight:600; color:var(--text); }
+
+/* Body — identical rhythm to .jnc-scroll */
+.body { display:flex; flex-direction:column; gap:14px; padding:16px; }
+.game { display:flex; align-items:center; gap:12px; }
+.cover { width:44px; height:60px; border-radius:6px; flex-shrink:0; box-shadow:0 2px 10px rgba(0,0,0,.35); }
+.c1 { background:linear-gradient(160deg,#5b1a1a 0%,#2a0d12 55%,#120708 100%); }
+.c2 { background:linear-gradient(160deg,#1d2b55 0%,#0d1430 60%,#06091a 100%); }
+.c3 { background:linear-gradient(160deg,#3a2a52 0%,#1a1430 60%,#0c0918 100%); }
+.c4 { background:linear-gradient(160deg,#20323a 0%,#101a20 60%,#070b0e 100%); }
+.c5 { background:linear-gradient(160deg,#2f4d2c 0%,#152414 60%,#090f08 100%); }
+.c6 { background:linear-gradient(160deg,#47324a 0%,#22172a 60%,#0f0a14 100%); }
+.ginfo { flex:1; min-width:0; }
+.gtitle { font-size:15px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.gmeta { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; white-space:nowrap; }
+.gmeta .plat { color:var(--primary); font-weight:500; display:inline-flex; align-items:center; gap:2px; }
+.gmeta .plat svg { width:12px; height:12px; }
+.gq { font-size:15px; font-weight:600; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:3px; }
+
+/* Title input — identical to .jnc-title-input */
+.tinput { width:100%; padding:12px; background:var(--surface); border:.5px solid var(--line); border-radius:12px; color:var(--text); font:inherit; font-size:16px; font-weight:600; line-height:1.4; min-height:48px; }
+.tinput.ph { color:var(--dim); font-weight:400; }
+.focus { border-color:color-mix(in srgb,var(--primary) 50%,transparent); }
+.caret { display:inline-block; width:2px; height:19px; background:var(--primary); vertical-align:-4px; margin-left:1px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+@media (prefers-reduced-motion:reduce){ .caret{ animation:none; } }
+
+/* Textarea — identical to .rnc-textarea */
+.tarea { width:100%; min-height:120px; padding:12px; background:var(--surface); border:.5px solid var(--line); border-radius:12px; color:var(--text); font-size:16px; line-height:1.5; }
+.tarea.ph { color:var(--dim); }
+.count { font-size:11px; color:var(--dim); text-align:right; margin-top:4px; }
+.tip { font-size:11px; color:var(--dim); line-height:1.5; margin-top:-6px; }
+.tip code { font-family:'SFMono-Regular',Consolas,monospace; font-size:10px; background:color-mix(in srgb,var(--muted) 12%,transparent); padding:1px 4px; border-radius:3px; }
+
+/* Section label — identical to .jnc-section-label */
+.slabel { font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); margin-bottom:-6px; display:flex; justify-content:space-between; }
+.slabel span { text-transform:none; letter-spacing:0; font-weight:400; }
+
+/* Chips — identical to .rnc-stamp-pill (square, --radius-chip 4px) */
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { font:inherit; font-size:13px; font-weight:500; line-height:1; color:var(--muted); background:var(--surface-2); border:.5px solid var(--line); border-radius:4px; padding:7px 14px; cursor:pointer; white-space:nowrap; }
+.chip.on { color:#fff; background:var(--primary); border-color:var(--primary); }
+
+/* Grouped rows — identical to .rnc-group */
+.group { background:var(--surface-2); border:.5px solid var(--line); border-radius:12px; overflow:clip; }
+.row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 14px; min-height:48px; }
+.row .lab { font-size:15px; color:var(--text); }
+.row .val { font-size:15px; color:var(--dim); text-align:right; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.row .val.set { color:var(--text); }
+.row .sub { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+.divider { height:.5px; background:var(--line); margin-left:14px; }
+.sw { width:51px; height:31px; border-radius:999px; background:color-mix(in srgb,var(--dim) 40%,transparent); position:relative; flex-shrink:0; cursor:pointer; transition:background .2s; }
+.sw::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.25); transition:transform .2s; }
+.sw.on { background:var(--primary); }
+.sw.on::after { transform:translateX(20px); }
+@media (prefers-reduced-motion:reduce){ .sw,.sw::after{ transition:none; } }
+
+/* "Is this your question?" */
+.similar { border:.5px solid var(--line); border-radius:12px; overflow:clip; margin-top:-4px; }
+.similar .h { font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); padding:10px 12px 6px; }
+.similar .q { display:flex; align-items:center; gap:10px; padding:9px 12px; border-top:.5px solid var(--line); }
+.similar .q .t { flex:1; min-width:0; font-size:14px; color:var(--text); line-height:1.35; }
+.similar .q .m { font-size:11.5px; color:var(--muted); margin-top:2px; }
+.similar .q .ok { color:var(--review); }
+.similar .q svg { width:16px; height:16px; color:var(--dim); flex-shrink:0; }
+.similar .keep { font-size:12px; color:var(--muted); padding:8px 12px 10px; border-top:.5px solid var(--line); }
+
+/* Stars (review reference) */
+.stars { display:flex; flex-direction:column; align-items:center; gap:8px; padding:4px 0; }
+.stars .s { display:flex; gap:6px; }
+.stars svg { width:34px; height:34px; }
+.stars .hint { font-size:12px; color:var(--muted); }
+.expander { display:flex; align-items:center; justify-content:space-between; min-height:44px; padding:0 14px; background:var(--surface-2); border:.5px solid var(--line); border-radius:12px; font-size:15px; color:var(--text); }
+.chev { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--muted); }
+
+/* Game picker — mirrors GamePickerSheet (.gps-*) */
+.gps { height:100%; }
+.gps-h { padding:16px 20px 12px; border-bottom:1px solid var(--line); }
+.gps-h h3 { font-size:18px; font-weight:700; color:var(--text); letter-spacing:-.01em; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+.gps-h h3 button { font:inherit; font-size:16px; font-weight:400; color:var(--primary); background:none; border:0; }
+.gps-search { position:relative; }
+.gps-search svg { position:absolute; left:12px; top:13px; width:18px; height:18px; color:var(--dim); }
+.gps-search div { height:44px; border-radius:12px; border:1px solid var(--primary); background:color-mix(in srgb,var(--primary) 6%,transparent); padding:0 40px; display:flex; align-items:center; font-size:16px; color:var(--dim); }
+.gps-b { padding:16px 0 18px; }
+.gps-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); padding:0 20px 10px; }
+.gps-covers { display:flex; gap:10px; padding:0 20px 18px; overflow:hidden; }
+.gps-covers .cover { width:68px; height:90px; border-radius:8px; }
+.gps-res { display:flex; align-items:center; gap:14px; padding:10px 20px; }
+.gps-res .cover { width:44px; height:58px; }
+.gps-res .t { font-size:15px; font-weight:600; color:var(--text); }
+.gps-res .m { font-size:13px; color:var(--dim); margin-top:2px; }
+
+/* Keyboard */
+.kbd { position:absolute; left:0; right:0; bottom:0; height:336px; background:var(--kb); z-index:4; padding:8px 4px 0; }
+.kbd .sug { height:38px; display:flex; justify-content:space-around; align-items:center; color:var(--kb-text); font-size:15px; opacity:.85; border-bottom:0; margin-bottom:6px; }
+.kbd .kr { display:flex; justify-content:center; gap:6px; margin-bottom:11px; }
+.kbd .k { width:33px; height:42px; border-radius:5px; background:var(--kb-key); color:var(--kb-text); font-size:20px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 0 rgba(0,0,0,.3); }
+.kbd .k.w { width:44px; background:var(--kb-key-dark); font-size:14px; }
+.kbd .k.sp { width:180px; }
+.kbd .k.ret { width:88px; background:var(--kb-key-dark); font-size:15px; }
+.home-ind { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:134px; height:5px; border-radius:3px; background:var(--text); opacity:.55; z-index:7; }
+.kbd ~ .home-ind { background:var(--kb-text); }
+
+.note { font-size:12px; color:var(--page-dim); margin:12px 0 0 11px; line-height:1.5; max-width:380px; }
+.note b { color:var(--page-text); font-weight:600; }
+footer { margin-top:40px; font-size:13px; color:var(--page-dim); line-height:1.6; max-width:900px; }
+footer h3 { font-size:15px; color:var(--page-text); margin-bottom:6px; }
+footer li { margin-left:18px; }
+</style>
+</head>
+<body data-t="navy">
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Q&amp;A composer: matched to Write review and Journal entry</h1>
+      <p>Ask and Answer drop the bottom sheet and use the same centered popup (CenteredModal) as Write review and New journal entry. Same top bar, same game header, same field styles, same grouped rows. One look for every box where you submit something.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-set="navy" aria-pressed="true">Navy</button>
+      <button type="button" data-set="sky" aria-pressed="false">Light Blue</button>
+    </div>
+  </header>
+
+  <div class="rules">
+    <div><b>Shell.</b> Centered popup over a blurred, dimmed screen. Opens with the same fade and scale as Write review. No sliding up and snapping to full height, and nothing under the status bar.</div>
+    <div><b>Top bar.</b> Cancel · title · Post as plain text buttons in the app color. Post stays faded until the question is ready. A hairline sits under the bar.</div>
+    <div><b>Fields.</b> Inputs use the card color with a hairline border. When focused the border turns blue, not the whole box. Labels and the tip line use the review styles.</div>
+    <div><b>Keyboard.</b> The popup lifts above the keyboard and scrolls inside, the same way Write review does. The field you're typing in always stays visible.</div>
+  </div>
+
+  <div class="grid" id="grid">
+
+    <!-- 1. Pick a game -->
+    <section class="col">
+      <div class="cap">1 · Pick a game <span class="tag">existing picker</span><small>The same game picker Write review uses, with a new title and a visible Cancel. Tapping a game swaps this card for the Ask card in place, with no close and reopen.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2>Q&amp;A</h2><span class="bg-ask">+ Ask</span></div><div class="bg-sub">Answers from players who've been there</div><div class="bg-search"></div><div class="bg-seg"></div><div class="bg-row"></div><div class="bg-row"></div><div class="bg-nav"></div></div>
+        <div class="cm-overlay kb" style="padding-top:74px;">
+          <div class="cm-card gps" style="height:100%;">
+            <div class="gps-h">
+              <h3>Which game is it about? <button type="button">Cancel</button></h3>
+              <div class="gps-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><div>Search games…<span class="caret"></span></div></div>
+            </div>
+            <div class="gps-b cm-scroll">
+              <p class="gps-label">Currently playing</p>
+              <div class="gps-covers"><div class="cover c2"></div><div class="cover c1"></div><div class="cover c3"></div><div class="cover c4"></div></div>
+              <p class="gps-label">Recently played</p>
+              <div class="gps-res"><div class="cover c5"></div><div><div class="t">Slay the Spire II</div><div class="m">2026 · Mega Crit</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="kbd"><div class="sug"><span>"Searc"</span><span>Search</span><span>Searching</span></div>
+          <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+          <div class="kr"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+          <div class="kr"><span class="k w">⇧</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k w">⌫</span></div>
+          <div class="kr"><span class="k w">123</span><span class="k sp"></span><span class="k ret">search</span></div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- 2. Ask - empty -->
+    <section class="col">
+      <div class="cap">2 · Ask a question <span class="tag new">new layout</span><small>Same shell, header and field styles as Write review. The platform moves into the meta line (tap it to change). Topic chips are the review's square Vibe pills.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2>Q&amp;A</h2><span class="bg-ask">+ Ask</span></div><div class="bg-sub">Answers from players who've been there</div><div class="bg-search"></div><div class="bg-seg"></div><div class="bg-row"></div><div class="bg-row"></div><div class="bg-nav"></div></div>
+        <div class="cm-overlay">
+          <div class="cm-card">
+            <div class="topbar"><button class="cancel" type="button">Cancel</button><span class="title">Ask a question</span><button class="post off" type="button">Post</button></div>
+            <div class="cm-scroll"><div class="body">
+              <div class="game"><div class="cover c1"></div><div class="ginfo"><p class="gtitle">The Blood of Dawnwalker</p><p class="gmeta"><span class="plat">Xbox Series X|S <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span> · From your library</p></div></div>
+              <div class="tinput ph">What are you stuck on?</div>
+              <p class="tip">Keep the question spoiler-free. It always shows, even when spoilers are on.</p>
+              <p class="slabel">Topic</p>
+              <div class="chips"><span class="chip">Boss</span><span class="chip">Build</span><span class="chip">Item</span><span class="chip">Location</span><span class="chip">Puzzle</span><span class="chip">Quest</span><span class="chip">Story</span><span class="chip">Strategy</span><span class="chip">Tech</span></div>
+              <div><div class="tarea ph">Add details: what you tried, where you're stuck… (optional)</div><p class="count">0/2000</p></div>
+              <div class="group">
+                <div class="row"><span class="lab">Where are you?</span><span class="val">Optional</span></div>
+                <div class="divider"></div>
+                <div class="row"><span class="lab">Contains spoilers</span><span class="sw"></span></div>
+              </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- 3. Ask - typing -->
+    <section class="col">
+      <div class="cap">3 · Typing, keyboard up <span class="tag new">fix</span><small>The card lifts above the keyboard and scrolls inside, so the field you're typing in stays in view. "Is this your question?" shows up under the title after 3 words.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2>Q&amp;A</h2><span class="bg-ask">+ Ask</span></div><div class="bg-sub">Answers from players who've been there</div><div class="bg-search"></div><div class="bg-seg"></div><div class="bg-row"></div><div class="bg-row"></div><div class="bg-nav"></div></div>
+        <div class="cm-overlay kb">
+          <div class="cm-card" style="height:414px;">
+            <div class="topbar"><button class="cancel" type="button">Cancel</button><span class="title">Ask a question</span><button class="post off" type="button">Post</button></div>
+            <div class="cm-scroll"><div class="body">
+              <div class="game"><div class="cover c1"></div><div class="ginfo"><p class="gtitle">The Blood of Dawnwalker</p><p class="gmeta"><span class="plat">Xbox Series X|S <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span> · From your library</p></div></div>
+              <div class="tinput focus">Where do I go in the Church of Undead<span class="caret"></span></div>
+              <div class="similar">
+                <p class="h">Is this your question?</p>
+                <div class="q"><div class="t">How do I get into the Church of Undead Witches?<p class="m"><span class="ok">Answered</span> · Location · 3 answers</p></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></div>
+                <p class="keep">Not it? Keep writing.</p>
+              </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="kbd"><div class="sug"><span>"Undead"</span><span>Undead</span><span>Undeads</span></div>
+          <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+          <div class="kr"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+          <div class="kr"><span class="k w">⇧</span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k w">⌫</span></div>
+          <div class="kr"><span class="k w">123</span><span class="k sp"></span><span class="k ret">return</span></div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- 4. Ask - ready -->
+    <section class="col">
+      <div class="cap">4 · Ready to post <span class="tag new">interactive</span><small>Post turns solid once there's a 10+ character question and a topic. Picking Story turns Spoilers on. Tap the chips and the switch to try it.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2>Q&amp;A</h2><span class="bg-ask">+ Ask</span></div><div class="bg-sub">Answers from players who've been there</div><div class="bg-search"></div><div class="bg-seg"></div><div class="bg-row"></div><div class="bg-row"></div><div class="bg-nav"></div></div>
+        <div class="cm-overlay">
+          <div class="cm-card">
+            <div class="topbar"><button class="cancel" type="button">Cancel</button><span class="title">Ask a question</span><button class="post" id="post4" type="button">Post</button></div>
+            <div class="cm-scroll"><div class="body">
+              <div class="game"><div class="cover c1"></div><div class="ginfo"><p class="gtitle">The Blood of Dawnwalker</p><p class="gmeta"><span class="plat">Xbox Series X|S <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span> · From your library</p></div></div>
+              <div class="tinput">Where do I go in the Church of Undead Witches?</div>
+              <p class="tip">Keep the question spoiler-free. It always shows, even when spoilers are on.</p>
+              <p class="slabel">Topic</p>
+              <div class="chips" id="chips4"><button class="chip" type="button">Boss</button><button class="chip" type="button">Build</button><button class="chip" type="button">Item</button><button class="chip on" type="button">Location</button><button class="chip" type="button">Puzzle</button><button class="chip" type="button">Quest</button><button class="chip" type="button" data-story>Story</button><button class="chip" type="button">Strategy</button><button class="chip" type="button">Tech</button></div>
+              <div><div class="tarea" style="min-height:96px;">Every path east of the bridge loops back. Tried the crypt door too.</div><p class="count">66/2000</p></div>
+              <div class="group">
+                <div class="row"><span class="lab">Where are you?</span><span class="val set">Second bell</span></div>
+                <div class="divider"></div>
+                <div class="row"><span class="lab">Contains spoilers<span class="sub">Hides details and answers</span></span><span class="sw on" id="sw4" role="switch" aria-checked="true" tabindex="0"></span></div>
+              </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- 5. Answer -->
+    <section class="col">
+      <div class="cap">5 · Answer a question <span class="tag new">same shell</span><small>Opens from "Answer it" on a question. The header shows the question you're answering instead of only the game. Then the text box, the tip line and the spoiler row.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2 style="font-size:22px;">Question</h2></div><div class="bg-row" style="height:120px;"></div><div class="bg-row"></div><div class="bg-row"></div></div>
+        <div class="cm-overlay">
+          <div class="cm-card">
+            <div class="topbar"><button class="cancel" type="button">Cancel</button><span class="title">Answer</span><button class="post off" type="button">Post</button></div>
+            <div class="cm-scroll"><div class="body">
+              <div class="game"><div class="cover c1"></div><div class="ginfo"><p class="gq">Where do I go in the Church of Undead Witches?</p><p class="gmeta">The Blood of Dawnwalker · Location</p></div></div>
+              <div><div class="tarea ph" style="min-height:140px;">Share what worked for you…</div><p class="count">0/2000</p></div>
+              <p class="tip">Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.</p>
+              <div class="group">
+                <div class="row"><span class="lab">Contains spoilers</span><span class="sw"></span></div>
+              </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- 6. Reference: Write review -->
+    <section class="col">
+      <div class="cap">Reference · Write review <span class="tag">shipping today</span><small>What it's matched to: the same card, top bar, cover header, text box, tip line and grouped switch rows.</small></div>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="status"><span>11:16</span><span class="r">5G <span class="batt">28</span></span></div>
+        <div class="bgscreen"><div class="bg-h"><h2 style="font-size:22px;">Game</h2></div><div class="bg-row" style="height:200px;"></div><div class="bg-row"></div></div>
+        <div class="cm-overlay">
+          <div class="cm-card">
+            <div class="topbar"><button class="cancel" type="button">Cancel</button><span class="title">Write review</span><button class="post off" type="button">Post</button></div>
+            <div class="cm-scroll"><div class="body" style="gap:10px;padding:14px 16px 20px;">
+              <div class="game"><div class="cover c1"></div><div class="ginfo"><p class="gtitle">The Blood of Dawnwalker</p><p class="gmeta">2026 · Rebel Wolves</p></div></div>
+              <div class="stars"><div class="s">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+              </div><p class="hint">Tap to rate</p></div>
+              <div><div class="tarea ph">Write your thoughts…</div><p class="count">0/5000</p></div>
+              <p class="tip" style="margin-top:0;">Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.</p>
+              <div class="expander">Add details <span class="chev"></span></div>
+              <div class="group">
+                <div class="row"><span class="lab">Liked</span><span class="sw"></span></div><div class="divider"></div>
+                <div class="row"><span class="lab">Contains spoilers</span><span class="sw"></span></div><div class="divider"></div>
+                <div class="row"><span class="lab">Mark as completed</span><span class="sw"></span></div>
+              </div>
+            </div></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <h3>What changes from what's on your phone now</h3>
+    <ul>
+      <li>The bottom sheet is gone. Ask and Answer use CenteredModal, the popup Write review and Journal already use. That fixes the half-height snap, the header under the status bar, and the drop and re-rise after picking a game.</li>
+      <li>The solid blue input blocks become card-colored fields with a hairline border. The focused field gets a blue border.</li>
+      <li>Topic chips become the review's square Vibe pills. The selected chip is solid blue with white text.</li>
+      <li>The white platform box moves into the game's meta line as tappable blue text with a small chevron.</li>
+      <li>"Where are you?" and "Contains spoilers" move into one grouped box with a hairline between rows, like Liked and Spoilers on Write review.</li>
+      <li>After posting: the popup fades out, the question opens, and "Question posted" uses the app's standard toast position.</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var body=document.body;
+  document.querySelectorAll('[data-set]').forEach(function(b){
+    b.addEventListener('click',function(){
+      body.setAttribute('data-t',b.dataset.set);
+      document.querySelectorAll('[data-set]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+    });
+  });
+  var chips=document.getElementById('chips4'), sw=document.getElementById('sw4'), post=document.getElementById('post4');
+  function sync(){ var any=chips.querySelector('.chip.on'); post.classList.toggle('off',!any); }
+  chips.addEventListener('click',function(e){
+    var c=e.target.closest('.chip'); if(!c) return;
+    var was=c.classList.contains('on');
+    chips.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on');});
+    if(!was){ c.classList.add('on'); if(c.hasAttribute('data-story')){ sw.classList.add('on'); sw.setAttribute('aria-checked','true'); } }
+    sync();
+  });
+  function toggle(){ var on=!sw.classList.contains('on'); sw.classList.toggle('on',on); sw.setAttribute('aria-checked',String(on)); }
+  sw.addEventListener('click',toggle);
+  sw.addEventListener('keydown',function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggle(); } });
+})();
+</script>
+</body>
+</html>

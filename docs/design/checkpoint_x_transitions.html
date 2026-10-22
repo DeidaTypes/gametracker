@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint — X-style transitions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f1f; --surface:#131a35; --surface-2:#1a2240; --line:rgba(148,168,212,.12);
+  --text:#f0f3fa; --muted:#94a8d4; --dim:#6b7995; --app:#3b82f6; --review:#0a9e6a; --journal:#8b32d1;
+  --dur:340ms; --ease:cubic-bezier(.32,.72,0,1);
+}
+.light{
+  --bg:#f5d3de; --surface:#fcecf1; --surface-2:#eec3d1; --line:rgba(120,30,60,.16);
+  --text:#35121f; --muted:#7c4655; --dim:#885c6b; --app:#c92a62; --review:#0d8069; --journal:#7446cf;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#05070d;color:#f0f3fa;font-family:'DM Sans',system-ui,sans-serif;padding:32px 18px 60px;
+  display:flex;gap:40px;justify-content:center;flex-wrap:wrap;-webkit-font-smoothing:antialiased}
+.side{max-width:380px}
+.side h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.side p{font-size:13.5px;line-height:1.6;color:#94a8d4;margin-top:10px}
+.side b{color:#f0f3fa;font-weight:600}
+.side ul{list-style:none;margin-top:14px;font-size:13px;color:#94a8d4;line-height:1.7}
+.side li b{color:#f0f3fa}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.ctrls button{font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;border-radius:999px;border:1px solid #2a345c;background:#131a35;color:#f0f3fa;cursor:pointer}
+.ctrls button.on{background:#3b82f6;border-color:#3b82f6}
+
+.phone{position:relative;width:340px;height:720px;border-radius:44px;overflow:hidden;background:var(--bg);color:var(--text);
+  box-shadow:0 0 0 1px #1c2447,0 30px 70px rgba(0,0,0,.6);user-select:none;touch-action:pan-y}
+.status{position:absolute;top:0;left:0;right:0;height:48px;display:flex;justify-content:space-between;align-items:center;padding:0 30px;font-size:13px;font-weight:600;z-index:50;pointer-events:none}
+.island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:96px;height:28px;border-radius:999px;background:#000;z-index:51}
+
+.tabroot,.layer{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:56px 0 110px}
+.tabroot[hidden]{display:block;visibility:hidden;pointer-events:none}
+.layer{z-index:10;will-change:transform;box-shadow:-10px 0 30px rgba(0,0,0,.25)}
+.dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9}
+
+.hdr{display:flex;align-items:center;height:44px;padding:0 8px;position:sticky;top:-56px}
+.hdr .back{width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.hdr .back svg{width:22px;height:22px;stroke:var(--text);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hdr .t{flex:1;text-align:center;font-size:15px;font-weight:600;margin-right:44px}
+.big{font-size:28px;font-weight:700;letter-spacing:-.02em;padding:4px 18px 12px}
+
+.row{display:flex;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:active{background:var(--surface)}
+.cov{width:40px;height:56px;border-radius:6px;flex:none}
+.row .n{font-size:14.5px;font-weight:600}
+.row .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+.hero{display:flex;gap:14px;padding:6px 18px 16px}
+.hero .cov{width:90px;height:126px;border-radius:10px}
+.hero h2{font-size:20px;font-weight:700;line-height:1.2}
+.hero .s{font-size:13px;color:var(--muted);margin-top:6px}
+.btns{display:flex;gap:8px;padding:0 18px 16px}
+.btn{flex:1;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;cursor:pointer}
+.btn.pri{background:linear-gradient(120deg,var(--app),var(--review));color:#fff}
+.btn.sec{background:var(--surface);border:1px solid var(--line)}
+.sec-t{font-size:12px;color:var(--dim);padding:14px 18px 6px;letter-spacing:.04em}
+.para{font-size:13.5px;line-height:1.55;color:var(--muted);padding:0 18px}
+.cmt{display:flex;gap:10px;padding:10px 18px}
+.av{width:28px;height:28px;border-radius:50%;flex:none}
+.cmt .b{font-size:13.5px;line-height:1.4}
+.cmt .b b{font-weight:600}
+
+.nav{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:200px;height:52px;border-radius:999px;
+  background:var(--surface);box-shadow:0 0 0 1px var(--line),0 8px 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:space-around;z-index:40}
+.nav span{width:46px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:600;color:var(--muted)}
+.nav span.on{background:linear-gradient(120deg,var(--app),var(--journal));color:#fff}
+
+.scrim{position:absolute;inset:0;background:#000;opacity:0;z-index:60;pointer-events:none}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:61;background:var(--surface);border-radius:22px 22px 0 0;padding:8px 16px 30px;transform:translateY(100%);will-change:transform}
+.grab{width:36px;height:4px;border-radius:999px;background:var(--dim);margin:0 auto 12px;opacity:.6}
+.sheet .top{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:12px}
+.sheet .top span{cursor:pointer;color:var(--muted)}
+.sheet .top b{font-weight:600}
+.sheet textarea{width:100%;height:90px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font:inherit;font-size:14px;padding:10px;resize:none}
+</style>
+</head>
+<body>
+
+<div class="side">
+  <h1>X-style transitions</h1>
+  <p>Try it in the phone. Everything here uses <b>one duration (340ms) and one easing curve</b>. There are no fades.</p>
+  <ul>
+    <li><b>Tap a game</b>: it slides in from the right. Home shifts left and dims.</li>
+    <li><b>Back arrow</b>: the exact reverse.</li>
+    <li><b>Drag from the left edge</b> of a pushed screen: it follows your finger. Let go early and it snaps back.</li>
+    <li><b>Tabs</b>: instant. Scroll Home, switch to Library and back, and Home is still where you left it.</li>
+    <li><b>Comment</b>: a sheet slides up. Drag it down or tap outside to close.</li>
+  </ul>
+  <div class="ctrls">
+    <button id="slow">Slow motion</button>
+    <button id="theme">Light Pink</button>
+  </div>
+  <p>In the real app every screen arrives already laid out (cached content or sized placeholders) before it slides in. That's what removes the hiccup.</p>
+</div>
+
+<div class="phone" id="phone">
+  <div class="island"></div>
+  <div class="status"><span>9:41</span><span>100</span></div>
+
+  <div class="tabroot" id="tab-home">
+    <div class="big">Home</div>
+    <div id="homeList"></div>
+  </div>
+  <div class="tabroot" id="tab-lib" hidden>
+    <div class="big">Library</div>
+    <div id="libList"></div>
+  </div>
+
+  <div class="dim" id="dim"></div>
+  <div id="stack"></div>
+
+  <div class="nav" id="nav">
+    <span data-tab="home" class="on">Home</span>
+    <span data-tab="lib">Library</span>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <div class="top"><span id="cancel">Cancel</span><b>Add a comment</b><span style="color:var(--app);font-weight:600">Post</span></div>
+    <textarea placeholder="Say something…"></textarea>
+  </div>
+</div>
+
+<script>
+const games=[["Final Fantasy VII Rebirth","#7a2a2a","#2a1010"],["Hades II","#6a3a8a","#1a0f2a"],["Elden Ring","#5a4a2a","#1a1408"],["Halo 3","#3a4b66","#0e1522"],["Kirby and the Forgotten Land","#3aa0d0","#1a3a5a"],["Cyberpunk 2077","#c9b21a","#3a2a10"],["Limbo","#333","#0a0a0a"],["Disco Elysium","#8a5a2a","#2a1a0a"],["Sea of Stars","#2a5aa8","#0f1a4a"],["Armored Core VI","#4a4a4a","#121212"],["Super Mario Galaxy","#2a4aa8","#0f1a4a"],["BioShock 2","#2a4a3a","#0a1a12"]];
+const cov=(g)=>`background:linear-gradient(160deg,${g[1]},${g[2]})`;
+const fill=(el,label)=>{el.innerHTML=games.concat(games).map((g,i)=>`<div class="row" data-i="${i%games.length}"><div class="cov" style="${cov(g)}"></div><div><div class="n">${g[0]}</div><div class="s">${label}</div></div></div>`).join('')};
+fill(document.getElementById('homeList'),'gentenstation finished · 2h');
+fill(document.getElementById('libList'),'Currently Playing');
+
+let DUR=340; const EASE='cubic-bezier(.32,.72,0,1)';
+const phone=document.getElementById('phone'), stackEl=document.getElementById('stack'), dim=document.getElementById('dim');
+let tab='home'; const stack=[];
+const under=()=>stack.length>1?stack[stack.length-2]:document.getElementById('tab-'+tab);
+const W=()=>phone.clientWidth;
+function anim(el,from,to,ms){return el.animate([{transform:from},{transform:to}],{duration:ms,easing:EASE,fill:'forwards'}).finished}
+function dimTo(a,ms){return dim.animate([{opacity:getComputedStyle(dim).opacity},{opacity:a}],{duration:ms,easing:EASE,fill:'forwards'}).finished}
+function placeDim(){ dim.style.zIndex = 9 + stack.length*2 - 1 }
+
+function gamePage(g){return `<div class="hdr"><div class="back">${backSvg}</div><div class="t"></div></div>
+ <div class="hero"><div class="cov" style="${cov(g)}"></div><div><h2>${g[0]}</h2><div class="s">2024 · Action RPG</div></div></div>
+ <div class="btns"><div class="btn pri">Log a session</div><div class="btn sec" data-act="comments">Comments</div></div>
+ <div class="sec-t">ABOUT</div><div class="para">A placeholder description so the page has some length. In the real app this screen would arrive already filled from cache, so nothing shifts after it lands.</div>
+ <div class="sec-t">SIMILAR</div>${games.slice(0,6).map((h,i)=>`<div class="row" data-i="${i}"><div class="cov" style="${cov(h)}"></div><div><div class="n">${h[0]}</div><div class="s">Similar game</div></div></div>`).join('')}`}
+const backSvg='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+function commentsPage(){return `<div class="hdr"><div class="back">${backSvg}</div><div class="t">Comments</div></div>
+ ${["the Shivers checks alone are worth it","fair on the skill checks honestly","finished this in one weekend","the soundtrack carries","needs a sequel"].map((c,i)=>`<div class="cmt"><div class="av" style="background:${['#0a9e6a','#8b32d1','#3b82f6','#c92a62','#4a78ff'][i]}"></div><div class="b"><b>user${i+1}</b> ${c}</div></div>`).join('')}
+ <div class="btns" style="margin-top:12px"><div class="btn sec" data-act="sheet">Add a comment…</div></div>`}
+
+async function push(html){
+  const el=document.createElement('div'); el.className='layer'; el.innerHTML=html;
+  el.style.transform='translateX(100%)'; el.style.zIndex=10+stack.length*2;
+  stackEl.appendChild(el); const u=under(); stack.push(el); placeDim();
+  await new Promise(r=>requestAnimationFrame(r));
+  anim(u,'translateX(0)','translateX(-30%)',DUR); dimTo(.12,DUR);
+  await anim(el,'translateX(100%)','translateX(0)',DUR);
+}
+async function pop(){
+  if(!stack.length) return; const el=stack[stack.length-1]; const u=under();
+  anim(u,getT(u),'translateX(0)',DUR); dimTo(0,DUR);
+  await anim(el,getT(el),'translateX(100%)',DUR);
+  stack.pop(); el.remove(); placeDim();
+}
+function getT(el){const m=new DOMMatrix(getComputedStyle(el).transform);return `translateX(${m.m41}px)`}
+
+phone.addEventListener('click',e=>{
+  if(e.target.closest('.back')) return pop();
+  const act=e.target.closest('[data-act]'); if(act){ return act.dataset.act==='comments'?push(commentsPage()):openSheet(); }
+  const row=e.target.closest('.row'); if(row) return push(gamePage(games[+row.dataset.i]));
+  const t=e.target.closest('[data-tab]'); if(t) switchTab(t.dataset.tab);
+});
+
+function switchTab(t){
+  if(t===tab){ const r=document.getElementById('tab-'+t); r.scrollTo({top:0,behavior:'smooth'}); while(stack.length){stack.pop().remove()} r.style.transform=''; dim.style.opacity=0; dim.getAnimations().forEach(a=>a.cancel()); return; }
+  while(stack.length){stack.pop().remove()} dim.getAnimations().forEach(a=>a.cancel()); dim.style.opacity=0;
+  document.getElementById('tab-'+tab).getAnimations().forEach(a=>a.cancel());
+  document.getElementById('tab-'+tab).hidden=true; tab=t; document.getElementById('tab-'+t).hidden=false;
+  document.querySelectorAll('[data-tab]').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));
+}
+
+// edge swipe
+let drag=null;
+phone.addEventListener('pointerdown',e=>{
+  if(!stack.length) return; const r=phone.getBoundingClientRect(); if(e.clientX-r.left>24) return;
+  const el=stack[stack.length-1], u=under(); el.getAnimations().forEach(a=>a.cancel()); u.getAnimations().forEach(a=>a.cancel()); dim.getAnimations().forEach(a=>a.cancel());
+  drag={x0:e.clientX,t0:performance.now(),el,u,p:0,lastX:e.clientX,lastT:performance.now()}; phone.setPointerCapture(e.pointerId); e.preventDefault();
+});
+phone.addEventListener('pointermove',e=>{
+  if(!drag) return; const dx=Math.max(0,e.clientX-drag.x0); const p=Math.min(1,dx/W()); drag.p=p;
+  drag.vx=(e.clientX-drag.lastX)/Math.max(1,performance.now()-drag.lastT); drag.lastX=e.clientX; drag.lastT=performance.now();
+  drag.el.style.transform=`translateX(${dx}px)`; drag.u.style.transform=`translateX(${-30*(1-p)}%)`; dim.style.opacity=.12*(1-p);
+});
+phone.addEventListener('pointerup',async()=>{
+  if(!drag) return; const d=drag; drag=null;
+  if(d.p>.35||(d.vx||0)>.5){ anim(d.u,d.u.style.transform,'translateX(0)',DUR*.8); dim.animate([{opacity:dim.style.opacity},{opacity:0}],{duration:DUR*.8,easing:EASE,fill:'forwards'});
+    await anim(d.el,d.el.style.transform,'translateX(100%)',DUR*.8); stack.pop(); d.el.remove(); placeDim(); }
+  else { anim(d.u,d.u.style.transform,'translateX(-30%)',DUR*.8); dim.animate([{opacity:dim.style.opacity},{opacity:.12}],{duration:DUR*.8,easing:EASE,fill:'forwards'}); anim(d.el,d.el.style.transform,'translateX(0)',DUR*.8); }
+});
+
+// sheet
+const sheet=document.getElementById('sheet'), scrim=document.getElementById('scrim');
+function openSheet(){ scrim.style.pointerEvents='auto'; scrim.animate([{opacity:0},{opacity:.45}],{duration:DUR,easing:EASE,fill:'forwards'}); anim(sheet,'translateY(100%)','translateY(0)',DUR); }
+async function closeSheet(){ scrim.style.pointerEvents='none'; scrim.animate([{opacity:.45},{opacity:0}],{duration:DUR,easing:EASE,fill:'forwards'}); await anim(sheet,getTY(),'translateY(100%)',DUR); }
+function getTY(){const m=new DOMMatrix(getComputedStyle(sheet).transform);return `translateY(${m.m42}px)`}
+scrim.addEventListener('click',closeSheet); document.getElementById('cancel').addEventListener('click',closeSheet);
+let sd=null;
+sheet.querySelector('.grab').parentElement.addEventListener('pointerdown',e=>{ if(e.target.closest('textarea,span'))return; sd={y0:e.clientY,dy:0}; sheet.setPointerCapture(e.pointerId); sheet.getAnimations().forEach(a=>a.cancel()); });
+sheet.addEventListener('pointermove',e=>{ if(!sd)return; sd.dy=Math.max(0,e.clientY-sd.y0); sheet.style.transform=`translateY(${sd.dy}px)`; });
+sheet.addEventListener('pointerup',()=>{ if(!sd)return; const dy=sd.dy; sd=null; if(dy>80) closeSheet(); else anim(sheet,`translateY(${dy}px)`,'translateY(0)',DUR*.7); });
+
+document.getElementById('slow').onclick=e=>{DUR=DUR===340?1400:340; e.target.classList.toggle('on',DUR!==340)};
+document.getElementById('theme').onclick=e=>{phone.classList.toggle('light'); e.target.classList.toggle('on')};
+</script>
+</body>
+</html>

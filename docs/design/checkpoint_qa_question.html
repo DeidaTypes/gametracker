@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q&amp;A Question Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root, [data-t="navy"] {
+  --base:#0a0f1f; --surface:#131a35; --surface-2:#1a2240;
+  --line:rgba(148,168,212,.12); --line-strong:rgba(148,168,212,.24);
+  --text:#f0f3fa; --muted:#94a8d4; --dim:#6b7995;
+  --primary:#3b82f6; --primary-ink:#7fb0ff; --primary-soft:rgba(59,130,246,.16);
+  --review:#0a9e6a; --review-ink:#3fd19b; --review-soft:rgba(10,158,106,.16);
+  --journal:#8b32d1; --journal-ink:#c08cf2; --journal-soft:rgba(139,50,209,.16);
+  --on-primary:#fff; --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --glass:rgba(19,26,53,.72);
+  --wash-a:rgba(52,72,190,.15); --wash-b:rgba(120,60,200,.10);
+  --page:#05070f; --page-text:#c9d3ea; --page-dim:#7b88a6;
+}
+[data-t="sky"] {
+  --base:#cfe2f6; --surface:#eaf3fd; --surface-2:#bcd6f0;
+  --line:rgba(20,70,130,.16); --line-strong:rgba(20,70,130,.26);
+  --text:#0b2340; --muted:#3f5877; --dim:#556e8b;
+  --primary:#1a64cc; --primary-ink:#1557b5; --primary-soft:rgba(26,100,204,.14);
+  --review:#0b8066; --review-ink:#066650; --review-soft:rgba(11,128,102,.14);
+  --journal:#5b47d6; --journal-ink:#4a37c4; --journal-soft:rgba(91,71,214,.14);
+  --on-primary:#fff; --shadow-sm:0 1px 2px rgba(11,35,64,.06),0 6px 16px rgba(11,35,64,.07);
+  --glass:rgba(234,243,253,.78);
+  --wash-a:rgba(40,60,170,.13); --wash-b:rgba(110,60,190,.08);
+  --page:#e9eef6; --page-text:#1d2a3d; --page-dim:#5b6b83;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'DM Sans',system-ui,sans-serif; background:var(--page); color:var(--page-text); -webkit-font-smoothing:antialiased; padding:28px 16px 64px; }
+.wrap { max-width:1300px; margin:0 auto; }
+header.top { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between; margin-bottom:22px; }
+header.top h1 { font-size:26px; font-weight:700; letter-spacing:-.01em; }
+header.top p { color:var(--page-dim); font-size:14px; margin-top:4px; max-width:760px; line-height:1.5; }
+.seg { display:inline-flex; background:color-mix(in srgb,var(--page-text) 8%,transparent); border-radius:10px; padding:3px; }
+.seg button { font:inherit; font-size:13px; font-weight:600; border:0; background:none; color:var(--page-dim); padding:7px 14px; border-radius:8px; cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--page); color:var(--page-text); box-shadow:0 1px 3px rgba(0,0,0,.15); }
+.grid { display:flex; flex-wrap:wrap; gap:28px 22px; }
+.col { width:390px; max-width:100%; }
+.cap { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--page-text); margin-bottom:4px; }
+.cap small { display:block; text-transform:none; letter-spacing:0; font-weight:400; color:var(--page-dim); font-size:12.5px; margin-top:3px; line-height:1.45; }
+
+/* phone */
+.phone { position:relative; width:390px; height:844px; border-radius:46px; overflow:hidden; background:var(--base); box-shadow:0 0 0 10px #0c0d10, 0 0 0 11px #2a2c33, 0 30px 60px rgba(0,0,0,.35); margin:12px 0 0 11px; }
+@media (max-width:430px){ .phone{ transform:scale(.86); transform-origin:top left; margin-bottom:-118px; } }
+.island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:124px; height:36px; border-radius:20px; background:#000; z-index:9; }
+.status { position:absolute; top:0; left:0; right:0; height:54px; display:flex; align-items:center; justify-content:space-between; padding:6px 30px 0 40px; font-size:16px; font-weight:600; color:var(--text); z-index:8; }
+.batt { width:25px; height:12px; border-radius:4px; background:#34c759; color:#fff; font-size:9px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; margin-left:6px; }
+.scroll { position:absolute; inset:0; overflow-y:auto; scrollbar-width:none; padding-bottom:110px; }
+.scroll::-webkit-scrollbar { display:none; }
+/* cover wash: the game's art tints the top of the screen (≤15%) */
+.wash { position:absolute; top:0; left:0; right:0; height:300px; background:radial-gradient(120% 90% at 15% 0%,var(--wash-a),transparent 70%),radial-gradient(90% 70% at 90% 10%,var(--wash-b),transparent 70%); pointer-events:none; }
+.pushbar { position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; padding:62px 16px 8px; }
+.pbtn { width:40px; height:40px; border-radius:999px; background:var(--glass); border:.5px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
+.pbtn svg { width:20px; height:20px; }
+.content { position:relative; padding:4px 16px 0; display:flex; flex-direction:column; gap:14px; }
+
+.ctx { display:flex; align-items:center; gap:10px; }
+.ctx .cv { width:28px; height:38px; border-radius:4px; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.ctx .gt { flex:1; min-width:0; font-size:13px; font-weight:500; color:var(--muted); display:flex; align-items:center; gap:2px; }
+.ctx .gt em { font-style:normal; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ctx .gt svg { width:14px; height:14px; flex-shrink:0; }
+.pill { font-size:12px; font-weight:600; padding:5px 9px; border-radius:var(--rc,4px); display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.pill svg { width:13px; height:13px; }
+.pill.open { background:var(--journal-soft); color:var(--journal-ink); }
+.pill.ans { background:var(--review-soft); color:var(--review-ink); }
+.pill.wait { background:var(--primary-soft); color:var(--primary-ink); }
+
+.c1 { background:linear-gradient(160deg,#25336e 0%,#141a3c 55%,#090c1e 100%); }
+.c2 { background:linear-gradient(160deg,#5b1a1a 0%,#2a0d12 55%,#120708 100%); }
+.av { width:36px; height:36px; border-radius:50%; flex-shrink:0; }
+.av.sm { width:32px; height:32px; }
+.a1 { background:radial-gradient(circle at 35% 30%,#f1a7c9,#8a3a6a 60%,#3a1530); }
+.a2 { background:radial-gradient(circle at 35% 30%,#9fd4ff,#2f6aa8 60%,#132a4a); }
+.a3 { background:radial-gradient(circle at 35% 30%,#b6f0cf,#2f8a63 60%,#123a2a); }
+.a4 { background:radial-gradient(circle at 35% 30%,#ffd9a8,#9a6a3a 60%,#3a2612); }
+
+/* question card: the same card language as the best-answer card, neutral */
+.qcard { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:12px; }
+.who { display:flex; align-items:center; gap:10px; }
+.who .n { font-size:15px; font-weight:600; color:var(--text); }
+.who .n span { font-weight:400; color:var(--dim); }
+.who .s { font-size:12px; color:var(--muted); margin-top:1px; }
+.who .r { margin-left:auto; }
+.cred { font-size:11.5px; font-weight:600; padding:4px 8px; border-radius:4px; background:var(--review-soft); color:var(--review-ink); white-space:nowrap; }
+.cred.neutral { background:var(--surface-2); color:var(--muted); }
+.qt { font-size:22px; font-weight:700; line-height:1.25; letter-spacing:-.01em; color:var(--text); }
+.tags { display:flex; flex-wrap:wrap; gap:6px; }
+.tag { font-size:12px; font-weight:500; padding:5px 9px; border-radius:4px; background:var(--surface-2); color:var(--muted); border:.5px solid var(--line); display:inline-flex; align-items:center; gap:4px; }
+.tag svg { width:12px; height:12px; }
+.tag.topic { background:var(--primary-soft); color:var(--primary-ink); border-color:transparent; }
+.body { font-size:15px; line-height:1.5; color:var(--text); }
+.qfoot { display:flex; align-items:center; gap:10px; padding-top:12px; border-top:.5px solid var(--line); }
+.qfoot .meta { font-size:12px; color:var(--muted); }
+.qfoot .meta b { color:var(--text); font-weight:600; }
+.icon-btn { margin-left:auto; width:34px; height:34px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+.icon-btn svg { width:18px; height:18px; }
+
+.act { height:32px; padding:0 12px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--text); font:inherit; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.act svg { width:15px; height:15px; }
+.act.on { background:var(--primary-soft); border-color:transparent; color:var(--primary-ink); }
+.act.acc { background:transparent; border-color:color-mix(in srgb,var(--primary) 55%,transparent); color:var(--primary-ink); }
+.act.text { border:0; background:none; color:var(--muted); padding:0 6px; }
+.act .k { font-weight:600; }
+
+.divider { display:flex; align-items:center; gap:10px; margin-top:6px; }
+.divider span { font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
+.divider span b { color:var(--text); }
+.divider i { flex:1; height:.5px; background:var(--line-strong); }
+
+.empty { border:1px dashed var(--line-strong); border-radius:16px; padding:18px 16px; display:flex; gap:14px; align-items:flex-start; }
+.empty .ic { width:36px; height:36px; border-radius:999px; background:var(--journal-soft); color:var(--journal-ink); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.empty .ic svg { width:18px; height:18px; }
+.empty h4 { font-size:15px; font-weight:600; color:var(--text); }
+.empty p { font-size:13px; line-height:1.45; color:var(--muted); margin:3px 0 10px; }
+
+/* best answer — unchanged from what ships (Ry's favourite) */
+.best { padding:16px; border-radius:16px; background:var(--surface); border:1px solid color-mix(in srgb,var(--primary) 50%,transparent); box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 8%,transparent),var(--shadow-sm); display:flex; flex-direction:column; gap:10px; }
+.best .h { display:flex; align-items:center; gap:8px; font-size:13px; }
+.best .h .ic { width:22px; height:22px; border-radius:999px; background:var(--primary); color:var(--on-primary); display:flex; align-items:center; justify-content:center; }
+.best .h .ic svg { width:13px; height:13px; }
+.best .h b { color:var(--primary-ink); font-weight:700; }
+.arow-acts { display:flex; align-items:center; gap:6px; }
+.arow-acts .more { margin-left:auto; color:var(--muted); width:28px; display:flex; justify-content:center; }
+.arow-acts .more svg { width:18px; height:18px; }
+
+/* other answers: one inset group with hairlines */
+.agroup { background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:clip; }
+.arow { padding:14px 16px; display:flex; flex-direction:column; gap:9px; }
+.arow + .arow { border-top:.5px solid var(--line); }
+.arow .who .n { font-size:14px; }
+.atext { font-size:15px; line-height:1.5; color:var(--text); }
+.mention { color:var(--primary-ink); font-weight:500; }
+
+.wait { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px; background:var(--primary-soft); color:var(--text); font-size:13px; line-height:1.45; }
+.wait svg { width:18px; height:18px; color:var(--primary-ink); flex-shrink:0; margin-top:1px; }
+
+/* composer dock — same bar as review comments */
+.dock { position:absolute; left:0; right:0; bottom:0; z-index:6; padding:10px 16px 34px; background:color-mix(in srgb,var(--base) 88%,transparent); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border-top:.5px solid var(--line); display:flex; align-items:center; gap:10px; }
+.dock .shell { flex:1; height:42px; border-radius:999px; background:var(--surface-2); border:.5px solid var(--line); display:flex; align-items:center; padding:0 6px 0 16px; font-size:15px; color:var(--dim); }
+.dock .shell span:first-child { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dock .send { width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--dim); }
+.dock .send svg { width:16px; height:16px; }
+.home-ind { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:134px; height:5px; border-radius:3px; background:var(--text); opacity:.55; z-index:9; }
+
+.note { font-size:12px; color:var(--page-dim); margin:12px 0 0 11px; line-height:1.5; max-width:380px; }
+
+/* feel spec */
+.feel { margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px 28px; }
+.feel h3 { font-size:15px; color:var(--page-text); margin-bottom:8px; }
+.feel table { width:100%; border-collapse:collapse; font-size:13px; }
+.feel td { padding:7px 8px 7px 0; border-top:1px solid color-mix(in srgb,var(--page-text) 10%,transparent); vertical-align:top; line-height:1.45; color:var(--page-dim); }
+.feel td:first-child { color:var(--page-text); font-weight:600; width:44%; }
+.feel ul { margin-left:18px; font-size:13px; line-height:1.6; color:var(--page-dim); }
+.feel li b { color:var(--page-text); }
+</style>
+</head>
+<body data-t="sky">
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Question screen: the redesign</h1>
+      <p>The question gets its own card, using the same card style as the best answer you like, so the whole screen reads as one set. The game's cover tints the top of the screen. Answers sit under a clear "Answers" divider, the empty state is one compact card instead of a big gap, and the answer bar matches the comment bar used everywhere else.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-set="navy" aria-pressed="false">Navy</button>
+      <button type="button" data-set="sky" aria-pressed="true">Light Blue</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- A. Just asked -->
+    <section class="col">
+      <div class="cap">A · You just asked<small>Asker view, no answers yet. The empty state is a compact card that tells you who sees the question, so there's no large blank area. The bar shows your real avatar.</small></div>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>12:59</span><span>5G<span class="batt">30</span></span></div>
+        <div class="scroll"><div class="wash"></div>
+          <div class="pushbar"><span class="pbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span><span class="pbtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div>
+          <div class="content">
+            <div class="ctx"><div class="cv c1"></div><span class="gt"><em>LEGO Batman: Legacy of the Dark Knight</em> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="pill open">No answers yet</span></div>
+            <article class="qcard">
+              <div class="who"><div class="av a1"></div><div><p class="n">theantifail <span>· you</span></p><p class="s">Asked just now</p></div><span class="r cred">Playing</span></div>
+              <h2 class="qt">I can't get past the Gotham horror nights mission</h2>
+              <div class="tags"><span class="tag topic">Location</span><span class="tag">Xbox Series X|S</span></div>
+              <p class="body">I've tried doing this and that.</p>
+              <div class="qfoot"><span class="meta">Only you so far</span><span class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v14"/></svg></span></div>
+            </article>
+            <div class="divider"><span>Answers</span><i></i></div>
+            <div class="empty"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><div><h4>No answers yet</h4><p>Players who've played LEGO Batman see this at the top of their Unanswered list.</p><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v14"/></svg>Share question</button></div></div>
+          </div>
+        </div>
+        <div class="dock"><div class="av sm a1"></div><div class="shell"><span>Figured it out? Answer it yourself</span><span class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span></div></div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- B. Answered, visitor -->
+    <section class="col">
+      <div class="cap">B · Answered (someone else's question)<small>The best answer card is unchanged from what ships today. The other answers sit in one grouped card with hairlines, the same pattern as Settings and Write review. "Stuck here too" sits in the question card.</small></div>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>12:59</span><span>5G<span class="batt">30</span></span></div>
+        <div class="scroll"><div class="wash"></div>
+          <div class="pushbar"><span class="pbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span><span class="pbtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div>
+          <div class="content">
+            <div class="ctx"><div class="cv c1"></div><span class="gt"><em>LEGO Batman: Legacy of the Dark Knight</em> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="pill ans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Answered</span></div>
+            <article class="qcard">
+              <div class="who"><div class="av a1"></div><div><p class="n">theantifail</p><p class="s">Asked 2h ago</p></div><span class="r cred">Playing · 12h</span></div>
+              <h2 class="qt">I can't get past the Gotham horror nights mission</h2>
+              <div class="tags"><span class="tag topic">Location</span><span class="tag">Xbox Series X|S</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Chapter 4</span></div>
+              <p class="body">I've tried doing this and that. Every route out of the fairground loops me back to the gate.</p>
+              <div class="qfoot"><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Stuck here too</button><span class="meta"><b>4 players</b> stuck</span><span class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v14"/></svg></span></div>
+            </article>
+            <div class="divider"><span>Answers · <b>3</b></span><i></i></div>
+            <article class="best">
+              <div class="h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><b>Best answer · picked by theantifail</b></div>
+              <div class="who"><div class="av sm a2"></div><div><p class="n">nightowl</p><p class="s">1h ago</p></div><span class="r cred">Played · 41h</span></div>
+              <p class="atext">You have to go to the Gotham sunny days side quest first. It unlocks the bridge.</p>
+              <div class="arow-acts"><button class="act on" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>Helpful <span class="k">6</span></button><button class="act text" type="button">Reply</button><span class="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div>
+            </article>
+            <div class="agroup">
+              <div class="arow"><div class="who"><div class="av sm a3"></div><div><p class="n">mintcondition</p><p class="s">48m ago</p></div><span class="r cred">Played · 22h</span></div><p class="atext">Same thing happened to me. Check the map legend, the bridge icon is greyed out until then.</p><div class="arow-acts"><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>Helpful <span class="k">2</span></button><button class="act text" type="button">Reply</button><span class="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div></div>
+              <div class="arow"><div class="who"><div class="av sm a4"></div><div><p class="n">bricklayer</p><p class="s">20m ago</p></div><span class="r cred neutral">Playing · 3h</span></div><p class="atext"><span class="mention">@nightowl</span> thank you, that worked.</p><div class="arow-acts"><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>Helpful</button><button class="act text" type="button">Reply</button><span class="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="dock"><div class="av sm a2"></div><div class="shell"><span>Answer this question…</span><span class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span></div></div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+
+    <!-- C. Pick the best -->
+    <section class="col">
+      <div class="cap">C · Your question has answers<small>Asker view before you've chosen. The waiting note sits under the divider, and each answer gets the outlined "Mark as best" button. Tapping it plays a success haptic and moves the answer into the best answer card.</small></div>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>12:59</span><span>5G<span class="batt">30</span></span></div>
+        <div class="scroll"><div class="wash"></div>
+          <div class="pushbar"><span class="pbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></span><span class="pbtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div>
+          <div class="content">
+            <div class="ctx"><div class="cv c2"></div><span class="gt"><em>The Blood of Dawnwalker</em> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="pill wait">2 answers</span></div>
+            <article class="qcard">
+              <div class="who"><div class="av a1"></div><div><p class="n">theantifail <span>· you</span></p><p class="s">Asked 3h ago</p></div><span class="r cred">Playing · 9h</span></div>
+              <h2 class="qt">Where do I go in the Church of Undead Witches?</h2>
+              <div class="tags"><span class="tag topic">Location</span><span class="tag">Xbox Series X|S</span></div>
+              <div class="qfoot"><span class="meta"><b>2 players</b> stuck with you</span><span class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v14"/></svg></span></div>
+            </article>
+            <div class="divider"><span>Answers · <b>2</b></span><i></i></div>
+            <div class="wait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg><span>Got your answer? Mark it as best so the next player finds it fast.</span></div>
+            <div class="agroup">
+              <div class="arow"><div class="who"><div class="av sm a2"></div><div><p class="n">nightowl</p><p class="s">1h ago</p></div><span class="r cred">Played · 41h</span></div><p class="atext">Go through the crypt behind the second bell. The church door only opens from inside.</p><div class="arow-acts"><button class="act acc" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Mark as best</button><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg><span class="k">3</span></button><button class="act text" type="button">Reply</button><span class="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div></div>
+              <div class="arow"><div class="who"><div class="av sm a3"></div><div><p class="n">mintcondition</p><p class="s">30m ago</p></div><span class="r cred neutral">Playing · 6h</span></div><p class="atext">I think it's the east path after the bridge, but I haven't finished it.</p><div class="arow-acts"><button class="act acc" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Mark as best</button><button class="act" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button><button class="act text" type="button">Reply</button><span class="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="dock"><div class="av sm a1"></div><div class="shell"><span>Figured it out? Answer it yourself</span><span class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span></div></div>
+        <div class="home-ind"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="feel">
+    <div>
+      <h3>How it should feel: motion</h3>
+      <ul>
+        <li><b>Opening a question:</b> it slides in from the right over a fully drawn Q&amp;A home, and the home shifts left with the same light dim every other screen uses. Covers, title and nav stay on screen the whole time.</li>
+        <li><b>Back (button or swipe):</b> the exact reverse, and the swipe follows your finger. No dark wash, no covers popping in, no bottom bar snapping in at the end, no title appearing late.</li>
+        <li><b>First frame is final:</b> the question, best answer and answers are all there when the slide starts. Nothing pops in or pushes content down.</li>
+        <li><b>Mark as best:</b> the answer glides into the best answer card. Reduced motion makes it instant.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>How it should feel: haptics</h3>
+      <table>
+        <tr><td>Answered / Unanswered, Asked / Your answers</td><td>Light tap on every switch</td></tr>
+        <tr><td>Helpful, Stuck here too, Reveal spoiler</td><td>Light tap</td></tr>
+        <tr><td>Topic chip, Spoiler switch (in the composer)</td><td>Light tap</td></tr>
+        <tr><td>Mark as best</td><td>Success</td></tr>
+        <tr><td>Question posted, Answer posted</td><td>Success</td></tr>
+        <tr><td>Delete, Report sent</td><td>Medium tap</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+document.querySelectorAll('[data-set]').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.body.setAttribute('data-t',b.dataset.set);
+    document.querySelectorAll('[data-set]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+  });
+});
+document.querySelectorAll('.act:not(.acc):not(.text)').forEach(function(b){
+  b.addEventListener('click',function(){ b.classList.toggle('on'); });
+});
+</script>
+</body>
+</html>
