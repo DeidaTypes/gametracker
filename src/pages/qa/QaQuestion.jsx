@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   Award,
   Ban,
@@ -225,9 +225,10 @@ function NoAnswersCard({ question }) {
 }
 
 function MovingAnswer({ id, reduced, children }) {
-  if (reduced) return children
+  if (reduced) return <div data-qa-answer-id={id}>{children}</div>
   return (
     <motion.div
+      data-qa-answer-id={id}
       layout
       layoutId={`qa-answer-${id}`}
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
@@ -245,6 +246,8 @@ function playersCount(count) {
 export default function QaQuestion() {
   const { questionId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const focusAnswerId = location.state?.focusAnswerId || null
   const { profile } = useAuth()
   const { reduced } = useMotionPreference()
   const hides = useQaHides()
@@ -331,6 +334,24 @@ export default function QaQuestion() {
     if (!bestAnswer) return visibleAnswers.filter((answer) => !answer.removed)
     return visibleAnswers.filter((answer) => !answer.removed && answer.id !== bestAnswer.id)
   }, [visibleAnswers, bestAnswer])
+
+  // Opened from a notification: reveal the answer if it sits under "Show more",
+  // then scroll to it once, after it has rendered.
+  const focusedRef = useRef(null)
+  const focusIndex = focusAnswerId ? otherAnswers.findIndex((a) => a.id === focusAnswerId) : -1
+  useEffect(() => {
+    if (focusIndex >= INITIAL_ANSWERS) setShowAllAnswers(true)
+  }, [focusIndex])
+  useEffect(() => {
+    if (!loaded || !focusAnswerId || focusedRef.current === focusAnswerId) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-qa-answer-id="${CSS.escape(focusAnswerId)}"]`)
+      if (!el) return
+      focusedRef.current = focusAnswerId
+      el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [loaded, focusAnswerId, reduced, showAllAnswers, bestAnswer])
 
   const flatOthers = showAllAnswers ? otherAnswers : otherAnswers.slice(0, INITIAL_ANSWERS)
   const hiddenOthers = Math.max(0, otherAnswers.length - INITIAL_ANSWERS)

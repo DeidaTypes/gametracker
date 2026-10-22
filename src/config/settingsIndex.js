@@ -92,6 +92,13 @@ const ALL_SETTINGS_ENTRIES = [
     keywords: ['login', 'user', 'profile'],
   },
   {
+    id: 'notifications',
+    label: 'Notifications',
+    section: 'Settings',
+    route: '/settings/notifications',
+    keywords: ['push', 'alerts', 'bell', 'notify'],
+  },
+  {
     id: 'privacy',
     label: 'Privacy & safety',
     section: 'Settings',
@@ -170,6 +177,42 @@ const ALL_SETTINGS_ENTRIES = [
     section: 'Accessibility',
     route: '/settings/accessibility',
     keywords: ['font', 'size', 'text'],
+  },
+
+  {
+    id: 'notif-follows',
+    label: 'Follows',
+    section: 'Notifications',
+    route: '/settings/notifications',
+    keywords: ['push', 'follower', 'followers'],
+  },
+  {
+    id: 'notif-likes',
+    label: 'Likes',
+    section: 'Notifications',
+    route: '/settings/notifications',
+    keywords: ['push', 'like', 'reaction'],
+  },
+  {
+    id: 'notif-comments',
+    label: 'Comments and mentions',
+    section: 'Notifications',
+    route: '/settings/notifications',
+    keywords: ['push', 'comment', 'mention', 'reply'],
+  },
+  {
+    id: 'notif-qa',
+    label: 'Q&A',
+    section: 'Notifications',
+    route: '/settings/notifications',
+    keywords: ['push', 'question', 'answer', 'stuck', 'best'],
+  },
+  {
+    id: 'notif-friends',
+    label: "Friends' activity",
+    section: 'Notifications',
+    route: '/settings/notifications',
+    keywords: ['push', 'friends', 'started', 'playing'],
   },
 
   {

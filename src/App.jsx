@@ -68,6 +68,7 @@ import {
   SettingsBlocked,
   SettingsEmail,
   SettingsHelp,
+  SettingsNotifications,
   SettingsPassword,
   SettingsPrivacy,
   SmartListDetail,
@@ -1509,6 +1510,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><LazyScreen><SettingsPrivacy /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/notifications"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><SettingsNotifications /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }

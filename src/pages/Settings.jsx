@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   LuAccessibility,
+  LuBell,
   LuChevronRight,
   LuCircleHelp,
   LuContrast,
@@ -47,6 +48,7 @@ const SECTION_ICONS = {
   Appearance: LuContrast,
   Accessibility: LuAccessibility,
   Account: LuUser,
+  Notifications: LuBell,
   'Privacy & safety': LuShield,
   'Help & about': LuCircleHelp,
 }
@@ -56,6 +58,7 @@ const HUB_ICONS = {
   appearance: LuContrast,
   accessibility: LuAccessibility,
   account: LuUser,
+  notifications: LuBell,
   privacy: LuShield,
   invite: LuUserPlus,
   help: LuCircleHelp,
@@ -354,6 +357,12 @@ function Settings() {
                 icon={<LuUser size={18} strokeWidth={1.6} />}
                 label="Account"
                 onClick={() => navigate('/settings/account')}
+              />
+              <SettingsRow
+                settingId="notifications"
+                icon={<LuBell size={18} strokeWidth={1.6} />}
+                label="Notifications"
+                onClick={() => navigate('/settings/notifications')}
               />
               <SettingsRow
                 settingId="privacy"

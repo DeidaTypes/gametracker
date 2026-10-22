@@ -51,6 +51,7 @@ export const SettingsAppearance = lazyRoute(() => import('../pages/SettingsAppea
 export const SettingsBlocked = lazyRoute(() => import('../pages/SettingsBlocked'))
 export const SettingsEmail = lazyRoute(() => import('../pages/SettingsEmail'))
 export const SettingsHelp = lazyRoute(() => import('../pages/SettingsHelp'))
+export const SettingsNotifications = lazyRoute(() => import('../pages/SettingsNotifications'))
 export const SettingsPassword = lazyRoute(() => import('../pages/SettingsPassword'))
 export const SettingsPrivacy = lazyRoute(() => import('../pages/SettingsPrivacy'))
 export const SmartListDetail = lazyRoute(() => import('../pages/SmartListDetail'))

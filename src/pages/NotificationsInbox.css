@@ -107,6 +107,29 @@
   flex-shrink: 0;
 }
 
+/* Anonymous rows (stuck notice, admin report) take an icon tile in the
+   avatar slot so the row rhythm stays the same. Matches Avatar size md. */
+.notif-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-2);
+  color: var(--accent);
+}
+
+/* Small game or list cover, portrait like every other cover in the app. */
+.notif-item__thumb {
+  flex-shrink: 0;
+  width: 32px;
+  height: 43px;
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+  background: var(--bg-surface-2);
+}
+
 /* ---- Body ---- */
 .notif-item__body {
   flex: 1;
@@ -133,6 +156,11 @@
 .notif-item__suffix {
   font-weight: 400;
   color: var(--text-secondary);
+}
+
+.notif-item__title {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .notif-item__time {

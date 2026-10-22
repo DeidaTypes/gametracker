@@ -11,7 +11,7 @@ import { supabase } from '../services/supabase'
 import {
   fetchNotifications,
   getUnreadNotificationCount,
-  markAllNotificationsRead,
+  markNotificationsRead,
 } from '../services/notificationService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
@@ -20,7 +20,7 @@ const NotificationsContext = createContext({
   notifications: [],
   unreadCount: 0,
   refresh: () => {},
-  markAllRead: () => Promise.resolve(),
+  markRead: () => Promise.resolve(),
 })
 
 /**
@@ -33,9 +33,9 @@ const NotificationsContext = createContext({
  *
  * Exposes:
  *   notifications   — sorted newest-first array, each with actor profile join
- *   unreadCount     — integer badge value
+ *   unreadCount     — integer badge value (every type, from the server count)
  *   refresh()       — manual refetch (e.g. after pull-to-refresh)
- *   markAllRead()   — marks all read + optimistically zeroes unreadCount
+ *   markRead(ids)   — marks those rows read + optimistically lowers unreadCount
  */
 export function NotificationsProvider({ children }) {
   const { user } = useAuth()
@@ -112,17 +112,23 @@ export function NotificationsProvider({ children }) {
     }
   }, [userId, refresh, resumeKey])
 
-  const markAllRead = useCallback(async () => {
-    if (!userId) return
-    // Optimistic clear so the badge disappears instantly.
-    setUnreadCount(0)
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-    await markAllNotificationsRead()
-  }, [userId])
+  const markRead = useCallback(
+    async (ids) => {
+      if (!userId || !ids || ids.length === 0) return
+      const target = new Set(ids)
+      // Optimistic so the badge drops the moment the rows are on screen.
+      setUnreadCount((c) => Math.max(0, c - target.size))
+      setNotifications((prev) => prev.map((n) => (target.has(n.id) ? { ...n, read: true } : n)))
+      await markNotificationsRead(ids)
+      const count = await getUnreadNotificationCount()
+      setUnreadCount(count)
+    },
+    [userId]
+  )
 
   const value = useMemo(
-    () => ({ notifications, unreadCount, refresh, markAllRead }),
-    [notifications, unreadCount, refresh, markAllRead]
+    () => ({ notifications, unreadCount, refresh, markRead }),
+    [notifications, unreadCount, refresh, markRead]
   )
 
   return (
