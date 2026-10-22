@@ -42,6 +42,7 @@ import { getSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
 import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import GameDetailQuestionsRow from '../components/GameDetailQuestionsRow'
+import PullToRefresh from '../components/PullToRefresh'
 import { qaGame, qaGameKey } from '../services/qaService'
 
 /**
@@ -481,6 +482,41 @@ function GameDetail() {
     qaEnabled,
   ])
 
+  const handlePullToRefresh = useCallback(async () => {
+    if (!gameId) return
+    refreshFromStore()
+    const tasks = [
+      refreshSocial().catch(() => {}),
+      refreshSessions(),
+      getTimeToBeat(gameId)
+        .catch(() => null)
+        .then((b) => {
+          setTtb(b)
+          setTtbPending(false)
+        }),
+      getSWR(`game:${gameId}`, () => getGameById(gameId), {
+        ttlMs: GAME_TTL_MS,
+        force: true,
+      })
+        .then((gameData) => {
+          if (!gameData) return
+          setGame(gameData)
+          setResolvedImage(gameData.image)
+          refreshFromStore()
+        })
+        .catch(() => {}),
+    ]
+    if (qaEnabled) tasks.push(refreshQaPreview().catch(() => {}))
+    await Promise.all(tasks)
+  }, [
+    gameId,
+    qaEnabled,
+    refreshFromStore,
+    refreshSocial,
+    refreshQaPreview,
+    refreshSessions,
+  ])
+
   const openReviewComposer = useCallback((reviewShape) => {
     navigate(`/review/new?gameId=${gameId}`, {
       state: { game, editReview: reviewShape || null },
@@ -644,6 +680,7 @@ function GameDetail() {
   } : {}
 
   return (
+    <PullToRefresh onRefresh={handlePullToRefresh}>
     <div className="game-detail margins-style">
 
       {/* ── Color gradient backdrop ── Absolutely positioned 0→640px. Two
@@ -1326,6 +1363,7 @@ function GameDetail() {
       )}
 
     </div>
+    </PullToRefresh>
   )
 }
 

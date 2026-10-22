@@ -312,7 +312,7 @@
 }
 
 .rc-comment__spoiler--revealed {
-  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.15);
+  background: rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.15);
   color: var(--color-text-primary);
   cursor: text;
 }
@@ -422,9 +422,9 @@
 /* ── Comment: editing highlight ─────────────────────────────────────── */
 
 .rc-comment--editing {
-  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.06);
+  background: rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.06);
   border-radius: var(--radius-md);
-  outline: 1px solid rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.25);
+  outline: 1px solid rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.25);
   outline-offset: 2px;
 }
 
@@ -441,8 +441,8 @@
   margin: 0 auto 6px;
   padding: 4px 10px;
   border-radius: var(--radius-chip);
-  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.14);
-  border: 1px solid rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.35);
+  background: rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.14);
+  border: 1px solid rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.35);
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);

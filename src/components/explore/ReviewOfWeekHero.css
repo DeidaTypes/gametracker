@@ -68,7 +68,7 @@
   right: 0;
   height: 2px;
   /* Warm copper gradient to distinguish from the cobalt Game of the Week bar */
-  background: linear-gradient(90deg, var(--color-accent-copper, #c87941) 0%, var(--color-accent-amber, #e8a83e) 100%);
+  background: linear-gradient(90deg, var(--accent-review) 0%, color-mix(in srgb, var(--accent-review) 65%, var(--accent)) 100%);
   z-index: 2;
 }
 
@@ -138,7 +138,7 @@
 /* "REVIEW OF THE WEEK" eyebrow — copper tint */
 .rotw-eyebrow {
   margin-bottom: 1px;
-  color: var(--color-accent-copper, #c87941);
+  color: var(--accent-review);
 }
 
 /* Game title */
@@ -226,7 +226,7 @@
   line-height: 1;
   padding: 3px 7px;
   border-radius: var(--radius-chip);
-  color: var(--color-accent-copper, #c87941);
+  color: var(--accent-review);
   background: rgba(200, 121, 65, 0.12);
   border: 1px solid rgba(200, 121, 65, 0.24);
   white-space: nowrap;

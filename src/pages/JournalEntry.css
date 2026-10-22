@@ -293,9 +293,9 @@ body[data-reduce-motion='true'] .je-icon-btn {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--status-warning, #f59e0b);
-  background: color-mix(in srgb, var(--status-warning, #f59e0b) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-warning, #f59e0b) 35%, transparent);
+  color: var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 35%, transparent);
   border-radius: var(--radius-chip);
   padding: 2px 7px;
   line-height: 1.4;

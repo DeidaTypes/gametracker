@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { Bell } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useNotifications } from '../contexts/NotificationsContext'
 import AppShell from '../components/AppShell'
 import Avatar from '../components/Avatar'
 import EmptyState from '../components/EmptyState'
+import PullToRefresh from '../components/PullToRefresh'
 import './NotificationsInbox.css'
 
 /* ============================================================
@@ -115,7 +116,12 @@ function NotificationItem({ notification, onTap }) {
 
 function NotificationsInbox() {
   const navigate = useNavigate()
-  const { notifications, markAllRead } = useNotifications()
+  const { notifications, markAllRead, refresh } = useNotifications()
+
+  const handlePullToRefresh = useCallback(
+    () => refresh().catch(() => undefined),
+    [refresh]
+  )
 
   // Mark all read the moment the inbox opens.
   useEffect(() => {
@@ -133,6 +139,7 @@ function NotificationsInbox() {
 
   return (
     <AppShell>
+      <PullToRefresh onRefresh={handlePullToRefresh}>
       <div className="notif-inbox">
         {/* Header */}
         <header className="notif-inbox__header">
@@ -169,6 +176,7 @@ function NotificationsInbox() {
           )}
         </div>
       </div>
+      </PullToRefresh>
     </AppShell>
   )
 }

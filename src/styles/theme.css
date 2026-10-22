@@ -315,7 +315,7 @@ body[data-larger-text='true'] {
   --border-strong: rgba(148, 168, 212, 0.24);
   /* Status colors — distinct from brand accent */
   --status-success: var(--theme-success);
-  --status-warning: #fbbf24;
+  --status-warning: var(--status-danger);
   --status-danger:  var(--theme-danger);
 
   /* Backgrounds — layered depth */

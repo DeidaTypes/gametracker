@@ -16,43 +16,8 @@ import {
 import SharedCover, { SharedCoverScope } from '../components/SharedCover'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getGameNavStub } from '../utils/gameNavStub'
+import { genreColorVar } from '../utils/genreColors'
 import './Stats.css'
-
-/**
- * Genre → color map. Aligned with profile.jsx's `getGenreColor` so the
- * same genre paints with the same hue everywhere it surfaces (Profile
- * tags, donut wedges, future genre tiles). Low-saturation tints play
- * nicely against the deep navy background without competing with cover
- * art for attention.
- */
-function genreToColor(genre) {
-  if (!genre) return '#3F4A5A'
-  const s = genre.toLowerCase()
-  if (s.includes('role-playing') || s.includes('rpg')) return '#7B6B9A'
-  if (s.includes('adventure')) return '#5F8F7F'
-  if (s.includes('strategy') || s.includes('tactical')) return '#5F7386'
-  if (s.includes('action')) return '#9B7A6E'
-  if (s.includes('shoot')) return '#6A6A7A'
-  if (s.includes('sport')) return '#5A8F5F'
-  if (s.includes('racing') || s.includes('drive')) return '#8A7048'
-  if (s.includes('fight')) return '#8C5A5A'
-  if (s.includes('puzzle') || s.includes('logic')) return '#5A6A8C'
-  if (s.includes('simulat')) return '#5F7080'
-  if (s.includes('horror') || s.includes('survival')) return '#4D4D5A'
-  if (s.includes('platform')) return '#5A6A5A'
-  if (s.includes('indie')) return '#6A5A7A'
-  if (s.includes('arcade')) return '#8A6E48'
-  if (s.includes('music') || s.includes('rhythm')) return '#7A5A8A'
-  if (s.includes('visual novel') || s.includes('point') || s.includes('click'))
-    return '#6E5A8A'
-  if (s.includes('card') || s.includes('board')) return '#5F8A7E'
-  if (s.includes('pinball')) return '#8A6A4A'
-  if (s.includes('quiz') || s.includes('trivia')) return '#5A8AAA'
-  if (s.includes('moba') || s.includes('arena')) return '#7A8A5A'
-  return '#5A6A7E'
-}
-
-const OTHER_COLOR = '#3F4A5A'
 
 function formatMemberSince(iso) {
   if (!iso) return null
@@ -165,7 +130,7 @@ function HoursByGenreDonut({ hoursByGenre }) {
                 {data.map((d) => (
                   <charts.Cell
                     key={d.name}
-                    fill={d.isOther ? OTHER_COLOR : genreToColor(d.name)}
+                    fill={genreColorVar(d.name)}
                   />
                 ))}
               </charts.Pie>
@@ -195,7 +160,7 @@ function HoursByGenreDonut({ hoursByGenre }) {
               <span
                 className="stats-genre-swatch"
                 style={{
-                  background: d.isOther ? OTHER_COLOR : genreToColor(d.name),
+                  background: genreColorVar(d.name),
                 }}
                 aria-hidden="true"
               />

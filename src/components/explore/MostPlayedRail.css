@@ -108,8 +108,8 @@
   gap: 5px;
   margin-top: 4px;
   padding: 3px 7px 3px 5px;
-  background: rgba(var(--accent-rgb, 180, 110, 60), 0.12);
-  border: 1px solid rgba(var(--accent-rgb, 180, 110, 60), 0.35);
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.12);
+  border: 1px solid rgba(var(--accent-rgb, 59, 130, 246), 0.35);
   border-radius: var(--radius-chip);
   font-family: var(--font-body);
   font-size: 10px;

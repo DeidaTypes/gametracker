@@ -376,7 +376,7 @@
 }
 
 .rd-comment__spoiler--revealed {
-  background: rgba(var(--color-brand-primary-rgb, 180, 120, 60), 0.15);
+  background: rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.15);
   color: var(--color-text-primary);
   cursor: text;
 }

@@ -265,7 +265,7 @@
 }
 
 .tgl-row-meta-chip--rating {
-  color: #f59e0b;
+  color: var(--star);
 }
 
 .tgl-row-meta-chip--progress {

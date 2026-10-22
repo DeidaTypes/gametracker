@@ -11,6 +11,7 @@ import { useDebounce } from '../hooks/useDebounce'
 import { supabase } from '../services/supabase'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import EmptyState from '../components/EmptyState'
+import PullToRefresh from '../components/PullToRefresh'
 import CenteredModal from '../components/CenteredModal'
 import Avatar from '../components/Avatar'
 import './MessagesInbox.css'
@@ -92,6 +93,11 @@ function MessagesInbox() {
   const reload = useCallback(() => {
     refreshInbox().catch(() => {})
   }, [refreshInbox])
+
+  const handlePullToRefresh = useCallback(
+    () => refreshInbox().catch(() => undefined),
+    [refreshInbox]
+  )
 
   /* ── Realtime subscription ──────────────────────────────────
      Subscribe to INSERTs + UPDATEs on direct_messages where the
@@ -192,6 +198,7 @@ function MessagesInbox() {
   /* ── Render ────────────────────────────────────────────────── */
 
   return (
+    <PullToRefresh onRefresh={handlePullToRefresh}>
     <div className="dm-inbox">
       <header className="dm-inbox__header">
         <button
@@ -257,6 +264,7 @@ function MessagesInbox() {
         currentUserId={user?.id}
       />
     </div>
+    </PullToRefresh>
   )
 }
 
