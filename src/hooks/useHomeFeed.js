@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getHomeFeed } from '../services/communityService'
+import { qaPulse } from '../services/qaService'
+import { coverUrlFromImageId } from '../services/igdb'
+import { useFlagEnabled } from './useFlagEnabled'
+import { isQaQuestionHidden, useQaHides } from '../pages/qa/qaHides'
 import { ACTIVITY_EVENT_LOGGED, PULSE_ITEM_REMOVED, emitPulseItemRemoved } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
 import { prefetchReactionsBatch } from './useReactions'
@@ -51,6 +55,94 @@ function prefetchRowInteractions(pageItems) {
   if (activityIds.length) prefetchReactionsBatch('activity', activityIds)
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Q&A rows                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Pulse item types for Q&A rows. Neither is a review type and neither carries a reactionTargetId. */
+const QA_ITEM_TYPES = new Set(['qa_asked', 'qa_best'])
+
+/** At most this many Q&A rows per Pulse load, and never two in a row. */
+const QA_PULSE_MAX = 2
+
+export function isQaPulseItem(item) {
+  return QA_ITEM_TYPES.has(item?.type)
+}
+
+/** One qa_pulse event -> a Pulse item FeedRow's Q&A row can render. Null when a field it needs is missing. */
+function qaEventToItem(event) {
+  if (!event?.question_id || !event.title || !event.event_at || !event.actor?.id) return null
+  if (event.kind !== 'asked' && event.kind !== 'best') return null
+  return {
+    id: `qa:${event.kind}:${event.question_id}`,
+    type: event.kind === 'best' ? 'qa_best' : 'qa_asked',
+    createdAt: event.event_at,
+    isOwn: false,
+    author: {
+      id: event.actor.id,
+      username: event.actor.username || null,
+      displayName: event.actor.display_name || event.actor.username || null,
+      avatarUrl: event.actor.avatar_url || null,
+    },
+    game: {
+      id: event.igdb_game_id,
+      title: event.game_title || '',
+      image: event.game_cover_image_id
+        ? coverUrlFromImageId(String(event.game_cover_image_id), 'cover_big')
+        : null,
+    },
+    qa: {
+      questionId: event.question_id,
+      title: event.title,
+      igdbGameId: event.igdb_game_id,
+      gameTitle: event.game_title || '',
+      gameCoverImageId: event.game_cover_image_id || null,
+    },
+  }
+}
+
+/**
+ * Drop up to QA_PULSE_MAX Q&A rows into page 1 by recency, one row per
+ * question, with a feed row between any two of them. Done before the page is
+ * cached, so the rows are part of the first paint and never inserted after it.
+ * A Q&A row that cannot be separated from the previous one (the feed is too
+ * short) is dropped rather than shown back to back.
+ */
+function mergeQaIntoFeed(feedItems, qaEvents) {
+  if (!qaEvents?.length) return feedItems
+  const seen = new Set()
+  const qa = qaEvents
+    .map(qaEventToItem)
+    .filter((item) => {
+      if (!item || seen.has(item.qa.questionId)) return false
+      seen.add(item.qa.questionId)
+      return true
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, QA_PULSE_MAX)
+  if (!qa.length) return feedItems
+
+  const out = [...feedItems]
+  let lastQaIndex = -2
+  for (const item of qa) {
+    const at = new Date(item.createdAt).getTime()
+    let index = out.findIndex((it) => new Date(it.createdAt).getTime() < at)
+    if (index === -1) index = out.length
+    index = Math.max(index, lastQaIndex + 2)
+    if (index > out.length) break
+    out.splice(index, 0, item)
+    lastQaIndex = index
+  }
+  return out
+}
+
+/** Page 1: the feed and the Q&A events load in parallel and are cached as one. */
+async function fetchPageOne(pageSize) {
+  const [feed, qaEvents] = await Promise.all([getHomeFeed({ limit: pageSize }), qaPulse()])
+  return { ...feed, items: mergeQaIntoFeed(feed.items, qaEvents) }
+}
+
 /** How long page 1 of the feed is reused before the next entry revalidates. */
 const FEED_TTL_MS = 60 * 1000
 
@@ -91,6 +183,10 @@ const FEED_TTL_MS = 60 * 1000
  */
 export function useHomeFeed({ pageSize = 15 } = {}) {
   const { user } = useAuth()
+  // Before any effect that loads the feed: the flag read it starts is the one
+  // the Q&A fetch below joins, so the flag is known before rows are set.
+  const qaOn = useFlagEnabled('qa')
+  const { tick: qaHideTick } = useQaHides()
 
   // Page 1 goes through the shared cache so returning to Home shows the
   // feed the user was just looking at instead of rebuilding it from an
@@ -128,7 +224,7 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       scopeRef.current = null
     }
     try {
-      const result = await getSWR(key, () => getHomeFeed({ limit: pageSize }), {
+      const result = await getSWR(key, () => fetchPageOne(pageSize), {
         ttlMs: FEED_TTL_MS,
         force,
       })
@@ -194,7 +290,7 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
       // within the TTL would serve a page 1 that predates their action.
       const result = await getSWR(
         `home:feed:${user.id}:${pageSize}`,
-        () => getHomeFeed({ limit: pageSize }),
+        () => fetchPageOne(pageSize),
         { ttlMs: FEED_TTL_MS, force: true }
       )
       prefetchRowInteractions(result.items)
@@ -205,8 +301,12 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
         // reviews row for the same completion have two different ids,
         // so both used to pass this filter and both sat on screen until
         // the next full re-fetch replaced the list wholesale.
+        // Q&A rows are skipped: this refresh answers the viewer's own
+        // mutation, and a Q&A row prepended here would break the page's
+        // "two at most, never adjacent" placement. The cached page 1 above
+        // already holds them for the next entry.
         const fresh = result.items.filter(
-          (it) => !seen.has(it.id) && !isDuplicateCompletionOrReview(it, prev)
+          (it) => !isQaPulseItem(it) && !seen.has(it.id) && !isDuplicateCompletionOrReview(it, prev)
         )
         return fresh.length ? [...fresh, ...prev] : prev
       })
@@ -253,7 +353,17 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     return () => window.removeEventListener(PULSE_ITEM_REMOVED, onPulseItemRemoved)
   }, [user?.id, pageSize])
 
-  return { items, loading, loadingMore, hasMore, scope, error, refresh, loadMore }
+  // Q&A rows ride in the cached page, so turning the flag off (or reporting a
+  // question) has to take effect here rather than wait for a refetch.
+  const visibleItems = useMemo(
+    () =>
+      items.some(isQaPulseItem)
+        ? items.filter((it) => !isQaPulseItem(it) || (qaOn && !isQaQuestionHidden(it.qa.questionId)))
+        : items,
+    [items, qaOn, qaHideTick]
+  )
+
+  return { items: visibleItems, loading, loadingMore, hasMore, scope, error, refresh, loadMore }
 }
 
 export default useHomeFeed

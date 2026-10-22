@@ -206,6 +206,25 @@ export function qaMine() {
   return callRpc('qa_mine')
 }
 
+/**
+ * Q&A events from people the viewer follows, for The Pulse: a bare array of
+ * { kind: 'asked' | 'best', event_at, question_id, title, igdb_game_id,
+ * game_title, game_cover_image_id, actor }. No bodies, so a spoiler question
+ * can only ever show its title. Report auto-hide and the 'qa' flag are
+ * enforced inside the RPC; the flag is also checked here to skip the call.
+ *
+ * Soft-fails to []: the Pulse must render without Q&A, never the other way.
+ */
+export async function qaPulse(limit = 6) {
+  try {
+    if (!(await isFlagEnabled('qa'))) return []
+    const data = await callRpc('qa_pulse', { p_limit: limit })
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
 /* ============================================================
    Writes — { data } or { error: { code } }. Never throw.
    ============================================================ */

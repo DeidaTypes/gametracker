@@ -19,8 +19,37 @@ import { useSheetDrag } from '../motion/useSheetDrag'
 import { hapticSuccess } from '../utils/haptics'
 import KeyboardAwareView from './KeyboardAwareView'
 import { ugcErrorMessage } from '../services/moderationService'
+import { getGamesFromList } from '../services/libraryService'
+import { useFlagEnabled } from '../hooks/useFlagEnabled'
+import { openQaAsk, qaGamePreset } from '../pages/qa/qaComposer'
 import './forms/forms.css'
 import './StopSessionSheet.css'
+
+// A text button, not a second Done: tokens only, so it needs no stylesheet.
+const STUCK_LINK_STYLE = {
+  alignSelf: 'center',
+  minHeight: 'var(--space-40)',
+  padding: '0 var(--space-12)',
+  border: 'none',
+  background: 'none',
+  color: 'var(--accent)',
+  fontFamily: 'var(--font-body)',
+  fontSize: 'var(--font-size-caption)',
+  fontWeight: 'var(--font-weight-semibold)',
+  cursor: 'pointer',
+  WebkitTapHighlightColor: 'transparent',
+}
+
+// The stop result carries the id and title but not the cover, so borrow it
+// from the library entry the session was started from.
+function libraryCover(igdbGameId) {
+  const id = String(igdbGameId)
+  for (const listId of ['currently-playing', 'played']) {
+    const hit = getGamesFromList(listId).find((g) => String(g?.id) === id)
+    if (hit?.image) return hit.image
+  }
+  return null
+}
 
 function formatHours(h) {
   if (!h && h !== 0) return '—'
@@ -48,6 +77,7 @@ export default function StopSessionSheet() {
   const rejectedNoteRef = useRef(null)
   const inputRef = useRef(null)
   const { reduced } = useMotionPreference()
+  const qaOn = useFlagEnabled('qa')
 
   // Reset state whenever a new result arrives
   useEffect(() => {
@@ -68,6 +98,21 @@ export default function StopSessionSheet() {
 
   const addedLabel = formatAdded(stopResult.addedHours)
   const newLabel = formatHours(stopResult.newHours)
+
+  const askGame = {
+    igdbId: stopResult.igdbGameId,
+    title: stopResult.gameTitle,
+    image: libraryCover(stopResult.igdbGameId),
+  }
+  // No usable IGDB id (or title) means Ask could not name the game: no link.
+  const canAsk = qaOn && qaGamePreset(askGame) != null
+
+  // Open Ask inside the tap (it raises the keyboard in the same gesture), then
+  // close this sheet the way Done does so a typed note is still saved.
+  function handleStuck() {
+    openQaAsk({ game: askGame })
+    void handleDone()
+  }
 
   async function handleDone() {
     // Closing again without editing a rejected note leaves the entry blank.
@@ -168,6 +213,12 @@ export default function StopSessionSheet() {
         >
           {saving ? 'Saving…' : 'Done'}
         </button>
+
+        {canAsk && (
+          <button type="button" style={STUCK_LINK_STYLE} onClick={handleStuck} disabled={saving}>
+            Stuck somewhere? Ask players who&apos;ve been there
+          </button>
+        )}
       </motion.div>
       </KeyboardAwareView>
     </motion.div>

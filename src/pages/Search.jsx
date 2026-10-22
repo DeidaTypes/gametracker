@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
-import { SearchX, Building2, Users, PenLine, Layers } from 'lucide-react'
+import { SearchX, Building2, Users, PenLine, Layers, MessageCircleQuestion, WifiOff } from 'lucide-react'
 import {
   GiWizardStaff,
   GiBroadsword,
@@ -47,6 +47,14 @@ import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { hapticImpact } from '../utils/haptics'
+import { useFlagEnabled } from '../hooks/useFlagEnabled'
+import { useCachedResource } from '../hooks/useCachedResource'
+import { qaSearch, qaSearchKey } from '../services/qaService'
+import QaQuestionListRow from './qa/QaQuestionListRow'
+import { formatRowMeta } from './qa/qaFormat'
+import { isQaQuestionHidden, useQaHides } from './qa/qaHides'
+import { useWarmTopQuestions } from './qa/qaCache'
+import './qa/qa.css'
 import './Search.css'
 
 const TABS = [
@@ -57,6 +65,9 @@ const TABS = [
   { id: 'reviews', label: 'Reviews' },
   { id: 'lists', label: 'Lists' },
 ]
+
+// Appended only while the 'qa' flag is on for the viewer.
+const QUESTIONS_TAB = { id: 'questions', label: 'Questions' }
 
 // Submit-on-pause window. A term only counts as something the user
 // actually searched — and so only earns a place in Recent Searches — once
@@ -1096,6 +1107,79 @@ function ListsTabResults({ rows, isLoading, onTapList }) {
   )
 }
 
+
+/* =============================================
+   QUESTIONS TAB (flag-gated)
+   ============================================= */
+
+function QuestionsTabEmpty() {
+  return (
+    <div className="sp-section">
+      <EmptyState
+        icon={MessageCircleQuestion}
+        size="compact"
+        title="Find an answer."
+        body="Search a game, a boss or a puzzle to pull up questions players have asked."
+      />
+    </div>
+  )
+}
+
+function QuestionsTabResults({ rows, query, isLoading, error, onRetry }) {
+  if (isLoading) {
+    return (
+      <div className="sp-section">
+        <SearchResultSkeletonList count={4} />
+      </div>
+    )
+  }
+  if (rows.length === 0) {
+    if (error) {
+      return (
+        <div className="sp-section">
+          <EmptyState
+            icon={WifiOff}
+            size="compact"
+            title="Couldn't load questions."
+            body="Check your connection and try again."
+            cta="Try again"
+            ctaVariant="secondary"
+            onCta={onRetry}
+          />
+        </div>
+      )
+    }
+    return (
+      <div className="sp-section">
+        <EmptyState
+          icon={SearchX}
+          size="compact"
+          title="No questions match this search."
+          body="Try a different search term."
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="sp-section">
+      <div className="qa-group">
+        {rows.map((item, index) => (
+          <div key={item.id}>
+            {index > 0 ? <div className="qa-hair qa-hair--full" /> : null}
+            <QaQuestionListRow
+              item={item}
+              query={query}
+              showCover
+              showAge
+              meta={[item.game_title, formatRowMeta(item)].filter(Boolean).join(' \u00b7 ')}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* =============================================
    MAIN COMPONENT
    ============================================= */
@@ -1110,6 +1194,12 @@ function Search() {
   const blurTimerRef = useRef(null)
   const submitTimerRef = useRef(null)
   const [activeTab, setActiveTab] = useState('all')
+  const qaOn = useFlagEnabled('qa')
+  const tabs = useMemo(() => (qaOn ? [...TABS, QUESTIONS_TAB] : TABS), [qaOn])
+  // The flag can drop while the tab is open (resume refreshes it).
+  useEffect(() => {
+    if (!qaOn && activeTab === 'questions') setActiveTab('all')
+  }, [qaOn, activeTab])
   // Entry points that already know what the user is looking for (the desktop
   // TopNav field, a shared /search?q= link) hand the term over in the URL.
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
@@ -1185,6 +1275,34 @@ function Search() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [listsRows, setListsRows] = useState([])
   const [listsLoading, setListsLoading] = useState(false)
+
+  // Questions tab — the same qa_search RPC and cache key the Q&A search
+  // screen uses, so a term searched in either is warm in the other.
+  const { tick: qaHideTick } = useQaHides()
+  const questionsActive = activeTab === 'questions' && qaOn && !!committedQuery
+  const {
+    data: questionsData,
+    error: questionsError,
+    refresh: refreshQuestions,
+  } = useCachedResource(
+    questionsActive ? qaSearchKey(null, committedQuery) : null,
+    () => qaSearch(committedQuery),
+    { enabled: questionsActive }
+  )
+  const questionsRows = useMemo(
+    () =>
+      (Array.isArray(questionsData) ? questionsData : []).filter(
+        (item) => item?.id && !isQaQuestionHidden(item.id)
+      ),
+    [questionsData, qaHideTick]
+  )
+  useWarmTopQuestions(questionsRows.map((item) => item.id))
+  // Loading until this exact term has an answer (or an error). Covers the
+  // debounce gap too, so a half-typed term never flashes "no matches".
+  const questionsLoading =
+    activeTab === 'questions' &&
+    hasQuery &&
+    (committedQuery !== trimmedQuery || (questionsData === undefined && !questionsError))
 
   // Browse-by-genre fallback (kept identical to the previous Search page).
   const [genres, setGenres] = useState(null)
@@ -1534,6 +1652,8 @@ function Search() {
                 ? 'Search reviews...'
                 : activeTab === 'users'
                 ? 'Search users...'
+                : activeTab === 'questions'
+                ? 'Search questions...'
                 : 'Search lists...'
             }
             value={query}
@@ -1556,7 +1676,7 @@ function Search() {
 
         {/* Tab bar sits below the input, above the content. */}
         <div className="sp-tabs" role="tablist" aria-label="Search categories">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -1729,6 +1849,22 @@ function Search() {
                 rows={listsRows}
                 isLoading={listsLoading}
                 onTapList={handleListTap}
+              />
+            )}
+          </>
+        )}
+
+        {/* QUESTIONS TAB (flag-gated) */}
+        {activeTab === 'questions' && qaOn && (
+          <>
+            {!hasQuery && <QuestionsTabEmpty />}
+            {hasQuery && (
+              <QuestionsTabResults
+                rows={questionsRows}
+                query={committedQuery}
+                isLoading={questionsLoading}
+                error={questionsError}
+                onRetry={() => refreshQuestions().catch(() => {})}
               />
             )}
           </>

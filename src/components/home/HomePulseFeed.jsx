@@ -1,10 +1,10 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { UserPlus, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import useHomeFeed from '../../hooks/useHomeFeed'
+import useHomeFeed, { isQaPulseItem } from '../../hooks/useHomeFeed'
 import { coverLoadingProps } from '../../services/imageUtils'
 import HomeReviewCard from './HomeReviewCard'
-import FeedRow, { FeedGroupRow } from './FeedRow'
+import FeedRow, { FeedGroupRow, QaFeedRow } from './FeedRow'
 import EmptyState from '../EmptyState'
 import FindFriendsModal from '../FindFriendsModal'
 import WindowedListItem from '../WindowedListItem'
@@ -232,6 +232,13 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
                   return (
                     <WindowedListItem key={`group-${entry.items[0].id}`} className="pulse-feed__item pulse-feed__item--compact">
                       <FeedGroupRow items={entry.items} coverPriority={coverPriority} />
+                    </WindowedListItem>
+                  )
+                }
+                if (isQaPulseItem(entry.item)) {
+                  return (
+                    <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--compact">
+                      <QaFeedRow item={entry.item} coverPriority={coverPriority} />
                     </WindowedListItem>
                   )
                 }

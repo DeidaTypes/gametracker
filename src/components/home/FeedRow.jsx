@@ -10,6 +10,7 @@ import { useReactions } from '../../hooks/useReactions'
 import { EVENT_REACTION_EMOJI } from './HomeReviewCard'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { warmQaQuestion } from '../../pages/qa/qaCache'
 import './FeedRow.css'
 
 // Fixed vocabulary for the two verb categories V4-01 defines for COMPACT
@@ -388,6 +389,77 @@ export function FeedGroupRow({ items, coverPriority }) {
             <FeedRow key={it.id} item={it} indented />
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// The question title is the second line, so it takes the width the time leaves
+// and ends in an ellipsis. .feed-row__line2 is a flex row, where text-overflow
+// only applies to an element that owns the text, hence the span.
+const QA_TITLE_STYLE = { flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }
+
+/**
+ * QaFeedRow — a Q&A event in The pulse, in FeedRow's own anatomy
+ * (avatar -> text -> cover). Two types, built by useHomeFeed:
+ *   qa_asked  "{name} asked about {game}"
+ *   qa_best   "{name}'s answer was picked as best on {game}"
+ * The second line is the question title only (titles are always
+ * spoiler-free, and no question or answer body ever reaches this row).
+ * The verb takes the purple 'curation' category, the list/social accent.
+ *
+ * One tap target, the row overlay, opens the question. No heart: reactions
+ * are for activity rows, and Q&A has its own Helpful vote on the question.
+ */
+export function QaFeedRow({ item, coverPriority }) {
+  const navigate = useNavigate()
+  const { questionId, title, igdbGameId, gameTitle, gameCoverImageId } = item.qa
+  const isBest = item.type === 'qa_best'
+  const name = item.author?.displayName || 'Player'
+  const actorLabel = isBest ? `${name}\u2019s` : name
+  const verbText = isBest ? 'answer was picked as best on' : 'asked about'
+  const when = formatActivityDate(item.createdAt, { pulse: true })
+  const ariaLabel = `${actorLabel} ${verbText} ${gameTitle}: ${title}`
+
+  return (
+    <div className="feed-row">
+      <button
+        type="button"
+        className="feed-row__tap"
+        aria-label={ariaLabel}
+        onPointerDown={() =>
+          warmQaQuestion({
+            id: questionId,
+            title,
+            igdb_game_id: igdbGameId,
+            game_title: gameTitle,
+            game_cover_image_id: gameCoverImageId,
+          })
+        }
+        onClick={() => navigate(`/qa/q/${questionId}`)}
+      />
+
+      <div className="feed-row__content">
+        <span className="feed-row__avatar" aria-hidden="true">
+          <Avatar user={item.author} size="xs" />
+        </span>
+
+        <RowText
+          actorLabel={actorLabel}
+          verbText={verbText}
+          category="curation"
+          objectNode={gameTitle ? <span className="feed-row__object">{gameTitle}</span> : null}
+          subline={
+            <>
+              <span style={QA_TITLE_STYLE}>{title}</span>
+              <span className="feed-row__when" aria-hidden="true">
+                {'\u00b7'} {when}
+              </span>
+            </>
+          }
+        />
+
+        <RowCover item={item} coverPriority={coverPriority} />
       </div>
     </div>
   )

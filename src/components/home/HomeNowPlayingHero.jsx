@@ -8,7 +8,13 @@ import { getManualSessionsForGame } from '../../services/sessionService'
 import { getCachedTimeToBeatSync } from '../../services/timeToBeatService'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getGameNavStub } from '../../utils/gameNavStub'
+import { useFlagEnabled } from '../../hooks/useFlagEnabled'
+import { openQaAsk, qaGamePreset } from '../../pages/qa/qaComposer'
 import './HomeNowPlayingHero.css'
+
+// "Stuck? Ask" is the quiet third action: the ghost button at caption size, so
+// the row keeps its height and the primary action keeps its width.
+const STUCK_BTN_STYLE = { fontSize: 'var(--font-size-caption)' }
 
 function humanTimeAgo(dateStr) {
   if (!dateStr) return null
@@ -98,6 +104,9 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   const [sessions, setSessions] = useState(null)
   const [mainStoryHours, setMainStoryHours] = useState(null)
   const [finishing, setFinishing] = useState(false)
+  const qaOn = useFlagEnabled('qa')
+  // No usable IGDB id (or title) means Ask could not name the game: no action.
+  const canAsk = qaOn && !!activeGame && qaGamePreset(activeGame) != null
 
   useEffect(() => {
     let cancelled = false
@@ -168,6 +177,13 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
     onLogSession(activeGame)
   }
 
+  // Runs the whole open inside the tap: openQaAsk commits the popup and
+  // focuses the title in the same gesture, so the keyboard rises with it.
+  const handleStuck = (e) => {
+    e.stopPropagation()
+    openQaAsk({ game: activeGame })
+  }
+
   const handleFinish = (e) => {
     e.stopPropagation()
     if (finishing) return
@@ -219,6 +235,16 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
           <LuCheck size={16} aria-hidden="true" />
           Finish
         </button>
+        {canAsk && (
+          <button
+            type="button"
+            className="nph__btn nph__btn--ghost"
+            style={STUCK_BTN_STYLE}
+            onClick={handleStuck}
+          >
+            Stuck? Ask
+          </button>
+        )}
       </div>
     </section>
   )
