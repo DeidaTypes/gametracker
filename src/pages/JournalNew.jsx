@@ -8,6 +8,8 @@ import { getGameById } from '../services/igdb'
 import { saveJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './JournalNew.css'
 
 const MAX_CHARS = 2000
@@ -29,6 +31,7 @@ function JournalNew() {
   const [mood, setMood] = useState(null)
   const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const [confirm, confirmSheet] = useConfirmSheet()
 
   // Drives the popup enter/exit animation. We keep the route mounted until
@@ -82,6 +85,7 @@ function JournalNew() {
   const handleSave = useCallback(async () => {
     if (!canSave || !game) return
     setSubmitting(true)
+    setSaveError(null)
     try {
       const deadline = new Promise((_, reject) =>
         setTimeout(
@@ -106,7 +110,9 @@ function JournalNew() {
       closeWith(() => navigate(-1))
     } catch (err) {
       console.error('[JournalNew] saveJournalEntry failed:', err)
-      showToast('Could not save your entry. Please try again.', 'error')
+      const blocked = ugcErrorMessage(err)
+      if (blocked) setSaveError(blocked)
+      else showToast('Could not save your entry. Please try again.', 'error')
       setSubmitting(false)
     }
   }, [canSave, game, text, containsSpoilers, navigate, closeWith])
@@ -237,6 +243,10 @@ function JournalNew() {
             {text.length}/{MAX_CHARS}
           </p>
         </div>
+
+        {saveError && (
+          <p className="form-field__error" role="alert">{saveError}</p>
+        )}
 
         {/* Tips line */}
         <p className="jnc-tip">

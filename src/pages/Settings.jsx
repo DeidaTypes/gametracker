@@ -5,6 +5,7 @@ import {
   LuChevronRight,
   LuCircleHelp,
   LuContrast,
+  LuFlag,
   LuLogOut,
   LuPencil,
   LuSearch,
@@ -29,6 +30,9 @@ import { labelMatchRange, searchSettings } from '../config/settingsIndex'
 import { setSettingsSearchBackHandler } from '../config/settingsSearchBack'
 import { APP_VERSION } from '../config/site'
 import { hapticImpact } from '../utils/haptics'
+import { useFlagEnabled } from '../hooks/useFlagEnabled'
+import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { MODERATION_CHANGED_EVENT, getOpenReportCount } from '../services/moderationService'
 import './Settings.css'
 
 function maskEmail(email) {
@@ -101,6 +105,26 @@ function Settings() {
     window.addEventListener('profileUpdated', refresh)
     return () => window.removeEventListener('profileUpdated', refresh)
   }, [])
+
+  const isAdmin = useFlagEnabled('admin')
+  const [openReports, setOpenReports] = useState(null)
+  useEffect(() => {
+    if (!isAdmin) return undefined
+    let alive = true
+    const refresh = () => {
+      getOpenReportCount().then((count) => {
+        if (alive) setOpenReports(count)
+      })
+    }
+    refresh()
+    window.addEventListener(MODERATION_CHANGED_EVENT, refresh)
+    window.addEventListener(APP_RESUMED_EVENT, refresh)
+    return () => {
+      alive = false
+      window.removeEventListener(MODERATION_CHANGED_EVENT, refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, refresh)
+    }
+  }, [isAdmin])
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])
@@ -338,6 +362,21 @@ function Settings() {
                 onClick={() => navigate('/settings/privacy')}
               />
             </SettingsGroup>
+
+            {isAdmin && (
+              <SettingsGroup icons>
+                <SettingsRow
+                  icon={<LuFlag size={18} strokeWidth={1.6} />}
+                  label="Moderation"
+                  value={openReports > 0 ? (
+                    <span className="settings-badge" aria-label={`${openReports} open reports`}>
+                      {openReports > 99 ? '99+' : openReports}
+                    </span>
+                  ) : null}
+                  onClick={() => navigate('/settings/moderation')}
+                />
+              </SettingsGroup>
+            )}
 
             <SettingsGroup icons>
               <SettingsRow

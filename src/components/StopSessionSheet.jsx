@@ -18,6 +18,8 @@ import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
 import { hapticSuccess } from '../utils/haptics'
 import KeyboardAwareView from './KeyboardAwareView'
+import { ugcErrorMessage } from '../services/moderationService'
+import './forms/forms.css'
 import './StopSessionSheet.css'
 
 function formatHours(h) {
@@ -42,6 +44,8 @@ export default function StopSessionSheet() {
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [noteError, setNoteError] = useState(null)
+  const rejectedNoteRef = useRef(null)
   const inputRef = useRef(null)
   const { reduced } = useMotionPreference()
 
@@ -50,6 +54,8 @@ export default function StopSessionSheet() {
     if (stopResult) {
       setNote('')
       setSaved(false)
+      setNoteError(null)
+      rejectedNoteRef.current = null
     }
   }, [stopResult])
 
@@ -64,15 +70,24 @@ export default function StopSessionSheet() {
   const newLabel = formatHours(stopResult.newHours)
 
   async function handleDone() {
-    if (note.trim() && !saved && stopResult.journalEntryId) {
+    // Closing again without editing a rejected note leaves the entry blank.
+    const changedSinceRejected = note.trim() !== rejectedNoteRef.current
+    if (note.trim() && !saved && stopResult.journalEntryId && changedSinceRejected) {
       setSaving(true)
+      setNoteError(null)
       try {
         await updateJournalEntry(stopResult.journalEntryId, { body: note.trim() })
         setSaved(true)
         hapticSuccess()
-      } catch {
-        // Non-fatal: dismiss anyway — the session's diary entry still
-        // exists with a blank body, it just won't have this note.
+      } catch (err) {
+        // Other failures are non-fatal: dismiss anyway — the session's diary
+        // entry still exists with a blank body, it just won't have this note.
+        const blocked = ugcErrorMessage(err)
+        if (blocked) {
+          rejectedNoteRef.current = note.trim()
+          setNoteError(blocked)
+          return
+        }
       } finally {
         setSaving(false)
       }
@@ -139,6 +154,9 @@ export default function StopSessionSheet() {
             maxLength={280}
             autoComplete="off"
           />
+          {noteError && (
+            <p className="form-field__error" role="alert">{noteError}</p>
+          )}
         </div>
 
         {/* Done */}

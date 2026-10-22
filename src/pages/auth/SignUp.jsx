@@ -19,6 +19,14 @@ import {
 import { useDebounce } from '../../hooks/useDebounce'
 import { syncProfileFromSupabase } from '../../services/profileService'
 import { convertReferral } from '../../services/inviteService'
+import {
+  CONTENT_BLOCKED_MESSAGE,
+  acceptTerms,
+  holdTermsCheck,
+  isTextAllowed,
+  ugcErrorMessage,
+} from '../../services/moderationService'
+import { TermsSentence } from '../../components/TermsGate'
 import './Auth.css'
 import './SignUp.css'
 
@@ -149,15 +157,32 @@ function SignUp() {
         return
       }
 
+      if (!(await isTextAllowed(trimmedUsername, 'username'))) {
+        setFormError(CONTENT_BLOCKED_MESSAGE)
+        return
+      }
+
       // Display name defaults to the username at signup time — there's no
       // separate Name field on this screen. The user can change their
       // display name later via Edit Profile.
-      const { user, profile } = await signUp({
-        email: email.trim(),
-        password,
-        displayName: trimmedUsername,
-        username: trimmedUsername,
-      })
+      const releaseTermsCheck = holdTermsCheck()
+      let created
+      try {
+        created = await signUp({
+          email: email.trim(),
+          password,
+          displayName: trimmedUsername,
+          username: trimmedUsername,
+        })
+        // Agreeing is the sentence under the button. If this write fails the
+        // one-time terms popup asks again on the next launch.
+        await acceptTerms().catch((termsErr) => {
+          console.error('[signup] accept_terms failed:', termsErr)
+        })
+      } finally {
+        releaseTermsCheck()
+      }
+      const { user, profile } = created
       // Mirror the just-created server profile into the localStorage store
       // the own-profile UI reads, so the entered username shows up
       // immediately instead of a stock default.
@@ -168,7 +193,10 @@ function SignUp() {
       navigate(redirectTo, { replace: true })
     } catch (err) {
       const code = err?.code
-      if (code === AUTH_ERRORS.EMAIL_TAKEN) {
+      const moderation = ugcErrorMessage(err)
+      if (moderation) {
+        setFormError(moderation)
+      } else if (code === AUTH_ERRORS.EMAIL_TAKEN) {
         setFormError(
           'An account with this email already exists. Try logging in.'
         )
@@ -342,6 +370,12 @@ function SignUp() {
             <SubmitButton type="submit" loading={submitting}>
               Create account
             </SubmitButton>
+            <p className="su-verify-note">
+              <TermsSentence
+                lead="By creating an account you agree to the"
+                linkClassName="auth-link"
+              />
+            </p>
             <p className="su-verify-note">
               We&rsquo;ll email a link to verify it&rsquo;s you.
             </p>

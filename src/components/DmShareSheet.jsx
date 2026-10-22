@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { LuSearch, LuX } from 'react-icons/lu'
 import { UserX } from 'lucide-react'
 import { sendMessage } from '../services/messageService'
+import { ugcErrorMessage } from '../services/moderationService'
 import { searchUsers } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
 import { useDebounce } from '../hooks/useDebounce'
@@ -89,7 +90,7 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
       onClose()
     } catch (err) {
       console.error('[DmShareSheet] send failed:', err)
-      showToast(err?.message || "Couldn't send. Please try again.", 'error')
+      showToast(ugcErrorMessage(err) || err?.message || "Couldn't send. Please try again.", 'error')
       setSending(null)
     }
   }

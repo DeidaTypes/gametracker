@@ -12,6 +12,8 @@ import { logCompletedEventOnce } from '../services/activityEventsService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import { hapticSuccess } from '../utils/haptics'
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './ReviewNew.css'
 
 function ReviewNew() {
@@ -50,6 +52,7 @@ function ReviewNew() {
   const [vibeStamp, setVibeStamp] = useState(isEditMode ? (editReview.vibeStamp ?? null) : null)
   const [lifeContext, setLifeContext] = useState(isEditMode ? (editReview.lifeContext ?? null) : null)
   const [submitting, setSubmitting] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [confirm, confirmSheet] = useConfirmSheet()
 
@@ -119,6 +122,7 @@ function ReviewNew() {
     if (!canSave) return
     if (!isEditMode && !game) return
     setSubmitting(true)
+    setSaveError(null)
     try {
       const deadline = new Promise((_, reject) =>
         setTimeout(
@@ -213,7 +217,9 @@ function ReviewNew() {
       closeWith(() => navigate(-1))
     } catch (err) {
       console.error('[ReviewNew] save failed:', err)
-      showToast('Could not save your review. Please try again.', 'error')
+      const blocked = ugcErrorMessage(err)
+      if (blocked) setSaveError(blocked)
+      else showToast('Could not save your review. Please try again.', 'error')
       setSubmitting(false)
     }
   }, [
@@ -430,6 +436,10 @@ function ReviewNew() {
           />
           <p className="rnc-char-count" aria-live="polite">{text.length}/5000</p>
         </div>
+
+        {saveError && (
+          <p className="form-field__error" role="alert">{saveError}</p>
+        )}
 
         <p className="rnc-tip">
           Tip: use <em>*italics*</em> and <code>[spoiler]…[/spoiler]</code> for spoiler tags.

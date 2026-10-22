@@ -143,6 +143,8 @@ async function classifyWriteError(error, { kind, questionId } = {}) {
   if (!error) return null
   if (isOffline(error)) return fail('offline')
   const msg = error.message || ''
+  if (msg.includes('content_blocked')) return fail('content_blocked')
+  if (msg.includes('account_suspended')) return fail('account_suspended')
   if (error.code === '23503' || /cannot be deleted|with answers/i.test(msg)) {
     return fail('has_answers')
   }

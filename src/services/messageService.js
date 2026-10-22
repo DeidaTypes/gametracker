@@ -403,7 +403,7 @@ export async function sendMessage({ recipientId, body, attachment = null }) {
     // not fall through to a generic send-failure toast. The block pre-check
     // above still throws its own copy when the local block cache already
     // knows.
-    if (error.code === '42501') {
+    if (error.code === '42501' && !String(error.message || '').includes('account_suspended')) {
       const denied = new Error("This person isn't accepting messages right now.")
       denied.code = MESSAGE_NOT_ACCEPTED
       throw denied

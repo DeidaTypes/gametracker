@@ -131,6 +131,13 @@ body.keyboard-open {
   width: 100%;
 }
 
+/* Inline send error above the row (pair with .form-field__error). */
+.composer__error {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) 0;
+}
+
 .composer__shell {
   display: flex;
   align-items: center;

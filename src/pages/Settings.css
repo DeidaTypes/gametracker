@@ -334,6 +334,22 @@
   margin-left: var(--space-8);
 }
 
+/* Count pill inside a row value (admin Moderation row). */
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-20);
+  height: var(--space-20);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
 .settings-row__icon {
   display: inline-flex;
   align-items: center;

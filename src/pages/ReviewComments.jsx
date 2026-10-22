@@ -65,6 +65,8 @@ import { useHideNav } from '../hooks/useHideNav'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './ReviewComments.css'
 
 /* ============================================================
@@ -431,6 +433,7 @@ function ReviewComments() {
   // the id) so we can prepend "@displayName " on focus AND pass the
   // parent's id to postComment without a second lookup.
   const [draft, setDraft] = useState('')
+  const [composerError, setComposerError] = useState(null)
   const [replyTo, setReplyTo] = useState(null)
   // `editingComment` is the full comment object being edited via the
   // pinned composer, or null when in normal add-a-comment mode.
@@ -903,6 +906,7 @@ function ReviewComments() {
   const handleCancelEdit = useCallback(() => {
     setEditingComment(null)
     setDraft('')
+    setComposerError(null)
   }, [])
 
   const handleSubmit = async (e) => {
@@ -914,6 +918,7 @@ function ReviewComments() {
     const trimmed = draft.trim()
     if (!trimmed) return
     if (posting) return
+    setComposerError(null)
 
     // ── Edit mode: update the existing comment in place ──────────
     if (editingComment) {
@@ -930,7 +935,9 @@ function ReviewComments() {
         setDraft('')
       } catch (err) {
         console.error('[ReviewComments] updateComment failed:', err)
-        showToast(
+        const blocked = ugcErrorMessage(err)
+        if (blocked) setComposerError(blocked)
+        else showToast(
           err?.message || "Couldn't update your comment. Please try again.",
           'error'
         )
@@ -956,7 +963,9 @@ function ReviewComments() {
       bumpCommentsCount(1)
     } catch (err) {
       console.error('[ReviewComments] postComment failed:', err)
-      showToast(
+      const blocked = ugcErrorMessage(err)
+      if (blocked) setComposerError(blocked)
+      else showToast(
         err?.message || "Couldn't post your comment. Please try again.",
         'error'
       )
@@ -1210,6 +1219,9 @@ function ReviewComments() {
               ×
             </button>
           </div>
+        )}
+        {composerError && (
+          <p className="composer__error form-field__error" role="alert">{composerError}</p>
         )}
         <div className="composer__row">
           <div className="composer__shell">

@@ -5,6 +5,8 @@ import { discardConfirm, useConfirmSheet } from './ConfirmSheet'
 import { hapticSuccess } from '../utils/haptics'
 import { saveJournalEntry, updateJournalEntry, MOOD_OPTIONS } from '../services/journalService'
 import { showToast } from './Toast'
+import { ugcErrorMessage } from '../services/moderationService'
+import './forms/forms.css'
 import '../pages/JournalNew.css'
 
 const MAX_TITLE = 100
@@ -46,6 +48,7 @@ function JournalEntryModal({
   const [mood, setMood] = useState(null)
   const [hours, setHours] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const titleRef = useRef(null)
   const [confirm, confirmSheet] = useConfirmSheet()
 
@@ -58,6 +61,7 @@ function JournalEntryModal({
       setMood(isEditing ? (initialMood ?? null) : null)
       setHours(isEditing && initialHours != null ? String(initialHours) : '')
       setSubmitting(false)
+      setSaveError(null)
       const t = setTimeout(() => titleRef.current?.focus(), 150)
       return () => clearTimeout(t)
     }
@@ -77,6 +81,7 @@ function JournalEntryModal({
   const handleSave = useCallback(async () => {
     if (!canSave) return
     setSubmitting(true)
+    setSaveError(null)
     try {
       const parsedHours = hours !== '' && hours != null ? parseFloat(hours) : null
       if (isEditing) {
@@ -107,7 +112,9 @@ function JournalEntryModal({
       onClose()
     } catch (err) {
       console.error('[JournalEntryModal] save failed:', err)
-      showToast('Could not save your entry. Please try again.', 'error')
+      const blocked = ugcErrorMessage(err)
+      if (blocked) setSaveError(blocked)
+      else showToast('Could not save your entry. Please try again.', 'error')
       setSubmitting(false)
     }
   }, [canSave, isEditing, entryId, game, title, body, isSpoiler, mood, hours, onClose])
@@ -201,6 +208,10 @@ function JournalEntryModal({
             </p>
           )}
         </div>
+
+        {saveError && (
+          <p className="form-field__error" role="alert">{saveError}</p>
+        )}
 
         {/* Mood picker */}
         <div className="jnc-section-label">How are you feeling?</div>

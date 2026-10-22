@@ -15,6 +15,8 @@ import BioEditModal from './BioEditModal'
 import KeyboardAwareView from './KeyboardAwareView'
 import Avatar from './Avatar'
 import { hapticImpact } from '../utils/haptics'
+import { ugcErrorMessage } from '../services/moderationService'
+import './forms/forms.css'
 import './EditProfileModal.css'
 
 const AVATAR_MAX_FILE_MB = 10
@@ -362,6 +364,11 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         setErrors({ username: err.message })
         return
       }
+      const blocked = ugcErrorMessage(err)
+      if (blocked) {
+        setErrors({ save: blocked })
+        return
+      }
       showToast(err?.message || "Couldn't save. Try again.", 'error')
       return
     }
@@ -509,6 +516,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
             {/* ── Form groups ──────────────────────────────────── */}
             <div className="ep-groups">
+              {errors.save && (
+                <p className="form-field__error" role="alert">{errors.save}</p>
+              )}
 
               {/* PROFILE section */}
               <div className="ep-group">

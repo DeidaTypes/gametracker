@@ -15,6 +15,8 @@ import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import Avatar from './Avatar'
 import KeyboardAwareView from './KeyboardAwareView'
 import ReservedSlot from './ReservedSlot'
+import { ugcErrorMessage } from '../services/moderationService'
+import './forms/forms.css'
 import './ListComments.css'
 
 function CommentSkeleton() {
@@ -84,6 +86,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [composerError, setComposerError] = useState(null)
   const textareaRef = useRef(null)
   // Sentinel just past the last comment — scrolled into view after posting
   // and once the keyboard has settled on focus, so the thread (not the
@@ -131,6 +134,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
 
     hapticSuccess()
     setSubmitting(true)
+    setComposerError(null)
 
     // Optimistic insert with a temp id
     const tempId = `__temp_${Date.now()}`
@@ -156,7 +160,13 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
       )
     } catch (err) {
       setComments((prev) => prev.filter((c) => c.id !== tempId))
-      showToast(err.message || "Couldn't post comment. Please try again.", 'error')
+      const blocked = ugcErrorMessage(err)
+      if (blocked) {
+        setDraft((current) => current || trimmed)
+        setComposerError(blocked)
+      } else {
+        showToast(err.message || "Couldn't post comment. Please try again.", 'error')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -171,6 +181,9 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
         aria-label="Comment composer"
         onSubmit={handleSubmit}
       >
+        {composerError && (
+          <p className="composer__error form-field__error" role="alert">{composerError}</p>
+        )}
         <div className="composer__row">
           <div className="composer__shell">
             <textarea

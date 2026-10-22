@@ -38,6 +38,8 @@ import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -185,6 +187,7 @@ function MessagesThread() {
   const [reportProfileOpen, setReportProfileOpen] = useState(false)
   const [partnerBlocked, setPartnerBlocked] = useState(false)
   const [notAccepting, setNotAccepting] = useState(false)
+  const [sendError, setSendError] = useState(null)
   const [discardOpen, setDiscardOpen] = useState(false)
 
   useEffect(() => {
@@ -466,6 +469,7 @@ function MessagesThread() {
       }
       stopTyping()
       setSending(true)
+      setSendError(null)
       // Optimistic — append a temp row so the bubble shows up the
       // instant the user taps Send. Replaced with the real row once
       // sendMessage resolves; rolled back on failure.
@@ -513,6 +517,11 @@ function MessagesThread() {
         setPendingAttachment(attachment)
         if (err?.code === MESSAGE_NOT_ACCEPTED) {
           setNotAccepting(true)
+          return
+        }
+        const blocked = ugcErrorMessage(err)
+        if (blocked) {
+          setSendError(blocked)
           return
         }
         showToast(
@@ -854,6 +863,9 @@ function MessagesThread() {
               ✕
             </button>
           </div>
+        )}
+        {sendError && (
+          <p className="composer__error form-field__error" role="alert">{sendError}</p>
         )}
         <div className="composer__row">
           <div className="composer__shell">

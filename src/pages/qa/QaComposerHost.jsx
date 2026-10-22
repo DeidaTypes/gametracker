@@ -9,6 +9,7 @@ import { applyAnswerEdit, applyQuestionEdit, dropBlockedUserFromQa, markJustAske
 import { getKeyboardInset, hideKeyboard, isKeyboardOpen } from '../../services/keyboardInset'
 import { getSettings } from '../../services/userSettingsService'
 import { hapticSuccess } from '../../utils/haptics'
+import { CONTENT_BLOCKED_MESSAGE, accountSuspendedMessage } from '../../services/moderationService'
 import { discardConfirm, useConfirmSheet } from '../../components/ConfirmSheet'
 import QaAnswerForm from './QaAnswerForm'
 import QaAskForm from './QaAskForm'
@@ -171,6 +172,7 @@ export default function QaComposerHost() {
   const [noticeOpen, setNoticeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [closedKey, setClosedKey] = useState(null)
+  const [blockedText, setBlockedText] = useState(false)
   const [confirm, confirmSheet] = useConfirmSheet()
   const seenQuestion = useRef(null)
   const noticeOk = useRef(false)
@@ -240,10 +242,19 @@ export default function QaComposerHost() {
     noticeOk.current = false
     setNoticeOpen(false)
     setBusy(false)
+    setBlockedText(false)
     posting.current = false
   }, [openKey])
 
   const reportError = async (code, mode, questionId) => {
+    if (code === 'content_blocked') {
+      setBlockedText(true)
+      return
+    }
+    if (code === 'account_suspended') {
+      setQaComposerLimit({ message: accountSuspendedMessage() })
+      return
+    }
     if (code === 'limit_reached') {
       const rule = limitRule(profile?.created_at, mode === 'answer' ? 'answer' : 'question')
       setQaComposerLimit({ ...rule, message: limitBanner(rule) })
@@ -436,6 +447,7 @@ export default function QaComposerHost() {
     }
     posting.current = true
     setBusy(true)
+    setBlockedText(false)
     try {
       if (current.mode === 'ask') await sendAsk()
       else if (current.mode === 'edit-question') await sendEditQuestion()
@@ -517,6 +529,11 @@ export default function QaComposerHost() {
           onCancel={handleCancel}
           onExited={handleExited}
         >
+          {blockedText && !(asking && draft.step === 'pick') ? (
+            <div className="qa-cmp-notice" role="alert">
+              <span>{CONTENT_BLOCKED_MESSAGE}</span>
+            </div>
+          ) : null}
           {asking ? (
             <QaAskForm
               draft={draft}

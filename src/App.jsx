@@ -54,6 +54,7 @@ import {
   ListDetail,
   MessagesInbox,
   MessagesThread,
+  Moderation,
   NotificationsInbox,
   ReviewComments,
   ReviewDetail,
@@ -113,6 +114,7 @@ import { SessionProvider } from './contexts/SessionContext'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
 import QaComposerHost from './pages/qa/QaComposerHost'
+import TermsGate from './components/TermsGate'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import { useAppResume, APP_RESUMED_EVENT } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -1442,6 +1444,16 @@ function AppContent() {
               }
             />
             <Route
+              path="/settings/moderation"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><Moderation /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/settings/email"
               element={
                 <RequireAuth>
@@ -1646,6 +1658,7 @@ function AppContent() {
       {/* Stop-session confirmation sheet — appears after stopGameSession(). */}
       <StopSessionSheet />
       <QaComposerHost />
+      <TermsGate />
     </div>
   )
 }

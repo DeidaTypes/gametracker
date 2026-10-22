@@ -70,6 +70,8 @@ import ClearModeOverlay from '../components/ClearModeOverlay'
 
 /** How long a list's contents are reused before the next entry revalidates. */
 const LIST_TTL_MS = 60 * 1000
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './ListDetail.css'
 import '../pages/Library.css'
 
@@ -204,6 +206,7 @@ function ListDetail() {
   // Inline description editing
   const [editingDesc, setEditingDesc] = useState(false)
   const [descDraft, setDescDraft] = useState('')
+  const [descError, setDescError] = useState(null)
   const descTextareaRef = useRef(null)
 
   const isTracker = isTrackerList(listId)
@@ -957,12 +960,14 @@ function ListDetail() {
 
   function openDescEdit() {
     setDescDraft(listInfo?.description || '')
+    setDescError(null)
     setEditingDesc(true)
   }
 
   const handleDescCancel = () => {
     setEditingDesc(false)
     setDescDraft('')
+    setDescError(null)
   }
 
   const handleDescSave = async () => {
@@ -974,13 +979,21 @@ function ListDetail() {
     }
     setListInfo((l) => ({ ...l, description: trimmed }))
     setEditingDesc(false)
+    setDescError(null)
     try {
       await updateList(listId, { description: trimmed })
       hapticSuccess()
       showToast('Description updated', 'success')
-    } catch {
+    } catch (err) {
       setListInfo((l) => ({ ...l, description: prev }))
-      showToast("Couldn't save description. Please try again.", 'error')
+      const blocked = ugcErrorMessage(err)
+      if (blocked) {
+        setDescDraft(trimmed)
+        setDescError(blocked)
+        setEditingDesc(true)
+      } else {
+        showToast("Couldn't save description. Please try again.", 'error')
+      }
     }
   }
 
@@ -1247,6 +1260,9 @@ function ListDetail() {
               maxLength={500}
               aria-label="List description"
             />
+            {descError && (
+              <p className="form-field__error" role="alert">{descError}</p>
+            )}
             <div className="list-detail-desc-edit-toolbar">
               <button
                 type="button"

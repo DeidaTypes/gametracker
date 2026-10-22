@@ -5,6 +5,7 @@ import { hapticSuccess } from '../utils/haptics'
 import CenteredModal from './CenteredModal'
 import EmptyState from './EmptyState'
 import { discardConfirm, useConfirmSheet } from './ConfirmSheet'
+import { ugcErrorMessage } from '../services/moderationService'
 import './CreateListModal.css'
 
 const NAME_MAX = 60
@@ -160,7 +161,7 @@ function CreateListModal({ isOpen, onClose, onCreate }) {
       onClose()
     } catch (err) {
       console.error('[CreateListModal] onCreate failed:', err)
-      setSubmitError('Failed to create list. Please try again.')
+      setSubmitError(ugcErrorMessage(err) || 'Failed to create list. Please try again.')
       setIsSubmitting(false)
     }
   }

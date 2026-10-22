@@ -40,6 +40,8 @@ import { useHideNav } from '../hooks/useHideNav'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
+import { ugcErrorMessage } from '../services/moderationService'
+import '../components/forms/forms.css'
 import './ReviewDetail.css'
 
 /* ============================================================
@@ -237,6 +239,7 @@ function CommentRow({
   const [kebabOpen, setKebabOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(comment.body)
+  const [editError, setEditError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [localLike, setLocalLike] = useState(likeState || { liked: false, count: 0 })
   const [pulse, setPulse] = useState(false)
@@ -313,9 +316,12 @@ function CommentRow({
     if (!trimmed) { showToast('Comment cannot be empty.', 'error'); return }
     if (trimmed === comment.body) { setEditing(false); return }
     setSaving(true)
+    setEditError(null)
     try {
       await onEdit(comment.id, trimmed)
       setEditing(false)
+    } catch (err) {
+      setEditError(ugcErrorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -375,6 +381,9 @@ function CommentRow({
               aria-label="Edit comment"
               style={{ minHeight: 60 }}
             />
+            {editError && (
+              <p className="form-field__error" role="alert">{editError}</p>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
               <button
                 type="button"
@@ -389,7 +398,7 @@ function CommentRow({
                   fontWeight: 'var(--font-weight-semibold)',
                   cursor: 'pointer',
                 }}
-                onClick={() => { setDraft(comment.body); setEditing(false) }}
+                onClick={() => { setDraft(comment.body); setEditError(null); setEditing(false) }}
                 disabled={saving}
               >
                 Cancel
@@ -598,6 +607,7 @@ function ReviewDetail() {
   // ── Composer state ──────────────────────────────────────────
   const [replyTo, setReplyTo] = useState(null)
   const [draft, setDraft] = useState('')
+  const [composerError, setComposerError] = useState(null)
   const [posting, setPosting] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
 
@@ -826,6 +836,8 @@ function ReviewDetail() {
     if (!trimmed || posting) return
     hapticSuccess()
     setPosting(true)
+    setComposerError(null)
+    const replyTarget = replyTo
 
     const optimisticId = `opt-${Date.now()}`
     const optimistic = {
@@ -890,10 +902,17 @@ function ReviewDetail() {
         next.delete(optimisticId)
         return next
       })
-      showToast(
-        err?.message || "Couldn't post your comment. Please try again.",
-        'error'
-      )
+      const blocked = ugcErrorMessage(err)
+      if (blocked) {
+        setDraft((current) => current || trimmed)
+        setReplyTo((current) => current ?? replyTarget)
+        setComposerError(blocked)
+      } else {
+        showToast(
+          err?.message || "Couldn't post your comment. Please try again.",
+          'error'
+        )
+      }
     } finally {
       setPosting(false)
     }
@@ -938,10 +957,12 @@ function ReviewDetail() {
       )
     } catch (err) {
       console.error('[ReviewDetail] updateComment failed:', err)
-      showToast(
-        err?.message || "Couldn't update your comment. Please try again.",
-        'error'
-      )
+      if (!ugcErrorMessage(err)) {
+        showToast(
+          err?.message || "Couldn't update your comment. Please try again.",
+          'error'
+        )
+      }
       throw err
     }
   }, [])
@@ -1138,6 +1159,10 @@ function ReviewDetail() {
               ×
             </button>
           </div>
+        )}
+
+        {composerError && (
+          <p className="composer__error form-field__error" role="alert">{composerError}</p>
         )}
 
         <div className="composer__row">
