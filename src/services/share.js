@@ -1,5 +1,6 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import { siteLink } from '../config/site'
 
 /**
  * Share Service — branded deep-linked card engine.
@@ -15,14 +16,15 @@ import { createRoot } from 'react-dom/client'
  *     the same share cascade. Used by CompletionCelebration and anywhere
  *     that already has a PNG.
  *
- * Deep-link scheme:
- *   All deep links are web-origin paths (BrowserRouter). No native URL
- *   scheme is configured in capacitor.config.json yet, so we use
- *   window.location.origin as the base. The URLs embedded in cards are:
- *     game      →  /game/:gameId
- *     review    →  /review/:reviewId
- *     profile   →  /user/:username
- *     list      →  /list/:listId
+ * Links:
+ *   Every link is built by src/config/site.js (siteLink) from VITE_SITE_URL:
+ *     review    →  <site>/r/:reviewId
+ *     list      →  <site>/l/:listId
+ *     question  →  <site>/q/:questionId
+ *     profile   →  <site>/u/:username
+ *   Those are landing pages in /web that open the app via checkpoint://.
+ *   When VITE_SITE_URL is not set there is no link: the card is still shared,
+ *   without a QR code or URL. Games have no landing page, so no link either.
  *
  * QR codes are generated via the `qrcode` package before card render so
  * html-to-image can rasterise the img tag from a base64 data URL.
@@ -33,22 +35,21 @@ export const CARD_WIDTH = 1080
 export const CARD_HEIGHT = 1350
 
 /**
- * Build the canonical deep link URL for a given target.
+ * Build the public link for a given target, or '' when there is none
+ * (site not configured, or the target type has no landing page).
  */
 export function buildDeepLinkUrl(target) {
-  const base =
-    typeof window !== 'undefined' ? window.location.origin : 'https://checkpoint.app'
-  switch (target.type) {
-    case 'game':
-      return `${base}/game/${encodeURIComponent(target.id)}`
+  switch (target?.type) {
     case 'review':
-      return `${base}/review/${encodeURIComponent(target.id)}`
+      return siteLink('review', target.id)
     case 'profile':
-      return `${base}/user/${encodeURIComponent(target.username)}`
+      return siteLink('profile', target.username)
     case 'list':
-      return `${base}/list/${encodeURIComponent(target.id)}`
+      return siteLink('list', target.id)
+    case 'question':
+      return siteLink('question', target.id)
     default:
-      return base
+      return ''
   }
 }
 
@@ -88,7 +89,7 @@ export async function captureCard({ variant, data, target }) {
   const BrandedShareCard = (await import('../components/BrandedShareCard')).default
 
   const deepLinkUrl = buildDeepLinkUrl(target)
-  const qrDataUrl = await buildQrDataUrl(deepLinkUrl)
+  const qrDataUrl = deepLinkUrl ? await buildQrDataUrl(deepLinkUrl) : null
 
   // Mount an offscreen host
   const host = document.createElement('div')
@@ -145,11 +146,11 @@ export async function captureCard({ variant, data, target }) {
  * @param {string}  dataUrl
  * @param {object}  opts
  * @param {string}  opts.title
- * @param {string}  opts.url       Deep link URL to include
+ * @param {string}  [opts.url]     Link to include; omitted when there is none
  * @param {string}  [opts.filename]
  * @returns {Promise<{ method: string }>}
  */
-export async function shareImageDataUrl(dataUrl, { title = 'Checkpoint', url = '', filename = 'gametracker-card.png' } = {}) {
+export async function shareImageDataUrl(dataUrl, { title = 'Checkpoint', url = '', filename = 'checkpoint-card.png' } = {}) {
   // Convert data URL to File for the Web Share API
   let file = null
   try {
@@ -168,23 +169,27 @@ export async function shareImageDataUrl(dataUrl, { title = 'Checkpoint', url = '
     navigator.canShare?.({ files: [file] })
   ) {
     try {
-      await navigator.share({ files: [file], title, url })
+      await navigator.share(url ? { files: [file], title, url } : { files: [file], title })
       return { method: 'web-share-file' }
     } catch (e) {
       if (e.name === 'AbortError') return { method: 'aborted' }
     }
   }
 
-  // 2. Capacitor Share (URL only — no filesystem write needed)
-  try {
-    const { Share } = await import('@capacitor/share')
-    const canShare = await Share.canShare()
-    if (canShare?.value) {
-      await Share.share({ title, url, dialogTitle: 'Share' })
-      return { method: 'capacitor' }
+  // 2. Capacitor Share (URL only — no filesystem write needed). Skipped when
+  //    there is no link: the plugin can't carry the image, so a title-only
+  //    share would send nothing useful.
+  if (url) {
+    try {
+      const { Share } = await import('@capacitor/share')
+      const canShare = await Share.canShare()
+      if (canShare?.value) {
+        await Share.share({ title, url, dialogTitle: 'Share' })
+        return { method: 'capacitor' }
+      }
+    } catch {
+      // Plugin unavailable
     }
-  } catch {
-    // Plugin unavailable
   }
 
   // 3. Download the PNG
@@ -216,7 +221,7 @@ export async function shareCard({ variant, data, target, title }) {
   const result = await shareImageDataUrl(dataUrl, {
     title: title || 'Checkpoint',
     url: deepLinkUrl,
-    filename: `gametracker-${variant}.png`,
+    filename: `checkpoint-${variant}.png`,
   })
   return { ...result, dataUrl }
 }

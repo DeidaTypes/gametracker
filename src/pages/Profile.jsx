@@ -75,6 +75,7 @@ import {
   PIN_CHANGED_EVENT,
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
+import { SHARE_LINKS_ENABLED, siteLink } from '../config/site'
 import { hapticImpact } from '../utils/haptics'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { formatActivityDate } from '../utils/formatActivityDate'
@@ -1395,7 +1396,9 @@ function Profile() {
           username,
           games: favs.map((g) => ({ title: g.title, coverUrl: g.image })),
         },
-        target: { type: 'profile', username },
+        // Link only when there is a real username — a display name would
+        // produce a /u/ link that opens nobody.
+        target: { type: 'profile', username: profile?.username || '' },
         title: `${username}'s Favorite Games`,
       })
     } catch (err) {
@@ -1417,22 +1420,28 @@ function Profile() {
     }
   }
 
+  // Public link to the profile's landing page. Needs a real username and a
+  // configured site; otherwise the profile is shared as text without a link.
+  const profileShareUrl = () => siteLink('profile', profile?.username)
+
   const handleShareProfile = async () => {
-    const username = profile?.username || profile?.displayName || 'profile'
-    const url = `${window.location.origin}/user/${encodeURIComponent(username)}`
-    await shareContent({
-      title: `${profile?.displayName || username} on Checkpoint`,
-      text: profile?.bio || '',
-      url,
+    const name = profile?.displayName || profile?.username || 'Profile'
+    const result = await shareContent({
+      title: `${name} on Checkpoint`,
+      text: profile?.bio || `${name} on Checkpoint`,
+      url: profileShareUrl(),
     })
+    if (result?.method === 'clipboard') {
+      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success')
+    }
   }
 
   // Copies the profile URL directly to the clipboard — distinct from
   // handleShareProfile, which opens the native/web share sheet. Lives in
   // the overflow sheet as its own "Copy link" row.
   const handleCopyProfileLink = useCallback(async () => {
-    const username = profile?.username || profile?.displayName || 'profile'
-    const url = `${window.location.origin}/user/${encodeURIComponent(username)}`
+    const url = siteLink('profile', profile?.username)
+    if (!url) return
     try {
       await navigator.clipboard.writeText(url)
       showToast('Link copied', 'success')
@@ -1455,13 +1464,12 @@ function Profile() {
     setWrappedSharing('generating')
     try {
       const summary = compileWrappedSummary(period)
-      const username = profile?.username || profile?.displayName || null
       await shareCard({
         variant: 'wrapped-summary',
         data: summary,
         target: {
           type: 'profile',
-          username: username || user?.id || '',
+          username: profile?.username || '',
         },
         title: `My ${summary.periodLabel} in Games — Checkpoint`,
       })
@@ -2009,12 +2017,14 @@ function Profile() {
                 tone: 'purple',
                 onClick: handleShareProfile,
               },
-              {
-                label: 'Copy link',
-                icon: <LuLink size={18} />,
-                tone: 'green',
-                onClick: handleCopyProfileLink,
-              },
+              ...(SHARE_LINKS_ENABLED && profile.username
+                ? [{
+                    label: 'Copy link',
+                    icon: <LuLink size={18} />,
+                    tone: 'green',
+                    onClick: handleCopyProfileLink,
+                  }]
+                : []),
               { divider: true },
               {
                 label: `Block ${profile.username || profile.displayName || 'user'}`,

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Flame } from 'lucide-react'
 import { shareContent } from '../../utils/share'
+import { SITE_URL } from '../../config/site'
 import { hapticSuccess } from '../../utils/haptics'
 import './UnlockCelebration.css'
 
@@ -55,7 +56,8 @@ export default function UnlockCelebration({
     await shareContent({
       title: shareTitle || title,
       text: shareText || description,
-      url: shareUrl || (typeof window !== 'undefined' ? window.location.origin : ''),
+      // Site root when configured; otherwise the text goes out on its own.
+      url: shareUrl || SITE_URL,
       dialogTitle: 'Share',
     })
   }

@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAM_ID_HERE.com.ryan.Checkpoint"],
+        "components": [
+          { "/": "/r/*", "comment": "Review" },
+          { "/": "/l/*", "comment": "List" },
+          { "/": "/q/*", "comment": "Question" },
+          { "/": "/u/*", "comment": "Profile" }
+        ]
+      }
+    ]
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from '../services/libraryService'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { hapticImpact } from '../utils/haptics'
+import { shareContent } from '../utils/share'
 import StatusChip, { STATUS_META } from './StatusChip'
 import './AddToListButton.css'
 
@@ -150,14 +151,11 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
     window.dispatchEvent(new Event('libraryUpdated'))
   }
 
+  // Games have no landing page, so this shares the title as text. (The old
+  // code shared window.location.href, which is capacitor://localhost inside
+  // the native app.)
   const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: game.title, url: window.location.href })
-      } catch {}
-    } else {
-      navigator.clipboard?.writeText(window.location.href)
-    }
+    await shareContent({ title: game.title, text: game.title })
   }
 
   if (!game) return null

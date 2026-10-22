@@ -53,12 +53,41 @@ function handleBackground() {
 }
 
 /**
+ * Short share paths → SPA routes. These are the same segments the web landing
+ * pages use (web/r, l, q, u), so checkpoint://q/<id> and a future universal
+ * link https://<site>/q/<id> both resolve here.
+ *
+ *   r/<reviewId>   → /review/<reviewId>
+ *   l/<listId>     → /list/<listId>
+ *   q/<questionId> → /qa/q/<questionId>
+ *   u/<username>   → /user/<username>
+ *
+ * Anything else (including the older checkpoint://qa/q/<id> shape) is passed
+ * through unchanged.
+ */
+const SHORT_LINK_ROUTES = Object.freeze({
+  r: '/review',
+  l: '/list',
+  q: '/qa/q',
+  u: '/user',
+})
+
+export function expandShortLinkPath(path) {
+  const match = /^\/([rlqu])\/([^/?#]+)(.*)$/.exec(path || '')
+  if (!match) return path
+  const [, key, id, rest] = match
+  return `${SHORT_LINK_ROUTES[key]}/${id}${rest}`
+}
+
+/**
  * SPA path for an app URL.
  *
  * http(s) and capacitor:// keep the pathname (`https://host/qa/q/<id>`).
  * A custom scheme puts the first segment in the host:
  * `checkpoint://qa/q/<id>` → `/qa/q/<id>`.
  * `checkpoint:///qa/q/<id>` (empty host) keeps the pathname.
+ * Short share paths are then expanded (see expandShortLinkPath):
+ * `checkpoint://q/<id>` → `/qa/q/<id>`.
  *
  * @param {URL} parsed
  * @returns {string}
@@ -70,15 +99,37 @@ export function pathFromAppUrl(parsed) {
   const tail = `${parsed.search || ''}${parsed.hash || ''}`
 
   if (protocol === 'http:' || protocol === 'https:' || protocol === 'capacitor:') {
-    return `${pathname || '/'}${tail}`
+    return expandShortLinkPath(`${pathname || '/'}`) + tail
   }
 
   if (!host || host === 'localhost') {
-    return `${pathname || '/'}${tail}`
+    return expandShortLinkPath(`${pathname || '/'}`) + tail
   }
 
   const rest = pathname === '/' ? '' : pathname
-  return `/${host}${rest}${tail}`
+  return expandShortLinkPath(`/${host}${rest}`) + tail
+}
+
+// A deep link can arrive (cold start) before App.jsx has mounted its
+// 'app:deeplink' listener. Queue it until App calls takePendingDeepLink().
+let pendingDeepLinkPath = null
+let deepLinkConsumerReady = false
+
+function emitDeepLink(path) {
+  if (typeof window === 'undefined') return
+  if (!deepLinkConsumerReady) pendingDeepLinkPath = path
+  window.dispatchEvent(new CustomEvent('app:deeplink', { detail: { path } }))
+}
+
+/**
+ * Called by App.jsx once its 'app:deeplink' listener is attached. Marks the
+ * consumer ready and returns a link that arrived before that, if any.
+ */
+export function takePendingDeepLink() {
+  deepLinkConsumerReady = true
+  const path = pendingDeepLinkPath
+  pendingDeepLinkPath = null
+  return path
 }
 
 /**
@@ -115,11 +166,7 @@ function handleAppUrl(url) {
     // checkpoint://qa/q/<id> puts "qa" in the host and "/q/<id>" in the
     // pathname — pathname alone would open /q/<id>, which is not a route.
     const path = pathFromAppUrl(parsed)
-    if (path && path !== '/' && typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('app:deeplink', { detail: { path } })
-      )
-    }
+    if (path && path !== '/') emitDeepLink(path)
   } catch {
     // Malformed URL — ignore.
   }
@@ -141,14 +188,10 @@ async function handleRecoveryUrl(rawUrl, parsedUrl) {
     console.warn('[appLifecycle] recovery deep link failed:', err?.message)
   }
 
-  if (typeof window !== 'undefined') {
-    // Route without the fragment — the tokens are spent, and the screen reads
-    // the session rather than the URL from here on.
-    const query = parsedUrl?.search || ''
-    window.dispatchEvent(
-      new CustomEvent('app:deeplink', { detail: { path: `/reset-password${query}` } })
-    )
-  }
+  // Route without the fragment — the tokens are spent, and the screen reads
+  // the session rather than the URL from here on.
+  const query = parsedUrl?.search || ''
+  emitDeepLink(`/reset-password${query}`)
 }
 
 /**

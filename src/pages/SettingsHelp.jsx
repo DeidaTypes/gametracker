@@ -1,15 +1,19 @@
 import React from 'react'
 import SettingsHeader from '../components/SettingsHeader'
 import { SettingsGroup, SettingsRow } from '../components/SettingsRows'
-import packageJson from '../../package.json'
+import {
+  APP_VERSION,
+  BUILD_NUMBER,
+  PRIVACY_URL,
+  RATE_APP_URL,
+  TERMS_URL,
+  supportMailto,
+} from '../config/site'
 import './Settings.css'
 
-const APP_VERSION = packageJson.version || '0.7.5'
-const APP_BUILD = import.meta.env.VITE_BUILD_NUMBER || '1'
-const PRIVACY_URL = 'https://gametracker.app/privacy'
-const TERMS_URL = 'https://gametracker.app/terms'
-const FEEDBACK_EMAIL = 'feedback@gametracker.app'
-const APP_STORE_ID = '0000000000'
+// Every value comes from src/config/site.js. A row whose value is not
+// configured is not rendered — there are no placeholder links.
+const FEEDBACK_URL = supportMailto('Checkpoint Feedback')
 
 function openExternal(url) {
   try {
@@ -19,15 +23,13 @@ function openExternal(url) {
   }
 }
 
+function versionLabel() {
+  if (!APP_VERSION) return null
+  return BUILD_NUMBER ? `v${APP_VERSION} (build ${BUILD_NUMBER})` : `v${APP_VERSION}`
+}
+
 function SettingsHelp() {
-  const handlePrivacyPolicy = () => openExternal(PRIVACY_URL)
-  const handleTerms = () => openExternal(TERMS_URL)
-  const handleFeedback = () => {
-    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('Checkpoint Feedback')}`
-  }
-  const handleRateApp = () => {
-    window.location.href = `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}`
-  }
+  const version = versionLabel()
 
   return (
     <div className="settings-page">
@@ -35,11 +37,39 @@ function SettingsHelp() {
 
       <div className="settings-page__body">
         <SettingsGroup>
-          <SettingsRow settingId="feedback" label="Send feedback" onClick={handleFeedback} />
-          <SettingsRow settingId="rate" label="Rate the app" onClick={handleRateApp} />
-          <SettingsRow settingId="privacy-policy" label="Privacy Policy" onClick={handlePrivacyPolicy} />
-          <SettingsRow settingId="terms" label="Terms of Service" onClick={handleTerms} />
-          <SettingsRow settingId="version" label="Version" value={`v${APP_VERSION} (build ${APP_BUILD})`} />
+          {FEEDBACK_URL && (
+            <SettingsRow
+              settingId="feedback"
+              label="Send feedback"
+              onClick={() => {
+                window.location.href = FEEDBACK_URL
+              }}
+            />
+          )}
+          {RATE_APP_URL && (
+            <SettingsRow
+              settingId="rate"
+              label="Rate the app"
+              onClick={() => {
+                window.location.href = RATE_APP_URL
+              }}
+            />
+          )}
+          {PRIVACY_URL && (
+            <SettingsRow
+              settingId="privacy-policy"
+              label="Privacy Policy"
+              onClick={() => openExternal(PRIVACY_URL)}
+            />
+          )}
+          {TERMS_URL && (
+            <SettingsRow
+              settingId="terms"
+              label="Terms of Service"
+              onClick={() => openExternal(TERMS_URL)}
+            />
+          )}
+          {version && <SettingsRow settingId="version" label="Version" value={version} />}
         </SettingsGroup>
       </div>
     </div>

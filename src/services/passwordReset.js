@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
+import { SITE_URL } from '../config/site'
 
 /**
  * Password reset — request an email, and complete the reset once the link has
@@ -45,11 +46,11 @@ import { supabase } from './supabase'
 /**
  * Public web origin for links that have to survive leaving the app.
  *
- * Configured, not hardcoded: the repo still has `https://gametracker.app`
- * baked into inviteService.js and api/og.js from before the app was renamed to
- * Checkpoint, and guessing wrong here produces a reset link that 404s. Falls
- * back to the current origin on web, which is correct for local dev and for
- * any preview deployment.
+ * Configured, not hardcoded: VITE_PUBLIC_APP_URL wins, then the current origin
+ * on web (correct for local dev and any preview deployment), then the static
+ * site from src/config/site.js. Returns '' when none is configured — there is
+ * no guessed fallback domain, because a wrong one produces a reset link that
+ * 404s.
  */
 export function getAppOrigin() {
   const configured = import.meta.env.VITE_PUBLIC_APP_URL
@@ -57,7 +58,7 @@ export function getAppOrigin() {
   if (!Capacitor.isNativePlatform() && typeof window !== 'undefined') {
     return window.location.origin
   }
-  return 'https://gametracker.app'
+  return SITE_URL
 }
 
 /** Custom URL scheme registered in ios/App/App/Info.plist. */
@@ -66,7 +67,10 @@ export const APP_URL_SCHEME = 'checkpoint'
 export const RESET_PATH = '/reset-password'
 
 export function getPasswordResetRedirectUrl() {
-  return `${getAppOrigin()}${RESET_PATH}`
+  const origin = getAppOrigin()
+  // No origin configured: let Supabase fall back to its own Site URL rather
+  // than send it a relative path.
+  return origin ? `${origin}${RESET_PATH}` : undefined
 }
 
 /**

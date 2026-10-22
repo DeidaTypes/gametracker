@@ -27,11 +27,8 @@ import { buildInviteUrl } from '../services/inviteService'
 import { shareContent } from '../utils/share'
 import { labelMatchRange, searchSettings } from '../config/settingsIndex'
 import { setSettingsSearchBackHandler } from '../config/settingsSearchBack'
-import packageJson from '../../package.json'
+import { APP_VERSION } from '../config/site'
 import './Settings.css'
-
-const APP_VERSION = packageJson.version || '0.7.5'
-const SHARE_URL = 'https://gametracker.app'
 
 function maskEmail(email) {
   if (!email || typeof email !== 'string') return ''
@@ -161,11 +158,12 @@ function Settings() {
   }
 
   const displayName = profile?.displayName || profile?.username || ''
-  const versionLabel = `Version ${APP_VERSION}`
-  const footerText = maskedEmail ? `${maskedEmail} · ${versionLabel}` : versionLabel
+  const versionLabel = APP_VERSION ? `Version ${APP_VERSION}` : ''
+  const footerText = [maskedEmail, versionLabel].filter(Boolean).join(' · ')
 
   const handleInviteFriends = async () => {
-    const inviteUrl = buildInviteUrl(user?.id) || SHARE_URL
+    // '' until VITE_SITE_URL is set — the invite then goes out as text only.
+    const inviteUrl = buildInviteUrl(user?.id)
     const result = await shareContent({
       title: 'Checkpoint',
       text: 'Track what you play. Find what to play next.',
@@ -173,7 +171,7 @@ function Settings() {
       dialogTitle: 'Invite friends',
     })
     if (result?.method === 'clipboard') {
-      showToast('Link copied', 'success')
+      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success')
     }
   }
 
@@ -363,7 +361,7 @@ function Settings() {
               />
             </SettingsGroup>
 
-            <p className="settings-footnote text-caption">{footerText}</p>
+            {footerText && <p className="settings-footnote text-caption">{footerText}</p>}
           </>
         )}
       </div>

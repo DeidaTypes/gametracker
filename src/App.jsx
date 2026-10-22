@@ -96,6 +96,7 @@ import { getPreferences, initializePreferences } from './services/userPreference
 import { initializeProfile } from './services/profileService'
 import { initSettings, applySettingsToDom, getSettings } from './services/userSettingsService'
 import { loadBlockedIds, clearBlockCache } from './services/blockService'
+import { takePendingDeepLink } from './services/appLifecycle'
 import ToastHost from './components/Toast'
 import AuthBootSplash from './components/AuthBootSplash'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
@@ -619,6 +620,9 @@ function AppContent() {
       if (path) navigate(path, { replace: true })
     }
     window.addEventListener('app:deeplink', handler)
+    // A cold-start link can fire before this listener exists; pick it up now.
+    const queued = takePendingDeepLink()
+    if (queued) navigate(queued, { replace: true })
     return () => window.removeEventListener('app:deeplink', handler)
   }, [navigate])
 

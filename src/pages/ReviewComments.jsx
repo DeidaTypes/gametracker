@@ -15,7 +15,6 @@ import {
   LuPinOff,
   LuQuote,
   LuSend,
-  LuShare2,
   LuTrash2,
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
@@ -45,7 +44,6 @@ import {
 } from '../services/commentService'
 import { deleteActivityEvent } from '../services/activityEventsService'
 import { shareCard } from '../services/share'
-import { shareContent } from '../utils/share'
 import { hapticImpact } from '../utils/haptics'
 import { useCachedResource } from '../hooks/useCachedResource'
 import {
@@ -707,26 +705,6 @@ function ReviewComments() {
     }
   }, [user, targetType, targetId, pinnedReviewIds])
 
-  /**
-   * Share the activity thread's deep link — the activity-branch
-   * equivalent of handleShareQuote below. Activity events (backlogged /
-   * started / finished / listed / played / favorited / journaled) have
-   * no review body to quote, so this shares the plain thread link via
-   * the existing native/web/clipboard cascade (src/utils/share.js)
-   * instead of building a quote card. Kept as a plain link share rather
-   * than a captured BrandedShareCard image — that variant set
-   * (src/services/share.js) is review/game/profile/list scoped and
-   * this action's only job is to keep the kebab non-empty, not to
-   * introduce a new share-card design.
-   */
-  const handleShareActivity = useCallback(() => {
-    if (!targetId) return
-    shareContent({
-      title: 'Checkpoint',
-      url: `${window.location.origin}/activity/${targetId}/comments`,
-    })
-  }, [targetId])
-
   const handleDeletePost = useCallback(async () => {
     if (!targetId || deletingPost) return
     setDeletingPost(true)
@@ -817,14 +795,10 @@ function ReviewComments() {
 
     // Activity branch
     if (!activityFeedItem) return []
-    const items = [
-      {
-        label: 'Share',
-        icon: <LuShare2 size={18} aria-hidden="true" />,
-        tone: 'cobalt',
-        onClick: handleShareActivity,
-      },
-    ]
+    // No Share row here. Activity events have no landing page (shared links
+    // cover reviews, lists, questions and profiles only), and the old
+    // origin-based thread link was dead inside the native app.
+    const items = []
     if (activityFeedItem.isOwn) {
       items.push({
         label: 'Delete',
@@ -850,7 +824,6 @@ function ReviewComments() {
     targetId,
     sharingQuote,
     handleShareQuote,
-    handleShareActivity,
     handleTogglePin,
   ])
 

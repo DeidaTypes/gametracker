@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { siteRootLink } from '../config/site'
 
 /**
  * Invite / referral service.
@@ -40,17 +41,17 @@ function isMissingRelation(error) {
   return error.code === 'PGRST205' || error.code === '42P01' ||
     /does not exist|could not find the table/i.test(error.message || '')
 }
-const BASE_URL = 'https://gametracker.app'
-
 /**
- * Build a shareable invite URL containing the inviter's user ID.
- * Falls back to the static app URL when userId is unavailable.
+ * Build a shareable invite URL containing the inviter's user ID:
+ * <site>/?ref=<userId>. The landing page hands the ref to the app
+ * (checkpoint://home?ref=…), where appLifecycle.js captures it.
+ *
+ * Returns '' when VITE_SITE_URL is not configured — the invite is then shared
+ * as text without a link. Without a userId it is the bare site link.
  */
 export function buildInviteUrl(userId) {
-  const base =
-    typeof window !== 'undefined' ? window.location.origin : BASE_URL
-  if (!userId) return base
-  return `${base}/?ref=${encodeURIComponent(userId)}`
+  if (!userId) return siteRootLink()
+  return siteRootLink({ ref: userId })
 }
 
 /**

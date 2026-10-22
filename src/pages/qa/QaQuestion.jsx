@@ -51,7 +51,7 @@ import {
 } from './qaCache'
 import { openQaAnswer, openQaEditAnswer, openQaEditQuestion } from './qaComposer'
 import { hideQaAnswer, hideQaQuestion, showQaAnswer, showQaQuestion, useQaHides } from './qaHides'
-import { copyQaLink, shareQaQuestion } from './qaShare'
+import { copyQaLink, shareQaQuestion, QA_LINKS_AVAILABLE } from './qaShare'
 import {
   QaAnswerRow,
   QaAskerRow,
@@ -569,11 +569,13 @@ export default function QaQuestion() {
             icon: <Upload size={20} />,
             onClick: () => shareQaQuestion(question),
           },
-          {
-            label: 'Copy link',
-            icon: <Link2 size={20} />,
-            onClick: () => copyQaLink(question.id),
-          },
+          ...(QA_LINKS_AVAILABLE
+            ? [{
+                label: 'Copy link',
+                icon: <Link2 size={20} />,
+                onClick: () => copyQaLink(question.id, question.title),
+              }]
+            : []),
           { divider: true },
           {
             label: 'Delete question',
@@ -587,11 +589,13 @@ export default function QaQuestion() {
           },
         ]
       : [
-          {
-            label: 'Copy link',
-            icon: <Link2 size={20} />,
-            onClick: () => copyQaLink(question.id),
-          },
+          ...(QA_LINKS_AVAILABLE
+            ? [{
+                label: 'Copy link',
+                icon: <Link2 size={20} />,
+                onClick: () => copyQaLink(question.id, question.title),
+              }]
+            : []),
           {
             label: 'Report question',
             icon: <Flag size={20} />,
@@ -636,11 +640,13 @@ export default function QaQuestion() {
               }),
             }]
           : []),
-        {
-          label: 'Copy link',
-          icon: <Link2 size={20} />,
-          onClick: () => copyQaLink(question.id),
-        },
+        ...(QA_LINKS_AVAILABLE
+          ? [{
+              label: 'Copy link',
+              icon: <Link2 size={20} />,
+              onClick: () => copyQaLink(question.id, question.title),
+            }]
+          : []),
         ...(answerIsOwn
           ? [
               { divider: true },

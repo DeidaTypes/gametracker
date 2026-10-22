@@ -1,0 +1,409 @@
+/*
+ * Checkpoint web — one stylesheet for every page.
+ *
+ * Mirrors the app's Navy look (src/styles/theme.css). This site deploys on its
+ * own, so it cannot import the app's CSS: the token VALUES below are copied
+ * from theme.css and are the only place a raw color appears here. If
+ * theme.css changes, change them in the same commit.
+ *
+ * DM Sans only, weights 400/500/600/700. Three accents only: cobalt
+ * (--accent) is the one used on this site. No warm colors.
+ */
+
+/* ── Fonts (self-hosted — the pages make no third-party requests) ─────── */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/dm-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/dm-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/dm-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/dm-sans-latin-700-normal.woff2') format('woff2');
+}
+
+/* ── Tokens ───────────────────────────────────────────────────────────── */
+:root {
+  /* color — values from src/styles/theme.css */
+  --bg-base: #0a0f1f;
+  --bg-surface: #131a35;
+  --bg-surface-2: #1a2240;
+  --border-subtle: rgba(148, 168, 212, 0.12);
+  --border-strong: rgba(148, 168, 212, 0.24);
+  --text-primary: #f0f3fa;
+  --text-secondary: #94a8d4;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-ink: #7fb0ff;
+  --on-accent: var(--text-primary);
+
+  /* spacing — the app's value-named 4px grid */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --content-width: 640px;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+a:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ── Type roles (match the app's seven) ───────────────────────────────── */
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 28px; /* Display L */
+}
+
+h2 {
+  margin-top: var(--space-40);
+  margin-bottom: var(--space-12);
+  font-size: 22px; /* Heading */
+}
+
+h3 {
+  margin-top: var(--space-24);
+  margin-bottom: var(--space-8);
+  font-size: 18px; /* Title */
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 var(--space-16);
+}
+
+ul,
+ol {
+  padding-left: var(--space-24);
+}
+
+li {
+  margin-bottom: var(--space-8);
+}
+
+strong {
+  font-weight: 600;
+}
+
+.caption {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.site-header,
+.page,
+.site-footer {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-left: var(--space-20);
+  padding-right: var(--space-20);
+}
+
+.site-header {
+  padding-top: var(--space-20);
+  padding-bottom: var(--space-20);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--text-primary);
+}
+
+.brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.page {
+  flex: 1;
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-48);
+}
+
+.page--center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.site-footer {
+  padding-top: var(--space-24);
+  padding-bottom: var(--space-32);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-20);
+  margin-bottom: var(--space-8);
+}
+
+.site-footer a {
+  color: var(--text-secondary);
+}
+
+.site-footer a:hover {
+  color: var(--text-primary);
+}
+
+/* ── Components ───────────────────────────────────────────────────────── */
+.lede {
+  margin-top: var(--space-12);
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.draft-banner {
+  margin: var(--space-8) 0 var(--space-24);
+  padding: var(--space-12) var(--space-16);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.card {
+  margin: 0 0 var(--space-16);
+  padding: var(--space-16) var(--space-20);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.data-list {
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  list-style: none;
+}
+
+.data-item {
+  margin: 0 0 var(--space-12);
+  padding: var(--space-16) var(--space-20);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.data-item h3 {
+  margin: 0 0 var(--space-8);
+}
+
+.data-item p {
+  margin: 0 0 var(--space-8);
+}
+
+.data-item .who {
+  margin-bottom: 0;
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.data-item .label {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: var(--space-12) var(--space-24);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--primary:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+
+.btn--secondary {
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.btn--secondary:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+  max-width: 320px;
+  margin-top: var(--space-32);
+}
+
+/* ── Share landing pages ──────────────────────────────────────────────── */
+.landing-icon {
+  width: 96px;
+  height: 96px;
+  margin-bottom: var(--space-24);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+}
+
+.landing-title {
+  max-width: 100%;
+  margin-top: var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 18px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}
+
+/* ── Wider screens ────────────────────────────────────────────────────── */
+@media (min-width: 640px) {
+  h1 {
+    font-size: 36px; /* Display XL */
+  }
+
+  .site-header {
+    padding-top: var(--space-32);
+  }
+
+  .page {
+    padding-top: var(--space-24);
+  }
+}

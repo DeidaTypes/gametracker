@@ -7,6 +7,8 @@
  * that stay on the hub (edit profile, invite, sign out) have no route.
  */
 
+import { APP_VERSION, PRIVACY_URL, RATE_APP_URL, SUPPORT_EMAIL, TERMS_URL } from './site'
+
 const WORD = /[a-z0-9]/i
 
 function wordStartIndex(text, query) {
@@ -60,7 +62,7 @@ function scoreEntry(entry, query) {
   return { score, hits }
 }
 
-const SETTINGS_INDEX = [
+const ALL_SETTINGS_ENTRIES = [
   {
     id: 'edit-profile',
     label: 'Edit profile',
@@ -228,6 +230,18 @@ const SETTINGS_INDEX = [
     keywords: ['build', 'about'],
   },
 ]
+
+// Help rows that need a configured value are not rendered when it is missing
+// (see src/pages/SettingsHelp.jsx), so they must not be searchable either.
+const ROW_AVAILABLE = {
+  feedback: Boolean(SUPPORT_EMAIL),
+  rate: Boolean(RATE_APP_URL),
+  'privacy-policy': Boolean(PRIVACY_URL),
+  terms: Boolean(TERMS_URL),
+  version: Boolean(APP_VERSION),
+}
+
+const SETTINGS_INDEX = ALL_SETTINGS_ENTRIES.filter((entry) => ROW_AVAILABLE[entry.id] !== false)
 
 /**
  * Matching sections stay in app order. Inside a section, word-start

@@ -1,0 +1,5 @@
+# Netlify: serve the one landing page for every id (status 200 = rewrite).
+/r/*  /r/index.html  200
+/l/*  /l/index.html  200
+/q/*  /q/index.html  200
+/u/*  /u/index.html  200

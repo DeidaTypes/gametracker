@@ -15,6 +15,7 @@ import {
 } from '../services/followService'
 import { usePresence } from '../hooks/usePresence'
 import { shareContent } from '../utils/share'
+import { siteLink } from '../config/site'
 import { hapticImpact } from '../utils/haptics'
 import { showToast } from './Toast'
 import EmptyState from './EmptyState'
@@ -386,11 +387,11 @@ function FollowsListPage({ mode }) {
       : encodeURIComponent(decodedUsername || titleHandle)
 
   const handleShareProfile = async () => {
-    const url = `${window.location.origin}/user/${profilePathSegment}`
+    // Link only for a real username; otherwise the text is shared on its own.
     await shareContent({
       title: `${titleHandle} on Checkpoint`,
       text: 'Check out my Checkpoint profile!',
-      url,
+      url: siteLink('profile', resolvedUser?.username),
     })
   }
 

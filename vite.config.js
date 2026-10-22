@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
+
+// Version shown in Settings -> Help & about comes from package.json. It is
+// injected here (not imported in the app) so the whole manifest, dependency
+// list included, is not bundled just to read one field.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version || ''),
+  },
   server: {
     host: true, // Allow access from network (for mobile testing)
     port: 5173,

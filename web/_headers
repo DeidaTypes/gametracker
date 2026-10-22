@@ -1,0 +1,3 @@
+# Netlify: Apple requires the association file to be served as JSON.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
