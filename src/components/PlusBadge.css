@@ -1,0 +1,26 @@
+/* =====================================================
+   PlusBadge — Checkpoint Plus chip beside a display name.
+   Same shape as .streak-flair, in the app's cobalt accent.
+   ===================================================== */
+
+.plus-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.plus-badge--inline {
+  margin-left: var(--space-8);
+  vertical-align: middle;
+}

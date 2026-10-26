@@ -192,7 +192,7 @@ export async function getReviewsForUser(userId) {
     const { data, error } = await supabase
       .from('reviews')
       .select(
-        'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)'
+        'id, user_id, igdb_game_id, body, rating, liked, has_spoilers, game_title, game_image, hours_played, vibe_stamp, life_context, created_at, updated_at, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)'
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -222,7 +222,7 @@ export async function getReviewsForGame(igdbGameId) {
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .eq('igdb_game_id', Number(igdbGameId))
         .order('created_at', { ascending: false })
         .limit(20)
@@ -253,7 +253,7 @@ export async function getReviewById(reviewId) {
   if (!reviewId) return null
   let query = supabase
     .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
     .eq('id', reviewId)
     .maybeSingle()
   query = await applyBlockFilter(query, 'user_id')
@@ -287,7 +287,7 @@ export async function getReviewsForGamePaginated({ gameId, page = 1, limit = 20 
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .eq('igdb_game_id', Number(gameId))
         .order('created_at', { ascending: false })
         .range(from, to)
@@ -319,7 +319,7 @@ export async function getRecentCommunityReviews(limit = 20) {
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .order('created_at', { ascending: false })
         .limit(limit)
       query = await applyBlockFilter(query, 'user_id')
@@ -352,7 +352,7 @@ export async function getPopularReviews({ days = 30, limit = 25 } = {}) {
     (async () => {
       let q = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(200)
@@ -373,7 +373,7 @@ export async function getPopularReviews({ days = 30, limit = 25 } = {}) {
   if (candidates.length < Math.ceil(limit / 2)) {
     let q2 = supabase
       .from('reviews')
-      .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+      .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
       .order('created_at', { ascending: false })
       .limit(300)
     q2 = await applyBlockFilter(q2, 'user_id')
@@ -418,7 +418,7 @@ export async function getReviewsForTimeline({ sinceDays = 14, limit = 200 } = {}
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .gte('created_at', sinceIso)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -476,7 +476,7 @@ export async function getReviewsFromFollowing({ page = 1, limit = 10 } = {}) {
     (async () => {
       let query = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .in('user_id', followeeIds)
         .order('created_at', { ascending: false })
         .range(from, to)
@@ -526,7 +526,7 @@ export async function getHotTakeReviews({ days = 60, limit = 10 } = {}) {
     (async () => {
       let q = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(300)
@@ -601,7 +601,7 @@ export async function getReviewOfWeek() {
     (async () => {
       let q = supabase
         .from('reviews')
-        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+        .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -653,7 +653,7 @@ export async function searchReviewsByText(query, limit = 20) {
   const escaped = trimmed.replace(/[\\%_]/g, (m) => `\\${m}`)
   let q = supabase
     .from('reviews')
-    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone)')
+    .select('*, users!reviews_user_id_fkey(username, display_name, avatar_url, highest_streak_milestone, plus_active)')
     .ilike('body', `%${escaped}%`)
     .order('created_at', { ascending: false })
     .limit(limit)

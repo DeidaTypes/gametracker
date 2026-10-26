@@ -88,7 +88,7 @@ async function getCurrentUserId() {
  *   body: string,
  *   created_at: string,
  *   updated_at: string,
- *   users: { username: string, display_name: string, avatar_url: string } | null,
+ *   users: { username: string, display_name: string, avatar_url: string, plus_active: boolean } | null,
  * }>>}
  */
 export async function getCommentsForReview(reviewId) {
@@ -98,7 +98,7 @@ export async function getCommentsForReview(reviewId) {
     (async () => {
       let query = supabase
         .from('review_comments')
-        .select('*, users(username, display_name, avatar_url)')
+        .select('*, users!review_comments_user_id_fkey(username, display_name, avatar_url, plus_active)')
         .eq('review_id', reviewId)
         .order('created_at', { ascending: true })
       query = await applyBlockFilter(query, 'user_id')
@@ -196,7 +196,7 @@ export async function getCommentsForActivityEvent(activityEventId) {
     (async () => {
       let query = supabase
         .from('review_comments')
-        .select('*, users(username, display_name, avatar_url)')
+        .select('*, users!review_comments_user_id_fkey(username, display_name, avatar_url, plus_active)')
         .eq('activity_event_id', activityEventId)
         .order('created_at', { ascending: true })
       query = await applyBlockFilter(query, 'user_id')
@@ -278,7 +278,7 @@ export async function getCommentCountsForEvents(activityEventIds) {
  *   body: string,
  *   created_at: string,
  *   updated_at: string,
- *   users: { username: string, display_name: string, avatar_url: string } | null,
+ *   users: { username: string, display_name: string, avatar_url: string, plus_active: boolean } | null,
  * }>}
  */
 export function commentsCacheKey(targetType, targetId) {
@@ -390,7 +390,7 @@ export async function postComment({
   const { data, error } = await supabase
     .from('review_comments')
     .insert(insert)
-    .select('*, users(username, display_name, avatar_url)')
+    .select('*, users!review_comments_user_id_fkey(username, display_name, avatar_url, plus_active)')
     .single()
 
   if (error) {
@@ -420,7 +420,7 @@ export async function updateComment(commentId, body) {
     .from('review_comments')
     .update({ body: trimmed, updated_at: new Date().toISOString() })
     .eq('id', commentId)
-    .select('*, users(username, display_name, avatar_url)')
+    .select('*, users!review_comments_user_id_fkey(username, display_name, avatar_url, plus_active)')
     .single()
 
   if (error) {

@@ -65,6 +65,7 @@ import { useHideNav } from '../hooks/useHideNav'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
+import PlusBadge from '../components/PlusBadge'
 import { ugcErrorMessage } from '../services/moderationService'
 import '../components/forms/forms.css'
 import './ReviewComments.css'
@@ -283,6 +284,7 @@ function CommentRow({
           >
             {username}
           </button>
+          <PlusBadge active={comment.users?.plus_active === true} />
           <span className="rc-comment__time">{timeAgo(comment.created_at)}</span>
           {edited && (
             <span className="rc-comment__edited" title="Edited">
@@ -555,7 +557,7 @@ function ReviewComments() {
           try {
             const { data } = await supabase
               .from('users')
-              .select('username, display_name, avatar_url')
+              .select('username, display_name, avatar_url, plus_active')
               .eq('id', row.user_id)
               .maybeSingle()
             userRow = data || null

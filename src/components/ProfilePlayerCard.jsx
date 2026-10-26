@@ -3,6 +3,7 @@ import { HiDotsVertical } from 'react-icons/hi'
 import { LuChevronLeft, LuMessageCircle } from 'react-icons/lu'
 import Skeleton from './Skeleton'
 import Avatar from './Avatar'
+import PlusBadge from './PlusBadge'
 import './ProfilePlayerCard.css'
 
 /**
@@ -87,6 +88,7 @@ export default function ProfilePlayerCard({
   avatarUrl,
   avatarSeed,
   isOwnProfile,
+  plusActive = false,
   liveStatusLabel,
   followersCount,
   followingCount,
@@ -141,7 +143,10 @@ export default function ProfilePlayerCard({
         </button>
 
         <div className="ppc__identity">
-          <h1 className="ppc__name">{displayName || 'You'}</h1>
+          <h1 className="ppc__name">
+            {displayName || 'You'}
+            <PlusBadge active={plusActive} inline />
+          </h1>
           {(username || '').trim().length > 0 && (
             <p className="ppc__handle">@{username.trim()}</p>
           )}

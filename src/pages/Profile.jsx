@@ -446,6 +446,7 @@ function profileBlobFromPublicRow(row) {
     favoriteGames: Array.isArray(row.favorite_games) ? row.favorite_games : [],
     currentObsessions: Array.isArray(row.current_obsessions) ? row.current_obsessions : [],
     currentlyPlayingGame: null,
+    plusActive: row.plus_active === true,
   }
 }
 
@@ -453,7 +454,7 @@ function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
   const { username: paramUsername, userId: paramUserId } = useParams()
-  const { user } = useAuth()
+  const { user, plusActive: ownPlusActive } = useAuth()
   const { unreadCount } = useUnreadMessages()
   const { session: activeSession } = useSession()
   const { enabled: presenceEnabled, playingNow } = usePresence()
@@ -966,6 +967,7 @@ function Profile() {
         favoriteGames: Array.isArray(resolvedUser.favorite_games) ? resolvedUser.favorite_games : [],
         currentObsessions: Array.isArray(resolvedUser.current_obsessions) ? resolvedUser.current_obsessions : [],
         currentlyPlayingGame: null,
+        plusActive: resolvedUser.plus_active === true,
       })
     }
 
@@ -1855,6 +1857,7 @@ function Profile() {
           avatarUrl={avatarDisplay}
           avatarSeed={profile.id || targetUserId}
           isOwnProfile={isOwnProfile}
+          plusActive={isOwnProfile ? ownPlusActive : profile.plusActive === true}
           liveStatusLabel={liveStatus ? `in ${liveStatus.gameTitle} now` : null}
           followersCount={followersCount}
           followingCount={followingCount}

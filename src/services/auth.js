@@ -34,10 +34,13 @@ import { unregisterThisDevice } from './pushService'
 // check permanently undefined — the localStorage mirror was the only thing
 // keeping a returning user out of the onboarding flow (see migration
 // 20260804140000, which added the column and its grants).
+//
+// plus_active is server-owned (only the revenuecat-webhook writes it; see
+// 20261026140000_plus.sql) and is what AuthContext exposes as plusActive.
 const PROFILE_COLUMNS =
   'id, display_name, username, bio, avatar_url, genre_badge, platform_badge, ' +
   'created_at, updated_at, banner_url, favorite_games, ' +
-  'showcase_badges, current_obsessions, onboarded_at'
+  'showcase_badges, current_obsessions, onboarded_at, plus_active'
 
 /* ============================================================
    Error classification

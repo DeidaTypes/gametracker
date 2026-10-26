@@ -25,6 +25,7 @@ import { showToast } from './Toast'
 import ReportSheet from './ReportSheet'
 import { ReviewCardShell, ReviewCardShellHeader } from './reviews/ReviewCardShell'
 import StreakFlair from './streak/StreakFlair'
+import PlusBadge from './PlusBadge'
 import LikedBy from './LikedBy'
 import { hapticImpact } from '../utils/haptics'
 import { getGameNavStub } from '../utils/gameNavStub'
@@ -573,6 +574,7 @@ function ReviewCard({
                     {review.author.username || review.author.displayName || 'Anonymous'}
                   </span>
                 </button>
+                <PlusBadge active={review.author.plusActive} />
                 <StreakFlair milestoneDays={review.author.highestStreakMilestone} />
               </div>
             </div>
@@ -653,6 +655,7 @@ function ReviewCard({
             >
               {review.author.displayName || review.author.username || 'Anonymous'}
             </button>
+            <PlusBadge active={review.author.plusActive} />
             <StreakFlair milestoneDays={review.author.highestStreakMilestone} />
             {gdMeta && <span className="review-card__gd-meta">{gdMeta}</span>}
           </ReviewCardShellHeader>
@@ -737,6 +740,7 @@ function ReviewCard({
           <span className="review-card__username">
             {review.author.username || review.author.displayName || 'Anonymous'}
           </span>
+          <PlusBadge active={review.author.plusActive} />
           <StreakFlair milestoneDays={review.author.highestStreakMilestone} />
         </button>
   

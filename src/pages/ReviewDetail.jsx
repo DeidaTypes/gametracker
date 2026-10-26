@@ -124,6 +124,7 @@ function toReviewCardShape(row, commentCount) {
       displayName: row.users?.display_name || row.users?.username || '',
       avatarUrl: row.users?.avatar_url || '',
       highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
+      plusActive: row.users?.plus_active === true,
     },
     title: null,
     body: row.body || '',

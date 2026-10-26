@@ -24,12 +24,26 @@ import { syncTrackersWithServer } from '../services/libraryService'
 import { migrateLocalLikesIfNeeded } from '../services/likeService'
 import { syncProfileFromSupabase } from '../services/profileService'
 import { loadBlockedIds, clearBlockCache } from '../services/blockService'
+import {
+  PLUS_ENABLED,
+  getPlusState,
+  subscribePlus,
+  seedPlusFromProfile,
+  resetPlus,
+  refreshPlus,
+  plusLogIn,
+  plusLogOut,
+} from '../services/plusService'
 
 const AuthContext = createContext(null)
 
 /**
  * Wraps the app and exposes:
- *   { user, profile, loading, signUp, logIn, logOut }
+ *   { user, profile, loading, signUp, logIn, logOut,
+ *     plusActive, plusExpiresAt, plusFinishing, refreshPlus }
+ *
+ * plusActive is the server's users.plus_active (never the RevenueCat SDK's
+ * opinion) and is always false when Plus is not configured in this build.
  *
  * `loading` is true only while the *initial* session restore is in flight.
  * After the first resolution it stays false even during subsequent sign-in
@@ -151,6 +165,32 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (profile) syncProfileFromSupabase(profile)
   }, [profile])
+
+  // Checkpoint Plus: the profile row seeds the server value, the RevenueCat
+  // customer follows the signed-in user, and resume re-reads the server.
+  const [plus, setPlus] = useState(getPlusState)
+  useEffect(() => subscribePlus(setPlus), [])
+
+  useEffect(() => {
+    if (profile) seedPlusFromProfile(profile)
+  }, [profile])
+
+  const userId = user?.id || null
+  useEffect(() => {
+    if (!userId) {
+      resetPlus()
+      plusLogOut().catch((err) => console.warn('[auth] RevenueCat logOut failed:', err))
+      return undefined
+    }
+    plusLogIn(userId).catch((err) => console.warn('[auth] RevenueCat logIn failed:', err))
+    refreshPlus()
+    if (!PLUS_ENABLED) return undefined
+    const onResume = () => {
+      refreshPlus()
+    }
+    window.addEventListener('app:resumed', onResume)
+    return () => window.removeEventListener('app:resumed', onResume)
+  }, [userId])
 
   // Subscribe to auth state changes (sign in / out / token refresh).
   //
@@ -284,9 +324,24 @@ export function AuthProvider({ children }) {
     [runExplicitAuthOp]
   )
 
+  const plusActive = PLUS_ENABLED && plus.active
+  const plusExpiresAt = PLUS_ENABLED ? plus.expiresAt : null
+  const plusFinishing = PLUS_ENABLED && plus.finishing
+
   const value = useMemo(
-    () => ({ user, profile, loading, signUp, logIn, logOut }),
-    [user, profile, loading, signUp, logIn, logOut]
+    () => ({
+      user,
+      profile,
+      loading,
+      signUp,
+      logIn,
+      logOut,
+      plusActive,
+      plusExpiresAt,
+      plusFinishing,
+      refreshPlus,
+    }),
+    [user, profile, loading, signUp, logIn, logOut, plusActive, plusExpiresAt, plusFinishing]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

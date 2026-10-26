@@ -298,6 +298,7 @@ function reviewRowToCard(row) {
       // local initials fallback rather than fetching one over the network.
       avatarUrl: row.users?.avatar_url || null,
       highestStreakMilestone: row.users?.highest_streak_milestone ?? null,
+      plusActive: row.users?.plus_active === true,
     },
     game: {
       id: row.igdb_game_id,

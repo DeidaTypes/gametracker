@@ -15,6 +15,7 @@ import { likeReview, unlikeReview } from '../../services/likeService'
 import { showToast } from '../Toast'
 import { ReviewCardShell } from '../reviews/ReviewCardShell'
 import StreakFlair from '../streak/StreakFlair'
+import PlusBadge from '../PlusBadge'
 import LikedBy from '../LikedBy'
 import StatusChip from '../StatusChip'
 import { formatActivityDate } from '../../utils/formatActivityDate'
@@ -668,6 +669,7 @@ export default function HomeReviewCard({
           <button type="button" className="home-review-card__author-name" onClick={goToAuthor}>
             {item.isOwn ? 'You' : item.author.displayName}
           </button>
+          {!item.isOwn && <PlusBadge active={item.author.plusActive} />}
           {!item.isOwn && <StreakFlair milestoneDays={item.author.highestStreakMilestone} />}
           <span className="home-review-card__verb">{bylineVerb(item)}</span>
           <span className="home-review-card__dot" aria-hidden="true">

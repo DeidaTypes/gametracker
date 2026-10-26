@@ -51,7 +51,7 @@ export async function getUserByUsername(username) {
   if (!trimmed) return null
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions')
+    .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions, plus_active')
     .ilike('username', trimmed)
     .maybeSingle()
   if (error) {
@@ -74,7 +74,7 @@ export async function getUserById(userId) {
   if (!trimmed) return null
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions')
+    .select('id, username, display_name, avatar_url, bio, favorite_games, current_obsessions, plus_active')
     .eq('id', trimmed)
     .maybeSingle()
   if (error) {
