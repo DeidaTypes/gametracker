@@ -6,6 +6,9 @@ PODS:
   - CapacitorCordova (7.4.4)
   - CapacitorDevice (7.0.5):
     - Capacitor
+  - CapacitorFilesystem (7.1.9):
+    - Capacitor
+    - IONFilesystemLib (~> 1.1.4)
   - CapacitorHaptics (7.0.5):
     - Capacitor
   - CapacitorKeyboard (7.0.6):
@@ -16,6 +19,7 @@ PODS:
     - Capacitor
   - CapacitorStatusBar (7.0.6):
     - Capacitor
+  - IONFilesystemLib (1.1.4)
   - PurchasesHybridCommon (17.55.2):
     - RevenueCat (= 5.67.1)
   - RevenueCat (5.67.1)
@@ -28,6 +32,7 @@ DEPENDENCIES:
   - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorDevice (from `../../node_modules/@capacitor/device`)"
+  - "CapacitorFilesystem (from `../../node_modules/@capacitor/filesystem`)"
   - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
@@ -37,6 +42,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - IONFilesystemLib
     - PurchasesHybridCommon
     - RevenueCat
 
@@ -49,6 +55,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorDevice:
     :path: "../../node_modules/@capacitor/device"
+  CapacitorFilesystem:
+    :path: "../../node_modules/@capacitor/filesystem"
   CapacitorHaptics:
     :path: "../../node_modules/@capacitor/haptics"
   CapacitorKeyboard:
@@ -67,15 +75,17 @@ SPEC CHECKSUMS:
   CapacitorApp: 6b89831465d6bc99bc89779b1b7f5327e33011ce
   CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
   CapacitorDevice: 12b136398a320a395ddc8d227ab532848058d796
+  CapacitorFilesystem: a547af7d8cbbd4ee11486aae9bfff8c4cfcbc0ae
   CapacitorHaptics: ec024a10130c230743219149c76a02da5cff6aed
   CapacitorKeyboard: c94c84755e1500d2c6dccd74bad018bb359e3543
   CapacitorPushNotifications: f7e0909b16354405bbf4fd50b1ae5111843220ab
   CapacitorShare: 14b5d7f0a2c6de86dcad8995da80fb707ee32f62
   CapacitorStatusBar: a3acb591ff56301e28aa1a01791ba74a8e1faabb
+  IONFilesystemLib: e6610c2b260d15e4b9cb9d5e37a87095479b669e
   PurchasesHybridCommon: 83c0727d99136975a5bcb20854fb65eff9f45d7e
   RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
   RevenuecatPurchasesCapacitor: a922e9f7c1a009625b91e99de81f0308efb7c7ef
 
-PODFILE CHECKSUM: c05bcd34cd30fb68e9972217b2952ed1264c7eac
+PODFILE CHECKSUM: 9a51357f815a8ffc8de2976895d12a297466becf
 
 COCOAPODS: 1.13.0

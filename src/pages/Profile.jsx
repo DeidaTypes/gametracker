@@ -75,7 +75,8 @@ import {
   PIN_CHANGED_EVENT,
 } from '../services/pinService'
 import { shareContent } from '../utils/share'
-import { SHARE_LINKS_ENABLED, siteLink } from '../config/site'
+import { PRIVACY_URL, SHARE_LINKS_ENABLED, TERMS_URL, siteLink } from '../config/site'
+import { PLUS_PURCHASES_AVAILABLE } from '../services/plusService'
 import { hapticImpact } from '../utils/haptics'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { formatActivityDate } from '../utils/formatActivityDate'
@@ -2015,6 +2016,11 @@ function Profile() {
             onEditProfile={() => setShowEditModal(true)}
             onShareProfile={handleShareProfile}
             onWrapped={() => handleShareWrapped('year')}
+            onGetPlus={
+              PLUS_PURCHASES_AVAILABLE && TERMS_URL && PRIVACY_URL && !ownPlusActive
+                ? () => navigate('/plus')
+                : undefined
+            }
             wrappedLabel={
               wrappedSharing === 'generating'
                 ? 'Generating…'

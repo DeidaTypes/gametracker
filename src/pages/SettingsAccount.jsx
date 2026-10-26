@@ -6,7 +6,11 @@ import DeleteAccountSheet from '../components/DeleteAccountSheet'
 import SettingsHeader from '../components/SettingsHeader'
 import { SettingsGroup, SettingsRow } from '../components/SettingsRows'
 import { deleteAccount } from '../services/deleteAccountService'
+import { PRIVACY_URL, TERMS_URL } from '../config/site'
+import { exportMyData } from '../services/exportService'
+import PlusBadge from '../components/PlusBadge'
 import {
+  PLUS_ENABLED,
   PLUS_PURCHASES_AVAILABLE,
   MANAGE_SUBSCRIPTION_URL,
   restore as restorePlus,
@@ -26,6 +30,7 @@ function SettingsAccount() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const handleDeleteAccount = async (reason) => {
     if (isDeleting) return
@@ -60,6 +65,27 @@ function SettingsAccount() {
     }
   }
 
+  const handleExport = async () => {
+    if (isExporting) return
+    hapticImpact('Light')
+    setIsExporting(true)
+    try {
+      const { status } = await exportMyData()
+      if (status === 'shared') showToast('Your data is ready.', 'success')
+      else if (status === 'downloaded') showToast('Your data was downloaded.', 'success')
+    } catch (err) {
+      console.error('[settings] export failed:', err)
+      showToast(err?.message || 'Could not export your data. Try again.', 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Plus stays hidden until RevenueCat and the Terms / Privacy links exist.
+  const plusVisible = PLUS_ENABLED && Boolean(TERMS_URL && PRIVACY_URL)
+  const purchasesVisible = plusVisible && PLUS_PURCHASES_AVAILABLE
+  const exportVisible = plusVisible && (plusActive || PLUS_PURCHASES_AVAILABLE)
+
   const plusStatus = plusFinishing ? 'Finishing up\u2026' : plusActive ? 'Plus' : 'Not Plus'
 
   return (
@@ -72,7 +98,7 @@ function SettingsAccount() {
           <SettingsRow settingId="password" label="Password" onClick={() => navigate('/settings/password')} />
         </SettingsGroup>
 
-        {PLUS_PURCHASES_AVAILABLE && (
+        {purchasesVisible && (
           <SettingsGroup>
             <SettingsRow settingId="plus-status" label="Checkpoint Plus" value={plusStatus} />
             <SettingsRow
@@ -90,6 +116,18 @@ function SettingsAccount() {
                 }}
               />
             )}
+          </SettingsGroup>
+        )}
+
+        {exportVisible && (
+          <SettingsGroup>
+            <SettingsRow
+              settingId="export-data"
+              label={isExporting ? 'Exporting\u2026' : 'Export my data'}
+              value={plusActive ? undefined : <PlusBadge active />}
+              onClick={plusActive ? handleExport : () => navigate('/plus')}
+              disabled={isExporting}
+            />
           </SettingsGroup>
         )}
 

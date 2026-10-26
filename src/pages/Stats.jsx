@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiArrowLeft } from 'react-icons/hi'
+import { LuLock } from 'react-icons/lu'
 import EmptyState from '../components/EmptyState'
 import { useAuth } from '../contexts/AuthContext'
 import { getProfile, initializeProfile } from '../services/profileService'
@@ -15,6 +16,8 @@ import {
 } from '../services/statsService'
 import SharedCover, { SharedCoverScope } from '../components/SharedCover'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { PRIVACY_URL, TERMS_URL } from '../config/site'
+import { PLUS_PURCHASES_AVAILABLE } from '../services/plusService'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { genreColorVar } from '../utils/genreColors'
 import './Stats.css'
@@ -401,13 +404,27 @@ function YTDHeatmap({ cells }) {
   )
 }
 
+/**
+ * Advanced stats for non-Plus users: the real section stays in the layout,
+ * blurred and inert, so the page keeps its shape. Unlocked, it renders its
+ * children untouched (no wrapper element).
+ */
+function PlusBlur({ locked, children }) {
+  if (!locked) return children
+  return (
+    <div className="stats-plus-blur" aria-hidden="true" inert="">
+      {children}
+    </div>
+  )
+}
+
 /* ─────────────────────────────────────────────────────────────
    Page
    ───────────────────────────────────────────────────────────── */
 
 function Stats() {
   const navigate = useNavigate()
-  const { user, profile: authProfile } = useAuth()
+  const { user, profile: authProfile, plusActive } = useAuth()
 
   const [localProfile, setLocalProfile] = useState(() => getProfile() || initializeProfile())
   const [stats, setStats] = useState(() => getStatsLocalSync())
@@ -500,6 +517,11 @@ function Stats() {
   // a real, useful number) so they stay visible.
   const isLowData = stats.playedCount < 3
 
+  // Top 10 by hours and the activity heatmap are Plus. With Plus hidden
+  // (no RevenueCat key or no Terms / Privacy links) nothing is locked.
+  const advancedLocked =
+    PLUS_PURCHASES_AVAILABLE && Boolean(TERMS_URL && PRIVACY_URL) && !plusActive
+
   return (
     <SharedCoverScope>
       <div className="stats-page">
@@ -579,10 +601,12 @@ function Stats() {
                 <span className="stats-eyebrow">Most played</span>
                 <h2 className="text-display-l stats-section-title">Top 10 by hours</h2>
               </header>
-              <MostPlayedBars
-                topByHours={stats.topByHours}
-                onGameClick={handleGameClick}
-              />
+              <PlusBlur locked={advancedLocked}>
+                <MostPlayedBars
+                  topByHours={stats.topByHours}
+                  onGameClick={handleGameClick}
+                />
+              </PlusBlur>
             </section>
 
             <section className="stats-section">
@@ -604,15 +628,31 @@ function Stats() {
                   Activity heatmap
                 </h2>
               </header>
-              {calendarLoading ? (
-                <div className="stats-card stats-heatmap-card stats-heatmap-skeleton">
-                  <div className="skeleton stats-heatmap-skel-bar" />
-                  <div className="skeleton stats-heatmap-skel-grid" />
-                </div>
-              ) : (
-                <YTDHeatmap cells={heatmapCells} />
-              )}
+              <PlusBlur locked={advancedLocked}>
+                {calendarLoading ? (
+                  <div className="stats-card stats-heatmap-card stats-heatmap-skeleton">
+                    <div className="skeleton stats-heatmap-skel-bar" />
+                    <div className="skeleton stats-heatmap-skel-grid" />
+                  </div>
+                ) : (
+                  <YTDHeatmap cells={heatmapCells} />
+                )}
+              </PlusBlur>
             </section>
+
+            {advancedLocked && (
+              <section className="stats-section">
+                <button
+                  type="button"
+                  className="stats-unlock"
+                  onClick={() => navigate('/plus')}
+                >
+                  <LuLock className="stats-unlock__icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+                  <span className="stats-unlock__label">Advanced stats</span>
+                  <span className="stats-unlock__cta">Unlock with Plus</span>
+                </button>
+              </section>
+            )}
           </>
         )}
       </div>

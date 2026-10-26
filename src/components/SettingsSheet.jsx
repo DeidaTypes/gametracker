@@ -8,6 +8,7 @@ import {
   LuUserPen,
   LuShare2,
   LuSparkles,
+  LuStar,
   LuSettings,
 } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
@@ -37,10 +38,11 @@ function SettingsRow({ icon, label, onClick, disabled = false, chevron = false }
 
 /**
  * SettingsSheet — the signed-in user's own profile "⋯" sheet.
- * Exactly four rows, and the only door into Settings:
+ * Four rows (five when `onGetPlus` is passed), and the only door into Settings:
  *   Edit profile  — opens EditProfileModal in place
  *   Share profile — existing share handler
  *   Your Wrapped  — existing wrapped handler
+ *   Get Plus      — only for a non-Plus user when Plus is available
  *   Settings      — navigate('/settings'), the hub at the top
  * Settings is the only row with a chevron. The visitor overflow sheet
  * is a separate ActionSheet and is not this component.
@@ -51,6 +53,7 @@ function SettingsSheet({
   onEditProfile,
   onShareProfile,
   onWrapped,
+  onGetPlus,
   wrappedLabel = 'Your Wrapped',
   wrappedDisabled = false,
 }) {
@@ -135,6 +138,13 @@ function SettingsSheet({
                 onClick={() => go(onWrapped)}
                 disabled={wrappedDisabled}
               />
+              {onGetPlus ? (
+                <SettingsRow
+                  icon={<LuStar size={18} />}
+                  label="Get Plus"
+                  onClick={() => go(onGetPlus)}
+                />
+              ) : null}
               <SettingsRow
                 icon={<LuSettings size={18} />}
                 label="Settings"

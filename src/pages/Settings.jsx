@@ -11,6 +11,7 @@ import {
   LuPencil,
   LuSearch,
   LuShield,
+  LuStar,
   LuUser,
   LuUserPlus,
   LuX,
@@ -29,7 +30,8 @@ import { buildInviteUrl } from '../services/inviteService'
 import { shareContent } from '../utils/share'
 import { labelMatchRange, searchSettings } from '../config/settingsIndex'
 import { setSettingsSearchBackHandler } from '../config/settingsSearchBack'
-import { APP_VERSION } from '../config/site'
+import { APP_VERSION, PRIVACY_URL, TERMS_URL } from '../config/site'
+import { PLUS_ENABLED, PLUS_PURCHASES_AVAILABLE } from '../services/plusService'
 import { hapticImpact } from '../utils/haptics'
 import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
@@ -92,7 +94,7 @@ function profileAvatarUrl(profile) {
 
 function Settings() {
   const navigate = useNavigate()
-  const { user, logOut } = useAuth()
+  const { user, logOut, plusActive } = useAuth()
 
   const [profile, setProfile] = useState(() => getProfile() || initializeProfile())
   const [editOpen, setEditOpen] = useState(false)
@@ -128,6 +130,10 @@ function Settings() {
       window.removeEventListener(APP_RESUMED_EVENT, refresh)
     }
   }, [isAdmin])
+
+  // Plus is hidden until RevenueCat and the Terms / Privacy links exist.
+  const plusVisible = PLUS_ENABLED && Boolean(TERMS_URL && PRIVACY_URL)
+  const plusRowVisible = plusVisible && (plusActive || PLUS_PURCHASES_AVAILABLE)
 
   const email = user?.email || ''
   const maskedEmail = useMemo(() => maskEmail(email), [email])
@@ -337,6 +343,18 @@ function Settings() {
                 <LuChevronRight className="settings-me__chevron" size={16} strokeWidth={1.75} aria-hidden="true" />
               </button>
             </SettingsGroup>
+
+            {plusRowVisible && (
+              <SettingsGroup icons>
+                <SettingsRow
+                  settingId="plus"
+                  icon={<LuStar size={18} strokeWidth={1.6} />}
+                  label="Checkpoint Plus"
+                  value={plusActive ? 'Plus' : 'Not Plus'}
+                  onClick={plusActive ? undefined : () => navigate('/plus')}
+                />
+              </SettingsGroup>
+            )}
 
             <SettingsGroup icons>
               <SettingsRow

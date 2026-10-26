@@ -42,6 +42,7 @@ export const NotificationsInbox = lazyRoute(() => import('../pages/Notifications
 export const ReviewComments = lazyRoute(() => import('../pages/ReviewComments'))
 export const ReviewDetail = lazyRoute(() => import('../pages/ReviewDetail'))
 export const ReviewNew = lazyRoute(() => import('../pages/ReviewNew'))
+export const PlusPaywall = lazyRoute(() => import('../pages/PlusPaywall'))
 export const Reviews = lazyRoute(() => import('../pages/Reviews'))
 export const Search = lazyRoute(() => import('../pages/Search'))
 export const Settings = lazyRoute(() => import('../pages/Settings'))

@@ -764,3 +764,46 @@ button.stats-heatmap-cell:focus-visible {
     flex: 1;
   }
 }
+
+/* ── Advanced stats lock (Checkpoint Plus) ─────────────────── */
+
+.stats-plus-blur {
+  filter: blur(var(--blur-sm));
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stats-unlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stats-unlock__icon {
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+.stats-unlock__label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.stats-unlock__cta {
+  margin-left: auto;
+  color: var(--color-brand-primary);
+  font-weight: var(--font-weight-semibold);
+}

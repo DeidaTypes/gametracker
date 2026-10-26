@@ -56,6 +56,7 @@ import {
   MessagesThread,
   Moderation,
   NotificationsInbox,
+  PlusPaywall,
   ReviewComments,
   ReviewDetail,
   ReviewNew,
@@ -1543,6 +1544,16 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><LazyScreen><SettingsAccount /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/plus"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><PlusPaywall /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
