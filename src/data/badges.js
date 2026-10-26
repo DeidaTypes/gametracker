@@ -28,6 +28,7 @@ import {
   Palette,
   Sunrise,
   Zap,
+  HandHelping,
 } from 'lucide-react'
 
 /**
@@ -87,7 +88,7 @@ const clientTierRank = (t) => CLIENT_TIER_RANK[t] || 0
  * the progress bar shows the honest current number rather than a frozen
  * one.
  */
-function tieredBadge({ id, name, description, icon, tiers, silent = false, wave }) {
+function tieredBadge({ id, name, names, description, icon, tiers, silent = false, wave }) {
   const tierNames = ['bronze', 'silver', 'gold']
   return tierNames.map((tierName, i) => ({
     id: `${id}-${tierName}`,
@@ -96,7 +97,10 @@ function tieredBadge({ id, name, description, icon, tiers, silent = false, wave 
     wave,
     silent,
     tier: tierName,
-    name,
+    // `names` (optional) gives each tier its own title, bronze/silver/gold
+    // order — e.g. Helper / Trusted Helper / Legend Helper. Every other
+    // family keeps one name across its three tiers.
+    name: names?.[i] || name,
     description,
     icon,
     target: tiers[i],
@@ -462,6 +466,19 @@ export const BADGES = [
     tiers: [1, 3, 12],
     wave: 4,
   }),
+  // ── Q&A — a best answer is one the ASKER picked. Counted server-side by
+  //    private.sync_helper_badge() (supabase/migrations/20261026100000_
+  //    helper_badge.sql), which updates the ANSWERER's row when the pick
+  //    happens. Each tier has its own title. ─────────────────────────────
+  ...tieredBadge({
+    id: 'helper',
+    name: 'Helper',
+    names: ['Helper', 'Trusted Helper', 'Legend Helper'],
+    description: 'Have your answers picked as the best answer to a question.',
+    icon: HandHelping,
+    tiers: [1, 10, 50],
+    wave: 4,
+  }),
   ...tieredBadge({
     id: 'deep-cut',
     name: 'Deep Cut',
@@ -496,8 +513,8 @@ export const TIER_STYLES = {
  */
 export const TIER_RANK = { bronze: 0, silver: 1, gold: 2, platinum: 3 }
 
-/** Full Sprint 16 catalogue size — used for "N of 32 earned" copy. */
-export const BADGE_CATALOG_FAMILY_COUNT = 32
+/** Full Sprint 16 catalogue size — used for "N of 33 earned" copy. */
+export const BADGE_CATALOG_FAMILY_COUNT = 33
 
 /**
  * Families omitted from shelf / full-screen until S16-10.
@@ -545,7 +562,7 @@ export const BADGE_SHELF_CATEGORIES = [
   {
     id: 'community',
     label: 'Community',
-    families: ['resonant', 'curator', 'conversationalist', 'circle', 'first-responder', 'tastemaker'],
+    families: ['resonant', 'curator', 'conversationalist', 'circle', 'first-responder', 'tastemaker', 'helper'],
   },
   {
     id: 'time-return',

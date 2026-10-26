@@ -125,6 +125,19 @@ function notifyBadgesUpdated() {
 }
 
 /**
+ * Ask every mounted `useBadges()` to re-read user_badges, WITHOUT recomputing.
+ *
+ * For badges the server moves on someone else's action. Helper is the case:
+ * the asker picks a best answer and a trigger updates the ANSWERER's row, so
+ * the answerer's app has nothing of its own to recompute — it only needs to
+ * re-read. useBadgeUnlockWatcher then celebrates the new tier as usual.
+ * NotificationsContext calls this when a `qa_best` notification arrives.
+ */
+export function refreshBadges() {
+  notifyBadgesUpdated()
+}
+
+/**
  * One-time (per catalogue version) backfill. Calls backfill_my_badges(),
  * which runs recompute_my_badges(), stamps celebrated_at on every newly
  * earned family from THIS pass, and advances

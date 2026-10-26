@@ -121,6 +121,7 @@ import Skeleton from '../components/Skeleton'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, mutateSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
+import { qaBestKey, qaUserBestCount } from '../services/qaService'
 import { canMessageUser } from '../services/messageService'
 import { getGameNavStub } from '../utils/gameNavStub'
 import './Profile.css'
@@ -903,6 +904,16 @@ function Profile() {
     enabled: !!canMessageKey,
   })
   const showMessageAction = canMessage !== false
+
+  // Best answers — answers this user's askers picked as best. Same read for
+  // the owner and visitors; the line is hidden at 0, while loading, and when
+  // the read fails (the service resolves 0 for all three).
+  const bestKey = targetUserId ? qaBestKey(targetUserId, 'count') : null
+  const loadBestCount = useCallback(() => qaUserBestCount(targetUserId), [targetUserId])
+  const { data: bestAnswersData } = useCachedResource(bestKey, loadBestCount, {
+    enabled: !!bestKey,
+  })
+  const bestAnswersCount = Number(bestAnswersData) || 0
 
   // Sprint 7 — banner URL for non-own profiles fetched from Supabase.
   // Own profile reads bannerUrl directly from the localStorage profile blob.
@@ -1919,6 +1930,18 @@ function Profile() {
                 Tell people what you play →
               </button>
             )
+          )}
+
+          {bestAnswersCount > 0 && (
+            <button
+              type="button"
+              className="profile-ig-hero__best"
+              onClick={() => navigate(`/user/${profilePathSegment}/best-answers`)}
+              aria-label={`${bestAnswersCount} best ${bestAnswersCount === 1 ? 'answer' : 'answers'}, view list`}
+            >
+              {bestAnswersCount} best {bestAnswersCount === 1 ? 'answer' : 'answers'}
+              <LuChevronRight size={14} aria-hidden="true" />
+            </button>
           )}
 
           {setSocials.length > 0 && (

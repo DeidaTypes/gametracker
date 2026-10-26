@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useAuth } from './AuthContext'
@@ -15,6 +16,7 @@ import {
 } from '../services/notificationService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
+import { refreshBadges } from '../services/badgeService'
 
 const NotificationsContext = createContext({
   notifications: [],
@@ -45,9 +47,13 @@ export function NotificationsProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0)
   // Bumped on app resume so the realtime effect recreates the channel.
   const [resumeKey, setResumeKey] = useState(0)
+  // Ids already seen for the current user. null until the first fetch, so a
+  // cold launch seeds quietly instead of treating old rows as new.
+  const knownIdsRef = useRef(null)
 
   const refresh = useCallback(async () => {
     if (!userId) {
+      knownIdsRef.current = null
       setNotifications([])
       setUnreadCount(0)
       return
@@ -57,6 +63,15 @@ export function NotificationsProvider({ children }) {
         fetchNotifications(),
         getUnreadNotificationCount(),
       ])
+      // A best answer moves the answerer's Helper badge on the server. The
+      // answerer's app has nothing to recompute, so when a qa_best row shows
+      // up (live, or caught on resume) it just re-reads the badges and the
+      // normal unlock watcher takes it from there.
+      const known = knownIdsRef.current
+      if (known && rows.some((n) => n.type === 'qa_best' && !known.has(n.id))) {
+        refreshBadges()
+      }
+      knownIdsRef.current = new Set(rows.map((n) => n.id))
       setNotifications(rows)
       setUnreadCount(count)
     } catch (err) {
@@ -66,6 +81,7 @@ export function NotificationsProvider({ children }) {
 
   // Initial fetch + identity change.
   useEffect(() => {
+    knownIdsRef.current = null
     if (!userId) {
       setNotifications([])
       setUnreadCount(0)

@@ -639,6 +639,19 @@ export default function QaQuestion() {
         ]
     : []
 
+  // Share card for a best answer. Lazy: html-to-image only loads on tap.
+  const shareBestAnswer = async (answer) => {
+    if (!question || !answer) return
+    try {
+      const { shareQaBestAnswer } = await import('./QaShareCard')
+      const result = await shareQaBestAnswer(question, answer)
+      if (result?.method === 'download') showToast('Card saved', 'success')
+    } catch (err) {
+      console.error('[qa] share best answer failed:', err)
+      showToast("Couldn't share that.", 'error')
+    }
+  }
+
   const answerItems = menuAnswer
     ? [
         ...(viewerIsAsker && answerIsBest
@@ -659,6 +672,13 @@ export default function QaQuestion() {
                 igdbGameId: question.igdb_game_id,
                 answer: menuAnswer,
               }),
+            }]
+          : []),
+        ...(answerIsBest
+          ? [{
+              label: 'Share',
+              icon: <Upload size={20} />,
+              onClick: () => shareBestAnswer(menuAnswer),
             }]
           : []),
         ...(QA_LINKS_AVAILABLE

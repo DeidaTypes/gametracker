@@ -18,6 +18,7 @@ import {
  *   qa:game:{igdbId}:{filter}:{sort}
  *   qa:question:{id}
  *   qa:mine:{uid}
+ *   qa:best:count:{uid} | qa:best:list:{uid}   (a user's best answers, profile)
  *   qa:search:{gameId|all}:{query}
  *
  * Sign-out drops every key via clearSWRCache() inside
@@ -39,6 +40,10 @@ export function qaQuestionKey(id) {
 
 export function qaMineKey(uid) {
   return uid ? `qa:mine:${uid}` : null
+}
+
+export function qaBestKey(userId, kind = 'list') {
+  return userId ? `qa:best:${kind}:${userId}` : null
 }
 
 export function qaSearchKey(gameId, query) {
@@ -101,6 +106,7 @@ function staleAfterWrite({ questionId, igdbGameId } = {}) {
   if (questionId) markSWRStale(qaQuestionKey(questionId))
   markSWRStaleByPrefix('qa:home:')
   markSWRStaleByPrefix('qa:mine:')
+  markSWRStaleByPrefix('qa:best:')
   const gameId = igdbGameId ?? (questionId ? cachedIgdb(questionId) : null)
   if (gameId != null && gameId !== '') markSWRStaleByPrefix(`qa:game:${gameId}:`)
   else markSWRStaleByPrefix('qa:game:')
@@ -205,6 +211,31 @@ export function qaSimilar(title, igdbGameId) {
 
 export function qaMine() {
   return callRpc('qa_mine')
+}
+
+/**
+ * A user's best answers (answers their askers picked as best): the profile
+ * "{n} best answers" line and its list. Same for the owner and visitors; RLS
+ * and report auto-hide apply per viewer inside the RPC.
+ * Resolves { count, items }. `limit` 0 returns the count only.
+ */
+export function qaUserBestAnswers(userId, limit = 100) {
+  return callRpc('qa_user_best_answers', { p_user_id: userId, p_limit: limit })
+}
+
+/**
+ * Just the number for the profile line. Never throws: a failed or flagged-off
+ * read is 0, and 0 hides the line rather than showing a guessed number.
+ */
+export async function qaUserBestCount(userId) {
+  try {
+    if (!userId || !(await isFlagEnabled('qa'))) return 0
+    const data = await qaUserBestAnswers(userId, 0)
+    const n = Number(data?.count)
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
+  }
 }
 
 /**

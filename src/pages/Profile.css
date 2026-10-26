@@ -276,6 +276,36 @@
   color: var(--accent);
 }
 
+/* Best answers — one quiet line under the bio, same for self and visitors */
+.profile-ig-hero__best {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast);
+}
+
+.profile-ig-hero__best:hover {
+  color: var(--text-primary);
+}
+
+.profile-ig-hero__best:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
 /* Social handles — left-aligned row of pill chips */
 .profile-ig-hero__socials {
   margin-top: 8px;
@@ -499,6 +529,7 @@
   .profile-ig-hero__avatar,
   .profile-ig-hero__bio-toggle,
   .profile-ig-hero__bio-cta,
+  .profile-ig-hero__best,
   .profile-ig-hero__social,
   .profile-ig-btn,
   .profile-tab {

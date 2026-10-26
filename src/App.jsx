@@ -80,6 +80,7 @@ import {
   UserFollowing,
   UserLibrary,
   Wishlist,
+  QaBestAnswers,
   QaGame,
   QaMine,
   QaQuestion,
@@ -1339,6 +1340,26 @@ function AppContent() {
                 <RequireAuth>
                   <ErrorBoundary>
                     <PageTransition swipeBack><LazyScreen><UserFollowing /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/:username/best-answers"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaBestAnswers /></LazyScreen></PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/id/:userId/best-answers"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack><LazyScreen><QaBestAnswers /></LazyScreen></PageTransition>
                   </ErrorBoundary>
                 </RequireAuth>
               }
