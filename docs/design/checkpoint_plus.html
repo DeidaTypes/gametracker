@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint Plus Paywall</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#05070f;--page-text:#c9d3ea;--page-dim:#7b88a6;
+  --base:#0a0f1f;--surface:#131a35;--surface-2:#1a2244;--hair:rgba(148,168,212,.14);
+  --text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;
+  --primary:#3b82f6;--primary-soft:rgba(59,130,246,.14);--on-primary:#ffffff;
+  --review:#0a9e6a;--journal:#8b32d1;--danger:#ef5350;
+  --scrim:rgba(5,7,15,.62);
+}
+body[data-theme="sky"]{
+  --page:#e9eef6;--page-text:#1d2a3d;--page-dim:#5b6b83;
+  --base:#cfe2f6;--surface:#eaf3fd;--surface-2:#dcebfb;--hair:rgba(11,35,64,.12);
+  --text:#0b2340;--muted:#3f5877;--dim:#556e8b;
+  --primary:#1a64cc;--primary-soft:rgba(26,100,204,.12);--on-primary:#ffffff;
+  --review:#0b8066;--journal:#5b47d6;--danger:#c62828;
+  --scrim:rgba(11,35,64,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--page);color:var(--page-text);min-height:100vh;padding:28px 16px 60px}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:22px;font-weight:700;color:var(--page-text)}
+.sub{color:var(--page-dim);font-size:14px;margin-top:4px;max-width:720px;line-height:1.45}
+.controls{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0 24px;align-items:center}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--hair);border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:13px;font-weight:500;color:var(--muted);background:none;border:0;padding:7px 11px;border-radius:6px;cursor:pointer}
+.seg button.on{background:var(--primary);color:var(--on-primary)}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--page-dim);font-weight:600;margin-right:6px}
+.stage{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px}
+.cap{font-size:12px;color:var(--page-dim);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+
+/* phone */
+.phone{width:375px;max-width:100%;height:780px;border-radius:44px;background:var(--base);border:1px solid var(--hair);position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.status{height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 6px;font-size:14px;font-weight:600;color:var(--text)}
+.top{height:44px;display:flex;align-items:center;padding:0 12px}
+.icon-btn{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:var(--text);background:none;border:0}
+.scroll{position:absolute;top:94px;bottom:0;left:0;right:0;overflow-y:auto;padding:0 20px 28px}
+.scroll::-webkit-scrollbar{display:none}
+
+.hero{text-align:center;padding:6px 0 22px;position:relative}
+.wash{position:absolute;left:50%;top:-40px;width:320px;height:200px;transform:translateX(-50%);background:radial-gradient(closest-side,var(--primary-soft),transparent);pointer-events:none}
+.mark{width:56px;height:56px;border-radius:16px;margin:0 auto 14px;display:grid;place-items:center;border:1px solid var(--hair);background:var(--surface);color:var(--primary);position:relative}
+.hero h2{font-size:28px;font-weight:700;color:var(--text);letter-spacing:-.01em;position:relative}
+.hero p{font-size:15px;color:var(--muted);margin-top:6px;line-height:1.45;position:relative}
+
+.group{background:var(--surface);border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+.row{display:flex;gap:14px;align-items:center;padding:13px 16px}
+.row + .row{border-top:1px solid var(--hair)}
+.row svg{flex:none;color:var(--primary)}
+.row .t{font-size:15px;font-weight:600;color:var(--text)}
+.row .d{font-size:13px;color:var(--muted);margin-top:2px;line-height:1.35}
+
+.section{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:22px 4px 8px}
+
+.plan{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--hair);border-radius:12px;background:var(--surface);cursor:pointer;margin-bottom:8px}
+.plan.on{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset}
+.radio{width:20px;height:20px;border-radius:999px;border:1.5px solid var(--dim);flex:none;display:grid;place-items:center}
+.plan.on .radio{border-color:var(--primary)}
+.plan.on .radio::after{content:"";width:10px;height:10px;border-radius:999px;background:var(--primary)}
+.plan .n{font-size:15px;font-weight:600;color:var(--text)}
+.plan .m{font-size:13px;color:var(--muted);margin-top:2px}
+.plan .p{margin-left:auto;text-align:right}
+.plan .p b{font-size:15px;color:var(--text);font-weight:600;display:block}
+.plan .p span{font-size:12px;color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary);margin-left:6px;vertical-align:2px}
+
+.sk{border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--hair),var(--surface-2));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.sk,.spin{animation:none}}
+
+.cta{margin-top:18px;width:100%;height:52px;border:0;border-radius:12px;background:var(--primary);color:var(--on-primary);font:inherit;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px}
+.cta[disabled]{opacity:.55}
+.spin{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.link{display:block;text-align:center;margin-top:14px;font-size:14px;font-weight:500;color:var(--primary)}
+.legal{font-size:12px;color:var(--dim);line-height:1.5;margin-top:16px;text-align:center}
+.legal a{color:var(--muted);text-decoration:underline}
+.err{margin-top:12px;font-size:13px;color:var(--danger);text-align:center}
+
+.empty{text-align:center;padding:26px 16px;border:1px solid var(--hair);border-radius:16px;background:var(--surface)}
+.empty .t{font-size:15px;font-weight:600;color:var(--text)}
+.empty .d{font-size:13px;color:var(--muted);margin-top:4px}
+.ghost{margin-top:14px;height:40px;padding:0 18px;border-radius:10px;border:1px solid var(--hair);background:none;color:var(--text);font:inherit;font-size:14px;font-weight:600}
+
+/* success overlay (fades in centered, per Oct 24 rule) */
+.succ{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .18s cubic-bezier(.2,.8,.2,1)}
+.succ.show{opacity:1;pointer-events:auto}
+.succ .card{width:300px;background:var(--surface);border:1px solid var(--hair);border-radius:24px;padding:28px 22px;text-align:center;transform:scale(.96);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.succ.show .card{transform:scale(1)}
+.ok{width:56px;height:56px;border-radius:999px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;margin:0 auto 14px}
+.succ h3{font-size:22px;color:var(--text);font-weight:700}
+.succ p{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.45}
+.namechip{display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:8px 12px;border-radius:12px;background:var(--base);border:1px solid var(--hair);font-size:15px;font-weight:600;color:var(--text)}
+.plus{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary)}
+
+/* entry points panel */
+.mini{width:375px;max-width:100%;background:var(--base);border:1px solid var(--hair);border-radius:24px;padding:18px 16px}
+.mini h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:4px 4px 8px}
+.mini + .mini{margin-top:0}
+.srow{display:flex;align-items:center;gap:12px;padding:13px 14px}
+.srow + .srow{border-top:1px solid var(--hair)}
+.srow .t{font-size:15px;color:var(--text);font-weight:500}
+.srow .v{margin-left:auto;font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.blur{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--hair);background:var(--surface)}
+.blur .fake{padding:16px;filter:blur(6px);opacity:.7}
+.bars{display:flex;align-items:flex-end;gap:8px;height:70px}
+.bars i{flex:1;border-radius:4px 4px 0 0;background:var(--primary-soft)}
+.blur .lock{position:absolute;inset:auto 12px 12px 12px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--base);border:1px solid var(--hair)}
+.blur .lock .t{font-size:14px;font-weight:600;color:var(--text)}
+.blur .lock .v{margin-left:auto;color:var(--primary);font-size:14px;font-weight:600}
+.notes{max-width:720px;margin-top:30px;font-size:14px;line-height:1.6;color:var(--page-text)}
+.notes li{margin-left:18px;margin-bottom:6px}
+.notes b{color:var(--page-text)}
+</style>
+</head>
+<body data-theme="navy">
+<div class="wrap">
+  <h1>Checkpoint Plus: paywall mockup (for M-2)</h1>
+  <p class="sub">A pushed full screen (slides in from the right like any screen), matching Settings: line icons, inset groups, hairlines, cobalt only on what's active. Prices come from RevenueCat at runtime; the numbers below are the configured App Store prices, never hardcoded in the app.</p>
+
+  <div class="controls">
+    <div><span class="lbl">Theme</span>
+      <div class="seg" id="theme"><button class="on" data-v="navy">Navy</button><button data-v="sky">Light Blue</button></div>
+    </div>
+    <div><span class="lbl">State</span>
+      <div class="seg" id="state">
+        <button class="on" data-v="ready">Ready</button>
+        <button data-v="loading">Loading prices</button>
+        <button data-v="buying">Purchasing</button>
+        <button data-v="finishing">Finishing up</button>
+        <button data-v="success">Success</button>
+        <button data-v="failed">Failed</button>
+        <button data-v="offline">Can't load</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="cap">Paywall</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●●</span></div>
+        <div class="top">
+          <button class="icon-btn" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        </div>
+        <div class="scroll">
+          <div class="hero">
+            <div class="wash"></div>
+            <div class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg></div>
+            <h2>Checkpoint Plus</h2>
+            <p>Support an indie app and get a cleaner, deeper Checkpoint.</p>
+          </div>
+
+          <div class="group">
+            <div class="row"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 4l16 16"/></svg><div><div class="t">No ads</div><div class="d">The banner above the nav is gone.</div></div></div>
+            <div class="row"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><div><div class="t">Plus badge</div><div class="d">Next to your name on your profile, reviews and comments.</div></div></div>
+            <div class="row"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg><div><div class="t">Export your data</div><div class="d">Your library, reviews, journal and lists as JSON and CSV.</div></div></div>
+            <div class="row"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><div><div class="t">Advanced stats</div><div class="d">The deeper breakdowns in Stats.</div></div></div>
+          </div>
+
+          <div id="plans"></div>
+        </div>
+
+        <div class="succ" id="succ">
+          <div class="card">
+            <div class="ok"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
+            <h3>You're Plus</h3>
+            <p>Thanks for supporting Checkpoint. Ads are gone and your badge is live.</p>
+            <div class="namechip">Ry <span class="plus">PLUS</span></div>
+            <button class="cta" style="margin-top:20px">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="cap">Entry points</div>
+      <div class="mini">
+        <h4>Settings</h4>
+        <div class="group">
+          <div class="srow"><span class="t">Checkpoint Plus</span><span class="v">Not Plus <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="srow"><span class="t">Restore purchases</span></div>
+        </div>
+        <h4 style="margin-top:18px">Stats (free user)</h4>
+        <div class="blur">
+          <div class="fake"><div class="bars"><i style="height:40%"></i><i style="height:75%"></i><i style="height:55%"></i><i style="height:90%"></i><i style="height:35%"></i><i style="height:65%"></i></div></div>
+          <div class="lock"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--muted)"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><span class="t">Advanced stats</span><span class="v">Unlock with Plus</span></div>
+        </div>
+        <h4 style="margin-top:18px">Profile ⋯ (your own)</h4>
+        <div class="group">
+          <div class="srow"><span class="t">Edit</span></div>
+          <div class="srow"><span class="t">Share</span></div>
+          <div class="srow"><span class="t">Get Plus</span></div>
+          <div class="srow"><span class="t">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><b>One accent.</b> Cobalt is only on the selected plan, the button, links and the badge. No gradient on this screen.</li>
+    <li><b>Plans.</b> Yearly is selected by default. "Save 44%" is calculated from the two real prices (12 × monthly vs yearly), and hidden if the math can't be done.</li>
+    <li><b>Subscription text.</b> Apple requires the price per period, auto-renewal, how to cancel, and Terms and Privacy links on the purchase screen. They come from site.js; if those links aren't configured yet, the whole paywall stays hidden.</li>
+    <li><b>Success.</b> A centered card that fades in (Oct 24 rule) with the success haptic. Cancelled purchases show nothing. Failures show one red line under the button.</li>
+    <li><b>Can't load.</b> If the offering can't load (offline, no key), the plans area becomes a quiet retry card. Entry points are hidden entirely when the RevenueCat key is missing.</li>
+  </ul>
+</div>
+
+<script>
+const plansHTML = {
+  ready: `
+    <div class="section">Choose a plan</div>
+    <div class="plan on" data-p="y"><span class="radio"></span><div><div class="n">Yearly <span class="chip">Save 44%</span></div><div class="m">$1.67 a month, billed yearly</div></div><div class="p"><b>$19.99</b><span>per year</span></div></div>
+    <div class="plan" data-p="m"><span class="radio"></span><div><div class="n">Monthly</div><div class="m">Billed monthly</div></div><div class="p"><b>$2.99</b><span>per month</span></div></div>
+    <button class="cta" id="buy">Continue</button>
+    <a class="link" href="#">Restore purchases</a>
+    <p class="legal">$19.99 per year. Renews automatically until cancelled. Cancel anytime in Settings › Apple ID › Subscriptions at least 24 hours before renewal. <a href="#">Terms</a> · <a href="#">Privacy</a></p>`,
+  loading: `
+    <div class="section">Choose a plan</div>
+    <div class="plan"><span class="radio"></span><div style="flex:1"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:11px;width:80%;margin-top:7px"></div></div></div>
+    <div class="plan"><span class="radio"></span><div style="flex:1"><div class="sk" style="height:14px;width:45%"></div><div class="sk" style="height:11px;width:55%;margin-top:7px"></div></div></div>
+    <button class="cta" disabled>Continue</button>
+    <a class="link" href="#">Restore purchases</a>`,
+  offline: `
+    <div class="section">Choose a plan</div>
+    <div class="empty"><div class="t">Can't load prices</div><div class="d">Check your connection and try again.</div><button class="ghost">Try again</button></div>
+    <a class="link" href="#">Restore purchases</a>`
+};
+function render(state){
+  const plans = document.getElementById('plans');
+  const base = (state==='loading'||state==='offline') ? plansHTML[state] : plansHTML.ready;
+  plans.innerHTML = base;
+  const buy = document.getElementById('buy');
+  if (buy){
+    if (state==='buying'){ buy.disabled=true; buy.innerHTML='<span class="spin"></span>'; }
+    if (state==='finishing'){ buy.disabled=true; buy.innerHTML='<span class="spin"></span>Finishing up…'; }
+    if (state==='failed'){ buy.insertAdjacentHTML('afterend','<p class="err">The purchase didn’t go through. You weren’t charged.</p>'); }
+  }
+  plans.querySelectorAll('.plan[data-p]').forEach(p=>p.onclick=()=>{
+    plans.querySelectorAll('.plan').forEach(x=>x.classList.remove('on')); p.classList.add('on');
+    const legal = plans.querySelector('.legal');
+    if (legal) legal.firstChild.textContent = p.dataset.p==='y' ? '$19.99 per year. Renews automatically until cancelled. Cancel anytime in Settings › Apple ID › Subscriptions at least 24 hours before renewal. ' : '$2.99 per month. Renews automatically until cancelled. Cancel anytime in Settings › Apple ID › Subscriptions at least 24 hours before renewal. ';
+  });
+  document.getElementById('succ').classList.toggle('show', state==='success');
+}
+function seg(id,fn){const el=document.getElementById(id);el.onclick=e=>{const b=e.target.closest('button');if(!b)return;el.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset.v)}}
+seg('theme',v=>document.body.dataset.theme=v);
+seg('state',render);
+document.getElementById('succ').onclick=e=>{ if(e.target.closest('.cta')){ document.querySelector('#state button[data-v=ready]').click(); } };
+render('ready');
+</script>
+</body>
+</html>
