@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { House, Compass, BookCopy, User, MessageCircleQuestionMark as MessageCircleQuestion } from 'lucide-react'
@@ -8,6 +8,7 @@ import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import { peekSWR, subscribeSWR } from '../services/swrCache'
 import { qaHomeKey } from '../services/qaService'
 import { hapticImpact } from '../utils/haptics'
+import AdBanner from './AdBanner'
 import './BottomNav.css'
 
 // Fired by ListDetail's long-press drag-to-reorder interaction so this
@@ -133,6 +134,7 @@ function BottomNav({ scrollHidden = false }) {
   const homeKey = qaHomeKey(user?.id)
   const [inboxNew, setInboxNew] = useState(() => inboxHasNew(homeKey ? peekSWR(homeKey) : undefined))
   const [dragReorderActive, setDragReorderActive] = useState(false)
+  const navRef = useRef(null)
 
   rememberTabOrigin(location.pathname)
 
@@ -170,7 +172,12 @@ function BottomNav({ scrollHidden = false }) {
     : NAV_ITEMS
 
   return (
+    <>
+    {/* Free-user ad slot. Mounted here (and only here) so it exists exactly
+        where the pill does, and hides whenever the pill hides. */}
+    <AdBanner navRef={navRef} navHidden={visuallyHidden} />
     <nav
+      ref={navRef}
       className={`bottom-nav${qaEnabled ? ' bottom-nav--five' : ''}${
         dragReorderActive ? ' bottom-nav--hidden' : ''
       }${scrollHidden && !dragReorderActive ? ' bottom-nav--scroll-hidden' : ''}`}
@@ -228,6 +235,7 @@ function BottomNav({ scrollHidden = false }) {
         )
       })}
     </nav>
+    </>
   )
 }
 

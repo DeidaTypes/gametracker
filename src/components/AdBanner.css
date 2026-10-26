@@ -1,0 +1,67 @@
+/* =============================================
+   AD BANNER (free users, tab roots only)
+
+   The AdMob banner is a native view drawn over the web view. This file holds
+   the web side of the slot: a strip behind it in the nav's own background
+   token, and the extra bottom padding that keeps content from sliding under
+   it. Nothing here animates, so reduced motion and
+   body[data-reduce-motion='true'] need no special case.
+   ============================================= */
+
+/* ---- Strip behind the native banner ----
+   Same surface token as the pill (.bottom-nav) so the slot blends with every
+   theme. Sits one --space-8 gap above the pill: the pill floats --space-12
+   off the bottom (BottomNav.css) and --ad-nav-height is its measured height.
+   AdBanner.jsx reads this element's computed `bottom` to tell the native
+   banner where to sit, so the two cannot drift apart. Just under the nav's
+   z-index; it takes no taps. */
+.ad-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(
+    env(safe-area-inset-bottom, 0px) + var(--space-12) + var(--ad-nav-height, 0px) + var(--space-8)
+  );
+  height: var(--ad-banner-height, 0px);
+  z-index: 999;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+
+/* Hidden, not removed, so the geometry above stays measurable. */
+.ad-banner[data-active='false'] {
+  visibility: hidden;
+}
+
+/* Reads env(safe-area-inset-bottom) as a number for the native margin. */
+.ad-banner__safe-probe {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: env(safe-area-inset-bottom, 0px);
+  visibility: hidden;
+}
+
+/* ---- Room for the banner ----
+   While an ad is loaded on a tab root, AdBanner puts `ad-banner-reserved` on
+   <body> and sets --ad-banner-reserve (its height plus --space-8). The two
+   tokens below are re-declared here, so every page that clears the nav with
+   them (all five tab roots) grows by the banner without any per-page rule:
+
+   --bottom-nav-safe-area   mirrors theme.css: 80px (64 + 16) + the inset.
+   --bottom-nav-height      mirrors theme.css: 58px. Also used by the floating
+                            buttons that sit above the nav (Home and Library
+                            FABs, session pill, bulk bar), so they ride up
+                            above the banner too; the extra --space-8 keeps
+                            them clear of its top edge.
+
+   Keep both in step with theme.css if the nav's size ever changes.
+   `:not(.nav-hidden)`: composer screens have no pill, so no banner. */
+body.ad-banner-reserved:not(.nav-hidden) {
+  --bottom-nav-safe-area: calc(
+    var(--space-64) + var(--space-16) + env(safe-area-inset-bottom, 0px) + var(--ad-banner-reserve, 0px)
+  );
+  --bottom-nav-height: calc(58px + var(--ad-banner-reserve, 0px) + var(--space-8));
+}

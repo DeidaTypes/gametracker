@@ -6,6 +6,7 @@
     "dev": "vite",
     "dev:network": "vite --host",
     "build": "vite build",
+    "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "test:ratings": "node --experimental-default-type=module --test src/utils/ratingBuckets.test.js",
     "lint": "stylelint \"src/**/*.css\"",
@@ -13,6 +14,7 @@
     "lint:css:summary": "stylelint \"src/**/*.css\" --formatter compact"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^7.2.0",
     "@capacitor/app": "^7.1.2",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
