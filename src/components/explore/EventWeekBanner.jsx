@@ -137,9 +137,7 @@ export default function EventWeekBanner() {
       {/* Header */}
       <div className="ewb__head explore-section__pad">
         <div className="ewb__title-row">
-          <span className="ewb__emoji" aria-hidden="true">
-            {config.emoji}
-          </span>
+          <config.icon className="ewb__icon" size={20} strokeWidth={2} aria-hidden="true" />
           <h2 className="ewb__title">{config.title}</h2>
           <span className="ewb__date-badge" aria-label={`Event runs ${dateLabel}`}>
             {dateLabel}

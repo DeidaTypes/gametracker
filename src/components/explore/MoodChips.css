@@ -52,9 +52,8 @@
   opacity: 0.7;
 }
 
-.mood-chip__emoji {
-  font-size: 14px;
-  line-height: 1;
+.mood-chip__icon {
+  flex-shrink: 0;
 }
 
 .mood-chip__label {

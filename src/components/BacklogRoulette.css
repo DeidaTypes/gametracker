@@ -49,10 +49,9 @@
   padding: 12px 20px 4px;
 }
 
-.roulette-header-emoji {
-  font-size: 20px;
-  line-height: 1;
+.roulette-header-icon {
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .roulette-title {

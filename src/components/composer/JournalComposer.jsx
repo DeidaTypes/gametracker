@@ -265,7 +265,7 @@ function JournalComposer({ game: gameProp = null, gameId = null, onSaved, onClos
               aria-pressed={mood === opt.value}
               aria-label={opt.label}
             >
-              <span className="jnc-mood-emoji" aria-hidden="true">{opt.emoji}</span>
+              <opt.icon className="jnc-mood-icon" size={16} strokeWidth={2} aria-hidden="true" />
               <span className="jnc-mood-label">{opt.label}</span>
             </button>
           ))}

@@ -164,8 +164,8 @@
 }
 
 .mpr-row__friend-icon {
-  font-size: 10px;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 /* ---- Cover thumbnail ---- */

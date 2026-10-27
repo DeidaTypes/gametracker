@@ -24,10 +24,9 @@
   flex-wrap: wrap;
 }
 
-.ewb__emoji {
-  font-size: 20px;
-  line-height: 1;
+.ewb__icon {
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .ewb__title {

@@ -62,8 +62,6 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  font-size: 13px;
-  line-height: 1;
 }
 
 /* status_changed → amber */

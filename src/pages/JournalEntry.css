@@ -268,9 +268,8 @@ body[data-reduce-motion='true'] .je-icon-btn {
   line-height: 1.4;
 }
 
-.je-mood-badge__emoji {
-  font-size: 14px;
-  line-height: 1;
+.je-mood-badge__icon {
+  flex-shrink: 0;
 }
 
 .je-hours-badge {

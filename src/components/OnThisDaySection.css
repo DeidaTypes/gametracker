@@ -17,9 +17,8 @@
 }
 
 .otd-header__icon {
-  font-size: 22px;
   flex-shrink: 0;
-  line-height: 1;
+  color: var(--accent-brand);
 }
 
 .otd-header__title {

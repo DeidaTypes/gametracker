@@ -26,6 +26,9 @@
 }
 
 .su-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);

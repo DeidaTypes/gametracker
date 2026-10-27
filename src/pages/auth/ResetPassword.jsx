@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
-import { Flag, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { Flag, Eye, EyeOff, ShieldCheck, Check, X } from 'lucide-react'
 import { TextField, SubmitButton } from '../../components/forms'
 import { useDebounce } from '../../hooks/useDebounce'
 import {
@@ -300,11 +300,19 @@ function ResetPassword() {
   let confirmHintNode = null
   let confirmFieldClass = ''
   if (confirmMatches) {
-    confirmHintNode = <span className="su-status su-status--ok">✓ Passwords match</span>
+    confirmHintNode = (
+      <span className="su-status su-status--ok">
+        <Check size={14} strokeWidth={2} aria-hidden="true" />
+        Passwords match
+      </span>
+    )
     confirmFieldClass = 'auth-field--valid'
   } else if (confirmMismatch) {
     confirmHintNode = (
-      <span className="su-status su-status--bad">✗ Passwords don&rsquo;t match</span>
+      <span className="su-status su-status--bad">
+        <X size={14} strokeWidth={2} aria-hidden="true" />
+        Passwords don&rsquo;t match
+      </span>
     )
     confirmFieldClass = 'auth-field--invalid'
   }
@@ -374,7 +382,12 @@ function ResetPassword() {
                     : 'auth-password-hint--ok'
                 }`}
               >
-                {nextRequirement || '✓ Looks good'}
+                {nextRequirement || (
+                  <>
+                    <Check size={14} strokeWidth={2} aria-hidden="true" />
+                    Looks good
+                  </>
+                )}
               </p>
             )}
           </div>

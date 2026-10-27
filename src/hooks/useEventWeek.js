@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
+import { Skull } from 'lucide-react'
 import { getGamesByGenre, getGamesByTheme } from '../services/igdb'
 import { getEventWeekLeaderboard } from '../services/communityService'
 
 /**
  * Current themed event week.
  *
- * To swap in a new week: update id, title, subtitle, emoji, startDate,
+ * To swap in a new week: update id, title, subtitle, icon, startDate,
  * endDate, and filters. The rest of the system reacts automatically.
  *
  * `filters` drives real IGDB queries — no hardcoded game IDs.
@@ -15,7 +16,7 @@ export const EVENT_WEEK_CONFIG = {
   id: 'soulslike-week-2026-06',
   title: 'Soulslike Week',
   subtitle: 'Dark, punishing, deeply satisfying',
-  emoji: '💀',
+  icon: Skull,
   startDate: '2026-06-22',
   endDate: '2026-06-28',
   // Real IGDB genre + theme filters — deduped and merged at load time.

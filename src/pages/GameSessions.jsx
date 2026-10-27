@@ -259,8 +259,10 @@ export default function GameSessions() {
                           <span className="gs-session-time">{formatSessionClockTime(session)}</span>
                           {hasNote && (
                             <p className="gs-session-note">
-                              {moodMeta?.emoji && (
-                                <span className="gs-session-mood" aria-hidden="true">{moodMeta.emoji}</span>
+                              {moodMeta?.icon && (
+                                <span className="gs-session-mood" aria-hidden="true">
+                                  <moodMeta.icon size={14} strokeWidth={2} />
+                                </span>
                               )}
                               {session.note.trim()}
                             </p>

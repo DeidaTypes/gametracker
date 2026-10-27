@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
-import { Shuffle, ChevronRight, X } from 'lucide-react'
+import { Shuffle, ChevronRight, X, Dices } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
 import { contentSwap } from '../motion/xMotion'
@@ -149,7 +149,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
 
             {/* Header */}
             <div className="roulette-header">
-              <span className="roulette-header-emoji" aria-hidden="true">🎰</span>
+              <Dices className="roulette-header-icon" size={20} strokeWidth={2} aria-hidden="true" />
               <h2 className="roulette-title">Backlog Roulette</h2>
               <button
                 type="button"

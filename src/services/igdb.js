@@ -2,6 +2,18 @@
 // Every request goes through the igdb-proxy Supabase Edge Function, which
 // holds the Twitch credentials as Supabase secrets. The client never sees them.
 
+import {
+  Handshake,
+  Ghost,
+  BookOpen,
+  Star,
+  Globe,
+  Puzzle,
+  Gem,
+  Swords,
+  Zap,
+  Sofa,
+} from 'lucide-react'
 import { normalizeGame, normalizeGames } from './normalizeGame'
 import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 import { buildWhyLine } from './swipeService'
@@ -822,15 +834,6 @@ export async function getSimilarGamesByStyle(gameData, excludeGameId, limit = 20
   }
 
   try {
-    console.log('🎨 Finding similar style games for:', gameData.title)
-    console.log('📊 Game style data:', {
-      themes: gameData.themes,
-      playerPerspectives: gameData.playerPerspectives,
-      gameModes: gameData.gameModes,
-      keywords: gameData.keywords,
-      genres: gameData.genres
-    })
-    
     const styleCriteria = []
     
     // Get theme IDs - use more themes for better matching
@@ -897,11 +900,8 @@ where name = "${keywordName}";`
       }
     }
 
-    console.log('✅ Style criteria found:', styleCriteria.length, styleCriteria.map(c => `${c.type}:${c.name}`))
-
     if (styleCriteria.length === 0) {
       // Fallback to genres if no style data available
-      console.log('⚠️ No style criteria found, falling back to genre-based similarity')
       if (gameData.genres && gameData.genres.length > 0) {
         return getSimilarGames(gameData.genres, excludeGameId, limit)
       }
@@ -945,11 +945,8 @@ where (${whereClause}) & cover != null & id != ${excludeGameId};
 limit ${limit * 5};`
 
     const games = await igdbRequest('games', query)
-    
-    console.log(`📦 Found ${games.length} potential style matches`)
-    
+
     if (games.length === 0) {
-      console.log('⚠️ No style-based games found')
       return []
     }
     
@@ -1030,8 +1027,6 @@ limit ${limit * 5};`
       return game.styleScore >= 5 || game.matchCount >= 2
     })
     
-    console.log(`🎯 Quality matches: ${qualityMatches.length} games with style score >= 5 or 2+ category matches`)
-    
     // Sort by style score first (highest first), then by match count, then rating
     const sortedGames = qualityMatches
       .sort((a, b) => {
@@ -1054,17 +1049,10 @@ limit ${limit * 5};`
       })
       .slice(0, limit)
     
-    console.log(`✨ Top style matches:`, sortedGames.slice(0, 5).map(g => ({ 
-      name: g.name, 
-      styleScore: g.styleScore, 
-      matchCount: g.matchCount 
-    })))
-    
     // Remove styleScore and matchCount before formatting
     const gamesToFormat = sortedGames.map(({ styleScore, matchCount, ...game }) => game)
     
     if (gamesToFormat.length === 0) {
-      console.log('⚠️ No quality style matches found after filtering')
       // Don't fallback to generic games - return empty rather than showing irrelevant games
       return []
     }
@@ -2123,7 +2111,7 @@ export const MOOD_CHIPS = [
   {
     id: 'coop',
     label: 'Co-op',
-    emoji: '🤝',
+    icon: Handshake,
     strategy: 'where',
     where: 'game_modes = (3)', // game_mode: Co-operative — densely tagged
     minRating: 70,
@@ -2132,7 +2120,7 @@ export const MOOD_CHIPS = [
   {
     id: 'spooky',
     label: 'Spooky',
-    emoji: '👻',
+    icon: Ghost,
     strategy: 'where',
     where: 'themes = (19)',    // theme: Horror — one of the most-tagged IGDB themes
     minRating: 70,
@@ -2141,7 +2129,7 @@ export const MOOD_CHIPS = [
   {
     id: 'story',
     label: 'Story-driven',
-    emoji: '📖',
+    icon: BookOpen,
     strategy: 'where',
     where: 'genres = (31)',    // genre: Adventure — broadest narrative proxy, densely tagged
     minRating: 72,
@@ -2150,7 +2138,7 @@ export const MOOD_CHIPS = [
   {
     id: 'rated',
     label: 'Highly rated',
-    emoji: '⭐',
+    icon: Star,
     strategy: 'where',
     where: null,               // no theme/genre filter — quality gates do all the work
     minRating: 85,
@@ -2159,7 +2147,7 @@ export const MOOD_CHIPS = [
   {
     id: 'openworld',
     label: 'Open world',
-    emoji: '🌍',
+    icon: Globe,
     strategy: 'where',
     where: 'themes = (38)',    // theme: Open world — single reliable theme (not AND'd with Sandbox)
     minRating: 70,
@@ -2168,7 +2156,7 @@ export const MOOD_CHIPS = [
   {
     id: 'puzzle',
     label: 'Puzzle',
-    emoji: '🧩',
+    icon: Puzzle,
     strategy: 'where',
     where: 'genres = (9)',     // genre: Puzzle
     minRating: 68,
@@ -2177,7 +2165,7 @@ export const MOOD_CHIPS = [
   {
     id: 'hidden',
     label: 'Hidden gems',
-    emoji: '💎',
+    icon: Gem,
     strategy: 'where',
     where: null,               // no theme/genre gate — niche pool via rating_count ceiling
     minRating: 78,
@@ -2188,7 +2176,7 @@ export const MOOD_CHIPS = [
   {
     id: 'rpg',
     label: 'RPG',
-    emoji: '🎭',
+    icon: Swords,
     strategy: 'where',
     where: 'genres = (12)',    // genre: Role-playing (RPG) — one of IGDB's largest genre pools
     minRating: 70,
@@ -2197,7 +2185,7 @@ export const MOOD_CHIPS = [
   {
     id: 'under2h',
     label: 'Under 2h',
-    emoji: '⚡',
+    icon: Zap,
     strategy: 'where',
     where: 'genres = (33)',    // genre: Arcade — densely tagged; nearly all entries are sub-2h
     minRating: 65,
@@ -2206,7 +2194,7 @@ export const MOOD_CHIPS = [
   {
     id: 'weekend',
     label: 'Weekend',
-    emoji: '🛋️',
+    icon: Sofa,
     strategy: 'where',
     where: 'genres = (25)',    // genre: Hack and slash/Beat 'em up — reliably 8–15 h campaigns
     minRating: 70,

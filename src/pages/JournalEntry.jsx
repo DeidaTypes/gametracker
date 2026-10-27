@@ -233,7 +233,7 @@ function JournalEntry() {
           <div className="je-badges-row">
             {moodMeta && (
               <span className="je-mood-badge" data-mood={entry.mood}>
-                <span className="je-mood-badge__emoji" aria-hidden="true">{moodMeta.emoji}</span>
+                <moodMeta.icon className="je-mood-badge__icon" size={14} strokeWidth={2} aria-hidden="true" />
                 {moodMeta.label}
               </span>
             )}

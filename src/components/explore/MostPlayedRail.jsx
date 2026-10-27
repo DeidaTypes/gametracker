@@ -1,4 +1,5 @@
 import React from 'react'
+import { User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Pressable from '../Pressable'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
@@ -110,7 +111,7 @@ function MostPlayedRow({ item, rank, mode }) {
         {shouldShowCount(item.friend_count) && (
           <span className="mpr-row__friend-count" aria-hidden="true">
             {item.friend_count}
-            <span className="mpr-row__friend-icon" aria-hidden="true">👤</span>
+            <User className="mpr-row__friend-icon" size={10} strokeWidth={2} aria-hidden="true" />
           </span>
         )}
       </Pressable>

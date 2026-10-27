@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react'
+import { X, Heart } from 'lucide-react'
 import Avatar from '../Avatar'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { hapticImpact } from '../../utils/haptics'
@@ -245,7 +246,7 @@ export function SwipeCard({
               onClick={(e) => { stop(e); triggerSwipe('left') }}
               aria-label={`Skip ${game.title}`}
             >
-              <span aria-hidden="true">✕</span>
+              <X size={22} strokeWidth={2} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -254,7 +255,7 @@ export function SwipeCard({
               onClick={(e) => { stop(e); triggerSwipe('right') }}
               aria-label={`Add ${game.title} to backlog`}
             >
-              <span aria-hidden="true">♥</span>
+              <Heart size={22} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -267,14 +268,14 @@ export function SwipeCard({
             style={{ opacity: rightOpa }}
             aria-hidden="true"
           >
-            ♥ Backlog
+            <Heart size={14} strokeWidth={2} aria-hidden="true" /> Backlog
           </div>
           <div
             className="swipe-card__badge swipe-card__badge--left"
             style={{ opacity: leftOpa }}
             aria-hidden="true"
           >
-            ✕ Skip
+            <X size={14} strokeWidth={2} aria-hidden="true" /> Skip
           </div>
         </>
       )}

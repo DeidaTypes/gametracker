@@ -2098,6 +2098,7 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
 }
 
 .profile-diary__chip--mood {
+  gap: var(--space-4);
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }

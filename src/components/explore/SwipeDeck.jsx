@@ -8,6 +8,7 @@ import { supabase } from '../../services/supabase'
 import { mutateSWR, peekSWR, peekSWRInFlight } from '../../services/swrCache'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { showToast } from '../Toast'
+import { Sparkles } from 'lucide-react'
 import { SwipeCard } from './SwipeCard'
 import {
   recordSwipe,
@@ -554,7 +555,9 @@ export function SwipeDeck() {
     return (
       <div className="swipe-deck">
         <div className="swipe-deck__empty" role="status">
-          <div className="swipe-deck__empty-icon" aria-hidden="true">✦</div>
+          <div className="swipe-deck__empty-icon" aria-hidden="true">
+            <Sparkles size={24} strokeWidth={2} />
+          </div>
           <p className="swipe-deck__empty-title">
             {loadFailed ? "Couldn't load games right now" : 'Loading is taking a while'}
           </p>
@@ -579,7 +582,9 @@ export function SwipeDeck() {
       return (
         <div className="swipe-deck">
           <div className="swipe-deck__empty" role="status">
-            <div className="swipe-deck__empty-icon" aria-hidden="true">✦</div>
+            <div className="swipe-deck__empty-icon" aria-hidden="true">
+              <Sparkles size={24} strokeWidth={2} />
+            </div>
             <p className="swipe-deck__empty-title">Couldn't load more games</p>
             <p className="swipe-deck__empty-body">
               Check your connection and try again.

@@ -36,9 +36,12 @@ export function MoodChips({ activeMood, onSelect, emptyMoods = new Set() }) {
             }}
             aria-pressed={isActive}
           >
-            <span className="mood-chip__emoji" aria-hidden="true">
-              {mood.emoji}
-            </span>
+            <mood.icon
+              className="mood-chip__icon"
+              size={14}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
             <span className="mood-chip__label">{mood.label}</span>
           </button>
         )

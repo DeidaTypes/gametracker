@@ -313,7 +313,11 @@
 }
 
 .gs-session-mood {
+  display: inline-flex;
+  align-items: center;
   margin-right: var(--space-4);
+  vertical-align: middle;
+  color: inherit;
 }
 
 .gs-session-actions {

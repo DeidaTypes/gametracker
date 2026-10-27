@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOnThisDayEntries, getMoodMeta } from '../services/journalService'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { getSizedImageUrl } from '../services/imageUtils'
+import { CalendarDays } from 'lucide-react'
 import { Arrive } from './motion/ContentSwap'
 import './OnThisDaySection.css'
 
@@ -81,7 +82,7 @@ function OnThisDaySection({ userId }) {
     <Arrive ready={open} placeholder={null}>
     <section className="otd-section" aria-label="On this day">
       <div className="otd-header">
-        <span className="otd-header__icon" aria-hidden="true">📅</span>
+        <CalendarDays className="otd-header__icon" size={22} strokeWidth={2} aria-hidden="true" />
         <div>
           <h3 className="otd-header__title">On This Day</h3>
           <p className="otd-header__sub">{dateLabel} in a previous year</p>
@@ -131,7 +132,8 @@ function OnThisDaySection({ userId }) {
                   <div className="otd-card__pills">
                     {moodMeta && (
                       <span className="otd-card__mood-pill">
-                        {moodMeta.emoji} {moodMeta.label}
+                        <moodMeta.icon size={11} strokeWidth={2} aria-hidden="true" />
+                        {moodMeta.label}
                       </span>
                     )}
                     {hoursLabel && (

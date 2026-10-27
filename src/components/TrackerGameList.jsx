@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   SlidersHorizontal,
+  Check,
   CheckSquare,
   Square,
   X,
@@ -779,7 +780,12 @@ function TrackerGameList({ listId, games }) {
         onClose={() => setSortSheetOpen(false)}
         title="Sort by"
         items={SORT_OPTIONS.map((o) => ({
-          label: o.id === sortBy ? `${o.label} ✓` : o.label,
+          label: (
+            <span className="tracker-sort-item">
+              {o.label}
+              {o.id === sortBy && <Check size={16} aria-hidden="true" />}
+            </span>
+          ),
           onClick: () => setSortBy(o.id),
         }))}
       />
@@ -790,7 +796,12 @@ function TrackerGameList({ listId, games }) {
         onClose={() => setFilterSheetOpen(false)}
         title="Filter"
         items={FILTER_OPTIONS.map((o) => ({
-          label: o.id === filterBy ? `${o.label} ✓` : o.label,
+          label: (
+            <span className="tracker-sort-item">
+              {o.label}
+              {o.id === filterBy && <Check size={16} aria-hidden="true" />}
+            </span>
+          ),
           onClick: () => setFilterBy(o.id),
         }))}
       />

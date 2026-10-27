@@ -1,3 +1,11 @@
+import {
+  Flame,
+  Sparkles,
+  Smile,
+  Heart,
+  Moon,
+  Frown,
+} from 'lucide-react'
 import { supabase } from './supabase'
 import { logActivity, ACTIVITY_TYPES } from './activityService'
 import { ACTIVITY_EVENT_TYPES, logActivityEvent } from './activityEventsService'
@@ -25,14 +33,14 @@ import { recomputeBadges } from './badgeService'
 
 const TABLE = 'journal_entries'
 
-/** Mood metadata — label + emoji */
+/** Mood metadata — label + line icon (stored mood values unchanged) */
 export const MOOD_OPTIONS = [
-  { value: 'pumped',     label: 'Pumped',      emoji: '🔥' },
-  { value: 'amazed',    label: 'Amazed',      emoji: '🤩' },
-  { value: 'chill',     label: 'Chill',       emoji: '😌' },
-  { value: 'in_love',   label: 'In love',     emoji: '🥹' },
-  { value: 'tired',     label: 'Tired',       emoji: '😪' },
-  { value: 'frustrated',label: 'Frustrated',  emoji: '😤' },
+  { value: 'pumped',     label: 'Pumped',      icon: Flame },
+  { value: 'amazed',    label: 'Amazed',      icon: Sparkles },
+  { value: 'chill',     label: 'Chill',       icon: Smile },
+  { value: 'in_love',   label: 'In love',     icon: Heart },
+  { value: 'tired',     label: 'Tired',       icon: Moon },
+  { value: 'frustrated',label: 'Frustrated',  icon: Frown },
 ]
 
 export function getMoodMeta(moodValue) {

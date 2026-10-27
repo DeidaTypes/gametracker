@@ -499,3 +499,16 @@
     display: none;
   }
 }
+
+.tracker-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-12);
+}
+
+.tracker-sort-item svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}

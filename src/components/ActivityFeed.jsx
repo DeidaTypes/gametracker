@@ -7,24 +7,27 @@ import {
 } from '../services/activityService'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import { getGameNavStub } from '../utils/gameNavStub'
-import { Activity } from 'lucide-react'
+import { Activity, ArrowUpRight, Star, List, Plus } from 'lucide-react'
 import EmptyState from './EmptyState'
 import Avatar from './Avatar'
 import './ActivityFeed.css'
 
 const PAGE_SIZE = 50
 
-/**
- * Per-type icon glyph + colour-coded class.
- *   amber  → status_changed
- *   purple → review_posted
- *   green  → list_created / game_added_to_list
- */
-const TYPE_GLYPH = {
-  status_changed: '\u2197',       // ↗
-  review_posted: '\u2605',        // ★
-  list_created: '\u2630',         // ☰
-  game_added_to_list: '+',
+function ActivityTypeIcon({ activityType }) {
+  const props = { size: 13, strokeWidth: 2, 'aria-hidden': true }
+  switch (activityType) {
+    case 'status_changed':
+      return <ArrowUpRight {...props} />
+    case 'review_posted':
+      return <Star {...props} />
+    case 'list_created':
+      return <List {...props} />
+    case 'game_added_to_list':
+      return <Plus {...props} />
+    default:
+      return null
+  }
 }
 
 /**
@@ -194,7 +197,7 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
                 className="activity-feed-icon"
                 aria-hidden="true"
               >
-                {TYPE_GLYPH[activity.activityType] || '\u2022'}
+                <ActivityTypeIcon activityType={activity.activityType} />
               </span>
               <div className="activity-feed-body">
                 <span className="activity-feed-message">{message}</span>

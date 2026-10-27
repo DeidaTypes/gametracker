@@ -3155,7 +3155,8 @@ function DiaryEntryRow({ entry, onEntryClick, onCoverClick }) {
           <div className="profile-diary__chips">
             {moodMeta && (
               <span className="profile-diary__chip profile-diary__chip--mood">
-                {moodMeta.emoji} {moodMeta.label}
+                <moodMeta.icon size={12} strokeWidth={2} aria-hidden="true" />
+                {moodMeta.label}
               </span>
             )}
             {hoursLabel && (

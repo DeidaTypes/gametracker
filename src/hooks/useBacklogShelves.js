@@ -14,6 +14,7 @@
 // of the Home screen never re-fetch the same game twice.
 
 import { useState, useEffect, useRef } from 'react'
+import { Zap, Heart, Handshake, Ghost, Sunrise, Puzzle } from 'lucide-react'
 import { batchFetchGameMeta } from '../services/igdb'
 import { getTimeToBeat } from '../services/timeToBeatService'
 
@@ -23,7 +24,7 @@ const SHELF_DEFS = [
   {
     id: 'quick',
     label: 'Quick Wins',
-    emoji: '⚡',
+    icon: Zap,
     // A game qualifies when IGDB has TTB data and the "normally" play is ≤ 8 h.
     test: (_meta, ttb) =>
       ttb !== null &&
@@ -33,31 +34,31 @@ const SHELF_DEFS = [
   {
     id: 'emotional',
     label: 'I want to cry',
-    emoji: '😢',
+    icon: Heart,
     test: (meta) => meta?.themeIds?.includes(31), // Drama
   },
   {
     id: 'coop',
     label: 'Co-op Night',
-    emoji: '🤝',
+    icon: Handshake,
     test: (meta) => meta?.gameModeIds?.includes(3), // Co-operative
   },
   {
     id: 'spooky',
     label: 'Spooky',
-    emoji: '👻',
+    icon: Ghost,
     test: (meta) => meta?.themeIds?.includes(19), // Horror
   },
   {
     id: 'vibes',
     label: 'Just Vibes',
-    emoji: '🌅',
+    icon: Sunrise,
     test: (meta) => meta?.themeIds?.some((id) => id === 33 || id === 38), // Sandbox / Open world
   },
   {
     id: 'puzzle',
     label: 'Puzzle Brain',
-    emoji: '🧩',
+    icon: Puzzle,
     test: (meta) => meta?.genreIds?.includes(9), // Puzzle
   },
 ]
@@ -90,7 +91,7 @@ const EMPTY_META = { themeIds: [], gameModeIds: [], genreIds: [] }
  * dual-layer cache in timeToBeatService.
  *
  * @param {Array} games — backlog entries from getGamesFromList('want-to-play')
- * @returns {{ shelves: Array<{id,label,emoji,games}>, loading: boolean }}
+ * @returns {{ shelves: Array<{id,label,icon,games}>, loading: boolean }}
  *   `shelves` contains only non-empty shelves. `loading` is true while the
  *   first batch of IGDB metadata is in-flight.
  */
@@ -156,7 +157,7 @@ export function useBacklogShelves(games) {
       const result = SHELF_DEFS.map((def) => ({
         id: def.id,
         label: def.label,
-        emoji: def.emoji,
+        icon: def.icon,
         games: games.filter((g) => {
           const meta = cache[String(g.id)]?.meta ?? EMPTY_META
           const ttb = ttbMap.get(String(g.id)) ?? null

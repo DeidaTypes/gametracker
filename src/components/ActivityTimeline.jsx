@@ -8,6 +8,7 @@ import {
   LuPlus,
   LuChevronRight,
   LuBookOpen,
+  LuTrophy,
 } from 'react-icons/lu'
 import { formatActivityMessage } from '../services/activityService'
 import { getGameNavStub } from '../utils/gameNavStub'
@@ -130,8 +131,8 @@ function detectMilestoneIds(activities) {
 }
 
 const MILESTONE_META = {
-  review_posted: { emoji: '⭐', label: 'First 5-star review' },
-  status_changed: { emoji: '🏆', label: 'First game beaten' },
+  review_posted: { Icon: LuStar, label: 'First 5-star review' },
+  status_changed: { Icon: LuTrophy, label: 'First game beaten' },
 }
 
 /* ============================================================
@@ -188,7 +189,7 @@ function ActivityEntry({
   activity,
   image,
   isMilestone,
-  milestoneLabel,
+  milestoneMeta,
   reactions,
   onToggleReaction,
   onNavigate,
@@ -211,10 +212,10 @@ function ActivityEntry({
       {/* Right — content */}
       <div className="at-entry__body">
         {/* Milestone badge — subtle strip above the message */}
-        {isMilestone && (
-          <div className="at-milestone-badge" role="img" aria-label={milestoneLabel}>
-            <span aria-hidden="true">{milestoneLabel.split(' ')[0]}</span>
-            <span className="at-milestone-badge__text">{milestoneLabel.slice(milestoneLabel.indexOf(' ') + 1)}</span>
+        {isMilestone && milestoneMeta && (
+          <div className="at-milestone-badge" role="img" aria-label={milestoneMeta.label}>
+            <milestoneMeta.Icon size={12} aria-hidden="true" />
+            <span className="at-milestone-badge__text">{milestoneMeta.label}</span>
           </div>
         )}
 
@@ -364,9 +365,7 @@ export default function ActivityTimeline({
                     activity={activity}
                     image={image}
                     isMilestone={isMilestone}
-                    milestoneLabel={milestoneMeta?.emoji && milestoneMeta?.label
-                      ? `${milestoneMeta.emoji} ${milestoneMeta.label}`
-                      : null}
+                    milestoneMeta={milestoneMeta}
                     reactions={reactions}
                     onToggleReaction={handleToggleReaction}
                     onNavigate={handleNavigate}

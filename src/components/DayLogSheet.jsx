@@ -2,7 +2,16 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Gamepad2 } from 'lucide-react'
+import {
+  ChevronRight,
+  Gamepad2,
+  BookOpen,
+  Star,
+  List,
+  Plus,
+  FileText,
+  X,
+} from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
 import { useNavDim } from '../hooks/useNavDim'
@@ -35,12 +44,12 @@ import './DayLogSheet.css'
  */
 
 const ACTIVITY_ICONS = {
-  status_changed:     '📚',
-  review_posted:      '⭐',
-  list_created:       '📋',
-  game_added_to_list: '➕',
-  session_logged:     '🎮',
-  journal_written:    '📝',
+  status_changed:     BookOpen,
+  review_posted:      Star,
+  list_created:       List,
+  game_added_to_list: Plus,
+  session_logged:     Gamepad2,
+  journal_written:    FileText,
 }
 
 const STATUS_TAG_LABEL = {
@@ -188,7 +197,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
                 onClick={onClose}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} strokeWidth={2} aria-hidden="true" />
               </button>
             </div>
 
@@ -206,7 +215,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
                   {activities.map((act) => {
                     const href = getActivityHref(act)
                     const msg  = formatActivityMessage(act)
-                    const icon = ACTIVITY_ICONS[act.activityType] ?? '•'
+                    const ActivityIcon = ACTIVITY_ICONS[act.activityType]
                     const tag  = activityTag(act)
                     // Every type except 'list_created' is anchored to a
                     // specific game — those get the rich cover+tag+meta
@@ -250,7 +259,13 @@ export default function DayLogSheet({ dateKey, onClose }) {
                             </>
                           ) : (
                             <>
-                              <span className="dls-item-icon" aria-hidden="true">{icon}</span>
+                              <span className="dls-item-icon" aria-hidden="true">
+                                {ActivityIcon ? (
+                                  <ActivityIcon size={16} strokeWidth={2} />
+                                ) : (
+                                  '•'
+                                )}
+                              </span>
                               <span className="dls-item-text">{msg}</span>
                             </>
                           )}

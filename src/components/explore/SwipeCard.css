@@ -225,6 +225,9 @@
 /* ---- Direction badges ---- */
 
 .swipe-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
   position: absolute;
   top: var(--space-24);
   padding: 6px 14px;

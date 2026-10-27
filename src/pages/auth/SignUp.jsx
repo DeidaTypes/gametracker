@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Flag, Eye, EyeOff } from 'lucide-react'
+import { Flag, Eye, EyeOff, Check, X } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { TextField, SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
@@ -250,14 +250,16 @@ function SignUp() {
   } else if (usernameStatus === 'available') {
     usernameHintNode = (
       <span className="su-status su-status--ok">
-        ✓ {normalizeUsername(username)} is available
+        <Check size={14} strokeWidth={2} aria-hidden="true" />
+        {normalizeUsername(username)} is available
       </span>
     )
     usernameFieldClass = 'auth-field--valid'
   } else if (usernameStatus === 'taken') {
     usernameHintNode = (
       <span className="su-status su-status--bad">
-        ✗ {normalizeUsername(username)} is already taken
+        <X size={14} strokeWidth={2} aria-hidden="true" />
+        {normalizeUsername(username)} is already taken
       </span>
     )
     usernameFieldClass = 'auth-field--invalid'
@@ -271,10 +273,20 @@ function SignUp() {
   let confirmHintNode = null
   let confirmFieldClass = ''
   if (confirmMatches) {
-    confirmHintNode = <span className="su-status su-status--ok">✓ Passwords match</span>
+    confirmHintNode = (
+      <span className="su-status su-status--ok">
+        <Check size={14} strokeWidth={2} aria-hidden="true" />
+        Passwords match
+      </span>
+    )
     confirmFieldClass = 'auth-field--valid'
   } else if (confirmMismatch) {
-    confirmHintNode = <span className="su-status su-status--bad">✗ Passwords don&rsquo;t match</span>
+    confirmHintNode = (
+      <span className="su-status su-status--bad">
+        <X size={14} strokeWidth={2} aria-hidden="true" />
+        Passwords don&rsquo;t match
+      </span>
+    )
     confirmFieldClass = 'auth-field--invalid'
   }
 
@@ -365,7 +377,12 @@ function SignUp() {
                     : 'auth-password-hint--ok'
                 }`}
               >
-                {nextRequirement || '✓ Looks good'}
+                {nextRequirement || (
+                  <>
+                    <Check size={14} strokeWidth={2} aria-hidden="true" />
+                    Looks good
+                  </>
+                )}
               </p>
             )}
           </div>

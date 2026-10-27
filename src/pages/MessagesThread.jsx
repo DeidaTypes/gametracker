@@ -88,7 +88,7 @@ function daySeparatorLabel(date) {
 
 // Empty-state quick replies — tapping one sends it immediately (not just a
 // prefill) so starting a conversation is a single tap.
-const QUICK_REPLIES = ['👋 Hey!', 'What are you playing?']
+const QUICK_REPLIES = ['Hey!', 'What are you playing?']
 
 const TYPING_IDLE_MS = 3000
 

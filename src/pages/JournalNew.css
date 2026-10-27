@@ -378,9 +378,13 @@ body[data-reduce-motion='true'] .jnc-mood-btn {
   transition: none;
 }
 
-.jnc-mood-emoji {
-  font-size: 22px;
-  line-height: 1;
+.jnc-mood-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.jnc-mood-btn--active .jnc-mood-icon {
+  color: var(--accent-brand);
 }
 
 .jnc-mood-label {
