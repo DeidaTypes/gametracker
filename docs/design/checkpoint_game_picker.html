@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkpoint Game Picker</title>
+<style>
+  :root{
+    --base:#e8dcc2; --surface:#f7efdf; --surface2:#dccdb0; --line:rgba(70,50,20,.16);
+    --text:#2a2217; --muted:#62563f; --dim:#73674f; --primary:#2c5b8a; --primary-ink:#264f78;
+    --review:#3a7648; --on:#fff; --ease:cubic-bezier(.32,.72,0,1);
+  }
+  body.navy{--base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);--text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;--primary:#3b82f6;--primary-ink:#1d4ed8;--review:#0a9e6a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--base);color:var(--text);font:15px/1.45 -apple-system,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:max(14px,env(safe-area-inset-top)) 16px 40px}
+  h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+  .seg{display:flex;gap:6px;margin:0 0 16px;flex-wrap:wrap}
+  .seg button{border:1px solid var(--line);background:var(--surface);color:var(--muted);font:600 13px/1 inherit;padding:9px 12px;border-radius:999px}
+  .seg button.on{background:var(--primary);border-color:var(--primary);color:var(--on)}
+  h2{font-size:15px;margin:18px 0 6px}
+  .why{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .why b{color:var(--text);font-weight:600}
+
+  /* phone frame with the page under the popup */
+  .phone{position:relative;height:640px;border-radius:22px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .page{position:absolute;inset:0;padding:18px 16px}
+  .page h3{margin:0 0 12px;font-size:20px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;height:110px;margin-bottom:10px}
+  .dim{position:absolute;inset:0;background:rgba(5,8,18,.45)}
+  .nav{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;width:68%;height:52px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+
+  /* the popup: CenteredModal composer language */
+  .cm{position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);background:var(--surface);border-radius:18px;border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}
+  .cm.tall{height:78%}
+  .cm.short{height:auto}
+  .cm[hidden]{display:none}
+  .cm-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+  .cm-top button{border:0;background:none;font:600 15px inherit;color:var(--primary);padding:0}
+  .cm-top b{font-size:16px;letter-spacing:-.01em}
+  .cm-top .ghost{opacity:0;pointer-events:none}
+  .search{margin:14px 16px 0;display:flex;align-items:center;gap:10px;height:44px;border-radius:12px;background:var(--base);border:1px solid var(--line);padding:0 12px;color:var(--dim);font-size:15px}
+  .search.focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+  .search svg{flex:none}
+  .search .q{color:var(--text)}
+  .search .caret{width:1.5px;height:18px;background:var(--primary);margin-left:-6px;animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 16px 10px}
+  .recent{display:flex;gap:10px;padding:0 16px;overflow:hidden}
+  .recent .c{width:56px;height:76px;border-radius:8px;flex:none;position:relative;background:var(--surface2)}
+  .recent .c span{position:absolute;left:0;right:0;bottom:-18px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .list{margin:6px 0 0;padding:0 16px;list-style:none;overflow:auto;flex:1}
+  .row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border:0}
+  .row .cv{width:44px;height:60px;border-radius:7px;flex:none;background:var(--surface2)}
+  .row .t{font-weight:600;font-size:15px;line-height:1.2}
+  .row .m{font-size:12px;color:var(--muted);margin-top:2px}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px 44px;color:var(--muted);font-size:14px}
+  .empty svg{color:var(--dim);margin-bottom:12px}
+  .empty b{display:block;color:var(--text);font-weight:600;margin-bottom:2px;font-size:15px}
+  .hint{text-align:center;color:var(--dim);font-size:12px;padding:0 16px 16px}
+  .g1{background:linear-gradient(160deg,#2c3a6b,#6b2f7a)}.g2{background:linear-gradient(160deg,#7a2f2f,#2f6b5a)}.g3{background:linear-gradient(160deg,#2f5a7a,#2c3a6b)}.g4{background:linear-gradient(160deg,#5a2f7a,#7a6b2f)}
+  .spec{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>What did you play?</h1>
+<p class="sub">The game step for Write review, Journal and Log a session when no game is chosen yet. Same shell as every other box: Cancel · title, hairline, one field, grouped content, no footer button.</p>
+<div class="seg"><button class="on" data-s="empty">New account</button><button data-s="recent">Has recent games</button><button data-s="typing">Typing</button><button id="theme">Navy</button></div>
+
+<div class="phone">
+  <div class="page"><h3>Checkpoint</h3><div class="card"></div><div class="card"></div><div class="card"></div></div>
+  <div class="nav"></div>
+  <div class="dim"></div>
+
+  <!-- EMPTY (new account): short card, no dead space -->
+  <div class="cm short" id="st-empty">
+    <div class="cm-top"><button>Cancel</button><b>What did you play?</b><button class="ghost">Next</button></div>
+    <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search games</span></div>
+    <div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 12h4M9 10v4M15 11h.01M17 13h.01"/></svg><b>Find the game first</b>Search by title. Your recent games will show here once you have logged a few.</div>
+  </div>
+
+  <!-- RECENT -->
+  <div class="cm tall" id="st-recent" hidden>
+    <div class="cm-top"><button>Cancel</button><b>What did you play?</b><button class="ghost">Next</button></div>
+    <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search games</span></div>
+    <div class="label">Recently played</div>
+    <div class="recent"><div class="c g1"><span>Hades II</span></div><div class="c g2"><span>Mass Effect 2</span></div><div class="c g3"><span>BioShock</span></div><div class="c g4"><span>Half-Life</span></div><div class="c g1"><span>XCOM 2</span></div></div>
+    <div class="label" style="margin-top:34px">Your library</div>
+    <ul class="list">
+      <li class="row"><div class="cv g1"></div><div><div class="t">Hades II</div><div class="m">2024 · Currently Playing</div></div></li>
+      <li class="row"><div class="cv g2"></div><div><div class="t">Mass Effect 2</div><div class="m">2010 · Played</div></div></li>
+      <li class="row"><div class="cv g3"></div><div><div class="t">BioShock</div><div class="m">2007 · Played</div></div></li>
+      <li class="row"><div class="cv g4"></div><div><div class="t">Half-Life</div><div class="m">1998 · Backlog (Want to Play)</div></div></li>
+      <li class="row"><div class="cv g1"></div><div><div class="t">XCOM 2</div><div class="m">2016 · Played</div></div></li>
+    </ul>
+  </div>
+
+  <!-- TYPING -->
+  <div class="cm tall" id="st-typing" hidden>
+    <div class="cm-top"><button>Cancel</button><b>What did you play?</b><button class="ghost">Next</button></div>
+    <div class="search focus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="q">star wars</span><span class="caret"></span></div>
+    <div class="label">Results</div>
+    <ul class="list">
+      <li class="row"><div class="cv g3"></div><div><div class="t">Star Wars: Knights of the Old Republic</div><div class="m">2003 · BioWare</div></div></li>
+      <li class="row"><div class="cv g2"></div><div><div class="t">Star Wars Jedi: Fallen Order</div><div class="m">2019 · Respawn</div></div></li>
+      <li class="row"><div class="cv g1"></div><div><div class="t">Star Wars Battlefront II</div><div class="m">2005 · Pandemic</div></div></li>
+      <li class="row"><div class="cv g4"></div><div><div class="t">Star Wars Jedi: Survivor</div><div class="m">2023 · Respawn</div></div></li>
+      <li class="row"><div class="cv g3"></div><div><div class="t">The Force Unleashed</div><div class="m">2008 · LucasArts</div></div></li>
+    </ul>
+  </div>
+</div>
+
+<h2>What changes from today</h2>
+<p class="why">• The card is <b>as tall as its content</b> when there is nothing to show. No full-height empty box, no stranded Cancel at the bottom.<br>• Cancel is in the top bar, like every other box. The footer is gone.<br>• The empty text is a compact centered state with a line icon, not a left-flush sentence.<br>• With recent games, a cover row and the library list fill the card. Typing swaps the list for results in place; the card does not resize.<br>• The field does not focus itself. The keyboard comes up when you tap it, after the fade.<br>• Picking a game <b>does not close and reopen</b> anything: the same card crossfades to the review / journal / session form (240 ms), title changes to the game.</p>
+<div class="spec">Shell: CenteredModal, fade in 260 ms (scale .96 → 1), out 220 ms, no blur.
+Empty card: top bar 48 · field 44 · empty state ≈ 150 → about 290 pt tall, centered.
+Full card: 78% of the viewport (same as Ask), list scrolls inside.
+Row: 44×60 cover, title 15/600, meta 12 muted. Label: 11/700 uppercase, .08em.
+Tokens only: --bg-surface, --bg-base (field), --border-subtle, --text-*, --accent.</div>
+
+<script>
+const states=['empty','recent','typing'];
+document.querySelectorAll('.seg button[data-s]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.seg button[data-s]').forEach(x=>x.classList.toggle('on',x===b));states.forEach(s=>document.getElementById('st-'+s).hidden=(s!==b.dataset.s));});
+const th=document.getElementById('theme');th.onclick=()=>{document.body.classList.toggle('navy');th.textContent=document.body.classList.contains('navy')?'Cream':'Navy';};
+</script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkpoint Feel Demo</title>
+<style>
+  :root{
+    --base:#0a0f1f; --surface:#131a35; --surface2:#1a2240; --line:rgba(148,168,212,.12);
+    --text:#f0f3fa; --muted:#94a8d4; --dim:#6b7995; --primary:#3b82f6; --primary-ink:#1d4ed8;
+    --review:#0a9e6a; --review-ink:#067a52; --journal:#8b32d1; --journal-ink:#6b21a8; --on:#fff;
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--base);color:var(--text);font:15px/1.45 -apple-system,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:max(14px,env(safe-area-inset-top)) 16px 40px}
+  h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .seg{display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin:0 0 18px;position:sticky;top:8px;z-index:20}
+  .seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 14px/1 inherit;padding:11px 0;border-radius:9px}
+  .seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  section{margin:0 0 26px}
+  h2{font-size:16px;margin:0 0 2px}
+  .why{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .why b{color:var(--text);font-weight:600}
+  .phone{position:relative;height:300px;border-radius:18px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .bar{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line);position:absolute;bottom:0;left:0;right:0;background:var(--surface);z-index:5}
+  .bar button{flex:1;border:0;border-radius:10px;padding:9px 0;font:600 13px inherit;background:var(--surface2);color:var(--text)}
+  .bar button.go{background:var(--primary);color:var(--on)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--surface2);color:var(--muted);margin-bottom:8px}
+  .tag.today{color:#f87171}.tag.prop{color:#3fd19b}
+  .timing{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;white-space:pre-wrap;min-height:40px}
+  .try{font-size:12.5px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:0 0 10px}
+  .try b{color:#7fb0ff}
+
+  /* ================= 1. TAB SWITCH (real app shape) ================= */
+  .tphone{position:relative;height:560px;border-radius:22px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .tpage{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px 96px;background:var(--base);visibility:hidden;opacity:0}
+  .tpage.on{visibility:visible;opacity:1;z-index:2}
+  .tpage.leaving{visibility:visible;z-index:1}
+  .tpage h3{margin:2px 0 12px;font-size:20px;letter-spacing:-.02em}
+  .lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:16px 0 8px}
+  .blk{background:var(--surface);border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden}
+  .ln{height:11px;border-radius:6px;background:var(--surface2)}
+  .tx{font-size:13px;line-height:1.3}
+  .tx b{display:block;font-size:14px}
+  .tx span{color:var(--muted);font-size:12px}
+  .cv{border-radius:8px;flex:none;position:relative;overflow:hidden;background:var(--surface2)}
+  .cv i{position:absolute;inset:0;display:block}
+  .a1 i{background:linear-gradient(165deg,#24365e,#0f1a33)} .a2 i{background:linear-gradient(165deg,#3b2a55,#161126)}
+  .a3 i{background:linear-gradient(165deg,#1f4a46,#0d1f1d)} .a4 i{background:linear-gradient(165deg,#4a2a3a,#1c0f16)}
+  .a5 i{background:linear-gradient(165deg,#2c3f4f,#11181f)} .a6 i{background:linear-gradient(165deg,#2a3a2a,#101810)}
+  .fill{transition:none}
+  .np{display:flex;gap:12px;padding:12px}
+  .feed{display:flex;gap:12px;padding:12px;margin-bottom:10px}
+  .hero{height:250px;margin-bottom:12px}
+  .strip{display:flex;gap:8px}
+  .qrow{padding:12px;margin-bottom:8px}
+  .segm{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:12px}
+  .segm span{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;color:var(--muted)}
+  .segm span.on{background:var(--surface);color:var(--text)}
+  .counts{display:flex;gap:6px;margin-bottom:12px}
+  .counts div{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:10px;text-align:center;padding:8px 0}
+  .counts b{display:block;font-size:16px;height:20px}
+  .counts span{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid .cv{aspect-ratio:3/4;width:auto}
+  .phead{display:flex;gap:12px;align-items:center;padding:14px;margin-bottom:10px}
+  .av{width:48px;height:48px;border-radius:50%;background:var(--primary);display:grid;place-items:center;font-weight:700;color:#fff}
+  .bars{display:flex;align-items:flex-end;gap:5px;height:70px;padding:12px}
+  .bars div{flex:1;background:var(--surface2);border-radius:4px 4px 0 0}
+  .bars div.hi{background:var(--primary)}
+  /* placeholder state: real sizes, content hidden */
+  .ph .cv i,.ph .fade{opacity:0}
+  .ph .tx b,.ph .tx span,.ph .counts b{color:transparent;background:var(--surface2);border-radius:5px}
+  .skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);transform:translateX(-100%);animation:sh 1.3s infinite}
+  @keyframes sh{to{transform:translateX(100%)}}
+
+  /* the real floating pill nav */
+  .tnav{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:300px;height:56px;border-radius:28px;background:var(--surface);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;padding:6px;z-index:10}
+  .tnav button{position:relative;z-index:2;flex:1;border:0;background:none;color:var(--muted);display:grid;place-items:center;border-radius:22px;transition:color 200ms ease}
+  .tnav button.act{color:#fff}
+  .tnav svg{width:22px;height:22px}
+  .tpill{position:absolute;z-index:1;top:6px;left:6px;height:44px;width:57.6px;border-radius:22px;background-color:var(--primary);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  
+
+  /* ================= 2-4 (approved) ================= */
+  .screen{position:absolute;inset:0 0 50px;padding:14px 14px 0;background:var(--base)}
+  .ttl{font-weight:700;font-size:17px;margin:0 0 10px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;height:120px;margin-bottom:10px;overflow:hidden;position:relative}
+  .cover{position:absolute;inset:0;background:linear-gradient(165deg,#24365e,#0f1a33)}
+  .stats{display:flex;gap:8px;margin-bottom:10px}
+  .stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 0;text-align:center}
+  .stat b{display:block;font-size:18px;line-height:1.1}
+  .stat span{font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+  .dim{position:absolute;inset:0;background:rgba(5,8,18,.55);opacity:0;pointer-events:none}
+  .pop{position:absolute;left:18px;right:18px;top:40px;bottom:90px;background:var(--surface);border:1px solid var(--line);border-radius:18px;opacity:0;transform:scale(.96);pointer-events:none;padding:14px}
+  .pop .hd{display:flex;justify-content:space-between;font-size:14px;color:var(--primary);font-weight:600;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .pop .hd b{color:var(--text)}
+  .pop .field{height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);margin-top:12px}
+  .pop .field.tall{height:70px}
+  .blur{position:absolute;inset:0;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);opacity:0;pointer-events:none}
+  .sheet{position:absolute;left:0;right:0;bottom:50px;background:var(--surface);border-radius:18px 18px 0 0;border-top:1px solid var(--line);padding:10px 16px 16px;transform:translateY(110%)}
+  .grab{width:36px;height:4px;border-radius:2px;background:var(--surface2);margin:0 auto 12px}
+  .opt{padding:13px 4px;border-bottom:1px solid var(--line);font-size:15px}
+  .opt:last-child{border:0}
+  .layer{position:absolute;inset:0 0 50px;background:var(--base)}
+  .layer.front{transform:translateX(100%);box-shadow:-10px 0 28px rgba(0,0,0,.35)}
+  .pushdim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+  .ghero{height:140px;border-radius:14px;background:linear-gradient(165deg,#24365e,#0f1a33);margin-bottom:10px}
+  .ptitle{font-weight:700;font-size:18px}
+  .pmeta{color:var(--muted);font-size:12px;margin-bottom:10px}
+  .pill{display:inline-block;padding:6px 12px;border-radius:999px;background:var(--surface2);font-size:12px;margin-right:6px}
+</style>
+</head>
+<body>
+<h1>How it should feel</h1>
+<p class="sub">Flip Today / Proposed at the top. Sections 2–4 are the versions you already approved.</p>
+
+<div class="seg" id="seg"><button data-m="today" class="on">Today</button><button data-m="prop">Proposed</button></div>
+
+<!-- ================= 1. TAB SWITCH ================= -->
+<section>
+  <span class="tag today">Today</span>
+  <h2>1 · Switching tabs</h2>
+  <p class="why">Three things change: the <b>pill glides</b> to the tab you tapped instead of jumping, the screens <b>crossfade</b> (the new one settles up a few points while the old one fades out), and every tab is <b>kept alive</b>, so coming back is instant, complete and at the same scroll position.</p>
+  <div class="try">Try: tap <b>Discover</b>, <b>Profile</b>, <b>Library</b>. Scroll Library down, go to Home, come back to Library. Do it once in Today, then once in Proposed.</div>
+  <div class="tphone" id="tphone">
+    <div id="pages"></div>
+    <nav class="tnav" id="tnav">
+      <span class="tpill" id="tpill"></span>
+      <button data-tab="home" class="act" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+      <button data-tab="discover" aria-label="Discover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></button>
+      <button data-tab="qa" aria-label="Q&amp;A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+      <button data-tab="library" aria-label="Library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V4a2 2 0 0 1 2-2h11"/><path d="M22 18H11a2 2 0 1 0 0 4h10.5a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5H11a2 2 0 0 0-2 2v12"/><path d="M5 14H4a2 2 0 1 0 0 4h1"/></svg></button>
+      <button data-tab="profile" aria-label="Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></button>
+    </nav>
+  </div>
+  <div class="timing" id="t1"></div>
+</section>
+
+<!-- ================= 2. POPUP ================= -->
+<section>
+  <span class="tag today">Today</span>
+  <h2>2 · A box you type in</h2>
+  <p class="why">Today: 180 ms in, <b>120 ms out</b>, and a full-screen blur that <b>snaps on</b> the first frame (uncommitted on your Mac). Proposed: 260 ms in, 220 ms out, the same iOS curve the pages use, the dim fades with the card, no blur.</p>
+  <div class="phone" id="p2">
+    <div class="screen"><p class="ttl">Game</p><div class="ghero"></div><span class="pill">Played</span><span class="pill">8.5 h</span></div>
+    <div class="blur" id="blur2"></div>
+    <div class="dim" id="dim2"></div>
+    <div class="pop" id="pop2"><div class="hd"><span>Cancel</span><b>Write review</b><span>Post</span></div><div class="field"></div><div class="field tall"></div></div>
+    <div class="bar"><button class="go" id="open2">Open</button><button id="close2">Close</button></div>
+  </div>
+  <div class="timing" id="t2"></div>
+</section>
+
+<!-- ================= 3. SHEET ================= -->
+<section>
+  <span class="tag today">Today</span>
+  <h2>3 · A menu from the bottom</h2>
+  <p class="why">Today the dim snaps and the sheet closes on the same curve it opened on, so it springs back. Proposed: the dim fades with it, and it closes in 280 ms on an ease-in, so it leaves.</p>
+  <div class="phone" id="p3">
+    <div class="screen"><p class="ttl">Library</p><div class="card"></div><div class="card"></div></div>
+    <div class="dim" id="dim3"></div>
+    <div class="sheet" id="sheet3"><div class="grab"></div><div class="opt">Edit</div><div class="opt">Share</div><div class="opt">Move to Backlog (Want to Play)</div><div class="opt" style="color:#f87171">Delete</div></div>
+    <div class="bar"><button class="go" id="open3">Open</button><button id="close3">Close</button></div>
+  </div>
+  <div class="timing" id="t3"></div>
+</section>
+
+<!-- ================= 4. PUSH ================= -->
+<section>
+  <span class="tag today">Today</span>
+  <h2>4 · Opening a game</h2>
+  <p class="why">The slide was already right. What changes: the cover and title travel with the page from the card you tapped, and anything still loading fades into a box that is already the right size.</p>
+  <div class="phone" id="p4">
+    <div class="layer" id="under4"><div class="screen" style="inset:0"><p class="ttl">Home</p><div class="card"><div class="cover"></div></div><div class="card"></div></div></div>
+    <div class="pushdim" id="pdim4"></div>
+    <div class="layer front" id="front4"><div class="screen" style="inset:0"><div class="ghero" id="hero4"></div><div class="ptitle">Hades II</div><div class="pmeta">2024 · Supergiant</div><div class="stats"><div class="stat"><b id="n1">—</b><span>Hours</span></div><div class="stat"><b id="n2">—</b><span>Rating</span></div><div class="stat"><b id="n3">—</b><span>Friends</span></div></div></div></div>
+    <div class="bar"><button class="go" id="push4">Open game</button><button id="back4">Back</button></div>
+  </div>
+  <div class="timing" id="t4"></div>
+</section>
+
+<script>
+const EASE='cubic-bezier(.32,.72,0,1)', EASE_IN='cubic-bezier(.4,0,1,1)', EASE_OUT='cubic-bezier(.2,.8,.2,1)', FADE='cubic-bezier(.25,.1,.25,1)';
+let mode='today';
+const $=s=>document.querySelector(s);
+const seg=$('#seg');
+seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;[...seg.children].forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.tag').forEach(t=>{t.textContent=mode==='today'?'Today':'Proposed';t.className='tag '+mode});resetAll();});
+
+/* ================= 1. TABS ================= */
+const ORDER=['home','discover','qa','library','profile'];
+const PILL_GRAD={home:'linear-gradient(135deg,var(--primary),var(--review))',discover:'linear-gradient(135deg,var(--journal),var(--primary))',qa:'linear-gradient(135deg,var(--journal),var(--review))',library:'linear-gradient(135deg,var(--review),var(--primary))',profile:'linear-gradient(135deg,var(--journal),var(--primary))'};
+const pagesEl=$('#pages'), pill=$('#tpill'), t1=$('#t1'), nav=$('#tnav');
+let current='home', kept={}, visited=new Set(['home']), switching=0;
+
+const cv=(c,w,h)=>`<div class="cv ${c}" style="width:${w}px;height:${h}px"><i class="fade"></i></div>`;
+function tmpl(tab){
+  switch(tab){
+  case 'home': return `<h3>Checkpoint</h3>
+    <div class="blk np">${cv('a1',58,78)}<div class="tx" style="align-self:center"><span style="font-size:10.5px;letter-spacing:.08em;color:#7fb0ff;font-weight:700">NOW PLAYING</span><b>Hades II</b><span>12 h · 3 sessions</span></div></div>
+    <div class="lbl">The pulse</div>
+    ${['XCOM 2·theantifail finished','Portal 2·gentenstation rated 9','Mina the Hollower·theantifail finished','BioShock·mara wrote a review'].map((r,i)=>{const [g,w]=r.split('·');return `<div class="blk feed">${cv('a'+(i%6+2),44,60)}<div class="tx"><b>${g}</b><span>${w}</span></div></div>`}).join('')}`;
+  case 'discover': return `<h3>Discover</h3>
+    <div class="blk hero">${''}<div class="cv a2" style="position:absolute;inset:0;border-radius:0"><i class="fade"></i></div><div class="tx fade" style="position:absolute;left:14px;bottom:14px;right:14px"><b>Prince of Persia: The Forgotten Sands</b><span>2010 · Platform, Hack and slash</span></div></div>
+    <div class="lbl">This week's drop · One more turn</div>
+    <div class="strip">${['a3','a4','a5','a1'].map(c=>cv(c,70,94)).join('')}</div>
+    <div class="lbl">New &amp; notable</div>
+    <div class="strip">${['a6','a2','a1','a4'].map(c=>cv(c,70,94)).join('')}</div>`;
+  case 'qa': return `<h3>Q&amp;A</h3>
+    <div class="segm"><span class="on">Unanswered</span><span>Answered</span><span>Mine</span></div>
+    ${['Where is the third key in the Temple of Light?','Best early build for a first run?','Is the DLC worth it before the ending?','How do I unlock the hidden boss?','Any missable trophies in chapter 4?'].map((q,i)=>`<div class="blk qrow"><div class="tx"><b>${q}</b><span>${['Zelda: TotK','Hades II','Elden Ring','Hollow Knight','Uncharted 4'][i]} · ${i+1} h ago</span></div></div>`).join('')}`;
+  case 'library': return `<h3>Library</h3>
+    <div class="segm"><span class="on">My Games</span><span>Lists</span></div>
+    <div class="counts"><div><b>4</b><span>Backlog</span></div><div><b>1</b><span>Playing</span></div><div><b>14</b><span>Played</span></div><div><b>2</b><span>Dropped</span></div></div>
+    <div class="grid">${Array.from({length:21},(_,i)=>`<div class="cv a${i%6+1}"><i class="fade"></i></div>`).join('')}</div>`;
+  case 'profile': return `<h3>&nbsp;</h3>
+    <div class="blk phead"><div class="av">T</div><div class="tx"><b>tester1</b><span>12 followers · 9 following</span></div></div>
+    <div class="counts"><div><b>21</b><span>Games</span></div><div><b>14</b><span>Played</span></div><div><b>6</b><span>Reviews</span></div><div><b>3.9</b><span>Avg</span></div></div>
+    <div class="lbl">Favorite games</div>
+    <div class="strip">${['a1','a3','a2'].map(c=>cv(c,84,112)).join('')}</div>
+    <div class="taste-slot"></div>
+    <div class="lbl">How I rate</div>
+    <div class="blk bars">${[1,1,2,3,5,7,9,6,3,2].map((h,i)=>`<div class="${i===6?'hi':''}" style="height:${h*7}px"></div>`).join('')}</div>
+    <div class="lbl">Badges</div>
+    <div class="blk" style="height:80px"></div>`;
+  }
+}
+
+function makePage(tab){const d=document.createElement('div');d.className='tpage';d.dataset.tab=tab;d.innerHTML=tmpl(tab);pagesEl.appendChild(d);return d;}
+function setLoaded(page,instantPop){ // reveal content
+  page.classList.remove('ph');page.querySelectorAll('.skel').forEach(s=>s.classList.remove('skel'));
+}
+function placeholder(page){page.classList.add('ph');page.querySelectorAll('.blk,.cv').forEach(b=>b.classList.add('skel'));}
+
+function movePill(tab,animate){
+  const i=ORDER.indexOf(tab);const w=(nav.clientWidth-12)/5;
+  pill.style.width=w+'px';
+  pill.style.transition=animate?`transform 340ms ${EASE}, background-color 260ms ease`:'none';
+  pill.style.transform=`translateX(${i*w}px)`;pill.style.backgroundImage=PILL_GRAD[tab];
+  [...nav.querySelectorAll('button')].forEach(b=>b.classList.toggle('act',b.dataset.tab===tab));
+}
+
+function switchToday(tab){
+  const gen=++switching;
+  movePill(tab,false);
+  pagesEl.innerHTML=''; kept={};               // tab roots are not kept alive: remount every time
+  const p=makePage(tab); p.classList.add('on'); p.scrollTop=0;
+  const first=!visited.has(tab); visited.add(tab);
+  if(first && tab!=='home'){
+    placeholder(p);
+    if(tab==='profile'){ const s=p.querySelector('.taste-slot'); s.innerHTML='<div class="lbl">Your taste</div><div class="blk skel" style="height:90px"></div>'; }
+    t1.textContent=`Today · ${tab}: pill jumps · hard cut to placeholders · 1400 ms · content pops in with no fade`+(tab==='profile'?' · "Your taste" block removed, page jumps up 110 px':'');
+    setTimeout(()=>{ if(gen!==switching)return; setLoaded(p); if(tab==='profile'){p.querySelector('.taste-slot').innerHTML='';} },1400);
+  }else{
+    // revisit: cached data, but the remount re-decodes every image and resets scroll
+    p.querySelectorAll('.cv i').forEach(i=>i.style.opacity=0);
+    t1.textContent=`Today · ${tab}: pill jumps · hard cut · remounted at the top · covers blank for a moment, then pop`;
+    setTimeout(()=>{ if(gen!==switching)return; p.querySelectorAll('.cv i').forEach(i=>i.style.opacity=1); },170);
+  }
+  current=tab;
+}
+
+function switchProp(tab){
+  if(tab===current) return;
+  const gen=++switching;
+  movePill(tab,true);
+  const out=kept[current];
+  let inc=kept[tab]; let first=false;
+  if(!inc){ inc=makePage(tab); kept[tab]=inc; first=!visited.has(tab); visited.add(tab); if(first&&tab!=='home') placeholder(inc); }
+  // outgoing: fade out in place, keeps its scroll position
+  if(out){ out.classList.remove('on'); out.classList.add('leaving'); out.style.transition=`opacity 200ms ${FADE}`; out.style.opacity=0; out.style.transform='none';
+    setTimeout(()=>{ if(gen!==switching)return; out.classList.remove('leaving'); out.style.transition='none'; },220); }
+  // incoming: fade in and settle up 8 px
+  inc.style.transition='none'; inc.style.opacity=0; inc.style.transform='translateY(8px)'; inc.classList.add('on');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ inc.style.transition=`opacity 300ms ${FADE}, transform 340ms ${EASE}`; inc.style.opacity=1; inc.style.transform='translateY(0)'; }));
+  if(first && tab!=='home'){
+    t1.textContent=`Proposed · first visit to ${tab}: pill glides 340 ms · screen fades in 300 ms at its real size · content crossfades in when it arrives (240 ms) · nothing moves`;
+    setTimeout(()=>{ if(gen!==switching&&kept[tab]!==inc)return;
+      inc.querySelectorAll('.cv i,.fade').forEach(el=>{el.style.transition=`opacity 240ms ${EASE}`;});
+      inc.querySelectorAll('.tx b,.tx span,.counts b').forEach(el=>{el.style.transition='color 240ms ease, background-color 240ms ease';});
+      setLoaded(inc);
+      inc.querySelectorAll('.cv i,.fade').forEach(el=>{el.style.opacity=1;});
+    },600);
+  }else{
+    t1.textContent=`Proposed · ${tab}: pill glides 340 ms · old screen fades out 200 ms · ${tab} fades in 300 ms and settles 8 pt over 340 ms · kept alive: complete, same scroll position`;
+  }
+  current=tab;
+}
+
+nav.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const tab=b.dataset.tab;if(tab===current&&mode==='today')return;(mode==='today'?switchToday:switchProp)(tab);});
+
+function resetTabs(){
+  switching++; pagesEl.innerHTML=''; kept={}; visited=new Set(['home']); current='home';
+  const p=makePage('home'); p.classList.add('on'); kept.home=p; movePill('home',false); t1.textContent='';
+}
+
+/* ================= 2. POPUP ================= */
+const pop=$('#pop2'),dim=$('#dim2'),blur=$('#blur2'),t2=$('#t2');
+function openPop(){
+  const inMs = mode==='today'?180:260;
+  pop.style.transition=`opacity ${inMs}ms ${EASE}, transform ${inMs}ms ${EASE}`;
+  dim.style.transition=`opacity ${inMs}ms ${EASE}`;
+  pop.style.opacity=1;pop.style.transform='scale(1)';dim.style.opacity=1;
+  if(mode==='today'){blur.style.transition='none';blur.style.opacity=1;t2.textContent='Today · card 180 ms, dim 180 ms, blur snaps on at 0 ms.';}
+  else{blur.style.opacity=0;t2.textContent='Proposed · card 260 ms scale .96→1 + dim 260 ms. No blur. Keyboard only after the fade.';}
+}
+function closePop(){
+  const outMs = mode==='today'?120:220;
+  const ease = mode==='today'?EASE:EASE_IN;
+  pop.style.transition=`opacity ${outMs}ms ${ease}, transform ${outMs}ms ${ease}`;
+  dim.style.transition=`opacity ${outMs}ms ${ease}`;
+  pop.style.opacity=0;pop.style.transform='scale(.98)';dim.style.opacity=0;blur.style.opacity=0;
+  t2.textContent=(mode==='today'?'Today · close 120 ms. That is the cut you feel.':'Proposed · close 220 ms, ease-in, dim leaves with it.');
+}
+$('#open2').onclick=openPop;$('#close2').onclick=closePop;
+
+/* ================= 3. SHEET ================= */
+const sh=$('#sheet3'),d3=$('#dim3'),t3=$('#t3');
+$('#open3').onclick=()=>{
+  sh.style.transition=`transform 340ms ${EASE}`;sh.style.transform='translateY(0)';
+  if(mode==='today'){d3.style.transition='none';d3.style.opacity=1;t3.textContent='Today · sheet 340 ms, dim snaps.';}
+  else{d3.style.transition=`opacity 340ms ${EASE}`;d3.style.opacity=1;t3.textContent='Proposed · sheet 340 ms, dim fades with it.';}
+};
+$('#close3').onclick=()=>{
+  if(mode==='today'){sh.style.transition=`transform 340ms ${EASE}`;d3.style.transition='none';t3.textContent='Today · closes on the open curve: springs back.';}
+  else{sh.style.transition=`transform 280ms ${EASE_IN}`;d3.style.transition=`opacity 280ms ${EASE_IN}`;t3.textContent='Proposed · 280 ms ease-in: it leaves.';}
+  sh.style.transform='translateY(110%)';d3.style.opacity=0;
+};
+
+/* ================= 4. PUSH ================= */
+const fr=$('#front4'),un=$('#under4'),pd=$('#pdim4'),t4=$('#t4'),hero=$('#hero4');
+function resetPush(){fr.style.transition='none';un.style.transition='none';pd.style.transition='none';fr.style.transform='translateX(100%)';un.style.transform='none';pd.style.opacity=0;hero.style.opacity=mode==='today'?0:1;['n1','n2','n3'].forEach(id=>{$('#'+id).textContent='—';$('#'+id).style.opacity=1});}
+$('#push4').onclick=()=>{
+  resetPush();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    fr.style.transition=`transform 340ms ${EASE}`;un.style.transition=`transform 340ms ${EASE}`;pd.style.transition=`opacity 340ms ${EASE}`;
+    fr.style.transform='translateX(0)';un.style.transform='translateX(-30%)';pd.style.opacity=.12;
+    if(mode==='today'){t4.textContent='Today · slide 340 ms (fine) → cover pops at 700 ms → numbers pop at 1100 ms.';setTimeout(()=>{hero.style.transition='none';hero.style.opacity=1},700);setTimeout(()=>{['8.5 h','9','3'].forEach((v,i)=>$('#n'+(i+1)).textContent=v)},1100);}
+    else{t4.textContent='Proposed · cover + title travel with the page. Numbers crossfade 240 ms into boxes already sized.';setTimeout(()=>{['n1','n2','n3'].forEach((id,i)=>{const e=$('#'+id);e.style.transition=`opacity 240ms ${EASE}`;e.style.opacity=0;setTimeout(()=>{e.textContent=['8.5 h','9','3'][i];e.style.opacity=1},60)})},500);}
+  }));
+};
+$('#back4').onclick=()=>{fr.style.transition=`transform 340ms ${EASE}`;un.style.transition=`transform 340ms ${EASE}`;pd.style.transition=`opacity 340ms ${EASE}`;fr.style.transform='translateX(100%)';un.style.transform='none';pd.style.opacity=0;t4.textContent='Back: the exact reverse, 340 ms.';};
+
+function resetAll(){resetTabs();closePop();$('#close3').onclick();resetPush();t2.textContent='';t3.textContent='';t4.textContent='';}
+window.addEventListener('resize',()=>movePill(current,false));
+resetTabs();resetPush();
+</script>
+</body>
+</html>
