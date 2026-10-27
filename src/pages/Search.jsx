@@ -47,7 +47,6 @@ import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { hapticImpact } from '../utils/haptics'
-import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import { useCachedResource } from '../hooks/useCachedResource'
 import { qaSearch, qaSearchKey } from '../services/qaService'
 import QaQuestionListRow from './qa/QaQuestionListRow'
@@ -66,8 +65,10 @@ const TABS = [
   { id: 'lists', label: 'Lists' },
 ]
 
-// Appended only while the 'qa' flag is on for the viewer.
+// Always the last tab, for every account. Q&A is built in, so the tab strip
+// never waits on a flag read and never changes length after first paint.
 const QUESTIONS_TAB = { id: 'questions', label: 'Questions' }
+const SEARCH_TABS = [...TABS, QUESTIONS_TAB]
 
 // Submit-on-pause window. A term only counts as something the user
 // actually searched — and so only earns a place in Recent Searches — once
@@ -1195,12 +1196,6 @@ function Search() {
   const blurTimerRef = useRef(null)
   const submitTimerRef = useRef(null)
   const [activeTab, setActiveTab] = useState('all')
-  const qaOn = useFlagEnabled('qa')
-  const tabs = useMemo(() => (qaOn ? [...TABS, QUESTIONS_TAB] : TABS), [qaOn])
-  // The flag can drop while the tab is open (resume refreshes it).
-  useEffect(() => {
-    if (!qaOn && activeTab === 'questions') setActiveTab('all')
-  }, [qaOn, activeTab])
   // Entry points that already know what the user is looking for (the desktop
   // TopNav field, a shared /search?q= link) hand the term over in the URL.
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
@@ -1280,7 +1275,7 @@ function Search() {
   // Questions tab — the same qa_search RPC and cache key the Q&A search
   // screen uses, so a term searched in either is warm in the other.
   const { tick: qaHideTick } = useQaHides()
-  const questionsActive = activeTab === 'questions' && qaOn && !!committedQuery
+  const questionsActive = activeTab === 'questions' && !!committedQuery
   const {
     data: questionsData,
     error: questionsError,
@@ -1677,7 +1672,7 @@ function Search() {
 
         {/* Tab bar sits below the input, above the content. */}
         <div className="sp-tabs" role="tablist" aria-label="Search categories">
-          {tabs.map((tab) => (
+          {SEARCH_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -1855,8 +1850,8 @@ function Search() {
           </>
         )}
 
-        {/* QUESTIONS TAB (flag-gated) */}
-        {activeTab === 'questions' && qaOn && (
+        {/* QUESTIONS TAB */}
+        {activeTab === 'questions' && (
           <>
             {!hasQuery && <QuestionsTabEmpty />}
             {hasQuery && (

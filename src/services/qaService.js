@@ -125,13 +125,6 @@ async function requireUser() {
   }
 }
 
-async function assertQaFlag() {
-  const enabled = await isFlagEnabled('qa')
-  if (enabled) return null
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return fail('offline')
-  return fail('flag_off')
-}
-
 async function questionVisible(questionId) {
   try {
     const { data, error } = await supabase
@@ -224,12 +217,12 @@ export function qaUserBestAnswers(userId, limit = 100) {
 }
 
 /**
- * Just the number for the profile line. Never throws: a failed or flagged-off
+ * Just the number for the profile line. Never throws: a failed
  * read is 0, and 0 hides the line rather than showing a guessed number.
  */
 export async function qaUserBestCount(userId) {
   try {
-    if (!userId || !(await isFlagEnabled('qa'))) return 0
+    if (!userId) return 0
     const data = await qaUserBestAnswers(userId, 0)
     const n = Number(data?.count)
     return Number.isFinite(n) && n > 0 ? n : 0
@@ -243,13 +236,12 @@ export async function qaUserBestCount(userId) {
  * { kind: 'asked' | 'best', event_at, question_id, title, igdb_game_id,
  * game_title, game_cover_image_id, actor }. No bodies, so a spoiler question
  * can only ever show its title. Report auto-hide and the 'qa' flag are
- * enforced inside the RPC; the flag is also checked here to skip the call.
+ * enforced inside the RPC.
  *
  * Soft-fails to []: the Pulse must render without Q&A, never the other way.
  */
 export async function qaPulse(limit = 6) {
   try {
-    if (!(await isFlagEnabled('qa'))) return []
     const data = await callRpc('qa_pulse', { p_limit: limit })
     return Array.isArray(data) ? data : []
   } catch {
@@ -268,9 +260,6 @@ export async function qaPulse(limit = 6) {
 export async function askQuestion({ game, topic, title, body = '', platform = null, location = null, isSpoiler = false }) {
   const who = await requireUser()
   if (who.error) return who
-  const flagged = await assertQaFlag()
-  if (flagged) return flagged
-
   const snap = snapshotGame(game)
   if (!snap || !topic || !title) return fail('invalid')
 
@@ -366,8 +355,6 @@ export async function deleteQuestion(id, { igdbGameId } = {}) {
 export async function postAnswer({ questionId, body, isSpoiler = false, replyToUserId = null, igdbGameId = null }) {
   const who = await requireUser()
   if (who.error) return who
-  const flagged = await assertQaFlag()
-  if (flagged) return flagged
   if (!questionId || !body) return fail('invalid')
 
   const row = {

@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { getHomeFeed } from '../services/communityService'
 import { qaPulse } from '../services/qaService'
 import { coverUrlFromImageId } from '../services/igdb'
-import { useFlagEnabled } from './useFlagEnabled'
 import { isQaQuestionHidden, useQaHides } from '../pages/qa/qaHides'
 import { ACTIVITY_EVENT_LOGGED, PULSE_ITEM_REMOVED, emitPulseItemRemoved } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
@@ -183,9 +182,6 @@ const FEED_TTL_MS = 60 * 1000
  */
 export function useHomeFeed({ pageSize = 15 } = {}) {
   const { user } = useAuth()
-  // Before any effect that loads the feed: the flag read it starts is the one
-  // the Q&A fetch below joins, so the flag is known before rows are set.
-  const qaOn = useFlagEnabled('qa')
   const { tick: qaHideTick } = useQaHides()
 
   // Page 1 goes through the shared cache so returning to Home shows the
@@ -353,14 +349,14 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     return () => window.removeEventListener(PULSE_ITEM_REMOVED, onPulseItemRemoved)
   }, [user?.id, pageSize])
 
-  // Q&A rows ride in the cached page, so turning the flag off (or reporting a
-  // question) has to take effect here rather than wait for a refetch.
+  // Q&A rows ride in the cached page, so reporting a question has to take
+  // effect here rather than wait for a refetch.
   const visibleItems = useMemo(
     () =>
       items.some(isQaPulseItem)
-        ? items.filter((it) => !isQaPulseItem(it) || (qaOn && !isQaQuestionHidden(it.qa.questionId)))
+        ? items.filter((it) => !isQaPulseItem(it) || !isQaQuestionHidden(it.qa.questionId))
         : items,
-    [items, qaOn, qaHideTick]
+    [items, qaHideTick]
   )
 
   return { items: visibleItems, loading, loadingMore, hasMore, scope, error, refresh, loadMore }

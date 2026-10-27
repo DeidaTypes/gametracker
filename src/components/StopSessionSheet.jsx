@@ -17,7 +17,6 @@ import { hapticSuccess } from '../utils/haptics'
 import CenteredModal from './CenteredModal'
 import { ugcErrorMessage } from '../services/moderationService'
 import { getGamesFromList } from '../services/libraryService'
-import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import { openQaAsk, qaGamePreset } from '../pages/qa/qaComposer'
 import './forms/forms.css'
 import './StopSessionSheet.css'
@@ -77,7 +76,6 @@ export default function StopSessionSheet() {
   const lastResultRef = useRef(null)
   if (stopResult) lastResultRef.current = stopResult
   const result = stopResult || lastResultRef.current
-  const qaOn = useFlagEnabled('qa')
 
   // Reset state whenever a new result arrives
   useEffect(() => {
@@ -104,7 +102,7 @@ export default function StopSessionSheet() {
     image: libraryCover(result.igdbGameId),
   }
   // No usable IGDB id (or title) means Ask could not name the game: no link.
-  const canAsk = qaOn && qaGamePreset(askGame) != null
+  const canAsk = qaGamePreset(askGame) != null
 
   // Open Ask inside the tap (it raises the keyboard in the same gesture), then
   // close this sheet the way Done does so a typed note is still saved.

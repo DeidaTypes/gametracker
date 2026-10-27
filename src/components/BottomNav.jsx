@@ -4,7 +4,6 @@ import { motion } from 'motion/react'
 import { House, Compass, BookCopy, User, MessageCircleQuestionMark as MessageCircleQuestion } from 'lucide-react'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
 import { useAuth } from '../contexts/AuthContext'
-import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import { peekSWR, subscribeSWR } from '../services/swrCache'
 import { qaHomeKey } from '../services/qaService'
 import { hapticImpact } from '../utils/haptics'
@@ -20,8 +19,8 @@ export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
 /**
  * Cobalt-Modern floating-pill bottom navigation.
  *
- * Icon-only tabs (Home, Discover, Library, Profile — plus Q&A when the
- * `qa` flag is on for this user) sit in a centered pill that floats
+ * Icon-only tabs (Home, Discover, Q&A, Library, Profile — Q&A is built in
+ * for every account, no flag read) sit in a centered pill that floats
  * 12 px above the bottom of the viewport. The active tab
  * is highlighted with a pill that visually slides from the previously-active
  * tab via Framer Motion's `layoutId` shared element. The nav bar chrome
@@ -122,6 +121,9 @@ const QA_ITEM = {
   isActive: (path) => path === '/qa' || (path.startsWith('/qa/') && tabOrigin === 'qa'),
 }
 
+// Home, Discover, Q&A, Library, Profile. Fixed for every account.
+const FIVE_ITEMS = [NAV_ITEMS[0], NAV_ITEMS[1], QA_ITEM, NAV_ITEMS[2], NAV_ITEMS[3]]
+
 function inboxHasNew(data) {
   return data?.inbox_has_new === true
 }
@@ -130,7 +132,6 @@ function BottomNav({ scrollHidden = false }) {
   const location = useLocation()
   const { user } = useAuth()
   const { unreadCount } = useUnreadMessages()
-  const qaEnabled = useFlagEnabled('qa')
   const homeKey = qaHomeKey(user?.id)
   const [inboxNew, setInboxNew] = useState(() => inboxHasNew(homeKey ? peekSWR(homeKey) : undefined))
   const [dragReorderActive, setDragReorderActive] = useState(false)
@@ -167,9 +168,6 @@ function BottomNav({ scrollHidden = false }) {
   const pillTransition = { duration: 0 }
 
   const visuallyHidden = dragReorderActive || scrollHidden
-  const items = qaEnabled
-    ? [NAV_ITEMS[0], NAV_ITEMS[1], QA_ITEM, NAV_ITEMS[2], NAV_ITEMS[3]]
-    : NAV_ITEMS
 
   return (
     <>
@@ -178,13 +176,13 @@ function BottomNav({ scrollHidden = false }) {
     <AdBanner navRef={navRef} navHidden={visuallyHidden} />
     <nav
       ref={navRef}
-      className={`bottom-nav${qaEnabled ? ' bottom-nav--five' : ''}${
+      className={`bottom-nav bottom-nav--five${
         dragReorderActive ? ' bottom-nav--hidden' : ''
       }${scrollHidden && !dragReorderActive ? ' bottom-nav--scroll-hidden' : ''}`}
       aria-label="Primary"
       aria-hidden={visuallyHidden || undefined}
     >
-      {items.map(({ id, to, label, Icon, isActive }) => {
+      {FIVE_ITEMS.map(({ id, to, label, Icon, isActive }) => {
         const active = isActive(location.pathname)
         // Profile tab carries the unread-DM dot — there's no dedicated
         // Messages nav tab (out of scope, see BottomNav module docstring),

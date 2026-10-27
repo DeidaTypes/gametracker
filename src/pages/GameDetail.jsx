@@ -41,7 +41,6 @@ import { showToast } from '../components/Toast'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
-import { useFlagEnabled } from '../hooks/useFlagEnabled'
 import GameDetailQuestionsRow from '../components/GameDetailQuestionsRow'
 import PullToRefresh from '../components/PullToRefresh'
 import { qaGame, qaGameKey } from '../services/qaService'
@@ -264,9 +263,7 @@ function GameDetail() {
   const { data: social, refresh: refreshSocial } = useCachedResource(socialKey, loadSocial, {
     enabled: !!gameId && (transitionComplete || socialWarm),
   })
-  const qaEnabled = useFlagEnabled('qa')
-  const qaPreviewKey =
-    qaEnabled && gameId ? qaGameKey(gameId, 'answered', 'helpful') : null
+  const qaPreviewKey = gameId ? qaGameKey(gameId, 'answered', 'helpful') : null
   const qaPreviewWarm = qaPreviewKey != null && peekSWR(qaPreviewKey) !== undefined
   const loadQaPreview = useCallback(
     () => qaGame(gameId, { filter: 'answered', sort: 'helpful', limit: 1 }),
@@ -275,7 +272,7 @@ function GameDetail() {
   const { data: qaPreview, refresh: refreshQaPreview } = useCachedResource(
     qaPreviewKey,
     loadQaPreview,
-    { enabled: !!gameId && qaEnabled && (transitionComplete || qaPreviewWarm) }
+    { enabled: !!gameId && (transitionComplete || qaPreviewWarm) }
   )
   const qaHeader = qaPreview?.header
   const qaCountsReady = qaPreview !== undefined
@@ -470,7 +467,7 @@ function GameDetail() {
     const onResume = () => {
       refreshFromStore()
       refreshSocial().catch(() => {})
-      if (qaEnabled) refreshQaPreview().catch(() => {})
+      refreshQaPreview().catch(() => {})
       refreshSessions()
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
@@ -481,7 +478,6 @@ function GameDetail() {
     refreshSocial,
     refreshQaPreview,
     refreshSessions,
-    qaEnabled,
   ])
 
   const handlePullToRefresh = useCallback(async () => {
@@ -508,11 +504,10 @@ function GameDetail() {
         })
         .catch(() => {}),
     ]
-    if (qaEnabled) tasks.push(refreshQaPreview().catch(() => {}))
+    tasks.push(refreshQaPreview().catch(() => {}))
     await Promise.all(tasks)
   }, [
     gameId,
-    qaEnabled,
     refreshFromStore,
     refreshSocial,
     refreshQaPreview,
@@ -833,13 +828,11 @@ function GameDetail() {
         </button>
       </div>
 
-      {qaEnabled ? (
-        <GameDetailQuestionsRow
-          header={qaHeader}
-          ready={qaCountsReady}
-          onOpen={openGameQuestions}
-        />
-      ) : null}
+      <GameDetailQuestionsRow
+        header={qaHeader}
+        ready={qaCountsReady}
+        onOpen={openGameQuestions}
+      />
 
       {/* ── At a Glance ── decision helper card.
            Shows up when any of the three sub-rows has real IGDB data.

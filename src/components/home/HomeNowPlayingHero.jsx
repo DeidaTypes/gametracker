@@ -8,7 +8,6 @@ import { getManualSessionsForGame } from '../../services/sessionService'
 import { getCachedTimeToBeatSync } from '../../services/timeToBeatService'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getGameNavStub } from '../../utils/gameNavStub'
-import { useFlagEnabled } from '../../hooks/useFlagEnabled'
 import { openQaAsk, qaGamePreset } from '../../pages/qa/qaComposer'
 import './HomeNowPlayingHero.css'
 
@@ -104,9 +103,8 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   const [sessions, setSessions] = useState(null)
   const [mainStoryHours, setMainStoryHours] = useState(null)
   const [finishing, setFinishing] = useState(false)
-  const qaOn = useFlagEnabled('qa')
   // No usable IGDB id (or title) means Ask could not name the game: no action.
-  const canAsk = qaOn && !!activeGame && qaGamePreset(activeGame) != null
+  const canAsk = !!activeGame && qaGamePreset(activeGame) != null
 
   useEffect(() => {
     let cancelled = false
