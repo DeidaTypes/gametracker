@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useMotionPreference } from '../hooks/useMotionPreference'
 import {
   LuChartNoAxesColumn,
   LuChevronLeft,
@@ -93,7 +94,8 @@ function Spinner() {
 }
 
 function SuccessCard({ open, name, onDone }) {
-  const reduced = useReducedMotion()
+  // OS setting AND the in-app Reduce motion switch.
+  const { reduced } = useMotionPreference()
   const doneRef = useRef(null)
 
   useEffect(() => {

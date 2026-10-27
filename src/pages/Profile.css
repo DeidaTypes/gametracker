@@ -1096,8 +1096,8 @@ body[data-reduce-motion='true'] .profile-favorite-card__cover--lifted {
   width: 18px;
   height: 18px;
   border-radius: var(--radius-full);
-  background: var(--bg-surface-2, #1a2240);
-  border: 1px solid var(--border-strong, rgba(148,168,212,0.24));
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
