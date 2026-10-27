@@ -34,13 +34,52 @@ function keyboardReserve() {
   return measuredKeyboardInset || DEFAULT_KEYBOARD_INSET
 }
 
+// Opacity and a whole `transform` string run on the compositor (Motion hands
+// them to WAAPI). Independent transforms such as `y` or `scale` run on the
+// main thread and drop frames while the card's contents mount.
+const POP_EASE = [0.2, 0.8, 0.2, 1]
+const POP_ENTER = { duration: 0.18, ease: POP_EASE }
+const POP_EXIT = { duration: 0.12, ease: POP_EASE }
+const POP_VARIANTS = {
+  hidden: { opacity: 0, transform: 'scale(0.96)' },
+  shown: { opacity: 1, transform: 'scale(1)', transition: POP_ENTER },
+  gone: { opacity: 0, transform: 'scale(0.98)', transition: POP_EXIT },
+}
+const POP_VARIANTS_REDUCED = {
+  hidden: { opacity: 0 },
+  shown: { opacity: 1, transition: POP_ENTER },
+  gone: { opacity: 0, transition: POP_EXIT },
+}
+const DIM_VARIANTS = POP_VARIANTS_REDUCED
+
+// A field that focuses while its card is still fading in (an autoFocus, or a
+// composer's open timer) is focused when the fade completes instead, so the
+// keyboard never rises during the enter. Only `.focus()` calls are held; a
+// tap focuses natively.
+const ENTERING = 'cm-pop--entering'
+const pendingFocus = new WeakMap()
+if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.focus.cmHeld) {
+  const nativeFocus = HTMLElement.prototype.focus
+  const heldFocus = function focus(options) {
+    const pop = this.closest?.(`.${ENTERING}`)
+    if (pop) {
+      pendingFocus.set(pop, [this, options])
+      return
+    }
+    nativeFocus.call(this, options)
+  }
+  heldFocus.cmHeld = true
+  HTMLElement.prototype.focus = heldFocus
+}
+
 /**
  * CenteredModal — a stable, centered iOS-style popup dialog.
  *
- * This is the shared presentation shell for flows that previously used
- * slide-up bottom sheets and glitched on device. Unlike a bottom sheet it
- * does NOT depend on scroll position or drag gestures: it fades + scales in
- * (0.95 → 1.0, 250 ms) over a dimmed, blurred backdrop and stays centered.
+ * This is the shared presentation shell for every box you type in. It never
+ * slides: it fades in at the center (opacity 0 → 1, scale 0.96 → 1, 180 ms)
+ * over a dim that fades with it, and fades out (scale 0.98, 120 ms). Reduced
+ * motion keeps the fade and drops the scale. Only opacity and transform
+ * animate, and nothing that animates carries a backdrop-filter.
  *
  * Keyboard-aware for free: every modal rendered through this shell adopts the
  * shared `modal` keyboard behaviour (see src/styles/keyboard.css). The card is
@@ -68,8 +107,7 @@ function keyboardReserve() {
  *                      the height left with the keyboard up; 'fill': it takes
  *                      that height. The size never follows the keyboard, the
  *                      keyboard only slides the card. Taps inside the card keep
- *                      the keyboard up, and the backdrop blur is dropped while
- *                      the card slides in and out.
+ *                      the keyboard up.
  */
 function CenteredModal({
   isOpen,
@@ -83,8 +121,8 @@ function CenteredModal({
   steady = false,
 }) {
   const { reduced } = useMotionPreference()
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
-  const overlayRef = useRef(null)
+  const { dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const popRef = useRef(null)
   const cardRef = useRef(null)
   const wasOpen = useRef(false)
   const [reserve, setReserve] = useState(keyboardReserve)
@@ -142,27 +180,39 @@ function CenteredModal({
     if (cardRef.current?.contains(document.activeElement)) void hideKeyboard()
   }, [steady, isOpen])
 
-  // ── Steady: no backdrop blur while the card slides ────────────────────
-  // Toggled on the DOM node, not through state, so the enter and exit never
-  // re-render the card's contents.
-  const setSliding = (on) => {
-    overlayRef.current?.classList.toggle('cm-overlay--sliding', on)
+  // ── Enter / exit bookkeeping ──────────────────────────────────────────
+  // Classes are toggled on the DOM node, not through state, so the fade
+  // never re-renders the card's contents. The pop mounts with ENTERING
+  // (see the JSX); it holds focus and carries will-change until the enter
+  // completes. A card closed mid-enter keeps holding focus until it unmounts.
+  const finishEnter = () => {
+    const pop = popRef.current
+    if (!pop?.classList.contains(ENTERING) || pop.classList.contains('cm-pop--leaving')) return
+    pop.classList.remove(ENTERING)
+    const pending = pendingFocus.get(pop)
+    pendingFocus.delete(pop)
+    if (pending && pending[0].isConnected) pending[0].focus(pending[1])
   }
-  useLayoutEffect(() => {
-    if (!steady || !isOpen || reduced) return undefined
-    setSliding(true)
-    // Safety net if Motion never reports completion (e.g. interrupted enter).
-    const timer = window.setTimeout(() => setSliding(false), 1000)
-    return () => window.clearTimeout(timer)
-  }, [steady, isOpen, reduced])
 
-  const slideHandlers =
-    steady && !reduced
-      ? {
-          onAnimationStart: () => setSliding(true),
-          onAnimationComplete: () => setSliding(false),
-        }
-      : {}
+  useEffect(() => {
+    if (!isOpen) return undefined
+    // Safety net if Motion never reports completion.
+    const timer = window.setTimeout(finishEnter, 600)
+    return () => window.clearTimeout(timer)
+  }, [isOpen])
+
+  const popHandlers = {
+    onAnimationStart: (definition) => {
+      if (definition !== 'gone') return
+      const pop = popRef.current
+      if (!pop) return
+      pop.classList.add('cm-pop--leaving')
+      pendingFocus.delete(pop)
+    },
+    onAnimationComplete: (definition) => {
+      if (definition === 'shown') finishEnter()
+    },
+  }
 
   const handleBackdrop = () => {
     if (isKeyboardOpen()) {
@@ -184,44 +234,47 @@ function CenteredModal({
     <AnimatePresence onExitComplete={onExited}>
       {isOpen && (
         <motion.div
-          ref={overlayRef}
           className={`cm-overlay kb-no-blur-while-animating${steady ? ' cm-overlay--steady' : ''}`}
           onClick={handleBackdrop}
         >
-          {/* Only the dim fades. Fading the overlay itself made the card
-              see-through for the whole slide (the page and nav showed
-              through it). */}
           <motion.div
             className="cm-dim"
             aria-hidden="true"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={transition}
+            variants={DIM_VARIANTS}
+            initial="hidden"
+            animate="shown"
+            exit="gone"
           />
           <div className="cm-lift kb-modal-lift">
+            {/* The fade lives on its own layer: Motion's whole-transform
+                string would override the card's drag `y`. */}
             <motion.div
-              ref={cardRef}
-              className={`cm-card ${sizeClass} ${className}`.trim()}
-              style={cardStyle}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label={ariaLabel}
-              data-kb-keep={steady ? '' : undefined}
-              initial={reduced ? false : { y: '100dvh' }}
-              animate={{ y: 0 }}
-              exit={reduced ? { y: 0 } : { y: '100dvh' }}
-              transition={transition}
-              {...slideHandlers}
-              {...dragProps}
+              ref={popRef}
+              className={`cm-pop ${ENTERING}`}
+              variants={reduced ? POP_VARIANTS_REDUCED : POP_VARIANTS}
+              initial="hidden"
+              animate="shown"
+              exit="gone"
+              {...popHandlers}
             >
-              <div
-                className="cm-grab"
-                aria-hidden="true"
-                onPointerDown={startDrag}
-              />
-              {children}
+              <motion.div
+                ref={cardRef}
+                className={`cm-card ${sizeClass} ${className}`.trim()}
+                style={cardStyle}
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={ariaLabel}
+                data-kb-keep={steady ? '' : undefined}
+                {...dragProps}
+              >
+                <div
+                  className="cm-grab"
+                  aria-hidden="true"
+                  onPointerDown={startDrag}
+                />
+                {children}
+              </motion.div>
             </motion.div>
           </div>
         </motion.div>

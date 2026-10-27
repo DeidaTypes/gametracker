@@ -48,8 +48,8 @@
   flex-direction: column;
   justify-content: flex-end;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
+     frame. The dim carries the backdrop. */
 }
 
 /* ── Sheet ── */

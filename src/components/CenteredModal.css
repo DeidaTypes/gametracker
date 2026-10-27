@@ -4,7 +4,7 @@
    Namespace: cm-*
    ============================================================ */
 
-/* ── Dimmed, blurred backdrop ── */
+/* ── Dimmed backdrop ── */
 .cm-overlay {
   position: fixed;
   inset: 0;
@@ -27,10 +27,11 @@
 }
 
 /* ── Keyboard lift layer ──
-   A plain element between the overlay and the card, because Motion owns
-   `transform` on both of those for the fade/scale animation. Carries the
-   shared .kb-modal-lift class from styles/keyboard.css. */
-/* ── Dim ── faded on its own so the card is never see-through */
+   A plain element above the pop and the card, because Motion owns
+   `transform` on both of those (fade/scale and drag). Carries the shared
+   .kb-modal-lift class from styles/keyboard.css. */
+/* ── Dim ── faded on its own so the card is never see-through. Never give
+   this or any layer that fades a backdrop-filter. */
 .cm-dim {
   position: absolute;
   inset: 0;
@@ -47,6 +48,21 @@
   align-items: center;
   width: 100%;
   min-height: 0;
+}
+
+/* ── Fade layer ── opacity + scale from its center; the card inside keeps its
+   own transform for drag-to-dismiss. */
+.cm-pop {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  transform-origin: center;
+}
+
+.cm-pop--entering,
+.cm-pop--leaving {
+  will-change: transform, opacity;
 }
 
 /* Swipe-down starts here. The card itself stays centered; the grabber
@@ -146,11 +162,4 @@ body.keyboard-open .cm-overlay {
    above) re-centers the card without a transition. */
 body.keyboard-open .cm-overlay.cm-overlay--steady {
   padding-bottom: calc(var(--space-20) + env(safe-area-inset-bottom, 0px));
-}
-
-/* While the card slides in or out the blur would re-raster every frame;
-   the dim alone carries those frames. */
-.cm-overlay.cm-overlay--sliding {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }

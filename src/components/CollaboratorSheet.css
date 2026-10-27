@@ -6,8 +6,8 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
+     frame. The dim carries the backdrop. */
   z-index: 1020;
   display: flex;
   align-items: flex-end;

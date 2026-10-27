@@ -6,8 +6,8 @@
   align-items: flex-end;
   justify-content: center;
   background: color-mix(in srgb, var(--color-bg-primary) 50%, transparent);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
+     frame. The dim carries the backdrop. */
 }
 
 .rating-dist-sheet {

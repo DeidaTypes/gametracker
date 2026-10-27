@@ -10,14 +10,11 @@
 // Diary schema, journal_entries, shared with "Add to Journal").
 
 import React, { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
 import { updateJournalEntry } from '../services/journalService'
 import { useSession } from '../contexts/SessionContext'
 import { useNavDim } from '../hooks/useNavDim'
-import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useSheetDrag } from '../motion/useSheetDrag'
 import { hapticSuccess } from '../utils/haptics'
-import KeyboardAwareView from './KeyboardAwareView'
+import CenteredModal from './CenteredModal'
 import { ugcErrorMessage } from '../services/moderationService'
 import { getGamesFromList } from '../services/libraryService'
 import { useFlagEnabled } from '../hooks/useFlagEnabled'
@@ -76,7 +73,10 @@ export default function StopSessionSheet() {
   const [noteError, setNoteError] = useState(null)
   const rejectedNoteRef = useRef(null)
   const inputRef = useRef(null)
-  const { reduced } = useMotionPreference()
+  // The popup fades out after the result is dismissed; keep showing it.
+  const lastResultRef = useRef(null)
+  if (stopResult) lastResultRef.current = stopResult
+  const result = stopResult || lastResultRef.current
   const qaOn = useFlagEnabled('qa')
 
   // Reset state whenever a new result arrives
@@ -92,17 +92,16 @@ export default function StopSessionSheet() {
   // Mounted globally in App.jsx, reachable from every screen — must drop
   // the bottom nav below it while open (see BottomNav.css).
   useNavDim(!!stopResult)
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, () => { void handleDone() })
 
-  if (!stopResult) return null
+  if (!result) return null
 
-  const addedLabel = formatAdded(stopResult.addedHours)
-  const newLabel = formatHours(stopResult.newHours)
+  const addedLabel = formatAdded(result.addedHours)
+  const newLabel = formatHours(result.newHours)
 
   const askGame = {
-    igdbId: stopResult.igdbGameId,
-    title: stopResult.gameTitle,
-    image: libraryCover(stopResult.igdbGameId),
+    igdbId: result.igdbGameId,
+    title: result.gameTitle,
+    image: libraryCover(result.igdbGameId),
   }
   // No usable IGDB id (or title) means Ask could not name the game: no link.
   const canAsk = qaOn && qaGamePreset(askGame) != null
@@ -115,6 +114,7 @@ export default function StopSessionSheet() {
   }
 
   async function handleDone() {
+    if (!stopResult) return
     // Closing again without editing a rejected note leaves the entry blank.
     const changedSinceRejected = note.trim() !== rejectedNoteRef.current
     if (note.trim() && !saved && stopResult.journalEntryId && changedSinceRejected) {
@@ -141,31 +141,13 @@ export default function StopSessionSheet() {
   }
 
   return (
-    <AnimatePresence>
-    {stopResult && (
-    <motion.div
-      className="sss-backdrop"
-      onClick={handleDone}
-      aria-modal="true"
-      role="dialog"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={transition}
+    <CenteredModal
+      isOpen={!!stopResult}
+      onClose={() => { void handleDone() }}
+      ariaLabel="Session saved"
+      maxWidth={360}
     >
-      <KeyboardAwareView mode="sheet" className="sss-anchor">
-      <motion.div
-        className="sss-sheet"
-        onClick={(e) => e.stopPropagation()}
-        initial={reduced ? false : { y: '100%' }}
-        animate={{ y: 0 }}
-        exit={reduced ? { y: 0 } : { y: '100%' }}
-        transition={transition}
-        {...dragProps}
-      >
-        {/* Handle */}
-        <div className="sss-handle" aria-hidden="true" onPointerDown={startDrag} />
-
+      <div className="sss-sheet">
         {/* Title */}
         <p className="sss-heading">Session saved</p>
 
@@ -178,8 +160,8 @@ export default function StopSessionSheet() {
           </div>
         )}
 
-        {stopResult.gameTitle && (
-          <p className="sss-game-name">{stopResult.gameTitle}</p>
+        {result.gameTitle && (
+          <p className="sss-game-name">{result.gameTitle}</p>
         )}
 
         {/* Journal note */}
@@ -219,10 +201,7 @@ export default function StopSessionSheet() {
             Stuck somewhere? Ask players who&apos;ve been there
           </button>
         )}
-      </motion.div>
-      </KeyboardAwareView>
-    </motion.div>
-    )}
-    </AnimatePresence>
+      </div>
+    </CenteredModal>
   )
 }

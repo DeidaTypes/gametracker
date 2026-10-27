@@ -1,39 +1,15 @@
 /* =============================================
-   SET GOAL SHEET
+   SET GOAL POPUP
+   Presentation shell is CenteredModal (.cm-card: surface, rounding, dim,
+   grabber, keyboard lift); the rules below style its contents.
    Cobalt Modern · DM Sans · CSS variables only
    ============================================= */
 
-.sgs-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 200;
-}
-
-/* Fixed positioning + keyboard lift live on the shared .kb-sheet-lift anchor
-   (styles/keyboard.css) that wraps this element; here we own only z-index
-   and visuals. */
-.sgs-anchor {
-  z-index: 201;
-}
-
 .sgs-sheet {
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-xl) + var(--keyboard-safe-bottom));
+  padding: var(--space-8) var(--space-24) var(--space-24);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-}
-
-.sgs-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: var(--radius-full);
-  background: var(--border-strong);
-  align-self: center;
-  margin-bottom: var(--spacing-xs);
-  flex-shrink: 0;
 }
 
 .sgs-title {

@@ -351,6 +351,13 @@ body.keyboard-open .main-content:has(.kb-viewport-fit) {
   padding-bottom: 0 !important;
 }
 
+/* …and while a CenteredModal is open the page under the dim takes its
+   reserve in one step. Transitioned, it re-lays out on every frame of the
+   keyboard slide, behind the card the keyboard is moving. */
+body.keyboard-open:has(> .cm-overlay) .main-content {
+  transition: none;
+}
+
 /* Give every field breathing room when it is scrolled into view, so a focused
    input never lands flush against the top edge of the keyboard. Global by
    design: any new text field anywhere in the app inherits it, including the
