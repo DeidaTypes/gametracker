@@ -42,6 +42,15 @@ function SignUp() {
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
+  const [showFieldErrors, setShowFieldErrors] = useState(false)
+
+  // The auth page directly behind this one is a back, not another push.
+  const goAuth = (e, path) => {
+    if (location.state?.authFrom === path) {
+      e.preventDefault()
+      navigate(-1)
+    }
+  }
 
   // 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
   const [usernameStatus, setUsernameStatus] = useState('idle')
@@ -118,26 +127,31 @@ function SignUp() {
     e.preventDefault()
     if (submitting) return
 
+    const failValidation = (message) => {
+      setFormError(message)
+      setShowFieldErrors(true)
+    }
+
     const trimmedUsername = normalizeUsername(username)
     const usernameCheck = validateUsername(trimmedUsername)
     if (!usernameCheck.valid) {
-      setFormError(usernameCheck.message)
+      failValidation(usernameCheck.message)
       return
     }
     if (usernameStatus === 'taken') {
-      setFormError('That username is already taken. Please choose another.')
+      failValidation('That username is already taken. Please choose another.')
       return
     }
     if (!email.trim()) {
-      setFormError('Please enter your email.')
+      failValidation('Please enter your email.')
       return
     }
     if (!isPasswordComposedCorrectly(password)) {
-      setFormError('Your password doesn\u2019t meet the requirements below yet.')
+      failValidation('Your password doesn\u2019t meet the requirements below yet.')
       return
     }
     if (password !== confirmPassword) {
-      setFormError('Passwords don\u2019t match.')
+      failValidation('Passwords don\u2019t match.')
       return
     }
 
@@ -301,7 +315,7 @@ function SignUp() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            autoFocus
+            showErrors={showFieldErrors}
           />
 
           <TextField
@@ -317,6 +331,7 @@ function SignUp() {
             hint={usernameHintNode}
             className={usernameFieldClass}
             required
+            showErrors={showFieldErrors}
           />
 
           <div className="su-password-block">
@@ -328,6 +343,7 @@ function SignUp() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              showErrors={showFieldErrors}
               endAdornment={
                 <button
                   type="button"
@@ -364,6 +380,7 @@ function SignUp() {
             hint={confirmHintNode}
             className={confirmFieldClass}
             required
+            showErrors={showFieldErrors}
           />
 
           <div className="auth-form__actions">
@@ -386,6 +403,8 @@ function SignUp() {
           Already have an account?{' '}
           <Link
             to={`/login${location.search || ''}`}
+            state={{ authFrom: location.pathname }}
+            onClick={(e) => goAuth(e, '/login')}
             className="auth-link"
           >
             Log in

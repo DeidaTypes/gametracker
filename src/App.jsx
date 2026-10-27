@@ -486,7 +486,10 @@ function AnimatedRoutes({ location, navigationType, children, onEnterComplete, s
   }
 
   return (
-    <div className={motion.phase === 'run' ? 'route-stack route-stack--run' : 'route-stack'}>
+    <div
+      className={motion.phase === 'run' ? 'route-stack route-stack--run' : 'route-stack'}
+      style={{ overflowX: 'clip' }}
+    >
       {showDim && <div className={dimClass} aria-hidden="true" />}
       {layers.map((layer) => {
         const isExiting = layer.phase === 'exiting'
@@ -802,6 +805,29 @@ function AppContent() {
       }
     }
   }, [location.key])
+
+  // Nothing in the app scrolls sideways. overflow-x: hidden still allows
+  // programmatic scrolling, so a focus or scrollIntoView on a layer that is
+  // parked offscreen can shift the whole page left. Vertical scroll is
+  // never touched here.
+  useLayoutEffect(() => {
+    const el = mainContentEl
+    if (el && el.scrollLeft !== 0) el.scrollLeft = 0
+    const doc = document.scrollingElement
+    if (doc && doc.scrollLeft !== 0) doc.scrollLeft = 0
+  }, [location.key, mainContentEl])
+
+  useEffect(() => {
+    const el = mainContentEl
+    if (!el) return undefined
+    const onScroll = () => {
+      if (el.scrollLeft !== 0) el.scrollLeft = 0
+      const doc = document.scrollingElement
+      if (doc && doc.scrollLeft !== 0) doc.scrollLeft = 0
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [mainContentEl])
 
   const attemptRestore = useCallback(
     (key) => {

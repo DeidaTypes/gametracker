@@ -353,7 +353,6 @@ function ResetPassword() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              autoFocus
               endAdornment={
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Flag, MailCheck } from 'lucide-react'
 import { TextField, SubmitButton } from '../../components/forms'
 import {
@@ -15,10 +15,19 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function ForgotPassword() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
   const [sent, setSent] = useState(false)
+
+  // The auth page directly behind this one is a back, not another push.
+  const goAuth = (e, path) => {
+    if (location.state?.authFrom === path) {
+      e.preventDefault()
+      navigate(-1)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -72,7 +81,12 @@ function ForgotPassword() {
           </p>
 
           <p className="auth-footer">
-            <Link to={`/login${location.search || ''}`} className="auth-link">
+            <Link
+              to={`/login${location.search || ''}`}
+              state={{ authFrom: location.pathname }}
+              onClick={(e) => goAuth(e, '/login')}
+              className="auth-link"
+            >
               Back to log in
             </Link>
           </p>
@@ -119,7 +133,6 @@ function ForgotPassword() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            autoFocus
           />
 
           <div className="auth-form__actions">
@@ -131,7 +144,12 @@ function ForgotPassword() {
 
         <p className="auth-footer">
           Remembered it?{' '}
-          <Link to={`/login${location.search || ''}`} className="auth-link">
+          <Link
+            to={`/login${location.search || ''}`}
+            state={{ authFrom: location.pathname }}
+            onClick={(e) => goAuth(e, '/login')}
+            className="auth-link"
+          >
             Log in
           </Link>
         </p>

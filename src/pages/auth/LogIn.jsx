@@ -18,6 +18,15 @@ function LogIn() {
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
+  const [showFieldErrors, setShowFieldErrors] = useState(false)
+
+  // The auth page directly behind this one is a back, not another push.
+  const goAuth = (e, path) => {
+    if (location.state?.authFrom === path) {
+      e.preventDefault()
+      navigate(-1)
+    }
+  }
 
   const redirectTo =
     new URLSearchParams(location.search).get('redirectTo') || '/'
@@ -37,6 +46,7 @@ function LogIn() {
 
     if (!email.trim() || !password) {
       setFormError('Enter your email and password.')
+      setShowFieldErrors(true)
       return
     }
 
@@ -97,7 +107,7 @@ function LogIn() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
-            autoFocus
+            showErrors={showFieldErrors}
           />
 
           <TextField
@@ -108,9 +118,12 @@ function LogIn() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
+            showErrors={showFieldErrors}
             labelExtra={
               <Link
                 to={`/forgot-password${location.search || ''}`}
+                state={{ authFrom: location.pathname }}
+                onClick={(e) => goAuth(e, '/forgot-password')}
                 className="li-forgot-link"
               >
                 Forgot?
@@ -140,6 +153,8 @@ function LogIn() {
           Don&rsquo;t have an account?{' '}
           <Link
             to={`/signup${location.search || ''}`}
+            state={{ authFrom: location.pathname }}
+            onClick={(e) => goAuth(e, '/signup')}
             className="auth-link"
           >
             Sign up

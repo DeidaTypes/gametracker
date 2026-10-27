@@ -23,6 +23,7 @@ function NumericField({
   name,
   disabled,
   className = '',
+  showErrors = false,
   ...rest
 }) {
   const reactId = useId()
@@ -30,8 +31,10 @@ function NumericField({
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
 
+  const [dirty, setDirty] = useState(false)
   const [touched, setTouched] = useState(false)
-  const showRequiredError = required && touched && (value === '' || value == null)
+  const showRequiredError =
+    required && (touched || showErrors) && (value === '' || value == null)
   const hasError = showRequiredError
 
   const numericValue =
@@ -47,16 +50,19 @@ function NumericField({
   }
 
   const emit = (next) => {
+    setDirty(true)
     onChange?.({ target: { value: String(next) } })
   }
 
   const handleChange = (e) => {
     const v = e.target.value
     if (v === '') {
+      setDirty(true)
       onChange?.(e)
       return
     }
     if (!/^-?\d*\.?\d*$/.test(v)) return
+    setDirty(true)
     onChange?.(e)
   }
 
@@ -66,7 +72,10 @@ function NumericField({
     emit(next)
   }
 
-  const handleBlur = () => setTouched(true)
+  // Focusing and leaving an untouched field is not an edit.
+  const handleBlur = () => {
+    if (dirty) setTouched(true)
+  }
 
   const decDisabled =
     disabled ||

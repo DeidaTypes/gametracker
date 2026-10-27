@@ -24,6 +24,7 @@ function TextField({
   className = '',
   endAdornment,
   labelExtra,
+  showErrors = false,
   ...rest
 }) {
   const reactId = useId()
@@ -32,17 +33,24 @@ function TextField({
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
 
+  const [dirty, setDirty] = useState(false)
   const [touched, setTouched] = useState(false)
 
   const showRequiredError =
-    required && touched && (!value || !String(value).trim())
+    required && (touched || showErrors) && (!value || !String(value).trim())
   const hasError = showRequiredError
 
   const showCounter = typeof maxLength === 'number' && maxLength > 0
   const charLength = value ? String(value).length : 0
 
+  const handleChange = (e) => {
+    setDirty(true)
+    onChange?.(e)
+  }
+
+  // Focusing and leaving an untouched field is not an edit.
   const handleBlur = (e) => {
-    setTouched(true)
+    if (dirty) setTouched(true)
     onBlur?.(e)
   }
 
@@ -90,7 +98,7 @@ function TextField({
           name={name}
           type={type}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           onBlur={handleBlur}
           placeholder={placeholder}
           maxLength={maxLength}

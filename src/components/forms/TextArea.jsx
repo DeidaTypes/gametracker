@@ -22,6 +22,7 @@ function TextArea({
   disabled,
   rows = 3,
   className = '',
+  showErrors = false,
   ...rest
 }) {
   const reactId = useId()
@@ -29,11 +30,12 @@ function TextArea({
   const hintId = `${inputId}-hint`
   const errorId = `${inputId}-error`
 
+  const [dirty, setDirty] = useState(false)
   const [touched, setTouched] = useState(false)
   const textareaRef = useRef(null)
 
   const showRequiredError =
-    required && touched && (!value || !String(value).trim())
+    required && (touched || showErrors) && (!value || !String(value).trim())
   const hasError = showRequiredError
 
   const showCounter = typeof maxLength === 'number' && maxLength > 0
@@ -48,8 +50,14 @@ function TextArea({
     el.style.height = next + 'px'
   }, [value])
 
+  const handleChange = (e) => {
+    setDirty(true)
+    onChange?.(e)
+  }
+
+  // Focusing and leaving an untouched field is not an edit.
   const handleBlur = (e) => {
-    setTouched(true)
+    if (dirty) setTouched(true)
     onBlur?.(e)
   }
 
@@ -95,7 +103,7 @@ function TextArea({
         id={inputId}
         name={name}
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         onBlur={handleBlur}
         placeholder={placeholder}
         maxLength={maxLength}
