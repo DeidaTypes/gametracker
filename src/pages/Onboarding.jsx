@@ -39,6 +39,7 @@ import EmptyState from '../components/EmptyState'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useKeyboardOpen } from '../hooks/useKeyboardInset'
 import { hapticImpact } from '../utils/haptics'
+import { MOTION_MS, MOTION_EASE, PARALLAX, DIM_OPACITY } from '../motion/xMotion'
 import './Onboarding.css'
 
 /**
@@ -182,13 +183,6 @@ export default function Onboarding() {
     }
   }, [step])
 
-  // Auto-focus search input when reaching the picker screen.
-  useEffect(() => {
-    if (step !== PICKER_STEP) return undefined
-    const id = setTimeout(() => inputRef.current?.focus(), 160)
-    return () => clearTimeout(id)
-  }, [step])
-
   const goToStep = useCallback(
     (next) => {
       setDirection(next > step ? 1 : -1)
@@ -207,8 +201,14 @@ export default function Onboarding() {
   // (platforms/eras) no longer call this directly; they advance instead.
   // This runs once, at the true end of the flow (step 4 done/skipped, or
   // header Skip from an earlier step). ──────────────────────────────
+  // A ref latch, not `submitting`: it is set synchronously before any await
+  // and never reset, so completeOnboarding / navigate / the toast happen
+  // exactly once even if the auto-finish effect re-runs while this page is
+  // still mounted for its exit transition.
+  const finishedRef = useRef(false)
   const finish = useCallback(async () => {
-    if (submitting) return
+    if (finishedRef.current) return
+    finishedRef.current = true
     setSubmitting(true)
     try {
       // Mark onboarded — localStorage first (instant, guards re-fire
@@ -234,10 +234,9 @@ export default function Onboarding() {
       console.error('[Onboarding] finish failed:', err)
       // Always navigate even if writes partially fail.
       navigate('/', { replace: true })
-    } finally {
-      setSubmitting(false)
     }
-  }, [submitting, user, navigate, favoritesCount, ratedCount])
+    // `submitting` stays true: the page is leaving, nothing re-enables.
+  }, [user, navigate, favoritesCount, ratedCount])
 
   // Header "Skip" is the one shared skip affordance for every step, but its
   // effect depends on where it's tapped:
@@ -483,11 +482,20 @@ export default function Onboarding() {
   }, [])
 
   // ── Slide animation ───────────────────────────────────────────────
-  const slideDuration = reduced ? 0 : 0.24
+  // Same push as the route transition: one duration, one curve (xMotion).
+  // Incoming slides in from the edge fully opaque; outgoing moves PARALLAX
+  // the other way and dims. Both run together (AnimatePresence "sync").
+  // Only transform and opacity animate.
+  const slideTransition = reduced
+    ? { duration: 0 }
+    : { duration: MOTION_MS / 1000, ease: MOTION_EASE }
   const slideVariants = {
-    enter: (dir) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+    enter: (dir) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 1 }),
     center: { x: 0, opacity: 1 },
-    exit: (dir) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
+    exit: (dir) => ({
+      x: `${(dir > 0 ? -PARALLAX : PARALLAX) * 100}%`,
+      opacity: 1 - DIM_OPACITY,
+    }),
   }
 
   // Done is always actionable — at 0 picks it's a "Done = skip" pathway
@@ -541,7 +549,7 @@ export default function Onboarding() {
 
       {/* ── Animated slide area ── */}
       <div className="ob-slide-wrap" aria-live="off">
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
+        <AnimatePresence mode="sync" initial={false} custom={direction}>
           {step < PICKER_STEP ? (
             <motion.div
               key={`vp-${step}`}
@@ -551,7 +559,7 @@ export default function Onboarding() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: slideDuration, ease: 'easeInOut' }}
+              transition={slideTransition}
             >
               <ValuePropSlide
                 screen={VALUE_PROP_SCREENS[step]}
@@ -567,7 +575,7 @@ export default function Onboarding() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: slideDuration, ease: 'easeInOut' }}
+              transition={slideTransition}
             >
               <GamePickerSlide
                 query={query}
@@ -595,7 +603,7 @@ export default function Onboarding() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: slideDuration, ease: 'easeInOut' }}
+              transition={slideTransition}
             >
               <PlatformEraSlide
                 selectedPlatformChips={selectedPlatformChips}
@@ -614,10 +622,10 @@ export default function Onboarding() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: slideDuration, ease: 'easeInOut' }}
+              transition={slideTransition}
             >
               <RateFromMemorySlide
-                loading={rateLoading}
+                loading={rateLoading || !rateReady}
                 candidates={rateCandidates}
                 index={rateIndex}
                 submittingId={rateSubmittingId}
@@ -1144,7 +1152,11 @@ function RateFromMemorySlide({
   reduced,
 }) {
   const total = candidates.length
-  const candidate = candidates[index]
+  // Once the last card is resolved, `index` runs past the end while the page
+  // is still on screen waiting for navigation. Keep the last card up (inert)
+  // instead of swapping to the empty state.
+  const resolved = total > 0 && index >= total
+  const candidate = candidates[resolved ? total - 1 : index]
 
   // Optimistic star value — shows the tapped rating immediately while
   // postReview() is in flight, rather than snapping back to 0 mid-punch.
@@ -1156,9 +1168,18 @@ function RateFromMemorySlide({
     setPendingValue(0)
   }, [candidateId])
 
+  // Loading is laid out in the final card layout (same title, same column)
+  // so nothing shifts when the first card arrives. The progress line is an
+  // invisible spacer until there is a real count.
   if (loading) {
     return (
-      <div className="ob-vp ob-vp--rate">
+      <div className="ob-rate">
+        <div className="ob-rate__top">
+          <h1 className="ob-vp__title">Five from your past</h1>
+          <p className="ob-rate__progress" aria-hidden="true">
+            &nbsp;
+          </p>
+        </div>
         <div className="ob-picker__state" aria-live="polite">
           <span className="ob-spinner" aria-hidden="true" />
           <span>Finding games from your past…</span>
@@ -1167,10 +1188,8 @@ function RateFromMemorySlide({
     )
   }
 
-  // Nothing to rate (empty pool, or every card already resolved this
-  // render) — the parent's advanceRateCard() finishes onboarding right
-  // after this state is reached, so this is a brief, honest empty state
-  // rather than a dead end.
+  // Only shown when the pool was empty from the start (load finished with
+  // zero candidates) — the parent finishes onboarding right after.
   if (!candidate) {
     return (
       <div className="ob-vp ob-vp--rate">
@@ -1184,14 +1203,14 @@ function RateFromMemorySlide({
   }
 
   const cardTransition = { duration: reduced ? 0 : 0.18, ease: 'easeInOut' }
-  const isSubmitting = submittingId === candidate.id
+  const isSubmitting = resolved || submittingId === candidate.id
 
   return (
     <div className="ob-rate">
       <div className="ob-rate__top">
         <h1 className="ob-vp__title">Five from your past</h1>
         <p className="ob-rate__progress" aria-live="polite">
-          {index + 1} of {total}
+          {Math.min(index + 1, total)} of {total}
         </p>
       </div>
 

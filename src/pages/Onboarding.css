@@ -125,7 +125,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: clip;
   position: relative;
 }
 
@@ -136,6 +136,8 @@
   inset: 0;
   display: flex;
   flex-direction: column;
+  /* Opaque so the outgoing step never shows through the incoming one. */
+  background: var(--color-bg-primary);
 }
 
 /* Picker slide doesn't center — it has its own top/scroll/bottom zones */
@@ -294,7 +296,7 @@
   width: 100%;
   padding: 15px 24px;
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   border: none;
   border-radius: var(--radius-lg);
   font-family: var(--font-body);
@@ -539,7 +541,7 @@
 
 .ob-selected-remove:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Compact picks strip — the searching state ──────────────────────
@@ -764,7 +766,7 @@
   align-items: center;
   justify-content: center;
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-bg-primary) 85%, transparent);
 }
 
@@ -845,7 +847,7 @@
    through 3/3. */
 .ob-picker__btn--primary {
   background: linear-gradient(120deg, var(--accent) 0%, var(--accent-review) 100%);
-  color: #fff;
+  color: var(--color-on-accent);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 16%, transparent),
     0 4px 18px color-mix(in srgb, var(--accent) 22%, transparent),
