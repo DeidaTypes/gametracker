@@ -16,8 +16,9 @@ import './GamePickerSheet.css'
  *             callers that mount/unmount the component still work.
  *   onSelect  (game) => void — called when user taps a game
  *   onCancel  ()     => void — called when user dismisses
+ *   onExited  ()     => void — optional, after the fade-out completes
  */
-function GamePickerSheet({ isOpen = true, onSelect, onCancel }) {
+function GamePickerSheet({ isOpen = true, onSelect, onCancel, onExited }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -73,6 +74,7 @@ function GamePickerSheet({ isOpen = true, onSelect, onCancel }) {
     <CenteredModal
       isOpen={isOpen}
       onClose={onCancel}
+      onExited={onExited}
       ariaLabel="Pick a game"
       maxWidth={480}
       className="gps-sheet kb-modal-fill"

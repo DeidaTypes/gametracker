@@ -15,7 +15,7 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
   const { reduced } = useMotionPreference()
 
   useNavDim(isOpen)
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -42,10 +42,7 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
         <>
           <motion.div
             className="sds-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={transition}
+            {...dim}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -55,10 +52,7 @@ function StreakDetailSheet({ isOpen, onClose, view }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="sds-title"
-            initial={reduced ? {} : { y: '100%' }}
-            animate={reduced ? {} : { y: 0 }}
-            exit={reduced ? {} : { y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             <div className="sds-handle" aria-hidden="true" onPointerDown={startDrag} />

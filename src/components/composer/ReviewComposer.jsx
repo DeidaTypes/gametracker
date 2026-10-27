@@ -90,6 +90,8 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
   // Drives the popup enter/exit animation. Closing flips this to false; the
   // box fades out, then `onExited` hands control back through onClose.
   const [open, setOpen] = useState(true)
+  const [usesPicker] = useState(!propMatches && targetId == null && !isEditMode)
+  const [pickerCancelled, setPickerCancelled] = useState(false)
 
   const closeBox = useCallback(() => setOpen(false), [])
 
@@ -288,22 +290,27 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
   const developer = game?.developers?.[0] ?? game?.developer ?? null
   const gameMeta = [game?.year, developer].filter(Boolean).join(' · ')
 
-  // ── No game yet + not edit mode → pick a game first; cancel closes ─────
+  // ── No game yet + not edit mode → pick a game first ──────────────────
+  // The picker stays mounted after a pick so it fades out while the box
+  // fades in over the shared dim; Cancel closes only once it has faded.
+  // Every return below keeps it in the same slot so it is never remounted.
 
-  if (!game && targetId == null && !loadingGame && !isEditMode) {
-    return (
-      <GamePickerSheet
-        isOpen
-        onSelect={handleGamePicked}
-        onCancel={() => onClose?.()}
-      />
-    )
-  }
+  const picker = usesPicker ? (
+    <GamePickerSheet
+      isOpen={!game && !pickerCancelled}
+      onSelect={handleGamePicked}
+      onCancel={() => setPickerCancelled(true)}
+      onExited={pickerCancelled ? () => onClose?.() : undefined}
+    />
+  ) : null
+  const withPicker = (node) => <>{picker}{node}</>
+
+  if (usesPicker && !game) return withPicker(null)
 
   // ── Loading the game → quiet centered popup ─────────────────────────────
 
   if (loadingGame) {
-    return (
+    return withPicker(
       <CenteredModal isOpen={open} onClose={closeBox} onExited={handleExited} ariaLabel="Loading game" maxWidth={360} steady>
         <div className="rnc-topbar">
           <button className="rnc-topbar-cancel" onClick={closeBox} type="button">
@@ -324,7 +331,7 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
   // ── Game load error ──────────────────────────────────────────────────────
 
   if (gameError) {
-    return (
+    return withPicker(
       <CenteredModal isOpen={open} onClose={closeBox} onExited={handleExited} ariaLabel="Write review" maxWidth={360} steady>
         <div className="rnc-topbar">
           <button className="rnc-topbar-cancel" onClick={closeBox} type="button">
@@ -344,7 +351,7 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
 
   // ── Composer ─────────────────────────────────────────────────────────────
 
-  return (
+  return withPicker(
     <>
     <CenteredModal
       isOpen={open}

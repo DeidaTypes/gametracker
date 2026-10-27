@@ -35,7 +35,7 @@ export default function RatingDistributionSheet({ isOpen, onClose, ratingDist })
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -46,20 +46,14 @@ export default function RatingDistributionSheet({ isOpen, onClose, ratingDist })
           aria-modal="true"
           role="dialog"
           aria-label="Community rating distribution"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={transition}
+          {...dim}
         >
           <motion.div
             ref={sheetRef}
             className="rating-dist-sheet"
             tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             <div className="rating-dist-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />

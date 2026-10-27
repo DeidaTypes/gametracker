@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useBadgeBackfill } from '../hooks/useBadgeBackfill'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { popCard, popDim } from '../motion/xMotion'
 import { hapticSuccess } from '../utils/haptics'
 import './BadgeBackfillSummary.css'
 
@@ -14,7 +16,7 @@ import './BadgeBackfillSummary.css'
  * renders a compact grid instead of a queued one-at-a-time reveal.
  */
 export default function BadgeBackfillSummary() {
-  const reducedMotion = useReducedMotion()
+  const { reduced } = useMotionPreference()
   const { settled, grants } = useBadgeBackfill()
   const [dismissed, setDismissed] = useState(false)
 
@@ -29,18 +31,8 @@ export default function BadgeBackfillSummary() {
     setDismissed(true)
   }, [])
 
-  const overlayMotion = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.18 } }
-    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.22 } }
-
-  const cardMotion = reducedMotion
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.18 } }
-    : {
-        initial: { opacity: 0, scale: 0.82, y: 24 },
-        animate: { opacity: 1, scale: 1, y: 0 },
-        exit: { opacity: 0, scale: 0.94, y: 8 },
-        transition: { type: 'spring', stiffness: 360, damping: 28 },
-      }
+  const overlayMotion = popDim(reduced)
+  const cardMotion = popCard(reduced)
 
   const content = (
     <AnimatePresence>

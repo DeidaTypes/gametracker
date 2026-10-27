@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { LuX, LuTriangleAlert } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { VARIANT, contentSwap } from '../motion/xMotion'
 import CenteredModal from './CenteredModal'
 import './DeleteAccountSheet.css'
 
@@ -47,13 +48,10 @@ function DeleteAccountSheet({ isOpen, onClose, onConfirm, isDeleting = false }) 
     }
   }, [isOpen])
 
-  // Auto-focus the text input when step 2 becomes active.
-  useEffect(() => {
-    if (isOpen && step === 2) {
-      const id = setTimeout(() => inputRef.current?.focus(), 120)
-      return () => clearTimeout(id)
-    }
-  }, [isOpen, step])
+  // Auto-focus the text input once step 2 has faded in.
+  const focusOnEnter = (definition) => {
+    if (definition === VARIANT.in) inputRef.current?.focus()
+  }
 
   const canDelete = confirmText === 'DELETE' && !isDeleting
 
@@ -89,10 +87,7 @@ function DeleteAccountSheet({ isOpen, onClose, onConfirm, isDeleting = false }) 
             <motion.div
               key="step1"
               className="del-acct-sheet__body"
-              initial={reduced ? false : { opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, x: -24 }}
-              transition={reduced ? { duration: 0 } : { duration: 0.18 }}
+              {...contentSwap(reduced)}
             >
               <div className="del-acct-sheet__icon" aria-hidden="true">
                 <LuTriangleAlert size={32} />
@@ -131,10 +126,8 @@ function DeleteAccountSheet({ isOpen, onClose, onConfirm, isDeleting = false }) 
             <motion.div
               key="step2"
               className="del-acct-sheet__body"
-              initial={reduced ? false : { opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, x: -24 }}
-              transition={reduced ? { duration: 0 } : { duration: 0.18 }}
+              {...contentSwap(reduced)}
+              onAnimationComplete={focusOnEnter}
             >
               <div className="del-acct-sheet__icon del-acct-sheet__icon--danger" aria-hidden="true">
                 <LuTriangleAlert size={32} />

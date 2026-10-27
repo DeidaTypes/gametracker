@@ -12,15 +12,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* No backdrop-filter: a full-screen blur re-rasters on every frame of the
-     slide and WebKit shows it at full strength the moment the overlay
-     mounts, so it read as a snap. The dim below carries the backdrop. */
+  /* Never blurred: a full-screen blur re-rasters on every frame and WebKit
+     shows it at full strength the moment the overlay mounts, so it read as a
+     snap. The shared dim (.cm-dim--shared) carries the backdrop. */
   background: transparent;
   padding: 20px;
-  /* Static padding only. The keyboard lift moved to .cm-lift below, which
-     transforms instead of re-laying-out: animating padding-bottom here forced
-     a full-screen re-raster of this element's backdrop-filter on every frame
-     of the keyboard slide, which was the single biggest source of jank. */
+  /* Static padding only. The keyboard lift lives on .cm-lift below, which
+     transforms instead of re-laying-out the full-screen overlay on every
+     frame of the keyboard slide. */
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: calc(20px + var(--safe-area-inset-top));
   box-sizing: border-box;
@@ -30,13 +29,21 @@
    A plain element above the pop and the card, because Motion owns
    `transform` on both of those (fade/scale and drag). Carries the shared
    .kb-modal-lift class from styles/keyboard.css. */
-/* ── Dim ── faded on its own so the card is never see-through. Never give
-   this or any layer that fades a backdrop-filter. */
+/* ── Dim ── faded on its own so the card is never see-through. Never blur
+   this or any layer that fades. */
 .cm-dim {
   position: absolute;
   inset: 0;
   background: rgba(5, 8, 18, 0.6);
   pointer-events: none;
+}
+
+/* One dim shared by every box (CenteredModal.jsx), so a box replacing a box
+   keeps it steady. Just under .cm-overlay; a nested box adds its own .cm-dim
+   inside its overlay. Faded with WAAPI on the popup tokens. */
+.cm-dim--shared {
+  position: fixed;
+  z-index: 1099;
 }
 
 .cm-lift {

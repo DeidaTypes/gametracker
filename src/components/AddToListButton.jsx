@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
 import {
   getAllLists,
   addGameToList,
@@ -116,9 +116,6 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, forceOpen, dismiss]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const backdropTransition = sheetTransition(reduced)
-  const sheetMove = sheetTransition(reduced)
-
   // Swipe-down-to-dismiss. Drag is initiated only from the grab handle
   // (dragListener={false}) so the body's own scroll still works.
   const handleDragEnd = sheetDragEnd(dismiss)
@@ -199,10 +196,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
             <motion.div
               className="bs-backdrop"
               onClick={dismiss}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={backdropTransition}
+              {...sheetDim(reduced)}
             >
               <motion.div
                 className="bs-sheet"
@@ -210,10 +204,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                 aria-modal="true"
                 aria-label="Set game status"
                 onClick={(e) => e.stopPropagation()}
-                initial={reduced ? false : { y: '100%' }}
-                animate={{ y: 0 }}
-                exit={reduced ? { y: 0 } : { y: '100%' }}
-                transition={sheetMove}
+                {...sheetPanel(reduced)}
                 drag={reduced ? false : 'y'}
                 dragControls={dragControls}
                 dragListener={false}

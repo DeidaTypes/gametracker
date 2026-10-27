@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'motion/react'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { toastMotion } from '../motion/xMotion'
 import './Toast.css'
 
 let _addToast = () => {}
@@ -31,14 +34,12 @@ export function showToast(message, type = 'error', duration = 3500, action = nul
   })
 }
 
-function ToastItem({ toast, onDone }) {
-  const [exiting, setExiting] = useState(false)
+function ToastItem({ toast, onDone, reduced }) {
   const timerRef = useRef(null)
 
   const dismiss = useCallback(() => {
     clearTimeout(timerRef.current)
-    setExiting(true)
-    setTimeout(onDone, 220)
+    onDone()
   }, [onDone])
 
   useEffect(() => {
@@ -58,10 +59,11 @@ function ToastItem({ toast, onDone }) {
     : { '--toast-offset-top': typeof offset === 'number' ? `${offset}px` : offset }
 
   return (
-    <div
-      className={`toast toast--${toast.type}${exiting ? ' toast--exiting' : ''}`}
+    <motion.div
+      className={`toast toast--${toast.type}`}
       style={style}
       role="alert"
+      {...toastMotion(reduced)}
     >
       {CustomIcon ? (
         <span className="toast-icon" aria-hidden="true">
@@ -89,12 +91,13 @@ function ToastItem({ toast, onDone }) {
           {toast.action.label}
         </button>
       )}
-    </div>
+    </motion.div>
   )
 }
 
 export default function ToastHost() {
   const [toasts, setToasts] = useState([])
+  const { reduced } = useMotionPreference()
 
   _addToast = useCallback((t) => {
     setToasts((prev) => [...prev, t])
@@ -104,13 +107,14 @@ export default function ToastHost() {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  if (toasts.length === 0) return null
-
+  // The container stays mounted so the last toast can play its exit.
   return createPortal(
     <div className="toast-container">
-      {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} onDone={() => removeToast(t.id)} />
-      ))}
+      <AnimatePresence initial={false}>
+        {toasts.map((t) => (
+          <ToastItem key={t.id} toast={t} reduced={reduced} onDone={() => removeToast(t.id)} />
+        ))}
+      </AnimatePresence>
     </div>,
     document.body
   )

@@ -98,7 +98,7 @@ function SettingsPickerSheet({
     onClose()
   }
 
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, handleCancel)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, handleCancel)
 
   return createPortal(
     <AnimatePresence>
@@ -109,20 +109,14 @@ function SettingsPickerSheet({
           aria-modal="true"
           role="dialog"
           aria-label={title}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={transition}
+          {...dim}
         >
           <motion.div
             ref={sheetRef}
             className="action-sheet settings-picker-sheet"
             onClick={(e) => e.stopPropagation()}
             tabIndex={-1}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             <div className="action-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />

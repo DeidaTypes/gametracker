@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'motion/react'
 import { LuChevronUp, LuChevronDown, LuPin } from 'react-icons/lu'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { sheetDim, sheetPanel } from '../motion/xMotion'
 import './ReorderPinsModal.css'
 
 /**
  * Sprint 6 P3 — Reorder pinned reviews on Profile.
  *
- * Mirrors the bottom-sheet pattern used by ActionSheet / SortSheet so
- * the layered z-index, slide-up animation, and reduced-motion handling
- * come "for free" via the shared `.action-sheet-overlay` + `.action-sheet`
- * classes in ActionSheet.css.
+ * Mirrors the bottom-sheet pattern used by ActionSheet / SortSheet: the
+ * layered z-index and chrome come from the shared `.action-sheet-overlay`
+ * + `.action-sheet` classes in ActionSheet.css, the motion from the shared
+ * sheet helpers (sheetPanel / sheetDim).
  *
  * The drag-handle reorder UX was the original plan, but a simple
  * up/down arrow modal is the documented fallback and ships with far
@@ -31,6 +34,7 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
   const [order, setOrder] = useState(pins)
   const [saving, setSaving] = useState(false)
   const sheetRef = useRef(null)
+  const { reduced } = useMotionPreference()
 
   // Reset the local order whenever the sheet (re)opens — otherwise a
   // user who reorders, cancels, and reopens would see the stale draft.
@@ -60,8 +64,6 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, onClose, saving])
-
-  if (!isOpen) return null
 
   const moveUp = (idx) => {
     if (idx <= 0) return
@@ -99,18 +101,22 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
   const dirty = order.some((p, i) => pins[i]?.review_id !== p.review_id)
 
   return createPortal(
-    <div
+    <AnimatePresence>
+    {isOpen && (
+    <motion.div
       className="action-sheet-overlay"
       onClick={saving ? undefined : onClose}
       aria-modal="true"
       role="dialog"
       aria-label="Reorder pinned reviews"
+      {...sheetDim(reduced)}
     >
-      <div
+      <motion.div
         ref={sheetRef}
         className="action-sheet reorder-pins"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
+        {...sheetPanel(reduced)}
       >
         <div className="action-sheet__handle" aria-hidden="true" />
         <p className="action-sheet__title">Reorder Pins</p>
@@ -180,8 +186,10 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
             {saving ? 'Saving…' : dirty ? 'Save order' : 'Done'}
           </button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>
+    )}
+    </AnimatePresence>,
     document.body
   )
 }

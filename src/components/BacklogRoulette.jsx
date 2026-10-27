@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Shuffle, ChevronRight, X } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
+import { contentSwap } from '../motion/xMotion'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
@@ -124,7 +125,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
 
   const finalY = -(STRIP_LEN - 1) * ITEM_H
 
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -135,18 +136,12 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
           role="dialog"
           aria-modal="true"
           aria-label="Backlog Roulette"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={transition}
+          {...dim}
         >
           <motion.div
             className="roulette-sheet"
             onClick={(e) => e.stopPropagation()}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? {} : { y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             {/* Drag handle */}
@@ -175,10 +170,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
                   <motion.div
                     key="spinning"
                     className="roulette-slot-stage"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 }}
+                    {...contentSwap(reduced)}
                   >
                     <div className="roulette-window" aria-hidden="true">
                       <div className="roulette-mask roulette-mask--top" />
@@ -252,9 +244,7 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
                   <motion.div
                     key="idle"
                     className="roulette-idle-placeholder"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    {...contentSwap(reduced)}
                   />
                 )}
 

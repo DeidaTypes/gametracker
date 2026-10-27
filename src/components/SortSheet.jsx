@@ -27,7 +27,7 @@ function SortSheet({ isOpen, onClose, value, onApply }) {
   const [pending, setPending] = useState(value)
   const sheetRef = useRef(null)
   const { reduced } = useMotionPreference()
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   // Sync pending selection whenever the sheet opens
   useEffect(() => {
@@ -60,20 +60,14 @@ function SortSheet({ isOpen, onClose, value, onApply }) {
       aria-modal="true"
       role="dialog"
       aria-label="Sort options"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={transition}
+      {...dim}
     >
       <motion.div
         ref={sheetRef}
         className="action-sheet sort-sheet"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
-        initial={reduced ? false : { y: '100%' }}
-        animate={{ y: 0 }}
-        exit={reduced ? { y: 0 } : { y: '100%' }}
-        transition={transition}
+        {...panel}
         {...dragProps}
       >
         <div className="action-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />

@@ -601,9 +601,33 @@ body[data-larger-text='true'] {
   --transition-fast: 0.12s ease;
   --transition-normal: 0.22s ease;
   --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* X-style navigation and sheets. One duration, one curve. */
-  --motion-duration: 340ms;
-  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* ---- Motion ----
+     One source of truth, mirrored in src/motion/xMotion.js (MOTION, EASE).
+     move: travelling / arriving. fade: opacity only. leave: going away. */
+  --ease-move: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-fade: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-leave: cubic-bezier(0.4, 0, 1, 1);
+  --motion-slide: 340ms;
+  --motion-tab-out: 200ms;
+  --motion-tab-in: 300ms;
+  --motion-tab-rise: 8px;
+  --motion-seg-out: 140ms;
+  --motion-seg-in: 240ms;
+  --motion-seg-rise: 6px;
+  --motion-seg-move: 280ms;
+  --motion-pop-in: 260ms;
+  --motion-pop-out: 220ms;
+  --motion-sheet-in: 340ms;
+  --motion-sheet-out: 280ms;
+  --motion-arrive: 240ms;
+  --motion-image: 240ms;
+  --motion-toast-in: 260ms;
+  --motion-toast-out: 220ms;
+  --motion-toast-rise: 8px;
+  --motion-reduced-fade: 150ms;
+  /* Aliases kept for existing callers (route stack, qa swap). */
+  --motion-duration: var(--motion-slide);
+  --motion-ease: var(--ease-move);
   --motion-dim: 0.12;
 
   /* ---- Blur ---- */

@@ -3,17 +3,16 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { LuChevronRight } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
 import KeyboardAwareView from './KeyboardAwareView'
 import './ActionSheet.css'
 
 /**
  * Bottom-anchored action sheet.
  *
- * Animation: backdrop fades from 0 to 0.5 opacity over 150 ms; sheet
- * slides up from y: 100% to 0 on a spring (stiffness 380, damping 32).
- * Both honor prefers-reduced-motion via useMotionPreference — when
- * reduced motion is requested, the sheet appears instantly.
+ * Animation: the shared sheet motion (xMotion sheetPanel / sheetDim). The
+ * sheet rises on the move curve and leaves on the leave curve; the backdrop
+ * fades with it both ways. Reduced motion fades without moving.
  *
  * Props:
  *   isOpen       – boolean
@@ -84,9 +83,6 @@ function ActionSheet({
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
-  const backdropTransition = sheetTransition(reduced)
-  const sheetMove = sheetTransition(reduced)
-
   const handleDragEnd = sheetDragEnd(onClose)
 
   return createPortal(
@@ -99,10 +95,7 @@ function ActionSheet({
           role="dialog"
           aria-label={titleId ? undefined : 'Actions'}
           aria-labelledby={titleId}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={backdropTransition}
+          {...sheetDim(reduced)}
         >
           <KeyboardAwareView mode="sheet" className={`action-sheet-anchor${top ? ' action-sheet-anchor--top' : ''}`}>
           <motion.div
@@ -110,10 +103,7 @@ function ActionSheet({
             className="action-sheet"
             onClick={(e) => e.stopPropagation()}
             tabIndex={-1}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetMove}
+            {...sheetPanel(reduced)}
             drag={reduced ? false : 'y'}
             dragControls={dragControls}
             dragListener={false}

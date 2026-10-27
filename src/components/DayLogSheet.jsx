@@ -137,7 +137,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, onClose])
 
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   function handleActivityTap(activity) {
     const href = getActivityHref(activity)
@@ -153,10 +153,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
         <>
           <motion.div
             className="dls-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={transition}
+            {...dim}
             onClick={onClose}
             aria-hidden="true"
           />
@@ -166,10 +163,7 @@ export default function DayLogSheet({ dateKey, onClose }) {
             role="dialog"
             aria-modal="true"
             aria-label={`Activity log for ${formatDayTitle(dateKey)}`}
-            initial={reduced ? {} : { y: '100%' }}
-            animate={reduced ? {} : { y: 0 }}
-            exit={reduced ? {} : { y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             <div className="dls-handle" aria-hidden="true" onPointerDown={startDrag} />

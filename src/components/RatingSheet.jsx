@@ -5,7 +5,7 @@ import { LuCheck } from 'react-icons/lu'
 import StarRatingInput from './forms/StarRatingInput'
 import { getTracker } from '../services/hoursService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDragEnd, sheetTransition } from '../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
 import { useNavDim } from '../hooks/useNavDim'
 import { hapticSuccess } from '../utils/haptics'
 import './RatingSheet.css'
@@ -121,9 +121,6 @@ function RatingSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, hoursPlayed])
 
-  const backdropTransition = sheetTransition(reduced)
-  const sheetMove = sheetTransition(reduced)
-
   const handleDragEnd = sheetDragEnd(handleDismiss)
 
   const ratingHint = rating === 0 ? 'Tap to rate' : `${rating} out of 5`
@@ -141,18 +138,12 @@ function RatingSheet({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={backdropTransition}
+          {...sheetDim(reduced)}
         >
           <motion.div
             className="rts-sheet"
             onClick={(e) => e.stopPropagation()}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={sheetMove}
+            {...sheetPanel(reduced)}
             drag={reduced ? false : 'y'}
             dragControls={dragControls}
             dragListener={false}

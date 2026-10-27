@@ -81,7 +81,7 @@ function SettingsSheet({
     fn?.()
   }
 
-  const { transition, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   return createPortal(
     <AnimatePresence>
@@ -89,10 +89,7 @@ function SettingsSheet({
         <motion.div
           className="settings-sheet-overlay"
           onClick={onClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={transition}
+          {...dim}
         >
           <motion.div
             ref={sheetRef}
@@ -102,10 +99,7 @@ function SettingsSheet({
             aria-label="Profile actions"
             tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            initial={reduced ? false : { y: '100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? { y: 0 } : { y: '100%' }}
-            transition={transition}
+            {...panel}
             {...dragProps}
           >
             <div className="settings-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />

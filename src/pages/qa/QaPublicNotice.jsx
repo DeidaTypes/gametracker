@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { Lock } from 'lucide-react'
 import KeyboardAwareView from '../../components/KeyboardAwareView'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
-import { sheetDragEnd, sheetTransition } from '../../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetPanel } from '../../motion/xMotion'
 
 /**
  * Shown once, before a private account's first question or answer.
@@ -14,7 +14,6 @@ export default function QaPublicNotice({ open, onAccept, onCancel }) {
   const { reduced } = useMotionPreference()
   const dragControls = useDragControls()
   const titleId = useId()
-  const move = sheetTransition(reduced)
 
   useEffect(() => {
     if (!open) return undefined
@@ -36,19 +35,13 @@ export default function QaPublicNotice({ open, onAccept, onCancel }) {
           onClick={(event) => {
             if (event.target === event.currentTarget) onCancel()
           }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={move}
+          {...sheetDim(reduced)}
         >
           <KeyboardAwareView mode="sheet" className="qa-notice-anchor">
             <motion.div
               className="qa-notice"
               onClick={(event) => event.stopPropagation()}
-              initial={reduced ? false : { y: '100%' }}
-              animate={{ y: 0 }}
-              exit={reduced ? { y: 0 } : { y: '100%' }}
-              transition={move}
+              {...sheetPanel(reduced)}
               drag={reduced ? false : 'y'}
               dragControls={dragControls}
               dragListener={false}

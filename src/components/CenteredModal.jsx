@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Capacitor } from '@capacitor/core'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useSheetDrag } from '../motion/useSheetDrag'
+import { MOTION, VARIANT, popCard, popDim, popDimTiming } from '../motion/xMotion'
 import {
   hideKeyboard,
   isKeyboardOpen,
@@ -34,23 +35,56 @@ function keyboardReserve() {
   return measuredKeyboardInset || DEFAULT_KEYBOARD_INSET
 }
 
-// Opacity and a whole `transform` string run on the compositor (Motion hands
-// them to WAAPI). Independent transforms such as `y` or `scale` run on the
-// main thread and drop frames while the card's contents mount.
-const POP_EASE = [0.2, 0.8, 0.2, 1]
-const POP_ENTER = { duration: 0.18, ease: POP_EASE }
-const POP_EXIT = { duration: 0.12, ease: POP_EASE }
-const POP_VARIANTS = {
-  hidden: { opacity: 0, transform: 'scale(0.96)' },
-  shown: { opacity: 1, transform: 'scale(1)', transition: POP_ENTER },
-  gone: { opacity: 0, transform: 'scale(0.98)', transition: POP_EXIT },
+// ── One dim for every box ─────────────────────────────────────────────────
+// Each open box holds the shared dim. When the last holder lets go, the fade
+// out waits one frame: a box that opens in the same commit (picker → Log a
+// session) or the next frame takes the hold over and the dim never moves. A
+// box that opens later reverses the fade from wherever it is. A box opened
+// over another box that is still open is nested and adds its own dim.
+let sharedDim = null
+let dimHolders = 0
+let dimReleaseFrame = 0
+
+function sharedDimElement() {
+  if (!sharedDim) {
+    sharedDim = document.createElement('div')
+    sharedDim.className = 'cm-dim cm-dim--shared'
+    sharedDim.setAttribute('aria-hidden', 'true')
+    sharedDim.style.opacity = '0'
+    document.body.appendChild(sharedDim)
+  }
+  return sharedDim
 }
-const POP_VARIANTS_REDUCED = {
-  hidden: { opacity: 0 },
-  shown: { opacity: 1, transition: POP_ENTER },
-  gone: { opacity: 0, transition: POP_EXIT },
+
+function fadeSharedDim(to, reduced) {
+  const el = sharedDimElement()
+  const from = Number(getComputedStyle(el).opacity)
+  el.getAnimations().forEach((a) => a.cancel())
+  el.style.opacity = String(to)
+  if (from === to) return
+  el.animate([{ opacity: from }, { opacity: to }], popDimTiming(reduced, to === 0))
 }
-const DIM_VARIANTS = POP_VARIANTS_REDUCED
+
+/** Returns true when another box is already open underneath (nested). */
+function holdSharedDim(reduced) {
+  const nested = dimHolders > 0
+  dimHolders += 1
+  if (dimReleaseFrame) {
+    cancelAnimationFrame(dimReleaseFrame)
+    dimReleaseFrame = 0
+  }
+  fadeSharedDim(1, reduced)
+  return nested
+}
+
+function releaseSharedDim(reduced) {
+  dimHolders = Math.max(0, dimHolders - 1)
+  if (dimHolders > 0 || dimReleaseFrame) return
+  dimReleaseFrame = requestAnimationFrame(() => {
+    dimReleaseFrame = 0
+    if (dimHolders === 0) fadeSharedDim(0, reduced)
+  })
+}
 
 // A field that focuses while its card is still fading in (an autoFocus, or a
 // composer's open timer) is focused when the fade completes instead, so the
@@ -76,10 +110,12 @@ if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.focus.cmHeld) {
  * CenteredModal — a stable, centered iOS-style popup dialog.
  *
  * This is the shared presentation shell for every box you type in. It never
- * slides: it fades in at the center (opacity 0 → 1, scale 0.96 → 1, 180 ms)
- * over a dim that fades with it, and fades out (scale 0.98, 120 ms). Reduced
+ * slides: it fades in at the center (opacity 0 → 1, scale 0.96 → 1,
+ * MOTION.popIn on the move curve) over a dim that fades with it, and fades
+ * out (scale 0.98, MOTION.popOut on the leave curve). One dim is shared by
+ * every box, so a box replacing a box crossfades over a steady dim. Reduced
  * motion keeps the fade and drops the scale. Only opacity and transform
- * animate, and nothing that animates carries a backdrop-filter.
+ * animate, and nothing that animates is blurred.
  *
  * Keyboard-aware for free: every modal rendered through this shell adopts the
  * shared `modal` keyboard behaviour (see src/styles/keyboard.css). The card is
@@ -126,6 +162,18 @@ function CenteredModal({
   const cardRef = useRef(null)
   const wasOpen = useRef(false)
   const [reserve, setReserve] = useState(keyboardReserve)
+  const [nested, setNested] = useState(false)
+  const reducedRef = useRef(reduced)
+  reducedRef.current = reduced
+
+  // ── Shared dim: hold while open ───────────────────────────────────────
+  // Layout effect so the hold is taken before paint, and so a box closing
+  // and a box opening in the same commit release and hold back to back.
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined
+    setNested(holdSharedDim(reducedRef.current))
+    return () => releaseSharedDim(reducedRef.current)
+  }, [isOpen])
 
   // ── Body scroll lock while open ───────────────────────────────────────
   useEffect(() => {
@@ -197,20 +245,20 @@ function CenteredModal({
   useEffect(() => {
     if (!isOpen) return undefined
     // Safety net if Motion never reports completion.
-    const timer = window.setTimeout(finishEnter, 600)
+    const timer = window.setTimeout(finishEnter, MOTION.popIn * 2)
     return () => window.clearTimeout(timer)
   }, [isOpen])
 
   const popHandlers = {
     onAnimationStart: (definition) => {
-      if (definition !== 'gone') return
+      if (definition !== VARIANT.out) return
       const pop = popRef.current
       if (!pop) return
       pop.classList.add('cm-pop--leaving')
       pendingFocus.delete(pop)
     },
     onAnimationComplete: (definition) => {
-      if (definition === 'shown') finishEnter()
+      if (definition === VARIANT.in) finishEnter()
     },
   }
 
@@ -237,24 +285,14 @@ function CenteredModal({
           className={`cm-overlay kb-no-blur-while-animating${steady ? ' cm-overlay--steady' : ''}`}
           onClick={handleBackdrop}
         >
-          <motion.div
-            className="cm-dim"
-            aria-hidden="true"
-            variants={DIM_VARIANTS}
-            initial="hidden"
-            animate="shown"
-            exit="gone"
-          />
+          {nested && <motion.div className="cm-dim" aria-hidden="true" {...popDim(reduced)} />}
           <div className="cm-lift kb-modal-lift">
             {/* The fade lives on its own layer: Motion's whole-transform
                 string would override the card's drag `y`. */}
             <motion.div
               ref={popRef}
               className={`cm-pop ${ENTERING}`}
-              variants={reduced ? POP_VARIANTS_REDUCED : POP_VARIANTS}
-              initial="hidden"
-              animate="shown"
-              exit="gone"
+              {...popCard(reduced)}
               {...popHandlers}
             >
               <motion.div
