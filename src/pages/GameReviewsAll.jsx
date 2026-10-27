@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { PenLine } from 'lucide-react'
 import ReviewCard from '../components/ReviewCard'
 import EmptyState from '../components/EmptyState'
+import { openReviewComposer as openReviewBox } from '../components/composer/ComposerHost'
 import { getGameById } from '../services/igdb'
 import { getReviewsForGamePaginated } from '../services/reviewService'
 import { prefetchLikeStatesForReviews } from '../hooks/useLikeState'
@@ -196,19 +197,18 @@ export default function GameReviewsAll() {
     }
   }, [kebabOpen])
 
-  // ── Open the single review composer (keyboard-aware ReviewNew popup) ───
-  // Pass the loaded game in route state so it renders without a refetch.
+  // ── Open the single review composer over this page ─────────────────────
+  // No navigation. The loaded game is passed so the box renders without a
+  // refetch.
   const openReviewComposer = useCallback((reviewShape) => {
-    navigate(`/review/new?gameId=${gameId}`, {
-      state: { game, editReview: reviewShape || null },
-    })
-  }, [navigate, gameId, game])
+    openReviewBox({ game, gameId, editReview: reviewShape || null })
+  }, [gameId, game])
 
-  // After the composer posts and navigates back, reload from page 1 so the
-  // new review shows up. ReviewNew dispatches `reviewAdded`.
+  // After the composer saves, reload page 1 in place so the new review shows
+  // up. The list stays on screen (no skeleton) and keeps its scroll position.
+  // ReviewComposer dispatches `reviewAdded`.
   useEffect(() => {
     const handleReviewAdded = () => {
-      setLoadingInitial(true)
       fetchPage(1)
     }
     window.addEventListener('reviewAdded', handleReviewAdded)

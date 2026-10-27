@@ -10,6 +10,7 @@ import {
 } from '../../services/celebrationService'
 import { maybeOpenRateItSheet } from '../../services/ratePrompt'
 import { getOrExtractGameColor } from '../../services/gameColorService'
+import { useComposerOpen } from '../composer/ComposerHost'
 import { normalizeAccentColor } from '../../services/colorExtract'
 import { getTracker } from '../../services/hoursService'
 import {
@@ -65,8 +66,10 @@ export default function CompletionCelebration() {
 
   // Pause while the review composer is open so a queued celebration
   // doesn't paint on top of the composer. See original comment above
-  // for full rationale.
-  const onReviewComposer = location.pathname.startsWith('/review/new')
+  // for full rationale. The box is no longer a route (ComposerHost opens it
+  // over the page); /review/new is the old-link fallback.
+  const composerOpen = useComposerOpen()
+  const onReviewComposer = composerOpen || location.pathname.startsWith('/review/new')
 
   // lottie-web is large. Load it only when a celebration is actually
   // on screen and motion is allowed.

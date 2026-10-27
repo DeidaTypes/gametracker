@@ -64,6 +64,11 @@ export const UserFollowers = lazyRoute(() => import('../pages/UserFollowers'))
 export const UserFollowing = lazyRoute(() => import('../pages/UserFollowing'))
 export const UserLibrary = lazyRoute(() => import('../pages/UserLibrary'))
 export const Wishlist = lazyRoute(() => import('../pages/Wishlist'))
+// The Write review / Journal boxes. ComposerHost renders them over the current
+// page, so they are not routes; they are listed here so the idle prefetch
+// below warms them and the first open does not wait on a download.
+export const ReviewComposer = lazyRoute(() => import('../components/composer/ReviewComposer'))
+export const JournalComposer = lazyRoute(() => import('../components/composer/JournalComposer'))
 export const QaBestAnswers = lazyRoute(() => import('../pages/qa/QaBestAnswers'))
 export const QaGame = lazyRoute(() => import('../pages/qa/QaGame'))
 export const QaMine = lazyRoute(() => import('../pages/qa/QaMine'))

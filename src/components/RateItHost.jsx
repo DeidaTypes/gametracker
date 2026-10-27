@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import RatingSheet from './RatingSheet'
 import { postReview } from '../services/reviewService'
 import { RATE_IT_EVENT } from '../services/ratePrompt'
 import { showToast } from './Toast'
+import { openReviewComposer as openReviewBox } from './composer/ComposerHost'
 
 /**
  * App-root host for the post-Finish "Rate it?" sheet. Dismiss (backdrop,
@@ -11,7 +11,6 @@ import { showToast } from './Toast'
  * through the existing postReview path.
  */
 function RateItHost() {
-  const navigate = useNavigate()
   const [game, setGame] = useState(null)
 
   useEffect(() => {
@@ -42,8 +41,8 @@ function RateItHost() {
 
   const handleWriteReview = useCallback((target) => {
     if (!target) return
-    navigate(`/review/new?gameId=${target.id}`, { state: { game: target } })
-  }, [navigate])
+    openReviewBox({ game: target })
+  }, [])
 
   return (
     <RatingSheet

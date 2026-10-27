@@ -126,6 +126,7 @@ import { SessionProvider } from './contexts/SessionContext'
 import SessionPill from './components/SessionPill'
 import StopSessionSheet from './components/StopSessionSheet'
 import QaComposerHost from './pages/qa/QaComposerHost'
+import ComposerHost from './components/composer/ComposerHost'
 import TermsGate from './components/TermsGate'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
 import { useAppResume, APP_RESUMED_EVENT } from './hooks/useAppResume'
@@ -1723,6 +1724,7 @@ function AppContent() {
       {/* Stop-session confirmation sheet — appears after stopGameSession(). */}
       <StopSessionSheet />
       <QaComposerHost />
+      <ComposerHost />
       <TermsGate />
       <PushExplainer />
     </div>

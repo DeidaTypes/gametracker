@@ -125,6 +125,7 @@ import { useCachedResource } from '../hooks/useCachedResource'
 import { qaBestKey, qaUserBestCount } from '../services/qaService'
 import { canMessageUser } from '../services/messageService'
 import { getGameNavStub } from '../utils/gameNavStub'
+import { openReviewComposer as openReviewBox } from '../components/composer/ComposerHost'
 import './Profile.css'
 
 /* ============================================================
@@ -1617,18 +1618,16 @@ function Profile() {
   const handleEditReview = useCallback(
     (reviewShape) => {
       if (!reviewShape?.id) return
-      navigate(`/review/new?gameId=${reviewShape.game.id}`, {
-        state: {
-          game: {
-            id: reviewShape.game.id,
-            title: reviewShape.game.name,
-            image: reviewShape.game.coverUrl,
-          },
-          editReview: reviewShape,
+      openReviewBox({
+        game: {
+          id: reviewShape.game.id,
+          title: reviewShape.game.name,
+          image: reviewShape.game.coverUrl,
         },
+        editReview: reviewShape,
       })
     },
-    [navigate]
+    []
   )
 
   // Persist a new pin order from the reorder modal. Optimistic local
@@ -2238,7 +2237,7 @@ function Profile() {
           isOpen={showGamePickerSheet}
           onSelect={(game) => {
             setShowGamePickerSheet(false)
-            navigate(`/review/new?gameId=${game.id}`, { state: { game } })
+            openReviewBox({ game })
           }}
           onCancel={() => setShowGamePickerSheet(false)}
         />

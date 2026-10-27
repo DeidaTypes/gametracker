@@ -34,6 +34,7 @@ import { getTimeToBeat } from '../services/timeToBeatService'
 import { getManualSessionsForGame } from '../services/sessionService'
 import ActionSheet from '../components/ActionSheet'
 import JournalEntryModal from '../components/JournalEntryModal'
+import { openReviewComposer as openReviewBox } from '../components/composer/ComposerHost'
 import DmShareSheet from '../components/DmShareSheet'
 import Avatar from '../components/Avatar'
 import { showToast } from '../components/Toast'
@@ -386,8 +387,8 @@ function GameDetail() {
         refreshFromStore()
       }
     }
-    // Refresh the in-page review list after the composer posts a review and
-    // navigates back. ReviewNew (the single composer) dispatches this event.
+    // Refresh the in-page review list after the composer saves a review.
+    // ReviewComposer dispatches this event while this page stays mounted.
     const handleReviewAdded = () => {
       refreshSocial().catch(() => {})
       refreshFromStore()
@@ -518,11 +519,11 @@ function GameDetail() {
     refreshSessions,
   ])
 
+  // Opens the review box over this page. No navigation: the page keeps its
+  // scroll position and refreshes in place when `reviewAdded` fires.
   const openReviewComposer = useCallback((reviewShape) => {
-    navigate(`/review/new?gameId=${gameId}`, {
-      state: { game, editReview: reviewShape || null },
-    })
-  }, [navigate, gameId, game])
+    openReviewBox({ game, gameId, editReview: reviewShape || null })
+  }, [gameId, game])
 
   const openJournalComposer = useCallback(() => {
     setJournalModalOpen(true)

@@ -17,6 +17,7 @@ import { createList, addGameToList } from '../services/listService'
 import { logSession } from '../services/sessionService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { showToast } from './Toast'
+import { openReviewComposer as openReviewBox } from './composer/ComposerHost'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './HomeFAB.css'
 
@@ -203,7 +204,7 @@ function HomeFAB() {
 
   const handleGamePicked = (game) => {
     setGamePickerOpen(false)
-    navigate(`/review/new?gameId=${game.id}`, { state: { game } })
+    openReviewBox({ game })
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
