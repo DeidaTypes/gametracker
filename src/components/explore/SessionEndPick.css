@@ -166,7 +166,7 @@
 
 .session-end-pick__primary {
   background: var(--accent-brand);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .session-end-pick__primary:hover {

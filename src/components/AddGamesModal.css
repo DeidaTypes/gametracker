@@ -257,7 +257,7 @@
   height: 28px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,7 +354,7 @@
   /* Non-motion press feedback */
   .agm-add-btn:active {
     background: var(--accent);
-    color: #fff;
+    color: var(--color-on-accent);
   }
 
   .agm-remove-btn:active {

@@ -237,12 +237,12 @@ html[data-app-theme="cream"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--l
 
 .lib-segb--lists-on {
   background: var(--grad-purple-blue);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .lib-segb--games-on {
   background: var(--grad-cta);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Tab content cross-fade ──
@@ -817,7 +817,7 @@ html[data-app-theme="cream"] .lib-gamecard-title {
 .lib-lists-empty .es-cta {
   background: var(--grad-purple-blue);
   border: none;
-  color: #ffffff;
+  color: var(--color-on-accent);
   height: auto;
   padding: 11px 24px;
   font-size: 13.5px;
@@ -1071,7 +1071,7 @@ html[data-app-theme="cream"] .lib-gamecard-title {
   overflow: hidden;
   border: none;
   border-radius: 50%;
-  color: #ffffff;
+  color: var(--color-on-accent);
   cursor: pointer;
   box-shadow: 0 12px 28px -10px rgba(59, 130, 246, 0.9);
   -webkit-tap-highlight-color: transparent;
@@ -1119,7 +1119,7 @@ html[data-app-theme="cream"] .lib-gamecard-title {
 .lib-fab svg {
   position: relative;
   z-index: 1;
-  color: #ffffff;
+  color: var(--color-on-accent);
   stroke: currentColor;
 }
 

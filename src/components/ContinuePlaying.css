@@ -87,7 +87,7 @@
 
 .cp-cta {
   background: var(--color-brand-primary);
-  color: #fff;
+  color: var(--color-on-accent);
   padding: 6px 14px;
   border-radius: var(--radius-full);
   font-family: var(--font-body);

@@ -128,7 +128,7 @@
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-title);
   letter-spacing: var(--letter-spacing-body);
-  color: #fff;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -139,7 +139,7 @@
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-tertiary);
 }
 
 .bs-close-btn,
@@ -152,7 +152,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s ease, color 0.15s ease;
@@ -162,7 +162,7 @@
 .bs-close-btn:hover,
 .bs-share-btn:hover {
   background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .bs-close-btn:active,
@@ -205,7 +205,7 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-primary);
   transition: background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -266,7 +266,7 @@
   line-height: var(--line-height-label);
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-tertiary);
   margin: 0 0 12px;
 }
 

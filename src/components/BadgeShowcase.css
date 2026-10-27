@@ -275,7 +275,7 @@
   height: 28px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,7 +289,7 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);

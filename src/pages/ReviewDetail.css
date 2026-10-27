@@ -627,7 +627,7 @@
   background: var(--color-brand-primary, var(--accent));
   border: none;
   border-radius: var(--radius-full);
-  color: #ffffff;
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);

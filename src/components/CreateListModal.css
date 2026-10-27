@@ -547,7 +547,7 @@
   line-height: var(--line-height-label);
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-tertiary);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -678,13 +678,13 @@
   line-height: var(--line-height-caption);
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-tertiary);
   gap: var(--spacing-sm);
   transition: color var(--transition-fast);
 }
 
 .already-in-list__toggle:hover {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--text-secondary);
 }
 
 .already-in-list__chevron {
@@ -781,7 +781,7 @@
   }
   .result-game-add-btn:active {
     background: var(--color-brand-primary);
-    color: #fff;
+    color: var(--color-on-accent);
   }
   .selected-game-thumb__remove:active {
     background: rgba(0, 0, 0, 0.85);
@@ -954,7 +954,7 @@
   border-radius: var(--radius-full);
   background: var(--grad-brand);
   border: none;
-  color: #fff;
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
@@ -1037,7 +1037,7 @@
   border-radius: var(--radius-full);
   background: var(--grad-brand);
   border: none;
-  color: #fff;
+  color: var(--color-on-accent);
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
@@ -1393,7 +1393,7 @@
 .clm-row-toggle--selected {
   background: var(--grad-brand);
   border-color: transparent;
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Mobile: extra bottom padding so the last row clears the home

@@ -190,7 +190,7 @@
 
 .collab-sheet__add-btn:hover:not(:disabled) {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .collab-sheet__add-btn:disabled {

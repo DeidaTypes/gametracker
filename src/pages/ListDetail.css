@@ -400,7 +400,7 @@
 .list-detail-empty .es-cta {
   background: var(--grad-cta);
   border: none;
-  color: #fff;
+  color: var(--color-on-accent);
   height: auto;
   padding: 11px 24px;
   font-size: 13.5px;

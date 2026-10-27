@@ -418,7 +418,7 @@
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-caption);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -427,7 +427,7 @@
 /* ---- Chevron ---- */
 .sp-result-chevron {
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-tertiary);
   margin-left: 4px;
 }
 

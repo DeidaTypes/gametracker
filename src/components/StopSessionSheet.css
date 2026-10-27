@@ -113,7 +113,7 @@
   border-radius: 12px;
   border: none;
   background: var(--color-brand-primary, #3b82f6);
-  color: #fff;
+  color: var(--color-on-accent);
   font-family: var(--font-sans, 'DM Sans', sans-serif);
   font-size: 16px;
   font-weight: 700;

@@ -340,7 +340,7 @@
 
 .roulette-btn--primary {
   background: var(--status-want-to-play);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 @media (hover: hover) {
