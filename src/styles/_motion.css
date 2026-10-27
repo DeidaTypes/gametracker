@@ -153,6 +153,63 @@
   pointer-events: none;
 }
 
+/* =====================================================
+   KEPT TAB ROOTS
+   AnimatedRoutes keeps every visited tab root mounted. A tab
+   that is not on screen takes no space, paints nothing and
+   takes no input. Its scroll offset is saved in JS and
+   written back when it returns.
+   ===================================================== */
+
+.route-layer--kept {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  content-visibility: hidden;
+}
+
+/* Tab switch: the old tab fades out while the new one fades in and
+   settles up. Scoped to the live stack so a back-reveal snapshot
+   cloned mid-fade never replays it. */
+.route-stack > .route-layer--tab-in {
+  animation:
+    route-tab-fade-in var(--motion-tab-in) var(--ease-fade) both,
+    route-tab-rise var(--motion-slide) var(--ease-move) both;
+}
+
+.route-stack > .route-layer--tab-out {
+  animation: route-tab-fade-out var(--motion-tab-out) var(--ease-fade) both;
+}
+
+/* Reduce Motion: fades only. */
+.route-stack > .route-layer--tab-in-reduced {
+  animation: route-tab-fade-in var(--motion-reduced-fade) var(--ease-fade) both;
+}
+
+.route-stack > .route-layer--tab-out-reduced {
+  animation: route-tab-fade-out var(--motion-reduced-fade) var(--ease-fade) both;
+}
+
+@keyframes route-tab-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes route-tab-rise {
+  from { transform: translate3d(0, var(--motion-tab-rise), 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes route-tab-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* The live destination layer while backTransition.js's snapshot reveal is
    holding it (swipe-back gesture handoff or button-back slide). The reveal
    is appended to `.main-content` imperatively, as a DOM sibling of these

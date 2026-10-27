@@ -31,6 +31,17 @@ const SCROLL_DOWN_THRESHOLD_PX = 12
  * @param {HTMLElement | null} container  Hydrated `.main-content` element
  * @returns {boolean} hidden
  */
+/**
+ * AnimatedRoutes restores a kept tab's scroll offset with one write. That
+ * is not the user scrolling, so the scroll event it causes only moves the
+ * baseline instead of hiding or showing the nav.
+ */
+let jumpTarget = null
+
+export function markScrollJump(top) {
+  jumpTarget = top
+}
+
 function isSettingsRoute(pathname) {
   return pathname === '/settings' || pathname.startsWith('/settings/')
 }
@@ -63,6 +74,15 @@ export function useNavHideOnScroll(container) {
 
     const onScroll = () => {
       const y = container.scrollTop
+      if (jumpTarget !== null) {
+        const jumped = Math.abs(y - jumpTarget) < 1
+        jumpTarget = null
+        if (jumped) {
+          s.lastY = y
+          s.downAcc = 0
+          return
+        }
+      }
       const delta = y - s.lastY
       s.lastY = y
 

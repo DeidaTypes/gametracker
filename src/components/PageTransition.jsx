@@ -16,6 +16,15 @@ import { MOTION_MS } from '../motion/xMotion'
  */
 export const PageTransitionPhase = createContext(null)
 
+/**
+ * The bottom-nav tab a kept-alive tab root belongs to ('home', 'discover',
+ * 'qa', 'library', 'profile'), or null on a pushed screen. Constant for the
+ * life of a layer. AnimatedRoutes fires TAB_SHOWN_EVENT ({ tab }) when a kept
+ * tab comes back on screen.
+ */
+export const TabRootContext = createContext(null)
+export const TAB_SHOWN_EVENT = 'gt:tabShown'
+
 const TransitionCompleteContext = createContext(true)
 
 export function useTransitionComplete() {

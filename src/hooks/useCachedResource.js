@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { TAB_SHOWN_EVENT, TabRootContext } from '../components/PageTransition'
 import {
   getSWR,
   isSWRFresh,
@@ -57,6 +58,20 @@ export function useCachedResource(key, fetcher, options = {}) {
   }
 
   const [isRevalidating, setIsRevalidating] = useState(false)
+  const tabRoot = useContext(TabRootContext)
+
+  // A kept-alive tab coming back on screen. Revalidate quietly: no
+  // isRevalidating flip (that re-renders mid-fade); a new value arrives
+  // through the subscription below and waits for runAfterSlide.
+  useEffect(() => {
+    if (!activeKey || !tabRoot) return undefined
+    const onShown = (e) => {
+      if (e.detail?.tab !== tabRoot || isSWRFresh(activeKey)) return
+      getSWR(activeKey, () => fetcherRef.current(), { ttlMs: revalidateAfterMs }).catch(() => {})
+    }
+    window.addEventListener(TAB_SHOWN_EVENT, onShown)
+    return () => window.removeEventListener(TAB_SHOWN_EVENT, onShown)
+  }, [activeKey, tabRoot, revalidateAfterMs])
 
   useEffect(() => {
     if (!activeKey) return undefined

@@ -7,6 +7,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { peekSWR, subscribeSWR } from '../services/swrCache'
 import { qaHomeKey } from '../services/qaService'
 import { hapticImpact } from '../utils/haptics'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { EASE, MOTION } from '../motion/xMotion'
 import AdBanner from './AdBanner'
 import './BottomNav.css'
 
@@ -15,6 +17,10 @@ import './BottomNav.css'
 // component tree) can slide out of the way while a grid item is being
 // dragged, and slide back once the drag session ends. detail: { active }.
 export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
+
+// Tapping the tab whose root is already on screen. AppContent scrolls
+// `.main-content` to the top instead of navigating.
+export const TAB_RESELECT_EVENT = 'gt:tabReselect'
 
 /**
  * Cobalt-Modern floating-pill bottom navigation.
@@ -34,8 +40,8 @@ export const LIST_REORDER_DRAG_EVENT = 'gt:listReorderDragActive'
  *     /search routes both still resolve (App.jsx aliases /explore → the
  *     same component as /discover); this tab reads as active for any of
  *     /discover, /explore, /search, or /browse/*.
- *   - Reduced-motion users get an instant transition instead of the
- *     spring (no animation at all between tab states).
+ *   - The pill glides on the shared `move` curve (MOTION.slide).
+ *     Reduced-motion users get no travel at all.
  *   - Capacitor Haptics fires a light impact on tap when running in the
  *     native iOS shell. The import is dynamic + try/catch so the web
  *     build is a no-op when the plugin is unavailable.
@@ -132,6 +138,7 @@ function BottomNav({ scrollHidden = false }) {
   const location = useLocation()
   const { user } = useAuth()
   const { unreadCount } = useUnreadMessages()
+  const { reduced } = useMotionPreference()
   const homeKey = qaHomeKey(user?.id)
   const [inboxNew, setInboxNew] = useState(() => inboxHasNew(homeKey ? peekSWR(homeKey) : undefined))
   const [dragReorderActive, setDragReorderActive] = useState(false)
@@ -164,8 +171,10 @@ function BottomNav({ scrollHidden = false }) {
   // Hide on onboarding (App.jsx already guards auth/login screens).
   if (location.pathname === '/onboarding') return null
 
-  // Tab changes are instant. The pill moves with no travel animation.
-  const pillTransition = { duration: 0 }
+  const pillTransition = reduced
+    ? { duration: 0 }
+    : { duration: MOTION.slide / 1000, ease: EASE.move }
+  const onTabRoot = TAB_ROOT_ORIGIN[location.pathname]
 
   const visuallyHidden = dragReorderActive || scrollHidden
 
@@ -202,8 +211,12 @@ function BottomNav({ scrollHidden = false }) {
             aria-current={active ? 'page' : undefined}
             data-tab={id}
             className={`bottom-nav-item ${active ? 'active' : ''}`}
-            onClick={() => {
+            onClick={(e) => {
               hapticImpact('Light')
+              if (onTabRoot === id) {
+                e.preventDefault()
+                window.dispatchEvent(new CustomEvent(TAB_RESELECT_EVENT))
+              }
             }}
           >
             {active && (

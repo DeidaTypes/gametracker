@@ -12,6 +12,28 @@
   /* Stacking context for radial items; above page and tab bar, below modals */
   z-index: 1005;
   /* Only show on mobile where the bottom nav appears */
+  transition: opacity var(--motion-tab-in) var(--ease-fade);
+}
+
+/* Portaled, so a kept-alive Home that is off screen (another tab or a
+   pushed screen) has to hide its FAB here. data-tab-shown is written by
+   AnimatedRoutes in App.jsx. */
+body:not([data-tab-shown='home']) .home-fab-root {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-tab-out) var(--ease-fade),
+    visibility 0s linear var(--motion-tab-out);
+}
+
+body[data-reduce-motion='true'] .home-fab-root {
+  transition-duration: var(--motion-reduced-fade);
+}
+
+body[data-reduce-motion='true']:not([data-tab-shown='home']) .home-fab-root {
+  transition-duration: var(--motion-reduced-fade), 0s;
+  transition-delay: 0s, var(--motion-reduced-fade);
 }
 
 @media (min-width: 769px) {

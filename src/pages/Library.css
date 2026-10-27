@@ -1088,6 +1088,26 @@ html[data-app-theme="cream"] .lib-gamecard-title {
   pointer-events: none;
 }
 
+/* Portaled, so a kept-alive Library that is off screen has to hide its
+   FAB here. data-tab-shown is written by AnimatedRoutes in App.jsx. */
+body:not([data-tab-shown='library']) .lib-fab {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-tab-out) var(--ease-fade),
+    visibility 0s linear var(--motion-tab-out);
+}
+
+body[data-reduce-motion='true'] .lib-fab {
+  transition-duration: var(--motion-reduced-fade);
+}
+
+body[data-reduce-motion='true']:not([data-tab-shown='library']) .lib-fab {
+  transition-duration: var(--motion-reduced-fade), 0s;
+  transition-delay: 0s, var(--motion-reduced-fade);
+}
+
 /* Two stacked gradient layers, one per tab, crossfaded via opacity —
    same reasoning as .lib-ambient-wash above: background-image can't be
    transitioned directly, so this is what makes the FAB's cobalt→green
