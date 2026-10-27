@@ -20,22 +20,22 @@
 
 :root {
   /* Form-system local tokens */
-  --form-field-bg: rgba(255, 255, 255, 0.04);
-  --form-field-bg-focus: rgba(255, 255, 255, 0.06);
+  --form-field-bg: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  --form-field-bg-focus: color-mix(in srgb, var(--text-primary) 6%, transparent);
   --form-field-recess: inset 0 1px 0 rgba(0, 0, 0, 0.28);
-  --form-field-bottom: rgba(255, 255, 255, 0.08);
+  --form-field-bottom: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --form-field-bottom-focus: var(--color-brand-primary);
-  --form-field-bottom-error: rgba(160, 72, 72, 0.7);
-  --form-field-text: rgba(255, 255, 255, 0.95);
-  --form-field-placeholder: rgba(255, 255, 255, 0.32);
+  --form-field-bottom-error: color-mix(in srgb, var(--status-danger) 70%, transparent);
+  --form-field-text: var(--text-primary);
+  --form-field-placeholder: var(--text-tertiary);
   --form-field-radius: 10px;
   --form-field-pad-x: 14px;
   --form-field-pad-y: 12px;
 
-  --form-label-color: rgba(255, 255, 255, 0.55);
-  --form-counter-color: rgba(255, 255, 255, 0.6);
-  --form-hint-color: rgba(255, 255, 255, 0.45);
-  --form-error-color: rgba(196, 130, 130, 0.95);
+  --form-label-color: var(--text-secondary);
+  --form-counter-color: var(--text-secondary);
+  --form-hint-color: var(--text-tertiary);
+  --form-error-color: var(--status-danger);
 
   --form-button-radius: 12px;
   --form-button-min-h: 52px;
@@ -124,7 +124,7 @@
 .form-field__control:hover:not(:focus) {
   box-shadow:
     var(--form-field-recess),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+    inset 0 -1px 0 color-mix(in srgb, var(--text-primary) 14%, transparent);
 }
 
 .form-field__control:focus {
@@ -212,7 +212,7 @@
 }
 
 .form-field__textarea::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
   border-radius: 3px;
 }
 
@@ -260,11 +260,11 @@
 
 .form-numeric__step:hover:not(:disabled) {
   color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .form-numeric__step:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .form-numeric__step:disabled {
@@ -380,8 +380,8 @@
 .form-button--primary:disabled,
 .form-button--primary[aria-disabled='true'] {
   background: var(--color-bg-tertiary);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.3);
+  border-color: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-tertiary);
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -396,17 +396,19 @@
    ============================================================ */
 .form-button--secondary {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.55);
+  border-color: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  color: var(--text-secondary);
 }
 
 .form-button--secondary:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
+  border-color: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  color: var(--text-primary);
   filter: brightness(1.05);
 }
 
 .form-button--secondary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-color: color-mix(in srgb, var(--text-primary) 24%, transparent);
   transform: scale(0.97);
 }
 
@@ -420,18 +422,20 @@
    ============================================================ */
 .form-button--destructive {
   background: transparent;
-  border-color: rgba(160, 72, 72, 0.5);
-  color: #a04848;
+  border-color: color-mix(in srgb, var(--status-danger) 50%, transparent);
+  color: var(--status-danger);
 }
 
 .form-button--destructive:hover:not(:disabled) {
-  background: rgba(160, 72, 72, 0.08);
-  border-color: rgba(160, 72, 72, 0.75);
-  color: #bf5959;
+  background: color-mix(in srgb, var(--status-danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--status-danger) 75%, transparent);
+  color: var(--status-danger);
   filter: none;
 }
 
 .form-button--destructive:active:not(:disabled) {
+  background: color-mix(in srgb, var(--status-danger) 16%, transparent);
+  border-color: color-mix(in srgb, var(--status-danger) 85%, transparent);
   transform: scale(0.97);
 }
 
@@ -659,13 +663,13 @@
   }
 
   .form-button--secondary:active:not(:disabled) {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.24);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    border-color: color-mix(in srgb, var(--text-primary) 24%, transparent);
   }
 
   .form-button--destructive:active:not(:disabled) {
-    background: rgba(160, 72, 72, 0.16);
-    border-color: rgba(160, 72, 72, 0.85);
+    background: color-mix(in srgb, var(--status-danger) 16%, transparent);
+    border-color: color-mix(in srgb, var(--status-danger) 85%, transparent);
   }
 
   .form-star--punch .form-star__icon {
