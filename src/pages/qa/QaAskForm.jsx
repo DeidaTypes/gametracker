@@ -1,6 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight } from 'lucide-react'
 import IOSSwitch from '../../components/IOSSwitch'
+import {
+  PickerEmpty,
+  PickerField,
+  PickerLabel,
+  PickerRow,
+  PickerSearching,
+  PickerTopBar,
+} from '../../components/GamePickerSheet'
 import { useDebounce } from '../../hooks/useDebounce'
 import { hideKeyboard } from '../../services/keyboardInset'
 import { searchGames } from '../../services/searchService'
@@ -25,18 +33,6 @@ import { QA_TOPICS, highlightQuery, topicLabel } from './qaFormat'
 function GameCover({ src, className }) {
   if (src) return <img src={src} alt="" className={className} />
   return <div className={`${className} ${className}--placeholder`} aria-hidden="true" />
-}
-
-function PickRow({ game, meta, onChoose }) {
-  return (
-    <button type="button" className="qa-cmp-pick-row" onClick={() => onChoose(game)}>
-      <GameCover src={game.coverUrl || game.image} className="qa-cmp-pick-cover" />
-      <span className="qa-cmp-pick-info">
-        <span className="qa-cmp-pick-title">{game.title}</span>
-        {meta ? <span className="qa-cmp-pick-meta">{meta}</span> : null}
-      </span>
-    </button>
-  )
 }
 
 function AskPick({ draft, onCancel }) {
@@ -116,92 +112,71 @@ function AskPick({ draft, onCancel }) {
 
   return (
     <>
-      <div className="qa-cmp-pick-head">
-        <div className="qa-cmp-pick-titlerow">
-          <h2 className="qa-cmp-pick-heading">Which game is it about?</h2>
-          <button type="button" className="qa-cmp-pick-cancel" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-        <div className="qa-cmp-search-row">
-          <Search size={18} className="qa-cmp-search-icon" aria-hidden="true" />
-          <input
-            type="search"
-            className="qa-cmp-search-input"
-            value={draft.search}
-            placeholder="Search games…"
-            aria-label="Search games"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            enterKeyHint="search"
-            onChange={(event) => patchQaDraft({ search: event.target.value })}
-          />
-          {draft.search ? (
-            <button
-              type="button"
-              className="qa-cmp-search-clear"
-              aria-label="Clear search"
-              onClick={() => patchQaDraft({ search: '' })}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <PickerTopBar title="Which game is it about?" onCancel={onCancel} />
+      <PickerField
+        value={draft.search}
+        onChange={(event) => patchQaDraft({ search: event.target.value })}
+        onClear={() => patchQaDraft({ search: '' })}
+      />
 
-      <div className="qa-cmp-pick-body cm-scroll">
+      <div className="gps-body cm-scroll">
         {query ? (
-          <section className="qa-cmp-pick-section">
-            {waiting ? (
-              <div className="qa-cmp-state-row qa-cmp-state-row--loading" aria-live="polite">
-                <span className="qa-cmp-state-spinner" aria-hidden="true" />
-                Searching…
-              </div>
-            ) : null}
+          <section>
+            {waiting ? <PickerSearching /> : null}
             {!waiting && searchError ? (
-              <p className="qa-cmp-state-row qa-cmp-state-row--error" aria-live="assertive">
+              <p className="gps-state-row gps-state-row--error" aria-live="assertive">
                 Couldn&apos;t search. Try again.
               </p>
             ) : null}
             {!waiting && !searchError && results.length === 0 ? (
-              <p className="qa-cmp-state-row" aria-live="polite">No games match</p>
+              <p className="gps-state-row" aria-live="polite">No games match</p>
             ) : null}
-            {!waiting && results.length > 0
-              ? results.map((game) => (
-                  <PickRow key={game.id} game={game} meta={resultMeta(game)} onChoose={choose} />
-                ))
-              : null}
+            {!waiting && results.length > 0 ? (
+              <>
+                <PickerLabel>Results</PickerLabel>
+                <div className="gps-list">
+                  {results.map((game) => (
+                    <PickerRow key={game.id} game={game} meta={resultMeta(game)} onChoose={choose} />
+                  ))}
+                </div>
+              </>
+            ) : null}
           </section>
         ) : null}
 
         {!query && playing.length > 0 ? (
-          <section className="qa-cmp-pick-section">
-            <p className="qa-cmp-pick-label">Currently playing</p>
-            {playing.map((game) => (
-              <PickRow
-                key={game.id}
-                game={game}
-                meta={libraryMeta(game, 'Currently Playing')}
-                onChoose={choose}
-              />
-            ))}
+          <section>
+            <PickerLabel>Currently playing</PickerLabel>
+            <div className="gps-list">
+              {playing.map((game) => (
+                <PickerRow
+                  key={game.id}
+                  game={game}
+                  meta={libraryMeta(game, 'Currently Playing')}
+                  onChoose={choose}
+                />
+              ))}
+            </div>
           </section>
         ) : null}
 
         {!query && played.length > 0 ? (
-          <section className="qa-cmp-pick-section">
-            <p className="qa-cmp-pick-label">Recently played</p>
-            {played.map((game) => (
-              <PickRow key={game.id} game={game} meta={libraryMeta(game, 'Played')} onChoose={choose} />
-            ))}
+          <section>
+            <PickerLabel>Recently played</PickerLabel>
+            <div className="gps-list">
+              {played.map((game) => (
+                <PickerRow
+                  key={game.id}
+                  game={game}
+                  meta={libraryMeta(game, 'Played')}
+                  onChoose={choose}
+                />
+              ))}
+            </div>
           </section>
         ) : null}
 
-        {!query && !showLibrary ? (
-          <p className="qa-cmp-state-row qa-cmp-state-row--empty">Search above to find a game</p>
-        ) : null}
+        {!query && !showLibrary ? <PickerEmpty /> : null}
       </div>
     </>
   )

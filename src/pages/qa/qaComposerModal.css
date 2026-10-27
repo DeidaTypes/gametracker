@@ -1,7 +1,7 @@
 /* Mirrors .jnc-* and .rnc-*; change them together.
    ============================================================
    Q&A ask / answer composer, presented inside CenteredModal.
-   The pick step mirrors GamePickerSheet (.gps-*). The popup shell
+   The pick step uses GamePickerSheet's pieces (.gps-*). The popup shell
    (.cm-card) owns the surface, rounding, centering and keyboard-aware
    sizing; these rules only lay out the content. Not imported from
    ReviewNew.css / JournalNew.css because those live in lazy route chunks.
@@ -565,222 +565,8 @@ button.qa-cmp-platform:active {
   color: var(--accent);
 }
 
-/* ── Pick step — mirrors GamePickerSheet (.gps-*) ────────────────────────── */
-
-.qa-cmp-pick-head {
-  flex-shrink: 0;
-  padding: var(--space-16) var(--space-20) var(--space-12);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.qa-cmp-pick-titlerow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  margin: 0 0 var(--space-12);
-}
-
-.qa-cmp-pick-heading {
-  font-family: var(--font-body);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.qa-cmp-pick-cancel {
-  flex-shrink: 0;
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 400;
-  color: var(--accent);
-  background: none;
-  border: none;
-  padding: 6px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.qa-cmp-pick-cancel:active {
-  opacity: 0.6;
-}
-
-.qa-cmp-search-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.qa-cmp-search-icon {
-  position: absolute;
-  left: 14px;
-  color: var(--text-tertiary);
-  pointer-events: none;
-  flex-shrink: 0;
-}
-
-.qa-cmp-search-input {
-  width: 100%;
-  height: 44px;
-  padding: 0 var(--space-40);
-  background: var(--theme-fill);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 16px;
-  outline: none;
-  transition: border-color 160ms ease, background 160ms ease;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.qa-cmp-search-input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-}
-
-.qa-cmp-search-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.qa-cmp-search-input:focus {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.qa-cmp-search-clear {
-  position: absolute;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--theme-fill);
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.qa-cmp-pick-body {
-  flex: 1;
-  padding: 0;
-}
-
-.qa-cmp-pick-section {
-  padding: var(--space-16) 0 var(--space-4);
-}
-
-.qa-cmp-pick-label {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin: 0 0 var(--space-4);
-  padding: 0 var(--space-20);
-}
-
-.qa-cmp-pick-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 10px var(--space-20);
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-  text-align: left;
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  -webkit-tap-highlight-color: transparent;
-  transition: background 120ms ease;
-}
-
-.qa-cmp-pick-row:last-child {
-  border-bottom: none;
-}
-
-.qa-cmp-pick-row:active {
-  background: var(--theme-fill);
-}
-
-.qa-cmp-pick-cover {
-  flex-shrink: 0;
-  width: 44px;
-  height: 58px;
-  border-radius: 6px;
-  object-fit: cover;
-  display: block;
-}
-
-.qa-cmp-pick-cover--placeholder {
-  background: var(--bg-surface);
-}
-
-.qa-cmp-pick-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.qa-cmp-pick-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.qa-cmp-pick-meta {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.qa-cmp-state-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: var(--space-20);
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-.qa-cmp-state-row--error {
-  color: var(--theme-danger);
-}
-
-.qa-cmp-state-row--loading {
-  color: var(--text-secondary);
-}
-
-.qa-cmp-state-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid color-mix(in srgb, var(--text-primary) 15%, transparent);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: qaCmpSpin 700ms linear infinite;
-}
+/* The game-pick step is laid out by GamePickerSheet.css (.gps-*), shared with
+   the Write review / Log a session picker. */
 
 /* The private-account notice opens over this popup (.cm-overlay, z-index
    1100). qa.css is a lazy chunk that loads after this file, hence the
@@ -802,19 +588,15 @@ body .qa-notice-overlay {
   .qa-cmp-textarea,
   .qa-cmp-chip,
   .qa-cmp-count,
-  .qa-cmp-similar-row,
-  .qa-cmp-search-input,
-  .qa-cmp-pick-row {
+  .qa-cmp-similar-row {
     transition: none;
   }
 
-  .qa-cmp-post-spinner,
-  .qa-cmp-state-spinner {
+  .qa-cmp-post-spinner {
     animation-duration: 1400ms;
   }
 }
 
-body[data-reduce-motion='true'] .qa-cmp-post-spinner,
-body[data-reduce-motion='true'] .qa-cmp-state-spinner {
+body[data-reduce-motion='true'] .qa-cmp-post-spinner {
   animation-duration: 1400ms;
 }

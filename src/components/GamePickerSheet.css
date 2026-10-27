@@ -1,32 +1,75 @@
 /* ============================================================
-   GamePickerSheet — centered popup (CenteredModal) game picker.
-   Presentation shell is .cm-card; rules below style its contents.
+   GamePickerSheet — the "What did you play?" box.
+   Presentation shell is .cm-card (CenteredModal); the rules below
+   lay out its contents. Also used by the Q&A Ask form's game step
+   (QaAskForm.jsx), so both pickers share one look.
+
+   Matches docs/design/checkpoint_game_picker.html. Tokens only. Only
+   transform and opacity animate; press states are instant.
    ============================================================ */
 
-/* Give the picker room for results: fill the available popup height. */
-.cm-card.gps-sheet {
-  /* Height budget comes from the shared .kb-modal-fill class in
-     styles/keyboard.css, applied on the element in GamePickerSheet.jsx. */
-}
+/* ---- Top bar: Cancel | title | spacer, hairline under ---- */
 
-/* ---- Header ---- */
-
-.gps-header {
+.gps-topbar {
   flex-shrink: 0;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-16);
+  border-bottom: 0.5px solid var(--border-subtle);
 }
 
-.gps-title {
-  font-family: var(--font-display, 'DM Sans', system-ui, sans-serif);
-  font-size: 18px;
-  font-weight: var(--font-weight-bold, 700);
-  color: var(--color-text-primary, #f0f3fa);
-  margin: 0 0 16px;
-  letter-spacing: -0.01em;
+.gps-topbar-cancel {
+  flex-shrink: 0;
+  min-width: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--space-8) 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Search row */
+.gps-topbar-cancel:active {
+  opacity: 0.6;
+}
+
+.gps-topbar-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Same width as Cancel, so the title sits in the true center. */
+.gps-topbar-spacer {
+  flex-shrink: 0;
+  min-width: 56px;
+}
+
+/* ---- Field ---- */
+
+.gps-search {
+  flex-shrink: 0;
+  padding: var(--space-16) var(--space-16) 0;
+}
+
 .gps-search-row {
   position: relative;
   display: flex;
@@ -35,8 +78,8 @@
 
 .gps-search-icon {
   position: absolute;
-  left: 14px;
-  color: var(--color-text-tertiary, #5c6b8a);
+  left: var(--space-12);
+  color: var(--text-tertiary);
   pointer-events: none;
   flex-shrink: 0;
 }
@@ -44,243 +87,269 @@
 .gps-search-input {
   width: 100%;
   height: 44px;
-  padding: 0 40px 0 40px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-  border-radius: 12px;
-  color: var(--color-text-primary, #f0f3fa);
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 16px;
+  padding: 0 var(--space-40);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px; /* 16 keeps iOS from zooming the page on focus */
   outline: none;
-  transition: border-color 160ms ease, background 160ms ease;
-  /* Remove native search input chrome */
   -webkit-appearance: none;
   appearance: none;
 }
 
+.gps-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
 .gps-search-input::placeholder {
-  color: var(--color-text-tertiary, #5c6b8a);
+  color: var(--text-tertiary);
 }
 
 .gps-search-input:focus {
-  border-color: var(--accent, #3b82f6);
-  background: rgba(59, 130, 246, 0.06);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-/* Clear button */
 .gps-search-clear {
   position: absolute;
-  right: 10px;
+  right: var(--space-8);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
   border: none;
-  color: var(--color-text-secondary, #94a8d4);
+  border-radius: var(--radius-full);
+  background: var(--theme-fill);
+  color: var(--text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 120ms ease;
 }
 
-.gps-search-clear:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-/* ---- Scrollable body ---- */
+/* ---- Body: one scroll region; panes crossfade in a single grid cell ---- */
 
 .gps-body {
-  flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 0;
-}
-
-/* ---- Sections ---- */
-
-.gps-section {
-  padding: 16px 20px 4px;
-}
-
-.gps-section-label {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: var(--font-size-label, 11px);
-  font-weight: var(--font-weight-semibold, 600);
-  letter-spacing: var(--letter-spacing-label, 0.08em);
-  text-transform: uppercase;
-  color: var(--color-text-tertiary, #5c6b8a);
-  margin: 0 0 12px;
-}
-
-/* ---- Recently played covers ---- */
-
-.gps-recent-row {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  padding-bottom: var(--space-8);
 }
 
-.gps-recent-cover-btn {
-  background: transparent;
-  border: none;
+.gps-stack {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gps-pane {
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Labels ---- */
+
+.gps-label {
+  margin: var(--space-16) var(--space-16) var(--space-12);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ---- Recently played: a row of covers ---- */
+
+.gps-recent {
+  display: flex;
+  gap: var(--space-12);
+  padding: 0 var(--space-16);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gps-recent::-webkit-scrollbar {
+  display: none;
+}
+
+.gps-recent-item {
+  flex: none;
+  width: 56px;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  background: none;
+  border: none;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
-.gps-recent-cover-btn:hover {
-  transform: scale(1.04);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-
-.gps-recent-cover-btn:active {
+.gps-recent-item:active .gps-recent-cover {
   transform: scale(0.97);
 }
 
 .gps-recent-cover {
-  width: 68px;
-  height: 90px;
-  object-fit: cover;
   display: block;
+  width: 56px;
+  height: 76px;
+  object-fit: cover;
   border-radius: var(--radius-sm);
+  background: var(--theme-fill);
+  transition: transform var(--motion-seg-out) var(--ease-fade);
 }
 
-.gps-recent-cover--placeholder {
+.gps-recent-title {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  line-height: 1.2;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- List rows: 44 x 60 cover, title 15/600, meta 12 muted ---- */
+
+.gps-list {
+  padding: 0 var(--space-16);
+}
+
+.gps-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--bg-surface, #131a35);
-  color: var(--color-text-tertiary, #5c6b8a);
-  font-size: 22px;
-  font-weight: 700;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-8) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ---- Search results list ---- */
-
-.gps-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.gps-results li {
-  border-bottom: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.08));
-}
-
-.gps-results li:last-child {
+.gps-row:last-child {
   border-bottom: none;
 }
 
-.gps-result-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 10px 20px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  color: var(--color-text-primary, #f0f3fa);
-  -webkit-tap-highlight-color: transparent;
-  transition: background 120ms ease;
+.gps-row:active {
+  background: var(--theme-fill);
 }
 
-.gps-result-row:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.gps-result-row:active {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.gps-result-cover-wrap {
+.gps-row-cover {
   flex-shrink: 0;
-  width: 44px;
-  height: 58px;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.gps-result-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   display: block;
+  width: 44px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--theme-fill);
 }
 
-.gps-result-cover--placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-surface, #131a35);
-  color: var(--color-text-tertiary, #5c6b8a);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.gps-result-info {
+.gps-row-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-4);
 }
 
-.gps-result-title {
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-primary, #f0f3fa);
+.gps-row-title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.gps-result-meta {
-  font-size: var(--font-size-caption, 13px);
-  color: var(--color-text-tertiary, #5c6b8a);
+.gps-row-meta {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ---- State messages ---- */
+/* ---- Empty state: centered, no list yet ---- */
+
+.gps-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-40) var(--space-24) var(--space-48);
+  text-align: center;
+}
+
+.gps-empty-icon {
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-12);
+}
+
+.gps-empty-title {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.gps-empty-body {
+  margin: 0;
+  max-width: 280px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ---- State rows ---- */
 
 .gps-state-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 0;
+  gap: var(--space-12);
+  margin: 0;
+  padding: var(--space-24) var(--space-16);
+  font-family: var(--font-body);
   font-size: 14px;
-  color: var(--color-text-tertiary, #5c6b8a);
+  color: var(--text-tertiary);
 }
 
 .gps-state-row--error {
-  color: var(--status-danger, #f87171);
+  color: var(--status-danger);
 }
 
 .gps-state-row--loading {
-  color: var(--color-text-secondary, #94a8d4);
+  color: var(--text-secondary);
 }
 
-/* Spinner */
 .gps-spinner {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent, #3b82f6);
-  border-radius: 50%;
   flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, var(--text-primary) 15%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
   animation: gpsSpin 700ms linear infinite;
 }
 
@@ -288,48 +357,30 @@
   to { transform: rotate(360deg); }
 }
 
-/* ---- Footer ---- */
-
-.gps-footer {
-  flex-shrink: 0;
-  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 12px);
-  border-top: 1px solid var(--border-subtle, rgba(148, 168, 212, 0.12));
-}
-
-.gps-cancel-btn {
-  width: 100%;
-  height: 48px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-secondary, #94a8d4);
-  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif);
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold, 600);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 140ms ease;
-}
-
-.gps-cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.10);
-}
-
-.gps-cancel-btn:active {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-/* Reduced motion: defence-in-depth — Framer Motion already collapses
-   the enter/exit animations via useMotionPreference. */
+/* Reduce Motion: no movement. The spinner turns slowly instead of at speed,
+   and the press scale is dropped. */
 @media (prefers-reduced-motion: reduce) {
-  .gps-overlay,
-  .gps-sheet {
-    animation: none;
+  .gps-spinner {
+    animation-duration: 1400ms;
+  }
+
+  .gps-recent-cover {
     transition: none;
   }
 
-  .gps-spinner {
-    animation: none;
-    opacity: 0.6;
+  .gps-recent-item:active .gps-recent-cover {
+    transform: none;
   }
+}
+
+body[data-reduce-motion='true'] .gps-spinner {
+  animation-duration: 1400ms;
+}
+
+body[data-reduce-motion='true'] .gps-recent-cover {
+  transition: none;
+}
+
+body[data-reduce-motion='true'] .gps-recent-item:active .gps-recent-cover {
+  transform: none;
 }
