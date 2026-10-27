@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react'
 import { fetchPopularThisWeek, fetchNewThisWeek } from '../services/igdb'
 import { getGameNavStub } from '../utils/gameNavStub'
 import EmptyState from './EmptyState'
+import ContentSwap from './motion/ContentSwap'
 import './PopularNewSection.css'
 
 /**
@@ -101,7 +102,9 @@ function PopularNewSection() {
         </button>
       </div>
 
-      <div className="pn-row" role="list">
+      {/* Keyed on the loading phase as well as the tab: the skeleton row
+          and the covers have the same cell size, so arrival crossfades. */}
+      <ContentSwap swapKey={initialLoading ? 'loading' : tab} className="pn-row" role="list">
         {initialLoading
           ? COVER_PLACEHOLDERS.map((i) => (
               <div className="pn-card pn-card--skeleton" key={`sk-${i}`} role="listitem" aria-hidden="true">
@@ -142,7 +145,7 @@ function PopularNewSection() {
                   )}
                 </button>
               ))}
-      </div>
+      </ContentSwap>
     </section>
   )
 }

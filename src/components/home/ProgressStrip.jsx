@@ -5,6 +5,7 @@ import { useStreakMilestoneState } from '../../hooks/useStreakMilestoneState'
 import { getProfile } from '../../services/profileService'
 import ChallengeCard, { challengePathSegment } from '../ChallengeCard'
 import StreakDetailSheet from '../streak/StreakDetailSheet'
+import { Arrive } from '../motion/ContentSwap'
 import './ProgressStrip.css'
 
 function computeCircleRank(goalProgress, rivalryData) {
@@ -81,12 +82,9 @@ function ProgressStripPlaceholder() {
   )
 }
 
-function ProgressStrip() {
+function ProgressStripBody({ view, goalProgress, rivalryData }) {
   const { user, profile } = useAuth()
-  const { loading: streakLoading, view, goalProgress, rivalryData } = useStreakMilestoneState()
   const [detailOpen, setDetailOpen] = useState(false)
-
-  if (streakLoading || !view) return <ProgressStripPlaceholder />
 
   const {
     currentStreak,
@@ -191,6 +189,22 @@ function ProgressStrip() {
         view={view}
       />
     </>
+  )
+}
+
+/**
+ * The placeholder is the strip's final box, so the numbers crossfade in
+ * place rather than the card appearing in one frame.
+ */
+function ProgressStrip() {
+  const { loading, view, goalProgress, rivalryData } = useStreakMilestoneState()
+  const ready = !loading && !!view
+  return (
+    <Arrive ready={ready} placeholder={<ProgressStripPlaceholder />}>
+      {ready ? (
+        <ProgressStripBody view={view} goalProgress={goalProgress} rivalryData={rivalryData} />
+      ) : null}
+    </Arrive>
   )
 }
 

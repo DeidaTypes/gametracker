@@ -12,6 +12,7 @@ import { seedQaQuestionFromRow, useWarmTopQuestions, warmQaQuestion } from './qa
 import { useQaHides } from './qaHides'
 import { QaCoverRows } from './QaPlaceholders'
 import { formatGamePlatform, qaShortAge } from './qaFormat'
+import ContentSwap from '../../components/motion/ContentSwap'
 import './qa.css'
 
 /** Asked | Your answers is screen state, same as the Q&A tab switch. */
@@ -229,6 +230,9 @@ export default function QaMine() {
           </button>
         </div>
 
+        {/* The rows and their placeholder share a cell: switching tabs and the
+            first load both crossfade through the same pane. */}
+        <ContentSwap swapKey={pending ? 'pending' : error && data == null ? 'error' : tab}>
         {pending ? (
           <div aria-hidden="true">
             <QaCoverRows count={3} />
@@ -279,6 +283,7 @@ export default function QaMine() {
             }))}
           />
         ) : null}
+        </ContentSwap>
       </div>
     </div>
   )

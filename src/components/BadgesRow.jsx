@@ -9,6 +9,7 @@ import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import BadgeDetailModal from './BadgeDetailModal'
 import Skeleton from './Skeleton'
+import { Arrive } from './motion/ContentSwap'
 import './BadgesRow.css'
 
 const TEASER_SLOT_COUNT = 5
@@ -34,39 +35,21 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
 
   if (!userId) return null
 
-  if (loading) {
-    const loadingBody = (
-      <>
-        <div className="badges-row-section__header">
-          <span className="badges-row-section__title">Badges</span>
-        </div>
-        <div className="badges-row">
-          {Array.from({ length: TEASER_SLOT_COUNT }, (_, i) => (
-            <div key={i} className="badges-row__item badges-row__item--placeholder">
-              <Skeleton className="badges-row__ring-skeleton" variant="circle" width={46} height={46} />
-            </div>
-          ))}
-        </div>
-      </>
-    )
-
-    if (embedded) {
-      return (
-        <>
-          <hr className="profile-home__hairline" aria-hidden="true" />
-          <div className={sectionClass} aria-label="Badges" aria-busy="true">
-            {loadingBody}
+  const loadingBody = (
+    <>
+      <div className="badges-row-section__header">
+        <span className="badges-row-section__title">Badges</span>
+      </div>
+      <div className="badges-row">
+        {Array.from({ length: TEASER_SLOT_COUNT }, (_, i) => (
+          <div key={i} className="badges-row__item badges-row__item--placeholder">
+            <Skeleton className="badges-row__ring-skeleton" variant="circle" width={46} height={46} />
           </div>
-        </>
-      )
-    }
+        ))}
+      </div>
+    </>
+  )
 
-    return (
-      <section className={sectionClass} aria-label="Badges" aria-busy="true">
-        {loadingBody}
-      </section>
-    )
-  }
 
   const badgesBody = (
     <>
@@ -116,18 +99,25 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
     </>
   )
 
+  // The placeholder has the same five slots, so the row crossfades in place.
+  const body = (
+    <Arrive ready={!loading} placeholder={loadingBody} cellClassName="badges-row-section__layer">
+      {loading ? null : badgesBody}
+    </Arrive>
+  )
+
   return (
     <>
       {embedded ? (
         <>
           <hr className="profile-home__hairline" aria-hidden="true" />
-          <div className={sectionClass} aria-label="Badges">
-            {badgesBody}
+          <div className={sectionClass} aria-label="Badges" aria-busy={loading || undefined}>
+            {body}
           </div>
         </>
       ) : (
-        <section className={sectionClass} aria-label="Badges">
-          {badgesBody}
+        <section className={sectionClass} aria-label="Badges" aria-busy={loading || undefined}>
+          {body}
         </section>
       )}
 

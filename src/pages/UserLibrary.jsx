@@ -14,6 +14,7 @@ import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeL
 import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
 import LibraryHeader from '../components/library/LibraryHeader'
 import LibraryTabs from '../components/library/LibraryTabs'
+import ContentSwap from '../components/motion/ContentSwap'
 import LibraryStatBar from '../components/library/LibraryStatBar'
 import LibrarySortRow from '../components/library/LibrarySortRow'
 import LibrarySortSheet from '../components/library/LibrarySortSheet'
@@ -342,6 +343,7 @@ function UserLibrary() {
               onTabChange={setActiveTab}
             />
 
+            <ContentSwap swapKey={activeTab}>
             {isGamesTab ? (
               <div id="lib-panel-games" role="tabpanel" aria-labelledby="lib-tab-games" className="lib-tabpanel">
                 <LibraryStatBar
@@ -413,6 +415,7 @@ function UserLibrary() {
                 />
               </div>
             )}
+            </ContentSwap>
           </>
         )}
 

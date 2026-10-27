@@ -10,6 +10,7 @@ import FindFriendsModal from '../FindFriendsModal'
 import WindowedListItem from '../WindowedListItem'
 import { groupPulseFeedItems } from '../../services/communityService'
 import { coarseRelativeBucket } from '../../utils/formatActivityDate'
+import { Arrive } from '../motion/ContentSwap'
 import './HomePulseFeed.css'
 
 // V4-01 — read once per mount, before this same mount's own unmount/
@@ -190,12 +191,17 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
           {/* Held back until the fetch resolves the scope: the initial
               value is 'following', which would tell a viewer with no
               follows their circle is up to something. */}
-          {!loading && !isEmpty && <p className="pulse-feed__subline">{subline}</p>}
+          {(loading || !isEmpty) && (
+            <p className="pulse-feed__subline">
+              <Arrive as="span" ready={!loading} placeholder={'\u00a0'}>
+                {subline}
+              </Arrive>
+            </p>
+          )}
         </div>
 
-        {loading ? (
-          <FeedSkeleton />
-        ) : isEmpty ? (
+        <Arrive ready={!loading} placeholder={<FeedSkeleton />}>
+        {loading ? null : isEmpty ? (
           error ? (
             <EmptyState
               icon={WifiOff}
@@ -267,6 +273,7 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
             )}
           </>
         )}
+        </Arrive>
       </section>
 
       <FindFriendsModal

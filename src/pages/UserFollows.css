@@ -147,6 +147,13 @@
   gap: 8px;
 }
 
+/* ContentSwap pane inside the body: keeps the body's column and row gap. */
+.follows-page__swap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .follows-page__error {
   font-family: var(--font-body);
   font-size: var(--font-size-caption);

@@ -40,6 +40,7 @@ import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { ugcErrorMessage } from '../services/moderationService'
 import '../components/forms/forms.css'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './MessagesThread.css'
 
 /* ============================================================
@@ -928,7 +929,13 @@ function AttachmentCard({ attachment, isOutgoing }) {
 
   const handleTap = () => {
     if (attachment?.url_path) {
-      navigate(attachment.url_path)
+      // A shared game opens with the cover and title the card is showing.
+      navigate(
+        attachment.url_path,
+        attachment.type === 'game'
+          ? { state: getGameNavStub({ title: attachment.title, image: attachment.cover_url }) }
+          : undefined,
+      )
     }
   }
 

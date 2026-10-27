@@ -4,6 +4,7 @@ import { useDiscoverGamesNew } from '../../hooks/useExploreData'
 import CleanGameTile from './CleanGameTile'
 import DiscoverSectionHeader from './DiscoverSectionHeader'
 import ReservedSlot from '../ReservedSlot'
+import { Arrive } from '../motion/ContentSwap'
 import './SectionScaffold.css'
 
 /**
@@ -55,9 +56,8 @@ export default function NewNotableRail() {
 
   return (
     <ReservedSlot open={open} className="explore-section">
-      {loading || games.length === 0 ? (
-        <NewNotablePlaceholder />
-      ) : (
+      <Arrive ready={!loading && games.length > 0} placeholder={<NewNotablePlaceholder />}>
+      {!loading && games.length > 0 ? (
     <section aria-label="New & Notable">
       <div className="explore-section__pad">
         <DiscoverSectionHeader
@@ -76,7 +76,8 @@ export default function NewNotableRail() {
         ))}
       </div>
     </section>
-      )}
+      ) : null}
+      </Arrive>
     </ReservedSlot>
   )
 }

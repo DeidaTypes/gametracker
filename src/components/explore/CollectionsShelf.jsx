@@ -4,6 +4,7 @@ import { useCollections } from '../../hooks/useExploreData'
 import CollectionCard from './CollectionCard'
 import DiscoverSectionHeader from './DiscoverSectionHeader'
 import ReservedSlot from '../ReservedSlot'
+import { Arrive } from '../motion/ContentSwap'
 import './SectionScaffold.css'
 import './CollectionCard.css'
 
@@ -78,9 +79,8 @@ export default function CollectionsShelf() {
 
   return (
     <ReservedSlot open={open} className="explore-section">
-      {loading || collections.length === 0 ? (
-        <CollectionsPlaceholder />
-      ) : (
+      <Arrive ready={!loading && collections.length > 0} placeholder={<CollectionsPlaceholder />}>
+      {!loading && collections.length > 0 ? (
     <section aria-label="Collections">
       <div className="explore-section__pad">
         <DiscoverSectionHeader
@@ -99,7 +99,8 @@ export default function CollectionsShelf() {
         ))}
       </div>
     </section>
-      )}
+      ) : null}
+      </Arrive>
     </ReservedSlot>
   )
 }

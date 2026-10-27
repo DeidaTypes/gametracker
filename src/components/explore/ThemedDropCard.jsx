@@ -6,6 +6,7 @@ import { getBestImageUrl } from '../../services/imageUtils'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
 import Pressable from '../Pressable'
 import ReservedSlot from '../ReservedSlot'
+import { Arrive } from '../motion/ContentSwap'
 import './ThemedDropCard.css'
 
 // Four covers is enough to read the theme at a glance; the rest are a
@@ -58,9 +59,8 @@ export default function ThemedDropCard() {
 
   return (
     <ReservedSlot open={open} className="explore-section">
-      {!hasDrop ? (
-        <ThemedDropPlaceholder />
-      ) : (
+      <Arrive ready={hasDrop} placeholder={<ThemedDropPlaceholder />}>
+      {hasDrop ? (
     <section aria-label="This week's drop">
       <div className="explore-section__pad">
         <Pressable
@@ -101,7 +101,8 @@ export default function ThemedDropCard() {
         </Pressable>
       </div>
     </section>
-      )}
+      ) : null}
+      </Arrive>
     </ReservedSlot>
   )
 }

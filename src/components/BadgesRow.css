@@ -9,6 +9,13 @@
   padding: 0 var(--page-padding);
 }
 
+/* Each Arrive layer keeps the section's header-to-row rhythm. */
+.badges-row-section__layer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
 .badges-row-section--embedded {
   padding: var(--space-12) 0 0;
 }

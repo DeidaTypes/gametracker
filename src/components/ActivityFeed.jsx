@@ -6,6 +6,7 @@ import {
   getActivityHref,
 } from '../services/activityService'
 import { formatActivityDate } from '../utils/formatActivityDate'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { Activity } from 'lucide-react'
 import EmptyState from './EmptyState'
 import Avatar from './Avatar'
@@ -152,6 +153,15 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
       <ul className="activity-feed-list">
         {activities.map((activity) => {
           const href = getActivityHref(activity)
+          // A game destination opens with the cover and title this row already has.
+          const open = href
+            ? () =>
+                navigate(href, {
+                  state: href.startsWith('/game/')
+                    ? getGameNavStub({ title: activity.gameTitle, image: activity.gameImage })
+                    : undefined,
+                })
+            : undefined
           const message = formatActivityMessage(activity)
           const time = formatActivityDate(activity.createdAt)
           return (
@@ -160,7 +170,7 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
               className={`activity-feed-item activity-feed-item--${activity.activityType}${
                 href ? '' : ' activity-feed-item--static'
               }`}
-              onClick={href ? () => navigate(href) : undefined}
+              onClick={open}
               role={href ? 'button' : undefined}
               tabIndex={href ? 0 : undefined}
               onKeyDown={
@@ -168,7 +178,7 @@ function ActivityFeed({ userId, avatarUrl, avatarData, displayName }) {
                   ? (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        navigate(href)
+                        open()
                       }
                     }
                   : undefined

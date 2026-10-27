@@ -2,6 +2,7 @@ import React from 'react'
 import { HiDotsVertical } from 'react-icons/hi'
 import { LuChevronLeft, LuMessageCircle } from 'react-icons/lu'
 import Skeleton from './Skeleton'
+import { Arrive } from './motion/ContentSwap'
 import Avatar from './Avatar'
 import PlusBadge from './PlusBadge'
 import './ProfilePlayerCard.css'
@@ -31,14 +32,15 @@ function Stat({ value, label, suffix, loading, onClick, ariaLabel }) {
   const content = (
     <>
       <span className="ppc__stat-value">
-        {loading ? (
-          <Skeleton variant="text" width={28} height={22} className="ppc__stat-skeleton" />
-        ) : (
-          <>
-            {value}
-            {suffix && <span className="ppc__stat-suffix">{suffix}</span>}
-          </>
-        )}
+        <Arrive
+          as="span"
+          center
+          ready={!loading}
+          placeholder={<Skeleton variant="text" width={28} height={22} className="ppc__stat-skeleton" />}
+        >
+          {value}
+          {suffix && <span className="ppc__stat-suffix">{suffix}</span>}
+        </Arrive>
       </span>
       <span className="ppc__stat-label">{label}</span>
     </>

@@ -45,6 +45,7 @@ import { SearchResultSkeletonList } from '../components/skeletons/SearchResultRo
 import ReviewCard from '../components/ReviewCard'
 import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
+import ContentSwap from '../components/motion/ContentSwap'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { hapticImpact } from '../utils/haptics'
 import { useCachedResource } from '../hooks/useCachedResource'
@@ -1690,7 +1691,7 @@ function Search() {
         </div>
       </div>
 
-      <div className="sp-tab-content">
+      <ContentSwap swapKey={activeTab} className="sp-tab-content">
         {/* ALL TAB — default landing tab; empty state reuses the Games
             tab's existing landing content (out of scope to redesign). */}
         {activeTab === 'all' && (
@@ -1865,7 +1866,7 @@ function Search() {
             )}
           </>
         )}
-      </div>
+      </ContentSwap>
     </div>
   )
 }

@@ -98,7 +98,6 @@ import SetGoalSheet from '../components/SetGoalSheet'
 import StarRatingDisplay from '../components/StarRatingDisplay'
 import Pressable from '../components/Pressable'
 import { useLikeState, publishLikeState } from '../hooks/useLikeState'
-import { useMotionPreference } from '../hooks/useMotionPreference'
 import { likeReview, unlikeReview } from '../services/likeService'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { COVER_FALLBACK } from '../utils/coverFallback'
@@ -114,7 +113,7 @@ import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
-import ReservedSlot from '../components/ReservedSlot'
+import ContentSwap from '../components/motion/ContentSwap'
 import BadgesRow from '../components/BadgesRow'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
@@ -2114,14 +2113,12 @@ function Profile() {
         </div>
 
         {/* ═════════════════════════════════════════════════════════
-            TAB CONTENT — horizontal slide between Home / Reviews / Lists.
-            AnimatePresence with mode="wait" keyed on `activeTab` so each
-            tab switch slides the outgoing pane left (x: -12) and the
-            incoming pane in from the right (x: 12 → 0). 180 ms duration
-            per the motion-system spec. Reduced motion collapses to a
-            plain swap.
+            TAB CONTENT — Home / Reviews / Lists / Diary crossfade.
+            ContentSwap (src/components/motion/ContentSwap.jsx) fades the
+            old pane out, then fades the new one in and rises it 6pt.
+            Reduce Motion: fades only.
             ═════════════════════════════════════════════════════════ */}
-        <div className="profile-tab-content">
+        <ContentSwap swapKey={activeTab} className="profile-tab-content">
               {activeTab === 'home' && (
                 <HomeTab
                   favoriteGames={favoriteGames}
@@ -2179,7 +2176,7 @@ function Profile() {
                   onEntryClick={(entryId) => navigate(`/journal/${entryId}`)}
                 />
               )}
-        </div>
+        </ContentSwap>
 
         {/* ═════════════════════════════════════════════════════════
             MODALS
@@ -2520,7 +2517,6 @@ function HomeTab({
 }) {
   const [tasteVisible, setTasteVisible] = useState(false)
   const [tasteLoading, setTasteLoading] = useState(true)
-  const { reduced: tasteReduced } = useMotionPreference()
   const handleTasteResolved = useCallback(({ visible, loading }) => {
     setTasteVisible(visible)
     setTasteLoading(loading)
@@ -2533,17 +2529,12 @@ function HomeTab({
 
   const ratedCount = (allReviews || []).filter((r) => Number(r.rating) > 0).length
   const ratingsVisible = ratedCount >= MIN_RATINGS_FOR_CHART
-  const wantsTasteCard = tasteLoading || tasteVisible || ratingsVisible
-  const [tasteCardMounted, setTasteCardMounted] = useState(true)
-  useEffect(() => {
-    if (wantsTasteCard) {
-      setTasteCardMounted(true)
-      return undefined
-    }
-    const ms = tasteReduced ? 0 : 150
-    const id = setTimeout(() => setTasteCardMounted(false), ms)
-    return () => clearTimeout(id)
-  }, [wantsTasteCard, tasteReduced])
+  // Whether this card exists is unknown until the taste vector resolves. It
+  // never reserves a slot (an empty reservation collapses and the page jumps
+  // up) and it never pushes content that is already on screen: it stays
+  // mounted but hidden, sits below the challenge and badges section, and
+  // fades in once it knows it has something to show.
+  const tasteCardReady = !tasteLoading && (tasteVisible || ratingsVisible)
   const showChallengeRow = isOwnProfile || goalProgress === null || hasGoal
 
   return (
@@ -2559,27 +2550,6 @@ function HomeTab({
         compactEmpty={isOwnProfile}
       />
 
-      {(wantsTasteCard || tasteCardMounted) && (
-        <ReservedSlot open={wantsTasteCard}>
-          <section className="profile-home__section profile-home__section--card profile-home__taste-rate">
-            <ProfileTasteDNA
-              userId={targetUserId}
-              isOwnProfile={isOwnProfile}
-              embedded
-              onResolved={handleTasteResolved}
-            />
-            {tasteVisible && ratingsVisible && (
-              <hr className="profile-home__hairline" aria-hidden="true" />
-            )}
-            <ProfileRatingsChart
-              reviews={allReviews}
-              onReviewTap={onReviewTap}
-              embedded
-            />
-          </section>
-        </ReservedSlot>
-      )}
-
       {(showChallengeRow || targetUserId) && (
         <ProfileChallengeSection
           goalProgress={goalProgress}
@@ -2594,6 +2564,28 @@ function HomeTab({
           onSeeMoreBadges={onSeeMoreBadges}
         />
       )}
+
+      <section
+        className={`profile-home__section profile-home__section--card profile-home__taste-rate${
+          tasteCardReady ? ' profile-home__taste-rate--arrived' : ' profile-home__taste-rate--pending'
+        }`}
+        aria-hidden={tasteCardReady ? undefined : true}
+      >
+        <ProfileTasteDNA
+          userId={targetUserId}
+          isOwnProfile={isOwnProfile}
+          embedded
+          onResolved={handleTasteResolved}
+        />
+        {tasteVisible && ratingsVisible && (
+          <hr className="profile-home__hairline" aria-hidden="true" />
+        )}
+        <ProfileRatingsChart
+          reviews={allReviews}
+          onReviewTap={onReviewTap}
+          embedded
+        />
+      </section>
     </div>
   )
 }

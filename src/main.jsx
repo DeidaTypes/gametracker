@@ -15,6 +15,7 @@ import { migrateLibraryToSlimShape } from './services/libraryService'
 import { pruneSwipeHistory } from './services/swipeService'
 import { freeAbandonedLocalStorage } from './utils/storageQuota'
 import { initTheme } from './services/themeService'
+import './motion/imageFade'
 
 // Capture ?ref= invite param from the URL before React mounts so it
 // survives the /login → /signup redirect chain.

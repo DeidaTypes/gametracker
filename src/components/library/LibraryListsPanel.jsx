@@ -4,6 +4,7 @@ import { useLongPressMenu } from '../../hooks/useLongPressMenu'
 import ListCoverCluster from '../ListCoverCluster'
 import InlineErrorBanner from '../InlineErrorBanner'
 import ListCardActionHost, { listCardMenuKind } from './ListCardActionHost'
+import { Arrive } from '../motion/ContentSwap'
 
 export function formatListMeta(list, saveCounts) {
   const games = `${list.gameCount} ${list.gameCount === 1 ? 'game' : 'games'}`
@@ -86,7 +87,7 @@ export function LibraryListsSkeleton() {
  * Empty / error / loading are passed in so own-Library can offer a
  * create CTA and the other-user screen can stay read-only.
  */
-export default function LibraryListsPanel({
+function LibraryListsPanelBody({
   lists,
   pinnedLists,
   saveCounts,
@@ -117,8 +118,6 @@ export default function LibraryListsPanel({
     }
     onOpenList(list)
   }
-
-  if (isLoading && !(lists?.length)) return <LibraryListsSkeleton />
 
   if (error) {
     return (
@@ -175,5 +174,18 @@ export default function LibraryListsPanel({
         onCloseSheet={() => setSheetOpen(false)}
       />
     </>
+  )
+}
+
+/**
+ * The skeleton holds the grid's place, then the lists crossfade in over it.
+ * Lists seeded from the device never show the skeleton at all.
+ */
+export default function LibraryListsPanel(props) {
+  const loading = !!props.isLoading && !(props.lists?.length)
+  return (
+    <Arrive ready={!loading} placeholder={<LibraryListsSkeleton />}>
+      {loading ? null : <LibraryListsPanelBody {...props} />}
+    </Arrive>
   )
 }

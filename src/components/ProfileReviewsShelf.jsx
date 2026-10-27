@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LuChevronRight } from 'react-icons/lu'
 import StarRatingDisplay from './StarRatingDisplay'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './HomeShelf.css'
 import './ProfileReviewsShelf.css'
 
@@ -44,7 +45,7 @@ function ProfileReviewsShelf({ reviews, onSeeAll }) {
             if (hasBody) {
               navigate(`/reviews/${review.id}/comments`)
             } else {
-              navigate(`/game/${review.game?.id}`)
+              navigate(`/game/${review.game?.id}`, { state: getGameNavStub(review.game) })
             }
           }
 

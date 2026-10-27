@@ -69,6 +69,40 @@ body[data-reduce-motion='true'] *::after {
 }
 
 /* =====================================================
+   IMAGES FADE IN ONCE DECODED
+   src/motion/imageFade.js arms each loading <img> with
+   data-img-fade: pending (held invisible) -> ready (plays
+   this fade) -> attribute removed. error = broken, hidden.
+   Opacity only. Reduce Motion: 150 ms. The two reduce rules
+   sit below the blanket 0.01ms ones and win on specificity.
+   ===================================================== */
+@keyframes img-fade-in {
+  from { opacity: 0; }
+}
+
+img[data-img-fade='pending'] {
+  opacity: 0 !important;
+}
+
+img[data-img-fade='ready'] {
+  animation: img-fade-in var(--motion-image) var(--ease-fade);
+}
+
+img[data-img-fade='error'] {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img[data-img-fade='ready'] {
+    animation-duration: var(--motion-reduced-fade) !important;
+  }
+}
+
+body[data-reduce-motion='true'] img[data-img-fade='ready'] {
+  animation-duration: var(--motion-reduced-fade) !important;
+}
+
+/* =====================================================
    ACCESSIBILITY: LARGER TEXT
    ---------------------------------------------------------------
    Scales the body / caption / title type tokens by 1.125x

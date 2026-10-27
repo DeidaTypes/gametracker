@@ -15,6 +15,7 @@ import GameDetailStatStrip from '../components/GameDetailStatStrip'
 import RatingDistributionSheet from '../components/RatingDistributionSheet'
 import SimilarGamesRow from '../components/SimilarGamesRow'
 import ReservedSlot from '../components/ReservedSlot'
+import { Arrive } from '../components/motion/ContentSwap'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { getReviewsForGame, getRatingDistributionForGame } from '../services/reviewService'
 import { getCirclePulseForGame, getFollowedRatingsForGame } from '../services/communityService'
@@ -1025,27 +1026,32 @@ function GameDetail() {
         <ReservedSlot open={loading || hasDescription}>
           <div className="gd-section">
             <p className="gd-section-label">About</p>
-            {loading || !hasDescription ? (
-              <>
-                <div className="gd-description-wrapper" aria-hidden="true">
-                  <div className="gd-sk-desc-fill skeleton" />
-                </div>
-                <span className="gd-read-more-btn" aria-hidden="true">&nbsp;</span>
-              </>
-            ) : (
-              <>
-                <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
-                  <p className="gd-description">{game.description}</p>
-                  {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
-                </div>
-                <button
-                  className="gd-read-more-btn"
-                  onClick={() => setDescExpanded(v => !v)}
-                >
-                  {descExpanded ? 'Show less' : 'Read more'}
-                </button>
-              </>
-            )}
+            <Arrive
+              ready={!loading && hasDescription}
+              placeholder={
+                <>
+                  <div className="gd-description-wrapper" aria-hidden="true">
+                    <div className="gd-sk-desc-fill skeleton" />
+                  </div>
+                  <span className="gd-read-more-btn" aria-hidden="true">&nbsp;</span>
+                </>
+              }
+            >
+              {!loading && hasDescription ? (
+                <>
+                  <div className={`gd-description-wrapper${descExpanded ? ' gd-description-wrapper--expanded' : ''}`}>
+                    <p className="gd-description">{game.description}</p>
+                    {!descExpanded && <div className="gd-description-fade" aria-hidden="true" />}
+                  </div>
+                  <button
+                    className="gd-read-more-btn"
+                    onClick={() => setDescExpanded(v => !v)}
+                  >
+                    {descExpanded ? 'Show less' : 'Read more'}
+                  </button>
+                </>
+              ) : null}
+            </Arrive>
           </div>
         </ReservedSlot>
 
@@ -1112,12 +1118,18 @@ function GameDetail() {
             <div className="gd-divider" />
             <div className="gd-section">
               <p className="gd-section-label">Screenshots</p>
+              <Arrive
+                ready={!loading && !!(game.screenshots && game.screenshots.length > 0)}
+                placeholder={
+                  <div className="gd-screenshots-scroll">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="gd-screenshot skeleton" aria-hidden="true" />
+                    ))}
+                  </div>
+                }
+              >
               <div className="gd-screenshots-scroll">
-                {loading || !(game.screenshots && game.screenshots.length > 0) ? (
-                  [0, 1, 2].map((i) => (
-                    <div key={i} className="gd-screenshot skeleton" aria-hidden="true" />
-                  ))
-                ) : (
+                {!loading && game.screenshots && game.screenshots.length > 0 ? (
                   game.screenshots.slice(0, 8).map((screenshot, index) => (
                     <button
                       key={index}
@@ -1136,8 +1148,9 @@ function GameDetail() {
                       />
                     </button>
                   ))
-                )}
+                ) : null}
               </div>
+              </Arrive>
             </div>
           </>
         </ReservedSlot>

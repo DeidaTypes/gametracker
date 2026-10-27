@@ -28,6 +28,7 @@ import { useWarmTopQuestions } from './qaCache'
 import { openQaAsk, qaGamePreset } from './qaComposer'
 import { isQaQuestionHidden, useQaHides } from './qaHides'
 import { useQaGameMeta } from './qaGameMeta'
+import ContentSwap from '../../components/motion/ContentSwap'
 import './qa.css'
 
 const PAGE_SIZE = 30
@@ -255,6 +256,7 @@ export default function QaGame() {
         ) : null}
 
         {!totalEmpty ? (
+          <ContentSwap swapKey={filter}>
           <section className="qa-sec">
             <div className="qa-sec-head">
               <h2 className="text-label">{searching ? 'Results' : sectionLabel}</h2>
@@ -318,6 +320,7 @@ export default function QaGame() {
               <div ref={sentinelRef} className="qa-sentinel" aria-hidden="true" />
             ) : null}
           </section>
+          </ContentSwap>
         ) : null}
 
         {totalEmpty ? (

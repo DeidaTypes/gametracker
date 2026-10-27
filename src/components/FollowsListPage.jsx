@@ -23,6 +23,7 @@ import FindFriendsModal from './FindFriendsModal'
 import PulseDot from './PulseDot'
 import Avatar from './Avatar'
 import WindowedListItem from './WindowedListItem'
+import ContentSwap from './motion/ContentSwap'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import '../pages/UserFollows.css'
 
@@ -47,11 +48,19 @@ import '../pages/UserFollows.css'
  */
 const PAGE_SIZE = 20
 
-function FollowsListPage({ mode }) {
+function FollowsListPage({ mode: routeMode }) {
   const navigate = useNavigate()
   const { username, userId: paramUserId } = useParams()
   const { user: authUser } = useAuth()
   const currentUserId = authUser?.id || null
+
+  // Followers / Following is in-page UI state: a tap must not navigate or
+  // replace the URL (a new location key replays the route transition). The
+  // route only seeds the first tab.
+  const [mode, setMode] = useState(routeMode)
+  useEffect(() => {
+    setMode(routeMode)
+  }, [routeMode])
 
   // Resolved target user (the profile whose followers/following we're listing).
   const [targetUserId, setTargetUserId] = useState(null)
@@ -375,17 +384,6 @@ function FollowsListPage({ mode }) {
 
   const isOwnProfile = currentUserId && targetUserId && currentUserId === targetUserId
 
-  // Build the canonical route segment for the resolved profile. Prefer
-  // the username route when one exists (nicer URL); fall back to the
-  // /user/id/:userId route for the (common) case where the profile has
-  // no username — using titleHandle here would silently 404 since
-  // FollowsListPage/Profile only look users up by their real username.
-  const profilePathSegment = resolvedUser?.username
-    ? encodeURIComponent(resolvedUser.username)
-    : targetUserId
-      ? `id/${encodeURIComponent(targetUserId)}`
-      : encodeURIComponent(decodedUsername || titleHandle)
-
   const handleShareProfile = async () => {
     // Link only for a real username; otherwise the text is shared on its own.
     await shareContent({
@@ -397,9 +395,7 @@ function FollowsListPage({ mode }) {
 
   const switchTab = (next) => {
     if (next === mode) return
-    navigate(`/user/${profilePathSegment}/${next}`, {
-      replace: true,
-    })
+    setMode(next)
   }
 
   return (
@@ -454,6 +450,10 @@ function FollowsListPage({ mode }) {
       </div>
 
       <div className="follows-page__body">
+        <ContentSwap
+          swapKey={`${mode}:${loading && rows.length === 0 ? 'loading' : 'ready'}`}
+          className="follows-page__swap"
+        >
         {resolveError ? (
           <p className="follows-page__error">User not found.</p>
         ) : loading && rows.length === 0 ? (
@@ -510,6 +510,7 @@ function FollowsListPage({ mode }) {
             )}
           </>
         )}
+        </ContentSwap>
       </div>
 
       <FindFriendsModal

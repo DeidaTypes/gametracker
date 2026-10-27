@@ -596,6 +596,30 @@
   gap: var(--spacing-md);
 }
 
+/* Presence is unknown until the taste vector resolves: stay mounted but out
+   of layout, then fade in below the challenge section. Opacity only. */
+.profile-home__taste-rate--pending {
+  display: none;
+}
+
+.profile-home__taste-rate--arrived {
+  animation: profile-taste-arrive var(--motion-arrive) var(--ease-fade);
+}
+
+@keyframes profile-taste-arrive {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-home__taste-rate--arrived {
+    animation-duration: var(--motion-reduced-fade) !important;
+  }
+}
+
+body[data-reduce-motion='true'] .profile-home__taste-rate--arrived {
+  animation-duration: var(--motion-reduced-fade) !important;
+}
+
 .profile-home__hairline {
   border: none;
   border-top: 1px solid var(--color-border);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getOnThisDayEntries, getMoodMeta } from '../services/journalService'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { getSizedImageUrl } from '../services/imageUtils'
-import ReservedSlot from './ReservedSlot'
+import { Arrive } from './motion/ContentSwap'
 import './OnThisDaySection.css'
 
 // This section lives inside Profile's Diary tab, which — correctly, see
@@ -25,36 +25,6 @@ const ON_THIS_DAY_TTL_MS = 5 * 60 * 1000
  * Props:
  *   userId  string — whose history to resurface
  */
-function OnThisDaySkeleton() {
-  const today = new Date()
-  const dateLabel = today.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
-  return (
-    <section className="otd-section" aria-hidden="true">
-      <div className="otd-header">
-        <span className="otd-header__icon" aria-hidden="true">📅</span>
-        <div>
-          <h3 className="otd-header__title">On This Day</h3>
-          <p className="otd-header__sub">{dateLabel} in a previous year</p>
-        </div>
-      </div>
-      <ul className="otd-list">
-        <li className="otd-card">
-          <div className="otd-card__btn">
-            <div className="otd-card__cover-wrap">
-              <div className="otd-card__cover skeleton" />
-            </div>
-            <div className="otd-card__meta">
-              <p className="otd-card__game">&nbsp;</p>
-              <p className="otd-card__title">&nbsp;</p>
-              <p className="otd-card__snippet">&nbsp;<br />&nbsp;</p>
-            </div>
-          </div>
-        </li>
-      </ul>
-    </section>
-  )
-}
-
 function OnThisDaySection({ userId }) {
   const navigate = useNavigate()
   const cacheKey = userId ? `on-this-day:${userId}` : null
@@ -104,11 +74,11 @@ function OnThisDaySection({ userId }) {
   const today = new Date()
   const dateLabel = today.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
 
+  // Whether anything was written on this day in a past year is unknown until
+  // the query lands, and most days nothing was. So the section holds no slot
+  // and no placeholder: it is absent until it has entries, then fades in.
   return (
-    <ReservedSlot open={open || loading}>
-    {loading || entries.length === 0 ? (
-      <OnThisDaySkeleton />
-    ) : (
+    <Arrive ready={open} placeholder={null}>
     <section className="otd-section" aria-label="On this day">
       <div className="otd-header">
         <span className="otd-header__icon" aria-hidden="true">📅</span>
@@ -180,8 +150,7 @@ function OnThisDaySection({ userId }) {
         })}
       </ul>
     </section>
-    )}
-    </ReservedSlot>
+    </Arrive>
   )
 }
 

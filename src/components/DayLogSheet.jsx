@@ -15,6 +15,7 @@ import {
 import StarRatingDisplay from './StarRatingDisplay'
 import EmptyState from './EmptyState'
 import { COVER_FALLBACK } from '../utils/coverFallback'
+import { getGameNavStub } from '../utils/gameNavStub'
 import { STATUS_META } from './StatusChip'
 import './DayLogSheet.css'
 
@@ -143,7 +144,11 @@ export default function DayLogSheet({ dateKey, onClose }) {
     const href = getActivityHref(activity)
     if (href) {
       onClose()
-      navigate(href)
+      navigate(href, {
+        state: href.startsWith('/game/')
+          ? getGameNavStub({ title: activity.gameTitle, image: activity.gameImage })
+          : undefined,
+      })
     }
   }
 

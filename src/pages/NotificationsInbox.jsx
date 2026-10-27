@@ -8,6 +8,8 @@ import Avatar from '../components/Avatar'
 import EmptyState from '../components/EmptyState'
 import PullToRefresh from '../components/PullToRefresh'
 import { coverUrlFromImageId } from '../services/igdb'
+import { getGamesFromList } from '../services/libraryService'
+import { getGameNavStub } from '../utils/gameNavStub'
 import './NotificationsInbox.css'
 
 /* ============================================================
@@ -121,8 +123,16 @@ function routeFor(n) {
     case 'comment':
     case 'review_like':
       return n.entity_id ? { to: `/review/${n.entity_id}` } : null
-    case 'friend_started':
-      return n.entity_id ? { to: `/game/${n.entity_id}` } : null
+    case 'friend_started': {
+      if (!n.entity_id) return null
+      // The payload carries only the game id, but this notice exists because
+      // the game is in the viewer's own Backlog, so its real title and cover
+      // are already on the device.
+      const game = getGamesFromList('want-to-play').find(
+        (g) => String(g.id) === String(n.entity_id),
+      )
+      return { to: `/game/${n.entity_id}`, state: game ? getGameNavStub(game) : undefined }
+    }
     case 'list_comment':
       return p.list_id || n.entity_id ? { to: `/list/${p.list_id || n.entity_id}` } : null
     case 'qa_answer':

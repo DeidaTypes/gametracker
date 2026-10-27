@@ -16,6 +16,7 @@ import QaQuestionListRow from './QaQuestionListRow'
 import { QaCoverRows, QaMostAsked } from './QaPlaceholders'
 import { formatGamePlatform } from './qaFormat'
 import { useOnline } from './useOnline'
+import ContentSwap from '../../components/motion/ContentSwap'
 import './qa.css'
 
 /**
@@ -298,6 +299,7 @@ export default function QaHome() {
 
             <FilterSwitch filter={filter} helpCount={helpCount} onSelect={selectFilter} />
 
+            <ContentSwap swapKey={filter}>
             {filter === 'answered' && answeredRows.length > 0 ? (
               <section className="qa-home-sec">
                 <div className="qa-sec-head">
@@ -347,6 +349,7 @@ export default function QaHome() {
                 ) : null}
               </>
             ) : null}
+            </ContentSwap>
           </>
         ) : null}
       </div>

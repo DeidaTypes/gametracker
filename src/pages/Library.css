@@ -245,18 +245,7 @@ html[data-app-theme="cream"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--l
   color: var(--color-on-accent);
 }
 
-/* ── Tab content cross-fade ──
-   The two tab panels are mutually exclusive in Library.jsx (a switch
-   unmounts one and mounts the other), so this plays automatically on
-   every mount — i.e. every tab switch — with no state of its own. */
-.lib-tabpanel {
-  animation: lib-tab-fade 180ms ease both;
-}
-
-@keyframes lib-tab-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* Tab content crossfade lives in ContentSwap (src/components/motion). */
 
 /* =============================================
    HEADER SEARCH — icon toggle + slide-down row
@@ -1279,13 +1268,6 @@ body[data-reduce-motion='true']:not([data-tab-shown='library']) .lib-fab {
     transform: none;
     box-shadow: none;
     opacity: 1;
-  }
-
-  /* No fade, instant swap: the incoming tab panel skips its mount
-     fade-in entirely instead of playing at 0ms (an animation still
-     technically "runs" at 0ms, which some tooling flags as motion). */
-  .lib-tabpanel {
-    animation: none;
   }
 
   .lib-avatar-btn:active,
