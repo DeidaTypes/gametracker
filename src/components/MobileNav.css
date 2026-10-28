@@ -88,12 +88,14 @@
   z-index: 999;
   transform: translateX(-100%);
   transition: transform var(--transition-smooth);
-  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+  /* No shadow while closed. The drawer is parked fully off the left edge,
+     and a rightward blur from there paints a dark band down every screen. */
   overflow-y: auto;
 }
 
 .mobile-nav.open {
   transform: translateX(0);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
 }
 
 .mobile-nav-header {
