@@ -1,7 +1,6 @@
 /* ============================================================
-   SortSheet — pill-selector bottom sheet
-   Reuses .action-sheet-overlay and .action-sheet classes from
-   ActionSheet.css for the overlay + slide-up animation.
+   SortSheet — pill-selector content inside the MenuSheet frame
+   (the frame, handle, title and X come from MenuSheet.css).
    ============================================================ */
 
 .sort-sheet__pills {
@@ -36,14 +35,14 @@
 }
 
 .sort-sheet__pill--active {
-  background: #ffffff;
-  color: var(--color-bg-primary);
+  background: var(--theme-primary);
+  color: var(--color-on-accent);
   border-color: transparent;
   font-weight: var(--font-weight-semibold);
 }
 
 .sort-sheet__pill--active:hover {
-  background: #f0f0f0;
+  background: var(--accent-hover);
 }
 
 .sort-sheet__footer {

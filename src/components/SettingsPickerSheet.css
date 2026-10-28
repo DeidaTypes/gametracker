@@ -1,29 +1,13 @@
 /* ============================================================
-   SettingsPickerSheet — radio-list bottom sheet with optional
-   live preview slot. Reuses .action-sheet-overlay / .action-sheet
-   structural classes from ActionSheet.css for the framing chrome.
+   SettingsPickerSheet — radio-list content with an optional live
+   preview slot, inside the MenuSheet frame (the frame, handle, title
+   and X come from MenuSheet.css).
    ============================================================ */
 
-.settings-picker-sheet {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-}
-
-.settings-picker-sheet__header {
-  padding: 4px 24px 12px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.settings-picker-sheet__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: -0.01em;
-  color: var(--color-text-primary);
-}
-
 .settings-picker-sheet__description {
-  margin: 4px 0 0;
+  margin: 0;
+  padding: 0 var(--space-16) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
   color: var(--color-text-secondary);

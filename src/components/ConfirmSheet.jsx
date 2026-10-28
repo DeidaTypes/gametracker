@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { LuCheck, LuPencil, LuTrash2 } from 'react-icons/lu'
 import ActionSheet from './ActionSheet'
 import { hapticImpact } from '../utils/haptics'
 
@@ -7,15 +8,17 @@ import { hapticImpact } from '../utils/haptics'
  * browser's blocking confirm and alert dialogs (the grey iOS system alert
  * with "OK").
  *
- * It is the ActionSheet look and motion with a title, a one-line message,
- * one destructive (or primary) action and a cancel row.
+ * It is the one menu look (MenuSheet, through ActionSheet) with a title, a
+ * one-line message, one destructive (or primary) action, and X / tap outside /
+ * drag down / Escape to cancel. A cancelLabel other than "Cancel" ("Keep
+ * editing") is shown as a last row.
  *
- * Opening above a popup. ActionSheet normally sits at z-index 1020, under
+ * Opening above a popup. The sheet normally sits at z-index 1020, under
  * CenteredModal's .cm-overlay (1100). `layer="top"` lifts it to 1120/1121 so
  * it opens over a popup, and `keepFocus` leaves the popup's field focused:
  * the sheet never takes focus, its buttons do not blur the field, and a tap
  * inside it does not run the global tap-to-dismiss-keyboard handler. If the
- * keyboard is up when it opens it stays up, the sheet sits above it (ActionSheet
+ * keyboard is up when it opens it stays up, the sheet sits above it (the sheet
  * already lifts by --keyboard-inset), and "Keep editing" lands back in the
  * draft with the keyboard where it was.
  *
@@ -30,7 +33,7 @@ import { hapticImpact } from '../utils/haptics'
  *   cancelLabel   string — "Keep editing" / "Cancel" (default "Cancel")
  *   destructive   boolean (default true)
  *   onConfirm     () => void
- *   onCancel      () => void — Cancel row, backdrop tap, swipe down, Escape
+ *   onCancel      () => void — X, "Keep editing" row, backdrop tap, swipe down, Escape
  */
 function ConfirmSheet({
   isOpen,
@@ -42,7 +45,7 @@ function ConfirmSheet({
   onConfirm,
   onCancel,
 }) {
-  // ActionSheet runs onClose() and then the item's onClick() for the same tap.
+  // The sheet runs onClose() and then the item's onClick() for the same tap.
   // Hold the cancel for a microtask so a confirm tap can cancel it first.
   const cancelPendingRef = useRef(false)
 
@@ -71,8 +74,8 @@ function ConfirmSheet({
     const onPointerDown = (e) => {
       const target = e.target
       if (!(target instanceof Element)) return
-      if (!target.closest('.action-sheet-overlay--top')) return
-      if (target.closest('.action-sheet__drag-zone')) return
+      if (!target.closest('.menu-sheet-root--top')) return
+      if (target.closest('.menu-sheet__drag-zone')) return
       e.stopPropagation()
     }
 
@@ -97,12 +100,13 @@ function ConfirmSheet({
       onClose={handleClose}
       title={title}
       subtitle={message}
-      plain
       layer="top"
       keepFocus
       cancelLabel={cancelLabel}
+      cancelIcon={cancelLabel === 'Keep editing' ? <LuPencil size={18} /> : undefined}
       items={[
         {
+          icon: destructive ? <LuTrash2 size={18} /> : <LuCheck size={18} />,
           label: confirmLabel,
           destructive,
           onClick: handleConfirm,

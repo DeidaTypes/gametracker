@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
+import { LuX } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
 import {
@@ -237,6 +238,14 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                       {statusLabel || 'Not in Library'}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className="bs-header-close"
+                    onClick={dismiss}
+                    aria-label="Close"
+                  >
+                    <LuX size={20} aria-hidden="true" />
+                  </button>
                 </div>
 
                 <div className="bs-body">

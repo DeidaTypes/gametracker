@@ -62,24 +62,24 @@
 .bs-sheet {
   position: relative;
   z-index: 1;
-  background: var(--color-bg-tertiary, #152035);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  /* Same frame as MenuSheet: surface, radius, shadow, handle. */
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
   will-change: transform;
   touch-action: none;
   box-shadow:
-    0 -8px 40px rgba(0, 0, 0, 0.5),
-    0 -2px 12px rgba(0, 0, 0, 0.3);
+    0 -4px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* ── Drag Handle ── */
 .bs-drag-zone {
   display: flex;
   justify-content: center;
-  padding: 12px 0 6px;
+  padding: var(--space-12) 0 var(--space-4);
   cursor: grab;
   touch-action: none;
 }
@@ -90,9 +90,9 @@
 
 .bs-handle {
   width: 36px;
-  height: 5px;
-  border-radius: 2.5px;
-  background: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
 }
 
 /* ── Sheet Header ── */
@@ -100,8 +100,32 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 8px 20px 16px;
+  padding: 8px 8px 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* X on the right, same as MenuSheet's. */
+.bs-header-close {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: calc(-1 * var(--space-8)) 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bs-header-close:hover,
+.bs-header-close:active {
+  background: var(--theme-fill);
 }
 
 .bs-header-cover {

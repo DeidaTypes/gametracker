@@ -2,21 +2,25 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   Award,
-  Ban,
   Check,
   ChevronRight,
   EyeOff,
-  Flag,
-  Link2,
   MapPin,
   MessageCircleQuestion,
-  Pencil,
   Share,
   Trash2,
-  Upload,
   Users,
 } from 'lucide-react'
-import { LuArrowUp } from 'react-icons/lu'
+import {
+  LuArrowUp,
+  LuAward,
+  LuBan,
+  LuFlag,
+  LuLink,
+  LuPencil,
+  LuShare2,
+  LuTrash2,
+} from 'react-icons/lu'
 import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import ActionSheet from '../../components/ActionSheet'
@@ -582,18 +586,18 @@ export default function QaQuestion() {
           {
             label: 'Edit question',
             detail: 'Shows "Edited" to everyone',
-            icon: <Pencil size={20} />,
+            icon: <LuPencil size={18} />,
             onClick: () => openQaEditQuestion(question),
           },
           {
             label: 'Share',
-            icon: <Upload size={20} />,
+            icon: <LuShare2 size={18} />,
             onClick: () => shareQaQuestion(question),
           },
           ...(QA_LINKS_AVAILABLE
             ? [{
                 label: 'Copy link',
-                icon: <Link2 size={20} />,
+                icon: <LuLink size={18} />,
                 onClick: () => copyQaLink(question.id, question.title),
               }]
             : []),
@@ -603,7 +607,7 @@ export default function QaQuestion() {
             detail: hasAnyAnswers
               ? "Can't delete once it has answers. You can still edit it."
               : null,
-            icon: <Trash2 size={20} />,
+            icon: <LuTrash2 size={18} />,
             destructive: !hasAnyAnswers,
             disabled: hasAnyAnswers,
             onClick: () => setConfirm({ kind: 'delete-question' }),
@@ -613,20 +617,20 @@ export default function QaQuestion() {
           ...(QA_LINKS_AVAILABLE
             ? [{
                 label: 'Copy link',
-                icon: <Link2 size={20} />,
+                icon: <LuLink size={18} />,
                 onClick: () => copyQaLink(question.id, question.title),
               }]
             : []),
           {
             label: 'Report question',
-            icon: <Flag size={20} />,
+            icon: <LuFlag size={18} />,
             destructive: true,
             onClick: () => setReport({ type: 'question', id: question.id }),
           },
           ...(question.asker?.id && !question.asker_deleted
             ? [{
                 label: `Block ${displayNameFor(question.asker) || 'player'}`,
-                icon: <Ban size={20} />,
+                icon: <LuBan size={18} />,
                 destructive: true,
                 onClick: () => setConfirm({
                   kind: 'block',
@@ -658,14 +662,14 @@ export default function QaQuestion() {
           ? [{
               label: 'Unmark best answer',
               detail: 'The question goes back to Unanswered',
-              icon: <Award size={20} />,
+              icon: <LuAward size={18} />,
               onClick: () => onUnmark(),
             }]
           : []),
         ...(answerIsOwn
           ? [{
               label: 'Edit',
-              icon: <Pencil size={20} />,
+              icon: <LuPencil size={18} />,
               onClick: () => openQaEditAnswer({
                 questionId: question.id,
                 questionTitle: question.title,
@@ -677,14 +681,14 @@ export default function QaQuestion() {
         ...(answerIsBest
           ? [{
               label: 'Share',
-              icon: <Upload size={20} />,
+              icon: <LuShare2 size={18} />,
               onClick: () => shareBestAnswer(menuAnswer),
             }]
           : []),
         ...(QA_LINKS_AVAILABLE
           ? [{
               label: 'Copy link',
-              icon: <Link2 size={20} />,
+              icon: <LuLink size={18} />,
               onClick: () => copyQaLink(question.id, question.title),
             }]
           : []),
@@ -693,7 +697,7 @@ export default function QaQuestion() {
               { divider: true },
               {
                 label: 'Delete',
-                icon: <Trash2 size={20} />,
+                icon: <LuTrash2 size={18} />,
                 destructive: true,
                 onClick: () => setConfirm({ kind: 'delete-answer', answer: menuAnswer }),
               },
@@ -702,14 +706,14 @@ export default function QaQuestion() {
               { divider: true },
               {
                 label: 'Report answer',
-                icon: <Flag size={20} />,
+                icon: <LuFlag size={18} />,
                 destructive: true,
                 onClick: () => setReport({ type: 'answer', id: menuAnswer.id }),
               },
               ...(menuAnswer.author?.id && !menuAnswer.author_deleted
                 ? [{
                     label: `Block ${menuName || 'player'}`,
-                    icon: <Ban size={20} />,
+                    icon: <LuBan size={18} />,
                     destructive: true,
                     onClick: () => setConfirm({
                       kind: 'block',
@@ -930,7 +934,6 @@ export default function QaQuestion() {
       <ActionSheet
         isOpen={menu?.kind === 'question'}
         onClose={() => setMenu(null)}
-        plain
         title={viewerIsAsker ? 'Your question' : `${displayNameFor(question?.asker) || 'Player'}'s question`}
         subtitle={question?.title}
         items={questionItems}
@@ -938,7 +941,6 @@ export default function QaQuestion() {
       <ActionSheet
         isOpen={!!menuAnswer}
         onClose={() => setMenu(null)}
-        plain
         title={answerIsOwn ? 'Your answer' : menuName ? `${menuName}'s answer` : 'Answer'}
         subtitle={viewerIsAsker && answerIsBest ? 'Marked as your best answer' : null}
         items={answerItems}
@@ -948,6 +950,7 @@ export default function QaQuestion() {
         onClose={() => setConfirm(null)}
         title="Delete this question?"
         items={[{
+          icon: <LuTrash2 size={18} />,
           label: 'Delete question',
           destructive: true,
           onClick: () => onDeleteQuestion(),
@@ -958,6 +961,7 @@ export default function QaQuestion() {
         onClose={() => setConfirm(null)}
         title="Delete this answer?"
         items={[{
+          icon: <LuTrash2 size={18} />,
           label: 'Delete answer',
           destructive: true,
           onClick: () => onDeleteAnswer(confirm?.answer),
@@ -968,6 +972,7 @@ export default function QaQuestion() {
         onClose={() => { if (!blockBusy) setConfirm(null) }}
         title={`Block ${confirm?.name || 'player'}? They won't be able to see your questions or answers, and you won't see theirs.`}
         items={[{
+          icon: <LuBan size={18} />,
           label: blockBusy ? 'Blocking…' : `Block ${confirm?.name || 'player'}`,
           destructive: true,
           disabled: blockBusy,

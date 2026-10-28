@@ -341,6 +341,7 @@ export default function QaGame() {
         items={[
           {
             label: 'Most helpful',
+            selected: sort === 'helpful',
             onClick: () => {
               setSort('helpful')
               setSortOpen(false)
@@ -348,6 +349,7 @@ export default function QaGame() {
           },
           {
             label: 'Newest',
+            selected: sort === 'newest',
             onClick: () => {
               setSort('newest')
               setSortOpen(false)

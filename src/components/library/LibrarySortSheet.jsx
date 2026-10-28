@@ -1,6 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
-import ActionSheet from '../ActionSheet'
+import MenuSheet from '../MenuSheet'
 import { hapticImpact } from '../../utils/haptics'
 import { LIBRARY_SORTS, LIBRARY_VIEWS } from './libraryConstants'
 
@@ -13,12 +12,8 @@ export default function LibrarySortSheet({
   onViewSelect,
 }) {
   const sortItems = LIBRARY_SORTS.map((s) => ({
-    label: (
-      <span className="lib-sort-item">
-        {s.label}
-        {sortKey === s.key && <Check size={16} aria-hidden="true" />}
-      </span>
-    ),
+    label: s.label,
+    selected: sortKey === s.key,
     onClick: () => {
       if (sortKey !== s.key) hapticImpact('Light')
       onSelect(s.key)
@@ -31,12 +26,8 @@ export default function LibrarySortSheet({
           { divider: true },
           { heading: 'View' },
           ...LIBRARY_VIEWS.map((v) => ({
-            label: (
-              <span className="lib-sort-item">
-                {v.label}
-                {viewKey === v.key && <Check size={16} aria-hidden="true" />}
-              </span>
-            ),
+            label: v.label,
+            selected: viewKey === v.key,
             onClick: () => {
               if (viewKey !== v.key) hapticImpact('Light')
               onViewSelect(v.key)
@@ -46,10 +37,11 @@ export default function LibrarySortSheet({
       : []
 
   return (
-    <ActionSheet
+    <MenuSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Sort By"
+      ariaLabel="Sort by"
+      title="Sort by"
       items={[...sortItems, ...viewItems]}
     />
   )

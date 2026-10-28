@@ -86,7 +86,7 @@ body.keyboard-animating .so-backdrop,
 body.keyboard-animating .so-overlay,
 body.keyboard-animating .gps-overlay,
 body.keyboard-animating .modal-overlay,
-body.keyboard-animating .action-sheet-overlay {
+body.keyboard-animating .menu-sheet-root {
   pointer-events: none;
 }
 
