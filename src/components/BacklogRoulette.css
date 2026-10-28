@@ -1,91 +1,42 @@
 /* =====================================================
-   BacklogRoulette — bottom sheet with slot animation
+   BacklogRoulette — centered popup with slot animation
    Namespace: roulette-*
    ===================================================== */
 
-/* ── Overlay (matches ActionSheet pattern) ── */
-
-.roulette-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
-     frame. The dim carries the backdrop. */
-  z-index: 1020;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.roulette-card .cm-grab {
+  display: none;
 }
 
-/* ── Sheet ── */
-
-.roulette-sheet {
-  width: 100%;
-  max-width: 480px;
-  background: var(--color-bg-elevated, #1a1f2e);
-  border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
-  box-shadow:
-    0 -4px 40px rgba(0, 0, 0, 0.5),
-    0 -1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  outline: none;
-}
-
-.roulette-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.18);
-  margin: 12px auto 4px;
-}
-
-/* ── Header ── */
-
-.roulette-header {
-  display: flex;
+.roulette-top {
+  display: grid;
+  grid-template-columns: var(--space-64) 1fr var(--space-64);
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px 4px;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
 }
 
-.roulette-header-icon {
-  flex-shrink: 0;
-  color: var(--text-secondary);
-}
-
-.roulette-title {
-  flex: 1;
-  font-family: var(--font-display);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-title);
-  color: var(--color-text-primary);
+.roulette-top__title {
   margin: 0;
+  text-align: center;
 }
 
-.roulette-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.08);
+.roulette-top__done {
+  justify-self: end;
+  min-height: var(--space-32);
+  padding: 0;
   border: none;
-  color: var(--color-text-secondary);
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
   cursor: pointer;
-  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast);
 }
 
-.roulette-close:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.roulette-close:active {
-  background: rgba(255, 255, 255, 0.2);
+.roulette-top__done:active {
+  opacity: 0.55;
 }
 
 /* ── Body ── */
@@ -351,19 +302,12 @@
 /* ── Reduced motion ── */
 
 @media (prefers-reduced-motion: reduce) {
-  .roulette-overlay,
-  .roulette-sheet {
-    animation: none;
-    transition: none;
-  }
-
   .roulette-spinning-label {
     animation: none;
     opacity: 1;
   }
 
-  .roulette-btn,
-  .roulette-close {
+  .roulette-btn {
     transform: none;
     transition: none;
   }

@@ -591,7 +591,8 @@ body[data-larger-text='true'] {
   --color-border-focus: rgba(59, 130, 246, 0.60);
 
   /* Glass */
-  --glass-bg: rgba(10, 15, 31, 0.85);
+  --glass-bg: color-mix(in srgb, var(--theme-base) 85%, transparent);
+  --glass-on-image: rgba(10, 15, 31, 0.85);
   --glass-border: var(--theme-line);
 
   /* ---- Border Radius ---- */

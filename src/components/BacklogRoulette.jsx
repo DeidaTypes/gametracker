@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
-import { Shuffle, ChevronRight, X, Dices } from 'lucide-react'
+import { Shuffle, ChevronRight } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useSheetDrag } from '../motion/useSheetDrag'
 import { contentSwap } from '../motion/xMotion'
+import CenteredModal from './CenteredModal'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import './BacklogRoulette.css'
 
 /**
- * BacklogRoulette — randomly picks one backlog game.
+ * BacklogRoulette — randomly picks one backlog game (centered popup).
  *
  * Slot-pull animation (22-item vertical strip decelerates to land on winner).
  * Reduced-motion: instant reveal, no animation.
- * Haptics: medium on spin start, success on land.
  *
  * Props:
  *   isOpen   boolean
@@ -24,9 +22,9 @@ import './BacklogRoulette.css'
  *   games    array of backlog game objects
  */
 
-const COVER_H = 138   // px — matches shelf-cover-wrap height
-const STRIP_LEN = 22  // covers in the animated strip, last = winner
-const ITEM_H = COVER_H  // each strip slot is exactly one cover height
+const COVER_H = 138
+const STRIP_LEN = 22
+const ITEM_H = COVER_H
 
 function buildStrip(games, winner) {
   const out = []
@@ -62,32 +60,28 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
   const navigate = useNavigate()
   const { reduced } = useMotionPreference()
 
-  // 'idle' | 'spinning' | 'done'
   const [phase, setPhase] = useState('idle')
   const [winner, setWinner] = useState(null)
   const [strip, setStrip] = useState([])
   const [spinKey, setSpinKey] = useState(0)
 
-  // Keep refs to latest values so the auto-spin effect is stable
   const gamesRef = useRef(games)
   const reducedRef = useRef(reduced)
   useEffect(() => { gamesRef.current = games }, [games])
   useEffect(() => { reducedRef.current = reduced }, [reduced])
 
-  // Auto-spin when the sheet opens
   useEffect(() => {
     if (!isOpen || !gamesRef.current.length) return
     runSpin(gamesRef.current, reducedRef.current)
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset state a beat after the sheet closes (lets exit animation finish)
   useEffect(() => {
     if (isOpen) return
     const t = setTimeout(() => {
       setPhase('idle')
       setWinner(null)
       setStrip([])
-    }, 340)
+    }, 280)
     return () => clearTimeout(t)
   }, [isOpen])
 
@@ -125,160 +119,130 @@ export default function BacklogRoulette({ isOpen, onClose, games = [] }) {
 
   const finalY = -(STRIP_LEN - 1) * ITEM_H
 
-  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Backlog Roulette"
+      maxWidth={400}
+      className="roulette-card"
+    >
+      <header className="roulette-top">
+        <span aria-hidden="true" />
+        <h2 className="roulette-top__title text-title">Backlog Roulette</h2>
+        <button type="button" className="roulette-top__done" onClick={onClose}>
+          Done
+        </button>
+      </header>
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="roulette-overlay"
-          onClick={onClose}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Backlog Roulette"
-          {...dim}
-        >
-          <motion.div
-            className="roulette-sheet"
-            onClick={(e) => e.stopPropagation()}
-            {...panel}
-            {...dragProps}
-          >
-            {/* Drag handle */}
-            <div className="roulette-handle" aria-hidden="true" onPointerDown={startDrag} />
+      <div className="roulette-body">
+        <AnimatePresence mode="wait">
 
-            {/* Header */}
-            <div className="roulette-header">
-              <Dices className="roulette-header-icon" size={20} strokeWidth={2} aria-hidden="true" />
-              <h2 className="roulette-title">Backlog Roulette</h2>
-              <button
-                type="button"
-                className="roulette-close"
-                onClick={onClose}
-                aria-label="Close Backlog Roulette"
+          {phase === 'spinning' && (
+            <motion.div
+              key="spinning"
+              className="roulette-slot-stage"
+              {...contentSwap(reduced)}
+            >
+              <div className="roulette-window" aria-hidden="true">
+                <div className="roulette-mask roulette-mask--top" />
+                <div className="roulette-mask roulette-mask--bottom" />
+                <motion.div
+                  key={spinKey}
+                  className="roulette-strip"
+                  initial={{ y: 0 }}
+                  animate={{ y: finalY }}
+                  transition={{
+                    duration: 2.3,
+                    ease: [0.08, 0.9, 0.18, 1.0],
+                  }}
+                  onAnimationComplete={handleAnimationComplete}
+                >
+                  {strip.map((game, i) => (
+                    <SlotCover key={i} game={game} />
+                  ))}
+                </motion.div>
+              </div>
+              <p className="roulette-spinning-label" aria-live="polite">
+                Picking your next game…
+              </p>
+            </motion.div>
+          )}
+
+          {phase === 'done' && winner && (
+            <motion.div
+              key="done"
+              className="roulette-result"
+              initial={reduced ? {} : { opacity: 0, scale: 0.9, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 320, damping: 26 }
+              }
+            >
+              <div
+                className="roulette-result-cover"
+                role="img"
+                aria-label={winner.title}
               >
-                <X size={18} strokeWidth={2} />
-              </button>
-            </div>
-
-            {/* Body — slot machine OR result */}
-            <div className="roulette-body">
-              <AnimatePresence mode="wait">
-
-                {/* Spinning state — animated strip */}
-                {phase === 'spinning' && (
-                  <motion.div
-                    key="spinning"
-                    className="roulette-slot-stage"
-                    {...contentSwap(reduced)}
-                  >
-                    <div className="roulette-window" aria-hidden="true">
-                      <div className="roulette-mask roulette-mask--top" />
-                      <div className="roulette-mask roulette-mask--bottom" />
-                      <motion.div
-                        key={spinKey}
-                        className="roulette-strip"
-                        initial={{ y: 0 }}
-                        animate={{ y: finalY }}
-                        transition={{
-                          duration: 2.3,
-                          ease: [0.08, 0.9, 0.18, 1.0],
-                        }}
-                        onAnimationComplete={handleAnimationComplete}
-                      >
-                        {strip.map((game, i) => (
-                          <SlotCover key={i} game={game} />
-                        ))}
-                      </motion.div>
-                    </div>
-                    <p className="roulette-spinning-label" aria-live="polite">
-                      Picking your next game…
-                    </p>
-                  </motion.div>
-                )}
-
-                {/* Done state — winner reveal */}
-                {phase === 'done' && winner && (
-                  <motion.div
-                    key="done"
-                    className="roulette-result"
-                    initial={reduced ? {} : { opacity: 0, scale: 0.9, y: 12 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={
-                      reduced
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 320, damping: 26 }
-                    }
-                  >
-                    <div
-                      className="roulette-result-cover"
-                      role="img"
-                      aria-label={winner.title}
-                    >
-                      {winner.image ? (
-                        <img
-                          src={winner.image}
-                          alt={winner.title}
-                          className="roulette-result-img"
-                          onError={(e) => { e.target.src = COVER_FALLBACK }}
-                        />
-                      ) : (
-                        <div className="roulette-result-fallback">
-                          {winner.title?.charAt(0) || '?'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="roulette-result-info">
-                      <p className="roulette-result-eyebrow">Your pick</p>
-                      <h3 className="roulette-result-name">{winner.title}</h3>
-                      {winner.developer && (
-                        <p className="roulette-result-dev">{winner.developer}</p>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Idle placeholder (brief moment before auto-spin resolves) */}
-                {phase === 'idle' && (
-                  <motion.div
-                    key="idle"
-                    className="roulette-idle-placeholder"
-                    {...contentSwap(reduced)}
+                {winner.image ? (
+                  <img
+                    src={winner.image}
+                    alt={winner.title}
+                    className="roulette-result-img"
+                    onError={(e) => { e.target.src = COVER_FALLBACK }}
                   />
+                ) : (
+                  <div className="roulette-result-fallback">
+                    {winner.title?.charAt(0) || '?'}
+                  </div>
                 )}
+              </div>
+              <div className="roulette-result-info">
+                <p className="roulette-result-eyebrow">Your pick</p>
+                <h3 className="roulette-result-name">{winner.title}</h3>
+                {winner.developer && (
+                  <p className="roulette-result-dev">{winner.developer}</p>
+                )}
+              </div>
+            </motion.div>
+          )}
 
-              </AnimatePresence>
-            </div>
+          {phase === 'idle' && (
+            <motion.div
+              key="idle"
+              className="roulette-idle-placeholder"
+              {...contentSwap(reduced)}
+            />
+          )}
 
-            {/* Action buttons */}
-            <div className="roulette-actions">
-              <button
-                type="button"
-                className="roulette-btn roulette-btn--ghost"
-                onClick={handleSpinAgain}
-                disabled={phase === 'spinning'}
-                aria-label="Spin again"
-              >
-                <Shuffle size={15} strokeWidth={2.2} aria-hidden="true" />
-                Spin Again
-              </button>
-              <button
-                type="button"
-                className="roulette-btn roulette-btn--primary"
-                onClick={handleViewGame}
-                disabled={phase !== 'done' || !winner}
-                aria-label={winner ? `View ${winner.title}` : 'View game'}
-              >
-                View Game
-                <ChevronRight size={15} strokeWidth={2.2} aria-hidden="true" />
-              </button>
-            </div>
+        </AnimatePresence>
+      </div>
 
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+      <div className="roulette-actions">
+        <button
+          type="button"
+          className="roulette-btn roulette-btn--ghost"
+          onClick={handleSpinAgain}
+          disabled={phase === 'spinning'}
+          aria-label="Spin again"
+        >
+          <Shuffle size={15} strokeWidth={2.2} aria-hidden="true" />
+          Spin Again
+        </button>
+        <button
+          type="button"
+          className="roulette-btn roulette-btn--primary"
+          onClick={handleViewGame}
+          disabled={phase !== 'done' || !winner}
+          aria-label={winner ? `View ${winner.title}` : 'View game'}
+        >
+          View Game
+          <ChevronRight size={15} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      </div>
+    </CenteredModal>
   )
 }

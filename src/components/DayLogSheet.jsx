@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronRight,
@@ -10,11 +8,7 @@ import {
   List,
   Plus,
   FileText,
-  X,
 } from 'lucide-react'
-import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useSheetDrag } from '../motion/useSheetDrag'
-import { useNavDim } from '../hooks/useNavDim'
 import { useAuth } from '../contexts/AuthContext'
 import {
   fetchActivitiesForDay,
@@ -23,20 +17,14 @@ import {
 } from '../services/activityService'
 import StarRatingDisplay from './StarRatingDisplay'
 import EmptyState from './EmptyState'
+import CenteredModal from './CenteredModal'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import { STATUS_META } from './StatusChip'
 import './DayLogSheet.css'
 
 /**
- * DayLogSheet — bottom sheet showing every activity logged on a given day.
- *
- * Rows with an associated game (everything except 'list_created') render
- * a cover thumbnail + title + a colored type tag, per the Calendar
- * day-detail spec:
- *   Reviewed/Rated      → green tag  (--accent-review), stars shown
- *   Added to list       → purple tag (--accent-journal), "→ list name" shown
- *   everything else     → neutral tag, plain sentence (unchanged look)
+ * DayLogSheet — activity logged on a given calendar day, in a centered popup.
  *
  * Props:
  *   dateKey  {'YYYY-MM-DD' | null}  — day to display; null = closed
@@ -59,10 +47,6 @@ const STATUS_TAG_LABEL = {
   dropped: STATUS_META.dropped.label,
 }
 
-/**
- * Type tag { label, tone } for an activity row.
- * tone: 'review' (green) | 'journal' (purple) | 'neutral' (default)
- */
 function activityTag(activity) {
   switch (activity.activityType) {
     case 'review_posted':
@@ -111,11 +95,8 @@ function formatTime(isoString) {
 export default function DayLogSheet({ dateKey, onClose }) {
   const { user }   = useAuth()
   const navigate   = useNavigate()
-  const { reduced } = useMotionPreference()
 
   const isOpen = !!dateKey
-
-  useNavDim(isOpen)
 
   const [activities, setActivities] = useState([])
   const [loading,    setLoading]    = useState(false)
@@ -139,16 +120,6 @@ export default function DayLogSheet({ dateKey, onClose }) {
     return () => { cancelled = true }
   }, [isOpen, user?.id, dateKey])
 
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return
-    function onKey(e) { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose])
-
-  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
-
   function handleActivityTap(activity) {
     const href = getActivityHref(activity)
     if (href) {
@@ -161,134 +132,107 @@ export default function DayLogSheet({ dateKey, onClose }) {
     }
   }
 
-  const content = (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            className="dls-backdrop"
-            {...dim}
-            onClick={onClose}
-            aria-hidden="true"
-          />
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel={`Activity log for ${formatDayTitle(dateKey)}`}
+      maxWidth={400}
+      className="dls-card"
+    >
+      <header className="dls-top">
+        <span aria-hidden="true" />
+        <h2 className="dls-top__title text-title">{formatDayTitle(dateKey)}</h2>
+        <button type="button" className="dls-top__done" onClick={onClose}>
+          Done
+        </button>
+      </header>
 
-          <motion.div
-            className="dls-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Activity log for ${formatDayTitle(dateKey)}`}
-            {...panel}
-            {...dragProps}
-          >
-            <div className="dls-handle" aria-hidden="true" onPointerDown={startDrag} />
+      <div className="cm-scroll dls-body">
+        {!loading && activities.length > 0 && (
+          <p className="dls-subtitle text-caption">
+            {activities.length} {activities.length === 1 ? 'thing' : 'things'} logged
+          </p>
+        )}
 
-            <div className="dls-header">
-              <div className="dls-header-text">
-                <h2 className="dls-title">{formatDayTitle(dateKey)}</h2>
-                {!loading && activities.length > 0 && (
-                  <p className="dls-subtitle">
-                    {activities.length} {activities.length === 1 ? 'thing' : 'things'} logged
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                className="dls-close-btn"
-                onClick={onClose}
-                aria-label="Close"
-              >
-                <X size={18} strokeWidth={2} aria-hidden="true" />
-              </button>
-            </div>
+        {loading && (
+          <p className="dls-loading" aria-live="polite">Loading…</p>
+        )}
 
-            <div className="dls-body">
-              {loading && (
-                <p className="dls-loading" aria-live="polite">Loading…</p>
-              )}
+        {!loading && activities.length === 0 && (
+          <EmptyState icon={Gamepad2} size="compact" body="No activity logged this day." />
+        )}
 
-              {!loading && activities.length === 0 && (
-                <EmptyState icon={Gamepad2} size="compact" body="No activity logged this day." />
-              )}
+        {!loading && activities.length > 0 && (
+          <ul className="dls-list" role="list">
+            {activities.map((act) => {
+              const href = getActivityHref(act)
+              const msg  = formatActivityMessage(act)
+              const ActivityIcon = ACTIVITY_ICONS[act.activityType]
+              const tag  = activityTag(act)
+              const hasGameRow = act.activityType !== 'list_created'
 
-              {!loading && activities.length > 0 && (
-                <ul className="dls-list" role="list">
-                  {activities.map((act) => {
-                    const href = getActivityHref(act)
-                    const msg  = formatActivityMessage(act)
-                    const ActivityIcon = ACTIVITY_ICONS[act.activityType]
-                    const tag  = activityTag(act)
-                    // Every type except 'list_created' is anchored to a
-                    // specific game — those get the rich cover+tag+meta
-                    // row; 'list_created' keeps the original sentence row
-                    // since there's no single game to show a cover for.
-                    const hasGameRow = act.activityType !== 'list_created'
-
-                    return (
-                      <li key={act.id} className="dls-item">
-                        <button
-                          type="button"
-                          className={`dls-item-btn${href ? '' : ' dls-item-btn--static'}`}
-                          onClick={() => href && handleActivityTap(act)}
-                          disabled={!href}
-                          aria-label={msg}
-                        >
-                          {hasGameRow ? (
-                            <>
-                              <img
-                                className="dls-item-cover"
-                                src={act.gameImage || COVER_FALLBACK}
-                                alt=""
-                                loading="lazy"
-                                onError={(e) => { e.target.src = COVER_FALLBACK }}
-                              />
-                              <div className="dls-item-content">
-                                <span className={`dls-item-tag dls-item-tag--${tag.tone}`}>
-                                  {tag.label}
-                                </span>
-                                <span className="dls-item-title">
-                                  {act.gameTitle || 'Untitled game'}
-                                </span>
-                                {act.activityType === 'review_posted' && act.reviewRating != null ? (
-                                  <StarRatingDisplay rating={act.reviewRating} size="xs" />
-                                ) : act.activityType === 'game_added_to_list' ? (
-                                  <span className="dls-item-list-target">
-                                    → {act.listName || 'a list'}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </>
+              return (
+                <li key={act.id} className="dls-item">
+                  <button
+                    type="button"
+                    className={`dls-item-btn${href ? '' : ' dls-item-btn--static'}`}
+                    onClick={() => href && handleActivityTap(act)}
+                    disabled={!href}
+                    aria-label={msg}
+                  >
+                    {hasGameRow ? (
+                      <>
+                        <img
+                          className="dls-item-cover"
+                          src={act.gameImage || COVER_FALLBACK}
+                          alt=""
+                          loading="lazy"
+                          onError={(e) => { e.target.src = COVER_FALLBACK }}
+                        />
+                        <div className="dls-item-content">
+                          <span className={`dls-item-tag dls-item-tag--${tag.tone}`}>
+                            {tag.label}
+                          </span>
+                          <span className="dls-item-title">
+                            {act.gameTitle || 'Untitled game'}
+                          </span>
+                          {act.activityType === 'review_posted' && act.reviewRating != null ? (
+                            <StarRatingDisplay rating={act.reviewRating} size="xs" />
+                          ) : act.activityType === 'game_added_to_list' ? (
+                            <span className="dls-item-list-target">
+                              → {act.listName || 'a list'}
+                            </span>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="dls-item-icon" aria-hidden="true">
+                          {ActivityIcon ? (
+                            <ActivityIcon size={16} strokeWidth={2} />
                           ) : (
-                            <>
-                              <span className="dls-item-icon" aria-hidden="true">
-                                {ActivityIcon ? (
-                                  <ActivityIcon size={16} strokeWidth={2} />
-                                ) : (
-                                  '•'
-                                )}
-                              </span>
-                              <span className="dls-item-text">{msg}</span>
-                            </>
+                            '•'
                           )}
-                          <span className="dls-item-time">{formatTime(act.createdAt)}</span>
-                          {href && (
-                            <ChevronRight
-                              size={14}
-                              className="dls-item-chevron"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+                        </span>
+                        <span className="dls-item-text">{msg}</span>
+                      </>
+                    )}
+                    <span className="dls-item-time">{formatTime(act.createdAt)}</span>
+                    {href && (
+                      <ChevronRight
+                        size={14}
+                        className="dls-item-chevron"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </CenteredModal>
   )
-
-  return createPortal(content, document.body)
 }

@@ -1,69 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import React, { useEffect, useState } from 'react'
 import { LuChevronUp, LuChevronDown, LuPin } from 'react-icons/lu'
-import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDim, sheetPanel } from '../motion/xMotion'
+import CenteredModal from './CenteredModal'
 import './ReorderPinsModal.css'
 
 /**
- * Sprint 6 P3 — Reorder pinned reviews on Profile.
+ * Sprint 6 P3 — Reorder pinned reviews on Profile (centered popup).
  *
- * Mirrors the bottom-sheet pattern used by ActionSheet / SortSheet: the
- * layered z-index and chrome come from the shared `.action-sheet-overlay`
- * + `.action-sheet` classes in ActionSheet.css, the motion from the shared
- * sheet helpers (sheetPanel / sheetDim).
- *
- * The drag-handle reorder UX was the original plan, but a simple
- * up/down arrow modal is the documented fallback and ships with far
- * less surface area. The arrow buttons mutate a local copy of the
- * order so the user can rearrange freely before committing — only the
- * "Save order" tap fires `onSave` and calls `reorderPins(...)`.
+ * Up/down arrows mutate a local copy of the order; only Save order calls
+ * `onSave` and `reorderPins(...)`.
  *
  * Props:
  *   isOpen   – boolean
  *   onClose  – () => void
  *   pins     – Array<{ review_id, title, coverUrl, gameName }>
- *              in current persisted order (position 0 → N).
  *   onSave   – (orderedReviewIds: string[]) => Promise<void>
- *              Resolves when the new order has been persisted.
- *              Rejecting bubbles up to the caller (Profile) to roll
- *              back the optimistic UI.
  */
 function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
   const [order, setOrder] = useState(pins)
   const [saving, setSaving] = useState(false)
-  const sheetRef = useRef(null)
-  const { reduced } = useMotionPreference()
 
-  // Reset the local order whenever the sheet (re)opens — otherwise a
-  // user who reorders, cancels, and reopens would see the stale draft.
   useEffect(() => {
     if (isOpen) {
       setOrder(pins)
       setSaving(false)
     }
   }, [isOpen, pins])
-
-  // Move focus into the sheet for keyboard / screen-reader users —
-  // same pattern as SortSheet.
-  useEffect(() => {
-    if (!isOpen) return undefined
-    const el = sheetRef.current
-    if (!el) return undefined
-    const id = setTimeout(() => el.focus(), 50)
-    return () => clearTimeout(id)
-  }, [isOpen])
-
-  // Escape closes when not mid-save.
-  useEffect(() => {
-    if (!isOpen) return undefined
-    const onKey = (e) => {
-      if (e.key === 'Escape' && !saving) onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose, saving])
 
   const moveUp = (idx) => {
     if (idx <= 0) return
@@ -89,38 +50,49 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
       await onSave(ids)
       onClose()
     } catch {
-      // Caller has surfaced an error toast; just stop the spinner so
-      // the user can retry.
       setSaving(false)
     }
   }
 
-  // True when the current draft differs from the persisted order. We
-  // keep the save button enabled regardless (so the user can confirm
-  // their no-op intent) but skip the API call in that case.
   const dirty = order.some((p, i) => pins[i]?.review_id !== p.review_id)
+  const actionLabel = saving ? 'Saving…' : dirty ? 'Save order' : 'Done'
 
-  return createPortal(
-    <AnimatePresence>
-    {isOpen && (
-    <motion.div
-      className="action-sheet-overlay"
-      onClick={saving ? undefined : onClose}
-      aria-modal="true"
-      role="dialog"
-      aria-label="Reorder pinned reviews"
-      {...sheetDim(reduced)}
+  const handleAction = () => {
+    if (saving) return
+    if (dirty) void handleSave()
+    else onClose()
+  }
+
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      dismissOnBackdrop={!saving}
+      ariaLabel="Reorder pinned reviews"
+      maxWidth={400}
+      className="rpm-card"
     >
-      <motion.div
-        ref={sheetRef}
-        className="action-sheet reorder-pins"
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={-1}
-        {...sheetPanel(reduced)}
-      >
-        <div className="action-sheet__handle" aria-hidden="true" />
-        <p className="action-sheet__title">Reorder Pins</p>
+      <header className="rpm-topbar">
+        <button
+          type="button"
+          className="rpm-topbar-cancel"
+          onClick={onClose}
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <h2 className="rpm-topbar-title text-title">Reorder pins</h2>
+        <button
+          type="button"
+          className={`rpm-topbar-action${saving ? ' rpm-topbar-action--disabled' : ''}`}
+          onClick={handleAction}
+          disabled={saving}
+        >
+          {actionLabel}
+        </button>
+      </header>
 
+      <div className="cm-scroll rpm-body">
         <ul className="reorder-pins__list" role="list">
           {order.map((p, idx) => (
             <li key={p.review_id} className="reorder-pins__row">
@@ -167,30 +139,8 @@ function ReorderPinsModal({ isOpen, onClose, pins = [], onSave }) {
             </li>
           ))}
         </ul>
-
-        <div className="reorder-pins__footer">
-          <button
-            type="button"
-            className="reorder-pins__cancel"
-            onClick={onClose}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="reorder-pins__save"
-            onClick={dirty ? handleSave : onClose}
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : dirty ? 'Save order' : 'Done'}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-    )}
-    </AnimatePresence>,
-    document.body
+      </div>
+    </CenteredModal>
   )
 }
 

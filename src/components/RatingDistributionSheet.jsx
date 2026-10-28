@@ -1,87 +1,49 @@
-import React, { useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
-import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useSheetDrag } from '../motion/useSheetDrag'
+import React from 'react'
+import CenteredModal from './CenteredModal'
 import CommunityRatingCard from './CommunityRatingCard'
 import './RatingDistributionSheet.css'
 
 /**
- * Thin bottom sheet that surfaces the existing CommunityRatingCard histogram.
- * No dedicated distribution sheet existed before this wrapper — internals are
- * CommunityRatingCard unchanged (true half-star buckets, not ridge rounding).
+ * Community rating histogram in a centered popup.
+ * Internals are CommunityRatingCard unchanged (true half-star buckets).
  */
 export default function RatingDistributionSheet({ isOpen, onClose, ratingDist }) {
-  const sheetRef = useRef(null)
-  const { reduced } = useMotionPreference()
-
   const totalCount = ratingDist?.totalCount ?? 0
   const hasRatings = totalCount > 0 && ratingDist?.average != null && !ratingDist?.error
 
-  useEffect(() => {
-    if (!isOpen) return
-    const el = sheetRef.current
-    if (!el) return
-    const id = setTimeout(() => el.focus(), 50)
-    return () => clearTimeout(id)
-  }, [isOpen])
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Community rating distribution"
+      maxWidth={400}
+      className="rds-card"
+    >
+      <header className="rds-top">
+        <span aria-hidden="true" />
+        <h2 className="rds-top__title text-title">Community ratings</h2>
+        <button type="button" className="rds-top__done" onClick={onClose}>
+          Done
+        </button>
+      </header>
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKey = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
-
-  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
-
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="rating-dist-sheet-overlay"
-          onClick={onClose}
-          aria-modal="true"
-          role="dialog"
-          aria-label="Community rating distribution"
-          {...dim}
-        >
-          <motion.div
-            ref={sheetRef}
-            className="rating-dist-sheet"
-            tabIndex={-1}
-            onClick={(e) => e.stopPropagation()}
-            {...panel}
-            {...dragProps}
-          >
-            <div className="rating-dist-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />
-            <h2 className="rating-dist-sheet__title">Community ratings</h2>
-
-            {hasRatings ? (
-              <>
-                <CommunityRatingCard
-                  average={ratingDist.average}
-                  totalCount={ratingDist.totalCount}
-                  counts={ratingDist.counts}
-                />
-                <p className="rating-dist-sheet__caption">
-                  Half ratings group into the star above. This chart shows the true
-                  half-star distribution.
-                </p>
-              </>
-            ) : (
-              <p className="rating-dist-sheet__empty">No community ratings yet.</p>
-            )}
-
-            <button type="button" className="rating-dist-sheet__close" onClick={onClose}>
-              Close
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+      <div className="cm-scroll rds-body">
+        {hasRatings ? (
+          <>
+            <CommunityRatingCard
+              average={ratingDist.average}
+              totalCount={ratingDist.totalCount}
+              counts={ratingDist.counts}
+            />
+            <p className="rds-caption text-label">
+              Half ratings group into the star above. This chart shows the true
+              half-star distribution.
+            </p>
+          </>
+        ) : (
+          <p className="rds-empty text-body">No community ratings yet.</p>
+        )}
+      </div>
+    </CenteredModal>
   )
 }

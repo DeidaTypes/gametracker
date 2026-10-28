@@ -1,0 +1,50 @@
+/* Q&A public-post notice — centered popup over the Ask composer. Namespace: qpn-* */
+
+.qpn-card .cm-grab {
+  display: none;
+}
+
+.qpn-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20) var(--space-20) var(--space-16);
+}
+
+.qpn-icon {
+  color: var(--theme-journal-ink);
+}
+
+.qpn-body h2 {
+  margin: 0;
+}
+
+.qpn-copy {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.qpn-go,
+.qpn-stop {
+  height: var(--space-48);
+  width: 100%;
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+button.qpn-go {
+  margin-top: var(--space-4);
+  border: 0;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+button.qpn-stop {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-bold);
+}

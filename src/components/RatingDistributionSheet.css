@@ -1,75 +1,55 @@
-.rating-dist-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-sheet, 1000);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: color-mix(in srgb, var(--color-bg-primary) 50%, transparent);
-  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
-     frame. The dim carries the backdrop. */
+/* Community rating distribution — CenteredModal (.cm-card). Namespace: rds-* */
+
+.rds-card .cm-grab {
+  display: none;
 }
 
-.rating-dist-sheet {
-  width: 100%;
-  max-width: var(--page-max-width);
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: var(--space-12) var(--space-20) calc(var(--space-24) + env(safe-area-inset-bottom, 0px));
-  background: var(--color-bg-elevated, var(--color-bg-primary));
-  border-top: 1px solid var(--color-border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  outline: none;
+.rds-top {
+  display: grid;
+  grid-template-columns: var(--space-64) 1fr var(--space-64);
+  align-items: center;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
 }
 
-.rating-dist-sheet__handle {
-  width: var(--space-32);
-  height: var(--space-4);
-  margin: 0 auto var(--space-12);
-  border-radius: var(--radius-full);
-  background: var(--color-border);
+.rds-top__title {
+  margin: 0;
+  text-align: center;
 }
 
-.rating-dist-sheet__title {
-  margin: 0 0 var(--space-16);
-  font-family: var(--font-body);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.rating-dist-sheet__caption {
-  margin: var(--space-12) 0 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
-  line-height: 1.35;
-}
-
-.rating-dist-sheet__empty {
-  margin: 0 0 var(--space-16);
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-}
-
-.rating-dist-sheet__close {
-  display: block;
-  width: 100%;
-  margin-top: var(--space-16);
-  padding: var(--space-12);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+.rds-top__done {
+  justify-self: end;
+  min-height: var(--space-32);
+  padding: 0;
+  border: none;
+  background: none;
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: var(--accent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.rating-dist-sheet__close:hover {
-  background: var(--color-surface-hover);
+.rds-top__done:active {
+  opacity: 0.55;
+}
+
+.rds-body {
+  padding: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.rds-caption {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  line-height: 1.35;
+}
+
+.rds-empty {
+  margin: 0;
+  color: var(--color-text-secondary);
 }

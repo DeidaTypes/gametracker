@@ -1,82 +1,45 @@
 /* ============================================================
-   CollaboratorSheet — slides up from bottom, manages list co-editors
+   CollaboratorSheet — centered popup for list co-editors
    ============================================================ */
 
-.collab-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
-     frame. The dim carries the backdrop. */
-  z-index: 1020;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.collab-card .cm-grab {
+  display: none;
 }
 
-.collab-sheet {
-  width: 100%;
-  max-width: 480px;
-  max-height: 80dvh;
-  background: var(--color-bg-elevated, #1a1f2e);
-  border-radius: var(--radius-xl, 20px) var(--radius-xl, 20px) 0 0;
-  box-shadow:
-    0 -4px 40px rgba(0, 0, 0, 0.5),
-    0 -1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-}
-
-.collab-sheet__handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.18);
-  margin: 12px auto 0;
-  flex-shrink: 0;
-}
-
-.collab-sheet__header {
-  display: flex;
+.collab-top {
+  display: grid;
+  grid-template-columns: var(--space-64) 1fr var(--space-64);
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px 10px;
-  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
-  flex-shrink: 0;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
 }
 
-.collab-sheet__title {
+.collab-top__title {
+  margin: 0;
+  text-align: center;
+}
+
+.collab-top__done {
+  justify-self: end;
+  min-height: var(--space-32);
+  padding: 0;
+  border: none;
+  background: none;
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.collab-sheet__close {
-  background: none;
-  border: none;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
+  color: var(--accent);
   cursor: pointer;
-  border-radius: var(--radius-sm);
   -webkit-tap-highlight-color: transparent;
 }
 
-.collab-sheet__close:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface-hover);
+.collab-top__done:active {
+  opacity: 0.55;
 }
 
-/* Scrollable body */
 .collab-sheet__body {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  padding: var(--space-12) var(--space-16) var(--space-16);
   overscroll-behavior: contain;
   padding: 8px 0 4px;
 }

@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
 import { UserPlus, X, Users } from 'lucide-react'
-import { useMotionPreference } from '../hooks/useMotionPreference'
-import { useSheetDrag } from '../motion/useSheetDrag'
 import { getFollowing } from '../services/followService'
 import { addCollaborator, removeCollaborator } from '../services/listService'
 import { showToast } from './Toast'
 import Avatar from './Avatar'
 import EmptyState from './EmptyState'
+import CenteredModal from './CenteredModal'
 import './CollaboratorSheet.css'
 
 /**
- * CollaboratorSheet — bottom-sheet for managing list collaborators.
+ * CollaboratorSheet — centered popup for managing list collaborators.
  *
  * Props:
  *   isOpen          – boolean
@@ -32,13 +29,11 @@ function CollaboratorSheet({
   collaborators = [],
   onChanged,
 }) {
-  const { reduced } = useMotionPreference()
   const [following, setFollowing] = useState([])
   const [loadingFollowing, setLoadingFollowing] = useState(false)
   const [pendingAdd, setPendingAdd] = useState(new Set())
   const [pendingRemove, setPendingRemove] = useState(new Set())
 
-  // Load the owner's Following list once the sheet opens
   useEffect(() => {
     if (!isOpen || !isOwner || !currentUserId) return
     let cancelled = false
@@ -60,7 +55,6 @@ function CollaboratorSheet({
 
   const collaboratorIds = new Set(collaborators.map((c) => c.userId))
 
-  // People the owner follows who are not yet collaborators (and not the owner)
   const inviteable = following.filter(
     (u) => !collaboratorIds.has(u.userId) && u.userId !== currentUserId
   )
@@ -91,138 +85,115 @@ function CollaboratorSheet({
     }
   }
 
-  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  return (
+    <CenteredModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Manage collaborators"
+      maxWidth={400}
+      className="collab-card"
+    >
+      <header className="collab-top">
+        <span aria-hidden="true" />
+        <h2 className="collab-top__title text-title">Collaborators</h2>
+        <button type="button" className="collab-top__done" onClick={onClose}>
+          Done
+        </button>
+      </header>
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="collab-sheet-overlay"
-          onClick={onClose}
-          aria-modal="true"
-          role="dialog"
-          aria-label="Manage collaborators"
-          {...dim}
-        >
-          <motion.div
-            className="collab-sheet"
-            onClick={(e) => e.stopPropagation()}
-            {...panel}
-            {...dragProps}
-          >
-            <div className="collab-sheet__handle" aria-hidden="true" onPointerDown={startDrag} />
+      <div className="cm-scroll collab-sheet__body">
 
-            <div className="collab-sheet__header">
-              <span className="collab-sheet__title">Collaborators</span>
-              <button
-                type="button"
-                className="collab-sheet__close"
-                onClick={onClose}
-                aria-label="Close"
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="collab-sheet__body">
-
-              {/* Current collaborators */}
-              {collaborators.length > 0 ? (
-                <section className="collab-sheet__section">
-                  <p className="collab-sheet__section-label">Co-editors</p>
-                  <ul className="collab-sheet__user-list">
-                    {collaborators.map((u) => (
-                      <li key={u.userId} className="collab-sheet__user-row">
-                        <Avatar
-                          avatarUrl={u.avatarUrl}
-                          name={u.displayName || u.username}
-                          seed={u.userId}
-                          size="md"
-                          className="collab-sheet__avatar"
-                        />
-                        <div className="collab-sheet__user-info">
-                          <span className="collab-sheet__user-name">
-                            {u.displayName || u.username}
-                          </span>
-                          {u.username && (
-                            <span className="collab-sheet__user-handle">@{u.username}</span>
-                          )}
-                        </div>
-                        {isOwner && (
-                          <button
-                            type="button"
-                            className="collab-sheet__remove-btn"
-                            onClick={() => handleRemove(u)}
-                            disabled={pendingRemove.has(u.userId)}
-                            aria-label={`Remove ${u.displayName || u.username}`}
-                          >
-                            <X size={15} aria-hidden="true" />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : (
-                <EmptyState icon={Users} size="compact" body="No co-editors yet" />
-              )}
-
-              {/* Invite from Following — owner only */}
-              {isOwner && (
-                <section className="collab-sheet__section">
-                  <p className="collab-sheet__section-label">Invite from Following</p>
-                  {loadingFollowing ? (
-                    <div className="collab-sheet__loading">Loading…</div>
-                  ) : inviteable.length === 0 ? (
-                    <EmptyState
-                      size="inline"
-                      body={
-                        following.length === 0
-                          ? "You're not following anyone yet."
-                          : 'Everyone you follow is already a co-editor.'
-                      }
-                    />
-                  ) : (
-                    <ul className="collab-sheet__user-list">
-                      {inviteable.map((u) => (
-                        <li key={u.userId} className="collab-sheet__user-row">
-                          <Avatar
-                            avatarUrl={u.avatarUrl}
-                            name={u.displayName || u.username}
-                            seed={u.userId}
-                            size="md"
-                            className="collab-sheet__avatar"
-                          />
-                          <div className="collab-sheet__user-info">
-                            <span className="collab-sheet__user-name">
-                              {u.displayName || u.username}
-                            </span>
-                            {u.username && (
-                              <span className="collab-sheet__user-handle">@{u.username}</span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            className="collab-sheet__add-btn"
-                            onClick={() => handleAdd(u)}
-                            disabled={pendingAdd.has(u.userId)}
-                            aria-label={`Add ${u.displayName || u.username}`}
-                          >
-                            <UserPlus size={15} aria-hidden="true" />
-                            <span>Add</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+        {collaborators.length > 0 ? (
+          <section className="collab-sheet__section">
+            <p className="collab-sheet__section-label">Co-editors</p>
+            <ul className="collab-sheet__user-list">
+              {collaborators.map((u) => (
+                <li key={u.userId} className="collab-sheet__user-row">
+                  <Avatar
+                    avatarUrl={u.avatarUrl}
+                    name={u.displayName || u.username}
+                    seed={u.userId}
+                    size="md"
+                    className="collab-sheet__avatar"
+                  />
+                  <div className="collab-sheet__user-info">
+                    <span className="collab-sheet__user-name">
+                      {u.displayName || u.username}
+                    </span>
+                    {u.username && (
+                      <span className="collab-sheet__user-handle">@{u.username}</span>
+                    )}
+                  </div>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="collab-sheet__remove-btn"
+                      onClick={() => handleRemove(u)}
+                      disabled={pendingRemove.has(u.userId)}
+                      aria-label={`Remove ${u.displayName || u.username}`}
+                    >
+                      <X size={15} aria-hidden="true" />
+                    </button>
                   )}
-                </section>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <EmptyState icon={Users} size="compact" body="No co-editors yet" />
+        )}
+
+        {isOwner && (
+          <section className="collab-sheet__section">
+            <p className="collab-sheet__section-label">Invite from Following</p>
+            {loadingFollowing ? (
+              <div className="collab-sheet__loading">Loading…</div>
+            ) : inviteable.length === 0 ? (
+              <EmptyState
+                size="inline"
+                body={
+                  following.length === 0
+                    ? "You're not following anyone yet."
+                    : 'Everyone you follow is already a co-editor.'
+                }
+              />
+            ) : (
+              <ul className="collab-sheet__user-list">
+                {inviteable.map((u) => (
+                  <li key={u.userId} className="collab-sheet__user-row">
+                    <Avatar
+                      avatarUrl={u.avatarUrl}
+                      name={u.displayName || u.username}
+                      seed={u.userId}
+                      size="md"
+                      className="collab-sheet__avatar"
+                    />
+                    <div className="collab-sheet__user-info">
+                      <span className="collab-sheet__user-name">
+                        {u.displayName || u.username}
+                      </span>
+                      {u.username && (
+                        <span className="collab-sheet__user-handle">@{u.username}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="collab-sheet__add-btn"
+                      onClick={() => handleAdd(u)}
+                      disabled={pendingAdd.has(u.userId)}
+                      aria-label={`Add ${u.displayName || u.username}`}
+                    >
+                      <UserPlus size={15} aria-hidden="true" />
+                      <span>Add</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
+    </CenteredModal>
   )
 }
 

@@ -140,7 +140,7 @@
 }
 
 .play-indicator {
-  background: var(--glass-bg);
+  background: var(--glass-on-image);
   backdrop-filter: blur(var(--blur-md));
   -webkit-backdrop-filter: blur(var(--blur-md));
   color: var(--color-text-primary);
