@@ -146,6 +146,20 @@ async function applyStatusBar(mode) {
   }
 }
 
+async function applyKeyboardStyle(mode) {
+  try {
+    if (!Capacitor.isNativePlatform()) return
+    const { Keyboard, KeyboardStyle } = await import('@capacitor/keyboard')
+    // Light keyboard on the four light themes, dark on the four dark ones.
+    // capacitor.config only sets the initial style; this overrides it at runtime.
+    await Keyboard.setStyle({
+      style: mode === 'light' ? KeyboardStyle.Light : KeyboardStyle.Dark,
+    })
+  } catch {
+    // Web, or the plugin is unavailable. Never surface this.
+  }
+}
+
 export function applyTheme(id) {
   if (typeof document === 'undefined') return DEFAULTS.theme
   const theme = getTheme(id)
@@ -155,6 +169,7 @@ export function applyTheme(id) {
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', theme.base)
   applyStatusBar(theme.mode)
+  applyKeyboardStyle(theme.mode)
   return theme.id
 }
 

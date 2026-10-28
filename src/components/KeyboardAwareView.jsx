@@ -37,6 +37,10 @@ import '../styles/keyboard.css'
  *   as         element type to render (default 'div')
  *   reserveNav for mode="scroll": also reserve tab-bar space at rest, using
  *              whichever of the two is larger
+ *   lift       for mode="composer": false holds the bar at rest while the
+ *              keyboard is up (default true — every caller is unchanged).
+ *              The lift is zeroed rather than the class removed, so the
+ *              transform still transitions when it turns back on.
  *   className  extra classes, appended after the keyboard classes
  */
 
@@ -48,7 +52,16 @@ const MODE_CLASSES = {
 }
 
 const KeyboardAwareView = forwardRef(function KeyboardAwareView(
-  { mode = 'scroll', as: Component = 'div', reserveNav = false, className = '', children, ...rest },
+  {
+    mode = 'scroll',
+    as: Component = 'div',
+    reserveNav = false,
+    lift = true,
+    className = '',
+    style,
+    children,
+    ...rest
+  },
   ref,
 ) {
   let base = MODE_CLASSES[mode] || MODE_CLASSES.scroll
@@ -56,8 +69,12 @@ const KeyboardAwareView = forwardRef(function KeyboardAwareView(
 
   const classes = `${base} ${className}`.trim()
 
+  // Inline custom property beats .kb-lift's own --keyboard-lift declaration.
+  const liftStyle =
+    mode === 'composer' && lift === false ? { ...style, '--keyboard-lift': '0px' } : style
+
   return (
-    <Component ref={ref} className={classes} {...rest}>
+    <Component ref={ref} className={classes} style={liftStyle} {...rest}>
       {children}
     </Component>
   )

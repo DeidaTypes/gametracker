@@ -236,6 +236,85 @@ body.keyboard-open {
   }
 }
 
+/* ── Seamless comment bar — opt-in variant (List page only, for now) ─────
+   Add `kb-composer-bar--seamless` next to `kb-composer-bar composer-bar`.
+   Every other comment screen keeps the standard bar above.
+
+   The bar is the page's own color all the way to the bottom of the screen:
+   bottom: 0, with the home-indicator inset folded into its padding instead
+   of leaving a strip of page showing under it. A short fade above it
+   replaces the hairline.
+
+   Lift math is the shared .kb-lift (keyboard height minus the safe-area
+   inset, since nav is hidden on these screens). The safe-area padding
+   therefore slides behind the keyboard and the field ends up exactly
+   8pt above the keyboard's top edge; the bar's color also fills behind the
+   keyboard's rounded top corners. Transform only — no layout animation. */
+.kb-composer-bar.kb-composer-bar--seamless.composer-bar {
+  bottom: 0;
+  padding: var(--space-8) var(--space-16)
+    calc(env(safe-area-inset-bottom, 0px) + var(--space-8));
+  background: var(--theme-base);
+  border-top: none;
+}
+
+@media (min-width: 769px) {
+  .kb-composer-bar.kb-composer-bar--seamless.composer-bar {
+    padding-inline: var(--page-padding-desktop);
+  }
+}
+
+.kb-composer-bar--seamless::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--theme-base));
+  pointer-events: none;
+}
+
+.kb-composer-bar--seamless .composer__shell {
+  min-height: 42px;
+  padding: var(--space-8) var(--space-4) var(--space-8) var(--space-16);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-line);
+  border-radius: var(--radius-full);
+  box-shadow: var(--theme-shadow);
+  transition: border-color 200ms var(--ease-fade);
+}
+
+.kb-composer-bar--seamless .composer__shell:focus-within {
+  border-color: color-mix(in srgb, var(--theme-primary) 55%, transparent);
+}
+
+.kb-composer-bar--seamless .composer__send {
+  width: 32px;
+  height: 32px;
+  transition:
+    background-color 200ms var(--ease-fade),
+    color 200ms var(--ease-fade);
+}
+
+/* Empty: quiet arrow. With text: filled circle. */
+.kb-composer-bar--seamless .composer__send:disabled {
+  background: transparent;
+  color: var(--theme-dim);
+}
+
+.kb-composer-bar--seamless .composer__send:not(:disabled) {
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-composer-bar--seamless .composer__shell,
+  .kb-composer-bar--seamless .composer__send {
+    transition-duration: var(--motion-reduced-fade);
+  }
+}
+
 /* ── Bottom sheets ───────────────────────────────────────────────────────
    Anchored to the viewport bottom, so they must clear the entire keyboard.
 

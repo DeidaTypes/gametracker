@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { LuSend } from 'react-icons/lu'
+import { LuArrowUp } from 'react-icons/lu'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import {
   getListComments,
   postListComment,
   deleteListComment,
 } from '../services/listInteractionService'
-import { whenKeyboardSettled } from '../services/keyboardInset'
+import { whenKeyboardSettled, subscribeKeyboardInset } from '../services/keyboardInset'
 import { showToast } from './Toast'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { hapticSuccess } from '../utils/haptics'
@@ -99,9 +99,61 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
     listBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [])
 
+  // The bar lifts only while ITS OWN field is focused. It turns on at focus and
+  // off only once the keyboard has fully gone down, so the bar never drops
+  // faster than the keyboard. Focus moving to another field (e.g. the
+  // description editor) with the keyboard still up lets it go straight away:
+  // it slides down behind the keyboard instead of covering that field.
+  const [composerActive, setComposerActive] = useState(false)
+  const cancelDeactivateRef = useRef(null)
+
+  const cancelDeactivate = useCallback(() => {
+    cancelDeactivateRef.current?.()
+    cancelDeactivateRef.current = null
+  }, [])
+
   const handleComposerFocus = useCallback(() => {
+    cancelDeactivate()
+    setComposerActive(true)
     whenKeyboardSettled(scrollListIntoView)
-  }, [scrollListIntoView])
+  }, [scrollListIntoView, cancelDeactivate])
+
+  const handleComposerBlur = useCallback(() => {
+    cancelDeactivate()
+    let cancelled = false
+    let unsubscribe = null
+    let cancelSettled = null
+    let sawDown = false
+    const rafId = requestAnimationFrame(() => {
+      const active = document.activeElement
+      if (
+        active &&
+        active !== textareaRef.current &&
+        active.matches?.('input, textarea, select, [contenteditable="true"]')
+      ) {
+        // Focus moved to another field; the keyboard stays up.
+        setComposerActive(false)
+        return
+      }
+      unsubscribe = subscribeKeyboardInset((inset) => {
+        if (inset !== 0 || sawDown) return
+        sawDown = true
+        unsubscribe?.()
+        cancelSettled = whenKeyboardSettled(() => {
+          if (!cancelled) setComposerActive(false)
+        })
+      })
+      if (sawDown) unsubscribe()
+    })
+    cancelDeactivateRef.current = () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+      unsubscribe?.()
+      cancelSettled?.()
+    }
+  }, [cancelDeactivate])
+
+  useEffect(() => cancelDeactivate, [cancelDeactivate])
 
   const load = useCallback(async () => {
     if (!listId) return
@@ -177,7 +229,8 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="kb-composer-bar composer-bar lc-composer-bar"
+        lift={composerActive}
+        className="kb-composer-bar kb-composer-bar--seamless composer-bar lc-composer-bar"
         aria-label="Comment composer"
         onSubmit={handleSubmit}
       >
@@ -196,6 +249,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
               rows={1}
               aria-label="Add a comment"
               onFocus={handleComposerFocus}
+              onBlur={handleComposerBlur}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -209,7 +263,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
               disabled={submitting || !draft.trim()}
               aria-label="Post comment"
             >
-              <LuSend size={14} aria-hidden="true" />
+              <LuArrowUp size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
