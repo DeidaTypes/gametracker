@@ -183,10 +183,12 @@ function FindFriendsModal({ isOpen, onClose, currentUserId = null }) {
         setFollowingMap((prev) => ({ ...prev, [userId]: wasFollowing }))
         console.error('[FindFriendsModal] follow toggle failed:', err)
         showToast(
-          err?.message || "Couldn't update follow status. Tap to retry.",
+          "Couldn't update follow status",
           'error',
           4000,
-          { label: 'Retry', onClick: () => handleToggleFollow(userId) }
+          { label: 'Retry', onClick: () => handleToggleFollow(userId) },
+          null,
+          { sub: err?.message || 'Try again' }
         )
       } finally {
         setPendingMap((prev) => ({ ...prev, [userId]: false }))

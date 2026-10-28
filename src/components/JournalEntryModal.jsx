@@ -93,7 +93,7 @@ function JournalEntryModal({
           hoursPlayed: parsedHours,
         })
         hapticSuccess()
-        showToast('Entry updated!', 'success')
+        showToast('Entry updated', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
       } else {
         if (!game) return
         await saveJournalEntry({
@@ -107,14 +107,14 @@ function JournalEntryModal({
           hoursPlayed: parsedHours,
         })
         hapticSuccess()
-        showToast('Entry saved!', 'success')
+        showToast('Entry saved', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
       }
       onClose()
     } catch (err) {
       console.error('[JournalEntryModal] save failed:', err)
       const blocked = ugcErrorMessage(err)
       if (blocked) setSaveError(blocked)
-      else showToast('Could not save your entry. Please try again.', 'error')
+      else showToast("Couldn't save your entry", 'error', null, null, null, { sub: 'Try again' })
       setSubmitting(false)
     }
   }, [canSave, isEditing, entryId, game, title, body, isSpoiler, mood, hours, onClose])

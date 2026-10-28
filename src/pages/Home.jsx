@@ -158,12 +158,16 @@ function Home() {
     }).then((result) => {
       if (result) {
         hapticSuccess()
-        showToast(`Logged ${hours}h of ${game.title}`, 'success')
+        showToast(`Logged ${hours}h`, 'success', null, null, null, {
+          image: game.image || null,
+          sub: game.title,
+          tone: 'saved',
+        })
       } else {
-        showToast('Could not log session — try again', 'error', 5000, {
+        showToast("Couldn't log your session", 'error', 5000, {
           label: 'Retry',
           onClick: () => submitLoggedSession({ game, hours, notes, mood }),
-        })
+        }, null, { sub: game.title })
       }
     })
   }
@@ -183,12 +187,16 @@ function Home() {
       // saveLibrary() (libraryService.js) — don't stack a second,
       // contradictory "try again" on top of it.
       if (getLastLibraryError()?.code !== 'quota') {
-        showToast('Could not update — try again', 'error')
+        showToast("Couldn't update that game", 'error', null, null, null, { sub: 'Try again' })
       }
       return
     }
     hapticSuccess()
-    showToast(`Marked "${game.title}" as Played`, 'success')
+    showToast('Marked as Played', 'success', null, null, null, {
+      image: game.image || null,
+      sub: game.title,
+      tone: 'saved',
+    })
     const head = getCurrentCelebration()
     if (!head || String(head.igdbGameId) !== String(game.id)) {
       maybeOpenRateItSheet(game)

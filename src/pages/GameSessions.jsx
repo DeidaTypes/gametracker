@@ -157,12 +157,16 @@ export default function GameSessions() {
       if (result) {
         hapticSuccess()
         refreshSessions()
-        showToast(`Logged ${hours}h of ${targetGame.title}`, 'success')
+        showToast(`Logged ${hours}h`, 'success', null, null, null, {
+          image: targetGame.image || null,
+          sub: targetGame.title,
+          tone: 'saved',
+        })
       } else {
-        showToast('Could not log session — try again', 'error', 5000, {
+        showToast("Couldn't log your session", 'error', 5000, {
           label: 'Retry',
           onClick: () => handleLogSheetSubmit({ game: targetGame, hours, notes, mood }),
-        })
+        }, null, { sub: targetGame.title })
       }
     })
   }, [refreshSessions])

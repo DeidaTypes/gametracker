@@ -108,14 +108,14 @@ function JournalComposer({ game: gameProp = null, gameId = null, onSaved, onClos
         deadline,
       ])
       hapticSuccess()
-      showToast('Entry saved!', 'success')
+      showToast('Entry saved', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
       onSaved?.(result)
       closeBox()
     } catch (err) {
       console.error('[JournalComposer] saveJournalEntry failed:', err)
       const blocked = ugcErrorMessage(err)
       if (blocked) setSaveError(blocked)
-      else showToast('Could not save your entry. Please try again.', 'error')
+      else showToast("Couldn't save your entry", 'error', null, null, null, { sub: 'Try again' })
       setSubmitting(false)
     }
   }, [canSave, game, text, containsSpoilers, mood, hours, onSaved, closeBox])

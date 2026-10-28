@@ -66,14 +66,14 @@ function ReportSheet({ isOpen, onClose, contentType, contentId, onSubmitted }) {
       if (onSubmitted) {
         onSubmitted(result)
       } else if (result.alreadyReported) {
-        showToast("You've already reported this. We're reviewing it.", 'info')
+        showToast('Already reported', 'info', null, null, 'flag', { sub: "We're reviewing it" })
       } else {
-        showToast("Report submitted. We'll review it within 24 hours.", 'success')
+        showToast('Report submitted', 'success', null, null, 'flag', { sub: "We'll review it within 24 hours" })
       }
       onClose()
     } catch (err) {
       console.error('[ReportSheet] submit failed:', err)
-      showToast("Couldn't submit your report. Please try again.", 'error')
+      showToast("Couldn't submit your report", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setSubmitting(false)
     }

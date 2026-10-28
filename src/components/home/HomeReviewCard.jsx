@@ -592,11 +592,9 @@ export default function HomeReviewCard({
       else await likeReview(item.id)
     } catch (err) {
       publishLikeState(item.id, prev)
-      showToast(
-        err?.message ||
-          (wasLiked ? "Couldn't unreact — please try again." : "Couldn't react — please try again."),
-        'error'
-      )
+      showToast(wasLiked ? "Couldn't unreact" : "Couldn't react", 'error', null, null, null, {
+        sub: err?.message || 'Try again',
+      })
     } finally {
       likeInFlightRef.current = false
     }

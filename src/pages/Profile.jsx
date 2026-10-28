@@ -1393,7 +1393,7 @@ function Profile() {
       const rolled = updateProfile({ favoriteGames: previous })
       setProfile(rolled)
       window.dispatchEvent(new Event('profileUpdated'))
-      showToast('Failed to save new order. Please try again.', 'error')
+      showToast("Couldn't save the new order", 'error', null, null, null, { sub: 'Try again' })
     })
   }
 
@@ -1417,7 +1417,7 @@ function Profile() {
       })
     } catch (err) {
       console.warn('[Profile] favorites share failed:', err)
-      showToast('Could not generate share card', 'error')
+      showToast("Couldn't create the share card", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setFavSharing('idle')
     }
@@ -1446,7 +1446,7 @@ function Profile() {
       url: profileShareUrl(),
     })
     if (result?.method === 'clipboard') {
-      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success')
+      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success', null, null, result.copied === 'link' ? 'link' : 'copy')
     }
   }
 
@@ -1458,10 +1458,10 @@ function Profile() {
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
-      showToast('Link copied', 'success')
+      showToast('Link copied', 'success', null, null, 'link')
     } catch (err) {
       console.error('[profile] copy link failed:', err)
-      showToast('Could not copy link', 'error')
+      showToast("Couldn't copy the link", 'error', null, null, null, { sub: 'Try again' })
     }
   }, [profile])
 
@@ -1491,7 +1491,7 @@ function Profile() {
       setTimeout(() => setWrappedSharing('idle'), 2500)
     } catch (err) {
       console.error('[profile] handleShareWrapped failed:', err)
-      showToast('Could not generate Wrapped card — please try again.', 'error')
+      showToast("Couldn't create your Wrapped card", 'error', null, null, null, { sub: 'Try again' })
       setWrappedSharing('idle')
     }
   }, [wrappedSharing, profile, user?.id])
@@ -1533,10 +1533,12 @@ function Profile() {
       })
       console.error('[profile] follow toggle failed:', err)
       showToast(
-        err?.message || "Couldn't update follow status. Tap to retry.",
+        "Couldn't update follow status",
         'error',
         4000,
-        { label: 'Retry', onClick: () => handleFollowToggle() }
+        { label: 'Retry', onClick: () => handleFollowToggle() },
+        null,
+        { sub: err?.message || 'Try again' }
       )
     } finally {
       setFollowPending(false)
@@ -1553,10 +1555,7 @@ function Profile() {
     async (reviewRow) => {
       if (!reviewRow || !user?.id) return
       if (pinnedRows.length >= MAX_PINS) {
-        showToast(
-          `You can only pin ${MAX_PINS} reviews. Unpin one first.`,
-          'error'
-        )
+        showToast(`You can only pin ${MAX_PINS} reviews`, 'error', null, null, null, { sub: 'Unpin one first' })
         return
       }
       // Skip if already pinned (defensive — the kebab option shouldn't
@@ -1570,17 +1569,14 @@ function Profile() {
       setPinnedRows(optimistic)
       try {
         await pinReviewSvc({ reviewId: reviewRow.id })
-        showToast('Pinned to profile', 'success')
+        showToast('Pinned to profile', 'success', null, null, 'pin', { tone: 'list' })
       } catch (err) {
         console.error('[profile] pinReview failed:', err)
         setPinnedRows(pinnedRows)
         if (err?.code === 'PINS_FULL') {
-          showToast(
-            `You can only pin ${MAX_PINS} reviews. Unpin one first.`,
-            'error'
-          )
+          showToast(`You can only pin ${MAX_PINS} reviews`, 'error', null, null, null, { sub: 'Unpin one first' })
         } else {
-          showToast("Couldn't pin review — please try again.", 'error')
+          showToast("Couldn't pin that review", 'error', null, null, null, { sub: 'Try again' })
         }
       }
     },
@@ -1604,11 +1600,11 @@ function Profile() {
       setPinnedRows(next)
       try {
         await unpinReviewSvc(reviewId)
-        showToast('Removed from pinned', 'success')
+        showToast('Removed from pinned', 'success', null, null, 'pin-off')
       } catch (err) {
         console.error('[profile] unpinReview failed:', err)
         setPinnedRows(prev)
-        showToast("Couldn't unpin review — please try again.", 'error')
+        showToast("Couldn't unpin that review", 'error', null, null, null, { sub: 'Try again' })
       }
     },
     [pinnedRows]
@@ -1645,11 +1641,11 @@ function Profile() {
       setPinnedRows(optimistic)
       try {
         await reorderPinsSvc(orderedReviewIds)
-        showToast('Pin order updated', 'success')
+        showToast('Pin order updated', 'success', null, null, 'pin', { tone: 'list' })
       } catch (err) {
         console.error('[profile] reorderPins failed:', err)
         setPinnedRows(prev)
-        showToast("Couldn't reorder pins — please try again.", 'error')
+        showToast("Couldn't reorder your pins", 'error', null, null, null, { sub: 'Try again' })
         throw err
       }
     },
@@ -1663,7 +1659,7 @@ function Profile() {
     async (list) => {
       if (!list || !isOwnProfile) return
       if (pinnedLists.length >= 5) {
-        showToast('You can only pin 5 lists. Unpin one first.', 'error')
+        showToast('You can only pin 5 lists', 'error', null, null, null, { sub: 'Unpin one first' })
         return
       }
       const nowStr = new Date().toISOString()
@@ -1680,7 +1676,7 @@ function Profile() {
       )
       try {
         await pinListSvc(list.id)
-        showToast('Pinned to profile', 'success')
+        showToast('Pinned to profile', 'success', null, null, 'pin', { tone: 'list' })
       } catch (err) {
         console.error('[profile] pinList failed:', err)
         setPinnedLists(prevPinned)
@@ -1690,9 +1686,9 @@ function Profile() {
           )
         )
         if (err?.code === 'LIST_PINS_FULL') {
-          showToast('You can only pin 5 lists. Unpin one first.', 'error')
+          showToast('You can only pin 5 lists', 'error', null, null, null, { sub: 'Unpin one first' })
         } else {
-          showToast("Couldn't pin list — please try again.", 'error')
+          showToast("Couldn't pin that list", 'error', null, null, null, { sub: 'Try again' })
         }
       }
     },
@@ -1713,14 +1709,14 @@ function Profile() {
       )
       try {
         await unpinListSvc(listId)
-        showToast('Unpinned', 'success')
+        showToast('Unpinned', 'success', null, null, 'pin-off')
       } catch (err) {
         console.error('[profile] unpinList failed:', err)
         setPinnedLists(prevPinned)
         setCustomLists((cls) =>
           cls.map((l) => (l.id === listId ? { ...l, isPinned: true } : l))
         )
-        showToast("Couldn't unpin list — please try again.", 'error')
+        showToast("Couldn't unpin that list", 'error', null, null, null, { sub: 'Try again' })
       }
     },
     [pinnedLists]
@@ -1736,7 +1732,7 @@ function Profile() {
       const g = initialGames[i]
       await addGameToList(listId, g.id, i, { title: g.title, image: g.image })
     }
-    showToast(`List "${listName}" created`, 'success')
+    showToast('List created', 'success', null, null, null, { sub: listName, tone: 'list' })
     navigate(`/list/${listId}`)
   }
 
@@ -2260,11 +2256,11 @@ function Profile() {
                 try {
                   await blockUser(targetUserId)
                   hapticImpact('Medium')
-                  showToast('User blocked.', 'success')
+                  showToast('User blocked', 'success', null, null, 'ban')
                   navigate(-1)
                 } catch (err) {
                   console.error('[profile] block failed:', err)
-                  showToast(err?.message || 'Could not block user.', 'error')
+                  showToast("Couldn't block that user", 'error', null, null, null, { sub: err?.message || 'Try again' })
                 } finally {
                   setBlockPending(false)
                 }

@@ -539,7 +539,7 @@ function GameDetail() {
           // from saveLibrary() (libraryService.js) — don't stack a second,
           // contradictory "try again" on top of it.
           if (getLastLibraryError()?.code !== 'quota') {
-            showToast('Could not update — try again', 'error')
+            showToast("Couldn't update that game", 'error', null, null, null, { sub: 'Try again' })
           }
           return
         }
@@ -558,7 +558,7 @@ function GameDetail() {
     if (!ok) {
       // See the completeGameWithRating branch above — same reasoning.
       if (getLastLibraryError()?.code !== 'quota') {
-        showToast('Could not update — try again', 'error')
+        showToast("Couldn't update that game", 'error', null, null, null, { sub: 'Try again' })
       }
       return
     }

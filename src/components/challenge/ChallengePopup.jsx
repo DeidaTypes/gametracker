@@ -135,7 +135,7 @@ function ChallengePopup({
   const undoRemoval = async ({ game, index, rows, nextCount }) => {
     const restored = await restoreCompletionEvents(rows)
     if (!restored) {
-      showToast("Couldn't restore the completion. Please try again.", 'error')
+      showToast("Couldn't restore the completion", 'error', null, null, null, { sub: 'Try again' })
       return
     }
 
@@ -164,7 +164,7 @@ function ChallengePopup({
 
     const { rows, error } = await deleteCompletionEventsForGame(userId, game.igdbGameId, year)
     if (error || !rows.length) {
-      showToast('Could not remove this completion. Please try again.', 'error')
+      showToast("Couldn't remove this completion", 'error', null, null, null, { sub: 'Try again' })
       return
     }
 
@@ -183,7 +183,7 @@ function ChallengePopup({
         onClick: () => {
           void undoRemoval({ game, index, rows, nextCount })
         },
-      })
+      }, 'trash', { sub: game.title || null })
     }
 
     setTimeout(() => {

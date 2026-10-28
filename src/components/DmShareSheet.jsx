@@ -86,11 +86,13 @@ export default function DmShareSheet({ isOpen, onClose, attachment }) {
       await sendMessage({ recipientId: recipient.id, attachment })
       hapticSuccess()
       const name = recipient.display_name || recipient.username || 'them'
-      showToast(`Sent to ${name}`, 'success')
+      showToast('Sent', 'success', null, null, 'send', { sub: name })
       onClose()
     } catch (err) {
       console.error('[DmShareSheet] send failed:', err)
-      showToast(ugcErrorMessage(err) || err?.message || "Couldn't send. Please try again.", 'error')
+      showToast("Couldn't send", 'error', null, null, null, {
+        sub: ugcErrorMessage(err) || err?.message || 'Try again',
+      })
       setSending(null)
     }
   }

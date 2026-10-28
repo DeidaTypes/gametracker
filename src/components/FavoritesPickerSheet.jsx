@@ -209,7 +209,7 @@ function FavoritesPickerSheet({
         const key = String(game.id)
         setShakingId(key)
         setTimeout(() => setShakingId(null), 600)
-        showToast(`${label} full — remove one first`, 'error', 2500)
+        showToast(`${label} full`, 'error', 2500, null, null, { sub: 'Remove one first' })
         return
       }
       setFavorites((prev) => [

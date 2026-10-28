@@ -35,7 +35,7 @@ function SettingsPassword() {
         setSubmitting(false)
         return
       }
-      showToast('Password updated.', 'success', 2400)
+      showToast('Password updated', 'success', 2400, null, 'key')
       navigate(-1)
     } catch (err) {
       console.error('[settings/password] update failed:', err)

@@ -36,12 +36,18 @@ import {
 } from './qaComposer'
 import { useOnline } from './useOnline'
 
+// [title, second line]
 const TOASTS = {
-  blocked: "You can't post this.",
-  flag_off: "Q&A isn't available right now.",
-  offline: "You're offline.",
-  removed: 'This question was removed.',
-  unknown: "Couldn't post. Try again.",
+  blocked: ["You can't post this", null],
+  flag_off: ["Q&A isn't available right now", null],
+  offline: ["You're offline", 'Check your connection and try again'],
+  removed: ['This question was removed', null],
+  unknown: ["Couldn't post", 'Try again'],
+}
+
+function toastError(code) {
+  const [title, sub] = TOASTS[code] || TOASTS.unknown
+  showToast(title, 'error', null, null, null, sub ? { sub } : null)
 }
 
 // "Question posted" / "Answer posted" land on the question screen, whose push
@@ -49,7 +55,7 @@ const TOASTS = {
 // safe area, with 44px buttons. The toast starts at that same 16px, so
 // 44px (the bar) + 8px (a gap) puts it just under the bar's bottom edge.
 const TOAST_BELOW_PUSHBAR = 'calc(var(--space-48) + var(--space-4))'
-const POSTED_TOAST = { offsetTop: TOAST_BELOW_PUSHBAR }
+const POSTED_TOAST = { offsetTop: TOAST_BELOW_PUSHBAR, tone: 'saved' }
 
 // Safety net only. keyboardDidHide normally lands well inside this.
 const KEYBOARD_WAIT_CAP_MS = 700
@@ -264,16 +270,16 @@ export default function QaComposerHost() {
       try {
         const payload = await qaQuestion(questionId)
         if (payload?.state === 'removed') {
-          showToast(TOASTS.removed, 'error')
+          toastError('removed')
           return
         }
       } catch {
         // The blocked toast still tells them the post did not go through.
       }
-      showToast(TOASTS.blocked, 'error')
+      toastError('blocked')
       return
     }
-    showToast(TOASTS[code] || TOASTS.unknown, 'error')
+    toastError(code)
   }
 
   const mustWarn = async () => {
@@ -314,7 +320,7 @@ export default function QaComposerHost() {
     }
     const id = result?.data?.id
     if (!id) {
-      showToast(TOASTS.unknown, 'error')
+      toastError('unknown')
       return
     }
     // Order matters: keyboard down, then the popup closes, then (in onExited)
@@ -348,7 +354,7 @@ export default function QaComposerHost() {
     }
     const id = result?.data?.id
     if (!id) {
-      showToast(TOASTS.unknown, 'error')
+      toastError('unknown')
       return
     }
     const now = new Date().toISOString()

@@ -238,14 +238,17 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
 
       hapticSuccess()
       window.dispatchEvent(new Event('reviewAdded'))
-      showToast(isEditMode ? 'Review updated!' : 'Review saved!', 'success')
+      showToast(isEditMode ? 'Review updated' : 'Review saved', 'success', null, null, null, {
+        sub: game?.title || null,
+        tone: 'saved',
+      })
       onSaved?.(result)
       closeBox()
     } catch (err) {
       console.error('[ReviewComposer] save failed:', err)
       const blocked = ugcErrorMessage(err)
       if (blocked) setSaveError(blocked)
-      else showToast('Could not save your review. Please try again.', 'error')
+      else showToast("Couldn't save your review", 'error', null, null, null, { sub: 'Try again' })
       setSubmitting(false)
     }
   }, [

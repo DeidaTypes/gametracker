@@ -8,6 +8,7 @@ import { supabase } from '../../services/supabase'
 import { mutateSWR, peekSWR, peekSWRInFlight } from '../../services/swrCache'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { showToast } from '../Toast'
+import { STATUS_META } from '../StatusChip'
 import { Sparkles } from 'lucide-react'
 import { SwipeCard } from './SwipeCard'
 import {
@@ -507,7 +508,11 @@ export function SwipeDeck() {
           .catch((err) => console.error('[SwipeDeck] game_trackers upsert failed:', err))
       }
 
-      showToast(`Added "${game.title}" to backlog`, 'success', 2500)
+      showToast(`Added to ${STATUS_META.want.label}`, 'success', 2500, null, null, {
+        image: game.image || game.coverUrl || null,
+        sub: game.title,
+        tone: 'saved',
+      })
       advance()
     },
     [user, advance]

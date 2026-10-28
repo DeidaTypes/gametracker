@@ -28,6 +28,7 @@ export const MOTION = {
   toastIn: 260,
   toastOut: 220,
   toastRise: 8,
+  toastSwap: 200,
   reducedFade: 150,
 }
 
@@ -141,15 +142,36 @@ export function sheetDim(reduced) {
   return presence(HIDDEN, SHOWN, HIDDEN, tween(MOTION.sheetIn, EASE.fade), tween(MOTION.sheetOut, EASE.leave))
 }
 
+// A notice drops in from 8 pt above its resting place (-toastRise), and fades
+// out on the leave curve. When a newer notice replaces it, the old one fades
+// out over toastSwap on the fade curve while the new one arrives, so the two
+// crossfade instead of stacking. Pass `custom="swap"` to AnimatePresence for
+// that case (an exiting child only sees the AnimatePresence `custom`).
+// Reduce Motion: fades only, no movement.
+export const TOAST_SWAP = 'swap'
+
 export function toastMotion(reduced) {
   if (reduced) return fadeOnly()
-  return presence(
-    { opacity: 0, transform: `translateY(${MOTION.toastRise}px)` },
-    { opacity: 1, transform: 'translateY(0px)' },
-    { opacity: 0, transform: 'translateY(0px)' },
-    tween(MOTION.toastIn, EASE.move),
-    tween(MOTION.toastOut, EASE.leave),
-  )
+  const swapOut = tween(MOTION.toastSwap, EASE.fade)
+  const out = tween(MOTION.toastOut, EASE.leave)
+  return {
+    variants: {
+      [VARIANT.from]: { opacity: 0, transform: `translateY(${-MOTION.toastRise}px)` },
+      [VARIANT.in]: {
+        opacity: 1,
+        transform: 'translateY(0px)',
+        transition: tween(MOTION.toastIn, EASE.move),
+      },
+      [VARIANT.out]: (custom) => ({
+        opacity: 0,
+        transform: 'translateY(0px)',
+        transition: custom === TOAST_SWAP ? swapOut : out,
+      }),
+    },
+    initial: VARIANT.from,
+    animate: VARIANT.in,
+    exit: VARIANT.out,
+  }
 }
 
 /** Content replacing content in a box that is already at its final size. */

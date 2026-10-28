@@ -259,11 +259,17 @@ function AddGamesModal({
     } catch (err) {
       console.error('[AddGamesModal] add failed:', err)
       setAddedGames((prev) => prev.filter((g) => String(g.id) !== gameId))
-      showToast('Couldn’t add game. Please try again.', 'error')
+      showToast("Couldn't add that game", 'error', null, null, null, {
+        sub: 'Check your connection and try again',
+      })
       return
     }
 
-    showToast('Added to list', 'success', 1800)
+    showToast(listName ? `Added to ${listName}` : 'Added to list', 'success', 1800, null, null, {
+      image: game.image || null,
+      sub: game.title,
+      tone: 'list',
+    })
   }
 
   // Optimistic REMOVE / toggle-off: reflect the removal instantly, then sync.
@@ -291,7 +297,9 @@ function AddGamesModal({
       console.error('[AddGamesModal] remove failed:', err)
       setAddedGames(prevAdded)
       setExistingGames(prevExisting)
-      showToast('Couldn’t remove game. Please try again.', 'error')
+      showToast("Couldn't remove that game", 'error', null, null, null, {
+        sub: 'Check your connection and try again',
+      })
     }
   }
 

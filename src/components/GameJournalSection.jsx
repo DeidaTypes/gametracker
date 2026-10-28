@@ -87,10 +87,10 @@ function GameJournalSection({ game, user, status, onAddEntry }) {
     try {
       await deleteJournalEntry(entryId)
       setEntries((prev) => prev.filter((e) => e.id !== entryId))
-      showToast('Entry deleted.', 'success')
+      showToast('Entry deleted', 'success', null, null, 'trash')
     } catch (err) {
       console.error('[GameJournalSection] delete failed:', err)
-      showToast('Could not delete entry.', 'error')
+      showToast("Couldn't delete the entry", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setDeletingId(null)
     }

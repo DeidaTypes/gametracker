@@ -213,14 +213,14 @@ function Moderation() {
       await resolveReport(report.id, action)
       hapticSuccess()
       setReports((prev) => prev.filter((r) => targetKey(r) !== key))
-      showToast(DONE_TOASTS[action], 'success', 1800)
+      showToast(DONE_TOASTS[action], 'success', 1800, null, 'shield')
     } catch (err) {
       console.error('[moderation] resolve failed:', err)
       if (/report_already_resolved/.test(err?.message || '')) {
         setReports((prev) => prev.filter((r) => targetKey(r) !== key))
-        showToast('Already handled', 'success', 1800)
+        showToast('Already handled', 'info', 1800)
       } else {
-        showToast("Couldn't update the report. Try again.", 'error')
+        showToast("Couldn't update the report", 'error', null, null, null, { sub: 'Try again' })
       }
     } finally {
       setBusyKey(null)

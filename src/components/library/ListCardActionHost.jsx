@@ -73,19 +73,18 @@ export default function ListCardActionHost({
     try {
       if (wasPin) {
         await unpinList(list.id)
-        showToast('Unpinned', 'success')
+        showToast('Unpinned', 'success', null, null, 'pin-off')
       } else {
         await pinList(list.id)
-        showToast('Pinned to profile', 'success')
+        showToast('Pinned to profile', 'success', null, null, 'pin', { tone: 'list' })
       }
     } catch (err) {
       if (err?.code === 'LIST_PINS_FULL') {
-        showToast('You can only pin 5 lists. Unpin one first.', 'error')
+        showToast('You can only pin 5 lists', 'error', null, null, null, { sub: 'Unpin one first' })
       } else {
-        showToast(
-          wasPin ? "Couldn't unpin — please try again." : "Couldn't pin — please try again.",
-          'error'
-        )
+        showToast(wasPin ? "Couldn't unpin that list" : "Couldn't pin that list", 'error', null, null, null, {
+          sub: 'Try again',
+        })
       }
     }
   }, [list, isOwner])
@@ -104,9 +103,9 @@ export default function ListCardActionHost({
     const name = list.name
     try {
       await deleteList(list.id)
-      showToast(`Deleted \u201c${name}\u201d`, 'success', 3500)
+      showToast('List deleted', 'success', 3500, null, 'trash', { sub: name })
     } catch {
-      showToast('Failed to delete list. Please try again.', 'error')
+      showToast("Couldn't delete the list", 'error', null, null, null, { sub: 'Try again' })
     }
   }, [list, isOwner])
 

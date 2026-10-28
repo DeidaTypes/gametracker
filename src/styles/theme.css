@@ -612,6 +612,13 @@ body[data-larger-text='true'] {
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7), 0 6px 18px rgba(0, 0, 0, 0.4);
+  /* The notice capsule (Toast.css). Soft, so it sits on the page instead of
+     hovering over it; the light themes soften it again below. */
+  --shadow-toast: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 28px rgba(0, 0, 0, 0.45);
+  /* The notice capsule's fill: the surface step that reads above the page.
+     On the dark themes that is --theme-surface-2 (--theme-surface sits
+     almost on the page); the light themes use --theme-surface below. */
+  --toast-surface: var(--theme-surface-2);
   --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.18), 0 0 48px rgba(59, 130, 246, 0.08);
   --shadow-cover: 4px 8px 24px rgba(0, 0, 0, 0.65);
   /* Leading-edge depth for a page sliding off during a back transition, so
@@ -983,6 +990,8 @@ html[data-app-theme="cream"] {
   /* A navy-weight edge shadow muddies Light Pink. Keep the same offset,
      drop the strength so the incoming page still reads as a layer. */
   --shadow-page-edge: -10px 0 28px rgba(40, 16, 32, 0.18);
+  --shadow-toast: 0 2px 6px rgba(40, 16, 32, 0.08), 0 12px 28px rgba(40, 16, 32, 0.14);
+  --toast-surface: var(--theme-surface);
 }
 
 /* The Navy page wash is the existing ambient gradient. Every other

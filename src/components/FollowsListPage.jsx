@@ -361,10 +361,12 @@ function FollowsListPage({ mode: routeMode }) {
         setFollowingMap((prev) => ({ ...prev, [rowUserId]: wasFollowing }))
         console.error('[follows-page] toggle failed:', err)
         showToast(
-          err?.message || "Couldn't update follow status. Tap to retry.",
+          "Couldn't update follow status",
           'error',
           4000,
-          { label: 'Retry', onClick: () => toggleFollow(rowUserId) }
+          { label: 'Retry', onClick: () => toggleFollow(rowUserId) },
+          null,
+          { sub: err?.message || 'Try again' }
         )
       } finally {
         setPendingSet((prev) => {

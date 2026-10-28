@@ -44,11 +44,7 @@ function SettingsEmail() {
         setSubmitting(false)
         return
       }
-      showToast(
-        'Check your inbox to confirm the new address.',
-        'success',
-        4000
-      )
+      showToast('Check your inbox', 'success', 4000, null, 'mail', { sub: 'Confirm the new address to finish' })
       navigate(-1)
     } catch (err) {
       console.error('[settings/email] update failed:', err)

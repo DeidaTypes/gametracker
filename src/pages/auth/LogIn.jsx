@@ -34,7 +34,7 @@ function LogIn() {
   // Show "Account deleted" toast if we were redirected here after deletion.
   useEffect(() => {
     if (location.state?.accountDeleted) {
-      showToast("Account deleted. We're sorry to see you go.", 'success', 4000)
+      showToast('Account deleted', 'success', 4000, null, 'trash', { sub: "We're sorry to see you go" })
       // Clear the state so a refresh doesn't re-show it.
       window.history.replaceState({}, '', location.pathname + location.search)
     }
@@ -60,10 +60,7 @@ function LogIn() {
       if (code === AUTH_ERRORS.INVALID_CREDENTIALS) {
         setFormError('Wrong email or password.')
       } else if (code === AUTH_ERRORS.NETWORK) {
-        showToast(
-          "Couldn't reach the server. Check your connection.",
-          'error'
-        )
+        showToast("Couldn't reach the server", 'error', null, null, null, { sub: 'Check your connection' })
       } else {
         setFormError(err?.message || 'Something went wrong. Try again.')
       }

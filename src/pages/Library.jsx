@@ -321,7 +321,7 @@ function Library() {
       const g = initialGames[i]
       await addGameToList(listId, g.id, i, { title: g.title, image: g.image })
     }
-    showToast(`List "${listName}" created`, 'success')
+    showToast('List created', 'success', null, null, null, { sub: listName, tone: 'list' })
     navigate(`/list/${listId}`)
   }
 
@@ -653,7 +653,7 @@ function Library() {
   const commitRemoveViaDrag = (game, previousStatus) => {
     const ok = clearGameStatus(game.id)
     if (!ok) {
-      showToast('Failed to remove game. Please try again.', 'error')
+      showToast("Couldn't remove the game", 'error', null, null, null, { sub: 'Try again' })
       return
     }
     hapticImpact('Medium')
@@ -664,14 +664,14 @@ function Library() {
         const restored = setGameStatus(game.id, previousStatus, game)
         if (!restored) {
           setRestoringGameId(null)
-          showToast("Couldn't restore the game. Please try again.", 'error')
+          showToast("Couldn't restore the game", 'error', null, null, null, { sub: 'Try again' })
           return
         }
         setTimeout(() => {
           setRestoringGameId((current) => (current === game.id ? null : current))
         }, reducedMotion ? 0 : REMOVE_ANIM_MS)
       },
-    })
+    }, 'trash', { sub: game.title })
   }
 
   const handleCoverPointerUp = (e) => {

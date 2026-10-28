@@ -468,7 +468,9 @@ export function saveLibrary(library) {
   console.error('[library] saveLibrary failed after prune-and-retry: quota exceeded')
   if (claimStorageFullAnnouncement()) {
     try {
-      showToast(message, 'error', 4000)
+      showToast("Your device is out of storage", 'error', 4000, null, null, {
+        sub: 'Free up space on your device and try again',
+      })
     } catch {
       // Toast host not mounted yet — non-fatal.
     }
@@ -702,10 +704,14 @@ export async function addGameToBacklog(game) {
   // showing a second, contradictory one here.
   const quotaFailure = !added && getLastLibraryError()?.code === 'quota'
   if (!quotaFailure) {
+    // Already backlogged is not a failure: a neutral notice, not a red one.
     showToast(
-      added ? `Added "${game.title}" to backlog` : `"${game.title}" is already in your backlog`,
-      added ? 'success' : 'error',
-      2500
+      added ? `Added to ${STATUS_META.want.label}` : `Already in ${STATUS_META.want.label}`,
+      added ? 'success' : 'info',
+      2500,
+      null,
+      null,
+      { image: game.image || null, sub: game.title, tone: added ? 'saved' : 'neutral' }
     )
   }
   return added

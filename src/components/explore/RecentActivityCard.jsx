@@ -144,11 +144,9 @@ export default function RecentActivityCard({ item }) {
       else await likeReview(item.reviewId)
     } catch (err) {
       publishLikeState(item.reviewId, prev)
-      showToast(
-        err?.message ||
-          (wasLiked ? "Couldn't unlike — please try again." : "Couldn't like — please try again."),
-        'error'
-      )
+      showToast(wasLiked ? "Couldn't unlike" : "Couldn't like", 'error', null, null, null, {
+        sub: err?.message || 'Try again',
+      })
     } finally {
       likeInFlightRef.current = false
     }

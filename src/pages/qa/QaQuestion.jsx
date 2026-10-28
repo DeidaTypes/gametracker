@@ -76,16 +76,18 @@ import './qa.css'
 
 const INITIAL_ANSWERS = 5
 
+// [title, second line]
 const WRITE_TOAST = {
-  offline: "You're offline.",
-  not_allowed: "Couldn't save that.",
-  has_answers: "Can't delete once it has answers. You can still edit it.",
-  blocked: "You can't do that.",
-  unknown: "Couldn't save that. Try again.",
+  offline: ["You're offline", 'Check your connection and try again'],
+  not_allowed: ["Couldn't save that", null],
+  has_answers: ["Can't delete a question with answers", 'You can still edit it'],
+  blocked: ["You can't do that", null],
+  unknown: ["Couldn't save that", 'Try again'],
 }
 
 function toastWrite(code) {
-  showToast(WRITE_TOAST[code] || WRITE_TOAST.unknown, 'error')
+  const [title, sub] = WRITE_TOAST[code] || WRITE_TOAST.unknown
+  showToast(title, 'error', null, null, null, sub ? { sub } : null)
 }
 
 let lastLeaveAt = 0
@@ -497,7 +499,7 @@ export default function QaQuestion() {
           if (undoResult?.error) toastWrite(undoResult.error.code)
         })
       },
-    })
+    }, null, { tone: 'saved' })
     })
   }
 
@@ -529,7 +531,7 @@ export default function QaQuestion() {
     }
     removeQaQuestionFromLists(question.id)
     hapticImpact('Medium')
-    showToast('Question deleted', 'success')
+    showToast('Question deleted', 'success', null, null, 'trash')
     leaveQuestion(navigate)
   }
 
@@ -545,7 +547,7 @@ export default function QaQuestion() {
     }
     removeAnswerLocal(question.id, answer.id)
     hapticImpact('Medium')
-    showToast('Answer deleted', 'success')
+    showToast('Answer deleted', 'success', null, null, 'trash')
   }
 
   const onBlock = async (target) => {
@@ -554,11 +556,11 @@ export default function QaQuestion() {
     try {
       await blockUser(target.id)
       hapticImpact('Medium')
-      showToast(`Blocked ${target.name || 'them'}`, 'success')
+      showToast('User blocked', 'success', null, null, 'ban', { sub: target.name || null })
       if (target.isAsker && !isMutuallyBlocked(target.id)) setForcedLeave(true)
     } catch (err) {
       console.error('[qa] block failed:', err)
-      showToast("Couldn't block them. Try again.", 'error')
+      showToast("Couldn't block them", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setBlockBusy(false)
     }
@@ -568,14 +570,14 @@ export default function QaQuestion() {
     if (!target?.id) return
     if (target.type === 'question') hideQaQuestion(target.id)
     else hideQaAnswer(target.id)
-    showToast("Reported. It's hidden for you.", 'success', 5000, {
+    showToast('Reported', 'success', 5000, {
       label: 'Undo',
       onClick: () => {
         if (target.type === 'question') showQaQuestion(target.id)
         else showQaAnswer(target.id)
         withdrawReport({ contentType: target.type, contentId: target.id })
       },
-    })
+    }, 'flag', { sub: "It's hidden for you" })
     if (target.type === 'question') leaveQuestion(navigate)
   }
 
@@ -705,10 +707,10 @@ export default function QaQuestion() {
     try {
       const { shareQaBestAnswer } = await import('./QaShareCard')
       const result = await shareQaBestAnswer(question, answer)
-      if (result?.method === 'download') showToast('Card saved', 'success')
+      if (result?.method === 'download') showToast('Card saved', 'success', null, null, 'download')
     } catch (err) {
       console.error('[qa] share best answer failed:', err)
-      showToast("Couldn't share that.", 'error')
+      showToast("Couldn't share that", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 

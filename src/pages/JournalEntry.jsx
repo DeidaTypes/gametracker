@@ -71,11 +71,11 @@ function JournalEntry() {
     setDeleting(true)
     try {
       await deleteJournalEntry(entry.id)
-      showToast('Entry deleted.', 'success')
+      showToast('Entry deleted', 'success', null, null, 'trash')
       navigate(-1)
     } catch (err) {
       console.error('[JournalEntry] delete failed:', err)
-      showToast('Could not delete entry.', 'error')
+      showToast("Couldn't delete the entry", 'error', null, null, null, { sub: 'Try again' })
       setDeleting(false)
     }
   }, [entry, navigate, confirm])

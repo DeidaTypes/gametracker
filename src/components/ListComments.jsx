@@ -172,7 +172,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
         setDraft((current) => current || trimmed)
         setComposerError(blocked)
       } else {
-        showToast(err.message || "Couldn't post comment. Please try again.", 'error')
+        showToast("Couldn't post comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
       }
     } finally {
       setSubmitting(false)
@@ -233,7 +233,7 @@ export default function ListComments({ listId, currentUserId, isOwner, onUnsentC
     } catch (err) {
       // Re-fetch to restore if delete failed
       load()
-      showToast(err.message || "Couldn't delete comment. Please try again.", 'error')
+      showToast("Couldn't delete comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
     }
   }
 

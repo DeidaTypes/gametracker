@@ -230,7 +230,7 @@ export function useReactions(targetType, targetId) {
         // Roll back
         publishReactionState(targetType, targetId, prev)
         console.error('[useReactions] toggle failed, rolled back:', err.message)
-        if (isActivityLike) showToast("Couldn't save your like. Try again.")
+        if (isActivityLike) showToast("Couldn't save your like", 'error', null, null, null, { sub: 'Try again' })
       } finally {
         mutationInFlight.delete(mutationKey)
       }

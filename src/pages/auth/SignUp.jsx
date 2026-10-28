@@ -223,10 +223,7 @@ function SignUp() {
           err?.message || 'Please choose a stronger password.'
         )
       } else if (code === AUTH_ERRORS.NETWORK) {
-        showToast(
-          "Couldn't reach the server. Check your connection.",
-          'error'
-        )
+        showToast("Couldn't reach the server", 'error', null, null, null, { sub: 'Check your connection' })
       } else if (code === AUTH_ERRORS.PROFILE_BOOTSTRAP_FAILED) {
         // The auth user exists but the profile row insert failed. Tell
         // the user clearly so they can retry / contact support rather

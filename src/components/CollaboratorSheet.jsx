@@ -63,10 +63,10 @@ function CollaboratorSheet({
     setPendingAdd((s) => new Set(s).add(user.userId))
     try {
       await addCollaborator(listId, user.userId)
-      showToast(`${user.displayName || user.username} added`, 'success')
+      showToast('Collaborator added', 'success', null, null, 'user-plus', { sub: user.displayName || user.username, tone: 'list' })
       onChanged?.()
     } catch {
-      showToast('Could not add collaborator. Please try again.', 'error')
+      showToast("Couldn't add the collaborator", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setPendingAdd((s) => { const n = new Set(s); n.delete(user.userId); return n })
     }
@@ -76,10 +76,10 @@ function CollaboratorSheet({
     setPendingRemove((s) => new Set(s).add(user.userId))
     try {
       await removeCollaborator(listId, user.userId)
-      showToast(`${user.displayName || user.username} removed`, 'success')
+      showToast('Collaborator removed', 'success', null, null, 'user-minus', { sub: user.displayName || user.username, tone: 'list' })
       onChanged?.()
     } catch {
-      showToast('Could not remove collaborator. Please try again.', 'error')
+      showToast("Couldn't remove the collaborator", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setPendingRemove((s) => { const n = new Set(s); n.delete(user.userId); return n })
     }

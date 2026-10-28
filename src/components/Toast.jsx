@@ -1,34 +1,123 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useIsPresent } from 'motion/react'
+import {
+  Award,
+  Ban,
+  Bell,
+  Bookmark,
+  Check,
+  CircleAlert,
+  Clock,
+  Copy,
+  Download,
+  Flag,
+  Info,
+  KeyRound,
+  Link2,
+  ListMinus,
+  ListPlus,
+  LogOut,
+  Mail,
+  Pin,
+  PinOff,
+  RotateCcw,
+  Send,
+  Share2,
+  Shield,
+  Star,
+  Trash2,
+  UserMinus,
+  UserPlus,
+} from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { toastMotion } from '../motion/xMotion'
+import { toastMotion, TOAST_SWAP } from '../motion/xMotion'
 import './Toast.css'
 
 let _addToast = () => {}
 
+/** Line icons a caller can name instead of importing one. */
+const ICONS = {
+  alert: CircleAlert,
+  award: Award,
+  ban: Ban,
+  bell: Bell,
+  bookmark: Bookmark,
+  check: Check,
+  clock: Clock,
+  copy: Copy,
+  download: Download,
+  flag: Flag,
+  info: Info,
+  key: KeyRound,
+  link: Link2,
+  list: ListPlus,
+  'list-minus': ListMinus,
+  'log-out': LogOut,
+  mail: Mail,
+  pin: Pin,
+  'pin-off': PinOff,
+  restore: RotateCcw,
+  send: Send,
+  share: Share2,
+  shield: Shield,
+  star: Star,
+  trash: Trash2,
+  'user-minus': UserMinus,
+  'user-plus': UserPlus,
+}
+
+// What a toast shows when the caller passes nothing new.
+const TYPE_DEFAULTS = {
+  success: { tone: 'neutral', icon: Check },
+  error: { tone: 'error', icon: CircleAlert },
+  badge: { tone: 'badge', icon: Award },
+  info: { tone: 'neutral', icon: Info },
+}
+
+const TONES = ['saved', 'list', 'neutral', 'error', 'badge']
+
+const DEFAULT_MS = 2200
+const LONG_MS = 4000
+
 /**
- * Show a toast notification.
+ * Show a toast notice (one at a time; a new one replaces the current one).
  *
- * @param {string} message
- * @param {'success'|'error'|'badge'} type
- * @param {number} [duration=3500]
- * @param {{ label: string, onClick: () => void } | null} [action] - optional action link (e.g. Undo)
- * @param {React.ComponentType<{ size?: number }> | null} [icon] - optional lucide-react icon
- *   component. When provided it replaces the default svg glyph — used by
- *   the badge unlock watcher so each celebration shows its own badge icon.
- * @param {{ offsetTop?: number | string }} [options] - optional.
- *   `offsetTop` pushes this toast down from its default spot (a number is px,
- *   a string is any CSS length, e.g. 'calc(var(--space-48) + var(--space-4))').
- *   Omit it and the toast sits where it always has.
+ * @param {string} message - the title. Short, sentence case, no exclamation mark.
+ * @param {'success'|'error'|'badge'|'info'} [type='error']
+ * @param {number} [duration] - ms. Default 2200; 4000 with an action or for an error.
+ *   A duration a caller passes is kept.
+ * @param {{ label: string, onClick: () => void } | null} [action] - optional action on the
+ *   right (e.g. Undo).
+ * @param {React.ComponentType<{ size?: number }> | string | null} [icon] - the line icon in
+ *   the left circle: a lucide-react component, or a name from ICONS above. The badge unlock
+ *   watcher passes the badge's own icon.
+ * @param {{
+ *   offsetTop?: number | string,
+ *   sub?: string,
+ *   image?: string,
+ *   tone?: 'saved' | 'list' | 'neutral' | 'error' | 'badge',
+ * }} [options]
+ *   `offsetTop` pushes this toast down from its default spot (a number is px, a string is any
+ *   CSS length). `sub` is the quieter second line. `image` is a cover URL; it replaces the
+ *   icon circle. `tone` picks the circle's color: saved = review green, list = list purple,
+ *   neutral, error, badge. Defaults come from `type`.
  */
-export function showToast(message, type = 'error', duration = 3500, action = null, icon = null, options = null) {
+export function showToast(message, type = 'error', duration = null, action = null, icon = null, options = null) {
+  const defaults = TYPE_DEFAULTS[type] || TYPE_DEFAULTS.error
+  const tone = TONES.includes(options?.tone) ? options.tone : defaults.tone
+  const isError = type === 'error' || tone === 'error'
+  const customIcon = typeof icon === 'string' ? ICONS[icon] || null : icon
   _addToast({
     message,
+    sub: options?.sub || null,
+    image: options?.image || null,
     type,
-    duration,
+    tone,
+    isError,
+    duration: duration ?? (action || isError ? LONG_MS : DEFAULT_MS),
     action,
-    icon,
+    icon: customIcon || defaults.icon,
     offsetTop: options?.offsetTop ?? null,
     id: Date.now() + Math.random(),
   })
@@ -36,6 +125,9 @@ export function showToast(message, type = 'error', duration = 3500, action = nul
 
 function ToastItem({ toast, onDone, reduced }) {
   const timerRef = useRef(null)
+  const isPresent = useIsPresent()
+  const [coverLoaded, setCoverLoaded] = useState(false)
+  const [coverFailed, setCoverFailed] = useState(false)
 
   const dismiss = useCallback(() => {
     clearTimeout(timerRef.current)
@@ -47,12 +139,14 @@ function ToastItem({ toast, onDone, reduced }) {
     return () => clearTimeout(timerRef.current)
   }, [toast.duration, dismiss])
 
-  const handleAction = () => {
+  const handleAction = (e) => {
+    e.stopPropagation()
     dismiss()
     toast.action?.onClick()
   }
 
-  const CustomIcon = toast.icon
+  const Icon = toast.icon
+  const showCover = toast.image && !coverFailed
   const offset = toast.offsetTop
   const style = offset == null
     ? undefined
@@ -60,34 +154,33 @@ function ToastItem({ toast, onDone, reduced }) {
 
   return (
     <motion.div
-      className={`toast toast--${toast.type}`}
+      className={`toast${isPresent ? '' : ' is-leaving'}`}
       style={style}
-      role="alert"
+      role={toast.isError ? 'alert' : 'status'}
+      onClick={dismiss}
       {...toastMotion(reduced)}
     >
-      {CustomIcon ? (
-        <span className="toast-icon" aria-hidden="true">
-          <CustomIcon size={18} />
+      {showCover ? (
+        <span className="toast-cover" aria-hidden="true">
+          <img
+            src={toast.image}
+            alt=""
+            className={coverLoaded ? 'is-loaded' : undefined}
+            onLoad={() => setCoverLoaded(true)}
+            onError={() => setCoverFailed(true)}
+          />
         </span>
       ) : (
-        <svg className="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          {toast.type === 'error' ? (
-            <>
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </>
-          ) : (
-            <>
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </>
-          )}
-        </svg>
+        <span className={`toast-lead toast-lead--${toast.tone}`} aria-hidden="true">
+          <Icon size={17} strokeWidth={2.2} />
+        </span>
       )}
-      <span className="toast-message">{toast.message}</span>
+      <span className="toast-text">
+        <span className="toast-title">{toast.message}</span>
+        {toast.sub && <span className="toast-sub">{toast.sub}</span>}
+      </span>
       {toast.action && (
-        <button className="toast-action" onClick={handleAction}>
+        <button type="button" className="toast-action" onClick={handleAction}>
           {toast.action.label}
         </button>
       )}
@@ -96,24 +189,29 @@ function ToastItem({ toast, onDone, reduced }) {
 }
 
 export default function ToastHost() {
-  const [toasts, setToasts] = useState([])
+  // One notice at a time. `swap` is true while a newer notice is replacing
+  // the current one, so the leaving one crossfades (200) instead of the
+  // plain 220 fade-out.
+  const [state, setState] = useState({ toast: null, swap: false })
   const { reduced } = useMotionPreference()
 
   _addToast = useCallback((t) => {
-    setToasts((prev) => [...prev, t])
+    setState((prev) => ({ toast: t, swap: prev.toast !== null }))
   }, [])
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
+    setState((prev) => (prev.toast?.id === id ? { toast: null, swap: false } : prev))
   }, [])
+
+  const { toast } = state
 
   // The container stays mounted so the last toast can play its exit.
   return createPortal(
     <div className="toast-container">
-      <AnimatePresence initial={false}>
-        {toasts.map((t) => (
-          <ToastItem key={t.id} toast={t} reduced={reduced} onDone={() => removeToast(t.id)} />
-        ))}
+      <AnimatePresence initial={false} custom={state.swap ? TOAST_SWAP : undefined}>
+        {toast && (
+          <ToastItem key={toast.id} toast={toast} reduced={reduced} onDone={() => removeToast(toast.id)} />
+        )}
       </AnimatePresence>
     </div>,
     document.body

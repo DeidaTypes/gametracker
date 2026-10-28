@@ -205,7 +205,7 @@ function Settings() {
       dialogTitle: 'Invite friends',
     })
     if (result?.method === 'clipboard') {
-      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success')
+      showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success', null, null, result.copied === 'link' ? 'link' : 'copy')
     }
   }
 
@@ -223,7 +223,7 @@ function Settings() {
       navigate('/login', { replace: true })
     } catch (err) {
       console.error('[settings] sign-out failed:', err)
-      showToast(err?.message || 'Could not sign out. Try again.', 'error')
+      showToast("Couldn't sign out", 'error', null, null, null, { sub: err?.message || 'Try again' })
       setSigningOut(false)
     }
   }

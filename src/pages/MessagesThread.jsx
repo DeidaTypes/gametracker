@@ -472,7 +472,7 @@ function MessagesThread() {
       const attachment = overrideText ? null : pendingAttachment || null
       if (!trimmed && !attachment) return
       if (isSelf) {
-        showToast("You can't message yourself.", 'error')
+        showToast("You can't message yourself", 'error')
         return
       }
       stopTyping()
@@ -532,10 +532,9 @@ function MessagesThread() {
           setSendError(blocked)
           return
         }
-        showToast(
-          err?.message || "Couldn't send your message. Please try again.",
-          'error'
-        )
+        showToast("Couldn't send your message", 'error', null, null, null, {
+          sub: err?.message || 'Try again',
+        })
       } finally {
         setSending(false)
       }
@@ -560,17 +559,17 @@ function MessagesThread() {
       if (partnerBlocked) {
         await unblockUser(partnerId)
         setPartnerBlocked(false)
-        showToast('User unblocked.', 'success')
+        showToast('User unblocked', 'success', null, null, 'user-plus')
       } else {
         await blockUser(partnerId)
         hapticImpact('Medium')
         setPartnerBlocked(true)
-        showToast('User blocked.', 'success')
+        showToast('User blocked', 'success', null, null, 'ban')
         navigate(-1)
       }
     } catch (err) {
       console.error('[MessagesThread] toggle block failed:', err)
-      showToast(err?.message || 'Could not update block status.', 'error')
+      showToast("Couldn't update block status", 'error', null, null, null, { sub: err?.message || 'Try again' })
     } finally {
       setBlockPending(false)
     }

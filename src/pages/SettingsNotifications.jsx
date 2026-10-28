@@ -97,7 +97,7 @@ function SettingsNotifications() {
       .then(() => write(key, next))
       .catch(() => {
         setPrefs((prev) => ({ ...prev, [key]: !next }))
-        showToast("Couldn't update. Try again.", 'error')
+        showToast("Couldn't update", 'error', null, null, null, { sub: 'Try again' })
       })
   }
 

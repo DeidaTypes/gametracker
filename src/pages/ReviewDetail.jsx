@@ -775,7 +775,7 @@ function ReviewDetail() {
    */
   const openComposer = useCallback((parentComment = null) => {
     if (!isAuthed) {
-      showToast('Sign in to leave a comment.', 'error')
+      showToast('Sign in to leave a comment', 'error')
       return
     }
     setEditingComment(null)
@@ -831,10 +831,7 @@ function ReviewDetail() {
     } catch (err) {
       console.error('[ReviewDetail] updateComment failed:', err)
       if (!ugcErrorMessage(err)) {
-        showToast(
-          err?.message || "Couldn't update your comment. Please try again.",
-          'error'
-        )
+        showToast("Couldn't update your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
       }
       throw err
     }
@@ -939,10 +936,7 @@ function ReviewDetail() {
         setReplyTo((current) => current ?? replyTarget)
         setComposerError(blocked)
       } else {
-        showToast(
-          err?.message || "Couldn't post your comment. Please try again.",
-          'error'
-        )
+        showToast("Couldn't post your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
       }
     } finally {
       setPosting(false)
@@ -964,12 +958,7 @@ function ReviewDetail() {
       if (wasLiked) await unlikeComment(commentId)
       else await likeComment(commentId)
     } catch (err) {
-      showToast(
-        wasLiked
-          ? "Couldn't unlike — please try again."
-          : "Couldn't like — please try again.",
-        'error'
-      )
+      showToast(wasLiked ? "Couldn't unlike" : "Couldn't like", 'error', null, null, null, { sub: 'Try again' })
       throw err
     }
   }, [])
@@ -989,10 +978,7 @@ function ReviewDetail() {
     } catch (err) {
       console.error('[ReviewDetail] deleteComment failed:', err)
       setComments(prevComments)
-      showToast(
-        err?.message || "Couldn't delete your comment. Please try again.",
-        'error'
-      )
+      showToast("Couldn't delete your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
     }
   }, [comments, confirm])
 

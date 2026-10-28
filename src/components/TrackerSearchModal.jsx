@@ -54,8 +54,8 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
   const label = STATUS_LABELS[status] || 'Library'
   const isBacklog = status === 'want'
   const addAction = isBacklog ? BACKLOG_COPY.add : `Add to ${label}`
-  const addedToast = isBacklog ? BACKLOG_COPY.added : `Added to ${label}`
-  const alreadyToast = isBacklog ? 'Already in your backlog' : `Already in ${label}`
+  const addedToast = `Added to ${label}`
+  const alreadyToast = `Already in ${label}`
 
   // Reset on close; autofocus on open (short delay lets the card animate in).
   useEffect(() => {
@@ -117,7 +117,10 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
   const handleAdd = (game) => {
     const already = getGameStatus(game.id) === status
     if (already) {
-      showToast(alreadyToast, 'success', 1600)
+      showToast(alreadyToast, 'info', 1600, null, null, {
+        image: game.image || null,
+        sub: game.title,
+      })
       onClose?.()
       return
     }
@@ -126,9 +129,15 @@ function TrackerSearchModal({ isOpen, onClose, status = 'currently' }) {
     if (ok) {
       if (status === 'played') hapticSuccess()
       else hapticImpact('Light')
-      showToast(addedToast, 'success', 1800)
+      showToast(addedToast, 'success', 1800, null, null, {
+        image: game.image || null,
+        sub: game.title,
+        tone: 'saved',
+      })
     } else {
-      showToast('Couldn’t add game. Please try again.', 'error')
+      showToast("Couldn't add that game", 'error', null, null, null, {
+        sub: 'Check your connection and try again',
+      })
     }
     onClose?.()
   }

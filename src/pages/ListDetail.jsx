@@ -383,15 +383,15 @@ function ListDetail() {
     try {
       if (wasSaved) {
         await unsaveList(listId)
-        showToast('Removed from saved lists', 'success')
+        showToast('Removed from saved lists', 'success', null, null, 'bookmark')
       } else {
         await saveList(listId)
-        showToast('List saved', 'success')
+        showToast('List saved', 'success', null, null, 'bookmark', { tone: 'list' })
       }
     } catch {
       setIsSaved(wasSaved)
       setSaveCount((c) => (wasSaved ? c + 1 : c - 1))
-      showToast("Couldn't save — please try again.", 'error')
+      showToast("Couldn't save the list", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 
@@ -413,20 +413,19 @@ function ListDetail() {
     try {
       if (wasPin) {
         await unpinList(listId)
-        showToast('Unpinned', 'success')
+        showToast('Unpinned', 'success', null, null, 'pin-off')
       } else {
         await pinList(listId)
-        showToast('Pinned to profile', 'success')
+        showToast('Pinned to profile', 'success', null, null, 'pin', { tone: 'list' })
       }
     } catch (err) {
       setIsPinned(wasPin)
       if (err?.code === 'LIST_PINS_FULL') {
-        showToast('You can only pin 5 lists. Unpin one first.', 'error')
+        showToast('You can only pin 5 lists', 'error', null, null, null, { sub: 'Unpin one first' })
       } else {
-        showToast(
-          wasPin ? "Couldn't unpin — please try again." : "Couldn't pin — please try again.",
-          'error'
-        )
+        showToast(wasPin ? "Couldn't unpin that list" : "Couldn't pin that list", 'error', null, null, null, {
+          sub: 'Try again',
+        })
       }
     }
   }
@@ -441,9 +440,9 @@ function ListDetail() {
       await deleteList(listId)
       window.dispatchEvent(new Event('libraryUpdated'))
       navigate('/library', { replace: true })
-      showToast(`Deleted \u201c${name}\u201d`, 'success', 3500)
+      showToast('List deleted', 'success', 3500, null, 'trash', { sub: name })
     } catch {
-      showToast('Failed to delete list. Please try again.', 'error')
+      showToast("Couldn't delete the list", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 
@@ -462,10 +461,10 @@ function ListDetail() {
         await addGameToList(newId, g.id, i, { title: g.title, image: g.image })
       }
       window.dispatchEvent(new Event('libraryUpdated'))
-      showToast(`Duplicated \u201c${listInfo.name}\u201d`, 'success', 3500)
+      showToast('List duplicated', 'success', 3500, null, null, { sub: listInfo.name, tone: 'list' })
       navigate(`/list/${newId}`)
     } catch {
-      showToast('Failed to duplicate list. Please try again.', 'error')
+      showToast("Couldn't duplicate the list", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 
@@ -775,7 +774,7 @@ function ListDetail() {
       await reorderListGames(listId, arr.map((g) => g.id))
     } catch {
       refresh()
-      showToast('Failed to save new order. Please try again.', 'error')
+      showToast("Couldn't save the new order", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 
@@ -801,13 +800,13 @@ function ListDetail() {
             window.dispatchEvent(new Event('libraryUpdated'))
           } catch {
             refresh()
-            showToast("Couldn't restore the game. Please try again.", 'error')
+            showToast("Couldn't restore the game", 'error', null, null, null, { sub: 'Try again' })
           }
         },
-      })
+      }, 'list-minus', { sub: game.title })
     } catch {
       refresh()
-      showToast('Failed to remove game. Please try again.', 'error')
+      showToast("Couldn't remove the game", 'error', null, null, null, { sub: 'Try again' })
     }
   }
 
@@ -1008,7 +1007,7 @@ function ListDetail() {
     try {
       await updateList(listId, { name, description, isPublic })
       hapticSuccess()
-      showToast('List updated', 'success')
+      showToast('List updated', 'success', null, null, null, { tone: 'list' })
     } catch (err) {
       setListInfo((l) => ({ ...l, ...prev }))
       const blocked = ugcErrorMessage(err)
@@ -1017,7 +1016,7 @@ function ListDetail() {
         setEditListFieldError(blocked)
         setShowEditListModal(true)
       } else {
-        showToast("Couldn't save list. Please try again.", 'error')
+        showToast("Couldn't save the list", 'error', null, null, null, { sub: 'Try again' })
       }
     } finally {
       setEditListSaving(false)

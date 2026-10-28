@@ -642,11 +642,11 @@ function ReviewComments() {
     if (sharingQuote || !reviewFeedItem) return
     const quote = extractQuote(reviewFeedItem.body)
     if (!quote) {
-      showToast('No quotable text in this review.', 'error')
+      showToast('No quotable text in this review', 'error')
       return
     }
     setSharingQuote(true)
-    showToast('Building share card\u2026')
+    showToast('Building share card\u2026', 'info', null, null, 'share')
     try {
       await shareCard({
         variant: 'quotable-review',
@@ -665,7 +665,7 @@ function ReviewComments() {
       bumpSharesCount(1)
     } catch (err) {
       console.error('[ReviewComments] shareQuote error:', err)
-      showToast('Could not create share card.', 'error')
+      showToast("Couldn't create the share card", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setSharingQuote(false)
     }
@@ -688,23 +688,23 @@ function ReviewComments() {
       })
       try {
         await unpinReview(targetId)
-        showToast('Removed from pinned', 'success')
+        showToast('Removed from pinned', 'success', null, null, 'pin-off')
       } catch (err) {
         console.error('[ReviewComments] unpinReview failed:', err)
         setPinnedReviewIds((prev) => new Set(prev).add(targetId))
-        showToast("Couldn't unpin review — please try again.", 'error')
+        showToast("Couldn't unpin that review", 'error', null, null, null, { sub: 'Try again' })
       }
       return
     }
 
     if (pinnedReviewIds.size >= MAX_PINS) {
-      showToast(`You can only pin ${MAX_PINS} reviews. Unpin one first.`, 'error')
+      showToast(`You can only pin ${MAX_PINS} reviews`, 'error', null, null, null, { sub: 'Unpin one first' })
       return
     }
     setPinnedReviewIds((prev) => new Set(prev).add(targetId))
     try {
       await pinReview({ reviewId: targetId })
-      showToast('Pinned to profile', 'success')
+      showToast('Pinned to profile', 'success', null, null, 'pin', { tone: 'list' })
     } catch (err) {
       console.error('[ReviewComments] pinReview failed:', err)
       setPinnedReviewIds((prev) => {
@@ -712,12 +712,11 @@ function ReviewComments() {
         next.delete(targetId)
         return next
       })
-      showToast(
-        err?.code === 'PINS_FULL'
-          ? err.message
-          : "Couldn't pin review — please try again.",
-        'error'
-      )
+      if (err?.code === 'PINS_FULL') {
+        showToast(`You can only pin ${MAX_PINS} reviews`, 'error', null, null, null, { sub: 'Unpin one first' })
+      } else {
+        showToast("Couldn't pin that review", 'error', null, null, null, { sub: 'Try again' })
+      }
     }
   }, [user, targetType, targetId, pinnedReviewIds])
 
@@ -732,14 +731,11 @@ function ReviewComments() {
       }
       removePulseFeedItem(user?.id, targetId)
       hapticImpact('Medium')
-      showToast(targetType === 'review' ? 'Review deleted' : 'Removed from the pulse', 'success')
+      showToast(targetType === 'review' ? 'Review deleted' : 'Removed from the pulse', 'success', null, null, 'trash')
       navigate('/')
     } catch (err) {
       console.error('[ReviewComments] delete post failed:', err)
-      showToast(
-        err?.message || "Couldn't delete this post. Please try again.",
-        'error'
-      )
+      showToast("Couldn't delete this post", 'error', null, null, null, { sub: err?.message || 'Try again' })
       setDeletingPost(false)
     }
   }, [targetId, targetType, deletingPost, user?.id, navigate])
@@ -920,7 +916,7 @@ function ReviewComments() {
   const handleSubmit = async (e) => {
     e?.preventDefault?.()
     if (!isAuthed) {
-      showToast('Sign in to leave a comment.', 'error')
+      showToast('Sign in to leave a comment', 'error')
       return
     }
     const trimmed = draft.trim()
@@ -945,10 +941,7 @@ function ReviewComments() {
         console.error('[ReviewComments] updateComment failed:', err)
         const blocked = ugcErrorMessage(err)
         if (blocked) setComposerError(blocked)
-        else showToast(
-          err?.message || "Couldn't update your comment. Please try again.",
-          'error'
-        )
+        else showToast("Couldn't update your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
       } finally {
         setPosting(false)
       }
@@ -973,10 +966,7 @@ function ReviewComments() {
       console.error('[ReviewComments] postComment failed:', err)
       const blocked = ugcErrorMessage(err)
       if (blocked) setComposerError(blocked)
-      else showToast(
-        err?.message || "Couldn't post your comment. Please try again.",
-        'error'
-      )
+      else showToast("Couldn't post your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
     } finally {
       setPosting(false)
     }
@@ -1005,10 +995,7 @@ function ReviewComments() {
     } catch (err) {
       console.error('[ReviewComments] deleteComment failed:', err)
       if (prevThread) mutateThread(prevThread)
-      showToast(
-        err?.message || "Couldn't delete your comment. Please try again.",
-        'error'
-      )
+      showToast("Couldn't delete your comment", 'error', null, null, null, { sub: err?.message || 'Try again' })
     }
   }, [comments, thread, mutateThread, confirm])
 

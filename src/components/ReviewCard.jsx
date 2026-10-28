@@ -225,13 +225,9 @@ function ReviewCard({
       // Roll back to the pre-tap state and surface the error.
       // The service has already logged the underlying cause.
       publishLikeState(review.id, prev)
-      showToast(
-        err?.message ||
-          (wasLiked
-            ? "Couldn't unlike — please try again."
-            : "Couldn't like — please try again."),
-        'error'
-      )
+      showToast(wasLiked ? "Couldn't unlike" : "Couldn't like", 'error', null, null, null, {
+        sub: err?.message || 'Try again',
+      })
     } finally {
       likeInFlightRef.current = false
     }

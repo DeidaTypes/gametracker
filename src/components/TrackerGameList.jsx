@@ -562,7 +562,7 @@ function TrackerGameList({ listId, games }) {
       removed++
     }
     if (removed > 0) {
-      showToast(`Removed ${removed} ${removed === 1 ? 'game' : 'games'}`, 'success')
+      showToast(`Removed ${removed} ${removed === 1 ? 'game' : 'games'}`, 'success', null, null, 'trash')
     }
     clearSelection()
   }
@@ -589,7 +589,7 @@ function TrackerGameList({ listId, games }) {
       }
       count++
     }
-    showToast(`Rating applied to ${count} ${count === 1 ? 'game' : 'games'}`, 'success')
+    showToast(`Rating applied to ${count} ${count === 1 ? 'game' : 'games'}`, 'success', null, null, null, { tone: 'saved' })
     clearSelection()
     setBulkRateSheetOpen(false)
   }
@@ -623,12 +623,16 @@ function TrackerGameList({ listId, games }) {
       if (result) {
         hapticSuccess()
         handleLogged(game.id, result)
-        showToast(`Logged ${hours}h of ${game.title}`, 'success')
+        showToast(`Logged ${hours}h`, 'success', null, null, null, {
+          image: game.image || null,
+          sub: game.title,
+          tone: 'saved',
+        })
       } else {
-        showToast('Could not log session — try again', 'error', 5000, {
+        showToast("Couldn't log your session", 'error', 5000, {
           label: 'Retry',
           onClick: () => submitLoggedSession({ game, hours, notes, mood }),
-        })
+        }, null, { sub: game.title })
       }
     })
   }

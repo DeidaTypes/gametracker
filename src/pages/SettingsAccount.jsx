@@ -18,10 +18,11 @@ import {
 import { hapticImpact } from '../utils/haptics'
 import './Settings.css'
 
+// [title, type, second line]
 const RESTORE_MESSAGES = {
-  active: ['Checkpoint Plus restored.', 'success'],
-  pending: ['Purchase found. Plus will show up in a moment.', 'success'],
-  none: ['No Checkpoint Plus purchase found for this Apple ID.', 'error'],
+  active: ['Checkpoint Plus restored', 'success', null],
+  pending: ['Purchase found', 'success', 'Plus will show up in a moment'],
+  none: ['No Plus purchase found', 'error', 'Nothing found for this Apple ID'],
 }
 
 function SettingsAccount() {
@@ -43,7 +44,7 @@ function SettingsAccount() {
       navigate('/login', { replace: true, state: { accountDeleted: true } })
     } catch (err) {
       console.error('[settings] delete-account failed:', err)
-      showToast(err?.message || 'Could not delete account. Try again.', 'error')
+      showToast("Couldn't delete account", 'error', null, null, null, { sub: err?.message || 'Try again' })
     } finally {
       setIsDeleting(false)
     }
@@ -55,11 +56,14 @@ function SettingsAccount() {
     setIsRestoring(true)
     try {
       const { status } = await restorePlus()
-      const [message, tone] = RESTORE_MESSAGES[status] || RESTORE_MESSAGES.none
-      showToast(message, tone)
+      const [message, type, sub] = RESTORE_MESSAGES[status] || RESTORE_MESSAGES.none
+      showToast(message, type, null, null, null, {
+        sub,
+        tone: type === 'success' ? 'saved' : undefined,
+      })
     } catch (err) {
       console.error('[settings] restore purchases failed:', err)
-      showToast('Could not restore purchases. Try again.', 'error')
+      showToast("Couldn't restore purchases", 'error', null, null, null, { sub: 'Try again' })
     } finally {
       setIsRestoring(false)
     }
@@ -71,11 +75,11 @@ function SettingsAccount() {
     setIsExporting(true)
     try {
       const { status } = await exportMyData()
-      if (status === 'shared') showToast('Your data is ready.', 'success')
-      else if (status === 'downloaded') showToast('Your data was downloaded.', 'success')
+      if (status === 'shared') showToast('Your data is ready', 'success', null, null, 'download')
+      else if (status === 'downloaded') showToast('Your data was downloaded', 'success', null, null, 'download')
     } catch (err) {
       console.error('[settings] export failed:', err)
-      showToast(err?.message || 'Could not export your data. Try again.', 'error')
+      showToast("Couldn't export your data", 'error', null, null, null, { sub: err?.message || 'Try again' })
     } finally {
       setIsExporting(false)
     }

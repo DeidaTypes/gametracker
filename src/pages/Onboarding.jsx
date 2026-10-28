@@ -224,11 +224,10 @@ export default function Onboarding() {
       if (favoritesCount > 0) parts.push('favorites')
       if (ratedCount > 0) parts.push('ratings')
       if (parts.length > 0) {
-        showToast(
-          `Welcome to Checkpoint. Your ${parts.join(' and ')} are on your profile.`,
-          'success',
-          5000
-        )
+        showToast('Welcome to Checkpoint', 'success', 5000, null, null, {
+          sub: `Your ${parts.join(' and ')} are on your profile`,
+          tone: 'saved',
+        })
       }
     } catch (err) {
       console.error('[Onboarding] finish failed:', err)
@@ -397,7 +396,7 @@ export default function Onboarding() {
         advanceRateCard()
       } catch (err) {
         console.error('[Onboarding] rating failed:', err)
-        showToast('Could not save your rating. Please try again.', 'error')
+        showToast("Couldn't save your rating", 'error', null, null, null, { sub: 'Try again' })
       } finally {
         setRateSubmittingId(null)
       }

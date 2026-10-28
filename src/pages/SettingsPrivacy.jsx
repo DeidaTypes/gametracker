@@ -41,13 +41,13 @@ function SettingsPrivacy() {
   const handleMsgApply = async (value) => {
     const result = await setMessagePrivacy(value)
     if (result?.ok) showToast('Updated', 'success', 1800)
-    else showToast("Couldn't update. Try again.", 'error')
+    else showToast("Couldn't update", 'error', null, null, null, { sub: 'Try again' })
   }
 
   const handleActApply = async (value) => {
     const result = await setActivityPrivacy(value)
     if (result?.ok) showToast('Updated', 'success', 1800)
-    else showToast("Couldn't update. Try again.", 'error')
+    else showToast("Couldn't update", 'error', null, null, null, { sub: 'Try again' })
   }
 
   return (

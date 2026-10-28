@@ -183,11 +183,11 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file', 'error')
+      showToast('Choose an image file', 'error')
       return
     }
     if (file.size > AVATAR_MAX_FILE_MB * 1024 * 1024) {
-      showToast(`Image must be less than ${AVATAR_MAX_FILE_MB}MB`, 'error')
+      showToast('That image is too large', 'error', null, null, null, { sub: `Choose one under ${AVATAR_MAX_FILE_MB}MB` })
       return
     }
     setAvatarUploading(true)
@@ -202,7 +202,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       })
       setAvatar({ type: 'pending' })
     } catch {
-      showToast('Could not process image. Try another file.', 'error')
+      showToast("Couldn't process that image", 'error', null, null, null, { sub: 'Try another file' })
     } finally {
       setAvatarUploading(false)
     }
@@ -253,7 +253,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       setBannerPreview(null)
       window.dispatchEvent(new Event('profileUpdated'))
     } catch (err) {
-      showToast(err?.message || 'Failed to upload banner. Try again.', 'error')
+      showToast("Couldn't upload your banner", 'error', null, null, null, { sub: err?.message || 'Try again' })
       setBannerPreview(null)
     } finally {
       setBannerUploading(false)
@@ -268,7 +268,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       await removeBanner(user, previousUrl)
       window.dispatchEvent(new Event('profileUpdated'))
     } catch {
-      showToast('Failed to remove banner. Try again.', 'error')
+      showToast("Couldn't remove your banner", 'error', null, null, null, { sub: 'Try again' })
       setBannerUrl(previousUrl)
     }
   }
@@ -328,7 +328,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         }
       } catch (uploadErr) {
         setSaving(false)
-        showToast(uploadErr?.message || 'Failed to upload photo. Try again.', 'error')
+        showToast("Couldn't upload your photo", 'error', null, null, null, { sub: uploadErr?.message || 'Try again' })
         return
       }
     } else if (avatar === null && profile?.avatarUrl) {
@@ -369,7 +369,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         setErrors({ save: blocked })
         return
       }
-      showToast(err?.message || "Couldn't save. Try again.", 'error')
+      showToast("Couldn't save", 'error', null, null, null, { sub: err?.message || 'Try again' })
       return
     }
 
@@ -388,7 +388,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     })
 
     setSaving(false)
-    showToast('Profile saved', 'success')
+    showToast('Profile saved', 'success', null, null, null, { tone: 'saved' })
     onUpdate(updated)
     onClose()
   }
@@ -433,9 +433,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     } catch (err) {
       const code = err?.code
       if (code === AUTH_ERRORS.NETWORK) {
-        showToast("Couldn't reach the server. Check your connection.", 'error')
+        showToast("Couldn't reach the server", 'error', null, null, null, { sub: 'Check your connection' })
       } else {
-        showToast(err?.message || 'Failed to log out. Try again.', 'error')
+        showToast("Couldn't log out", 'error', null, null, null, { sub: err?.message || 'Try again' })
       }
     } finally {
       setLoggingOut(false)

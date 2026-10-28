@@ -109,16 +109,13 @@ function BioEditModal({ isOpen, onClose, currentBio = '', onSave }) {
       const updated = updateProfile({ bio: trimmed })
       onSave(updated)
       onClose()
-      showToast('Bio updated', 'success')
+      showToast('Bio updated', 'success', null, null, null, { tone: 'saved' })
     } catch (err) {
       const raw = err?.message || ''
       const offline = /failed to fetch|network|timeout|load failed/i.test(raw)
-      showToast(
-        offline
-          ? "Couldn't save your bio. Check your connection and try again."
-          : (raw || "Couldn't save your bio. Please try again."),
-        'error'
-      )
+      showToast("Couldn't save your bio", 'error', null, null, null, {
+        sub: offline ? 'Check your connection and try again' : (raw || 'Try again'),
+      })
     } finally {
       setSaving(false)
     }

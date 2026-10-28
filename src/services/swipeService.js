@@ -208,11 +208,9 @@ function writeStore(store) {
   console.error('[swipeService] writeStore failed: quota exceeded even after pruning')
   if (!claimStorageFullAnnouncement()) return
   try {
-    showToast(
-      "Storage is full — this swipe couldn't be saved. Free up space on your device.",
-      'error',
-      4000,
-    )
+    showToast("Couldn't save this swipe", 'error', 4000, null, null, {
+      sub: 'Your storage is full. Free up space and try again',
+    })
   } catch {
     // Toast host not mounted yet — non-fatal.
   }

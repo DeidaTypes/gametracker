@@ -101,11 +101,11 @@ function SettingsBlocked() {
     setRows((prev) => prev.filter((r) => r.blocked_id !== blockedId))
     try {
       await unblockUser(blockedId)
-      showToast('User unblocked', 'success', 1800)
+      showToast('User unblocked', 'success', 1800, null, 'user-plus')
     } catch (err) {
       console.error('[settings/blocked] unblock failed:', err)
       setRows(previousRows)
-      showToast(err?.message || 'Could not unblock. Try again.', 'error')
+      showToast("Couldn't unblock", 'error', null, null, null, { sub: err?.message || 'Try again' })
     }
   }
 

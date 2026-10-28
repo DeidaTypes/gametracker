@@ -24,9 +24,9 @@ export async function shareQaQuestion(question) {
     dialogTitle: 'Share',
   })
   if (result?.method === 'clipboard') {
-    showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success')
+    showToast(result.copied === 'link' ? 'Link copied' : 'Copied', 'success', null, null, result.copied === 'link' ? 'link' : 'copy')
   } else if (result?.method === 'failed') {
-    showToast("Couldn't share that.", 'error')
+    showToast("Couldn't share that", 'error', null, null, null, { sub: 'Try again' })
   }
 }
 
@@ -35,8 +35,8 @@ export async function copyQaLink(id, title) {
   if (!url) return
   try {
     await navigator.clipboard.writeText(url)
-    showToast('Link copied', 'success')
+    showToast('Link copied', 'success', null, null, 'link')
   } catch {
-    showToast("Couldn't copy that link.", 'error')
+    showToast("Couldn't copy the link", 'error', null, null, null, { sub: 'Try again' })
   }
 }

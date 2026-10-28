@@ -35,7 +35,7 @@ function RateItHost() {
       hoursPlayed: Number(hoursPlayed) || 0,
     }).catch((err) => {
       console.error('[RateItHost] rating write failed:', err)
-      showToast('Could not save your rating — try again', 'error')
+      showToast("Couldn't save your rating", 'error', null, null, null, { sub: 'Try again' })
     })
   }, [game])
 

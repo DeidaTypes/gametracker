@@ -234,7 +234,7 @@ function PaywallScreen() {
     if (status === 'active') {
       setCelebrating(true)
     } else if (status === 'pending') {
-      showToast('Purchase found. Plus will show up in a moment.', 'success')
+      showToast('Purchase found', 'success', null, null, null, { sub: 'Plus will show up in a moment', tone: 'saved' })
     }
   }, [])
 
@@ -262,7 +262,7 @@ function PaywallScreen() {
     try {
       const { status } = await restore()
       if (status === 'none') {
-        showToast('No Checkpoint Plus purchase found for this Apple ID.', 'error')
+        showToast('No Plus purchase found', 'error', null, null, null, { sub: 'Nothing found for this Apple ID' })
       } else {
         finish(status)
       }
