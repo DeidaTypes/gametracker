@@ -39,7 +39,8 @@ export const TAB_RESELECT_EVENT = 'gt:tabReselect'
  *   - "Discover" merges the legacy Explore + Search tabs. The /explore and
  *     /search routes both still resolve (App.jsx aliases /explore → the
  *     same component as /discover); this tab reads as active for any of
- *     /discover, /explore, /search, or /browse/*.
+ *     /discover, /explore, /search, or /browse/* (the last only when the
+ *     push started on Discover, see tabOrigin).
  *   - The pill glides on the shared `move` curve (MOTION.slide).
  *     Reduced-motion users get no travel at all.
  *   - Capacitor Haptics fires a light impact on tap when running in the
@@ -49,8 +50,9 @@ export const TAB_RESELECT_EVENT = 'gt:tabReselect'
 /**
  * Last tab root the user landed on. Pushed screens (/game, /qa/game, …)
  * are not roots, so this stays until the next tab tap. Q&A subroutes
- * light the Q&A tab only while this is 'qa'. No other tab's isActive
- * includes /qa/*, same as /game, which no tab claims.
+ * light the Q&A tab only while this is 'qa'; /browse/* lights Discover
+ * only while this is 'discover'. No other tab's isActive includes them,
+ * same as /game, which no tab claims.
  */
 let tabOrigin = null
 
@@ -67,6 +69,9 @@ const TAB_ROOT_ORIGIN = {
 function rememberTabOrigin(pathname) {
   const id = TAB_ROOT_ORIGIN[pathname]
   if (id) tabOrigin = id
+  // /search lights Discover itself, so a browse tile tapped there came from
+  // Discover. It is not a tab root (tapping Discover there still navigates).
+  else if (pathname.startsWith('/search')) tabOrigin = 'discover'
 }
 
 if (typeof window !== 'undefined') {
@@ -92,7 +97,9 @@ const NAV_ITEMS = [
       path.startsWith('/discover') ||
       path.startsWith('/explore') ||
       path.startsWith('/search') ||
-      path.startsWith('/browse'),
+      // /browse/* only when the push started on Discover, same rule as
+      // /qa/*. From Home -> game -> genre it must not light Discover.
+      (path.startsWith('/browse') && tabOrigin === 'discover'),
   },
   {
     id: 'library',

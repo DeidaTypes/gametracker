@@ -117,10 +117,6 @@ function buildFollowSentence(followers, average) {
   )
 }
 
-function genreToSlug(genre) {
-  return genre.toLowerCase().replace(/\s*\(.*?\)/g, '').trim().replace(/\s+/g, '-')
-}
-
 // Weekend read — derived from IGDB `normally` (main-story) seconds.
 // Returns null when there is no TTB data so the badge is silently omitted.
 function weekendReadBadge(ttb) {
@@ -586,6 +582,20 @@ function GameDetail() {
   // already builds a partial stub for that case, so it renders through the
   // same real layout as a full stub, just with a skeleton title until
   // getGameById resolves.
+  // game.genreIds is built in the same order as game.genres (formatGameDetails),
+  // so a chip's id is the id at its index. A length mismatch means the lists
+  // can't be trusted to line up, so no chip gets an id rather than a wrong one.
+  const genreIdAt = (i) =>
+    game?.genreIds?.length === game?.genres?.length ? (game.genreIds[i] ?? null) : null
+
+  // Genre chips and Similar "See all" open the genre by IGDB id. The name
+  // rides along in navigation state so the results title is there at once.
+  const openGenre = (i) => {
+    const id = genreIdAt(i)
+    if (id == null) return
+    navigate(`/browse/genre-${id}`, { state: { genreName: game.genres[i] } })
+  }
+
   if (loading && !game) {
     return (
       <div className="game-detail margins-style" aria-hidden="true">
@@ -1062,11 +1072,11 @@ function GameDetail() {
           <div className="gd-section">
             <p className="gd-section-label">Genres</p>
             <div className="gd-genre-row">
-              {game.genres.length > 0 ? game.genres.map((genre) => (
+              {game.genres.length > 0 ? game.genres.map((genre, i) => (
                 <button
                   key={genre}
                   className="gd-genre-pill"
-                  onClick={() => navigate(`/browse/${genreToSlug(genre)}`)}
+                  onClick={() => openGenre(i)}
                 >
                   {genre}
                 </button>
@@ -1292,9 +1302,7 @@ function GameDetail() {
           similarGameIds={game.similarGameIds || []}
           fetchEnabled={!loading && transitionComplete}
           onSeeAll={
-            game.genres.length > 0
-              ? () => navigate(`/browse/${genreToSlug(game.genres[0])}`)
-              : undefined
+            genreIdAt(0) != null ? () => openGenre(0) : undefined
           }
         />
 

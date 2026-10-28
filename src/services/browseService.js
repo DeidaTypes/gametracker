@@ -3,6 +3,7 @@ import {
   getRecentlyReleasedGames,
   getGamesByGenre,
   getGamesByTheme,
+  getGamesByGameMode,
   fetchBrowseBuckets,
 } from './igdb'
 import { getSWR } from './swrCache'
@@ -73,15 +74,19 @@ export async function fetchBrowseCategories() {
 }
 
 const BROWSE_GENRE_SPECS = [
-  { name: 'Shooter', limit: 10 },
   { name: 'Role-playing (RPG)', limit: 10 },
-  { name: 'Sport', limit: 10 },
-  { name: 'Adventure', limit: 10 },
   { name: 'Indie', limit: 20 },
 ]
 
 async function fetchBrowseCategoriesUncached() {
-  const buckets = await fetchBrowseBuckets(BROWSE_GENRE_SPECS)
+  // Action and Open world are IGDB themes and Multiplayer is a game mode, so
+  // they cannot ride the genre buckets. Each helper resolves to [] on failure.
+  const [buckets, actionGames, openWorldGames, multiplayerGames] = await Promise.all([
+    fetchBrowseBuckets(BROWSE_GENRE_SPECS),
+    getGamesByTheme('Action', 10),
+    getGamesByTheme('Open world', 10),
+    getGamesByGameMode('Multiplayer', 10),
+  ])
   const popular = buckets.popular || []
   const recent = buckets.recent || []
   const genre = (name) => buckets.byGenre?.[name] || []
@@ -95,13 +100,13 @@ async function fetchBrowseCategoriesUncached() {
   const categoryGames = {
     'top-rated':     topRated,
     'new-releases':  recent,
-    'action':        genre('Shooter'),
+    'action':        actionGames,
     'rpg':           genre('Role-playing (RPG)'),
-    'multiplayer':   genre('Sport'),
+    'multiplayer':   multiplayerGames,
     'hidden-gems':   genre('Indie').slice(0, 10),
     'classic-hits':  classicHits,
     'most-reviewed': popular.slice(0, 10),
-    'open-world':    genre('Adventure'),
+    'open-world':    openWorldGames,
     'indie':         genre('Indie').slice(0, 10),
   }
 
@@ -130,11 +135,11 @@ export async function fetchCategoryGames(categoryKey) {
     case 'new-releases':
       return getRecentlyReleasedGames(10)
     case 'action':
-      return getGamesByGenre('Shooter', 10)
+      return getGamesByTheme('Action', 10)
     case 'rpg':
       return getGamesByGenre('Role-playing (RPG)', 10)
     case 'multiplayer':
-      return getGamesByGenre('Sport', 10)
+      return getGamesByGameMode('Multiplayer', 10)
     case 'hidden-gems':
       return (await getGamesByGenre('Indie', 20)).slice(0, 10)
     case 'classic-hits': {
@@ -144,7 +149,7 @@ export async function fetchCategoryGames(categoryKey) {
     case 'most-reviewed':
       return getPopularGames(10)
     case 'open-world':
-      return getGamesByGenre('Adventure', 10)
+      return getGamesByTheme('Open world', 10)
     case 'indie':
       return getGamesByGenre('Indie', 10)
     case 'strategy':

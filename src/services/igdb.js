@@ -471,6 +471,73 @@ limit ${limit};`
 }
 
 /**
+ * Games of one IGDB genre, addressed by id (what Game Detail's genre chips
+ * carry), plus the genre's IGDB name for the screen title.
+ *
+ * Same query shape as getGamesByGenre (cover and rating present, most rated
+ * first) without its release-date window: a window empties the thin genres
+ * (Tactical has no rated release in the last seven years). Games come straight
+ * from the id; the name comes from the cached genre catalog, falling back to
+ * FALLBACK_GENRES, and is null when nobody knows the id. A failed games
+ * request throws so the screen can tell "could not load" from "no games".
+ *
+ * @returns {Promise<{name: string|null, games: Array}>}
+ */
+export async function getGamesByGenreId(genreId, limit = 30) {
+  const id = Number(genreId)
+  if (!Number.isInteger(id) || id <= 0) return { name: null, games: [] }
+
+  const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
+where genres = ${id} & cover != null & rating != null;
+sort rating_count desc;
+limit ${limit};`
+
+  const [catalog, rows] = await Promise.all([
+    fetchIgdbGenres().catch(() => []),
+    igdbRequest('games', query),
+  ])
+  const known = [...catalog, ...FALLBACK_GENRES].find((g) => g.id === id)
+  return { name: known?.name ?? null, games: formatGames(rows) }
+}
+
+const gameModeIdCache = new Map()
+
+async function resolveGameModeId(modeName) {
+  const key = String(modeName || '').toLowerCase()
+  if (gameModeIdCache.has(key)) return gameModeIdCache.get(key)
+  indexByLowerName(await igdbRequest('game_modes', 'fields id, name; limit 50;'), gameModeIdCache)
+  return gameModeIdCache.has(key) ? gameModeIdCache.get(key) : null
+}
+
+/**
+ * Fetch top games tagged with an IGDB *game mode* (e.g. "Multiplayer").
+ * Game modes are neither genres nor themes in IGDB. Same shape as
+ * getGamesByTheme.
+ */
+export async function getGamesByGameMode(modeName, limit = 30) {
+  try {
+    const modeId = await resolveGameModeId(modeName)
+
+    if (modeId == null) {
+      console.warn(`Game mode "${modeName}" not found`)
+      return []
+    }
+
+    const sevenYearsAgo = Math.floor(Date.now() / 1000) - (7 * 31536000)
+
+    const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
+where game_modes = ${modeId} & cover != null & rating != null & first_release_date >= ${sevenYearsAgo};
+sort rating_count desc;
+limit ${limit};`
+
+    return formatGames(await igdbRequest('games', query))
+  } catch (error) {
+    console.error(`Error fetching games for game mode ${modeName}:`, error)
+    return []
+  }
+}
+
+/**
  * Every bucket the browse grid needs, in ONE IGDB request.
  *
  * The browse fan-out used to be `popular + recent + one query per genre`
