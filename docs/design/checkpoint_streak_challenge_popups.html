@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streak and Challenge Popups</title>
+<style>
+  /* Light Pink (Ry's theme) */
+  :root{
+    --base:#f5d3de; --surface:#fcecf1; --surface2:#eec3d1; --line:rgba(120,30,60,.16);
+    --text:#35121f; --muted:#7c4655; --dim:#885c6b;
+    --primary:#c92a62; --review:#0d8069; --journal:#7446cf; --on:#fff; --danger:#a22d31;
+    --nav:rgba(252,236,241,.95);
+    --move:cubic-bezier(.32,.72,0,1); --fade:cubic-bezier(.25,.1,.25,1); --leave:cubic-bezier(.4,0,1,1);
+  }
+  body.navy{--base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);--text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;--primary:#3b82f6;--review:#0a9e6a;--journal:#8b32d1;--danger:#f87171;--nav:rgba(19,26,53,.94)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--base);color:var(--text);font:15px/1.45 -apple-system,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:max(14px,env(safe-area-inset-top)) 16px 40px}
+  h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+  .ctrl{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+  .ctrl button{border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 13px inherit;border-radius:999px;padding:9px 14px}
+
+  /* phone */
+  .phone{position:relative;height:720px;border-radius:24px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .page{position:absolute;inset:0;padding:18px 16px;overflow:hidden}
+  .page h3{margin:0 0 12px;font-size:20px;letter-spacing:-.02em}
+  .strip{display:flex;gap:10px;margin-bottom:14px}
+  .tile{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;gap:10px;align-items:center;cursor:pointer;transition:transform 120ms var(--move)}
+  .tile:active{transform:scale(.97)}
+  .tile b{display:block;font-size:17px;line-height:1.1}
+  .tile span{font-size:12px;color:var(--muted)}
+  .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none}
+  .ic.fl{background:color-mix(in srgb,var(--journal) 14%,transparent);color:var(--journal)}
+  .ring{width:38px;height:38px;flex:none;position:relative}
+  .ring svg{position:absolute;inset:0}
+  .ring i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700}
+  .feed{background:var(--surface);border:1px solid var(--line);border-radius:16px;height:110px;margin-bottom:10px}
+  .nav{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:280px;height:52px;border-radius:28px;background:var(--nav);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+
+  /* centered popup (CenteredModal language) */
+  .dim{position:absolute;inset:0;background:rgba(5,8,18,.45);opacity:0;pointer-events:none;z-index:20}
+  .pop{position:absolute;left:14px;right:14px;top:50%;z-index:21;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(-50%) scale(.96);pointer-events:none;max-height:80%}
+  .pop.open{pointer-events:auto}
+  .top{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;padding:12px 14px 11px;border-bottom:1px solid var(--line);flex:none}
+  .top .t{text-align:center;line-height:1.2}
+  .top .t b{display:block;font-size:16px;letter-spacing:-.01em}
+  .top .t span{font-size:12px;color:var(--muted)}
+  .top button{border:0;background:none;font:600 15px inherit;color:var(--primary);padding:6px 0;justify-self:end}
+  .body{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 14px 16px}
+  /* streak */
+  .sum{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:var(--base);border:1px solid var(--line);margin-bottom:12px}
+  .sum .big{font-size:28px;font-weight:800;line-height:1}
+  .sum .lab{font-size:13px;color:var(--muted)}
+  .label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:4px 2px 8px}
+  .step{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:8px}
+  .step .si{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--surface2);color:var(--muted)}
+  .step b{display:block;font-size:15px}
+  .step span{font-size:12px;color:var(--muted)}
+  .step.done{border-color:color-mix(in srgb,var(--review) 35%,var(--line));background:color-mix(in srgb,var(--review) 7%,var(--surface))}
+  .step.done .si{color:var(--review);background:color-mix(in srgb,var(--review) 16%,transparent)}
+  .step.next{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));background:color-mix(in srgb,var(--primary) 8%,var(--surface))}
+  .step.next .si{color:var(--primary);background:color-mix(in srgb,var(--primary) 16%,transparent)}
+  .step.locked{opacity:.7}
+  .badge{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary)}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  /* challenge */
+  .csum{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--base);border:1px solid var(--line);margin-bottom:14px}
+  .csum .r{width:52px;height:52px;position:relative;flex:none}
+  .csum .r svg{position:absolute;inset:0}
+  .csum .r i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700}
+  .csum b{font-size:24px;letter-spacing:-.02em;display:block;line-height:1.1}
+  .csum span{font-size:13px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 8px}
+  .g{cursor:pointer;-webkit-user-select:none;user-select:none}
+  .g .cv{aspect-ratio:3/4;border-radius:10px;overflow:hidden;position:relative;border:1px solid var(--line);transition:transform 160ms var(--move)}
+  .g:active .cv{transform:scale(.97)}
+  .g .cv i{position:absolute;inset:0}
+  .g .tt{font-size:12px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .a1{background:linear-gradient(165deg,#24365e,#0f1a33)}.a2{background:linear-gradient(165deg,#5a4a1a,#1e180a)}.a3{background:linear-gradient(165deg,#2c4f6b,#0f1c26)}.a4{background:linear-gradient(165deg,#4a1d3a,#1c0a16)}.a5{background:linear-gradient(165deg,#3d4a2a,#151a0e)}.a6{background:linear-gradient(165deg,#5a2424,#1e0c0c)}
+  /* remove menu (a ⋯-style bottom menu is allowed) */
+  .mdim{position:absolute;inset:0;background:rgba(5,8,18,.35);opacity:0;pointer-events:none;z-index:30}
+  .menu{position:absolute;left:10px;right:10px;bottom:10px;z-index:31;transform:translateY(120%)}
+  .menu .grp{background:var(--surface);border-radius:16px;border:1px solid var(--line);overflow:hidden;margin-bottom:8px}
+  .menu .hd{padding:12px 16px;font-size:12px;color:var(--muted);text-align:center;border-bottom:1px solid var(--line)}
+  .menu button{display:block;width:100%;border:0;background:none;font:600 16px inherit;padding:15px;color:var(--text)}
+  .menu .rm{color:var(--danger)}
+  .why{color:var(--muted);font-size:13px;margin:14px 0 0}
+  .why b{color:var(--text)}
+  .spec{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>Streak and Challenge</h1>
+<p class="sub">Both open as a centered popup over the page you are on, the same box as everything else. Tap a tile. Scroll inside. Tap Done or outside to close. On the challenge, press and hold a game.</p>
+<div class="ctrl"><button id="theme">Navy</button></div>
+
+<div class="phone" id="phone">
+  <div class="page">
+    <h3>Checkpoint</h3>
+    <div class="strip">
+      <div class="tile" id="openStreak"><div class="ic fl"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div><b>2</b><span>1 day to Spark</span></div></div>
+      <div class="tile" id="openChallenge"><div class="ring"><svg viewBox="0 0 38 38"><circle cx="19" cy="19" r="16" fill="none" stroke="var(--surface2)" stroke-width="3"/><circle cx="19" cy="19" r="16" fill="none" stroke="var(--review)" stroke-width="3" stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="48" transform="rotate(-90 19 19)"/></svg><i>13</i></div><div><b>13/25</b><span>#2 in circle</span></div></div>
+    </div>
+    <div class="feed"></div><div class="feed"></div><div class="feed"></div><div class="feed"></div>
+  </div>
+  <div class="nav"></div>
+
+  <div class="dim" id="dim"></div>
+
+  <!-- STREAK -->
+  <div class="pop" id="pStreak" role="dialog" aria-label="Your streak">
+    <div class="top"><span></span><div class="t"><b>Your streak</b></div><button data-close>Done</button></div>
+    <div class="body">
+      <div class="sum"><div class="ic fl" style="width:42px;height:42px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div><div class="big">2</div><div class="lab">day streak · longest ever 11 days</div></div></div>
+      <div class="label">Milestones</div>
+      <div class="step next"><div class="si"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div><b>Spark</b><span>3 days</span></div><span class="badge">Next</span></div>
+      <div class="step locked"><div class="si"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><div><b>Ember</b><span>7 days</span></div></div>
+      <div class="step locked"><div class="si"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><div><b>Kindled</b><span>15 days</span></div></div>
+      <div class="step locked"><div class="si"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><div><b>Blaze</b><span>30 days</span></div></div>
+      <div class="step locked"><div class="si"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><div><b>Wildfire</b><span>100 days</span></div></div>
+      <p class="note">Rest-day shield available this week, covers one missed day.</p>
+    </div>
+  </div>
+
+  <!-- CHALLENGE -->
+  <div class="pop" id="pChallenge" role="dialog" aria-label="2026 Challenge" style="height:80%">
+    <div class="top"><span></span><div class="t"><b>2026 Challenge</b><span>13 of 25</span></div><button data-close>Done</button></div>
+    <div class="body">
+      <div class="csum"><div class="r"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" fill="none" stroke="var(--surface2)" stroke-width="4"/><circle cx="26" cy="26" r="22" fill="none" stroke="var(--review)" stroke-width="4" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="66" transform="rotate(-90 26 26)"/></svg><i>13</i></div><div><b>13/25</b><span>12 to go</span></div></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="mdim" id="mdim"></div>
+  <div class="menu" id="menu"><div class="grp"><div class="hd" id="mhd">Hades</div><button class="rm" id="mrm">Remove from 2026 Challenge</button></div><div class="grp"><button id="mcancel">Cancel</button></div></div>
+</div>
+
+<p class="why"><b>What changes:</b> no more full page with a back arrow for the challenge, and no more swipe-up sheet with a grab bar for the streak. Both are the standard centered box: fade in 260 ms, fade out 220 ms, the dim fades with it, no blur. The content scrolls inside the box with momentum and never scrolls the page behind. Tapping a game closes the box and opens the game. On your own challenge, press and hold a game for Remove (the drag-to-trash bar goes away). Other people's challenges look the same, without Remove.</p>
+<div class="spec">Box: 14 pt from the screen edges, 20 radius, centered.
+Streak: as tall as its content. Challenge: 80% of the screen, grid scrolls inside.
+Top bar: title (+ "13 of 25" under it) centered, Done on the right, hairline below.
+Grid: 3 columns, 3:4 covers, title under each. Same data as today.
+Remove menu: the app's standard bottom menu (allowed: it is a ⋯-style menu).</div>
+
+<script>
+const EASE='cubic-bezier(.32,.72,0,1)', LEAVE='cubic-bezier(.4,0,1,1)';
+const $=s=>document.querySelector(s);
+const games=['XCOM 2','Cyberpunk 2077','Portal 2','Mina the Hollower','Disco Elysium','Hades','Ninja Gaiden II','Dark Souls III','Elden Ring','Celeste','Outer Wilds','Hollow Knight','Returnal'];
+$('#grid').innerHTML=games.map((g,i)=>`<div class="g" data-g="${g}"><div class="cv"><i class="a${i%6+1}"></i></div><div class="tt">${g}</div></div>`).join('');
+const dim=$('#dim');let openEl=null;
+function open(el){ openEl=el; dim.style.transition=`opacity 260ms ${EASE}`; dim.style.opacity=1; dim.style.pointerEvents='auto';
+  el.classList.add('open'); el.style.transition=`opacity 260ms ${EASE}, transform 260ms ${EASE}`; el.style.opacity=1; el.style.transform='translateY(-50%) scale(1)'; el.querySelector('.body').scrollTop=0; }
+function close(){ if(!openEl)return; const el=openEl; openEl=null; dim.style.transition=`opacity 220ms ${LEAVE}`; dim.style.opacity=0; dim.style.pointerEvents='none';
+  el.classList.remove('open'); el.style.transition=`opacity 220ms ${LEAVE}, transform 220ms ${LEAVE}`; el.style.opacity=0; el.style.transform='translateY(-50%) scale(.98)';
+  setTimeout(()=>{ if(openEl!==el) el.style.transition='none', el.style.transform='translateY(-50%) scale(.96)'; },230); }
+$('#openStreak').onclick=()=>open($('#pStreak'));
+$('#openChallenge').onclick=()=>open($('#pChallenge'));
+dim.onclick=close; document.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+// long press -> remove menu; tap -> "opens the game" (closes box)
+const menu=$('#menu'),mdim=$('#mdim');let lp=0,longFired=false;
+function showMenu(name){ $('#mhd').textContent=name; mdim.style.transition=`opacity 340ms ${EASE}`; mdim.style.opacity=1; mdim.style.pointerEvents='auto'; menu.style.transition=`transform 340ms ${EASE}`; menu.style.transform='translateY(0)'; }
+function hideMenu(){ mdim.style.transition=`opacity 280ms ${LEAVE}`; mdim.style.opacity=0; mdim.style.pointerEvents='none'; menu.style.transition=`transform 280ms ${LEAVE}`; menu.style.transform='translateY(120%)'; }
+$('#grid').addEventListener('pointerdown',e=>{const g=e.target.closest('.g');if(!g)return;longFired=false;lp=setTimeout(()=>{longFired=true;if(navigator.vibrate)navigator.vibrate(10);showMenu(g.dataset.g);},450);});
+['pointerup','pointerleave','pointercancel'].forEach(t=>$('#grid').addEventListener(t,e=>{clearTimeout(lp); if(t==='pointerup'&&!longFired){const g=e.target.closest('.g'); if(g) close();}}));
+$('#grid').addEventListener('contextmenu',e=>e.preventDefault());
+mdim.onclick=hideMenu;$('#mcancel').onclick=hideMenu;
+$('#mrm').onclick=()=>{const name=$('#mhd').textContent;hideMenu();const g=[...document.querySelectorAll('.g')].find(x=>x.dataset.g===name);if(g){g.style.transition=`opacity 240ms ${EASE}, transform 240ms ${EASE}`;g.style.opacity=0;g.style.transform='scale(.9)';setTimeout(()=>g.remove(),260);}};
+const th=$('#theme');th.onclick=()=>{document.body.classList.toggle('navy');th.textContent=document.body.classList.contains('navy')?'Light Pink':'Navy';};
+</script>
+</body>
+</html>
