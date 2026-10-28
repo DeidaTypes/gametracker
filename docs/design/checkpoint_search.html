@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Search and Browse</title>
+<style>
+  :root{
+    --base:#f5d3de; --surface:#fcecf1; --surface2:#eec3d1; --line:rgba(120,30,60,.16);
+    --text:#35121f; --muted:#7c4655; --dim:#885c6b;
+    --primary:#c92a62; --review:#0d8069; --journal:#7446cf; --on:#fff;
+    --nav:rgba(252,236,241,.95);
+    --move:cubic-bezier(.32,.72,0,1); --fade:cubic-bezier(.25,.1,.25,1); --leave:cubic-bezier(.4,0,1,1);
+  }
+  body.navy{--base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);--text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;--primary:#3b82f6;--review:#0a9e6a;--journal:#8b32d1;--nav:rgba(19,26,53,.94)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--base);color:var(--text);font:15px/1.45 -apple-system,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:max(14px,env(safe-area-inset-top)) 16px 40px}
+  h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+  .ctrl{display:flex;gap:8px;margin:0 0 14px}
+  .ctrl button{border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 13px inherit;border-radius:999px;padding:9px 14px}
+
+  .phone{position:relative;height:760px;border-radius:24px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .layer{position:absolute;inset:0;background:var(--base);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px}
+  .layer.front{transform:translateX(100%);box-shadow:-10px 0 28px rgba(0,0,0,.18);z-index:3}
+  .pdim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:2}
+  .nav{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:280px;height:52px;border-radius:28px;background:var(--nav);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:5}
+
+  /* search header */
+  .shead{position:sticky;top:0;z-index:2;background:var(--base);padding:14px 0 0}
+  .field{margin:0 16px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--dim);font-size:15px}
+  .chipsWrap{position:relative;margin-top:12px;border-bottom:1px solid var(--line)}
+  .chipsWrap::after,.sortsWrap::after{content:"";position:absolute;top:0;right:0;bottom:1px;width:28px;background:linear-gradient(90deg,transparent,var(--base));pointer-events:none;opacity:0;transition:opacity 200ms var(--fade)}
+  .chipsWrap.edge::after,.sortsWrap.edge::after{opacity:1}
+  .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 16px 12px;scroll-padding:0 16px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:600 14px inherit;display:inline-flex;align-items:center;transition:background-color 200ms var(--fade),color 200ms var(--fade),border-color 200ms var(--fade)}
+  .chip.on{background:var(--primary);border-color:var(--primary);color:var(--on)}
+  .chips .end{flex:none;width:8px}
+
+  .sec{padding:18px 16px 0}
+  .sec h2{font-size:20px;letter-spacing:-.02em;margin:0 0 12px}
+  .row{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+  .row::-webkit-scrollbar{display:none}
+  .rc{flex:none;width:76px}
+  .rc .cv{width:76px;height:102px}
+  .rc span{display:block;font-size:11.5px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+  .cv{border-radius:10px;overflow:hidden;position:relative;border:1px solid var(--line)}
+  .cv i{position:absolute;inset:0}
+  .a1{background:linear-gradient(165deg,#24365e,#0f1a33)}.a2{background:linear-gradient(165deg,#5a4a1a,#1e180a)}.a3{background:linear-gradient(165deg,#2c4f6b,#0f1c26)}.a4{background:linear-gradient(165deg,#4a1d3a,#1c0a16)}.a5{background:linear-gradient(165deg,#3d4a2a,#151a0e)}.a6{background:linear-gradient(165deg,#5a2424,#1e0c0c)}
+  .ggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .gt{height:64px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 14px;font-weight:600;font-size:15px;cursor:pointer;transition:transform 120ms var(--move)}
+  .gt:active{transform:scale(.97)}
+  .gi{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none}
+  .gi svg{width:18px;height:18px}
+  .c1{background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary)}
+  .c2{background:color-mix(in srgb,var(--review) 14%,transparent);color:var(--review)}
+  .c3{background:color-mix(in srgb,var(--journal) 14%,transparent);color:var(--journal)}
+  
+  /* category page */
+  .chead{position:sticky;top:0;z-index:2;background:var(--base);padding:12px 16px 0;border-bottom:1px solid var(--line)}
+  .ctop{display:flex;align-items:center;gap:8px}
+  .back{border:0;background:none;color:var(--primary);display:grid;place-items:center;width:36px;height:36px;margin-left:-8px}
+  .ctop h2{margin:0;font-size:22px;letter-spacing:-.02em}
+  .ctop small{display:block;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}
+  .sortsWrap{position:relative;margin:0 -16px}
+  .sorts{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:12px 16px}
+  .sorts::after{content:"";flex:none;width:8px}
+  .sorts::-webkit-scrollbar{display:none}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;padding:14px 16px}
+  .gc .cv{aspect-ratio:3/4}
+  .gc b{display:block;font-size:12.5px;font-weight:600;margin-top:6px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .gc span{font-size:11.5px;color:var(--muted)}
+  .more{display:flex;justify-content:center;padding:4px 0 20px;color:var(--muted);font-size:12px;gap:8px;align-items:center}
+  .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--surface2);border-top-color:var(--primary);animation:sp 0.9s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .swap{transition:opacity 240ms var(--fade),transform 280ms var(--move)}
+
+  .why{color:var(--muted);font-size:13px;margin:14px 0 0}
+  .why b{color:var(--text)}
+  .spec{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<h1>Search and Browse</h1>
+<p class="sub">Tap the tabs (they scroll sideways). Tap a genre to open it, switch between Popular now, Top rated, New and Hidden gems, scroll to the bottom for more, then Back.</p>
+<div class="ctrl"><button id="theme">Navy</button></div>
+
+<div class="phone">
+  <!-- SEARCH HOME -->
+  <div class="layer" id="home">
+    <div class="shead">
+      <div class="field"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="ph">Search games, developers, users</span></div>
+      <div class="chipsWrap"><div class="chips" id="tabs"></div></div>
+    </div>
+    <div class="sec">
+      <h2>Continue where you left off</h2>
+      <div class="row" id="cont"></div>
+    </div>
+    <div class="sec">
+      <h2>Browse by genre</h2>
+      <div class="ggrid" id="genres"></div>
+    </div>
+  </div>
+
+  <div class="pdim" id="pdim"></div>
+
+  <!-- CATEGORY -->
+  <div class="layer front" id="cat">
+    <div class="chead">
+      <div class="ctop"><button class="back" id="back" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button><h2 id="ctitle">Horror</h2></div>
+      <div class="sortsWrap"><div class="sorts" id="sorts"></div></div>
+    </div>
+    <div class="swap" id="gwrap"><div class="grid" id="grid"></div><div class="more" id="more"><span class="spin"></span>Loading more</div></div>
+  </div>
+
+  <div class="nav"></div>
+</div>
+
+<p class="why"><b>Tabs:</b> one row of equal pills with the same padding and spacing, scrolling sideways with a soft fade at the edge, so nothing is cut off mid-word and nothing is crammed. The active tab is filled in the accent; the rest are quiet.<br><br>
+<b>Genres:</b> twelve genres instead of six, each one tied to the exact IGDB genre or theme it names (Action is the Action theme, not shooters).<br><br>
+<b>A genre page:</b> four views that answer different questions: what people are playing now, the best of all time, what just came out, and great games few people know. Popular now and New change on their own as new games come out. Expansions, DLC, bundles and mods never show. The title and year sit under each cover so they read on every theme. Scroll to the end and more load in.</p>
+<div class="spec">Tabs: pills 34 tall, 14 side padding, 8 apart, 16 from the edge; active = accent fill.
+Genre grid: the tiles you have today (64 tall, icon chip + name), 12 instead of 6; 3 accents only.
+Genre page: Back · title · view pills (same pills as the tabs); 3-column grid, title (2 lines) + year under the cover; 30 per page, next 30 load at the bottom.
+Popular now: last 24 months, most rated first.   Top rated: all time, well known (100+ ratings), best score first.
+New: last 6 months, newest first.                Hidden gems: score 80+, under 100 ratings.
+Every view: main games only (no DLC, expansions, bundles, mods), cover required.</div>
+
+<script>
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function center(chip){const sc=chip.parentElement;sc.scrollTo({left:chip.offsetLeft-(sc.clientWidth-chip.offsetWidth)/2,behavior:RM?'auto':'smooth'});}
+const EASE='cubic-bezier(.32,.72,0,1)', FADE='cubic-bezier(.25,.1,.25,1)';
+const $=s=>document.querySelector(s);
+const TABS=[['all','All','Search games, developers, users'],['games','Games','Search games'],['devs','Devs','Search developers'],['users','Users','Search users'],['reviews','Reviews','Search reviews'],['lists','Lists','Search lists'],['questions','Questions','Search questions']];
+let tab='all';
+function drawTabs(){ $('#tabs').innerHTML=TABS.map(([id,l])=>`<button class="chip${id===tab?' on':''}" data-t="${id}">${l}</button>`).join('')+'<span class="end"></span>'; }
+drawTabs();
+$('#tabs').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;tab=b.dataset.t;drawTabs();$('#ph').textContent=TABS.find(t=>t[0]===tab)[2];const el=$(`#tabs .chip[data-t=${tab}]`);center(el);};
+$('#cont').innerHTML=['Marvel Rivals','Mina the Hollower','XCOM 2','Pac-Man 99','Hades II','Celeste'].map((t,i)=>`<div class="rc"><div class="cv"><i class="a${i%6+1}"></i></div><span>${t}</span></div>`).join('');
+const I={
+ sword:'<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/>',
+ wand:'<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/>',
+ target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+ compass:'<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
+ chess:'<path d="M5 20h14"/><path d="M8 20l1-5h6l1 5"/><path d="M9 15V9h6v6"/><path d="M8 9h8"/><path d="M10 5h4v4h-4z"/>',
+ ghost:'<path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/>',
+ jump:'<path d="M3 21h6v-6h6v-6h6"/><circle cx="7" cy="9" r="2"/>',
+ puzzle:'<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/>',
+ flag:'<path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/>',
+ fist:'<path d="M6 13V8a2 2 0 0 1 4 0v4"/><path d="M10 8a2 2 0 0 1 4 0v4"/><path d="M14 9a2 2 0 0 1 4 0v5a7 7 0 0 1-7 7h-1a6 6 0 0 1-6-6v-2a2 2 0 0 1 4 0"/>',
+ ball:'<circle cx="12" cy="12" r="10"/><path d="m12 7 4 3-1.5 5h-5L8 10z"/><path d="M12 7V2M16 10l5-1.5M14.5 15l3 4M9.5 15l-3 4M8 10 3 8.5"/>',
+ leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>'
+};
+const GEN=[['RPG','wand','c3'],['Action','sword','c1'],['Shooter','target','c1'],['Adventure','compass','c2'],['Strategy','chess','c2'],['Horror','ghost','c3'],['Platformer','jump','c1'],['Puzzle','puzzle','c2'],['Racing','flag','c3'],['Fighting','fist','c1'],['Sports','ball','c2'],['Indie','leaf','c3']];
+$('#genres').innerHTML=GEN.map(([n,ic,c])=>`<div class="gt" data-g="${n}"><span class="gi ${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[ic]}</svg></span>${n}</div>`).join('');
+
+const DATA={
+ 'Popular now':[['Silent Hill 2','2024'],['Alan Wake 2','2023'],['Resident Evil 4','2023'],['Lethal Company','2023'],['Mouthwashing','2024'],['Still Wakes the Deep','2024'],['Dead Space','2023'],['Little Nightmares III','2025'],['Amnesia: The Bunker','2023'],['Phasmophobia','2024'],['Signalis','2022'],['Dredge','2023']],
+ 'Top rated':[['Resident Evil 2','2019'],['Bloodborne','2015'],['Silent Hill 2','2001'],['Dead Space','2008'],['Alien: Isolation','2014'],['Resident Evil 4','2005'],['Outlast','2013'],['Inside','2016'],['Amnesia: The Dark Descent','2010'],['Fatal Frame II','2003'],['Darkwood','2017'],['Signalis','2022']],
+ 'New':[['Little Nightmares III','2025'],['Silent Hill f','2025'],['Cronos: The New Dawn','2025'],['The Midnight Walk','2025'],['Post Trauma','2025'],['Dead Take','2025'],['Fatal Frame II Remake','2026'],['Directive 8020','2025'],['Hollowbody','2024'],['Sorry We’re Closed','2024'],['Tormented Souls II','2025'],['Crisol','2025']],
+ 'Hidden gems':[['Hollowbody','2024'],['Signalis','2022'],['World of Horror','2023'],['Iron Lung','2022'],['Paratopic','2018'],['Darkwood','2017'],['Lone Fungus','2021'],['Mundaun','2021'],['Faith','2022'],['Fear & Hunger','2018'],['Sorry We’re Closed','2024'],['Crow Country','2024']]
+};
+const VIEWS=Object.keys(DATA);let view='Popular now',page=1;
+function drawSorts(){ $('#sorts').innerHTML=VIEWS.map(v=>`<button class="chip${v===view?' on':''}" data-v="${v}">${v}</button>`).join(''); }
+function cards(list,off){ return list.map(([t,y],i)=>`<div class="gc"><div class="cv"><i class="a${(i+off)%6+1}"></i></div><b>${t}</b><span>${y}</span></div>`).join(''); }
+function drawGrid(){ page=1; $('#grid').innerHTML=cards(DATA[view],0); }
+$('#sorts').onclick=e=>{const b=e.target.closest('.chip');if(!b||b.dataset.v===view)return;view=b.dataset.v;drawSorts();center($('#sorts .chip.on'));const w=$('#gwrap');
+  w.style.transition=`opacity 140ms ${FADE}`;w.style.opacity=0;
+  setTimeout(()=>{drawGrid();$('#cat').scrollTop=0;w.style.transition='none';w.style.transform='translateY(6px)';requestAnimationFrame(()=>requestAnimationFrame(()=>{w.style.transition=`opacity 240ms ${FADE}, transform 280ms ${EASE}`;w.style.opacity=1;w.style.transform='none';}));},150);};
+$('#cat').addEventListener('scroll',e=>{const el=e.target;if(page<3&&el.scrollTop+el.clientHeight>el.scrollHeight-80){page++;const extra=DATA[view].slice().reverse();const d=document.createElement('div');d.innerHTML=cards(extra,page);[...d.children].forEach(c=>{c.style.opacity=0;$('#grid').appendChild(c);requestAnimationFrame(()=>{c.style.transition=`opacity 240ms ${FADE}`;c.style.opacity=1;});});if(page>=3)$('#more').style.visibility='hidden';}});
+const home=$('#home'),cat=$('#cat'),pd=$('#pdim');
+$('#genres').onclick=e=>{const g=e.target.closest('.gt');if(!g)return;$('#ctitle').textContent=g.dataset.g;view='Popular now';drawSorts();$('#sorts').scrollLeft=0;drawGrid();$('#more').style.visibility='visible';cat.scrollTop=0;
+  cat.style.transition='none';cat.style.transform='translateX(100%)';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{cat.style.transition=`transform 340ms ${EASE}`;home.style.transition=`transform 340ms ${EASE}`;pd.style.transition=`opacity 340ms ${EASE}`;cat.style.transform='translateX(0)';home.style.transform='translateX(-30%)';pd.style.opacity=.12;}));};
+$('#back').onclick=()=>{cat.style.transition=`transform 340ms ${EASE}`;home.style.transition=`transform 340ms ${EASE}`;pd.style.transition=`opacity 340ms ${EASE}`;cat.style.transform='translateX(100%)';home.style.transform='none';pd.style.opacity=0;};
+const th=$('#theme');th.onclick=()=>{document.body.classList.toggle('navy');th.textContent=document.body.classList.contains('navy')?'Light Pink':'Navy';};
+drawSorts();drawGrid();
+function edge(sc){const w=sc.parentElement;w.classList.toggle('edge',sc.scrollLeft+sc.clientWidth<sc.scrollWidth-4);}
+['#tabs','#sorts'].forEach(q=>{const sc=$(q);sc.addEventListener('scroll',()=>edge(sc),{passive:true});edge(sc);});
+new MutationObserver(()=>edge($('#sorts'))).observe($('#sorts'),{childList:true});
+setTimeout(()=>{edge($('#tabs'));edge($('#sorts'));},50);
+</script>
+</body>
+</html>
