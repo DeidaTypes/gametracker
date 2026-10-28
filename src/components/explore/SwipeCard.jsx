@@ -3,7 +3,7 @@ import { X, Heart } from 'lucide-react'
 import Avatar from '../Avatar'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { hapticImpact } from '../../utils/haptics'
-import { flyToTab } from '../../utils/flyToTab'
+import { nudgeTab } from '../../utils/nudgeTab'
 import { SwipeCardCover } from './SwipeCardCover'
 import './SwipeCard.css'
 
@@ -92,7 +92,7 @@ export function SwipeCard({
 
       if (dir === 'right') {
         hapticImpact('Light')
-        flyToTab(coverRef.current, 'library')
+        nudgeTab('library')
       }
 
       if (reduced) {

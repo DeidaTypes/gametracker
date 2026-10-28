@@ -240,8 +240,14 @@ body[data-reduce-motion='true'].nav-pill-return .bottom-nav {
 
 /* Icon wrap stays above the pill so it visually rides on top of the
    cobalt fill. */
-.bottom-nav-icon-wrap.is-fly-pulse {
-  animation: navTabPop 200ms ease;
+@keyframes bottomNavTabNudge {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.bottom-nav-icon-wrap.is-tab-nudge {
+  animation: bottomNavTabNudge var(--motion-slide) var(--ease-move);
 }
 
 .bottom-nav-icon-wrap {
@@ -315,7 +321,11 @@ body[data-reduce-motion='true'].nav-pill-return .bottom-nav {
     transition: none;
   }
 
-  .bottom-nav-icon-wrap.is-fly-pulse {
+  .bottom-nav-icon-wrap.is-tab-nudge {
     animation: none;
   }
+}
+
+body[data-reduce-motion='true'] .bottom-nav-icon-wrap.is-tab-nudge {
+  animation: none;
 }
