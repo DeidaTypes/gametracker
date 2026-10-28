@@ -9,19 +9,27 @@
   background: var(--color-bg-primary);
 }
 
+/* Sticky, solid page background (no blur: this page slides in and out).
+   The hairline under it is the view pills' own bottom border. */
 .category-results-header {
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--color-bg-primary);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: var(--spacing-md) var(--page-padding);
-  padding-top: calc(var(--spacing-md) + var(--safe-area-inset-top));
+  padding: var(--space-12) var(--space-16) 0;
+  padding-top: calc(var(--space-12) + var(--safe-area-inset-top));
+}
+
+/* No pills (an unknown key): the header closes itself with the hairline. */
+.category-results-header--bare {
+  padding-bottom: var(--space-12);
   border-bottom: 1px solid var(--color-border);
+}
+
+.category-results-header__row {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--space-12);
 }
 
 .category-results-back {
@@ -62,9 +70,72 @@
 
 .category-results-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-md);
-  padding: var(--spacing-xl) var(--page-padding);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-16) var(--space-12);
+  padding: var(--space-16);
+}
+
+.category-results-grid > * {
+  min-width: 0;
+}
+
+/* The batch that just loaded fades in. */
+@keyframes category-results-arrive {
+  from { opacity: 0; }
+}
+
+.category-results-arriving {
+  animation: category-results-arrive var(--motion-arrive) var(--ease-fade) both;
+}
+
+.category-results-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-16) var(--space-24);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+}
+
+.category-results-more .loading-spinner {
+  width: var(--space-16);
+  height: var(--space-16);
+}
+
+/* An empty view is one quiet line, not an empty state. */
+.category-results-quiet {
+  margin: 0;
+  padding: var(--space-24) var(--space-16);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-text-secondary);
+}
+
+.category-results-retry {
+  background: none;
+  border: none;
+  padding: var(--space-8);
+  min-height: 44px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-brand-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-results-arriving {
+    animation-duration: var(--motion-reduced-fade);
+  }
+}
+
+body[data-reduce-motion='true'] .category-results-arriving {
+  animation-duration: var(--motion-reduced-fade);
 }
 
 .category-results-loading,
@@ -82,14 +153,22 @@
 /* Desktop */
 @media (min-width: 769px) {
   .category-results-header {
-    padding: var(--spacing-lg) var(--page-padding-desktop);
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
     max-width: var(--page-max-width);
     margin: 0 auto;
   }
 
+  /* The pills bleed to the header's edges. */
+  .category-results-header .pill-tabs {
+    margin-left: calc(-1 * var(--page-padding-desktop));
+    margin-right: calc(-1 * var(--page-padding-desktop));
+    width: calc(100% + 2 * var(--page-padding-desktop));
+  }
+
   .category-results-grid {
-    grid-template-columns: repeat(3, 1fr);
-    padding: var(--spacing-xl) var(--page-padding-desktop);
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
     max-width: var(--page-max-width);
     margin: 0 auto;
   }
@@ -97,6 +176,6 @@
 
 @media (min-width: 1100px) {
   .category-results-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

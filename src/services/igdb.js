@@ -471,33 +471,16 @@ limit ${limit};`
 }
 
 /**
- * Games of one IGDB genre, addressed by id (what Game Detail's genre chips
- * carry), plus the genre's IGDB name for the screen title.
- *
- * Same query shape as getGamesByGenre (cover and rating present, most rated
- * first) without its release-date window: a window empties the thin genres
- * (Tactical has no rated release in the last seven years). Games come straight
- * from the id; the name comes from the cached genre catalog, falling back to
- * FALLBACK_GENRES, and is null when nobody knows the id. A failed games
- * request throws so the screen can tell "could not load" from "no games".
- *
- * @returns {Promise<{name: string|null, games: Array}>}
+ * The IGDB name of one genre id (what Game Detail's genre chips carry), for a
+ * screen title when the caller was not handed the name. Reads the cached genre
+ * catalog, falling back to FALLBACK_GENRES; null when nobody knows the id.
  */
-export async function getGamesByGenreId(genreId, limit = 30) {
+export async function getGenreName(genreId) {
   const id = Number(genreId)
-  if (!Number.isInteger(id) || id <= 0) return { name: null, games: [] }
-
-  const query = `fields name, cover.image_id, rating, rating_count, first_release_date;
-where genres = ${id} & cover != null & rating != null;
-sort rating_count desc;
-limit ${limit};`
-
-  const [catalog, rows] = await Promise.all([
-    fetchIgdbGenres().catch(() => []),
-    igdbRequest('games', query),
-  ])
+  if (!Number.isInteger(id) || id <= 0) return null
+  const catalog = await fetchIgdbGenres().catch(() => [])
   const known = [...catalog, ...FALLBACK_GENRES].find((g) => g.id === id)
-  return { name: known?.name ?? null, games: formatGames(rows) }
+  return known?.name ?? null
 }
 
 const gameModeIdCache = new Map()
@@ -535,6 +518,130 @@ limit ${limit};`
     console.error(`Error fetching games for game mode ${modeName}:`, error)
     return []
   }
+}
+
+// ---------------------------------------------------------------------------
+// Browse pages (genre / theme / game-mode screens)
+//
+// One query builder behind every view of every browse category. Every view
+// shares the same floor: a cover, no edition of another game (version_parent),
+// and only game types a person tracks on their own: Main game (0), Standalone
+// expansion (4), Remake (8), Remaster (9), Expanded game (10). That leaves out
+// DLC, Expansion, Bundle, Mod, Episode, Season, Fork, Port, Pack and Update.
+// An Expanded game that names a parent_game is a re-release of it (Switch 2
+// Editions, Enhanced Editions), so it is left out too.
+//
+// The views answer different questions:
+//   popular  released in the last 24 months, most rated first
+//   top      all time, well known (100+ ratings), best score first
+//   new      released in the last 6 months, newest first; a hype / rating
+//            gate keeps out asset flips; widens to 12 months when thin
+//   gems     score 80+ from a small crowd (30 to 100 ratings), best first
+//
+// IGDB's `rating_count` is only IGDB's own users; `total_rating(_count)`
+// folds in critics and is what every threshold here reads.
+// ---------------------------------------------------------------------------
+export const BROWSE_PAGE_SIZE = 30
+export const BROWSE_VIEWS = ['popular', 'top', 'new', 'gems']
+
+const BROWSE_FILTER_FIELDS = new Set(['genres', 'themes', 'game_modes'])
+const BROWSE_GAME_TYPES = '0,4,8,9,10'
+const BROWSE_FIELDS =
+  'fields name, cover.image_id, first_release_date, rating, total_rating, total_rating_count, game_type, parent_game, genres.name;'
+const BROWSE_MONTH_SECONDS = Math.round(30.44 * 86400)
+const BROWSE_POPULAR_MONTHS = 24
+const BROWSE_POPULAR_MIN_RATINGS = 10
+const BROWSE_TOP_MIN_RATINGS = 100
+const BROWSE_NEW_MONTHS = 6
+const BROWSE_NEW_WIDE_MONTHS = 12
+const BROWSE_NEW_MIN_ROWS = 12
+const BROWSE_NEW_MIN_HYPES = 7
+const BROWSE_NEW_MIN_RATINGS = 3
+const BROWSE_GEM_MIN_SCORE = 80
+const BROWSE_GEM_MIN_RATINGS = 30
+const BROWSE_GEM_MAX_RATINGS = 100
+
+function buildBrowseQuery({ filter, view, offset, months }) {
+  // Rounded to the hour so the request text, and with it the response cache
+  // and the in-flight dedupe, holds still instead of changing every second.
+  const now = Math.floor(Date.now() / 3600000) * 3600
+  const monthsAgo = (m) => now - m * BROWSE_MONTH_SECONDS
+
+  const where = [
+    'cover != null',
+    'version_parent = null',
+    `game_type = (${BROWSE_GAME_TYPES})`,
+    '(game_type != 10 | parent_game = null)',
+  ]
+  if (filter) {
+    const ids = (filter.ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    if (!BROWSE_FILTER_FIELDS.has(filter.field) || ids.length === 0) {
+      throw new Error('Invalid browse filter')
+    }
+    where.push(`${filter.field} = (${ids.join(',')})`)
+  }
+
+  let sort
+  if (view === 'top') {
+    where.push(`total_rating_count >= ${BROWSE_TOP_MIN_RATINGS}`, 'total_rating != null')
+    sort = 'total_rating desc'
+  } else if (view === 'new') {
+    where.push(
+      `first_release_date >= ${monthsAgo(months)}`,
+      `first_release_date <= ${now}`,
+      `(hypes >= ${BROWSE_NEW_MIN_HYPES} | total_rating_count >= ${BROWSE_NEW_MIN_RATINGS})`,
+    )
+    sort = 'first_release_date desc'
+  } else if (view === 'gems') {
+    where.push(
+      `total_rating >= ${BROWSE_GEM_MIN_SCORE}`,
+      `total_rating_count >= ${BROWSE_GEM_MIN_RATINGS}`,
+      `total_rating_count <= ${BROWSE_GEM_MAX_RATINGS}`,
+    )
+    sort = 'total_rating desc'
+  } else {
+    where.push(
+      `first_release_date >= ${monthsAgo(BROWSE_POPULAR_MONTHS)}`,
+      `first_release_date <= ${now}`,
+      `total_rating_count >= ${BROWSE_POPULAR_MIN_RATINGS}`,
+    )
+    sort = 'total_rating_count desc'
+  }
+
+  return `${BROWSE_FIELDS}
+where ${where.join(' & ')};
+sort ${sort};
+limit ${BROWSE_PAGE_SIZE};
+offset ${offset};`
+}
+
+/**
+ * One page (30) of one view of one browse category.
+ *
+ * @param {object}  opts
+ * @param {{field: 'genres'|'themes'|'game_modes', ids: number[]}|null} opts.filter
+ *   The category filter; null browses every game.
+ * @param {'popular'|'top'|'new'|'gems'} [opts.view]
+ * @param {number}  [opts.offset]  30 x page.
+ * @param {boolean} [opts.widened] The New view widened to 12 months on its
+ *   first page; pass that back for later pages so they stay in the same window.
+ * @returns {Promise<{games: Array, rawCount: number, widened: boolean}>}
+ *   `games` keep IGDB's order (formatGames would re-sort them by score);
+ *   `rawCount` is the rows IGDB returned, so a page of fewer than
+ *   BROWSE_PAGE_SIZE is the last one. A failed request throws.
+ */
+export async function getBrowsePage({ filter = null, view = 'popular', offset = 0, widened = false } = {}) {
+  let isWide = view === 'new' && widened
+  const run = (months) =>
+    igdbRequest('games', buildBrowseQuery({ filter, view, offset, months }))
+
+  let rows = await run(isWide ? BROWSE_NEW_WIDE_MONTHS : BROWSE_NEW_MONTHS)
+  if (view === 'new' && offset === 0 && !isWide && rows.length < BROWSE_NEW_MIN_ROWS) {
+    rows = await run(BROWSE_NEW_WIDE_MONTHS)
+    isWide = true
+  }
+
+  return { games: formatGamesRaw(rows), rawCount: rows.length, widened: isWide }
 }
 
 /**

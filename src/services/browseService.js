@@ -1,10 +1,9 @@
 import {
-  getPopularGames,
-  getRecentlyReleasedGames,
-  getGamesByGenre,
   getGamesByTheme,
   getGamesByGameMode,
   fetchBrowseBuckets,
+  getBrowsePage,
+  BROWSE_PAGE_SIZE,
 } from './igdb'
 import { getSWR } from './swrCache'
 
@@ -16,6 +15,9 @@ import { getSWR } from './swrCache'
 const BROWSE_CATEGORIES_TTL_MS = 10 * 60 * 1000
 const BROWSE_CATEGORIES_KEY = 'search:browse-categories'
 
+// Tile metadata for fetchBrowseCategories (the cover-tile grids). It still
+// carries the all-games list keys; the genre pages themselves are defined by
+// CATEGORIES and LIST_PAGES below.
 const CATEGORY_META = [
   { key: 'top-rated',     label: 'Top Rated',      color: '#7B2D8B', pinned: true },
   { key: 'new-releases',  label: 'New Releases',   color: '#1A6B3A', pinned: true },
@@ -51,8 +53,89 @@ function shuffleNonPinned(categories) {
   return [...pinned, ...rest]
 }
 
+/**
+ * The browse categories: real genres, themes and game modes only. Each maps to
+ * one IGDB filter (ids confirmed against the genres, themes and game_modes
+ * endpoints). This is also what search suggests under "Genres" while typing.
+ */
+export const CATEGORIES = [
+  { key: 'rpg',         label: 'RPG',         filter: { field: 'genres',     ids: [12] } },
+  { key: 'action',      label: 'Action',      filter: { field: 'themes',     ids: [1] } },
+  { key: 'shooter',     label: 'Shooter',     filter: { field: 'genres',     ids: [5] } },
+  { key: 'adventure',   label: 'Adventure',   filter: { field: 'genres',     ids: [31] } },
+  // Strategy, Real Time Strategy, Turn-based strategy.
+  { key: 'strategy',    label: 'Strategy',    filter: { field: 'genres',     ids: [15, 11, 16] } },
+  { key: 'horror',      label: 'Horror',      filter: { field: 'themes',     ids: [19] } },
+  // IGDB calls genre 8 "Platform".
+  { key: 'platformer',  label: 'Platformer',  filter: { field: 'genres',     ids: [8] } },
+  { key: 'puzzle',      label: 'Puzzle',      filter: { field: 'genres',     ids: [9] } },
+  { key: 'racing',      label: 'Racing',      filter: { field: 'genres',     ids: [10] } },
+  { key: 'fighting',    label: 'Fighting',    filter: { field: 'genres',     ids: [4] } },
+  { key: 'sports',      label: 'Sports',      filter: { field: 'genres',     ids: [14] } },
+  { key: 'indie',       label: 'Indie',       filter: { field: 'genres',     ids: [32] } },
+  { key: 'open-world',  label: 'Open world',  filter: { field: 'themes',     ids: [38] } },
+  { key: 'multiplayer', label: 'Multiplayer', filter: { field: 'game_modes', ids: [2] } },
+]
+
+// Keys the cover-tile grids (fetchBrowseCategories) still link to as
+// /browse/<key>. They are not genres: each opens an all-games page on the
+// view that answers the same question.
+const LIST_PAGES = [
+  { key: 'top-rated',     label: 'Top Rated',     view: 'top' },
+  { key: 'new-releases',  label: 'New Releases',  view: 'new' },
+  { key: 'hidden-gems',   label: 'Hidden Gems',   view: 'gems' },
+  { key: 'classic-hits',  label: 'Classic Hits',  view: 'top' },
+  { key: 'most-reviewed', label: 'Most Reviewed', view: 'popular' },
+]
+
 export function getCategoryDefinitions() {
-  return CATEGORY_META
+  return CATEGORIES
+}
+
+/**
+ * What a /browse/:key opens. Returns null for a key nobody knows.
+ *   kind 'category'  one of CATEGORIES
+ *   kind 'list'      one of LIST_PAGES (all games, opening on its own view)
+ *   kind 'genre'     genre-<igdbGenreId>, from a game's genre chip; the label
+ *                    is left empty for the caller to fill from the chip or IGDB
+ */
+export function resolveBrowseTarget(key) {
+  const category = CATEGORIES.find((c) => c.key === key)
+  if (category) {
+    return { kind: 'category', key, label: category.label, filter: category.filter, view: 'popular' }
+  }
+  const list = LIST_PAGES.find((c) => c.key === key)
+  if (list) {
+    return { kind: 'list', key, label: list.label, filter: null, view: list.view }
+  }
+  const match = /^genre-(\d+)$/.exec(key || '')
+  if (match) {
+    const genreId = Number(match[1])
+    return { kind: 'genre', key, label: '', genreId, filter: { field: 'genres', ids: [genreId] }, view: 'popular' }
+  }
+  return null
+}
+
+/**
+ * One page of one view of a browse target (see resolveBrowseTarget).
+ * `page` is 0-based. Pass back `widened` from the first page of the New view so
+ * later pages keep its window. `hasMore` is false once IGDB runs out.
+ * A failed request throws.
+ */
+export async function fetchCategoryPage(key, view, page, { widened = false } = {}) {
+  const target = resolveBrowseTarget(key)
+  if (!target) return { games: [], hasMore: false, widened: false }
+  const result = await getBrowsePage({
+    filter: target.filter,
+    view,
+    offset: page * BROWSE_PAGE_SIZE,
+    widened,
+  })
+  return {
+    games: result.games,
+    hasMore: result.rawCount >= BROWSE_PAGE_SIZE,
+    widened: result.widened,
+  }
 }
 
 /**
@@ -124,47 +207,4 @@ async function fetchBrowseCategoriesUncached() {
   })
 
   return shuffleNonPinned(categories)
-}
-
-export async function fetchCategoryGames(categoryKey) {
-  switch (categoryKey) {
-    case 'top-rated': {
-      const games = await getPopularGames(20)
-      return games.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0)).slice(0, 10)
-    }
-    case 'new-releases':
-      return getRecentlyReleasedGames(10)
-    case 'action':
-      return getGamesByTheme('Action', 10)
-    case 'rpg':
-      return getGamesByGenre('Role-playing (RPG)', 10)
-    case 'multiplayer':
-      return getGamesByGameMode('Multiplayer', 10)
-    case 'hidden-gems':
-      return (await getGamesByGenre('Indie', 20)).slice(0, 10)
-    case 'classic-hits': {
-      const games = await getPopularGames(30)
-      return games.filter((g) => g.year && g.year < 2010).slice(0, 10)
-    }
-    case 'most-reviewed':
-      return getPopularGames(10)
-    case 'open-world':
-      return getGamesByTheme('Open world', 10)
-    case 'indie':
-      return getGamesByGenre('Indie', 10)
-    case 'strategy':
-      return getGamesByGenre('Strategy', 30)
-    case 'adventure':
-      return getGamesByGenre('Adventure', 30)
-    case 'horror':
-      return getGamesByTheme('Horror', 30)
-    case 'sports':
-      return getGamesByGenre('Sport', 30)
-    case 'puzzle':
-      return getGamesByGenre('Puzzle', 30)
-    case 'shooter':
-      return getGamesByGenre('Shooter', 30)
-    default:
-      return []
-  }
 }

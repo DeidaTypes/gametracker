@@ -1,0 +1,66 @@
+/* ============================================
+   COVER GRID TILE
+   Cover, then title (two lines) and year under it.
+   The meta block reserves two title lines plus the year, so tile height
+   never depends on the title and a skeleton tile matches a real one.
+   ============================================ */
+
+.cover-grid-tile {
+  min-width: 0;
+}
+
+.cover-grid-tile__cover {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+}
+
+.cover-grid-tile__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  min-height: calc(
+    2 * var(--font-size-caption) * var(--line-height-caption)
+    + var(--space-4)
+    + var(--font-size-label) * var(--line-height-label)
+  );
+}
+
+.cover-grid-tile__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.cover-grid-tile__year {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-text-secondary);
+}
+
+.cover-grid-tile__bar {
+  display: block;
+  border-radius: var(--radius-xs);
+}
+
+.cover-grid-tile__bar--title {
+  width: 80%;
+  height: calc(var(--font-size-caption) * var(--line-height-caption));
+}
+
+.cover-grid-tile__bar--year {
+  width: 32%;
+  height: calc(var(--font-size-label) * var(--line-height-label));
+}
