@@ -1,0 +1,17 @@
+/* Edit list — reuses qa-cmp-* from qaComposerModal.css; list-only layout tweaks. */
+
+.elm-list-name-input {
+  /* Single-line name: no grow-field min height from Ask title. */
+  min-height: 0;
+}
+
+.elm-list-vis-row {
+  align-items: center;
+}
+
+.elm-list-vis-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--text-secondary);
+}

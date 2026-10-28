@@ -28,6 +28,7 @@ import { GRID_COVER_DISPLAY_PX, coverLoadingProps, getBestImageUrl } from '../se
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
 import AddGamesModal from '../components/AddGamesModal'
+import EditListModal from '../components/EditListModal'
 import ActionSheet from '../components/ActionSheet'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import ReportSheet from '../components/ReportSheet'
@@ -203,11 +204,11 @@ function ListDetail() {
   // resulting pointerup's synthesized click doesn't also navigate
   const { reduced: reducedMotion } = useMotionPreference()
 
-  // Inline description editing
-  const [editingDesc, setEditingDesc] = useState(false)
-  const [descDraft, setDescDraft] = useState('')
-  const [descError, setDescError] = useState(null)
-  const descTextareaRef = useRef(null)
+  const [showEditListModal, setShowEditListModal] = useState(false)
+  const [editListSaving, setEditListSaving] = useState(false)
+  const [editListFieldError, setEditListFieldError] = useState(null)
+  /** Rejected save draft — keeps modal fields when moderation reopens the popup. */
+  const [editListDraftOverride, setEditListDraftOverride] = useState(null)
 
   const isTracker = isTrackerList(listId)
 
@@ -334,11 +335,8 @@ function ListDetail() {
     currentUserId != null &&
     collaborators.some((c) => c.userId === currentUserId)
 
-  // Library list-card long-press → "Add/Edit description" lands here with
-  // location.state.editDescription so we open the existing masthead editor
-  // rather than inventing a second one. Consumed via ref — do not
-  // replace-navigate to clear state; that remounts this page and loses
-  // the editor we just opened.
+  // Library list-card long-press → "Add/Edit description" opens EditListModal.
+  // Consumed via ref — do not replace-navigate to clear state.
   const openedDescFromNavRef = useRef(false)
   useEffect(() => {
     openedDescFromNavRef.current = false
@@ -347,8 +345,9 @@ function ListDetail() {
     if (openedDescFromNavRef.current) return
     if (!location.state?.editDescription || !isOwner || !listInfo) return
     openedDescFromNavRef.current = true
-    setDescDraft(listInfo.description || '')
-    setEditingDesc(true)
+    setEditListFieldError(null)
+    setEditListDraftOverride(null)
+    setShowEditListModal(true)
   }, [location.state, isOwner, listInfo])
 
   // ── Save state (public custom lists) ─────────────────────────────────────
@@ -956,66 +955,49 @@ function ListDetail() {
         },
       ]
 
-  // ── Inline description editing ────────────────────────────────────────────
-
   function openDescEdit() {
-    setDescDraft(listInfo?.description || '')
-    setDescError(null)
-    setEditingDesc(true)
+    setEditListFieldError(null)
+    setEditListDraftOverride(null)
+    setShowEditListModal(true)
   }
 
-  const handleDescCancel = () => {
-    setEditingDesc(false)
-    setDescDraft('')
-    setDescError(null)
+  const handleCloseEditListModal = () => {
+    setShowEditListModal(false)
+    setEditListFieldError(null)
+    setEditListDraftOverride(null)
+    setEditListSaving(false)
   }
 
-  const handleDescSave = async () => {
-    const trimmed = descDraft.trim()
-    const prev = listInfo?.description || ''
-    if (trimmed === prev) {
-      setEditingDesc(false)
-      return
+  const handleEditListSave = async ({ name, description, isPublic }) => {
+    if (!listInfo || editListSaving) return
+    const prev = {
+      name: listInfo.name,
+      description: listInfo.description || '',
+      isPublic: listInfo.isPublic,
     }
-    setListInfo((l) => ({ ...l, description: trimmed }))
-    setEditingDesc(false)
-    setDescError(null)
+    setEditListSaving(true)
+    setEditListDraftOverride(null)
+    setListInfo((l) => ({ ...l, name, description, isPublic }))
+    setShowEditListModal(false)
+    setEditListFieldError(null)
     try {
-      await updateList(listId, { description: trimmed })
+      await updateList(listId, { name, description, isPublic })
       hapticSuccess()
-      showToast('Description updated', 'success')
+      showToast('List updated', 'success')
     } catch (err) {
-      setListInfo((l) => ({ ...l, description: prev }))
+      setListInfo((l) => ({ ...l, ...prev }))
       const blocked = ugcErrorMessage(err)
       if (blocked) {
-        setDescDraft(trimmed)
-        setDescError(blocked)
-        setEditingDesc(true)
+        setEditListDraftOverride({ name, description, isPublic })
+        setEditListFieldError(blocked)
+        setShowEditListModal(true)
       } else {
-        showToast("Couldn't save description. Please try again.", 'error')
+        showToast("Couldn't save list. Please try again.", 'error')
       }
+    } finally {
+      setEditListSaving(false)
     }
   }
-
-  // Auto-focus when edit opens
-  useEffect(() => {
-    if (!editingDesc) return
-    const t = setTimeout(() => {
-      const el = descTextareaRef.current
-      if (!el) return
-      el.focus()
-      el.setSelectionRange(el.value.length, el.value.length)
-    }, 40)
-    return () => clearTimeout(t)
-  }, [editingDesc])
-
-  // Auto-grow textarea
-  useEffect(() => {
-    const el = descTextareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
-  }, [descDraft])
 
   const author = listInfo?.author
   const ownerLabel = author?.displayName || author?.username || 'Unknown'
@@ -1248,44 +1230,9 @@ function ListDetail() {
         </div>
       </header>
 
-      {isOwner && editingDesc ? (
-        <div className="list-detail-desc-edit-wrap ld-desc-edit">
-          <div className="list-detail-desc-edit-unit">
-            <textarea
-              ref={descTextareaRef}
-              className="list-detail-desc-textarea"
-              value={descDraft}
-              onChange={(e) => setDescDraft(e.target.value)}
-              placeholder="Add a description…"
-              maxLength={500}
-              aria-label="List description"
-            />
-            {descError && (
-              <p className="form-field__error" role="alert">{descError}</p>
-            )}
-            <div className="list-detail-desc-edit-toolbar">
-              <button
-                type="button"
-                className="list-detail-desc-cancel-btn"
-                onClick={handleDescCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="list-detail-desc-save-btn"
-                onClick={handleDescSave}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        listInfo.description && (
-          <p className="ld-desc-line">{listInfo.description}</p>
-        )
-      )}
+      {listInfo.description ? (
+        <p className="ld-desc-line">{listInfo.description}</p>
+      ) : null}
 
       <div className="list-body">
         <div className="ld-sortrow">
@@ -1568,6 +1515,21 @@ function ListDetail() {
         <ClearModeOverlay
           games={visibleGames}
           onClose={() => setIsClearMode(false)}
+        />
+      )}
+
+      {isOwner && (
+        <EditListModal
+          isOpen={showEditListModal}
+          onClose={handleCloseEditListModal}
+          initialName={editListDraftOverride?.name ?? listInfo?.name ?? ''}
+          initialDescription={
+            editListDraftOverride?.description ?? listInfo?.description ?? ''
+          }
+          initialIsPublic={editListDraftOverride?.isPublic ?? listInfo?.isPublic ?? true}
+          fieldError={editListFieldError}
+          onSave={handleEditListSave}
+          saving={editListSaving}
         />
       )}
     </div>

@@ -507,11 +507,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.list-detail-page .ld-desc-edit {
-  padding: 0 var(--page-padding) var(--space-12);
-  margin-top: 0;
-}
-
 /* .new-iconbtn / .new-back / .new-acts — 24×24, no pill chrome */
 .list-detail-page .icon-btn {
   width: 24px;
@@ -540,106 +535,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .list-detail-page .icon-btn {
-    transition: none;
-  }
-}
-
-.list-detail-desc-edit-wrap {
-  width: 100%;
-}
-
-/* Field + toolbar — one continuous accent-bordered shape (mockup C). */
-.list-detail-desc-edit-unit {
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.list-detail-desc-textarea {
-  display: block;
-  width: 100%;
-  min-height: 70px;
-  max-height: 200px;
-  padding: 10px 12px;
-  background: var(--bg-base, var(--color-bg-base));
-  border: none;
-  border-radius: 0;
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  /* 16px prevents iOS auto-zoom on focus */
-  font-size: 16px;
-  line-height: 1.55;
-  resize: none;
-  outline: none;
-  box-sizing: border-box;
-  overflow-y: auto;
-  -webkit-text-size-adjust: 100%;
-}
-
-.list-detail-desc-textarea::placeholder {
-  color: var(--text-secondary);
-}
-
-.list-detail-desc-edit-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-4) var(--space-12);
-  background: var(--bg-surface);
-}
-
-.list-detail-desc-cancel-btn {
-  padding: var(--space-4) var(--space-8);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-  /* Opt out of the global 44px tap-target rule — inline toolbar control. */
-  min-width: 0;
-  min-height: 0;
-  transition: color var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-desc-cancel-btn:hover {
-  color: var(--text-primary);
-}
-
-.list-detail-desc-save-btn {
-  padding: var(--space-4) var(--space-12);
-  border-radius: var(--radius-full);
-  border: none;
-  /* Same fill as lib-fab-bg--lists on this screen (Library.css). */
-  background: var(--grad-purple-blue);
-  color: var(--color-on-accent);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: 700;
-  line-height: 1.2;
-  cursor: pointer;
-  /* Opt out of the global 44px tap-target rule — inline toolbar control. */
-  min-width: 0;
-  min-height: 0;
-  transition: opacity var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.list-detail-desc-save-btn:hover {
-  opacity: 0.88;
-}
-
-.list-detail-desc-save-btn:active {
-  opacity: 0.72;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .list-detail-desc-cancel-btn,
-  .list-detail-desc-save-btn {
     transition: none;
   }
 }
@@ -847,7 +742,6 @@
   .list-detail-page .list-body,
   .list-detail-page .ld-header,
   .list-detail-page .ld-desc-line,
-  .list-detail-page .ld-desc-edit,
   .list-detail-page .ld-sortrow {
     max-width: var(--page-max-width);
     margin-left: auto;
