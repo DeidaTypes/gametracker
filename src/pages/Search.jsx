@@ -36,6 +36,7 @@ import {
 } from '../services/followService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
+import PillTabs from '../components/PillTabs'
 import GenreTile from '../components/explore/GenreTile'
 import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import InlineErrorBanner from '../components/InlineErrorBanner'
@@ -1671,24 +1672,15 @@ function Search() {
           )}
         </form>
 
-        {/* Tab bar sits below the input, above the content. */}
-        <div className="sp-tabs" role="tablist" aria-label="Search categories">
-          {SEARCH_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              className={`sp-tab${activeTab === tab.id ? ' sp-tab--active' : ''}`}
-              onClick={() => {
-                if (activeTab !== tab.id) hapticImpact('Light')
-                setActiveTab(tab.id)
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <PillTabs
+          items={SEARCH_TABS}
+          value={activeTab}
+          ariaLabel="Search categories"
+          onChange={(id) => {
+            if (activeTab !== id) hapticImpact('Light')
+            setActiveTab(id)
+          }}
+        />
       </div>
 
       <ContentSwap swapKey={activeTab} className="sp-tab-content">

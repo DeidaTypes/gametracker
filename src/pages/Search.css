@@ -487,62 +487,6 @@
   margin-top: var(--spacing-lg);
 }
 
-/* =============================================
-   TABS — Sprint 5 P3
-   Mirror the Profile tab pattern (copper text + 2px copper underline
-   on active). Lives inside the sticky header so the tab bar stays
-   anchored above whatever content is scrolling underneath.
-   ============================================= */
-.sp-tabs {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: 8px 0 0;
-  margin-top: 12px;
-  border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.sp-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.sp-tab {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  padding: 12px 6px;
-  font-family: var(--font-body);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-body);
-  cursor: pointer;
-  position: relative;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  transition: color var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-  min-height: 44px;
-}
-
-.sp-tab:hover {
-  color: var(--color-text-primary);
-}
-
-.sp-tab--active {
-  color: var(--color-brand-primary);
-  font-weight: var(--font-weight-semibold);
-  border-bottom-color: var(--color-brand-primary);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sp-tab {
-    transition: none;
-  }
-}
-
 /* ---- Tab content wrapper ---- */
 .sp-tab-content {
   padding-top: 8px;

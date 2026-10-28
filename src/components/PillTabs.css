@@ -1,0 +1,107 @@
+/* Full-bleed scroll row inside padded headers (Search, genre page). */
+.pill-tabs {
+  margin-top: var(--space-12);
+  margin-left: calc(-1 * var(--space-16));
+  margin-right: calc(-1 * var(--space-16));
+  width: calc(100% + 2 * var(--space-16));
+}
+
+.pill-tabs__wrap {
+  position: relative;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pill-tabs__wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 1px;
+  width: 28px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-bg-primary)
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-fade);
+}
+
+.pill-tabs__wrap--edge::after {
+  opacity: 1;
+}
+
+.pill-tabs__scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-8);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-padding-inline: var(--space-16);
+  padding: 0 var(--space-16) var(--space-12);
+}
+
+.pill-tabs__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 44pt hit target; visible pill is the inner span (34pt). */
+.pill-tabs__tab {
+  flex: none;
+  min-width: 0;
+  width: auto;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pill-tabs__tab:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
+}
+
+.pill-tabs__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-tab-out) var(--ease-fade),
+    color var(--motion-tab-out) var(--ease-fade),
+    border-color var(--motion-tab-out) var(--ease-fade);
+}
+
+.pill-tabs__pill--active {
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  color: var(--color-on-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-tabs__wrap::after {
+    transition-duration: var(--motion-reduced-fade);
+  }
+
+  .pill-tabs__pill {
+    transition-duration: var(--motion-reduced-fade);
+  }
+}
