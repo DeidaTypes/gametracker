@@ -2126,9 +2126,9 @@ function Profile() {
                     navigate(`/game/${game.id}`, { state: getGameNavStub(game) })
                   }
                   onSeeMoreBadges={() => navigate(`/user/${profilePathSegment}/badges`)}
-                  profilePathSegment={profilePathSegment}
                   targetUserId={targetUserId}
                   isOwnProfile={isOwnProfile}
+                  displayName={profile.displayName}
                   onEditFavorites={() => setShowFavPickerSheet(true)}
                   onReorderFavorites={handleReorderFavorites}
                   onShareFavorites={handleShareFavorites}
@@ -2325,7 +2325,9 @@ function useProfileChallengeMeta(goalProgress, rivalryData) {
 
 function ProfileChallengeSection({
   goalProgress,
-  profilePathSegment,
+  userId,
+  isOwnProfile,
+  displayName,
   circleRank,
   remaining,
   hasGoal,
@@ -2359,7 +2361,9 @@ function ProfileChallengeSection({
             year={goalProgress.year}
             current={goalProgress.current}
             target={goalProgress.target}
-            profilePathSegment={profilePathSegment}
+            userId={userId}
+            isOwnProfile={isOwnProfile}
+            displayName={displayName}
             ariaLabel={`${goalProgress.year} Challenge, ${goalProgress.current} of ${goalProgress.target} completed. View completed games.`}
           >
             <GoalRing
@@ -2502,9 +2506,9 @@ function HomeTab({
   favoriteGames,
   onGameClick,
   onSeeMoreBadges,
-  profilePathSegment,
   targetUserId,
   isOwnProfile,
+  displayName,
   onEditFavorites,
   onReorderFavorites,
   onShareFavorites,
@@ -2553,7 +2557,9 @@ function HomeTab({
       {(showChallengeRow || targetUserId) && (
         <ProfileChallengeSection
           goalProgress={goalProgress}
-          profilePathSegment={profilePathSegment}
+          userId={targetUserId}
+          isOwnProfile={isOwnProfile}
+          displayName={displayName}
           circleRank={circleRank}
           remaining={remaining}
           hasGoal={hasGoal}

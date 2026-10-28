@@ -1,0 +1,267 @@
+/* ============================================================
+   ChallengePopup — yearly challenge in a centered popup.
+   Presented inside CenteredModal (.cm-card): the shell supplies the
+   surface, rounding, dim and motion. These styles lay out the top bar,
+   the summary, and the 3-column grid that scrolls inside the box.
+   Namespace: cp-*
+   ============================================================ */
+
+/* 80% of the viewport from the first frame. The shell's .kb-modal-fit
+   max-height still applies, so the box never outgrows the screen. */
+.cm-card.cp-card {
+  height: 80vh;
+}
+
+/* No grab bar and no drag to dismiss: the grab strip is the only place a
+   drag can start, so removing it removes both. */
+.cp-card .cm-grab {
+  display: none;
+}
+
+/* ── Top bar: title (and count) centered, Done on the right ── */
+.cp-top {
+  display: grid;
+  grid-template-columns: var(--space-64) 1fr var(--space-64);
+  align-items: center;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
+}
+
+.cp-top__title {
+  min-width: 0;
+  text-align: center;
+}
+
+.cp-top__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keeps its line while the count loads, so the bar never changes height. */
+.cp-top__count {
+  display: grid;
+  min-height: calc(var(--font-size-caption) * var(--line-height-caption));
+  color: var(--color-text-secondary);
+}
+
+.cp-top__done {
+  justify-self: end;
+  min-height: var(--space-32);
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cp-top__done:active {
+  opacity: 0.55;
+}
+
+/* ── Scrolling body ── */
+.cp-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-16);
+}
+
+/* The Arrive wrappers are the flex children; never let one shrink. */
+.cp-body > * {
+  flex: none;
+}
+
+/* ── Summary ── */
+.cp-summary {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  height: calc(var(--space-64) + var(--space-8));
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+}
+
+.cp-summary__text {
+  min-width: 0;
+}
+
+.cp-summary__count {
+  margin: 0;
+}
+
+.cp-summary__sub {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.cp-summary__ring-skel {
+  flex: none;
+  width: var(--space-48);
+  height: var(--space-48);
+}
+
+.cp-summary__count-skel {
+  width: var(--space-64);
+  height: var(--space-24);
+}
+
+.cp-summary__sub-skel {
+  width: calc(var(--space-64) + var(--space-32));
+  height: var(--space-12);
+  margin-top: var(--space-8);
+}
+
+/* ── Poster grid — same 3-up / --cover-ratio language as
+   Library → My Games (`lib-grid3` / `lib-cov`). ── */
+.cp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-12) var(--space-8);
+}
+
+.cp-poster {
+  display: block;
+  min-width: 0;
+  /* iOS WKWebView: a long-press on the title engages the native
+     text-selection recognizer and cancels the press. Same scoped lock as
+     Library .lib-gamecard. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cp-poster * {
+  -webkit-touch-callout: none;
+}
+
+.cp-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  background: var(--bg-surface-2);
+}
+
+.cp-cover__tap {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cp-cover__tap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cp-cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cp-cover-skel {
+  width: 100%;
+  aspect-ratio: var(--cover-ratio);
+  border-radius: var(--cover-radius);
+}
+
+.cp-poster__title {
+  display: block;
+  margin-top: var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Removal: the cover shrinks and fades on the leave curve; the title
+   collapses with it. Restore plays it back on the move curve. ── */
+.cp-poster--removing {
+  pointer-events: none;
+}
+
+.cp-poster--removing .cp-cover {
+  transform: scale(0.55);
+  opacity: 0;
+  transition:
+    transform var(--motion-pop-out) var(--ease-leave),
+    opacity var(--motion-pop-out) var(--ease-leave);
+}
+
+.cp-poster--removing .cp-poster__title {
+  opacity: 0;
+  transition: opacity var(--motion-pop-out) var(--ease-leave);
+}
+
+.cp-poster--restoring .cp-cover {
+  animation: cp-cover-restore var(--motion-pop-in) var(--ease-move) both;
+}
+
+@keyframes cp-cover-restore {
+  from {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Reduce Motion: nothing moves, fades only. */
+@media (prefers-reduced-motion: reduce) {
+  .cp-poster--removing .cp-cover {
+    transform: none;
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+  }
+
+  .cp-poster--removing .cp-poster__title {
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+  }
+
+  .cp-poster--restoring .cp-cover {
+    animation: cp-cover-restore-fade var(--motion-reduced-fade) var(--ease-fade) both;
+  }
+}
+
+body[data-reduce-motion='true'] .cp-poster--removing .cp-cover {
+  transform: none;
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+}
+
+body[data-reduce-motion='true'] .cp-poster--removing .cp-poster__title {
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+}
+
+body[data-reduce-motion='true'] .cp-poster--restoring .cp-cover {
+  animation: cp-cover-restore-fade var(--motion-reduced-fade) var(--ease-fade) both;
+}
+
+@keyframes cp-cover-restore-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

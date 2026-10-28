@@ -1697,8 +1697,9 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-            {/* Yearly challenge detail — the games behind the ring. Takes
-                an optional ?year= so an older challenge stays linkable. */}
+            {/* Cold deep links for the yearly challenge. The challenge is a
+                popup now: these render that user's Profile and open it once
+                (?year= respected). In-app taps never use these routes. */}
             <Route
               path="/user/:username/challenge"
               element={

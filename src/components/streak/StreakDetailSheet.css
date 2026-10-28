@@ -1,68 +1,52 @@
 /* ============================================================
-   STREAK DETAIL SHEET — milestone ladder + at-risk warning
+   STREAK DETAIL — milestone ladder + at-risk warning
+   Presented inside CenteredModal (.cm-card): the shell supplies the
+   surface, rounding, dim and motion. As tall as its content, up to 80%
+   of the viewport; the body scrolls inside when it is taller.
    Namespace: sds-*
    ============================================================ */
 
-.sds-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 240;
-  background: color-mix(in srgb, var(--bg-base) 40%, black);
+/* No grab bar and no drag to dismiss: the grab strip is the only place a
+   drag can start, so removing it removes both. */
+.sds-card .cm-grab {
+  display: none;
 }
 
-.sds-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 241;
-  max-height: min(88vh, 720px);
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-16));
-}
-
-.sds-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: var(--radius-full);
-  background: var(--border-strong);
-  margin: var(--space-12) auto var(--space-8);
-  flex-shrink: 0;
-}
-
-.sds-header {
-  display: flex;
+/* ── Top bar: title centered, Done on the right ── */
+.sds-top {
+  display: grid;
+  grid-template-columns: var(--space-64) 1fr var(--space-64);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  padding: 0 var(--space-20) var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  flex: none;
 }
 
-.sds-title {
+.sds-top__title {
   margin: 0;
+  text-align: center;
 }
 
-.sds-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-32);
-  height: var(--space-32);
+.sds-top__done {
+  justify-self: end;
+  min-height: var(--space-32);
+  padding: 0;
   border: none;
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--color-text-secondary);
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
+.sds-top__done:active {
+  opacity: 0.55;
+}
+
 .sds-body {
-  overflow-y: auto;
-  padding: 0 var(--space-20) var(--space-8);
+  padding: var(--space-16);
   display: flex;
   flex-direction: column;
   gap: var(--space-20);

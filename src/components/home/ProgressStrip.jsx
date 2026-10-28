@@ -2,8 +2,7 @@ import React, { useState } from 'react'
 import { Flame } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useStreakMilestoneState } from '../../hooks/useStreakMilestoneState'
-import { getProfile } from '../../services/profileService'
-import ChallengeCard, { challengePathSegment } from '../ChallengeCard'
+import ChallengeCard from '../ChallengeCard'
 import StreakDetailSheet from '../streak/StreakDetailSheet'
 import { Arrive } from '../motion/ContentSwap'
 import './ProgressStrip.css'
@@ -83,7 +82,7 @@ function ProgressStripPlaceholder() {
 }
 
 function ProgressStripBody({ view, goalProgress, rivalryData }) {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const [detailOpen, setDetailOpen] = useState(false)
 
   const {
@@ -100,11 +99,6 @@ function ProgressStripBody({ view, goalProgress, rivalryData }) {
   const circleRank = showChallenge
     ? computeCircleRank(goalProgress, rivalryData)
     : null
-
-  const profilePathSegment = challengePathSegment({
-    username: profile?.username || getProfile()?.username,
-    userId: user?.id,
-  })
 
   const line2Parts = []
   if (!hasStreak) {
@@ -166,7 +160,8 @@ function ProgressStripBody({ view, goalProgress, rivalryData }) {
             year={goalProgress.year}
             current={goalProgress.current}
             target={goalProgress.target}
-            profilePathSegment={profilePathSegment}
+            userId={user?.id}
+            isOwnProfile
           >
             <ChallengeRing current={goalProgress.current} target={goalProgress.target} />
             <div className="ps-challenge__info">
