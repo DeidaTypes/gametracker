@@ -534,7 +534,7 @@
 }
 
 .rd-comment__kebab-menu-danger {
-  color: var(--color-accent-rust, #f87171) !important;
+  color: var(--status-danger) !important;
 }
 
 /* ── Inline comment composer bar ─────────────────────────────────────── */
