@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis, LuFlag, LuSend, LuShare2 } from 'react-icons/lu'
+import { LuArrowUp, LuChevronLeft, LuEllipsis, LuFlag, LuShare2, LuX } from 'react-icons/lu'
 import { HiOutlineFlag, HiHeart, HiOutlineHeart } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
@@ -37,6 +37,7 @@ import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { useHideNav } from '../hooks/useHideNav'
+import { useComposerLift } from '../hooks/useComposerLift'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
@@ -615,6 +616,9 @@ function ReviewDetail() {
   // ── Refs ────────────────────────────────────────────────────
   /** The textarea inside the inline composer. */
   const inputRef = useRef(null)
+  // The bar lifts only while its own field is focused (see useComposerLift).
+  const composerLift = useComposerLift(inputRef)
+  const { onFocus: liftOnFocus } = composerLift
   /** Sentinel at the bottom of the thread — scrolled into view instead of
    * setting scrollTop directly, since `.rd-scroll` is no longer its own
    * scroll container (`.main-content` is; see ReviewDetail.css). */
@@ -783,11 +787,12 @@ function ReviewDetail() {
   /* ── Composer focus / blur ────────────────────────────────── */
 
   const handleComposerFocus = useCallback(() => {
+    liftOnFocus()
     // Scroll immediately so the newest comments are visible above the composer
     scrollToBottom()
     // Then again once the keyboard has actually settled
     whenKeyboardSettled(scrollToBottom)
-  }, [scrollToBottom])
+  }, [scrollToBottom, liftOnFocus])
 
   /* ── Derived ──────────────────────────────────────────────── */
 
@@ -1140,24 +1145,23 @@ function ReviewDetail() {
        */}
       <KeyboardAwareView
         mode="composer"
-        className="kb-composer-bar composer-bar rd-composer"
+        lift={composerLift.active}
+        className="kb-composer-bar kb-composer-bar--seamless composer-bar rd-composer"
         aria-label="Comment composer"
       >
         {replyTo && (
-          <div className="rd-composer__reply-hint">
-            <span>
+          <div className="composer__chip text-caption">
+            <span className="composer__chip-text">
               Replying to{' '}
-              <strong className="rd-composer__reply-name">
-                {displayNameFor(replyTo.users)}
-              </strong>
+              <strong>{displayNameFor(replyTo.users)}</strong>
             </span>
             <button
               type="button"
-              className="rd-composer__reply-cancel"
+              className="composer__chip-close"
               onClick={cancelReply}
               aria-label="Cancel reply"
             >
-              ×
+              <LuX size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -1174,6 +1178,7 @@ function ReviewDetail() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onFocus={handleComposerFocus}
+              onBlur={composerLift.onBlur}
               onKeyDown={handleComposerKeyDown}
               placeholder={
                 replyTo
@@ -1196,7 +1201,7 @@ function ReviewDetail() {
               disabled={!draft.trim() || posting}
               aria-label="Send comment"
             >
-              <LuSend size={14} aria-hidden="true" />
+              <LuArrowUp size={16} aria-hidden="true" />
             </button>
           </div>
         </div>

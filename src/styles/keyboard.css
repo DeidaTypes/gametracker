@@ -236,9 +236,11 @@ body.keyboard-open {
   }
 }
 
-/* ── Seamless comment bar — opt-in variant (List page only, for now) ─────
-   Add `kb-composer-bar--seamless` next to `kb-composer-bar composer-bar`.
-   Every other comment screen keeps the standard bar above.
+/* ── Seamless comment bar — THE standard comment bar ─────────────────────
+   Every kb-composer-bar carries `kb-composer-bar--seamless` next to
+   `kb-composer-bar composer-bar` (List, Review comments, Review page, Q&A,
+   Messages). The base rules above stay as the fallback it builds on; a new
+   comment, answer or message bar uses this variant, not the base look.
 
    The bar is the page's own color all the way to the bottom of the screen:
    bottom: 0, with the home-indicator inset folded into its padding instead
@@ -303,9 +305,63 @@ body.keyboard-open {
   color: var(--theme-dim);
 }
 
-.kb-composer-bar--seamless .composer__send:not(:disabled) {
+/* Sending: the spinner rides inside the filled circle, like the arrow. */
+.kb-composer-bar--seamless .composer__send.composer__send--busy {
   background: var(--theme-primary);
   color: var(--theme-on-primary);
+}
+
+/* button only: the Q&A dock's arrow is a decorative span that must stay quiet. */
+.kb-composer-bar--seamless button.composer__send:not(:disabled) {
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
+}
+
+/* Chip row above the field (Replying to / Editing comment / pending
+   attachment): inside the bar, 8pt above the field, so the fade above the bar
+   starts above it. The close control is a 32pt hit area with a 16pt icon. */
+.kb-composer-bar--seamless .composer__chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto var(--space-8);
+  color: var(--color-text-secondary);
+}
+
+.kb-composer-bar--seamless .composer__chip strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.kb-composer-bar--seamless .composer__chip-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-composer-bar--seamless .composer__chip-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  /* Opt out of the global 44px tap-target rule, like .composer__send. */
+  min-width: 0;
+  min-height: 0;
+  margin: 0 calc(-1 * var(--space-4)) 0 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

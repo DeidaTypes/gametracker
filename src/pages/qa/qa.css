@@ -1270,14 +1270,10 @@ body[data-reduce-motion='true'] .qa-swap-in {
   cursor: pointer;
 }
 
-.qa-composer-dock {
-  padding: var(--space-12) var(--page-padding);
-  padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom, 0px));
-}
-
+/* Rest position, padding, fade and the 42pt shell come from
+   .kb-composer-bar--seamless (styles/keyboard.css). The dock is a button that
+   opens the Answer popup, so it only sets what a field would not. */
 button.qa-dock-shell {
-  min-height: 44px;
-  padding-left: var(--space-12);
   font-family: inherit;
   font-size: var(--font-size-body);
   color: var(--theme-dim);
@@ -1294,7 +1290,8 @@ button.qa-dock-shell {
 }
 
 .qa-dock-shell .composer__send {
-  color: var(--theme-muted);
+  /* Decorative: stays quiet like an empty field's arrow, never fills. */
+  color: var(--theme-dim);
 }
 
 body[data-reduce-motion='true'] .qa-screen--question .skeleton {

@@ -8,10 +8,17 @@
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  /* Reserve room for the fixed composer + bottom nav so the last
-     bubble isn't hidden under it. */
-  padding-bottom: calc(120px + var(--bottom-nav-safe-area));
+  /* Reserve room for the fixed comment bar so the last bubble isn't hidden
+     under it. The thread hides the nav (useHideNav), so --bottom-nav-safe-area
+     is just the home-indicator inset here. Same reserve as the other comment
+     screens (keyboard.css). */
+  padding-bottom: calc(var(--comment-composer-clearance) + var(--bottom-nav-safe-area));
   background: transparent;
+}
+
+/* A pending attachment adds a row (58pt card + 8pt gap) to the bar. */
+.dm-thread:has(.dm-composer-attachment) {
+  padding-bottom: calc(var(--comment-composer-clearance) + var(--space-64) + var(--bottom-nav-safe-area));
 }
 
 /* ── Header ─────────────────────────────────────────────────────────── */
@@ -521,7 +528,7 @@
   width: 44px;
   height: 58px;
   object-fit: cover;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
   display: block;
   box-shadow: var(--shadow-sm);
@@ -598,25 +605,29 @@
   color: var(--color-text-tertiary);
 }
 
-/* ── Composer attachment preview ──────────────────────────────────────── */
+/* ── Composer attachment preview ──────────────────────────────────────
+   Sits inside the bar above the field (8pt apart, like every chip row); the
+   close control is the shared .composer__chip-close. */
 
 .dm-composer-attachment {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-12);
+  margin: 0 auto var(--space-8);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-line);
   border-radius: var(--radius-md);
   width: 100%;
+  max-width: var(--page-max-width);
+  box-sizing: border-box;
 }
 
 .dm-composer-attachment__thumb {
   width: 32px;
   height: 42px;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   display: block;
 }
@@ -626,44 +637,19 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .dm-composer-attachment__type {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-brand-primary);
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
 }
 
 .dm-composer-attachment__title {
-  font-family: var(--font-body);
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.dm-composer-attachment__remove {
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  color: var(--color-text-tertiary);
-  font-size: 14px;
-  line-height: 1;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.dm-composer-attachment__remove:hover {
-  color: var(--color-text-primary);
 }
 
 /* ── Composer ───────────────────────────────────────────────────────── */
@@ -842,7 +828,6 @@
   .dm-bubble__emoji-btn,
   .dm-bubble__reaction-pill,
   .dm-attachment-card,
-  .dm-composer-attachment__remove,
   .dm-empty__chip {
     transition: none;
     transform: none;

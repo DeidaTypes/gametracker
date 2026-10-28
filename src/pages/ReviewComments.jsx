@@ -7,6 +7,7 @@ import React, {
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
+  LuArrowUp,
   LuCheck,
   LuChevronLeft,
   LuEllipsis,
@@ -14,8 +15,8 @@ import {
   LuPin,
   LuPinOff,
   LuQuote,
-  LuSend,
   LuTrash2,
+  LuX,
 } from 'react-icons/lu'
 import { HiOutlineFlag } from 'react-icons/hi'
 import { MessageCircle } from 'lucide-react'
@@ -62,6 +63,7 @@ import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { removePulseFeedItem } from '../hooks/useHomeFeed'
 import { useHideNav } from '../hooks/useHideNav'
+import { useComposerLift } from '../hooks/useComposerLift'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
@@ -442,6 +444,9 @@ function ReviewComments() {
   const [editingComment, setEditingComment] = useState(null)
   const [posting, setPosting] = useState(false)
   const composerInputRef = useRef(null)
+  // The bar lifts only while its own field is focused (see useComposerLift).
+  const composerLift = useComposerLift(composerInputRef)
+  const { onFocus: liftOnFocus } = composerLift
   // Auto-grow textarea — shared with List Comments / Review Detail (see
   // src/hooks/useAutoGrowTextarea.js) so the grow-then-cap behavior can
   // never drift between composers. Cap matches .composer__input's
@@ -882,6 +887,7 @@ function ReviewComments() {
   // `.main-content` is the real scroll container, so we scroll via
   // scrollIntoView() rather than setting scrollTop directly on a ref.
   const handleComposerFocus = useCallback(() => {
+    liftOnFocus()
     whenKeyboardSettled(() => {
       const editing = editingCommentRef.current
       if (editing) {
@@ -891,7 +897,7 @@ function ReviewComments() {
         threadBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       }
     })
-  }, [])
+  }, [liftOnFocus])
 
   // Enter edit mode: pre-fill the pinned composer and focus it.
   const handleEditStart = useCallback(
@@ -1189,36 +1195,37 @@ function ReviewComments() {
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="kb-composer-bar composer-bar rc-composer"
+        lift={composerLift.active}
+        className="kb-composer-bar kb-composer-bar--seamless composer-bar rc-composer"
         onSubmit={handleSubmit}
       >
         {/* Edit-mode strip — shown above the composer when editing a comment */}
         {editingComment && (
-          <div className="rc-composer__edit-chip">
-            <span>Editing comment</span>
+          <div className="composer__chip text-caption">
+            <span className="composer__chip-text">Editing comment</span>
             <button
               type="button"
-              className="rc-composer__reply-cancel"
+              className="composer__chip-close"
               onClick={handleCancelEdit}
               aria-label="Cancel editing"
             >
-              ×
+              <LuX size={16} aria-hidden="true" />
             </button>
           </div>
         )}
         {/* Reply chip — only shown in reply mode (mutually exclusive with edit) */}
         {replyTo && !editingComment && (
-          <div className="rc-composer__reply-chip">
-            <span>
+          <div className="composer__chip text-caption">
+            <span className="composer__chip-text">
               Replying to <strong>{displayNameFor(replyTo.users)}</strong>
             </span>
             <button
               type="button"
-              className="rc-composer__reply-cancel"
+              className="composer__chip-close"
               onClick={handleCancelReply}
               aria-label="Cancel reply"
             >
-              ×
+              <LuX size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -1240,6 +1247,7 @@ function ReviewComments() {
               disabled={!isAuthed || posting}
               aria-label={editingComment ? 'Edit comment text' : 'Comment text'}
               onFocus={handleComposerFocus}
+              onBlur={composerLift.onBlur}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   handleSubmit(e)
@@ -1253,8 +1261,8 @@ function ReviewComments() {
               aria-label={editingComment ? 'Save edit' : 'Send comment'}
             >
               {editingComment
-                ? <LuCheck size={14} aria-hidden="true" />
-                : <LuSend size={14} aria-hidden="true" />
+                ? <LuCheck size={16} aria-hidden="true" />
+                : <LuArrowUp size={16} aria-hidden="true" />
               }
             </button>
           </div>

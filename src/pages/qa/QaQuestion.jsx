@@ -16,7 +16,7 @@ import {
   Upload,
   Users,
 } from 'lucide-react'
-import { LuSend } from 'react-icons/lu'
+import { LuArrowUp } from 'react-icons/lu'
 import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import ActionSheet from '../../components/ActionSheet'
@@ -911,7 +911,7 @@ export default function QaQuestion() {
         ) : null}
       </div>
 
-      <div className="kb-composer-bar composer-bar qa-composer-dock">
+      <div className="kb-composer-bar kb-composer-bar--seamless composer-bar qa-composer-dock">
         <div className="composer__row">
           <Avatar user={profile} size="sm" className="qa-composer-dock__av" />
           <button
@@ -921,7 +921,7 @@ export default function QaQuestion() {
           >
             <span className="qa-dock-shell__text">{composerText}</span>
             <span className="composer__send" aria-hidden="true">
-              <LuSend size={14} />
+              <LuArrowUp size={16} />
             </span>
           </button>
         </div>

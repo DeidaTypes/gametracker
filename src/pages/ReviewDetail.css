@@ -553,45 +553,8 @@
    applied alongside this one in the JSX (kept as a hook for any
    ReviewDetail-specific composer styling). */
 
-/* Optional reply-hint banner shown above the input row */
-.rd-composer__reply-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  padding: 6px var(--page-padding) 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--color-text-secondary);
-}
-
-.rd-composer__reply-name {
-  color: var(--color-brand-primary, var(--accent));
-  font-weight: var(--font-weight-semibold);
-}
-
-.rd-composer__reply-cancel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  color: var(--theme-text);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: var(--radius-full);
-  -webkit-tap-highlight-color: transparent;
-  flex-shrink: 0;
-  transition: color var(--transition-fast);
-}
-
-.rd-composer__reply-cancel:hover {
-  color: var(--color-text-primary);
-}
+/* Reply hint above the field: shared .composer__chip rules in
+   styles/keyboard.css. */
 
 /* Composer chrome: styles/keyboard.css (.composer-bar / .composer__*).
    Input runs full width — no avatar beside the shell. */
@@ -655,7 +618,6 @@
   .rd-comment__action-btn,
   .rd-comment__kebab-btn,
   .rd-thread__replies-toggle,
-  .rd-composer__reply-cancel,
   .rd-modal-textarea,
   .rd-modal-post {
     transition: none;

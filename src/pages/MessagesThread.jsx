@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { LuChevronLeft, LuEllipsis, LuArrowUp } from 'react-icons/lu'
+import { LuArrowUp, LuChevronLeft, LuEllipsis, LuX } from 'react-icons/lu'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import {
@@ -37,6 +37,8 @@ import ActionSheet from '../components/ActionSheet'
 import KeyboardAwareView from '../components/KeyboardAwareView'
 import Avatar from '../components/Avatar'
 import { useAutoGrowTextarea } from '../hooks/useAutoGrowTextarea'
+import { useHideNav } from '../hooks/useHideNav'
+import { useComposerLift } from '../hooks/useComposerLift'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { ugcErrorMessage } from '../services/moderationService'
 import '../components/forms/forms.css'
@@ -100,6 +102,9 @@ function MessagesThread() {
   const { username } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  // The thread owns the bottom of the screen: the nav pill leaves and the
+  // comment bar sits flush at the bottom. See src/hooks/useHideNav.js.
+  useHideNav()
   const decodedUsername = decodeURIComponent(username || '')
 
   /* ── Resolve username -> partner row ──────────────────────── */
@@ -175,6 +180,8 @@ function MessagesThread() {
     navState?.dmAttachment || null
   )
   const composerRef = useRef(null)
+  // The bar lifts only while its own field is focused (see useComposerLift).
+  const composerLift = useComposerLift(composerRef)
   const scrollRef = useRef(null)
 
   // Report sheet — holds the message being reported (incoming only).
@@ -835,11 +842,12 @@ function MessagesThread() {
       <KeyboardAwareView
         as="form"
         mode="composer"
-        className="kb-composer-bar composer-bar dm-thread__composer"
+        lift={composerLift.active}
+        className="kb-composer-bar kb-composer-bar--seamless composer-bar dm-thread__composer"
         onSubmit={handleSend}
       >
         {pendingAttachment && (
-          <div className="dm-composer-attachment">
+          <div className="dm-composer-attachment text-caption">
             {pendingAttachment.cover_url && (
               <img
                 src={pendingAttachment.cover_url}
@@ -857,11 +865,11 @@ function MessagesThread() {
             </div>
             <button
               type="button"
-              className="dm-composer-attachment__remove"
+              className="composer__chip-close"
               onClick={() => setPendingAttachment(null)}
               aria-label="Remove attachment"
             >
-              ✕
+              <LuX size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -888,6 +896,8 @@ function MessagesThread() {
               maxLength={4000}
               disabled={isSelf || !partnerId || partnerBlocked}
               aria-label="Message body"
+              onFocus={composerLift.onFocus}
+              onBlur={composerLift.onBlur}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   handleSend(e)
@@ -903,7 +913,7 @@ function MessagesThread() {
               {sending ? (
                 <span className="dm-thread__send-spinner" aria-hidden="true" />
               ) : (
-                <LuArrowUp size={14} aria-hidden="true" />
+                <LuArrowUp size={16} aria-hidden="true" />
               )}
             </button>
           </div>

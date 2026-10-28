@@ -433,72 +433,8 @@
 /* Composer chrome: styles/keyboard.css (.composer-bar / .composer__*).
    Rest position: .kb-composer-bar + <KeyboardAwareView mode="composer">. */
 
-/* Edit-mode strip — sits directly above the composer row */
-.rc-composer__edit-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 auto 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-chip);
-  background: rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.14);
-  border: 1px solid rgba(var(--color-brand-primary-rgb, 59, 130, 246), 0.35);
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rc-composer__reply-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 auto 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-chip);
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rc-composer__reply-chip strong {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-.rc-composer__reply-cancel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 2px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  color: var(--theme-text);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: var(--radius-full);
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.rc-composer__reply-cancel:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-}
+/* Edit / reply chip above the field: shared .composer__chip rules in
+   styles/keyboard.css. */
 
 /* ── Reduced motion ─────────────────────────────────────────────────── */
 
@@ -507,8 +443,7 @@
   .rc-header__kebab,
   .rc-comment__action,
   .rc-comment__kebab-btn,
-  .rc-comment--editing,
-  .rc-composer__reply-cancel {
+  .rc-comment--editing {
     transition: none;
     will-change: auto;
   }
