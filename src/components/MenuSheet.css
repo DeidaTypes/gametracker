@@ -1,21 +1,32 @@
 /* ============================================================
-   SettingsSheet — own-profile "⋯" sheet. Four rows, 18px line
-   icons in the muted color, hairlines inset to the label.
-   Settings is the only row with a chevron.
+   MenuSheet — the shared "⋯" menu sheet (Profile + List).
+   Handle, X, 48pt rows with an 18px line icon in the muted
+   color, hairlines inset to the label.
+
+   Structure: .menu-sheet-root is a plain, never-animated layer.
+   The backdrop and the panel are its two children, so only the
+   backdrop's opacity animates and the panel is solid from its
+   first frame.
    ============================================================ */
-.settings-sheet-overlay {
+.menu-sheet-root {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
-     frame. The dim carries the backdrop. */
   z-index: 1010;
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
 
-.settings-sheet {
+.menu-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
+     frame. The dim carries the backdrop. */
+}
+
+.menu-sheet {
+  position: relative;
   width: 100%;
   max-width: 480px;
   max-height: 88vh;
@@ -29,7 +40,7 @@
   outline: none;
 }
 
-.settings-sheet__handle {
+.menu-sheet__handle {
   width: 36px;
   height: 4px;
   border-radius: var(--radius-full);
@@ -37,7 +48,7 @@
   margin: var(--space-12) auto var(--space-4);
 }
 
-.settings-sheet__header {
+.menu-sheet__header {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -45,7 +56,7 @@
   padding-right: var(--space-4);
 }
 
-.settings-sheet__close {
+.menu-sheet__close {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -61,21 +72,21 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.settings-sheet__close:hover {
+.menu-sheet__close:hover {
   background: var(--theme-fill);
 }
 
-.settings-sheet__close:active {
+.menu-sheet__close:active {
   background: var(--theme-fill);
 }
 
-.settings-sheet__body {
+.menu-sheet__body {
   padding: 0 0 var(--space-8);
   display: flex;
   flex-direction: column;
 }
 
-.settings-sheet__row {
+.menu-sheet__row {
   display: flex;
   align-items: stretch;
   width: 100%;
@@ -92,21 +103,21 @@
   transition: background-color 140ms ease;
 }
 
-.settings-sheet__row:hover:not(:disabled) {
+.menu-sheet__row:hover:not(:disabled) {
   background: var(--theme-fill);
 }
 
-.settings-sheet__row:active:not(:disabled) {
+.menu-sheet__row:active:not(:disabled) {
   background: var(--theme-fill);
 }
 
-.settings-sheet__row--disabled,
-.settings-sheet__row:disabled {
+.menu-sheet__row--disabled,
+.menu-sheet__row:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.settings-sheet__icon {
+.menu-sheet__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -119,7 +130,7 @@
 
 /* Hairline lives on the label column so it starts at the text,
    past the 18px icon. */
-.settings-sheet__main {
+.menu-sheet__main {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
@@ -129,11 +140,11 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.settings-sheet__row:first-child .settings-sheet__main {
+.menu-sheet__row:first-child .menu-sheet__main {
   border-top: 0;
 }
 
-.settings-sheet__label {
+.menu-sheet__label {
   flex: 1 1 auto;
   min-width: 0;
   font-size: var(--font-size-body);
@@ -142,22 +153,37 @@
   color: var(--text-primary);
 }
 
-.settings-sheet__chevron {
+.menu-sheet__chevron {
   flex: 0 0 auto;
   color: var(--text-tertiary);
 }
 
+/* A group break: 8pt of space with a hairline. The row after it starts
+   clean, so the break reads as one line, not two. */
+.menu-sheet__divider {
+  flex: none;
+  height: var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.menu-sheet__divider + .menu-sheet__row .menu-sheet__main {
+  border-top: 0;
+}
+
+.menu-sheet__row--destructive .menu-sheet__icon,
+.menu-sheet__row--destructive .menu-sheet__label {
+  color: var(--status-danger);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .settings-sheet-overlay,
-  .settings-sheet {
+  .menu-sheet-root,
+  .menu-sheet {
     animation: none;
     transition: none;
   }
 }
 
-body[data-reduce-motion='true'] .settings-sheet-overlay,
-body[data-reduce-motion='true'] .settings-sheet,
-body[data-reduce-motion='true'] .settings-sheet__row,
-body[data-reduce-motion='true'] .settings-sheet__close {
+body[data-reduce-motion='true'] .menu-sheet__row,
+body[data-reduce-motion='true'] .menu-sheet__close {
   transition: none !important;
 }

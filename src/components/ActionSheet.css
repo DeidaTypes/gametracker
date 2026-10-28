@@ -1,19 +1,27 @@
 /* ============================================================
    ActionSheet — slides up from bottom
    ============================================================ */
+/* The overlay is a plain layer that never animates. Its two children are the
+   backdrop (the only thing that fades) and the panel, so the panel is solid
+   from its first frame. */
 .action-sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
-     frame. The dim carries the backdrop. */
   z-index: 1020;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* Enter/exit animation is driven by Framer Motion in ActionSheet.jsx
-     (fade 150 ms backdrop, spring slide-up sheet). CSS keyframes are
-     intentionally absent so the two systems don't fight. */
+  /* Enter/exit animation is driven by Framer Motion (xMotion sheetDim /
+     sheetPanel). CSS keyframes are intentionally absent so the two systems
+     don't fight. */
+}
+
+.action-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
+     frame. The dim carries the backdrop. */
 }
 
 /* Fixed anchoring + keyboard lift come from the shared .kb-sheet-lift wrapper
@@ -39,6 +47,8 @@
 }
 
 .action-sheet {
+  /* Paints over the absolutely positioned backdrop (a sibling). */
+  position: relative;
   width: 100%;
   background: var(--color-bg-elevated);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;

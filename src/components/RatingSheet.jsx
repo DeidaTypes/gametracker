@@ -132,14 +132,19 @@ function RatingSheet({
   return createPortal(
     <AnimatePresence>
       {isOpen && game && (
-        <motion.div
-          className="rts-backdrop"
-          onClick={handleDismiss}
+        <div
+          key="rating-sheet"
+          className="rts-overlay"
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          {...sheetDim(reduced)}
         >
+          <motion.div
+            className="rts-backdrop"
+            aria-hidden="true"
+            onClick={handleDismiss}
+            {...sheetDim(reduced)}
+          />
           <motion.div
             className="rts-sheet"
             onClick={(e) => e.stopPropagation()}
@@ -199,7 +204,7 @@ function RatingSheet({
               </button>
             </p>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>,
     document.body

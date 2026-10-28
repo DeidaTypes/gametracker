@@ -88,15 +88,22 @@ function ActionSheet({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <div
+          key="action-sheet"
           className={`action-sheet-overlay${top ? ' action-sheet-overlay--top' : ''}`}
-          onClick={onClose}
           aria-modal="true"
           role="dialog"
           aria-label={titleId ? undefined : 'Actions'}
           aria-labelledby={titleId}
-          {...sheetDim(reduced)}
         >
+          {/* The backdrop is the only thing that fades; the panel is a
+              sibling, so it is solid from its first frame. */}
+          <motion.div
+            className="action-sheet-backdrop"
+            aria-hidden="true"
+            onClick={onClose}
+            {...sheetDim(reduced)}
+          />
           <KeyboardAwareView mode="sheet" className={`action-sheet-anchor${top ? ' action-sheet-anchor--top' : ''}`}>
           <motion.div
             ref={sheetRef}
@@ -197,7 +204,7 @@ function ActionSheet({
             </button>
           </motion.div>
           </KeyboardAwareView>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>,
     document.body

@@ -2,7 +2,20 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAutoAnimateMotion, useMotionPreference } from '../hooks/useMotionPreference'
-import { LuChevronLeft } from 'react-icons/lu'
+import {
+  LuChevronLeft,
+  LuShare2,
+  LuMaximize2,
+  LuPencil,
+  LuUsers,
+  LuPin,
+  LuPinOff,
+  LuCopy,
+  LuTrash2,
+  LuBookmark,
+  LuBookmarkCheck,
+  LuFlag,
+} from 'react-icons/lu'
 import { HiDotsVertical, HiPlus } from 'react-icons/hi'
 import {
   ChevronLeft,
@@ -30,6 +43,7 @@ import { getGameNavStub } from '../utils/gameNavStub'
 import AddGamesModal from '../components/AddGamesModal'
 import EditListModal from '../components/EditListModal'
 import ActionSheet from '../components/ActionSheet'
+import MenuSheet from '../components/MenuSheet'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import ReportSheet from '../components/ReportSheet'
 import EmptyState from '../components/EmptyState'
@@ -917,27 +931,32 @@ function ListDetail() {
   const canShareList = listInfo?.isCustom && listInfo?.isPublic && !!currentUserId
 
   const shareItem = canShareList
-    ? [{ label: 'Share', onClick: () => setDmShareOpen(true) }]
+    ? [{ icon: <LuShare2 size={18} />, label: 'Share', onClick: () => setDmShareOpen(true) }]
     : []
 
   const actionSheetItems = isOwner
     ? [
         ...shareItem,
-        { label: 'Clear mode', onClick: () => setIsClearMode(true) },
-        { label: 'Edit details', onClick: openDescEdit },
+        { icon: <LuMaximize2 size={18} />, label: 'Clear mode', onClick: () => setIsClearMode(true) },
+        { icon: <LuPencil size={18} />, label: 'Edit details', onClick: openDescEdit },
         {
+          icon: <LuUsers size={18} />,
           label: 'Manage collaborators',
           onClick: () => setShowCollaboratorSheet(true),
         },
         {
+          icon: isPinned ? <LuPinOff size={18} /> : <LuPin size={18} />,
           label: isPinned ? 'Unpin from profile' : 'Pin to profile',
           onClick: handlePinToggle,
         },
         {
+          icon: <LuCopy size={18} />,
           label: 'Duplicate list',
           onClick: handleDuplicate,
         },
+        { divider: true },
         {
+          icon: <LuTrash2 size={18} />,
           label: 'Delete list',
           destructive: true,
           onClick: () => setShowDeleteConfirm(true),
@@ -945,11 +964,17 @@ function ListDetail() {
       ]
     : [
         ...(listInfo?.isCustom && listInfo?.isPublic && currentUserId
-          ? [{ label: isSaved ? 'Unsave' : 'Save', onClick: handleSaveToggle }]
+          ? [{
+              icon: isSaved ? <LuBookmarkCheck size={18} /> : <LuBookmark size={18} />,
+              label: isSaved ? 'Unsave' : 'Save',
+              onClick: handleSaveToggle,
+            }]
           : []),
         ...shareItem,
-        { label: 'Clear mode', onClick: () => setIsClearMode(true) },
+        { icon: <LuMaximize2 size={18} />, label: 'Clear mode', onClick: () => setIsClearMode(true) },
+        { divider: true },
         {
+          icon: <LuFlag size={18} />,
           label: 'Report list',
           onClick: () => setReportSheetOpen(true),
         },
@@ -1130,9 +1155,10 @@ function ListDetail() {
           onAddGames={null}
         />
 
-        <ActionSheet
+        <MenuSheet
           isOpen={showActionSheet}
           onClose={() => setShowActionSheet(false)}
+          ariaLabel="List actions"
           items={actionSheetItems}
         />
 
@@ -1425,9 +1451,10 @@ function ListDetail() {
         onAddGames={null}
       />
 
-      <ActionSheet
+      <MenuSheet
         isOpen={showActionSheet}
         onClose={() => setShowActionSheet(false)}
+        ariaLabel="List actions"
         items={actionSheetItems}
       />
 

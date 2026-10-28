@@ -103,14 +103,19 @@ function SettingsPickerSheet({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <div
+          key="settings-picker-sheet"
           className="action-sheet-overlay"
-          onClick={handleCancel}
           aria-modal="true"
           role="dialog"
           aria-label={title}
-          {...dim}
         >
+          <motion.div
+            className="action-sheet-backdrop"
+            aria-hidden="true"
+            onClick={handleCancel}
+            {...dim}
+          />
           <motion.div
             ref={sheetRef}
             className="action-sheet settings-picker-sheet"
@@ -186,7 +191,7 @@ function SettingsPickerSheet({
               </button>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>,
     document.body

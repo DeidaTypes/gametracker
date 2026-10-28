@@ -4,16 +4,24 @@
    Namespace: rts-*
    ============================================= */
 
-.rts-backdrop {
+/* The overlay never animates. The backdrop (the only thing that fades) and
+   the sheet are its two children, so the sheet is solid from its first frame. */
+.rts-overlay {
   position: fixed;
   inset: 0;
   z-index: 500;
   display: flex;
   align-items: flex-end;
+}
+
+.rts-backdrop {
+  position: absolute;
+  inset: 0;
   background: rgba(0, 0, 0, 0.55);
 }
 
 .rts-sheet {
+  position: relative;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;

@@ -193,11 +193,13 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
       {createPortal(
         <AnimatePresence>
           {sheetVisible && (
-            <motion.div
-              className="bs-backdrop"
-              onClick={dismiss}
-              {...sheetDim(reduced)}
-            >
+            <div key="add-to-list-sheet" className="bs-overlay">
+              <motion.div
+                className="bs-backdrop"
+                aria-hidden="true"
+                onClick={dismiss}
+                {...sheetDim(reduced)}
+              />
               <motion.div
                 className="bs-sheet"
                 role="dialog"
@@ -304,7 +306,7 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                   )}
                 </div>
               </motion.div>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>,
         document.body

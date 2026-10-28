@@ -37,16 +37,22 @@
   transform: translateY(0);
 }
 
-/* ── Backdrop/Scrim (full-screen flex layer, rendered into body) ──
-   Doubles as the dismiss target — a tap anywhere outside the sheet
-   closes it. Enter/exit opacity is driven by Framer Motion. */
-.bs-backdrop {
+/* ── Overlay (full-screen flex layer, rendered into body) ──
+   Never animates. Its two children are the backdrop (the only thing that
+   fades, and the dismiss target — a tap anywhere outside the sheet closes
+   it) and the sheet, so the sheet is solid from its first frame. */
+.bs-overlay {
   position: fixed;
   inset: 0;
   z-index: 1100;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+}
+
+.bs-backdrop {
+  position: absolute;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   /* No backdrop-filter: this layer fades, and a faded blur re-rasters every
      frame. The dim carries the backdrop. */

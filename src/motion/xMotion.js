@@ -127,9 +127,12 @@ export function sheetPanel(reduced) {
   )
 }
 
+// The backdrop fades on the fade curve in (a move curve is front-loaded and
+// makes the dim look like it snaps on) and on the leave curve out. Spread this
+// on the backdrop element only, never on an element that contains the panel.
 export function sheetDim(reduced) {
   if (reduced) return fadeOnly()
-  return presence(HIDDEN, SHOWN, HIDDEN, tween(MOTION.sheetIn, EASE.move), tween(MOTION.sheetOut, EASE.leave))
+  return presence(HIDDEN, SHOWN, HIDDEN, tween(MOTION.sheetIn, EASE.fade), tween(MOTION.sheetOut, EASE.leave))
 }
 
 export function toastMotion(reduced) {
