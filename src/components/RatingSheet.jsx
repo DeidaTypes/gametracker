@@ -5,7 +5,7 @@ import { LuCheck } from 'react-icons/lu'
 import StarRatingInput from './forms/StarRatingInput'
 import { getTracker } from '../services/hoursService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetSlide } from '../motion/xMotion'
 import { useNavDim } from '../hooks/useNavDim'
 import { hapticSuccess } from '../utils/haptics'
 import './RatingSheet.css'
@@ -145,64 +145,65 @@ function RatingSheet({
             onClick={handleDismiss}
             {...sheetDim(reduced)}
           />
-          <motion.div
-            className="rts-sheet"
-            onClick={(e) => e.stopPropagation()}
-            {...sheetPanel(reduced)}
-            drag={reduced ? false : 'y'}
-            dragControls={dragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.6 }}
-            onDragEnd={handleDragEnd}
-          >
-            <div
-              className="rts-drag-zone"
-              onPointerDown={(e) => !reduced && dragControls.start(e)}
+          <motion.div className="rts-slide" {...sheetSlide(reduced)}>
+            <motion.div
+              className="rts-sheet"
+              onClick={(e) => e.stopPropagation()}
+              drag={reduced ? false : 'y'}
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.6 }}
+              onDragEnd={handleDragEnd}
             >
-              <div className="rts-handle" aria-hidden="true" />
-            </div>
+              <div
+                className="rts-drag-zone"
+                onPointerDown={(e) => !reduced && dragControls.start(e)}
+              >
+                <div className="rts-handle" aria-hidden="true" />
+              </div>
 
-            <div className="rts-icon" aria-hidden="true">
-              <LuCheck size={28} />
-            </div>
+              <div className="rts-icon" aria-hidden="true">
+                <LuCheck size={28} />
+              </div>
 
-            <h2 className="rts-heading">{title}</h2>
+              <h2 className="rts-heading">{title}</h2>
 
-            <p className="rts-subline">
-              {game.title}{hoursLabel ? ` · ${hoursLabel}` : ''}
-            </p>
+              <p className="rts-subline">
+                {game.title}{hoursLabel ? ` · ${hoursLabel}` : ''}
+              </p>
 
-            <div className="rts-card">
-              <span className="rts-card-label">How was it?</span>
-              <StarRatingInput
-                value={rating}
-                onChange={setRating}
-                size="xl"
-                aria-label={`Rate ${game.title} out of 5`}
-              />
-              <p className="rts-hint" aria-live="polite">{ratingHint}</p>
-            </div>
+              <div className="rts-card">
+                <span className="rts-card-label">How was it?</span>
+                <StarRatingInput
+                  value={rating}
+                  onChange={setRating}
+                  size="xl"
+                  aria-label={`Rate ${game.title} out of 5`}
+                />
+                <p className="rts-hint" aria-live="polite">{ratingHint}</p>
+              </div>
 
-            <button
-              type="button"
-              className="rts-done-btn"
-              onClick={handleDone}
-              disabled={rating <= 0}
-            >
-              Done
-            </button>
-
-            <button type="button" className="rts-skip-btn" onClick={handleSkip}>
-              Skip for now
-            </button>
-
-            <p className="rts-write-review">
-              Want to say more?{' '}
-              <button type="button" className="rts-write-review-link" onClick={handleWriteReview}>
-                Write a review
+              <button
+                type="button"
+                className="rts-done-btn"
+                onClick={handleDone}
+                disabled={rating <= 0}
+              >
+                Done
               </button>
-            </p>
+
+              <button type="button" className="rts-skip-btn" onClick={handleSkip}>
+                Skip for now
+              </button>
+
+              <p className="rts-write-review">
+                Want to say more?{' '}
+                <button type="button" className="rts-write-review-link" onClick={handleWriteReview}>
+                  Write a review
+                </button>
+              </p>
+            </motion.div>
           </motion.div>
         </div>
       )}

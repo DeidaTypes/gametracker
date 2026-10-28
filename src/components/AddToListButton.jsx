@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence, useDragControls } from 'motion/react'
 import { LuX } from 'react-icons/lu'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { sheetDim, sheetDragEnd, sheetPanel } from '../motion/xMotion'
+import { sheetDim, sheetDragEnd, sheetSlide } from '../motion/xMotion'
 import {
   getAllLists,
   addGameToList,
@@ -201,119 +201,120 @@ function AddToListButton({ game, variant, fabStyle, forceOpen, onForceClose, onL
                 onClick={dismiss}
                 {...sheetDim(reduced)}
               />
-              <motion.div
-                className="bs-sheet"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Set game status"
-                onClick={(e) => e.stopPropagation()}
-                {...sheetPanel(reduced)}
-                drag={reduced ? false : 'y'}
-                dragControls={dragControls}
-                dragListener={false}
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={{ top: 0, bottom: 0.6 }}
-                onDragEnd={handleDragEnd}
-              >
-                <div
-                  className="bs-drag-zone"
-                  onPointerDown={(e) => !reduced && dragControls.start(e)}
+              <motion.div className="bs-slide" {...sheetSlide(reduced)}>
+                <motion.div
+                  className="bs-sheet"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Set game status"
+                  onClick={(e) => e.stopPropagation()}
+                  drag={reduced ? false : 'y'}
+                  dragControls={dragControls}
+                  dragListener={false}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.6 }}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div className="bs-handle" />
-                </div>
-
-                <div className="bs-header">
-                  <div className="bs-header-cover">
-                    <img
-                      src={game.image || COVER_FALLBACK}
-                      alt={game.title}
-                      onError={(e) => {
-                        e.target.src = COVER_FALLBACK
-                      }}
-                    />
-                  </div>
-                  <div className="bs-header-info">
-                    <span className="bs-header-title">{game.title}</span>
-                    <span className="bs-header-status">
-                      {statusLabel || 'Not in Library'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="bs-header-close"
-                    onClick={dismiss}
-                    aria-label="Close"
+                  <div
+                    className="bs-drag-zone"
+                    onPointerDown={(e) => !reduced && dragControls.start(e)}
                   >
-                    <LuX size={20} aria-hidden="true" />
-                  </button>
-                </div>
+                    <div className="bs-handle" />
+                  </div>
 
-                <div className="bs-body">
-                  <div className="bs-status-list" role="group" aria-label="Status">
-                    {STATUS_TILES.map((tile) => {
-                      const active = currentStatus === tile.key
-                      return (
-                        <StatusChip
-                          key={tile.key}
-                          as="button"
-                          variant="row"
-                          status={tile.key}
-                          icon={tile.icon}
-                          label={tile.label}
-                          active={active}
-                          onClick={() => handleStatusTap(tile.key)}
-                          aria-pressed={active}
-                          trailing={active ? (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          ) : null}
-                        />
-                      )
-                    })}
-                    {/* Log play — action row, not a status; no check state */}
-                    <button
-                      className="bs-status-row"
-                      onClick={() => { dismiss(); onLogPlay?.() }}
-                    >
-                      <span className="bs-status-row-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
+                  <div className="bs-header">
+                    <div className="bs-header-cover">
+                      <img
+                        src={game.image || COVER_FALLBACK}
+                        alt={game.title}
+                        onError={(e) => {
+                          e.target.src = COVER_FALLBACK
+                        }}
+                      />
+                    </div>
+                    <div className="bs-header-info">
+                      <span className="bs-header-title">{game.title}</span>
+                      <span className="bs-header-status">
+                        {statusLabel || 'Not in Library'}
                       </span>
-                      <span className="bs-status-row-label">Log play</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="bs-header-close"
+                      onClick={dismiss}
+                      aria-label="Close"
+                    >
+                      <LuX size={20} aria-hidden="true" />
                     </button>
                   </div>
 
-                  {customListIds.length > 0 && (
-                    <div className="bs-lists-section">
-                      <h4 className="bs-lists-heading">MY LISTS</h4>
-                      <div className="bs-status-list">
-                        {customListIds.map((listId) => {
-                          const info = getListInfo(listId)
-                          if (!info) return null
-                          const inList = gameInLists[listId]
-                          return (
-                            <button
-                              key={listId}
-                              className={`bs-status-row${inList ? ' bs-status-row--active' : ''}`}
-                              onClick={() => handleListToggle(listId)}
-                              aria-pressed={inList}
-                            >
-                              <span className="bs-status-row-label">{info.name}</span>
-                              {inList && (
-                                <svg className="bs-status-row-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
+                  <div className="bs-body">
+                    <div className="bs-status-list" role="group" aria-label="Status">
+                      {STATUS_TILES.map((tile) => {
+                        const active = currentStatus === tile.key
+                        return (
+                          <StatusChip
+                            key={tile.key}
+                            as="button"
+                            variant="row"
+                            status={tile.key}
+                            icon={tile.icon}
+                            label={tile.label}
+                            active={active}
+                            onClick={() => handleStatusTap(tile.key)}
+                            aria-pressed={active}
+                            trailing={active ? (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : null}
+                          />
+                        )
+                      })}
+                      {/* Log play — action row, not a status; no check state */}
+                      <button
+                        className="bs-status-row"
+                        onClick={() => { dismiss(); onLogPlay?.() }}
+                      >
+                        <span className="bs-status-row-icon">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                        </span>
+                        <span className="bs-status-row-label">Log play</span>
+                      </button>
                     </div>
-                  )}
-                </div>
+
+                    {customListIds.length > 0 && (
+                      <div className="bs-lists-section">
+                        <h4 className="bs-lists-heading">MY LISTS</h4>
+                        <div className="bs-status-list">
+                          {customListIds.map((listId) => {
+                            const info = getListInfo(listId)
+                            if (!info) return null
+                            const inList = gameInLists[listId]
+                            return (
+                              <button
+                                key={listId}
+                                className={`bs-status-row${inList ? ' bs-status-row--active' : ''}`}
+                                onClick={() => handleListToggle(listId)}
+                                aria-pressed={inList}
+                              >
+                                <span className="bs-status-row-label">{info.name}</span>
+                                {inList && (
+                                  <svg className="bs-status-row-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
               </motion.div>
             </div>
           )}

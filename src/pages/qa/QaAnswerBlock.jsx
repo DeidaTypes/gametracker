@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Check, MoreHorizontal, ThumbsUp } from 'lucide-react'
 import Avatar from '../../components/Avatar'
 import { displayNameFor, qaTimeAgo } from './qaFormat'
@@ -87,7 +88,9 @@ function answerTime(answer) {
   return answer.edited_at && label ? `${label} · Edited` : label
 }
 
-export function QaAnswerRow({ answer, onReply, onHelpful, onMore, canMark, onMarkBest }) {
+// Memoized: opening a menu re-renders QaQuestion, and with stable callbacks
+// (see answerActions there) an answer only renders when its own row changes.
+export const QaAnswerRow = memo(function QaAnswerRow({ answer, onReply, onHelpful, onMore, canMark, onMarkBest }) {
   if (answer?.removed) {
     return <QaAnswerRemoved />
   }
@@ -114,7 +117,7 @@ export function QaAnswerRow({ answer, onReply, onHelpful, onMore, canMark, onMar
       />
     </article>
   )
-}
+})
 
 function AnswerBody({ answer }) {
   if (!answer.body) return null
@@ -129,7 +132,7 @@ function AnswerBody({ answer }) {
   return <p className="qa-prose text-body">{answer.body}</p>
 }
 
-export function QaBestAnswerCard({ answer, headline, onReply, onHelpful, onMore, canMark, onMarkBest }) {
+export const QaBestAnswerCard = memo(function QaBestAnswerCard({ answer, headline, onReply, onHelpful, onMore, canMark, onMarkBest }) {
   if (!answer || answer.removed) return null
 
   return (
@@ -160,7 +163,7 @@ export function QaBestAnswerCard({ answer, headline, onReply, onHelpful, onMore,
       />
     </article>
   )
-}
+})
 
 export function QaAskerRow({ question, viewerIsAsker }) {
   const timeParts = [`Asked ${qaTimeAgo(question.created_at)}`]

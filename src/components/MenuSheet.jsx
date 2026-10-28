@@ -89,10 +89,12 @@ function MenuRow({
  * icon and label in --status-danger. A row without an icon keeps its label at
  * the gutter (no empty icon gap).
  *
- * Motion: backdrop and panel are siblings (see motion/useSheetDrag.js), so the
- * panel is opaque from its first frame while the backdrop fades. The panel
- * sits in a KeyboardAwareView mode="sheet" anchor so it lifts with the
- * keyboard on the shared curve.
+ * Motion: backdrop and sheet are siblings (see motion/useSheetDrag.js), so the
+ * panel is opaque from its first frame while the backdrop fades. The slide
+ * runs on an outer wrapper (.menu-sheet-slide, a transform string on the
+ * compositor); drag-to-dismiss keeps `y` on the inner panel. The sheet sits in
+ * a KeyboardAwareView mode="sheet" anchor so it lifts with the keyboard on the
+ * shared curve.
  */
 function MenuSheet({
   isOpen,
@@ -108,7 +110,7 @@ function MenuSheet({
   const { reduced } = useMotionPreference()
   const sheetRef = useRef(null)
   const titleId = useId()
-  const { panel, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
+  const { slide, dim, dragProps, startDrag } = useSheetDrag(reduced, onClose)
 
   const top = layer === 'top'
   // Keeps the field beneath focused: a mousedown on a button would otherwise
@@ -154,67 +156,68 @@ function MenuSheet({
             mode="sheet"
             className={`menu-sheet-anchor${top ? ' menu-sheet-anchor--top' : ''}`}
           >
-            <motion.div
-              ref={sheetRef}
-              className="menu-sheet"
-              role="dialog"
-              aria-modal="true"
-              aria-label={title ? undefined : ariaLabel}
-              aria-labelledby={title ? titleId : undefined}
-              tabIndex={-1}
-              onClick={(e) => e.stopPropagation()}
-              {...panel}
-              {...dragProps}
-            >
-              <div className="menu-sheet__drag-zone" onPointerDown={startDrag}>
-                <div className="menu-sheet__handle" aria-hidden="true" />
-              </div>
+            <motion.div className="menu-sheet-slide" {...slide}>
+              <motion.div
+                ref={sheetRef}
+                className="menu-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-label={title ? undefined : ariaLabel}
+                aria-labelledby={title ? titleId : undefined}
+                tabIndex={-1}
+                onClick={(e) => e.stopPropagation()}
+                {...dragProps}
+              >
+                <div className="menu-sheet__drag-zone" onPointerDown={startDrag}>
+                  <div className="menu-sheet__handle" aria-hidden="true" />
+                </div>
 
-              <div className="menu-sheet__header">
-                {hasHead ? (
-                  <div className="menu-sheet__head">
-                    {title ? (
-                      <p id={titleId} className="menu-sheet__title">{title}</p>
-                    ) : null}
-                    {subtitle ? <p className="menu-sheet__subtitle">{subtitle}</p> : null}
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  className="menu-sheet__close"
-                  onClick={onClose}
-                  onMouseDown={holdFocus}
-                  aria-label="Close"
-                >
-                  <LuX size={20} aria-hidden="true" />
-                </button>
-              </div>
+                <div className="menu-sheet__header">
+                  {hasHead ? (
+                    <div className="menu-sheet__head">
+                      {title ? (
+                        <p id={titleId} className="menu-sheet__title">{title}</p>
+                      ) : null}
+                      {subtitle ? <p className="menu-sheet__subtitle">{subtitle}</p> : null}
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="menu-sheet__close"
+                    onClick={onClose}
+                    onMouseDown={holdFocus}
+                    aria-label="Close"
+                  >
+                    <LuX size={20} aria-hidden="true" />
+                  </button>
+                </div>
 
-              <div className="menu-sheet__body">
-                {items.map((item, idx) =>
-                  item.divider ? (
-                    <div key={`divider-${idx}`} className="menu-sheet__divider" aria-hidden="true" />
-                  ) : item.heading ? (
-                    <p key={`heading-${idx}`} className="menu-sheet__section">
-                      {item.heading}
-                    </p>
-                  ) : (
-                    <MenuRow
-                      key={`${idx}-${typeof item.label === 'string' ? item.label : ''}`}
-                      icon={item.icon}
-                      label={item.label}
-                      detail={item.detail}
-                      destructive={item.destructive}
-                      chevron={item.chevron}
-                      selected={item.selected}
-                      disabled={item.disabled}
-                      onMouseDown={holdFocus}
-                      onClick={() => go(item.onClick)}
-                    />
-                  )
-                )}
-                {children}
-              </div>
+                <div className="menu-sheet__body">
+                  {items.map((item, idx) =>
+                    item.divider ? (
+                      <div key={`divider-${idx}`} className="menu-sheet__divider" aria-hidden="true" />
+                    ) : item.heading ? (
+                      <p key={`heading-${idx}`} className="menu-sheet__section">
+                        {item.heading}
+                      </p>
+                    ) : (
+                      <MenuRow
+                        key={`${idx}-${typeof item.label === 'string' ? item.label : ''}`}
+                        icon={item.icon}
+                        label={item.label}
+                        detail={item.detail}
+                        destructive={item.destructive}
+                        chevron={item.chevron}
+                        selected={item.selected}
+                        disabled={item.disabled}
+                        onMouseDown={holdFocus}
+                        onClick={() => go(item.onClick)}
+                      />
+                    )
+                  )}
+                  {children}
+                </div>
+              </motion.div>
             </motion.div>
           </KeyboardAwareView>
         </div>

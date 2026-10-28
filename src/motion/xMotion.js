@@ -115,13 +115,19 @@ export function popDimTiming(reduced, leaving) {
     : { duration: MOTION.popIn, easing: EASE_CSS.move }
 }
 
-// Sheets keep `y` (not a transform string) because drag-to-dismiss drives y.
-export function sheetPanel(reduced) {
+// A sheet slides on an OUTER wrapper with a whole `transform` string, like
+// popCard: Motion hands it to WAAPI, so the 340 ms slide runs on the
+// compositor and keeps its frame rate while the sheet's contents mount.
+// (Independent transforms such as `y` run on the main thread.) Drag-to-dismiss
+// keeps `y` on the INNER panel, which is why the slide cannot share an element
+// with it. The rest value is an identity translate, not `none`: Motion will not
+// animate to a non-numeric value, it would jump there.
+export function sheetSlide(reduced) {
   if (reduced) return fadeOnly()
   return presence(
-    { y: '100%' },
-    { y: 0 },
-    { y: '100%' },
+    { transform: 'translate3d(0, 100%, 0)' },
+    { transform: 'translate3d(0, 0%, 0)' },
+    { transform: 'translate3d(0, 100%, 0)' },
     tween(MOTION.sheetIn, EASE.move),
     tween(MOTION.sheetOut, EASE.leave),
   )

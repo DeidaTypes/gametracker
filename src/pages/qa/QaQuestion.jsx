@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   Award,
@@ -21,7 +21,6 @@ import {
   LuShare2,
   LuTrash2,
 } from 'react-icons/lu'
-import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import ActionSheet from '../../components/ActionSheet'
 import Avatar from '../../components/Avatar'
@@ -30,6 +29,7 @@ import ReportSheet from '../../components/ReportSheet'
 import { showToast } from '../../components/Toast'
 import { useHideNav } from '../../hooks/useHideNav'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import { EASE_CSS, MOTION } from '../../motion/xMotion'
 import { useCachedResource } from '../../hooks/useCachedResource'
 import { BLOCK_CHANGED_EVENT, blockUser, isMutuallyBlocked } from '../../services/blockService'
 import { coverUrlFromImageId } from '../../services/igdb'
@@ -228,18 +228,13 @@ function NoAnswersCard({ question }) {
   )
 }
 
-function MovingAnswer({ id, reduced, children }) {
-  if (reduced) return <div data-qa-answer-id={id}>{children}</div>
-  return (
-    <motion.div
-      data-qa-answer-id={id}
-      layout
-      layoutId={`qa-answer-${id}`}
-      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
+/**
+ * One answer's slot. A plain box: nothing here measures on a render. When the
+ * best answer changes, QaQuestion glides the moved slots itself (the layout
+ * effect on bestId), once, from the positions it read just before the change.
+ */
+function AnswerSlot({ id, children }) {
+  return <div data-qa-answer-id={id}>{children}</div>
 }
 
 function playersCount(count) {
@@ -287,6 +282,20 @@ export default function QaQuestion() {
   const [forcedLeave, setForcedLeave] = useState(false)
   const opToken = useRef(new Map())
   const writeChain = useRef(Promise.resolve())
+  const screenRef = useRef(null)
+  const glideFrom = useRef(null)
+
+  // Where every answer sits right now. Read only just before the best answer
+  // changes, never on a render.
+  const snapshotAnswers = () => {
+    const root = screenRef.current
+    if (!root) return
+    const tops = new Map()
+    root.querySelectorAll('[data-qa-answer-id]').forEach((el) => {
+      tops.set(el.dataset.qaAnswerId, el.getBoundingClientRect().top)
+    })
+    glideFrom.current = { at: performance.now(), tops }
+  }
 
   const state = data?.state
   const payload = state === 'ok' ? data : null
@@ -461,12 +470,14 @@ export default function QaQuestion() {
     const token = bump('best')
     const beforeId = question.best_answer_id || null
     const beforeAnswer = answers.find((row) => row.id === beforeId) || null
+    snapshotAnswers()
     applyBest(question.id, answer.id, { answer, liveCount })
     hapticSuccess()
     enqueue(async () => {
       const result = await markBest(question.id, answer.id, { igdbGameId: question.igdb_game_id })
       if (opToken.current.get('best') !== token) return
       if (result?.error) {
+        snapshotAnswers()
         applyBest(question.id, beforeId, { answer: beforeAnswer, liveCount })
         toastWrite(result.error.code)
         return
@@ -475,6 +486,7 @@ export default function QaQuestion() {
       label: 'Undo',
       onClick: () => {
         const undoToken = bump('best')
+        snapshotAnswers()
         applyBest(question.id, beforeId, { answer: beforeAnswer, liveCount })
         hapticImpact('Light')
         enqueue(async () => {
@@ -494,12 +506,14 @@ export default function QaQuestion() {
     const token = bump('best')
     const beforeId = question.best_answer_id
     const beforeAnswer = answers.find((row) => row.id === beforeId) || null
+    snapshotAnswers()
     applyBest(question.id, null, { liveCount })
     hapticImpact('Light')
     enqueue(async () => {
       const result = await unmarkBest(question.id, { igdbGameId: question.igdb_game_id })
       if (opToken.current.get('best') !== token) return
       if (result?.error) {
+        snapshotAnswers()
         applyBest(question.id, beforeId, { answer: beforeAnswer, liveCount })
         toastWrite(result.error.code)
       }
@@ -565,13 +579,55 @@ export default function QaQuestion() {
     if (target.type === 'question') leaveQuestion(navigate)
   }
 
-  const answerActions = {
-    onReply: openAnswer,
-    onHelpful,
-    onMore: (answer) => setMenu({ kind: 'answer', answer }),
-    canMark,
-    onMarkBest,
-  }
+  // Opening a menu sets state here and re-renders this screen. These callbacks
+  // never change identity (they reach the latest handlers through a ref), and
+  // canMark is passed as a plain value, so the memoized answer rows skip that
+  // render entirely.
+  const live = useRef(null)
+  live.current = { openAnswer, onHelpful, onMarkBest }
+  const onReplyStable = useCallback((answer) => live.current.openAnswer(answer), [])
+  const onHelpfulStable = useCallback((answer) => live.current.onHelpful(answer), [])
+  const onMoreStable = useCallback((answer) => setMenu({ kind: 'answer', answer }), [])
+  const onMarkBestStable = useCallback((answer) => live.current.onMarkBest(answer), [])
+  const answerActions = useMemo(
+    () => ({
+      onReply: onReplyStable,
+      onHelpful: onHelpfulStable,
+      onMore: onMoreStable,
+      onMarkBest: onMarkBestStable,
+    }),
+    [onReplyStable, onHelpfulStable, onMoreStable, onMarkBestStable],
+  )
+
+  // The best answer glides only when it changes (mark, unmark, undo): read the
+  // slots' positions just before (snapshotAnswers), then once the new order has
+  // rendered, play each moved slot from its old spot. No render measures
+  // anything else.
+  const bestId = bestAnswer?.id ?? null
+  useLayoutEffect(() => {
+    const snap = glideFrom.current
+    glideFrom.current = null
+    const root = screenRef.current
+    if (!snap || !root || performance.now() - snap.at > 1000) return
+    root.querySelectorAll('[data-qa-answer-id]').forEach((el) => {
+      if (typeof el.animate !== 'function') return
+      const was = snap.tops.get(el.dataset.qaAnswerId)
+      if (was == null) return
+      const dy = was - el.getBoundingClientRect().top
+      if (Math.abs(dy) < 1) return
+      if (reduced) {
+        el.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: MOTION.reducedFade, easing: EASE_CSS.fade },
+        )
+      } else {
+        el.animate(
+          [{ transform: `translate3d(0, ${dy}px, 0)` }, { transform: 'none' }],
+          { duration: MOTION.slide, easing: EASE_CSS.move },
+        )
+      }
+    })
+  }, [bestId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const menuAnswer = menu?.kind === 'answer' ? menu.answer : null
   const menuName = menuAnswer
@@ -760,7 +816,7 @@ export default function QaQuestion() {
   const showWaiting = loaded && pill?.kind === 'waiting'
 
   return (
-    <div className="qa-screen qa-screen--push qa-screen--question" aria-busy={pending || undefined}>
+    <div ref={screenRef} className="qa-screen qa-screen--push qa-screen--question" aria-busy={pending || undefined}>
       <QaPushBar
         onBack={() => navigate(-1)}
         onMore={() => { if (loaded) setMenu({ kind: 'question' }) }}
@@ -879,21 +935,22 @@ export default function QaQuestion() {
                 ) : null}
 
                 {loaded && bestAnswer ? (
-                  <MovingAnswer id={bestAnswer.id} reduced={reduced}>
+                  <AnswerSlot id={bestAnswer.id}>
                     <QaBestAnswerCard
                       answer={bestAnswer}
                       headline={bestHeadline}
+                      canMark={canMark}
                       {...answerActions}
                     />
-                  </MovingAnswer>
+                  </AnswerSlot>
                 ) : null}
 
                 {loaded && flatOthers.length > 0 ? (
                   <div className="qa-agroup">
                     {flatOthers.map((answer) => (
-                      <MovingAnswer key={answer.id} id={answer.id} reduced={reduced}>
-                        <QaAnswerRow answer={answer} {...answerActions} />
-                      </MovingAnswer>
+                      <AnswerSlot key={answer.id} id={answer.id}>
+                        <QaAnswerRow answer={answer} canMark={canMark} {...answerActions} />
+                      </AnswerSlot>
                     ))}
                   </div>
                 ) : null}

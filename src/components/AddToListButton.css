@@ -58,7 +58,14 @@
      frame. The dim carries the backdrop. */
 }
 
-/* ── Sheet ── */
+/* ── Sheet ──
+   .bs-slide carries the slide-in (a transform on the compositor); .bs-sheet
+   inside it keeps `y` for drag-to-dismiss. */
+.bs-slide {
+  position: relative;
+  z-index: 1;
+}
+
 .bs-sheet {
   position: relative;
   z-index: 1;
