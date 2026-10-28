@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { HiX } from 'react-icons/hi'
-import { SearchX, Building2, Users, PenLine, Layers, MessageCircleQuestion, WifiOff } from 'lucide-react'
 import {
-  GiWizardStaff,
-  GiBroadsword,
-  GiChessKnight,
-  GiCompass,
-  GiPumpkinMask,
-  GiSoccerBall,
-} from 'react-icons/gi'
+  SearchX,
+  Building2,
+  Users,
+  PenLine,
+  Layers,
+  MessageCircleQuestion,
+  WifiOff,
+  WandSparkles,
+  Swords,
+  Crosshair,
+  Compass,
+  Castle,
+  Ghost,
+  Mountain,
+  Puzzle,
+  Flag,
+  HandFist,
+  Volleyball,
+  Sprout,
+} from 'lucide-react'
 import { useAutoAnimateMotion } from '../hooks/useMotionPreference'
 import { useSearch } from '../hooks/useSearch'
 import SearchField from '../components/SearchField'
@@ -22,7 +34,6 @@ import {
 } from '../utils/recentSearches'
 import { shouldShowCount } from '../utils/formatSocialCount'
 import { getGameNavStub } from '../utils/gameNavStub'
-import { fetchBrowseCategories } from '../services/browseService'
 import { getContinuePlayingGames } from '../services/libraryService'
 import { getSizedImageUrl } from '../services/imageUtils'
 import { searchReviewsByText } from '../services/reviewService'
@@ -37,7 +48,6 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from '../components/Toast'
 import PillTabs from '../components/PillTabs'
-import GenreTile from '../components/explore/GenreTile'
 import CoverPlaceholder from '../components/explore/CoverPlaceholder'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import EmptyState from '../components/EmptyState'
@@ -86,13 +96,40 @@ const MIN_RECENT_QUERY_LENGTH = 2
 // tokens (--accent / --accent-review / --accent-journal); no other hue may
 // be introduced here, and orange/amber is retired app-wide.
 const GENRE_CARDS = [
-  { slug: 'rpg', name: 'RPG', Icon: GiWizardStaff, accentVar: '--accent-journal' },
-  { slug: 'action', name: 'Action', Icon: GiBroadsword, accentVar: '--accent' },
-  { slug: 'strategy', name: 'Strategy', Icon: GiChessKnight, accentVar: '--accent-review' },
-  { slug: 'adventure', name: 'Adventure', Icon: GiCompass, accentVar: '--accent' },
-  { slug: 'horror', name: 'Horror', Icon: GiPumpkinMask, accentVar: '--accent-journal' },
-  { slug: 'sports', name: 'Sports', Icon: GiSoccerBall, accentVar: '--accent-review' },
+  { slug: 'rpg', name: 'RPG', Icon: WandSparkles, accentVar: '--accent-journal' },
+  { slug: 'action', name: 'Action', Icon: Swords, accentVar: '--accent' },
+  { slug: 'shooter', name: 'Shooter', Icon: Crosshair, accentVar: '--accent' },
+  { slug: 'adventure', name: 'Adventure', Icon: Compass, accentVar: '--accent-review' },
+  { slug: 'strategy', name: 'Strategy', Icon: Castle, accentVar: '--accent-review' },
+  { slug: 'horror', name: 'Horror', Icon: Ghost, accentVar: '--accent-journal' },
+  { slug: 'platformer', name: 'Platformer', Icon: Mountain, accentVar: '--accent' },
+  { slug: 'puzzle', name: 'Puzzle', Icon: Puzzle, accentVar: '--accent-review' },
+  { slug: 'racing', name: 'Racing', Icon: Flag, accentVar: '--accent-journal' },
+  { slug: 'fighting', name: 'Fighting', Icon: HandFist, accentVar: '--accent' },
+  { slug: 'sports', name: 'Sports', Icon: Volleyball, accentVar: '--accent-review' },
+  { slug: 'indie', name: 'Indie', Icon: Sprout, accentVar: '--accent-journal' },
 ]
+
+function GenreBrowseGrid({ onTapGenreCard }) {
+  return (
+    <div className="sp-genre-grid">
+      {GENRE_CARDS.map((genre) => (
+        <button
+          key={genre.slug}
+          className="sp-genre-tile"
+          style={{ '--genre-tile-accent': `var(${genre.accentVar})` }}
+          onClick={() => onTapGenreCard(genre.slug)}
+          type="button"
+        >
+          <span className="sp-genre-tile__icon">
+            <genre.Icon aria-hidden="true" size={18} strokeWidth={2} />
+          </span>
+          <span className="sp-genre-tile__name">{genre.name}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function HighlightMatch({ text, query }) {
   if (!query || !text) return <>{text}</>
@@ -115,7 +152,7 @@ function HighlightMatch({ text, query }) {
  * Clean "no results" message + browse-by-genre nudge, shared by every
  * category tab so we never leave the user staring at a blank screen.
  */
-function NoResultsState({ query, genres }) {
+function NoResultsState({ query, onTapGenreCard }) {
   return (
     <div className="sp-empty">
       <EmptyState
@@ -123,15 +160,9 @@ function NoResultsState({ query, genres }) {
         title={`No results for "${query.trim()}".`}
         body="Check your spelling, or browse by genre below."
       />
-      {genres && genres.length > 0 && (
-        <div className="sp-section sp-empty-genres">
-          <div className="sp-genre-grid">
-            {genres.map((genre) => (
-              <GenreTile key={genre.key} genre={genre} />
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="sp-section sp-empty-genres">
+        <GenreBrowseGrid onTapGenreCard={onTapGenreCard} />
+      </div>
     </div>
   )
 }
@@ -378,7 +409,7 @@ function AllTabResults({
   onTapUser,
   onRetry,
   currentUserId,
-  genres,
+  onTapGenreCard,
 }) {
   if (gamesError) {
     return (
@@ -403,7 +434,7 @@ function AllTabResults({
     previewUsers.length === 0
 
   if (noResults) {
-    return <NoResultsState query={query} genres={genres} />
+    return <NoResultsState query={query} onTapGenreCard={onTapGenreCard} />
   }
 
   return (
@@ -562,22 +593,7 @@ function SearchLandingEmpty({
       {/* Browse by Genre — Cobalt surfaces + icon, no gradients. */}
       <section className="sp-section">
         <h2 className="sp-section-header">Browse by genre</h2>
-        <div className="sp-genre-grid">
-          {GENRE_CARDS.map((genre) => (
-            <button
-              key={genre.slug}
-              className="sp-genre-tile"
-              style={{ '--genre-tile-accent': `var(${genre.accentVar})` }}
-              onClick={() => onTapGenreCard(genre.slug)}
-              type="button"
-            >
-              <span className="sp-genre-tile__icon">
-                <genre.Icon aria-hidden="true" />
-              </span>
-              <span className="sp-genre-tile__name">{genre.name}</span>
-            </button>
-          ))}
-        </div>
+        <GenreBrowseGrid onTapGenreCard={onTapGenreCard} />
       </section>
 
       <RecentSearchesSection
@@ -600,7 +616,7 @@ function GamesTabResults({
   onTapGenre,
   onRetry,
   noResults,
-  genres,
+  onTapGenreCard,
   gamesResultsRef,
   parsedFilters,
 }) {
@@ -616,7 +632,7 @@ function GamesTabResults({
     )
   }
   if (noResults) {
-    return <NoResultsState query={query} genres={genres} />
+    return <NoResultsState query={query} onTapGenreCard={onTapGenreCard} />
   }
 
   return (
@@ -718,7 +734,7 @@ function DevsTabEmpty({ recents, onClearAll, onTapDev, onRemoveDev }) {
   )
 }
 
-function DevsTabResults({ query, developers, isLoading, error, onTapDev, onRetry, noResults, genres }) {
+function DevsTabResults({ query, developers, isLoading, error, onTapDev, onRetry, noResults, onTapGenreCard }) {
   if (isLoading) return <SearchResultSkeletonList count={6} />
   if (error) {
     return (
@@ -731,7 +747,7 @@ function DevsTabResults({ query, developers, isLoading, error, onTapDev, onRetry
     )
   }
   if (noResults) {
-    return <NoResultsState query={query} genres={genres} />
+    return <NoResultsState query={query} onTapGenreCard={onTapGenreCard} />
   }
   return (
     <div className="sp-results" role="listbox" aria-label="Developer results">
@@ -967,7 +983,7 @@ function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
   )
 }
 
-function UsersTabResults({ query, rows, isLoading, onTapUser, currentUserId, genres }) {
+function UsersTabResults({ query, rows, isLoading, onTapUser, currentUserId, onTapGenreCard }) {
   if (isLoading) {
     return (
       <div className="sp-section">
@@ -976,7 +992,7 @@ function UsersTabResults({ query, rows, isLoading, onTapUser, currentUserId, gen
     )
   }
   if (!rows || rows.length === 0) {
-    return <NoResultsState query={query} genres={genres} />
+    return <NoResultsState query={query} onTapGenreCard={onTapGenreCard} />
   }
   return (
     <div className="sp-section sp-recent-stack">
@@ -1302,45 +1318,12 @@ function Search() {
     hasQuery &&
     (committedQuery !== trimmedQuery || (questionsData === undefined && !questionsError))
 
-  // Browse-by-genre fallback (kept identical to the previous Search page).
-  const [genres, setGenres] = useState(null)
-  const [, setGenresLoading] = useState(true)
-  const [, setGenresError] = useState(null)
-  const [genresRetry] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-    setGenresLoading(true)
-    setGenresError(null)
-
-    fetchBrowseCategories()
-      .then((categories) => {
-        if (cancelled) return
-        const tiles = categories
-          .filter((c) => c.games && c.games.length > 0)
-          .map((c) => ({
-            key: c.key,
-            label: c.label,
-            count: c.games.length,
-            image: c.coverImage || (c.games[0] ? c.games[0].image : null),
-          }))
-        if (tiles.length > 0) {
-          setGenres(tiles)
-        } else {
-          setGenresError('Could not load categories')
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setGenresError(err.message || 'Failed to load categories')
-      })
-      .finally(() => {
-        if (!cancelled) setGenresLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [genresRetry, resumeKey])
+  const handleTapGenreCard = useCallback(
+    (slug) => {
+      navigate(`/browse/${slug}`)
+    },
+    [navigate]
+  )
 
   // Reviews tab — debounced search.
   useEffect(() => {
@@ -1714,7 +1697,7 @@ function Search() {
                 onTapUser={handleUserTap}
                 onRetry={() => setQuery((q) => q + ' ')}
                 currentUserId={currentUserId}
-                genres={genres}
+                onTapGenreCard={handleTapGenreCard}
               />
             )}
           </>
@@ -1747,7 +1730,7 @@ function Search() {
                 onTapGenre={handleGenreTap}
                 onRetry={() => setQuery((q) => q + ' ')}
                 noResults={noGameResults}
-                genres={genres}
+                onTapGenreCard={handleTapGenreCard}
                 gamesResultsRef={gamesResultsRef}
                 parsedFilters={parsedFilters}
               />
@@ -1775,7 +1758,7 @@ function Search() {
                 onTapDev={handleDevTap}
                 onRetry={() => setQuery((q) => q + ' ')}
                 noResults={noDevResults}
-                genres={genres}
+                onTapGenreCard={handleTapGenreCard}
               />
             )}
           </>
@@ -1816,7 +1799,7 @@ function Search() {
                 isLoading={usersLoading}
                 onTapUser={handleUserTap}
                 currentUserId={currentUserId}
-                genres={genres}
+                onTapGenreCard={handleTapGenreCard}
               />
             )}
           </>

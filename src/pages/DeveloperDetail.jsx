@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGamesByDeveloper } from '../services/igdb'
 import { Building2 } from 'lucide-react'
-import GameCard from '../components/GameCard'
+import CoverGridTile from '../components/CoverGridTile'
 import InlineErrorBanner from '../components/InlineErrorBanner'
 import EmptyState from '../components/EmptyState'
 import { GameCardSkeletonGrid } from '../components/skeletons/GameCardSkeleton'
@@ -97,7 +97,7 @@ function DeveloperDetail() {
           </p>
           <div className="dev-detail-grid">
             {games.map(game => (
-              <GameCard key={game.id} game={game} />
+              <CoverGridTile key={game.id} game={game} />
             ))}
           </div>
         </>

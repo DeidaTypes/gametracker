@@ -88,9 +88,13 @@
 
 .dev-detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--page-padding) var(--spacing-xl);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-16) var(--space-12);
+  padding: var(--space-16) var(--page-padding) var(--spacing-xl);
+}
+
+.dev-detail-grid > * {
+  min-width: 0;
 }
 
 .dev-detail-status {
@@ -126,8 +130,7 @@
   }
 
   .dev-detail-grid {
-    grid-template-columns: repeat(3, 1fr);
-    padding: var(--spacing-sm) var(--page-padding-desktop) var(--spacing-xl);
+    padding: var(--space-16) var(--page-padding-desktop) var(--spacing-xl);
     max-width: var(--page-max-width);
     margin: 0 auto;
   }
@@ -135,6 +138,6 @@
 
 @media (min-width: 1100px) {
   .dev-detail-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

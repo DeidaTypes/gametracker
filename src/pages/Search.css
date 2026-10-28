@@ -105,8 +105,9 @@
 /* ---- Genre grid ---- */
 .sp-genre-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 10px — extra label room at 375pt; off the 4px grid by design spec. */
+  gap: 10px;
 }
 
 .sp-genre-skeleton {
@@ -166,7 +167,7 @@
 .sp-genre-tile {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   height: 64px;
   width: 100%;
   border-radius: var(--radius-lg);
@@ -196,8 +197,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: var(--space-32);
+  height: var(--space-32);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--genre-tile-accent) 16%, transparent);
   color: var(--genre-tile-accent);
