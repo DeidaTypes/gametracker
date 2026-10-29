@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Flag, Eye, EyeOff, Check, X } from 'lucide-react'
+import { AtSign, Mail, Lock, LockKeyhole, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { TextField, SubmitButton } from '../../components/forms'
+import { SubmitButton } from '../../components/forms'
 import { showToast } from '../../components/Toast'
 import { AUTH_ERRORS, isUsernameAvailableRemote } from '../../services/auth'
 import {
@@ -27,8 +27,52 @@ import {
   ugcErrorMessage,
 } from '../../services/moderationService'
 import { TermsSentence } from '../../components/TermsGate'
+import AuthBrand from './AuthBrand'
+import {
+  AuthFieldGroup,
+  AuthFieldRow,
+  AuthFieldStatus,
+  AuthNotice,
+} from './AuthField'
 import './Auth.css'
 import './SignUp.css'
+
+function usernameStatusMessage(status, username, issue) {
+  const handle = normalizeUsername(username)
+  if (status === 'checking') {
+    return { tone: 'muted', message: 'Checking availability…', icon: false }
+  }
+  if (status === 'available') {
+    return { tone: 'ok', message: `${handle} is available`, icon: true }
+  }
+  if (status === 'taken') {
+    return { tone: 'bad', message: `${handle} is already taken`, icon: true }
+  }
+  if (status === 'invalid') {
+    return { tone: 'bad', message: issue || USERNAME_HINT, icon: false }
+  }
+  return { tone: 'muted', message: USERNAME_HINT, icon: false }
+}
+
+function passwordStatusMessage(password, breachStatus) {
+  if (!password) return null
+  const next = getNextPasswordRequirement(password, breachStatus)
+  if (!next) {
+    return { tone: 'ok', message: 'Looks good', icon: true }
+  }
+  if (next === 'Checking against known breaches…') {
+    return { tone: 'muted', message: next, icon: false }
+  }
+  return { tone: 'bad', message: next, icon: false }
+}
+
+function confirmStatusMessage(confirmPassword, password) {
+  if (!confirmPassword) return null
+  if (confirmPassword === password) {
+    return { tone: 'ok', message: 'Passwords match', icon: true }
+  }
+  return { tone: 'bad', message: "Passwords don't match", icon: true }
+}
 
 function SignUp() {
   const navigate = useNavigate()
@@ -43,8 +87,8 @@ function SignUp() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
   const [showFieldErrors, setShowFieldErrors] = useState(false)
+  const [focusedField, setFocusedField] = useState(null)
 
-  // The auth page directly behind this one is a back, not another push.
   const goAuth = (e, path) => {
     if (location.state?.authFrom === path) {
       e.preventDefault()
@@ -52,18 +96,13 @@ function SignUp() {
     }
   }
 
-  // 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
   const [usernameStatus, setUsernameStatus] = useState('idle')
-  // Which rule an invalid handle broke, so the hint can name it instead of
-  // repeating the generic format line.
   const [usernameIssue, setUsernameIssue] = useState(null)
-  // 'idle' | 'checking' | 'clear' | 'breached'
   const [breachStatus, setBreachStatus] = useState('idle')
 
   const redirectTo =
     new URLSearchParams(location.search).get('redirectTo') || '/'
 
-  // ── Real-time username availability (debounced) ─────────────────────────
   const debouncedUsername = useDebounce(username, 400)
   useEffect(() => {
     const handle = normalizeUsername(debouncedUsername)
@@ -72,8 +111,6 @@ function SignUp() {
       setUsernameIssue(null)
       return
     }
-    // Structural rules are checked locally first — there's no point spending a
-    // round trip asking whether "_bob" is available when it can never be legal.
     const check = validateUsername(handle)
     if (!check.valid) {
       setUsernameStatus('invalid')
@@ -92,10 +129,6 @@ function SignUp() {
     }
   }, [debouncedUsername])
 
-  // ── Real-time leaked-password screening (debounced, k-anonymity) ────────
-  // Best-effort client-side stand-in for Supabase's server-side
-  // password_hibp_enabled flag, which requires a Pro-plan project (this
-  // project is on Free — see services/passwordPolicy.js for details).
   const debouncedPassword = useDebounce(password, 500)
   useEffect(() => {
     if (!debouncedPassword) {
@@ -113,9 +146,6 @@ function SignUp() {
     }
   }, [debouncedPassword])
 
-  // Single dynamic requirement line: shows only the next unmet rule
-  // (length → uppercase → number → special char → breach check), or the
-  // green "Looks good" success state once everything passes.
   const nextRequirement = password
     ? getNextPasswordRequirement(password, breachStatus)
     : null
@@ -158,10 +188,6 @@ function SignUp() {
     setFormError(null)
     setSubmitting(true)
     try {
-      // Final breach re-check right before account creation. The debounced
-      // check above already runs live while typing (drives the hint line);
-      // this guards the case where the user submits before that debounce
-      // fires.
       const breached = await isPasswordBreached(password)
       if (breached) {
         setBreachStatus('breached')
@@ -176,9 +202,6 @@ function SignUp() {
         return
       }
 
-      // Display name defaults to the username at signup time — there's no
-      // separate Name field on this screen. The user can change their
-      // display name later via Edit Profile.
       const releaseTermsCheck = holdTermsCheck()
       let created
       try {
@@ -188,8 +211,6 @@ function SignUp() {
           displayName: trimmedUsername,
           username: trimmedUsername,
         })
-        // Agreeing is the sentence under the button. If this write fails the
-        // one-time terms popup asks again on the next launch.
         await acceptTerms().catch((termsErr) => {
           console.error('[signup] accept_terms failed:', termsErr)
         })
@@ -197,12 +218,7 @@ function SignUp() {
         releaseTermsCheck()
       }
       const { user, profile } = created
-      // Mirror the just-created server profile into the localStorage store
-      // the own-profile UI reads, so the entered username shows up
-      // immediately instead of a stock default.
       syncProfileFromSupabase(profile)
-      // Fire-and-forget: record referral conversion if the user arrived via
-      // an invite link. Errors are logged but never surface to the user.
       if (user?.id) convertReferral(user.id)
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -225,9 +241,6 @@ function SignUp() {
       } else if (code === AUTH_ERRORS.NETWORK) {
         showToast("Couldn't reach the server", 'error', null, null, null, { sub: 'Check your connection' })
       } else if (code === AUTH_ERRORS.PROFILE_BOOTSTRAP_FAILED) {
-        // The auth user exists but the profile row insert failed. Tell
-        // the user clearly so they can retry / contact support rather
-        // than silently leaving them in a broken state.
         setFormError(
           err.message ||
             'Account created but profile setup failed. Please log in to retry.'
@@ -240,191 +253,212 @@ function SignUp() {
     }
   }
 
-  let usernameHintNode = <span className="su-status su-status--muted">{USERNAME_HINT}</span>
-  let usernameFieldClass = ''
-  if (usernameStatus === 'checking') {
-    usernameHintNode = <span className="su-status su-status--pending">Checking availability…</span>
-  } else if (usernameStatus === 'available') {
-    usernameHintNode = (
-      <span className="su-status su-status--ok">
-        <Check size={14} strokeWidth={2} aria-hidden="true" />
-        {normalizeUsername(username)} is available
-      </span>
-    )
-    usernameFieldClass = 'auth-field--valid'
-  } else if (usernameStatus === 'taken') {
-    usernameHintNode = (
-      <span className="su-status su-status--bad">
-        <X size={14} strokeWidth={2} aria-hidden="true" />
-        {normalizeUsername(username)} is already taken
-      </span>
-    )
-    usernameFieldClass = 'auth-field--invalid'
-  } else if (usernameStatus === 'invalid') {
-    usernameHintNode = (
-      <span className="su-status su-status--bad">{usernameIssue || USERNAME_HINT}</span>
-    )
-    usernameFieldClass = 'auth-field--invalid'
-  }
+  const notice = useMemo(() => {
+    if (!formError) return null
+    if (formError === 'An account with this email already exists. Try logging in.') {
+      return {
+        title: formError,
+        actionLabel: 'Log in',
+        actionTo: `/login${location.search || ''}`,
+        actionState: { authFrom: location.pathname },
+        onActionClick: (e) => goAuth(e, '/login'),
+      }
+    }
+    return { title: formError }
+  }, [formError, location.pathname, location.search])
 
-  let confirmHintNode = null
-  let confirmFieldClass = ''
-  if (confirmMatches) {
-    confirmHintNode = (
-      <span className="su-status su-status--ok">
-        <Check size={14} strokeWidth={2} aria-hidden="true" />
-        Passwords match
-      </span>
-    )
-    confirmFieldClass = 'auth-field--valid'
-  } else if (confirmMismatch) {
-    confirmHintNode = (
-      <span className="su-status su-status--bad">
-        <X size={14} strokeWidth={2} aria-hidden="true" />
-        Passwords don&rsquo;t match
-      </span>
-    )
-    confirmFieldClass = 'auth-field--invalid'
-  }
+  const emailInvalid = showFieldErrors && !email.trim()
+  const usernameInvalid =
+    usernameStatus === 'taken' ||
+    usernameStatus === 'invalid' ||
+    (showFieldErrors && !normalizeUsername(username))
+  const usernameValid = usernameStatus === 'available'
+  const passwordValid = Boolean(password && !nextRequirement)
+  const passwordInvalid =
+    Boolean(password && nextRequirement && nextRequirement !== 'Checking against known breaches…')
+  const confirmInvalid =
+    confirmMismatch || (showFieldErrors && !confirmPassword)
+  const confirmValid = confirmMatches
+
+  const fieldStatus = useMemo(() => {
+    if (focusedField === 'username') {
+      return usernameStatusMessage(usernameStatus, username, usernameIssue)
+    }
+    if (focusedField === 'password') {
+      return passwordStatusMessage(password, breachStatus) || { tone: null, message: null }
+    }
+    if (focusedField === 'confirm') {
+      return confirmStatusMessage(confirmPassword, password) || { tone: null, message: null }
+    }
+    if (focusedField === 'email' && emailInvalid) {
+      return { tone: 'bad', message: 'Email is required', icon: true }
+    }
+
+    const trimmed = normalizeUsername(username)
+    if (!trimmed) {
+      return { tone: 'muted', message: USERNAME_HINT, icon: false }
+    }
+    if (usernameStatus === 'taken' || usernameStatus === 'invalid') {
+      return usernameStatusMessage(usernameStatus, username, usernameIssue)
+    }
+    if (password && nextRequirement && nextRequirement !== 'Checking against known breaches…') {
+      return { tone: 'bad', message: nextRequirement, icon: false }
+    }
+    if (confirmMismatch) {
+      return confirmStatusMessage(confirmPassword, password)
+    }
+    if (emailInvalid) {
+      return { tone: 'bad', message: 'Email is required', icon: true }
+    }
+    if (showFieldErrors && !password) {
+      return { tone: 'bad', message: 'Password is required', icon: true }
+    }
+    if (showFieldErrors && !confirmPassword) {
+      return { tone: 'bad', message: 'Confirm password is required', icon: true }
+    }
+    return { tone: null, message: null }
+  }, [
+    focusedField,
+    usernameStatus,
+    username,
+    usernameIssue,
+    password,
+    breachStatus,
+    confirmPassword,
+    nextRequirement,
+    confirmMismatch,
+    emailInvalid,
+    showFieldErrors,
+  ])
+
+  const eyeToggle = (
+    <button
+      type="button"
+      className="auth-eye-toggle"
+      onClick={() => setShowPassword((v) => !v)}
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
+      aria-pressed={showPassword}
+    >
+      {showPassword ? <EyeOff strokeWidth={2} /> : <Eye strokeWidth={2} />}
+    </button>
+  )
 
   return (
-    <div className="auth-page su-page auth-page--signature">
-      <div className="auth-mesh" aria-hidden="true">
-        <span className="auth-mesh__blob auth-mesh__blob--a" />
-        <span className="auth-mesh__blob auth-mesh__blob--b" />
-        <span className="auth-mesh__blob auth-mesh__blob--c" />
-      </div>
-      <div className="auth-card su-card">
-        <div className="auth-brand-mark" aria-hidden="true">
-          <Flag strokeWidth={2.25} />
-        </div>
-
-        <header className="auth-header">
-          <h1 className="auth-title">
-            Create your <span className="auth-gradient-text">account</span>
-          </h1>
-          <p className="auth-subtitle">
-            Track, rate, and discover games with people who play like you.
-          </p>
-        </header>
-
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          {formError && (
-            <div className="auth-error" role="alert">
-              <span>{formError}</span>
-            </div>
-          )}
-
-          <TextField
-            label="Email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            showErrors={showFieldErrors}
+    <div className="auth-page">
+      <div className="auth-wash" aria-hidden="true" />
+      <div className="auth-body">
+        <div className="auth-card">
+          <AuthBrand
+            title="Checkpoint"
+            subtitle="Track, rate, and discover games with people who play like you."
           />
 
-          <TextField
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(normalizeUsername(e.target.value))}
-            placeholder="username"
-            maxLength={USERNAME_MAX_LENGTH}
-            autoComplete="username"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            hint={usernameHintNode}
-            className={usernameFieldClass}
-            required
-            showErrors={showFieldErrors}
-          />
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            {notice ? (
+              <AuthNotice
+                title={notice.title}
+                sub={notice.sub}
+                actionLabel={notice.actionLabel}
+                actionTo={notice.actionTo}
+                actionState={notice.actionState}
+                onActionClick={notice.onActionClick}
+              />
+            ) : null}
 
-          <div className="su-password-block">
-            <TextField
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              showErrors={showFieldErrors}
-              endAdornment={
-                <button
-                  type="button"
-                  className="auth-eye-toggle"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? <EyeOff strokeWidth={2} /> : <Eye strokeWidth={2} />}
-                </button>
-              }
+            <AuthFieldGroup>
+              <AuthFieldRow
+                icon={Mail}
+                label="Email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                focused={focusedField === 'email'}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+                invalid={emailInvalid}
+              />
+              <AuthFieldRow
+                icon={AtSign}
+                label="Username"
+                value={username}
+                onChange={(e) => setUsername(normalizeUsername(e.target.value))}
+                maxLength={USERNAME_MAX_LENGTH}
+                autoComplete="username"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                focused={focusedField === 'username'}
+                onFocus={() => setFocusedField('username')}
+                onBlur={() => setFocusedField(null)}
+                invalid={usernameInvalid}
+                valid={usernameValid}
+                showCount
+                countMax={USERNAME_MAX_LENGTH}
+              />
+              <AuthFieldRow
+                icon={Lock}
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                focused={focusedField === 'password'}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                invalid={passwordInvalid}
+                valid={passwordValid}
+                endAdornment={eyeToggle}
+              />
+              <AuthFieldRow
+                icon={LockKeyhole}
+                label="Confirm password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                focused={focusedField === 'confirm'}
+                onFocus={() => setFocusedField('confirm')}
+                onBlur={() => setFocusedField(null)}
+                invalid={confirmInvalid}
+                valid={confirmValid}
+              />
+            </AuthFieldGroup>
+
+            <AuthFieldStatus
+              tone={fieldStatus.tone}
+              message={fieldStatus.message}
+              icon={fieldStatus.icon !== false}
             />
 
-            {password && (
-              <p
-                className={`auth-password-hint ${
-                  nextRequirement
-                    ? 'auth-password-hint--unmet'
-                    : 'auth-password-hint--ok'
-                }`}
-              >
-                {nextRequirement || (
-                  <>
-                    <Check size={14} strokeWidth={2} aria-hidden="true" />
-                    Looks good
-                  </>
-                )}
+            <div className="auth-form__actions">
+              <SubmitButton type="submit" loading={submitting}>
+                Create account
+              </SubmitButton>
+              <p className="auth-legal">
+                <TermsSentence
+                  lead="By creating an account you agree to the"
+                  linkClassName="auth-link"
+                />{' '}
+                We&rsquo;ll email a link to verify it&rsquo;s you.
               </p>
-            )}
-          </div>
-
-          <TextField
-            label="Confirm password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
-            hint={confirmHintNode}
-            className={confirmFieldClass}
-            required
-            showErrors={showFieldErrors}
-          />
-
-          <div className="auth-form__actions">
-            <SubmitButton type="submit" loading={submitting}>
-              Create account
-            </SubmitButton>
-            <p className="su-verify-note">
-              <TermsSentence
-                lead="By creating an account you agree to the"
-                linkClassName="auth-link"
-              />
-            </p>
-            <p className="su-verify-note">
-              We&rsquo;ll email a link to verify it&rsquo;s you.
-            </p>
-          </div>
-        </form>
-
-        <p className="auth-footer">
-          Already have an account?{' '}
-          <Link
-            to={`/login${location.search || ''}`}
-            state={{ authFrom: location.pathname }}
-            onClick={(e) => goAuth(e, '/login')}
-            className="auth-link"
-          >
-            Log in
-          </Link>
-        </p>
+            </div>
+          </form>
+        </div>
       </div>
+
+      <p className="auth-footer">
+        Already have an account?{' '}
+        <Link
+          to={`/login${location.search || ''}`}
+          state={{ authFrom: location.pathname }}
+          onClick={(e) => goAuth(e, '/login')}
+          className="auth-link"
+        >
+          Log in
+        </Link>
+      </p>
     </div>
   )
 }

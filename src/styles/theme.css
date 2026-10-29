@@ -318,6 +318,11 @@ body[data-larger-text='true'] {
   --theme-nav-bg: rgba(19, 26, 53, 0.94);
   --theme-shadow: none;
 
+  /* Sign-in screens only — mascot mint on Navy */
+  --brand-mint: #00fcc0;
+  --auth-accent: var(--brand-mint);
+  --auth-on-accent: var(--theme-base);
+
   /* Soft tint / soft fill / gradients / taste-bar stops.
      Defined once. Light themes override only the two mix amounts. */
   --theme-tint: 16%;
@@ -805,6 +810,8 @@ html[data-app-theme="black"] {
   --theme-glow-2: rgba(154, 69, 232, 0.07);
   --theme-nav-bg: rgba(15, 15, 17, 0.94);
   --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="forest"] {
@@ -833,6 +840,8 @@ html[data-app-theme="forest"] {
   --theme-glow-2: rgba(194, 216, 86, 0.08);
   --theme-nav-bg: rgba(15, 33, 25, 0.94);
   --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="purple"] {
@@ -861,6 +870,8 @@ html[data-app-theme="purple"] {
   --theme-glow-2: rgba(212, 71, 143, 0.12);
   --theme-nav-bg: rgba(28, 18, 48, 0.94);
   --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="light"] {
@@ -889,6 +900,8 @@ html[data-app-theme="light"] {
   --theme-glow-2: rgba(124, 58, 237, 0.07);
   --theme-nav-bg: rgba(255, 255, 255, 0.94);
   --theme-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.06);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="sky"] {
@@ -917,6 +930,8 @@ html[data-app-theme="sky"] {
   --theme-glow-2: rgba(91, 71, 214, 0.10);
   --theme-nav-bg: rgba(234, 243, 253, 0.95);
   --theme-shadow: 0 1px 2px rgba(11, 35, 64, 0.06), 0 6px 16px rgba(11, 35, 64, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="pink"] {
@@ -945,6 +960,8 @@ html[data-app-theme="pink"] {
   --theme-glow-2: rgba(116, 70, 207, 0.10);
   --theme-nav-bg: rgba(252, 236, 241, 0.95);
   --theme-shadow: 0 1px 2px rgba(60, 10, 30, 0.05), 0 6px 16px rgba(60, 10, 30, 0.06);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 html[data-app-theme="cream"] {
@@ -973,6 +990,8 @@ html[data-app-theme="cream"] {
   --theme-glow-2: rgba(134, 66, 127, 0.08);
   --theme-nav-bg: rgba(247, 239, 223, 0.96);
   --theme-shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 6px 16px rgba(60, 40, 10, 0.06);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
 }
 
 /* Light themes: readable ink needs a lighter tint, and the phone's

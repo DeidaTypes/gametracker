@@ -1,16 +1,20 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Flag, MailCheck } from 'lucide-react'
-import { TextField, SubmitButton } from '../../components/forms'
+import { Mail } from 'lucide-react'
+import { SubmitButton } from '../../components/forms'
 import {
   requestPasswordReset,
   RESET_REQUEST_MESSAGE,
 } from '../../services/passwordReset'
+import AuthBrand from './AuthBrand'
+import {
+  AuthFieldGroup,
+  AuthFieldRow,
+  AuthNotice,
+} from './AuthField'
 import './Auth.css'
 import './ForgotPassword.css'
 
-// Format-only. Whether the address actually exists is never checked here and
-// never revealed — see services/passwordReset.js.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function ForgotPassword() {
@@ -21,7 +25,6 @@ function ForgotPassword() {
   const [formError, setFormError] = useState(null)
   const [sent, setSent] = useState(false)
 
-  // The auth page directly behind this one is a back, not another push.
   const goAuth = (e, path) => {
     if (location.state?.authFrom === path) {
       e.preventDefault()
@@ -46,8 +49,6 @@ function ForgotPassword() {
     setFormError(null)
     setSubmitting(true)
     try {
-      // Resolves identically for a registered and an unregistered address, so
-      // there is nothing to branch on here — which is the point.
       await requestPasswordReset(address)
       setSent(true)
     } finally {
@@ -55,105 +56,84 @@ function ForgotPassword() {
     }
   }
 
+  const loginPath = `/login${location.search || ''}`
+
   if (sent) {
     return (
-      <div className="auth-page fp-page auth-page--signature">
-        <div className="auth-mesh" aria-hidden="true">
-          <span className="auth-mesh__blob auth-mesh__blob--a" />
-          <span className="auth-mesh__blob auth-mesh__blob--b" />
-          <span className="auth-mesh__blob auth-mesh__blob--c" />
-        </div>
-        <div className="auth-card">
-          <div className="auth-brand-mark" aria-hidden="true">
-            <MailCheck strokeWidth={2.25} />
+      <div className="auth-page">
+        <div className="auth-wash" aria-hidden="true" />
+        <div className="auth-body">
+          <div className="auth-card">
+            <AuthBrand
+              title="Check your inbox"
+              subtitle={RESET_REQUEST_MESSAGE}
+            />
+            <p className="fp-note">
+              The link expires in an hour. If it doesn’t arrive, check your spam
+              folder before requesting another.
+            </p>
           </div>
-
-          <header className="auth-header">
-            <h1 className="auth-title">
-              Check your <span className="auth-gradient-text">inbox</span>
-            </h1>
-            <p className="auth-subtitle">{RESET_REQUEST_MESSAGE}</p>
-          </header>
-
-          <p className="fp-note">
-            The link expires in an hour. If it doesn’t arrive, check your spam
-            folder before requesting another.
-          </p>
-
-          <p className="auth-footer">
-            <Link
-              to={`/login${location.search || ''}`}
-              state={{ authFrom: location.pathname }}
-              onClick={(e) => goAuth(e, '/login')}
-              className="auth-link"
-            >
-              Back to log in
-            </Link>
-          </p>
         </div>
+
+        <p className="auth-footer">
+          <Link
+            to={loginPath}
+            state={{ authFrom: location.pathname }}
+            onClick={(e) => goAuth(e, '/login')}
+            className="auth-link"
+          >
+            Back to log in
+          </Link>
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="auth-page fp-page auth-page--signature">
-      <div className="auth-mesh" aria-hidden="true">
-        <span className="auth-mesh__blob auth-mesh__blob--a" />
-        <span className="auth-mesh__blob auth-mesh__blob--b" />
-        <span className="auth-mesh__blob auth-mesh__blob--c" />
-      </div>
-      <div className="auth-card">
-        <div className="auth-brand-mark" aria-hidden="true">
-          <Flag strokeWidth={2.25} />
-        </div>
-
-        <header className="auth-header">
-          <h1 className="auth-title">
-            Reset your <span className="auth-gradient-text">password</span>
-          </h1>
-          <p className="auth-subtitle">
-            Enter the email you signed up with and we’ll send you a link to set
-            a new password.
-          </p>
-        </header>
-
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          {formError && (
-            <div className="auth-error" role="alert">
-              <span>{formError}</span>
-            </div>
-          )}
-
-          <TextField
-            label="Email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
+    <div className="auth-page">
+      <div className="auth-wash" aria-hidden="true" />
+      <div className="auth-body">
+        <div className="auth-card">
+          <AuthBrand
+            title="Reset your password"
+            subtitle="Enter the email you signed up with and we’ll send you a link to set a new password."
           />
 
-          <div className="auth-form__actions">
-            <SubmitButton type="submit" loading={submitting}>
-              Send reset link
-            </SubmitButton>
-          </div>
-        </form>
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            {formError ? <AuthNotice title={formError} /> : null}
 
-        <p className="auth-footer">
-          Remembered it?{' '}
-          <Link
-            to={`/login${location.search || ''}`}
-            state={{ authFrom: location.pathname }}
-            onClick={(e) => goAuth(e, '/login')}
-            className="auth-link"
-          >
-            Log in
-          </Link>
-        </p>
+            <AuthFieldGroup>
+              <AuthFieldRow
+                icon={Mail}
+                label="Email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </AuthFieldGroup>
+
+            <div className="auth-form__actions">
+              <SubmitButton type="submit" loading={submitting}>
+                Send reset link
+              </SubmitButton>
+            </div>
+          </form>
+        </div>
       </div>
+
+      <p className="auth-footer">
+        Remembered it?{' '}
+        <Link
+          to={loginPath}
+          state={{ authFrom: location.pathname }}
+          onClick={(e) => goAuth(e, '/login')}
+          className="auth-link"
+        >
+          Log in
+        </Link>
+      </p>
     </div>
   )
 }
