@@ -1022,23 +1022,22 @@ export async function getFollowedTrackersForGames(igdbGameIds) {
  * source is merged and shaped, before the own/other split + recency
  * sort, so which fetch returned first never changes the result.
  *
- * Scope selection (first page only — `cursor == null && scope == null`)
- * looks at BOTH sources combined (reviews + activity_events) so a viewer
- * whose follows only log sessions and never write reviews doesn't get
- * mis-classified as "quiet":
- *   - No follows at all                 → 'community'
- *   - Follows, but fewer than
- *     HOME_FEED_SPARSE_THRESHOLD
- *     combined recent rows from them    → 'mixed' (follow rows + a
- *                                          non-followee community fill,
- *                                          merged newest-first) — this is
- *                                          the community fallback that
- *                                          keeps the feed from ever being
- *                                          an empty island when follows
- *                                          are quiet.
- *   - Follows with enough activity      → 'following'
- * Community-wide is intentional at current graph size: a following-only
- * feed would often be empty.
+ * Scope selection (first page only — `cursor == null && scope == null`).
+ * HOME_FEED_FOLLOWS_FIRST is the one switch back to follows-first:
+ *   - false (current) → 'community'. Everyone the viewer may see,
+ *     followees included, plus the viewer's own rows. Privacy stays in
+ *     RLS (Everyone, or Followers when the viewer follows the actor;
+ *     blocks never).
+ *   - true → today's follows-first check, on BOTH sources combined
+ *     (reviews + activity_events) so a viewer whose follows only log
+ *     sessions and never write reviews doesn't get mis-classified:
+ *       - No follows at all                 → 'community'
+ *       - Follows, but fewer than
+ *         HOME_FEED_SPARSE_THRESHOLD
+ *         combined recent rows from them    → 'mixed' (follow rows + a
+ *                                              non-followee community fill,
+ *                                              merged newest-first)
+ *       - Follows with enough activity      → 'following'
  * The caller should pass the `scope` it got back on every subsequent
  * `loadMore` call so pagination keeps reading from the same source(s)
  * instead of re-deciding scope on every page (see useHomeFeed.js).
@@ -1104,6 +1103,9 @@ export async function getFollowedTrackersForGames(igdbGameIds) {
  */
 const HOME_FEED_PAGE_SIZE = 15
 const HOME_FEED_SPARSE_THRESHOLD = 5
+// false: Home shows everyone the viewer may see (privacy enforced by RLS).
+// true: follows-first, switching to followees only once they have enough posts.
+const HOME_FEED_FOLLOWS_FIRST = false
 const REVIEW_COMPLETION_DEDUPE_MS = 24 * 60 * 60 * 1000
 
 // Own-activity event types surfaced on Home, sourced from `activity_events`.
@@ -1790,6 +1792,10 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
     const ownPromise = _ownHomeFeedRows(viewerId, cursor, limit)
     const followeeIds = await _getCurrentUserFollowees(viewerId)
     let effectiveScope = scope
+    // First page only. An explicit scope from loadMore is left alone.
+    if (effectiveScope == null && !HOME_FEED_FOLLOWS_FIRST) {
+      effectiveScope = 'community'
+    }
     // "Other users'" rows for this page, split by source — kept separate
     // (rather than merged into one opaque array) because each source
     // shapes into an item differently (_homeFeedItemFromRow vs

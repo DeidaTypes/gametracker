@@ -37,22 +37,24 @@ function writeLastSeenAt() {
 }
 
 /**
- * Real-data-only subline under "The pulse" (task 5): a genuine new-
- * activity count bucketed against the last time this device saw Home,
- * else the honest reason there's nothing to count (community fallback
- * because follows are quiet), else the plain default. Never a
- * fabricated/sample string.
+ * Real-data-only subline under "The pulse": a genuine new-activity
+ * count against the last time this device saw Home, else a scope line.
+ * 'community' is everyone the viewer may see. 'following' and 'mixed'
+ * keep the circle wording for when follows-first is switched back on.
  */
 function computeSubline({ items, scope, lastSeenAt }) {
+  const fromEveryone = scope === 'community'
   if (lastSeenAt) {
     const newCount = items.filter(
       (it) => !it.isOwn && new Date(it.createdAt) > new Date(lastSeenAt)
     ).length
     if (newCount > 0) {
       const bucket = coarseRelativeBucket(lastSeenAt)
-      return `${newCount} new from your circle${bucket ? ` since ${bucket}` : ''}`
+      const who = fromEveryone ? 'everyone' : 'your circle'
+      return `${newCount} new from ${who}${bucket ? ` since ${bucket}` : ''}`
     }
   }
+  if (fromEveryone) return "What everyone's up to"
   if (scope !== 'following') return 'From the community while your circle is quiet'
   return 'What your circle is up to'
 }
