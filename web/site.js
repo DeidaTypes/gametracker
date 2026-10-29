@@ -10,11 +10,22 @@
   var config = window.CHECKPOINT_SITE || {}
   var SUPPORT_EMAIL = String(config.SUPPORT_EMAIL || '').trim()
   var APP_STORE_ID = String(config.APP_STORE_ID || '').trim()
+  var TESTFLIGHT_URL = String(config.TESTFLIGHT_URL || '').trim()
   var EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(SUPPORT_EMAIL)
   var STORE_ID_OK = /^\d{6,}$/.test(APP_STORE_ID) && !/^0+$/.test(APP_STORE_ID)
+  var TESTFLIGHT_OK = /^https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9]+$/.test(
+    TESTFLIGHT_URL
+  )
+  var BETA_ON = TESTFLIGHT_OK && !STORE_ID_OK
+  var BETA_NOTE =
+    'Checkpoint is in beta on TestFlight. Install it, then tap your link again to open it in the app.'
 
   function each(selector, fn) {
     Array.prototype.forEach.call(document.querySelectorAll(selector), fn)
+  }
+
+  function validInviteRef(raw) {
+    return !!(raw && /^[A-Za-z0-9-]{8,64}$/.test(raw))
   }
 
   /* Contact email: filled from one spot (site-config.js). */
@@ -35,15 +46,36 @@
     el.hidden = false
   })
 
+  /* "Join the beta": TestFlight until the app is on the App Store. */
+  if (BETA_ON) {
+    each('[data-beta]', function (el) {
+      el.setAttribute('href', TESTFLIGHT_URL)
+      el.hidden = false
+    })
+    each('[data-beta-note]', function (el) {
+      el.textContent = BETA_NOTE
+      el.hidden = false
+    })
+    each('[data-open-app], [data-open-home]', function (el) {
+      el.classList.remove('btn--primary')
+      el.classList.add('btn--secondary')
+    })
+  }
+
   /* Home page: an invite link (/?ref=<inviter id>) hands the ref to the app,
      where appLifecycle.js stores it until the invitee signs up. */
+  var homePage = document.body.getAttribute('data-page') === 'home'
+  var inviteRef = new URLSearchParams(window.location.search).get('ref')
+
+  if (homePage && validInviteRef(inviteRef)) {
+    var homeHeading = document.querySelector('[data-home-heading]')
+    if (homeHeading) homeHeading.textContent = "You're invited to Checkpoint"
+  }
+
   var homeOpen = document.querySelector('[data-open-home]')
-  if (homeOpen) {
-    var ref = new URLSearchParams(window.location.search).get('ref')
-    if (ref && /^[A-Za-z0-9-]{8,64}$/.test(ref)) {
-      homeOpen.setAttribute('href', 'checkpoint://home?ref=' + encodeURIComponent(ref))
-      homeOpen.hidden = false
-    }
+  if (homeOpen && validInviteRef(inviteRef)) {
+    homeOpen.setAttribute('href', 'checkpoint://home?ref=' + encodeURIComponent(inviteRef))
+    homeOpen.hidden = false
   }
 
   /* Share landing pages. */

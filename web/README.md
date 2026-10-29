@@ -10,9 +10,9 @@ A tiny static site: the Privacy Policy, Terms of Use, Support page, and the land
 | `/support` | `support.html` | Contact, delete account, report content |
 | `/r/{id}` `/l/{id}` `/q/{id}` `/u/{username}` | `r/`, `l/`, `q/`, `u/` | Share landing pages: review, list, question, profile |
 
-The landing pages fetch and show **no user content**. They show the app icon, an **Open in Checkpoint** button (`checkpoint://r/{id}` etc.), and **Get the app** once an App Store ID is set. The only text they display is the optional `?t=` title the app put in the link.
+The landing pages fetch and show **no user content**. They show the app icon, **Join the beta** (TestFlight) until an App Store ID is set, an **Open in Checkpoint** button (`checkpoint://r/{id}` etc.), and **Get the app** once an App Store ID is set. The only text they display is the optional `?t=` title the app put in the link.
 
-## 1. Fill in the two values (one file)
+## 1. Fill in the values (one file)
 
 Edit **`site-config.js`**:
 
@@ -20,11 +20,13 @@ Edit **`site-config.js`**:
 window.CHECKPOINT_SITE = {
   SUPPORT_EMAIL: '',   // e.g. 'support@yourdomain.com'
   APP_STORE_ID: '',    // digits only, once the app exists in App Store Connect
+  TESTFLIGHT_URL: '',  // e.g. 'https://testflight.apple.com/join/AbCdEf12'
 }
 ```
 
 - `SUPPORT_EMAIL` fills the contact address on `/privacy`, `/terms` and `/support`. Until it is set those pages show a "not set yet" note.
 - `APP_STORE_ID` turns on the **Get the app** button. Until it is set the button is hidden.
+- `TESTFLIGHT_URL` turns on **Join the beta** on the home and share landing pages when `APP_STORE_ID` is still empty. Use your public TestFlight join link (`https://testflight.apple.com/join/…`). Once an App Store ID is set, the beta button is hidden and **Get the app** takes over.
 
 ## 2. Read and adjust the two Draft pages
 
