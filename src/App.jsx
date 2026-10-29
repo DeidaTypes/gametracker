@@ -116,7 +116,7 @@ import {
 import CenteredModal from './components/CenteredModal'
 import { SecondaryButton, SubmitButton } from './components/forms'
 import ToastHost from './components/Toast'
-import AuthBootSplash from './components/AuthBootSplash'
+import { handOffBootSplash, isBootSplashActive } from './motion/bootSplash'
 import CompletionCelebration from './components/celebration/CompletionCelebration'
 import RateItHost from './components/RateItHost'
 import MilestoneCelebration from './components/MilestoneCelebration'
@@ -1173,12 +1173,39 @@ function AppContent() {
     return () => clearTimeout(timer)
   }, [location.key, navigationType, attemptRestore])
 
+  // Opening the app: index.html's static #boot-splash covers everything until
+  // the first screen is ready, then src/motion/bootSplash.js takes it away
+  // (cold start only; the module flag makes every later call a no-op).
+  // A sign-in screen takes the hand-off itself, through AuthBrand, so its
+  // mascot receives the splash's. Everything else fades the app in, two
+  // frames after the routes first render. Signed out on a gated route,
+  // RequireAuth is about to redirect to /login: give LogIn a beat to take it.
+  const routesReady = !authLoading && !(checkingOnboarding && !isPublicRoute)
+  useEffect(() => {
+    if (!routesReady || !isBootSplashActive()) return undefined
+    let timer = 0
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        if (!user && !isPublicRoute) {
+          timer = window.setTimeout(() => handOffBootSplash(), MOTION.bootRedirectWait)
+        } else {
+          handOffBootSplash()
+        }
+      })
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [routesReady, user, isPublicRoute])
+
   // Block the entire app until the initial Supabase session restore
   // resolves. Without this, a refresh-while-logged-in briefly renders
   // the logged-out state (RequireAuth fires, we bounce to /login) before
-  // the session pops back, which is jarring.
+  // the session pops back, which is jarring. The static splash covers the
+  // wait, so there is nothing to render.
   if (authLoading) {
-    return <AuthBootSplash />
+    return null
   }
 
   // Don't show nav chrome on onboarding or auth screens.

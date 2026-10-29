@@ -403,23 +403,79 @@
 }
 
 /* ============================================================
-   Auth boot splash — BOOT-1 owns animation; layout only here.
+   Opening the app on a sign-in screen. src/motion/bootSplash.js
+   owns the timing and sets the --boot-* durations from xMotion.js.
+   Hold: until the splash hands off, the page is invisible and its
+   mascot hidden (both keyed on html[data-boot], so a failed hand-off
+   can never leave them hidden). Enter: the page fades in around the
+   gliding mascot, in the order it is read.
    ============================================================ */
-.auth-boot {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-base);
-  z-index: 9999;
+html[data-boot] .auth-page--hold {
+  opacity: 0;
 }
 
-.auth-boot__mascot {
-  display: block;
-  width: auto;
-  height: 260px;
-  max-width: none;
+html[data-boot] .auth-mascot[data-boot-target] {
+  visibility: hidden;
+}
+
+.auth-page--boot-in .auth-wash {
+  animation: auth-boot-fade var(--boot-fade) var(--ease-fade) both;
+}
+
+.auth-page--boot-in .auth-title,
+.auth-page--boot-in .auth-subtitle,
+.auth-page--boot-in .auth-field-group,
+.auth-page--boot-in .auth-form > :not(.auth-field-group),
+.auth-page--boot-in .auth-card > :not(.auth-brand):not(.auth-form),
+.auth-page--boot-in .auth-footer {
+  animation: auth-boot-in var(--boot-fade) var(--ease-fade) both;
+}
+
+.auth-page--boot-in .auth-title,
+.auth-page--boot-in .auth-subtitle {
+  animation-delay: var(--boot-delay-title);
+}
+
+.auth-page--boot-in .auth-field-group {
+  animation-delay: var(--boot-delay-group);
+}
+
+.auth-page--boot-in .auth-form > :not(.auth-field-group),
+.auth-page--boot-in .auth-card > :not(.auth-brand):not(.auth-form) {
+  animation-delay: var(--boot-delay-action);
+}
+
+.auth-page--boot-in .auth-footer {
+  animation-delay: var(--boot-delay-footer);
+}
+
+@keyframes auth-boot-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-seg-rise));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes auth-boot-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduce Motion: no rise, no stagger. The whole page fades in, mascot
+   included, while the splash fades out. !important so the global
+   reduced-motion rule (which zeroes durations) does not win. */
+.auth-page--boot-in-reduced {
+  animation: auth-boot-fade var(--boot-reduced) var(--ease-fade) both !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

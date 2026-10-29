@@ -60,6 +60,68 @@
   }
 }
 
+/* ---- Opening the app, signed in ----
+   src/motion/bootSplash.js adds .app--boot-enter when the splash mascot
+   starts to leave, and sets the --boot-* durations from xMotion.js. The app
+   fades into place under the fading splash. .main-content is opacity only:
+   it holds position:fixed layers, so it takes no transform. The nav bars
+   fade and rise a little, a beat later. The bottom nav keeps its own
+   translateX(-50%) in every keyframe. Classes are removed when the splash
+   is. */
+.app--boot-enter .main-content {
+  animation: app-boot-fade var(--boot-fade) var(--ease-fade) both;
+}
+
+.app--boot-enter .top-nav {
+  animation: app-boot-nav-in var(--boot-fade) var(--ease-fade) var(--boot-nav-delay) both;
+}
+
+.app--boot-enter .bottom-nav {
+  animation: app-boot-bottom-nav-in var(--boot-fade) var(--ease-fade) var(--boot-nav-delay) both;
+}
+
+@keyframes app-boot-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-boot-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-seg-rise));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-boot-bottom-nav-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(var(--motion-seg-rise));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Reduce Motion: fades only, no rise. !important so the global
+   reduced-motion rule (which zeroes durations) does not win. */
+.app--boot-enter-reduced .main-content,
+.app--boot-enter-reduced .top-nav,
+.app--boot-enter-reduced .bottom-nav {
+  animation: app-boot-fade var(--boot-reduced) var(--ease-fade) both !important;
+}
+
 /* ---- Full-page loading state ---- */
 .loading-container {
   display: flex;
