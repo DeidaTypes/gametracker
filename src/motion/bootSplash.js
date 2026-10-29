@@ -1,24 +1,30 @@
 /**
- * Opening the app. index.html paints #boot-splash on the first web frame: the
- * iOS launch image's navy and the mascot at 157x260, exactly where the
- * storyboard put them, easing to the saved theme. This module takes the splash
- * away once the app has something to show, and only on a cold start (a module
- * flag; signing out, signing in, resuming and deep links never come back here).
+ * Opening the app. From the moment iOS shows the launch screen until the app
+ * appears, nothing on screen changes. index.html paints #boot-splash on the
+ * first web frame: a transparent shell holding .boot-cover (the launch navy)
+ * and the mascot at 157x260, exactly where the storyboard put them, for every
+ * theme. The app underneath is already in the saved theme; the theme arrives
+ * only when the splash leaves. This module takes the splash away once the app
+ * has something to show, and only on a cold start (a module flag; signing out,
+ * signing in, resuming and deep links never come back here).
  *
- *   Signed out  The splash mascot glides into the sign-in screen's mascot while
- *               that page fades in around it. (handOffBootSplash({ target }))
- *   Signed in   The splash mascot grows a little and fades out while the app
- *               fades into place. (handOffBootSplash())
- *   Reduce Motion  No glide, grow or rise: the splash fades out while the page
- *               or app fades in.
+ *   Signed out  The navy cover dissolves while the splash mascot glides into
+ *               the sign-in screen's mascot and the page enters around it.
+ *               (handOffBootSplash({ target }))
+ *   Signed in   The whole splash zooms toward you (scale + opacity, one
+ *               compositor animation, the mascot growing a little more) while
+ *               the app enters. (handOffBootSplash())
+ *   Reduce Motion  Nothing moves: the splash fades out while the page or app
+ *               fades in.
  *
- * Nothing starts before MOTION.bootWait after index.html ran (window.__cpBootAt),
- * so the navy -> theme ease has finished and the mascot has held still.
- * Durations and curves come from xMotion.js. CSS reads the durations from custom
- * properties set here (--boot-*); see the enter classes in App.css and Auth.css.
+ * Nothing starts before MOTION.bootReadyBeat after index.html reported the
+ * splash painted (window.__cpSplashReadyAt), so the native launch cover is
+ * already gone. Durations and curves come from xMotion.js. CSS reads the
+ * durations from custom properties set here (--boot-*); see the enter classes
+ * in App.css and Auth.css.
  */
 
-import { MOTION, EASE_CSS, BOOT_GROW } from './xMotion'
+import { MOTION, EASE_CSS, BOOT_GROW, BOOT_ZOOM } from './xMotion'
 
 const SPLASH_ID = 'boot-splash'
 // The splash mascot is 260 pt tall (LaunchLogo); the glide scales it to the
@@ -31,7 +37,7 @@ const PAGE_ENTER_REDUCED = 'auth-page--boot-in-reduced'
 const APP_ENTER = 'app--boot-enter'
 const APP_ENTER_REDUCED = 'app--boot-enter-reduced'
 
-let scheduled = false // a hand-off is waiting for bootWait, or running
+let scheduled = false // a hand-off is waiting for the splash to be ready, or running
 let running = false // it has started: taps pass through
 let done = false // the splash is gone
 let pendingTarget = null // the sign-in mascot, if a page offered one
@@ -109,25 +115,9 @@ function finish() {
   clearVars()
 }
 
-/** The splash background goes transparent over `ms`, on a Web Animation. */
-function fadeBackground(splash, ms, easing) {
-  const bg = getComputedStyle(splash).backgroundColor
-  const clear = bg.replace(/^rgb\(([^)]+)\)$/, 'rgba($1, 0)')
-  splash.animate(
-    [{ backgroundColor: bg }, { backgroundColor: clear }],
-    { duration: ms, easing, fill: 'forwards' },
-  )
-}
-
-function hideLaunchLayer(splash) {
-  const layer = splash.querySelector('.boot-launch')
-  if (layer) layer.style.display = 'none'
-}
-
-/** Signed in: the splash mascot grows and fades; the app fades into place. */
+/** Signed in: the whole splash zooms and dissolves; the app enters under it. */
 function leaveToApp(splash, mascot, reduced) {
   const app = document.querySelector('.app')
-  hideLaunchLayer(splash)
 
   if (reduced) {
     splash.animate(
@@ -139,18 +129,24 @@ function leaveToApp(splash, mascot, reduced) {
     return
   }
 
-  mascot?.animate(
+  // One compositor animation on the whole splash: its navy goes with it, so
+  // nothing animates a background color.
+  const timing = { duration: MOTION.bootZoom, easing: EASE_CSS.leave, fill: 'forwards' }
+  splash.animate(
     [
       { opacity: 1, transform: 'scale(1)' },
-      { opacity: 0, transform: `scale(${BOOT_GROW})` },
+      { opacity: 0, transform: `scale(${BOOT_ZOOM})` },
     ],
-    { duration: MOTION.bootLeave, easing: EASE_CSS.leave, fill: 'forwards' },
+    timing,
   )
-  fadeBackground(splash, MOTION.bootLeave, EASE_CSS.leave)
+  mascot?.animate(
+    [{ transform: 'scale(1)' }, { transform: `scale(${BOOT_GROW})` }],
+    timing,
+  )
   app?.classList.add(APP_ENTER)
 
   // The last enter animation is a nav bar: bootNavDelay + bootFade.
-  const total = Math.max(MOTION.bootLeave, MOTION.bootNavDelay + MOTION.bootFade)
+  const total = Math.max(MOTION.bootZoom, MOTION.bootNavDelay + MOTION.bootFade)
   later(finish, total + 60)
 }
 
@@ -158,7 +154,6 @@ function leaveToApp(splash, mascot, reduced) {
 function glideToPage(splash, mascot, reduced) {
   const target = pendingTarget
   const page = target.closest('.auth-page')
-  hideLaunchLayer(splash)
 
   if (reduced) {
     // No glide: the splash fades out, the page and its mascot fade in.
@@ -179,9 +174,11 @@ function glideToPage(splash, mascot, reduced) {
   const dx = to.left + to.width / 2 - (from.left + from.width / 2)
   const dy = to.top + to.height / 2 - (from.top + from.height / 2)
 
-  // The page takes over the background at the moment the mascot starts to
-  // travel; both are the theme's base color, so nothing changes but the content.
-  splash.style.backgroundColor = 'transparent'
+  // The navy cover dissolves into the page while the mascot travels.
+  splash.querySelector('.boot-cover')?.animate(
+    [{ opacity: 1 }, { opacity: 0 }],
+    { duration: MOTION.bootCoverFade, easing: EASE_CSS.fade, fill: 'forwards' },
+  )
   page?.classList.remove(HOLD_CLASS)
   page?.classList.add(PAGE_ENTER)
 
@@ -217,6 +214,28 @@ function run() {
 }
 
 /**
+ * Start as soon as the app is ready, but not before the splash has painted
+ * (index.html sets window.__cpSplashReadyAt) plus a beat, so the native launch
+ * cover is gone. If the splash is not ready yet, look again next frame; the
+ * 8 s failsafe in index.html covers a splash that never reports.
+ */
+function runWhenReady() {
+  if (done || running) return
+  if (!splashEl()) {
+    run()
+    return
+  }
+  const readyAt = window.__cpSplashReadyAt
+  if (typeof readyAt !== 'number') {
+    later(runWhenReady, 16)
+    return
+  }
+  const wait = readyAt + MOTION.bootReadyBeat - performance.now()
+  if (wait > 0) later(run, wait)
+  else run()
+}
+
+/**
  * Take the splash away. Runs once per cold start; later calls do nothing, apart
  * from one case: a sign-in page that mounts before the hand-off starts becomes
  * the target.
@@ -236,7 +255,5 @@ export function handOffBootSplash({ target } = {}) {
   }
   scheduled = true
 
-  const startedAt = typeof window.__cpBootAt === 'number' ? window.__cpBootAt : 0
-  const wait = Math.max(0, startedAt + MOTION.bootWait - performance.now())
-  later(run, wait)
+  later(runWhenReady, 0)
 }

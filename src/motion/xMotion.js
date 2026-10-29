@@ -30,13 +30,13 @@ export const MOTION = {
   toastRise: 8,
   toastSwap: 200,
   reducedFade: 150,
-  // Opening the app (src/motion/bootSplash.js). bootTheme is also the literal
-  // in index.html's first-frame CSS: the launch navy easing to the saved theme.
-  bootTheme: 260,
-  bootWait: 330, // earliest hand-off after the first frame: bootTheme plus a beat
+  // Opening the app (src/motion/bootSplash.js). The splash holds the launch
+  // navy and mascot still, for every theme, until the app is ready.
+  bootReadyBeat: 60, // earliest hand-off after the splash painted (the native cover is gone by then)
   bootGlide: 520, // boot mascot into the sign-in mascot
   bootFade: 260, // a page or the app fading into place
-  bootLeave: 280, // boot mascot grows and fades out; splash background with it
+  bootZoom: 320, // signed in: the whole splash zooms toward you and dissolves
+  bootCoverFade: 340, // signed out: the navy dissolves while the mascot glides
   bootReduced: 200, // Reduce Motion: everything crossfades
   bootNavDelay: 40, // nav bars trail the app fade
   bootStaggerTitle: 120, // sign-in content, in the order it arrives
@@ -46,8 +46,10 @@ export const MOTION = {
   bootRedirectWait: 400, // signed out on a gated route: how long LogIn gets to take the hand-off
 }
 
-/** Signed-in hand-off: the boot mascot grows to this as it fades out. */
-export const BOOT_GROW = 1.12
+/** Signed-in hand-off: the whole splash scales to this as it dissolves. */
+export const BOOT_ZOOM = 1.08
+/** Signed-in hand-off: the mascot grows to this on the same timing. */
+export const BOOT_GROW = 1.06
 
 export const EASE = {
   move: [0.32, 0.72, 0, 1],
