@@ -38,7 +38,7 @@ export default function QaGame() {
   const navigate = useNavigate()
   const { tick: hideTick } = useQaHides()
 
-  const [filter, setFilter] = useState('answered')
+  const [filter, setFilter] = useState('unanswered')
   const [sort, setSort] = useState('helpful')
   const [searchText, setSearchText] = useState('')
   const [sortOpen, setSortOpen] = useState(false)
@@ -231,18 +231,6 @@ export default function QaGame() {
             <button
               type="button"
               role="tab"
-              aria-selected={filter === 'answered'}
-              className={`qa-seg__btn text-body${filter === 'answered' ? ' qa-seg__btn--on' : ''}`}
-              onClick={() => selectFilter('answered')}
-            >
-              Answered
-              {answeredCount != null ? (
-                <span className="qa-seg__count text-caption">{answeredCount}</span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={filter === 'unanswered'}
               className={`qa-seg__btn text-body${filter === 'unanswered' ? ' qa-seg__btn--on' : ''}`}
               onClick={() => selectFilter('unanswered')}
@@ -250,6 +238,18 @@ export default function QaGame() {
               Unanswered
               {unansweredCount != null ? (
                 <span className="qa-seg__count qa-seg__count--soc text-caption">{unansweredCount}</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'answered'}
+              className={`qa-seg__btn text-body${filter === 'answered' ? ' qa-seg__btn--on' : ''}`}
+              onClick={() => selectFilter('answered')}
+            >
+              Answered
+              {answeredCount != null ? (
+                <span className="qa-seg__count text-caption">{answeredCount}</span>
               ) : null}
             </button>
           </div>

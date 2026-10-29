@@ -20,10 +20,10 @@ import ContentSwap from '../../components/motion/ContentSwap'
 import './qa.css'
 
 /**
- * Answered | Unanswered is screen state, remembered for this JS session.
+ * Unanswered | Answered is screen state, remembered for this JS session.
  * It is not in the URL, so a tab switch never reloads the board.
  */
-let rememberedFilter = 'answered'
+let rememberedFilter = 'unanswered'
 
 function asList(value) {
   return Array.isArray(value) ? value : []
@@ -114,15 +114,6 @@ function FilterSwitch({ filter, helpCount, onSelect }) {
       <button
         type="button"
         role="tab"
-        aria-selected={filter === 'answered'}
-        className={`qa-seg__btn text-body${filter === 'answered' ? ' qa-seg__btn--on' : ''}`}
-        onClick={() => onSelect('answered')}
-      >
-        Answered
-      </button>
-      <button
-        type="button"
-        role="tab"
         aria-selected={filter === 'unanswered'}
         className={`qa-seg__btn text-body${filter === 'unanswered' ? ' qa-seg__btn--on' : ''}`}
         onClick={() => onSelect('unanswered')}
@@ -131,6 +122,15 @@ function FilterSwitch({ filter, helpCount, onSelect }) {
         {helpCount > 0 ? (
           <span className="qa-seg__count qa-seg__count--soc">{helpCount}</span>
         ) : null}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={filter === 'answered'}
+        className={`qa-seg__btn text-body${filter === 'answered' ? ' qa-seg__btn--on' : ''}`}
+        onClick={() => onSelect('answered')}
+      >
+        Answered
       </button>
     </div>
   )
