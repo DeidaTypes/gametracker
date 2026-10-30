@@ -3,20 +3,11 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'motion/react'
-import {
-  PlayCircle,
-  List,
-  Search,
-  X,
-  Plus,
-  Check,
-  SearchX,
-  Gamepad2,
-  Ban,
-} from 'lucide-react'
+import { motion, AnimatePresence, useIsPresent } from 'motion/react'
+import { Search, X, Plus, Check, SearchX } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { searchGames } from '../services/searchService'
 import { getBestImageUrl } from '../services/imageUtils'
@@ -24,22 +15,14 @@ import { updateProfile } from '../services/profileService'
 import { updateUserProfile } from '../services/userService'
 import { completeOnboarding } from '../services/onboardingService'
 import { setOnboarded } from '../services/userPreferences'
-import { postReview, getReviewsForUser } from '../services/reviewService'
-import { getGameStatus } from '../services/libraryService'
-import {
-  PLATFORM_CHIPS,
-  ERA_CHIPS,
-  fetchRateFromMemoryCandidates,
-  getNeverPlayedExclusions,
-  excludeGameAsNeverPlayed,
-} from '../services/rateFromMemoryService'
-import { StarRatingInput } from '../components/forms'
 import { showToast } from '../components/Toast'
 import EmptyState from '../components/EmptyState'
+import ThemeStep from '../components/onboarding/ThemeStep'
+import PlatformStep from '../components/onboarding/PlatformStep'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { useKeyboardOpen } from '../hooks/useKeyboardInset'
 import { hapticImpact } from '../utils/haptics'
-import { MOTION_MS, MOTION_EASE, PARALLAX, DIM_OPACITY } from '../motion/xMotion'
+import { MOTION, EASE } from '../motion/xMotion'
 import './Onboarding.css'
 
 /**
@@ -65,67 +48,51 @@ function tileColorVar(id) {
 }
 
 /**
- * Three value-prop/action screens (indices 0-2), matching the approved
- * onboarding mockups:
- *   0 — "Track what you play"  — cobalt -> journal two-tone intro
- *   1 — "Build your backlog"   — single journal-purple accent
- *   2 — favorites game-picker  — see PICKER_STEP below
- *
- * Condensed from a prior 5-screen flow ("Share your thoughts" and "Find
- * your people" value props were dropped) so the step count matches the
- * 3-step mockup set 1:1.
+ * The flow, in order. One list drives the dots, the announcer, the slides and
+ * the "last step" rule (Skip and Continue both call finish() on the last one),
+ * so a new step is one more id here plus one more case in the slide switch.
  */
-const VALUE_PROP_SCREENS = [
-  {
-    key: 'track',
-    Icon: PlayCircle,
-    accent: 'cobalt',
-    twoTone: true,
-    announceTitle: "Every game you've ever played, remembered.",
-    titleLead: "Every game you've ever played,",
-    titleGradient: 'remembered.',
-    body: "From the one that hooked you as a kid to what you booted up last night — it all lives here.",
-    cta: 'Next',
-  },
-  {
-    key: 'backlog',
-    Icon: List,
-    accent: 'journal',
-    twoTone: false,
-    announceTitle: 'Build your backlog',
-    title: 'Build your backlog',
-    body: 'Create lists for cozy games, multiplayer nights, anything you can think of.',
-    cta: 'Next',
-  },
-]
+const STEPS = ['theme', 'platforms', 'favorites']
 
-// Step 2 (the third screen) is the favorites game-picker.
-const PICKER_STEP = 2
-// Step 3 — "What did you play on?" (platforms + eras). Step 4 — "Five from
-// your past" (rate-from-memory). Both are new; both are skippable; neither
-// touches game_trackers (see rateFromMemoryService.js header comment and
-// postReview() in reviewService.js).
-const PLATFORM_STEP = 3
-const RATE_STEP = 4
-const TOTAL_STEPS = 5
-// Per-step dot/accent color, in step order — mirrors each screen's accent
-// and the picker's content-forward green so the dot trail visually narrates
-// cobalt -> journal purple -> review green -> cobalt -> star gold across the
-// whole flow. --star is the app's one sanctioned warm token (rating gold,
-// see .cursorrules), which is exactly what the rating step is.
-const STEP_ACCENT_VARS = [
-  'var(--accent)',
-  'var(--accent-journal)',
-  'var(--accent-review)',
-  'var(--accent)',
-  'var(--star)',
-]
-// How many games IGDB requests fire per five-card set: exactly one (see
-// fetchRateFromMemoryCandidates in rateFromMemoryService.js — the whole
-// pool is fetched up front, so zero further requests happen per-card), plus
-// a same-session fallback query only if that first request returns zero
-// candidates.
-const RATE_STEP_TOTAL = 5
+const STEP_TITLES = {
+  theme: 'Make it yours',
+  platforms: 'Where do you play?',
+  favorites: 'Add 4 favorite games',
+}
+
+// The profile shows four favorites; the picker offers exactly four.
+const FAVORITES_MAX = 4
+
+// A step slides this far (and fades) as it arrives and leaves.
+const STEP_SHIFT_PX = 24
+const REST = 'translate3d(0px, 0, 0)'
+
+/** Joins ['a', 'b', 'c'] as "a, b and c" for the welcome toast. */
+function joinList(parts) {
+  if (parts.length <= 1) return parts.join('')
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+/**
+ * One step's slide. Its own component so it can ask AnimatePresence whether
+ * it is the leaving step: a leaving step must not catch a tap meant for the
+ * step arriving on top of it.
+ */
+function StepSlide({ variants, className, children }) {
+  const isPresent = useIsPresent()
+  return (
+    <motion.div
+      className={className}
+      variants={variants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      style={{ pointerEvents: isPresent ? 'auto' : 'none' }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -133,9 +100,15 @@ export default function Onboarding() {
   const { reduced } = useMotionPreference()
 
   const [step, setStep] = useState(0)
-  const [direction, setDirection] = useState(1)
+  const stepId = STEPS[step]
+  const isLastStep = step === STEPS.length - 1
 
-  // Screen 3 — game picker
+  // Step 2 — platforms + since when. Held here (not in the step) because
+  // Continue, which lives in the frame, is what saves them.
+  const [platforms, setPlatforms] = useState([])
+  const [gamingSince, setGamingSince] = useState(null)
+
+  // Step 3 — game picker
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -143,36 +116,18 @@ export default function Onboarding() {
   const [selectedGames, setSelectedGames] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
-  // Step 3 — platforms + eras
-  const [selectedPlatformChips, setSelectedPlatformChips] = useState([])
-  const [selectedEraChips, setSelectedEraChips] = useState([])
-
-  // Step 4 — rate from memory
-  const [rateCandidates, setRateCandidates] = useState([])
-  const [rateLoading, setRateLoading] = useState(false)
-  // True once the candidate-load attempt has finished (success or failure/
-  // empty) — gates the auto-finish effect below so it can't fire on the
-  // very first render, before loading has even started.
-  const [rateReady, setRateReady] = useState(false)
-  const [rateIndex, setRateIndex] = useState(0)
-  const [rateSubmittingId, setRateSubmittingId] = useState(null)
-  const [ratedCount, setRatedCount] = useState(0)
-  const rateLoadedRef = useRef(false)
-
   const inputRef = useRef(null)
   const debounceRef = useRef(null)
   const announceRef = useRef(null)
 
+  // What was really written, for the closing toast. A ref, not state: finish()
+  // can run in the same tick as the save that sets it, and must see it. The
+  // theme is not counted; it is a setting, not something added to the profile.
+  const savedRef = useRef({ platforms: false, gamingSince: false, favorites: 0 })
+
   // Announce current screen title to screen readers whenever step changes.
   useEffect(() => {
-    const title =
-      step < PICKER_STEP
-        ? VALUE_PROP_SCREENS[step].announceTitle
-        : step === PICKER_STEP
-          ? 'Add 3 favorite games'
-          : step === PLATFORM_STEP
-            ? 'What did you play on?'
-            : 'Five from your past'
+    const title = STEP_TITLES[stepId]
     if (announceRef.current) {
       // Clear first so repeated-same-step announcements still fire.
       announceRef.current.textContent = ''
@@ -181,30 +136,15 @@ export default function Onboarding() {
         if (announceRef.current) announceRef.current.textContent = title
       })
     }
-  }, [step])
+  }, [stepId])
 
-  const goToStep = useCallback(
-    (next) => {
-      setDirection(next > step ? 1 : -1)
-      setStep(next)
-    },
-    [step]
-  )
-
-  // Set once favorites are actually saved (step 2 "Done" with 1+ picks) —
-  // only ever used to shape the final completion toast, never re-read for
-  // any write.
-  const [favoritesCount, setFavoritesCount] = useState(0)
-
-  // ── Shared "finish onboarding" logic — now the ONLY place that marks
-  // onboarding complete and navigates home. Step 2 (favorites) and step 3
-  // (platforms/eras) no longer call this directly; they advance instead.
-  // This runs once, at the true end of the flow (step 4 done/skipped, or
-  // header Skip from an earlier step). ──────────────────────────────
+  // ── Shared "finish onboarding" logic — the ONLY place that marks
+  // onboarding complete and navigates home. It runs once, at the true end of
+  // the flow: Continue/Done or Skip on the last step. ───────────────────
   // A ref latch, not `submitting`: it is set synchronously before any await
   // and never reset, so completeOnboarding / navigate / the toast happen
-  // exactly once even if the auto-finish effect re-runs while this page is
-  // still mounted for its exit transition.
+  // exactly once even if finish() is called again while this page is still
+  // mounted for its exit transition.
   const finishedRef = useRef(false)
   const finish = useCallback(async () => {
     if (finishedRef.current) return
@@ -220,12 +160,14 @@ export default function Onboarding() {
 
       navigate('/', { replace: true })
 
+      const saved = savedRef.current
       const parts = []
-      if (favoritesCount > 0) parts.push('favorites')
-      if (ratedCount > 0) parts.push('ratings')
+      if (saved.platforms) parts.push('platforms')
+      if (saved.gamingSince) parts.push('gaming start')
+      if (saved.favorites > 0) parts.push('favorites')
       if (parts.length > 0) {
         showToast('Welcome to Checkpoint', 'success', 5000, null, null, {
-          sub: `Your ${parts.join(' and ')} are on your profile`,
+          sub: `Saved your ${joinList(parts)}`,
           tone: 'saved',
         })
       }
@@ -235,41 +177,76 @@ export default function Onboarding() {
       navigate('/', { replace: true })
     }
     // `submitting` stays true: the page is leaving, nothing re-enables.
-  }, [user, navigate, favoritesCount, ratedCount])
+  }, [user, navigate])
 
-  // Header "Skip" is the one shared skip affordance for every step, but its
-  // effect depends on where it's tapped:
-  //   - Steps 0/1/2 (unchanged behavior): abort onboarding entirely, same
-  //     as before this change — nothing selected on those steps is saved.
-  //   - Step 3 (platforms/eras): skip THIS STEP only — falls through to
-  //     Step 4 with no platform/era filter, which fetchRateFromMemoryCandidates
-  //     resolves as "broadly popular games across eras" (no platform/era
-  //     clause in the query).
-  //   - Step 4 (rate from memory): this is the last step, so skipping it
-  //     IS finishing onboarding — same as before, partial/zero ratings are
-  //     fine.
-  const handleSkip = useCallback(() => {
-    if (step === PLATFORM_STEP) {
-      goToStep(RATE_STEP)
-      return
+  // Skip and Continue both land here: on to the next step, or finish() on the
+  // last one. A tap that arrives while the previous step is still sliding out
+  // is dropped, so a double-tap cannot skip a step the user never saw.
+  const lastAdvanceRef = useRef(0)
+  const advance = useCallback(() => {
+    if (finishedRef.current) return
+    const now = Date.now()
+    if (now - lastAdvanceRef.current < MOTION.slide) return
+    lastAdvanceRef.current = now
+    if (step >= STEPS.length - 1) {
+      finish()
+    } else {
+      setStep(step + 1)
     }
-    finish()
-  }, [step, goToStep, finish])
+  }, [step, finish])
 
-  const handleNext = useCallback(() => {
-    if (step < PICKER_STEP) goToStep(step + 1)
-  }, [step, goToStep])
+  // Skip never saves the step it leaves.
+  const handleSkip = advance
 
-  // Step 2 "Done" — saves favorites (exactly the same write as before:
-  // localStorage + users.favorite_games, never a tracker status) then
-  // ADVANCES to the platform step instead of finishing onboarding.
-  const handleFavoritesDone = useCallback(async () => {
+  // Step 2 Continue — saves platforms + gaming_since through the same
+  // updateUserProfile every profile write uses. Nothing picked means nothing
+  // to write. A failed save logs and still advances: it must not trap the user.
+  const handlePlatformsContinue = useCallback(async () => {
     if (submitting) return
+    if (user?.id && (platforms.length > 0 || gamingSince != null)) {
+      setSubmitting(true)
+      try {
+        await updateUserProfile(user.id, { platforms, gamingSince })
+        savedRef.current.platforms = platforms.length > 0
+        savedRef.current.gamingSince = gamingSince != null
+      } catch (err) {
+        console.error('[Onboarding] platforms sync failed:', err)
+      } finally {
+        setSubmitting(false)
+      }
+    }
+    advance()
+  }, [submitting, user, platforms, gamingSince, advance])
+
+  const handleContinue = useCallback(() => {
+    if (stepId === 'platforms') handlePlatformsContinue()
+    else advance()
+  }, [stepId, handlePlatformsContinue, advance])
+
+  const togglePlatform = useCallback((id) => {
+    hapticImpact('Light')
+    setPlatforms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    )
+  }, [])
+
+  // Tapping the chosen decade again clears it; any other decade becomes "since".
+  const pickGamingSince = useCallback((year) => {
+    hapticImpact('Light')
+    setGamingSince((prev) => (prev === year ? null : year))
+  }, [])
+
+  // Favorites "Done" — saves favorites (exactly the same write as before:
+  // localStorage + users.favorite_games, never a tracker status) then
+  // finishes onboarding, because this is the last step.
+  const handleFavoritesDone = useCallback(async () => {
+    if (submitting || finishedRef.current) return
     if (selectedGames.length > 0) {
       setSubmitting(true)
       try {
-        const favorites = selectedGames.slice(0, 4)
+        const favorites = selectedGames.slice(0, FAVORITES_MAX)
         updateProfile({ favoriteGames: favorites })
+        savedRef.current.favorites = favorites.length
         if (user?.id) {
           try {
             await updateUserProfile(user.id, { favoriteGames: favorites })
@@ -279,142 +256,12 @@ export default function Onboarding() {
             console.error('[Onboarding] favorites sync failed:', err)
           }
         }
-        setFavoritesCount(favorites.length)
       } finally {
         setSubmitting(false)
       }
     }
-    goToStep(PLATFORM_STEP)
-  }, [submitting, selectedGames, user, goToStep])
-
-  // Step 3 "Next" — platforms/eras are read directly from state by the
-  // rate-candidate loader; nothing to persist here beyond advancing.
-  const handlePlatformNext = useCallback(() => {
-    goToStep(RATE_STEP)
-  }, [goToStep])
-
-  const togglePlatformChip = useCallback((chipId) => {
-    hapticImpact('Light')
-    setSelectedPlatformChips((prev) =>
-      prev.includes(chipId) ? prev.filter((id) => id !== chipId) : [...prev, chipId]
-    )
-  }, [])
-
-  const toggleEraChip = useCallback((chipId) => {
-    hapticImpact('Light')
-    setSelectedEraChips((prev) =>
-      prev.includes(chipId) ? prev.filter((id) => id !== chipId) : [...prev, chipId]
-    )
-  }, [])
-
-  // ── Step 4 — rate from memory ──────────────────────────────────────
-  // Loads the candidate pool exactly once per onboarding session, when the
-  // step is first reached. See rateFromMemoryService.js for the query
-  // (ONE batched IGDB request in the normal case) and exclusion rules.
-  useEffect(() => {
-    if (step !== RATE_STEP || rateLoadedRef.current) return
-    rateLoadedRef.current = true
-    let cancelled = false
-    ;(async () => {
-      setRateLoading(true)
-      try {
-        // Exclude: permanently "never played" + already-rated (reviews)
-        // games. "Already tracks" is applied after fetch below, since the
-        // candidate ids aren't known until the query returns.
-        const excludeIds = getNeverPlayedExclusions()
-        if (user?.id) {
-          try {
-            const reviews = await getReviewsForUser(user.id)
-            for (const r of reviews) {
-              if (r.igdb_game_id != null) excludeIds.add(String(r.igdb_game_id))
-            }
-          } catch (err) {
-            console.error('[Onboarding] fetching existing reviews failed:', err)
-          }
-        }
-
-        const candidates = await fetchRateFromMemoryCandidates({
-          platformChipIds: selectedPlatformChips,
-          eraChipIds: selectedEraChips,
-          excludeIds,
-          limit: RATE_STEP_TOTAL,
-        })
-
-        // "...or tracks" exclusion — local device library check, cheap and
-        // synchronous (see libraryService.getGameStatus).
-        const untracked = candidates.filter((g) => !getGameStatus(g.id))
-
-        if (!cancelled) setRateCandidates(untracked)
-      } catch (err) {
-        console.error('[Onboarding] loading rate candidates failed:', err)
-        if (!cancelled) setRateCandidates([])
-      } finally {
-        if (!cancelled) {
-          setRateLoading(false)
-          setRateReady(true)
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once via rateLoadedRef
-  }, [step])
-
-  // Auto-finish once every card has been resolved (rated / never played /
-  // skipped) — this is the last step, so running out of cards IS finishing
-  // onboarding. `rateReady` gates this so it can't fire before the load
-  // effect above has even run (e.g. on first render, index 0 >= length 0
-  // would otherwise look "done" before candidates ever loaded). Also
-  // covers the zero-candidates case (empty pool) the same way.
-  useEffect(() => {
-    if (step !== RATE_STEP || !rateReady) return
-    if (rateIndex >= rateCandidates.length) {
-      finish()
-    }
-  }, [step, rateReady, rateIndex, rateCandidates.length, finish])
-
-  // Advance past the current rate card — shared tail for rate/never-played/
-  // skip. The effect above handles finishing once the cards run out.
-  const advanceRateCard = useCallback(() => {
-    setRateIndex((prev) => prev + 1)
-  }, [])
-
-  const handleRateStar = useCallback(
-    async (candidate, value) => {
-      if (rateSubmittingId != null) return
-      setRateSubmittingId(candidate.id)
-      try {
-        await postReview({
-          igdbGameId: candidate.id,
-          body: '',
-          rating: value,
-          gameTitle: candidate.title,
-          gameImage: candidate.image,
-        })
-        setRatedCount((c) => c + 1)
-        advanceRateCard()
-      } catch (err) {
-        console.error('[Onboarding] rating failed:', err)
-        showToast("Couldn't save your rating", 'error', null, null, null, { sub: 'Try again' })
-      } finally {
-        setRateSubmittingId(null)
-      }
-    },
-    [rateSubmittingId, advanceRateCard]
-  )
-
-  const handleNeverPlayed = useCallback(
-    (candidate) => {
-      excludeGameAsNeverPlayed(candidate.id)
-      advanceRateCard()
-    },
-    [advanceRateCard]
-  )
-
-  const handleSkipCard = useCallback(() => {
-    advanceRateCard()
-  }, [advanceRateCard])
+    finish()
+  }, [submitting, selectedGames, user, finish])
 
   // ── Game search ───────────────────────────────────────────────────
   const handleQueryChange = useCallback((e) => {
@@ -459,15 +306,20 @@ export default function Onboarding() {
           prev.filter((g) => String(g.id) !== String(game.id))
         )
       } else {
-        setSelectedGames((prev) => [
-          ...prev,
-          {
-            id: game.id,
-            title: game.title || '',
-            image: game.image || null,
-            developer: game.developer || '',
-          },
-        ])
+        // Four slots on the profile: a fifth tap is ignored, not queued.
+        setSelectedGames((prev) =>
+          prev.length >= FAVORITES_MAX
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: game.id,
+                  title: game.title || '',
+                  image: game.image || null,
+                  developer: game.developer || '',
+                },
+              ]
+        )
       }
     },
     [isPicked]
@@ -480,33 +332,32 @@ export default function Onboarding() {
     )
   }, [])
 
-  // ── Slide animation ───────────────────────────────────────────────
-  // Same push as the route transition: one duration, one curve (xMotion).
-  // Incoming slides in from the edge fully opaque; outgoing moves PARALLAX
-  // the other way and dims. Both run together (AnimatePresence "sync").
-  // Only transform and opacity animate.
-  const slideTransition = reduced
-    ? { duration: 0 }
-    : { duration: MOTION_MS / 1000, ease: MOTION_EASE }
-  const slideVariants = {
-    enter: (dir) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 1 }),
-    center: { x: 0, opacity: 1 },
-    exit: (dir) => ({
-      x: `${(dir > 0 ? -PARALLAX : PARALLAX) * 100}%`,
-      opacity: 1 - DIM_OPACITY,
-    }),
-  }
+  // ── Step transition ───────────────────────────────────────────────
+  // Arrives 24px from the right and fades in; leaves 24px to the left and
+  // fades out. Fade 260, move 340, both on the locked ease tokens. Reduce
+  // Motion: a 150 fade, nothing travels.
+  const stepVariants = useMemo(() => {
+    const shift = reduced ? 0 : STEP_SHIFT_PX
+    const transition = reduced
+      ? { opacity: { duration: MOTION.reducedFade / 1000, ease: EASE.fade } }
+      : {
+          opacity: { duration: MOTION.popIn / 1000, ease: EASE.fade },
+          transform: { duration: MOTION.slide / 1000, ease: EASE.move },
+        }
+    return {
+      enter: { opacity: 0, transform: `translate3d(${shift}px, 0, 0)` },
+      center: { opacity: 1, transform: REST, transition },
+      exit: { opacity: 0, transform: `translate3d(${-shift}px, 0, 0)`, transition },
+    }
+  }, [reduced])
 
-  // Done is always actionable — at 0 picks it's a "Done = skip" pathway
-  // (muted styling signals that), at 1+ it saves whatever's selected (no
-  // minimum of 3 required). Visual state alone communicates progress.
-  const remaining = Math.max(0, 3 - selectedGames.length)
+  const remaining = Math.max(0, FAVORITES_MAX - selectedGames.length)
 
   return (
     // kb-viewport-fit: this page is a fixed shell (header / scroll region /
-    // action bar) whose results list is the only scroller, so it sizes to the
-    // space the keyboard leaves rather than extending underneath it. See
-    // src/styles/keyboard.css.
+    // action bar) whose results list is the only scroller on the picker step,
+    // so it sizes to the space the keyboard leaves rather than extending
+    // underneath it. See src/styles/keyboard.css.
     <div className="ob-page kb-viewport-fit" role="main">
       {/* Screen-reader live region — announces each screen's title on mount */}
       <span
@@ -517,64 +368,33 @@ export default function Onboarding() {
         aria-atomic="true"
       />
 
-      {/* ── Header: progress dots + Skip ── */}
+      {/* ── Header: one dot per step + Skip ── */}
       <div className="ob-header">
         <div className="ob-dots" aria-hidden="true">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => {
+          {STEPS.map((id, i) => {
             const state = i < step ? 'done' : i === step ? 'active' : 'inactive'
-            return (
-              <span
-                key={i}
-                className={`ob-dot ob-dot--${state}`}
-                style={
-                  state !== 'inactive'
-                    ? { '--ob-dot-color': STEP_ACCENT_VARS[i] }
-                    : undefined
-                }
-              />
-            )
+            return <span key={id} className={`ob-dot ob-dot--${state}`} />
           })}
         </div>
         <button
           type="button"
           className="ob-skip"
           onClick={handleSkip}
-          aria-label={step === PLATFORM_STEP ? 'Skip this step' : 'Skip onboarding'}
+          aria-label={isLastStep ? 'Skip and finish' : 'Skip this step'}
           disabled={submitting}
         >
           Skip
         </button>
       </div>
 
-      {/* ── Animated slide area ── */}
+      {/* ── Animated step area ── */}
       <div className="ob-slide-wrap" aria-live="off">
-        <AnimatePresence mode="sync" initial={false} custom={direction}>
-          {step < PICKER_STEP ? (
-            <motion.div
-              key={`vp-${step}`}
-              className="ob-slide"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={slideTransition}
-            >
-              <ValuePropSlide
-                screen={VALUE_PROP_SCREENS[step]}
-                onNext={handleNext}
-              />
-            </motion.div>
-          ) : step === PICKER_STEP ? (
-            <motion.div
-              key="picker"
+        <AnimatePresence mode="sync" initial={false}>
+          {stepId === 'favorites' ? (
+            <StepSlide
+              key="favorites"
               className="ob-slide ob-slide--picker"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={slideTransition}
+              variants={stepVariants}
             >
               <GamePickerSlide
                 query={query}
@@ -592,107 +412,33 @@ export default function Onboarding() {
                 submitting={submitting}
                 reduced={reduced}
               />
-            </motion.div>
-          ) : step === PLATFORM_STEP ? (
-            <motion.div
-              key="platform"
-              className="ob-slide"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={slideTransition}
-            >
-              <PlatformEraSlide
-                selectedPlatformChips={selectedPlatformChips}
-                selectedEraChips={selectedEraChips}
-                togglePlatformChip={togglePlatformChip}
-                toggleEraChip={toggleEraChip}
-                onNext={handlePlatformNext}
-              />
-            </motion.div>
+            </StepSlide>
           ) : (
-            <motion.div
-              key="rate"
-              className="ob-slide"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={slideTransition}
-            >
-              <RateFromMemorySlide
-                loading={rateLoading || !rateReady}
-                candidates={rateCandidates}
-                index={rateIndex}
-                submittingId={rateSubmittingId}
-                onRateStar={handleRateStar}
-                onNeverPlayed={handleNeverPlayed}
-                onSkipCard={handleSkipCard}
-                reduced={reduced}
-              />
-            </motion.div>
+            <StepSlide key={stepId} className="ob-slide" variants={stepVariants}>
+              <div className="ob-scroll">
+                {stepId === 'theme' && <ThemeStep reduced={reduced} />}
+                {stepId === 'platforms' && (
+                  <PlatformStep
+                    platforms={platforms}
+                    onTogglePlatform={togglePlatform}
+                    gamingSince={gamingSince}
+                    onPickGamingSince={pickGamingSince}
+                  />
+                )}
+              </div>
+              <div className="ob-foot">
+                <button
+                  type="button"
+                  className="ob-cta-btn"
+                  onClick={handleContinue}
+                  disabled={submitting}
+                >
+                  Continue
+                </button>
+              </div>
+            </StepSlide>
           )}
         </AnimatePresence>
-      </div>
-    </div>
-  )
-}
-
-// ── Value-prop slide (screens 1-2) ──────────────────────────────────────
-
-function ValuePropSlide({ screen, onNext }) {
-  const { Icon, accent, twoTone, title, titleLead, titleGradient, body, cta } =
-    screen
-  return (
-    <div className={`ob-vp ob-vp--${accent}`}>
-      <div className="ob-vp__glow" aria-hidden="true">
-        {twoTone ? (
-          <>
-            <span className="ob-vp__glow-blob ob-vp__glow-blob--cobalt" />
-            <span className="ob-vp__glow-blob ob-vp__glow-blob--journal" />
-          </>
-        ) : (
-          <span className="ob-vp__glow-blob ob-vp__glow-blob--solo" />
-        )}
-      </div>
-
-      <div
-        className={
-          'ob-vp__icon-frame' +
-          (twoTone
-            ? ' ob-vp__icon-frame--twotone'
-            : ' ob-vp__icon-frame--solid')
-        }
-        aria-hidden="true"
-      >
-        <Icon size={42} strokeWidth={1.6} className="ob-vp__icon" />
-      </div>
-
-      <h1 className="ob-vp__title">
-        {twoTone ? (
-          <>
-            {titleLead}
-            <br />
-            <span className="ob-vp__title-gradient">{titleGradient}</span>
-          </>
-        ) : (
-          title
-        )}
-      </h1>
-      <p className="ob-vp__body">{body}</p>
-      <div className="ob-cta-wrap">
-        <button
-          type="button"
-          className={
-            'ob-cta-btn' + (accent === 'journal' ? ' ob-cta-btn--journal' : '')
-          }
-          onClick={onNext}
-        >
-          {cta}
-        </button>
       </div>
     </div>
   )
@@ -766,14 +512,14 @@ function GamePickerSlide({
   const pickedCount = selectedGames.length
   const picksLabel =
     pickedCount === 0
-      ? 'Your 3 picks'
-      : pickedCount >= 3
-        ? 'Your 3 picks — ready!'
-        : `Your 3 picks — ${remaining} more to go`
+      ? 'Your 4 picks'
+      : pickedCount >= FAVORITES_MAX
+        ? 'Your 4 picks — ready!'
+        : `Your 4 picks — ${remaining} more to go`
 
   // The picks area has two layouts, never both at once (a results list
   // layered over the picks grid reads as a rendering glitch). Typing swaps
-  // the three full-size slots for one compact strip; clearing the field
+  // the four full-size slots for one compact strip; clearing the field
   // swaps them back, now holding whatever was chosen.
   const searching = query.trim().length > 0
 
@@ -795,7 +541,7 @@ function GamePickerSlide({
   const swapTransition = { duration: reduced ? 0 : 0.1, ease: 'easeInOut' }
 
   return (
-    <div className="ob-picker" aria-label="Add 3 favorite games">
+    <div className="ob-picker" aria-label="Add 4 favorite games">
       {/* Top section: title + subtitle + search */}
       <div className="ob-picker__top">
         <AnimatePresence initial={false}>
@@ -808,7 +554,7 @@ function GamePickerSlide({
               exit={COLLAPSED}
               transition={introTransition}
             >
-              <h1 className="ob-vp__title">Add 3 favorite games</h1>
+              <h1 className="ob-vp__title">Add 4 favorite games</h1>
               <p className="ob-vp__body">
                 Start with what you love — we&rsquo;ll use this to personalize
                 your feed.
@@ -846,7 +592,7 @@ function GamePickerSlide({
         </div>
 
         {/* Picks area — exactly one of two states occupies this space.
-            Idle: three full-size slots, empty (dashed "+" placeholder) or
+            Idle: four full-size slots, empty (dashed "+" placeholder) or
             holding a chosen cover. Searching: a one-line strip that keeps
             the progress count and thumbnails of what's already picked
             visible, so the space goes to the results instead. */}
@@ -880,7 +626,7 @@ function GamePickerSlide({
                     (pickedCount > 0 ? ' ob-picks-strip__count--active' : '')
                   }
                 >
-                  <strong>{pickedCount}</strong> of 3 selected
+                  <strong>{pickedCount}</strong> of 4 selected
                 </p>
               </div>
             </motion.div>
@@ -898,9 +644,9 @@ function GamePickerSlide({
                 <div
                   className="ob-picks__row"
                   role="list"
-                  aria-label="Your 3 picks"
+                  aria-label="Your 4 picks"
                 >
-                  {[0, 1, 2].map((slotIndex) => {
+                  {Array.from({ length: FAVORITES_MAX }, (_, i) => i).map((slotIndex) => {
                     const game = selectedGames[slotIndex]
                     if (game) {
                       return (
@@ -1033,267 +779,17 @@ function GamePickerSlide({
           }
           aria-live="polite"
         >
-          {pickedCount} of 3 selected
+          {pickedCount} of 4 selected
         </p>
-        <div className="ob-picker__actions">
-          <button
-            type="button"
-            className={
-              'ob-picker__btn ob-picker__btn--full' +
-              (pickedCount === 0
-                ? ' ob-picker__btn--muted'
-                : ' ob-picker__btn--primary')
-            }
-            onClick={onDone}
-            disabled={submitting}
-          >
-            {submitting ? 'Saving…' : 'Done'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Platform + era slide (step 4, "What did you play on?") ─────────────
-//
-// Multi-select chips, both groups optional. Skipping (via the header Skip,
-// see handleSkip) leaves both selections empty, which
-// fetchRateFromMemoryCandidates resolves as "no platform/era filter" —
-// i.e. broadly popular games across eras, per spec.
-function PlatformEraSlide({
-  selectedPlatformChips,
-  selectedEraChips,
-  togglePlatformChip,
-  toggleEraChip,
-  onNext,
-}) {
-  return (
-    <div className="ob-vp ob-vp--platform">
-      <div
-        className="ob-vp__icon-frame ob-vp__icon-frame--solid"
-        aria-hidden="true"
-      >
-        <Gamepad2 size={42} strokeWidth={1.6} className="ob-vp__icon" />
-      </div>
-
-      <h1 className="ob-vp__title">What did you play on?</h1>
-      <p className="ob-vp__body">
-        Pick what applies — we&rsquo;ll use it to find games from your past.
-        Totally optional.
-      </p>
-
-      <div className="ob-chip-section">
-        <p className="ob-chip-section__label">Platforms</p>
-        <div className="ob-chip-group" role="group" aria-label="Platforms you played on">
-          {PLATFORM_CHIPS.map((chip) => {
-            const active = selectedPlatformChips.includes(chip.id)
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                className={`ob-chip${active ? ' ob-chip--active' : ''}`}
-                aria-pressed={active}
-                onClick={() => togglePlatformChip(chip.id)}
-              >
-                {chip.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="ob-chip-section">
-        <p className="ob-chip-section__label">Eras</p>
-        <div className="ob-chip-group" role="group" aria-label="Decades you played games in">
-          {ERA_CHIPS.map((chip) => {
-            const active = selectedEraChips.includes(chip.id)
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                className={`ob-chip${active ? ' ob-chip--active' : ''}`}
-                aria-pressed={active}
-                onClick={() => toggleEraChip(chip.id)}
-              >
-                {chip.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="ob-cta-wrap">
-        <button type="button" className="ob-cta-btn" onClick={onNext}>
-          Next
+        <button
+          type="button"
+          className="ob-cta-btn"
+          onClick={onDone}
+          disabled={submitting}
+        >
+          {submitting ? 'Saving…' : 'Done'}
         </button>
       </div>
     </div>
-  )
-}
-
-// ── Rate-from-memory slide (step 5, "Five from your past") ─────────────
-//
-// One card at a time. Tapping a star calls postReview() directly (the same
-// write used everywhere else in the app) and auto-advances; "Never played"
-// permanently excludes the game via rateFromMemoryService and advances;
-// "Skip" advances without writing or excluding anything, so the game may
-// resurface on a later run. See handleRateStar/handleNeverPlayed/
-// handleSkipCard in the parent for the actual writes.
-function RateFromMemorySlide({
-  loading,
-  candidates,
-  index,
-  submittingId,
-  onRateStar,
-  onNeverPlayed,
-  onSkipCard,
-  reduced,
-}) {
-  const total = candidates.length
-  // Once the last card is resolved, `index` runs past the end while the page
-  // is still on screen waiting for navigation. Keep the last card up (inert)
-  // instead of swapping to the empty state.
-  const resolved = total > 0 && index >= total
-  const candidate = candidates[resolved ? total - 1 : index]
-
-  // Optimistic star value — shows the tapped rating immediately while
-  // postReview() is in flight, rather than snapping back to 0 mid-punch.
-  // Resets whenever the card changes. Declared before the early returns
-  // below so hook order stays stable across loading/empty/card renders.
-  const [pendingValue, setPendingValue] = useState(0)
-  const candidateId = candidate?.id
-  useEffect(() => {
-    setPendingValue(0)
-  }, [candidateId])
-
-  // Loading is laid out in the final card layout (same title, same column)
-  // so nothing shifts when the first card arrives. The progress line is an
-  // invisible spacer until there is a real count.
-  if (loading) {
-    return (
-      <div className="ob-rate">
-        <div className="ob-rate__top">
-          <h1 className="ob-vp__title">Five from your past</h1>
-          <p className="ob-rate__progress" aria-hidden="true">
-            &nbsp;
-          </p>
-        </div>
-        <div className="ob-picker__state" aria-live="polite">
-          <span className="ob-spinner" aria-hidden="true" />
-          <span>Finding games from your past…</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Only shown when the pool was empty from the start (load finished with
-  // zero candidates) — the parent finishes onboarding right after.
-  if (!candidate) {
-    return (
-      <div className="ob-vp ob-vp--rate">
-        <EmptyState
-          icon={Gamepad2}
-          size="inline"
-          body="No games to rate right now — you're all set."
-        />
-      </div>
-    )
-  }
-
-  const cardTransition = { duration: reduced ? 0 : 0.18, ease: 'easeInOut' }
-  const isSubmitting = resolved || submittingId === candidate.id
-
-  return (
-    <div className="ob-rate">
-      <div className="ob-rate__top">
-        <h1 className="ob-vp__title">Five from your past</h1>
-        <p className="ob-rate__progress" aria-live="polite">
-          {Math.min(index + 1, total)} of {total}
-        </p>
-      </div>
-
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={candidate.id}
-          className="ob-rate__card"
-          initial={{ opacity: 0, y: reduced ? 0 : 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: reduced ? 0 : -12 }}
-          transition={cardTransition}
-        >
-          <div className="ob-rate__cover">
-            <RateCoverArt game={candidate} />
-          </div>
-          <p className="ob-rate__title">{candidate.title}</p>
-          <p className="ob-rate__meta">
-            {[candidate.year, candidate.developer].filter(Boolean).join(' · ')}
-          </p>
-
-          <StarRatingInput
-            value={pendingValue}
-            onChange={(value) => {
-              setPendingValue(value)
-              onRateStar(candidate, value)
-            }}
-            size="xl"
-            readOnly={isSubmitting}
-            aria-label={`Rate ${candidate.title} out of 5`}
-          />
-
-          <div className="ob-rate__actions">
-            <button
-              type="button"
-              className="ob-rate__action-btn"
-              onClick={() => onNeverPlayed(candidate)}
-              disabled={isSubmitting}
-            >
-              <Ban size={14} strokeWidth={2} aria-hidden="true" />
-              Never played
-            </button>
-            <button
-              type="button"
-              className="ob-rate__action-btn"
-              onClick={onSkipCard}
-              disabled={isSubmitting}
-            >
-              Skip
-            </button>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  )
-}
-
-/**
- * Cover art for a rate-from-memory card. Same real-cover-with-fallback
- * treatment as PickerCoverArt, sized for the ~96x130 slot from the spec.
- */
-function RateCoverArt({ game }) {
-  const [failed, setFailed] = useState(false)
-  const url = failed ? null : getBestImageUrl(game, 28)
-
-  if (!url) {
-    return (
-      <span
-        className="ob-rate__cover-fallback"
-        style={{ '--ob-tile-color': tileColorVar(game.id) }}
-      >
-        <span className="ob-cover-scrim" aria-hidden="true" />
-        <span className="ob-cover-title">{game.title}</span>
-      </span>
-    )
-  }
-
-  return (
-    <img
-      src={url}
-      alt=""
-      className="ob-cover-img"
-      loading="lazy"
-      draggable={false}
-      onError={() => setFailed(true)}
-    />
   )
 }

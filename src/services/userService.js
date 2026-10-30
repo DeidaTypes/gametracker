@@ -93,9 +93,12 @@ export async function getUserById(userId) {
  * another account so the caller can show a clean inline error.
  *
  * @param {string} userId
- * @param {{ displayName?: string, username?: string|null, bio?: string, avatarUrl?: string|null, favoriteGames?: Array, currentObsessions?: Array }} fields
+ * `platforms` (text[] of ids such as 'pc') and `gamingSince` (the first year of
+ * the decade the user started gaming, or null) are written only when passed.
+ *
+ * @param {{ displayName?: string, username?: string|null, bio?: string, avatarUrl?: string|null, favoriteGames?: Array, currentObsessions?: Array, platforms?: string[], gamingSince?: number|null }} fields
  */
-export async function updateUserProfile(userId, { displayName, username, bio, avatarUrl, favoriteGames, currentObsessions } = {}) {
+export async function updateUserProfile(userId, { displayName, username, bio, avatarUrl, favoriteGames, currentObsessions, platforms, gamingSince } = {}) {
   if (!userId) throw new Error('updateUserProfile requires a userId')
 
   const patch = {}
@@ -118,6 +121,18 @@ export async function updateUserProfile(userId, { displayName, username, bio, av
   }
   if (avatarUrl !== undefined) {
     patch.avatar_url = avatarUrl || null
+  }
+  if (platforms !== undefined) {
+    patch.platforms = [
+      ...new Set(
+        (Array.isArray(platforms) ? platforms : []).filter(
+          (id) => typeof id === 'string' && id
+        )
+      ),
+    ]
+  }
+  if (gamingSince !== undefined) {
+    patch.gaming_since = Number.isInteger(gamingSince) ? gamingSince : null
   }
   // Capture the pre-update favorites so we can emit one 'favorited'
   // activity_event per *newly added* game (covers existing ones are not

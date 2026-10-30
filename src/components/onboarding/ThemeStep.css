@@ -1,0 +1,182 @@
+/* =====================================================
+   Onboarding step 1 — "Make it yours"
+   Mockup: docs/design/checkpoint_onboarding.html (.tw .mascot .sec .grid .tile)
+   The shared title / sub / note / section-label classes live in
+   src/pages/Onboarding.css.
+   ===================================================== */
+
+/* Title block with the mascot standing at its right. */
+.ob-tw {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.ob-tw__copy {
+  min-width: 0;
+}
+
+.ob-mascot {
+  height: 66px;
+  width: auto;
+  flex: none;
+  transform-origin: 50% 100%;
+}
+
+/* Restarted from ThemeStep.jsx on every pick. */
+.ob-mascot--hop {
+  animation: ob-hop 520ms var(--ease-move);
+}
+
+@keyframes ob-hop {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-10px) rotate(-4deg); }
+  70% { transform: translateY(0) rotate(2deg); }
+  100% { transform: none; }
+}
+
+/* The padding / negative margin pair gives the selected ring room to draw
+   past the swatch without the scroll area clipping it. */
+.ob-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-8) var(--space-12);
+  padding: var(--space-4);
+  margin: calc(-1 * var(--space-4));
+}
+
+.ob-tile {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+/* The swatch: page background, a surface card, three accent dots. Every
+   color on it is set inline from THEMES (src/styles/themePreview.js). */
+.ob-tile__sw {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 0.95;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border-subtle);
+  transition:
+    transform 160ms var(--ease-move),
+    box-shadow var(--motion-arrive) var(--ease-fade);
+}
+
+.ob-tile__card {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 14%;
+  height: 38%;
+  border-radius: var(--radius-sm);
+}
+
+.ob-tile__dots {
+  position: absolute;
+  left: 14%;
+  top: 16%;
+  display: flex;
+  gap: var(--space-4);
+}
+
+.ob-tile__dots i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Check badge: the app's own accent, which is the selected theme's. */
+.ob-tile__ck {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--color-on-accent);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity var(--motion-arrive) var(--ease-fade),
+    transform var(--motion-pop-in) var(--ease-move);
+}
+
+.ob-tile--on .ob-tile__sw {
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
+}
+
+.ob-tile--on .ob-tile__ck {
+  opacity: 1;
+  transform: none;
+}
+
+.ob-tile__nm {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+}
+
+.ob-tile--on .ob-tile__nm {
+  color: var(--text-primary);
+}
+
+.ob-tile:active .ob-tile__sw {
+  transform: scale(0.95);
+}
+
+/* A pick recolors the whole page. While ThemeStep.jsx runs the browser's view
+   transition it marks <html>; the root crossfade is 320 ms on the fade curve. */
+html.ob-theme-vt::view-transition-old(root),
+html.ob-theme-vt::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-fade);
+}
+
+/* Reduce Motion (OS or the in-app toggle): no hop, no press scale. */
+@media (prefers-reduced-motion: reduce) {
+  .ob-mascot--hop {
+    animation: none;
+  }
+
+  .ob-tile__sw,
+  .ob-tile__ck {
+    transition: none;
+  }
+
+  .ob-tile:active .ob-tile__sw {
+    transform: none;
+  }
+}
+
+body[data-reduce-motion='true'] .ob-mascot--hop {
+  animation: none;
+}
+
+body[data-reduce-motion='true'] .ob-tile__sw,
+body[data-reduce-motion='true'] .ob-tile__ck {
+  transition: none;
+}
+
+body[data-reduce-motion='true'] .ob-tile:active .ob-tile__sw {
+  transform: none;
+}

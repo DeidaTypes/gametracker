@@ -1,0 +1,158 @@
+/* =====================================================
+   Onboarding step 2 — "Where do you play?"
+   Mockup: docs/design/checkpoint_onboarding.html (.plat .pt .pi .rail .era .railbar)
+   The shared title / sub / note / section-label classes live in
+   src/pages/Onboarding.css.
+   ===================================================== */
+
+.ob-plat {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-12);
+  margin-top: var(--space-20);
+}
+
+.ob-pt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-8) var(--space-12);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    transform 160ms var(--ease-move),
+    border-color var(--motion-arrive) var(--ease-fade),
+    box-shadow var(--motion-arrive) var(--ease-fade);
+}
+
+.ob-pt:active {
+  transform: scale(0.96);
+}
+
+.ob-pt__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: var(--text-primary);
+  transition:
+    background-color var(--motion-arrive) var(--ease-fade),
+    color var(--motion-arrive) var(--ease-fade);
+}
+
+/* Picked: accent border + inset ring, accent icon well, a dot top right. */
+.ob-pt--on {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.ob-pt--on .ob-pt__icon {
+  background: var(--accent);
+  color: var(--color-on-accent);
+}
+
+.ob-pt--on::after {
+  content: '';
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ── "Since when" rail ───────────────────────────────── */
+
+.ob-rail {
+  position: relative;
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.ob-era {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  height: 36px;
+  /* Opt out of the global 44px mobile tap minimum (src/index.css): the rail
+     is 36 tall by design and each decade is a wide target. */
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--motion-arrive) var(--ease-fade);
+}
+
+.ob-era--on {
+  color: var(--color-on-accent);
+}
+
+/* Moved by PlatformStep.jsx, which sets left/width in px from the decade
+   buttons. Hidden until a decade is chosen. */
+.ob-rail__bar {
+  position: absolute;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  left: 0;
+  width: 0;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    left var(--motion-slide) var(--ease-move),
+    width var(--motion-slide) var(--ease-move),
+    opacity var(--motion-arrive) var(--ease-fade);
+}
+
+.ob-rail__bar--on {
+  opacity: 1;
+}
+
+/* Reduce Motion (OS or the in-app toggle): everything lands instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .ob-pt,
+  .ob-pt__icon,
+  .ob-era,
+  .ob-rail__bar {
+    transition: none;
+  }
+
+  .ob-pt:active {
+    transform: none;
+  }
+}
+
+body[data-reduce-motion='true'] .ob-pt,
+body[data-reduce-motion='true'] .ob-pt__icon,
+body[data-reduce-motion='true'] .ob-era,
+body[data-reduce-motion='true'] .ob-rail__bar {
+  transition: none;
+}
+
+body[data-reduce-motion='true'] .ob-pt:active {
+  transform: none;
+}
