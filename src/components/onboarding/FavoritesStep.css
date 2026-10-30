@@ -1,0 +1,62 @@
+/* Step 3 — four favorites in one row under the shared search field.
+   Mockup: .slots .slot .rm .note */
+
+.ob-fav__slots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+}
+
+.ob-fav__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: var(--cover-ratio);
+  padding: 0;
+  border: 0;
+  border-radius: var(--cover-radius);
+  outline: 1.5px dashed var(--border-subtle);
+  outline-offset: -1.5px;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.ob-fav__slot--on {
+  outline: none;
+}
+
+.ob-fav__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  background: var(--bg-surface-2);
+}
+
+.ob-fav__art.is-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+}
+
+.ob-fav__rm {
+  position: absolute;
+  top: calc(-1 * var(--space-8));
+  right: calc(-1 * var(--space-8));
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--text-primary);
+  color: var(--bg-base);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--bg-base);
+  z-index: 1;
+}

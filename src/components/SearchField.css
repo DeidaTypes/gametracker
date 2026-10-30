@@ -92,3 +92,207 @@
     transition: none;
   }
 }
+
+/* Onboarding pill. Search and Library keep .search-field above. */
+
+.sfield {
+  position: relative;
+  margin-top: var(--space-16);
+  height: 46px;
+  z-index: 6;
+}
+
+.sfield__icon {
+  position: absolute;
+  left: var(--space-16);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sfield__input {
+  display: block;
+  width: 100%;
+  height: 46px;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-48) 0 var(--space-40);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sfield__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.sfield__input:focus {
+  border-color: var(--accent);
+}
+
+.sfield__input::-webkit-search-cancel-button,
+.sfield__input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sfield__clear {
+  position: absolute;
+  right: var(--space-8);
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%) scale(0.6);
+  pointer-events: none;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity var(--motion-pop-out) var(--ease-fade),
+    transform var(--motion-pop-out) var(--ease-move);
+}
+
+.sfield--has .sfield__clear {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+
+.sfield__clear-dot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.sfield__drop {
+  position: absolute;
+  top: calc(100% + var(--space-8));
+  left: 0;
+  right: 0;
+  z-index: 7;
+  max-height: 280px;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: sfield-drop-in var(--motion-arrive) var(--ease-fade);
+}
+
+@keyframes sfield-drop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sfield__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-8);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sfield__row:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.sfield__row:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sfield__cover {
+  width: 34px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--bg-surface-2);
+}
+
+.sfield__cover.is-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+}
+
+.sfield__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sfield__title {
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sfield__sub {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+.sfield__empty {
+  padding: var(--space-16) var(--space-8);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sfield__clear {
+    transform: translateY(-50%);
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+  }
+
+  .sfield--has .sfield__clear {
+    transform: translateY(-50%);
+  }
+
+  .sfield__drop {
+    animation-duration: var(--motion-reduced-fade);
+  }
+}
+
+body[data-reduce-motion='true'] .sfield__clear {
+  transform: translateY(-50%) !important;
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade) !important;
+}
+
+body[data-reduce-motion='true'] .sfield__drop {
+  animation-duration: var(--motion-reduced-fade) !important;
+}
