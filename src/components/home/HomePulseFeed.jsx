@@ -11,6 +11,7 @@ import WindowedListItem from '../WindowedListItem'
 import { shapePulseFeedEntries } from '../../services/communityService'
 import { coarseRelativeBucket } from '../../utils/formatActivityDate'
 import { Arrive } from '../motion/ContentSwap'
+import PlayingNowStrip from './PlayingNowStrip'
 import './HomePulseFeed.css'
 
 // V4-01 — read once per mount, before this same mount's own unmount/
@@ -201,6 +202,8 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
             </p>
           )}
         </div>
+
+        <PlayingNowStrip />
 
         <Arrive ready={!loading} placeholder={<FeedSkeleton />}>
         {loading ? null : isEmpty ? (

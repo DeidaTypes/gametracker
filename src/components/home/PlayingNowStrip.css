@@ -1,0 +1,107 @@
+/* Playing now — horizontal presence strip under The pulse subline */
+
+.playing-now-strip {
+  padding: var(--space-12) 0 var(--space-8);
+}
+
+.playing-now-strip__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--container-padding) var(--space-8);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+.playing-now-strip__row {
+  display: flex;
+  gap: calc(var(--space-12) + var(--space-2));
+  overflow-x: auto;
+  padding: 0 var(--container-padding) var(--space-4);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.playing-now-strip__row::-webkit-scrollbar {
+  display: none;
+}
+
+.playing-now-strip__person {
+  flex: none;
+  width: var(--space-64);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.playing-now-strip__person:active {
+  opacity: 0.88;
+}
+
+.playing-now-strip__avatar-wrap {
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+}
+
+.playing-now-strip__avatar,
+.playing-now-strip__avatar.avatar--img {
+  box-shadow:
+    0 0 0 var(--space-2) var(--bg-base),
+    0 0 0 var(--space-4) color-mix(in srgb, var(--accent-review-text) 70%, transparent);
+}
+
+.playing-now-strip__cover {
+  position: absolute;
+  right: calc(-1 * var(--space-4) - var(--space-2));
+  bottom: calc(-1 * var(--space-4));
+  width: var(--space-24);
+  height: var(--space-32);
+  border-radius: var(--space-4);
+  object-fit: cover;
+  box-shadow: 0 0 0 var(--space-2) var(--bg-base);
+}
+
+.playing-now-strip__cover--fallback {
+  display: block;
+  background: var(--bg-surface-2);
+}
+
+.playing-now-strip__name {
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  max-width: var(--space-64);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playing-now-strip__game {
+  margin-top: calc(-1 * var(--space-4));
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.2;
+  color: var(--text-tertiary);
+  max-width: var(--space-64);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playing-now-strip__person--yours .playing-now-strip__game {
+  color: var(--accent-review-text);
+}
