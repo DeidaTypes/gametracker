@@ -103,7 +103,7 @@
 }
 
 .sss-note-input:focus {
-  border-color: var(--color-brand-primary, #3b82f6);
+  border-color: var(--color-brand-primary);
 }
 
 /* Done button */

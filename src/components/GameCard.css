@@ -35,7 +35,7 @@
 @media (hover: hover) {
   .game-card:hover .game-card-image-container {
     /* Existing depth shadow + warm amber outer glow */
-    box-shadow: var(--shadow-xl), var(--shadow-glow), 0 4px 16px rgba(59, 130, 246, 0.15);
+    box-shadow: var(--shadow-xl), var(--shadow-glow), 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent);
     border-color: var(--color-border-hover);
   }
 }

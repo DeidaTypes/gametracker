@@ -509,8 +509,8 @@
 }
 
 .search-result-item:hover .result-game-add-btn {
-  background: rgba(59, 130, 246, 0.28);
-  border-color: rgba(59, 130, 246, 0.6);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .result-game-add-btn:active {
@@ -1260,7 +1260,7 @@
 }
 
 .clm-search-input:focus {
-  border-color: var(--color-brand-primary, #3b82f6);
+  border-color: var(--color-brand-primary);
 }
 
 /* Remove the native × clear button from search inputs */

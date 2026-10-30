@@ -97,7 +97,7 @@
 }
 
 .notif-item--unread:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /* ---- Avatar ----

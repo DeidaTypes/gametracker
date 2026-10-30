@@ -24,7 +24,7 @@
   }
 
   .trending-card:hover .trending-card__cover {
-    box-shadow: var(--shadow-cover), 0 4px 16px rgba(59, 130, 246, 0.15);
+    box-shadow: var(--shadow-cover), 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent);
   }
 }
 

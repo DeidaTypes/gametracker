@@ -560,7 +560,7 @@ button.stats-heatmap-cell:hover,
 button.stats-heatmap-cell:focus-visible {
   transform: scale(1.25);
   box-shadow: 0 0 0 1px var(--color-brand-primary),
-    0 0 8px rgba(59, 130, 246, 0.45);
+    0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
   outline: none;
   z-index: 2;
 }

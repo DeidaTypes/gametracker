@@ -366,7 +366,7 @@ body[data-reduce-motion='true'] .je-icon-btn {
 .je-game-block:hover,
 .je-game-block:active {
   background: var(--color-surface-hover, #1f2a4a);
-  border-color: color-mix(in srgb, var(--accent, #3b82f6) 30%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -146,7 +146,7 @@
 }
 
 .tgl-row--selected:hover {
-  background: rgba(59, 130, 246, 0.10) !important;
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
 }
 
 /* ── Checkbox ──────────────────────────────────────────────── */
@@ -312,7 +312,7 @@
 
 @media (hover: hover) {
   .tgl-row-log-btn:hover {
-    background: rgba(59, 130, 246, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: var(--accent);
     color: var(--accent);
   }

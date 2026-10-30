@@ -103,8 +103,8 @@
 
 .reactions__add-btn:active,
 .reactions__add-btn--open {
-  border-color: var(--accent, #3b82f6);
-  color: var(--accent, #3b82f6);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ---- Picker popover ---- */

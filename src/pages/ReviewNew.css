@@ -507,7 +507,7 @@ body[data-reduce-motion='true'] .rnc-prompt-chip {
 }
 
 .rnc-stepper-btn:active {
-  background: rgba(59, 130, 246, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* Typeable hours field — 16px prevents iOS auto-zoom on focus */

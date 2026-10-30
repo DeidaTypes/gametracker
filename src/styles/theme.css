@@ -1234,6 +1234,14 @@ html[data-app-theme="paper"] {
   --auth-on-accent: var(--theme-on-primary);
 }
 
+html[data-app-theme]:not([data-app-theme="navy"]) {
+  --accent-hover: color-mix(in srgb, var(--theme-primary) 88%, var(--theme-text));
+  --accent-press: color-mix(in srgb, var(--theme-primary) 85%, black);
+  --color-brand-secondary: var(--accent-hover);
+  --color-brand-primary-dark: var(--accent-press);
+  --color-brand-gradient: linear-gradient(135deg, var(--theme-primary) 0%, var(--accent-hover) 100%);
+}
+
 /* Light themes: readable ink needs a lighter tint, and the phone's
    own controls (fields, scrollbars) switch to light. */
 html[data-app-theme="light"],
@@ -1607,13 +1615,13 @@ h1, h2,
   cursor: pointer;
   transition: all var(--transition-smooth);
   text-decoration: none;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
   letter-spacing: 0.2px;
 }
 
 .cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.45);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .cta-button:active {
