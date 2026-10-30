@@ -72,11 +72,6 @@
   margin-top: var(--space-8);
 }
 
-/* Pulse posts carry their own inset hairline (see PulsePosts.css). */
-.pulse-feed__item--post:empty {
-  display: none;
-}
-
 /* ── Find people nudge (secondary CTA) ── */
 .pulse-feed__find-nudge {
   display: block;

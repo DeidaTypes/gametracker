@@ -2108,34 +2108,67 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
     const pulsePage = cursor == null ? 'first' : cursor
-    const items = _applyFinishedRatingMap(
-      _interleaveOwnWithCap(ownItems, otherItems, limit),
-      ratingMap
-    ).map((it) => ({ ...it, pulsePage }))
 
-    // A source might still have more beyond this page even if this exact
-    // combined page came back short (e.g. own rows deferred by the cap,
-    // or flagged-content filtering trimmed a review out) — treat any
-    // full-size raw fetch as "there's more".
-    const hasMore =
-      otherReviewRows.length === limit ||
-      otherEventRows.length === limit ||
-      ownReviewRows.length === limit ||
-      ownEventRows.length === limit
-
-    // Next cursor = the oldest timestamp seen across every raw source
-    // this page touched, so loadMore never skips a row a deferred/
-    // filtered item left behind. Can reproduce a small number of
-    // already-seen ids on the next page in rare cases; useHomeFeed's
-    // loadMore already dedupes by id — same accepted trade-off as the
-    // mixed-scope merge above.
-    const tails = [otherReviewRows, otherEventRows, ownReviewRows, ownEventRows]
-      .filter((arr) => arr.length)
+    // Page boundary. Every source fetches `limit` rows newest-first, so a
+    // source that came back full only proves we have seen everything down
+    // to ITS oldest row. B is the NEWEST of those tails: below B, a full
+    // source may hold rows we never fetched, so nothing older than B is
+    // eligible for this page. Those rows are fetched again by the next
+    // page. B is null when no source came back full (we saw everything).
+    // eligible = shaped, deduped, visible items at or after B. The page is
+    // the newest `limit` of them (own cap applied); whatever eligible items
+    // didn't fit are leftover, and the next cursor sits just above the
+    // newest leftover so none is skipped (a little overlap is fine, since
+    // loadMore drops ids it already has). With no leftover the next cursor
+    // is B itself. A page can hold fewer than `limit` items; the sentinel
+    // keeps loading, which is expected.
+    const fullTails = [otherReviewRows, otherEventRows, ownReviewRows, ownEventRows]
+      .filter((arr) => arr.length === limit)
       .map((arr) => arr[arr.length - 1].created_at)
-    const nextCursor =
-      hasMore && tails.length
-        ? tails.reduce((oldest, t) => (new Date(t) < new Date(oldest) ? t : oldest))
-        : null
+    const boundary = fullTails.length
+      ? fullTails.reduce((newest, t) => (new Date(t) > new Date(newest) ? t : newest))
+      : null
+    const boundaryMs = boundary == null ? null : new Date(boundary).getTime()
+    const isEligible = (it) => boundaryMs == null || new Date(it.createdAt).getTime() >= boundaryMs
+    const eligibleOwn = ownItems.filter(isEligible)
+    const eligibleOther = otherItems.filter(isEligible)
+
+    const pageItems = _interleaveOwnWithCap(eligibleOwn, eligibleOther, limit)
+    const onPage = new Set(pageItems)
+    const leftover = [...eligibleOwn, ...eligibleOther].filter((it) => !onPage.has(it))
+
+    let nextCursor = null
+    let hasMore = false
+    if (leftover.length) {
+      const newestLeftoverMs = leftover.reduce(
+        (newest, it) => Math.max(newest, new Date(it.createdAt).getTime()),
+        -Infinity
+      )
+      nextCursor = new Date(newestLeftoverMs + 1).toISOString()
+      hasMore = true
+    } else if (boundary != null) {
+      nextCursor = boundary
+      hasMore = true
+    }
+    // The cursor must move strictly older than the one this call got, or
+    // the sentinel would refetch the same window forever.
+    if (nextCursor != null && cursor != null && !(new Date(nextCursor) < new Date(cursor))) {
+      if (pageItems.length) {
+        const oldestOnPageMs = pageItems.reduce(
+          (oldest, it) => Math.min(oldest, new Date(it.createdAt).getTime()),
+          Infinity
+        )
+        nextCursor = new Date(oldestOnPageMs).toISOString()
+      } else {
+        nextCursor = null
+        hasMore = false
+      }
+    }
+
+    const items = _applyFinishedRatingMap(pageItems, ratingMap).map((it) => ({
+      ...it,
+      pulsePage,
+    }))
 
     return { items, nextCursor, scope: effectiveScope, hasMore }
   } catch (err) {
