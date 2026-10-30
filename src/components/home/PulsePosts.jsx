@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HiOutlineHeart, HiHeart, HiOutlineChat, HiOutlineFlag, HiOutlineCheck } from 'react-icons/hi'
+import { HiOutlineHeart, HiOutlineFlag, HiOutlineCheck } from 'react-icons/hi'
 import { Gamepad2 } from 'lucide-react'
 import Avatar from '../Avatar'
-import Pressable from '../Pressable'
 import StarRatingDisplay from '../StarRatingDisplay'
 import ListCoverCluster from '../ListCoverCluster'
 import { COVER_FALLBACK } from '../../utils/coverFallback'
@@ -12,7 +11,7 @@ import { getSizedImageUrl } from '../../services/imageUtils'
 import { useReactions } from '../../hooks/useReactions'
 import { useLikeState, publishLikeState } from '../../hooks/useLikeState'
 import { likeReview, unlikeReview } from '../../services/likeService'
-import { EVENT_REACTION_EMOJI } from './HomeReviewCard'
+import { ActionRow, EVENT_REACTION_EMOJI } from './HomeReviewCard'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { useListPreview } from '../../hooks/useListPreview'
@@ -193,7 +192,6 @@ function PulseActions({
   const review = useReviewHeart(item)
   const active = isReviewType ? review.active : activity.active
   const count = isReviewType ? review.count : activity.count
-  const heartPop = isReviewType ? false : activity.heartPop
 
   const onHeart = (e) => {
     if (heartReadOnly) return
@@ -204,48 +202,19 @@ function PulseActions({
     }
   }
 
+  if (!showHeart) return null
+
   return (
-    <div className="pulse-post__act">
-      {showHeart && (
-        <Pressable
-          className={`pulse-post__ab${active ? ' pulse-post__ab--on' : ''}${
-            heartReadOnly ? ' pulse-post__ab--readonly' : ''
-          }`}
-          onClick={heartReadOnly ? undefined : onHeart}
-          disabled={heartReadOnly}
-          aria-disabled={heartReadOnly ? true : undefined}
-          aria-pressed={heartReadOnly ? undefined : active}
-          aria-label={
-            heartReadOnly
-              ? count > 0
-                ? `${count} likes`
-                : 'Like'
-              : active
-                ? 'Remove reaction'
-                : 'React'
-          }
-        >
-          <span
-            className={`pulse-post__heart${heartPop ? ' pulse-post__heart--pop' : ''}`}
-            aria-hidden="true"
-          >
-            {active ? <HiHeart /> : <HiOutlineHeart />}
-          </span>
-          {count > 0 && <span className="pulse-post__ab-count text-label">{count}</span>}
-        </Pressable>
-      )}
-      <Pressable className="pulse-post__ab" onClick={onComments} aria-label="View comments">
-        <HiOutlineChat aria-hidden="true" />
-        {item.commentCount > 0 && (
-          <span className="pulse-post__ab-count text-label">{item.commentCount}</span>
-        )}
-      </Pressable>
-      {showBacklog ? (
-        <BacklogPill game={item.game} isOwn={item.isOwn} className="backlog-pill--in-act" />
-      ) : (
-        <span className="pulse-post__backlog-slot" aria-hidden="true" />
-      )}
-    </div>
+    <ActionRow
+      bare
+      likeActive={active}
+      likeInteractive={!heartReadOnly}
+      likeCount={count}
+      commentCount={item.commentCount ?? 0}
+      onLike={onHeart}
+      onComment={onComments}
+      backlogGame={showBacklog ? item.game : null}
+    />
   )
 }
 

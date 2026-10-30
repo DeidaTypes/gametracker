@@ -189,6 +189,7 @@ function ExpandableBody({ text, onClick }) {
  * at zero the verb labels ("Like" / "Reply") show instead.
  */
 export function ActionRow({
+  bare = false,
   likeActive,
   likeInteractive,
   likeCount,
@@ -239,8 +240,15 @@ export function ActionRow({
     </>
   )
 
+  const actionsClass = [
+    'home-review-card__actions',
+    bare ? 'home-review-card__actions--bare' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className="home-review-card__actions">
+    <div className={actionsClass}>
       {likeInteractive ? (
         <Pressable
           className={likePillClass}

@@ -473,6 +473,12 @@ button.home-review-card__game-title:focus-visible {
   border-top: 1px solid var(--color-border);
 }
 
+.home-review-card__actions--bare {
+  margin-top: var(--space-8);
+  padding-top: 0;
+  border-top: none;
+}
+
 .home-review-card__social-pill {
   display: inline-flex;
   align-items: center;
