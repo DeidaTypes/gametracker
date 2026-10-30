@@ -17,6 +17,7 @@ import { formatActivityDate } from '../../utils/formatActivityDate'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { useListPreview } from '../../hooks/useListPreview'
 import { getGameStatus } from '../../services/libraryService'
+import BacklogPill from './BacklogPill'
 import { warmQaQuestion } from '../../pages/qa/qaCache'
 import { showToast } from '../Toast'
 import { hapticImpact } from '../../utils/haptics'
@@ -160,6 +161,7 @@ function PulseActions({
   onComments,
   showHeart = true,
   heartReadOnly = false,
+  showBacklog = false,
 }) {
   const activity = useActivityHeart(item)
   const review = useReviewHeart(item)
@@ -212,7 +214,11 @@ function PulseActions({
           <span className="pulse-post__ab-count text-label">{item.commentCount}</span>
         )}
       </Pressable>
-      <span className="pulse-post__backlog-slot" aria-hidden="true" />
+      {showBacklog ? (
+        <BacklogPill game={item.game} isOwn={item.isOwn} className="backlog-pill--in-act" />
+      ) : (
+        <span className="pulse-post__backlog-slot" aria-hidden="true" />
+      )}
     </div>
   )
 }
@@ -283,7 +289,7 @@ function FinishedPost({ item, coverPriority, followsReview, navigate }) {
           coverPriority={coverPriority}
           onGameClick={(e) => goGame(navigate, item.game, e)}
         />
-        <PulseActions item={item} onComments={onComments} />
+        <PulseActions item={item} onComments={onComments} showBacklog />
       </div>
     </PulseShell>
   )
@@ -375,7 +381,7 @@ function ClusterPost({ entry, coverPriority, followsReview, navigate }) {
             ))}
           </span>
         </button>
-        <PulseActions item={heartItem} onComments={onComments} />
+        <PulseActions item={heartItem} onComments={onComments} showBacklog />
       </div>
     </PulseShell>
   )
@@ -619,9 +625,9 @@ function StartedPost({ item, coverPriority, followsReview, navigate }) {
           </button>
         </p>
         <p className="pulse-post__sub">{when}</p>
-        <span className="pulse-post__backlog-slot pulse-post__backlog-slot--inline" aria-hidden="true" />
       </div>
       <div className="pulse-post__end">
+        <BacklogPill game={item.game} isOwn={item.isOwn} className="backlog-pill--started" />
         <button type="button" onClick={(e) => goGame(navigate, item.game, e)} aria-label={item.game?.title}>
           <img
             className="pulse-post__end-cover"

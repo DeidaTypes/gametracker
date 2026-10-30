@@ -21,6 +21,7 @@ import StatusChip from '../StatusChip'
 import { formatActivityDate } from '../../utils/formatActivityDate'
 import { hapticImpact } from '../../utils/haptics'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
+import BacklogPill from './BacklogPill'
 import './HomeReviewCard.css'
 
 // Fixed single emoji so the generic cross-surface reactions table
@@ -194,6 +195,7 @@ export function ActionRow({
   commentCount,
   onLike,
   onComment,
+  backlogGame,
 }) {
   const { reduced } = useMotionPreference()
   const [heartPop, setHeartPop] = useState(false)
@@ -270,6 +272,7 @@ export function ActionRow({
         </span>
         <span className="home-review-card__social-pill-label">{commentLabel}</span>
       </Pressable>
+      {backlogGame ? <BacklogPill game={backlogGame} className="backlog-pill--review" /> : null}
     </div>
   )
 }
@@ -686,6 +689,7 @@ export default function HomeReviewCard({
         commentCount={item.commentCount}
         onLike={handleHeartClick}
         onComment={handleComment}
+        backlogGame={!item.isOwn ? item.game : null}
       />
     </ReviewCardShell>
   )
