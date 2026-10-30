@@ -60,3 +60,102 @@ export function isDuplicateCompletionOrReview(candidate, onScreen) {
     return Math.abs(existingMs - candidateMs) <= REVIEW_COMPLETION_DEDUPE_MS
   })
 }
+
+const MOMENT_TYPES = new Set(['started', 'finished'])
+
+/**
+ * Identity of one Home "moment": a start or a finish by one person for
+ * one game. Reviews, lists, sessions, and rows missing an author or
+ * game have no key and are never collapsed by it.
+ *
+ * @param {{type?:string, author?:{id?:string}, game?:{id?:string|number}}} item
+ * @returns {string|null}
+ */
+export function momentKey(item) {
+  if (!item || !MOMENT_TYPES.has(item.type)) return null
+  const authorId = item.author?.id
+  const gameId = item.game?.id
+  if (!authorId || gameId == null) return null
+  return `${item.type}|${authorId}|${gameId}`
+}
+
+function personGameKey(item) {
+  const authorId = item?.author?.id
+  const gameId = item?.game?.id
+  if (!authorId || gameId == null) return null
+  return `${authorId}|${gameId}`
+}
+
+function createdMs(item) {
+  const ms = new Date(item?.createdAt).getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+/**
+ * One post per person, per game, per kind. `items` arrive newest first.
+ * The first item of each `momentKey` stays; later repeats drop. A
+ * 'started' item also drops when the same author has a 'finished' or
+ * 'reviewed' item for the same game with a greater `createdAt` anywhere
+ * in the array. Rows without a key pass through. Order of what remains
+ * is unchanged.
+ *
+ * @param {Array<object>} items
+ * @returns {Array<object>}
+ */
+export function collapseRepeatMoments(items) {
+  if (!Array.isArray(items) || items.length === 0) return Array.isArray(items) ? items : []
+
+  const newerFinishOrReviewMs = new Map()
+  for (const it of items) {
+    if (!it || (it.type !== 'finished' && it.type !== 'reviewed')) continue
+    const pk = personGameKey(it)
+    if (!pk) continue
+    const ms = createdMs(it)
+    if (ms == null) continue
+    const prev = newerFinishOrReviewMs.get(pk)
+    if (prev == null || ms > prev) newerFinishOrReviewMs.set(pk, ms)
+  }
+
+  const seen = new Set()
+  const out = []
+  for (const it of items) {
+    const key = momentKey(it)
+    if (!key) {
+      out.push(it)
+      continue
+    }
+    if (seen.has(key)) continue
+    seen.add(key)
+    if (it.type === 'started') {
+      const ms = createdMs(it)
+      const newer = newerFinishOrReviewMs.get(personGameKey(it))
+      if (ms != null && newer != null && newer > ms) continue
+    }
+    out.push(it)
+  }
+  return out
+}
+
+/**
+ * True when `candidate` repeats a moment already in `onScreen`: same
+ * start or finish for the same person and game, or a 'started' candidate
+ * whose author already has a 'finished' or 'reviewed' item for that game
+ * on screen.
+ *
+ * @param {object} candidate
+ * @param {Array<object>} onScreen
+ * @returns {boolean}
+ */
+export function isRepeatMoment(candidate, onScreen) {
+  if (!candidate) return false
+  const screen = Array.isArray(onScreen) ? onScreen : []
+  const key = momentKey(candidate)
+  if (key && screen.some((it) => momentKey(it) === key)) return true
+  if (candidate.type !== 'started') return false
+  const pk = personGameKey(candidate)
+  if (!pk) return false
+  return screen.some((it) => {
+    if (!it || (it.type !== 'finished' && it.type !== 'reviewed')) return false
+    return personGameKey(it) === pk
+  })
+}

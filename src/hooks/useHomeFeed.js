@@ -9,7 +9,7 @@ import { prefetchLikeStatesForReviews } from './useLikeState'
 import { prefetchReactionsBatch } from './useReactions'
 import { APP_RESUMED_EVENT } from './useAppResume'
 import { getSWR, peekSWR, updateSWR } from '../services/swrCache'
-import { isDuplicateCompletionOrReview } from '../utils/homeFeedDedupe'
+import { isDuplicateCompletionOrReview, isRepeatMoment } from '../utils/homeFeedDedupe'
 
 const REVIEW_ITEM_TYPES = new Set(['reviewed', 'rated'])
 
@@ -263,6 +263,7 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
           // rendered from an earlier page (id-based `seen` never catches
           // this — see isDuplicateCompletionOrReview's doc comment).
           if (isDuplicateCompletionOrReview(item, merged)) continue
+          if (isRepeatMoment(item, merged)) continue
           merged.push(item)
         }
         return merged
@@ -302,7 +303,11 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
         // "two at most, never adjacent" placement. The cached page 1 above
         // already holds them for the next entry.
         const fresh = result.items.filter(
-          (it) => !isQaPulseItem(it) && !seen.has(it.id) && !isDuplicateCompletionOrReview(it, prev)
+          (it) =>
+            !isQaPulseItem(it) &&
+            !seen.has(it.id) &&
+            !isDuplicateCompletionOrReview(it, prev) &&
+            !isRepeatMoment(it, prev)
         )
         return fresh.length ? [...fresh, ...prev] : prev
       })

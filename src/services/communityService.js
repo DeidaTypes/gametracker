@@ -8,6 +8,7 @@ import { getFlaggedContentIds } from './reportService'
 import { dedupeInFlight } from './swrCache'
 import { prefetchReactionsBatch } from '../hooks/useReactions'
 import { publishLikeState } from '../hooks/useLikeState'
+import { collapseRepeatMoments } from '../utils/homeFeedDedupe'
 
 // Finished/activity likes are the heart glyph only (U+2764 U+FE0F).
 // Other reaction emojis are not likes.
@@ -2095,11 +2096,12 @@ export async function getHomeFeed({ cursor = null, scope = null, limit = HOME_FE
     )
 
     // Merge every shaped source first, then suppress nearby
-    // review+completion pairs, then split/sort. Doing this after the
-    // merge (not per-fetch) keeps the same card out regardless of
-    // which query returned the review vs the completion.
+    // review+completion pairs, then collapse repeat starts and finishes
+    // (newest moment per person per game per kind; a start drops once a
+    // newer finish or written review of that game is in this window),
+    // then split/sort. The page boundary below runs on what remains.
     const mergedItems = [...shapedReviewItems, ...otherEventItems, ...ownEventItems]
-    const dedupedItems = _suppressNearbyCompletions(mergedItems)
+    const dedupedItems = collapseRepeatMoments(_suppressNearbyCompletions(mergedItems))
     const otherItems = dedupedItems
       .filter((it) => !it.isOwn)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))

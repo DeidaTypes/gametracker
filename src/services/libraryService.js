@@ -3,6 +3,7 @@ import { logActivity } from './activityService'
 import {
   ACTIVITY_EVENT_TYPES,
   logActivityEvent,
+  logActivityEventOnce,
   logCompletedEventOnce,
 } from './activityEventsService'
 import { getTracker } from './hoursService'
@@ -1076,6 +1077,17 @@ export function setGameStatus(gameId, newStatus, game = null) {
         logCompletedEventOnce({
           entityId: String(gameId),
           metadata: baseMeta,
+        })
+      } else if (eventType === ACTIVITY_EVENT_TYPES.STARTED) {
+        // Bouncing a game in and out of Currently Playing used to insert
+        // a new 'started' row every time. One row per person per game
+        // per 30 days; a repeat inside that window returns the existing
+        // row. Dropped and backlogged stay unguarded.
+        logActivityEventOnce({
+          type: ACTIVITY_EVENT_TYPES.STARTED,
+          entityId: String(gameId),
+          metadata: baseMeta,
+          withinDays: 30,
         })
       } else {
         logActivityEvent({

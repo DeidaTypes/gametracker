@@ -262,6 +262,77 @@ export async function logCompletedEventOnce({ entityId, metadata = {} } = {}) {
 }
 
 /* ============================================================
+   logActivityEventOnce
+   ============================================================ */
+
+/**
+ * Idempotent variant of `logActivityEvent` for any event type.
+ *
+ * Looks up an existing row for this actor, `type`, and `entity_id`
+ * created within the last `withinDays` days. Returns that row when
+ * one exists; otherwise inserts via `logActivityEvent`.
+ *
+ * Never throws — same contract as `logActivityEvent`. Returns null on
+ * any failure (no auth, missing ids, existence-check error, insert
+ * error) rather than risk a duplicate by falling through to an
+ * unguarded insert.
+ *
+ * @param {{
+ *   type: string,
+ *   entityId: string|number,
+ *   metadata?: Record<string, any>,
+ *   withinDays: number,
+ * }} args
+ * @returns {Promise<object|null>} the existing or newly-inserted row, or null
+ */
+export async function logActivityEventOnce({
+  type,
+  entityId,
+  metadata = {},
+  withinDays,
+} = {}) {
+  try {
+    const idString = entityId != null ? String(entityId) : null
+    if (!idString || !type) return null
+
+    const days = Number(withinDays)
+    if (!Number.isFinite(days) || days <= 0) return null
+
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser()
+    if (userErr || !user) return null
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data: existing, error: existingErr } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('actor_user_id', user.id)
+      .eq('type', type)
+      .eq('entity_id', idString)
+      .gte('created_at', since)
+      .limit(1)
+      .maybeSingle()
+    if (existingErr) {
+      console.debug('[pulse] logActivityEventOnce existence check failed:', existingErr.message)
+      return null
+    }
+    if (existing) return existing
+
+    return logActivityEvent({
+      type,
+      entityId: idString,
+      metadata,
+    })
+  } catch (err) {
+    console.error('[pulse] logActivityEventOnce crashed:', err)
+    return null
+  }
+}
+
+/* ============================================================
    getCircleActivityEvents
    ============================================================ */
 
