@@ -230,6 +230,16 @@
   background: color-mix(in srgb, var(--accent-journal) 6%, transparent);
 }
 
+.error-boundary__copy {
+  align-self: center;
+  width: auto;
+  margin: 0;
+  padding: var(--space-4) var(--space-8);
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
 /* ---- Debug — demoted technical error text, well below the buttons ---- */
 
 .error-boundary__debug {

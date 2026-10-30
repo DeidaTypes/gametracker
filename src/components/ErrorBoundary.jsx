@@ -1,11 +1,43 @@
 import React from 'react'
+import { showToast } from './Toast'
 import './ErrorBoundary.css'
+
+function firstStackLine(error) {
+  const lines = String(error?.stack || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const frame = lines.find((line) => line.startsWith('at ') || line.includes('@'))
+  return frame || ''
+}
+
+function copyWithExecCommand(text) {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.focus()
+  area.select()
+  const ok = document.execCommand('copy')
+  area.remove()
+  if (!ok) throw new Error('copy failed')
+}
+
+function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => copyWithExecCommand(text))
+  }
+  return Promise.resolve().then(() => copyWithExecCommand(text))
+}
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
     this._handleTryAgain = this._handleTryAgain.bind(this)
+    this._handleCopyDetails = this._handleCopyDetails.bind(this)
     this._handleGoHome = this._handleGoHome.bind(this)
   }
 
@@ -20,6 +52,19 @@ export class ErrorBoundary extends React.Component {
 
   _handleTryAgain() {
     this.setState({ hasError: false, error: null })
+  }
+
+  _handleCopyDetails() {
+    const { error } = this.state
+    const message = error?.message || 'Unknown error'
+    const stackLine = firstStackLine(error)
+    const path = `${window.location.pathname}${window.location.search}`
+    const text = [message, stackLine, path].filter(Boolean).join('\n')
+    copyText(text)
+      .then(() => {
+        showToast('Details copied', 'success', null, null, 'copy')
+      })
+      .catch(() => {})
   }
 
   _handleGoHome() {
@@ -131,6 +176,13 @@ export class ErrorBoundary extends React.Component {
               onClick={this._handleTryAgain}
             >
               Try again
+            </button>
+            <button
+              type="button"
+              className="error-boundary__copy text-caption"
+              onClick={this._handleCopyDetails}
+            >
+              Copy details
             </button>
             <button
               className="error-boundary__btn error-boundary__btn--secondary"
