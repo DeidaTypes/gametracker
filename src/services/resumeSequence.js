@@ -31,13 +31,26 @@ import { showToast } from '../components/Toast'
  */
 
 /**
- * Fired on every resume. Screens and data hooks listen for it to reload, and
- * realtime providers listen for it to re-subscribe.
+ * Fired on every resume. The event's `detail` is `{ awayMs }`: milliseconds
+ * spent backgrounded, or null when that moment was never recorded. Screens
+ * decide from that whether to reload; realtime and badges listen either way.
  *
  * Re-exported from src/hooks/useAppResume.js, which is where the rest of the
  * app imports it from.
  */
 export const APP_RESUMED_EVENT = 'app:resumed'
+
+/**
+ * Set by markBackgrounded() when the app leaves the foreground, read and
+ * cleared by the next runResumeSequence(). Null means we never saw the
+ * background transition (cold start, or a resume that did not record one).
+ */
+let backgroundedAt = null
+
+/** Remember the moment the app left the foreground. Latest call wins. */
+export function markBackgrounded() {
+  backgroundedAt = Date.now()
+}
 
 /**
  * Fired when session revalidation has failed every automatic retry, with
@@ -169,7 +182,7 @@ async function revalidateSession() {
  * launched un-awaited, so a rejection here would surface as an unhandled
  * promise rejection rather than reaching anyone who could act on it.
  */
-async function revalidateWithRetry(generation, source, attempt = 0) {
+async function revalidateWithRetry(generation, source, attempt = 0, detail) {
   try {
     await revalidateSession()
     if (generation !== resumeGeneration) return
@@ -178,8 +191,9 @@ async function revalidateWithRetry(generation, source, attempt = 0) {
       // The broadcast that already went out was served by a token we couldn't
       // vouch for, so anything it triggered may have failed to authenticate.
       // Now that the session is good, redo the parts that depend on it.
+      // Same detail as the first broadcast — a short absence stays short.
       reconnectRealtime()
-      dispatch(APP_RESUMED_EVENT)
+      dispatch(APP_RESUMED_EVENT, detail)
     }
   } catch (err) {
     if (generation !== resumeGeneration) return
@@ -199,7 +213,7 @@ async function revalidateWithRetry(generation, source, attempt = 0) {
 
     retryTimer = setTimeout(() => {
       retryTimer = null
-      revalidateWithRetry(generation, source, attempt + 1)
+      revalidateWithRetry(generation, source, attempt + 1, detail)
     }, delay)
   }
 }
@@ -232,12 +246,16 @@ export function runResumeSequence(source = 'unknown') {
   const generation = ++resumeGeneration
   cancelPendingRetry()
 
+  const awayMs = backgroundedAt == null ? null : Date.now() - backgroundedAt
+  backgroundedAt = null
+  const detail = { awayMs }
+
   // Started first so its network round trip overlaps the work below, but
   // deliberately NOT awaited — see ORDERING above.
-  revalidateWithRetry(generation, source)
+  revalidateWithRetry(generation, source, 0, detail)
 
   reconnectRealtime()
-  dispatch(APP_RESUMED_EVENT)
+  dispatch(APP_RESUMED_EVENT, detail)
 }
 
 /**

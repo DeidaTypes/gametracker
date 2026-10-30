@@ -10,7 +10,7 @@ import { getContinuePlayingGames } from '../services/libraryService'
 import { getDominantColor } from '../services/colorExtract'
 import { COVER_FALLBACK } from '../utils/coverFallback'
 import { getGameNavStub } from '../utils/gameNavStub'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import './CurrentlyPlaying.css'
 
 function GameRow({ game }) {
@@ -105,13 +105,17 @@ function CurrentlyPlaying() {
 
   useEffect(() => {
     const load = () => setGames(getContinuePlayingGames(50))
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      load()
+    }
     load()
 
     window.addEventListener('libraryUpdated', load)
-    window.addEventListener(APP_RESUMED_EVENT, load)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('libraryUpdated', load)
-      window.removeEventListener(APP_RESUMED_EVENT, load)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [])
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Heart } from 'lucide-react'
 import GameCard from '../components/GameCard'
 import EmptyState from '../components/EmptyState'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import './Wishlist.css'
 
 function Wishlist() {
@@ -21,10 +21,14 @@ function Wishlist() {
 
   useEffect(() => {
     loadWishlist()
-    // Re-read on resume: localStorage can be written by another tab, and on
-    // native the WebView isn't remounted so this never re-runs otherwise.
-    window.addEventListener(APP_RESUMED_EVENT, loadWishlist)
-    return () => window.removeEventListener(APP_RESUMED_EVENT, loadWishlist)
+    // Re-read on a long absence: localStorage can be written by another tab,
+    // and on native the WebView isn't remounted so this never re-runs otherwise.
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      loadWishlist()
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [loadWishlist])
 
   return (

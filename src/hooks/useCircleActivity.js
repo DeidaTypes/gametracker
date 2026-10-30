@@ -5,7 +5,7 @@ import {
   ACTIVITY_EVENT_LOGGED,
   getCircleActivityEvents,
 } from '../services/activityEventsService'
-import { APP_RESUMED_EVENT } from './useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 
 /**
@@ -101,25 +101,40 @@ export function useCircleActivity({ limit = 50, pageSize } = {}) {
   }, [user?.id])
 
   // ── Initial fetch + refresh ─────────────────────────────────────────
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ quiet = false } = {}) => {
     if (!user?.id) {
-      setEvents([])
-      setHasMore(false)
+      if (!quiet) {
+        setEvents([])
+        setHasMore(false)
+      }
       return
     }
-    setLoading(true)
-    setError(null)
+    if (!quiet) setLoading(true)
+    if (!quiet) setError(null)
     try {
       const rows = await getCircleActivityEvents({ limit: effectiveLimit })
-      setEvents(rows)
-      // Page exhausted only when we got fewer rows than asked for —
-      // a short first page means there's nothing older to load.
-      setHasMore(rows.length === effectiveLimit)
+      if (quiet) {
+        // Prepend rows the screen does not already show. Leave the rest,
+        // the scroll position, and the loading flag alone.
+        setEvents((prev) => {
+          if (prev.length === 0) return rows
+          const seen = new Set(prev.map((row) => row.id))
+          const fresh = rows.filter((row) => !seen.has(row.id))
+          return fresh.length ? [...fresh, ...prev] : prev
+        })
+      } else {
+        setEvents(rows)
+        // Page exhausted only when we got fewer rows than asked for —
+        // a short first page means there's nothing older to load.
+        setHasMore(rows.length === effectiveLimit)
+      }
     } catch (err) {
-      setError(err)
-      setHasMore(false)
+      if (!quiet) {
+        setError(err)
+        setHasMore(false)
+      }
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [user?.id, effectiveLimit])
 
@@ -163,13 +178,23 @@ export function useCircleActivity({ limit = 50, pageSize } = {}) {
     refresh()
   }, [refresh])
 
+  const eventsRef = useRef(events)
+  eventsRef.current = events
+
   useEffect(() => {
-    function onResume() {
-      setResumeKey((k) => k + 1)
-      refresh()
+    // Realtime: the suspended channel is dead on every return. Rebuilding it
+    // does not touch the list on screen.
+    const onRealtime = () => setResumeKey((k) => k + 1)
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      refresh({ quiet: eventsRef.current.length > 0 })
     }
+    window.addEventListener(APP_RESUMED_EVENT, onRealtime)
     window.addEventListener(APP_RESUMED_EVENT, onResume)
-    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    return () => {
+      window.removeEventListener(APP_RESUMED_EVENT, onRealtime)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    }
   }, [refresh])
 
   // ── Realtime subscription ───────────────────────────────────────────

@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 import { capturePendingReferral } from './inviteService'
 import { parseRecoveryParams, establishRecoverySession } from './passwordReset'
-import { runResumeSequence, cancelResumeSequence } from './resumeSequence'
+import { runResumeSequence, cancelResumeSequence, markBackgrounded } from './resumeSequence'
 import { initPush } from './pushService'
 
 /**
@@ -48,6 +48,10 @@ function handleBackground() {
   // Stop the timer so it doesn't fire while the WebView is suspended and
   // trigger a network hit the moment the CPU wakes.
   supabase.auth.stopAutoRefresh()
+
+  // iOS reports background for Control Center and the app switcher too.
+  // Record when we left so a short return can skip reloading the screen.
+  markBackgrounded()
 
   // Same reasoning for any resume retry still pending.
   cancelResumeSequence()

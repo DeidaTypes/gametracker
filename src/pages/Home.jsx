@@ -20,7 +20,7 @@ import { showToast } from '../components/Toast'
 import { hapticSuccess } from '../utils/haptics'
 import { useAuth } from '../contexts/AuthContext'
 import { useNotifications } from '../contexts/NotificationsContext'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { prefetchLazyRoutes } from '../routes/lazyPages'
 import './Home.css'
 
@@ -240,18 +240,22 @@ function Home() {
     loadHomeData()
 
     const handleUpdate = () => loadHomeData()
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      loadHomeData()
+    }
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener('reviewAdded', handleUpdate)
     window.addEventListener('storage', handleUpdate)
     window.addEventListener('activityUpdated', handleUpdate)
-    window.addEventListener(APP_RESUMED_EVENT, handleUpdate)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
 
     return () => {
       window.removeEventListener('libraryUpdated', handleUpdate)
       window.removeEventListener('reviewAdded', handleUpdate)
       window.removeEventListener('storage', handleUpdate)
       window.removeEventListener('activityUpdated', handleUpdate)
-      window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [loadHomeData])
 

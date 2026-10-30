@@ -24,7 +24,7 @@ import PulseDot from './PulseDot'
 import Avatar from './Avatar'
 import WindowedListItem from './WindowedListItem'
 import ContentSwap from './motion/ContentSwap'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import '../pages/UserFollows.css'
 
 /**
@@ -69,6 +69,8 @@ function FollowsListPage({ mode: routeMode }) {
 
   // List state
   const [rows, setRows] = useState([])
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [endReached, setEndReached] = useState(false)
@@ -216,7 +218,7 @@ function FollowsListPage({ mode: routeMode }) {
   /* ── Fetch a page ─────────────────────────────────────────── */
 
   const fetchPage = useCallback(
-    async (pageIdx) => {
+    async (pageIdx, { quiet = false } = {}) => {
       if (!targetUserId) return
       const offset = pageIdx * PAGE_SIZE
       const fetcher = mode === 'followers' ? getFollowers : getFollowing
@@ -231,8 +233,14 @@ function FollowsListPage({ mode: routeMode }) {
             avatarUrl: u?.avatar_url || null,
           }
         })
-        setRows((prev) => (pageIdx === 0 ? normalized : [...prev, ...normalized]))
-        if (normalized.length < PAGE_SIZE) {
+        setRows((prev) => {
+          if (pageIdx !== 0) return [...prev, ...normalized]
+          if (!quiet || prev.length === 0) return normalized
+          const freshIds = new Set(normalized.map((r) => r.id))
+          const tail = prev.filter((r) => r.id && !freshIds.has(r.id))
+          return [...normalized, ...tail]
+        })
+        if (!quiet && normalized.length < PAGE_SIZE) {
           setEndReached(true)
         }
 
@@ -254,7 +262,7 @@ function FollowsListPage({ mode: routeMode }) {
         }
       } catch (err) {
         console.error('[follows-page] page fetch failed:', err)
-        setEndReached(true)
+        if (!quiet) setEndReached(true)
       } finally {
         setLoading(false)
       }
@@ -284,18 +292,21 @@ function FollowsListPage({ mode: routeMode }) {
 
   /* ── Resume revalidation ──────────────────────────────────── */
 
-  // A follower list is exactly the kind of thing that moves while you're away,
-  // and the WebView isn't remounted on resume so the effects above never
-  // re-run. We reload the first page and reset pagination rather than
-  // refetching every page the user had scrolled through: that collapses a
-  // deep-scrolled list back to one page, but the sentinel re-paginates from
-  // there immediately, which isn't worth multi-page refetch bookkeeping.
+  // A follower list can move while you're away, and the WebView isn't
+  // remounted on resume so the effects above never re-run. A long absence
+  // refreshes the first page in place: rows already on screen stay, scroll
+  // stays, and an empty list loads the first page the usual way.
   useEffect(() => {
     if (!targetUserId) return undefined
-    function onResume() {
-      setPage(0)
-      setEndReached(false)
-      fetchPage(0)
+    function onResume(e) {
+      if (!isLongAbsence(e)) return
+      if (rowsRef.current.length === 0) {
+        setPage(0)
+        setEndReached(false)
+        fetchPage(0)
+        return
+      }
+      fetchPage(0, { quiet: true })
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)

@@ -18,7 +18,7 @@ import { getUpcomingReleases } from '../services/igdb'
 import { getCollections } from '../services/listService'
 import { getActiveThemedDrop } from '../services/themedDropsService'
 import { getNewNotableRail } from '../services/newNotableService'
-import { APP_RESUMED_EVENT } from './useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 
 /** How long a section's data is reused before the next entry revalidates it. */
@@ -138,7 +138,10 @@ function useAsyncSection(cacheKey, loaderFn, deps = null) {
   // the foreground, so the mount-time load above never re-runs on its own.
   // Refetch on the global resume event so stale mount-time data reloads.
   useEffect(() => {
-    const onResume = () => { doFetch().catch(() => {}) }
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      doFetch().catch(() => {})
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [doFetch])

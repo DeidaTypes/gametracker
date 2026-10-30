@@ -7,7 +7,7 @@ import { isQaQuestionHidden, useQaHides } from '../pages/qa/qaHides'
 import { ACTIVITY_EVENT_LOGGED, PULSE_ITEM_REMOVED, emitPulseItemRemoved } from '../services/activityEventsService'
 import { prefetchLikeStatesForReviews } from './useLikeState'
 import { prefetchReactionsBatch } from './useReactions'
-import { APP_RESUMED_EVENT } from './useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 import { getSWR, peekSWR, updateSWR } from '../services/swrCache'
 import { isDuplicateCompletionOrReview, isRepeatMoment } from '../utils/homeFeedDedupe'
 
@@ -145,6 +145,16 @@ async function fetchPageOne(pageSize) {
 /** How long page 1 of the feed is reused before the next entry revalidates. */
 const FEED_TTL_MS = 60 * 1000
 
+/** A long-absence resume only prepends new posts when the feed is this close to the top. */
+const RESUME_NEAR_TOP_PX = 200
+
+function feedIsNearTop() {
+  if (typeof document === 'undefined') return true
+  const main = document.querySelector('.main-content')
+  const top = main ? main.scrollTop : window.scrollY || 0
+  return top <= RESUME_NEAR_TOP_PX
+}
+
 /**
  * useHomeFeed — pagination + scope tracking for "The pulse", Home's
  * unified activity feed (see communityService.getHomeFeed /
@@ -238,8 +248,8 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
     }
   }, [user?.id, pageSize])
 
-  // Pull-to-refresh and resume both mean "go get new data", so they skip
-  // the cache outright.
+  // Pull-to-refresh skips the cache. A resume does not call this — it uses
+  // silentRefresh so the feed already on screen never flips to a skeleton.
   const refresh = useCallback(() => loadPageOne({ force: true }), [loadPageOne])
 
   const loadMore = useCallback(async () => {
@@ -323,12 +333,17 @@ export function useHomeFeed({ pageSize = 15 } = {}) {
   }, [loadPageOne])
 
   useEffect(() => {
-    function onResume() {
-      refresh()
+    function onResume(e) {
+      if (!isLongAbsence(e)) return
+      // Further down the feed, prepending would shift what the reader is on.
+      if (!feedIsNearTop()) return
+      // Drop a skeleton only if a load was already in flight. This never
+      // turns a feed that is on screen into one.
+      silentRefresh().then(() => setLoading(false))
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
-  }, [refresh])
+  }, [silentRefresh])
 
   useEffect(() => {
     function onActivityLogged(e) {

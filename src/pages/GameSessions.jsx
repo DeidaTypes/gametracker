@@ -12,7 +12,7 @@ import { getTotalHoursForGame } from '../services/hoursService'
 import { getMoodMeta } from '../services/journalService'
 import { hapticImpact, hapticSuccess } from '../utils/haptics'
 import { showToast } from '../components/Toast'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import LogSessionModal from '../components/LogSessionModal'
 import LogSheet from '../components/home/LogSheet'
 import CenteredModal from '../components/CenteredModal'
@@ -93,10 +93,14 @@ export default function GameSessions() {
 
   useEffect(() => {
     if (!gameId) return undefined
-    const onResume = () => { refreshSessions() }
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      // A failed read must not replace the sessions already on screen.
+      getManualSessionsForGame(gameId).then((data) => setSessions(data)).catch(() => {})
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
-  }, [gameId, refreshSessions])
+  }, [gameId])
 
   const handleSaveSession = useCallback(async ({ totalMinutes, playedOn }) => {
     if (!editingSession) return

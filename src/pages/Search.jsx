@@ -57,7 +57,7 @@ import ReviewCard from '../components/ReviewCard'
 import Avatar from '../components/Avatar'
 import ListCoverCluster from '../components/ListCoverCluster'
 import ContentSwap from '../components/motion/ContentSwap'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { hapticImpact } from '../utils/haptics'
 import { useCachedResource } from '../hooks/useCachedResource'
 import { qaSearch, qaSearchKey } from '../services/qaService'
@@ -1256,8 +1256,21 @@ function Search() {
   // and the suggestions/results they left behind — including a request that was
   // still in flight when the OS tore the socket down.
   const [resumeKey, setResumeKey] = useState(0)
+  // Set by the resume listener, read by the tab fetches below, cleared after them.
+  const resumeQuietRef = useRef(false)
+  const reviewsLoadingRef = useRef(false)
+  const usersLoadingRef = useRef(false)
+  const listsLoadingRef = useRef(false)
   useEffect(() => {
-    const onResume = () => setResumeKey((k) => k + 1)
+    const onResume = (e) => {
+      const inFlight =
+        reviewsLoadingRef.current || usersLoadingRef.current || listsLoadingRef.current
+      // An in-flight tab search dies with the socket. Retry that one even on
+      // a short return; never raise a fresh skeleton over rows already shown.
+      if (!isLongAbsence(e) && !inFlight) return
+      resumeQuietRef.current = true
+      setResumeKey((k) => k + 1)
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [])
@@ -1291,6 +1304,9 @@ function Search() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [listsRows, setListsRows] = useState([])
   const [listsLoading, setListsLoading] = useState(false)
+  reviewsLoadingRef.current = reviewsLoading
+  usersLoadingRef.current = usersLoading
+  listsLoadingRef.current = listsLoading
 
   // Questions tab — the same qa_search RPC and cache key the Q&A search
   // screen uses, so a term searched in either is warm in the other.
@@ -1336,7 +1352,8 @@ function Search() {
       return
     }
     let cancelled = false
-    setReviewsLoading(true)
+    const quiet = resumeQuietRef.current
+    if (!quiet) setReviewsLoading(true)
     searchReviewsByText(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setReviewsRows(rows)
@@ -1360,7 +1377,8 @@ function Search() {
       return
     }
     let cancelled = false
-    setUsersLoading(true)
+    const quiet = resumeQuietRef.current
+    if (!quiet) setUsersLoading(true)
     searchUsers(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setUsersRows(rows)
@@ -1382,7 +1400,8 @@ function Search() {
       return
     }
     let cancelled = false
-    setListsLoading(true)
+    const quiet = resumeQuietRef.current
+    if (!quiet) setListsLoading(true)
     searchPublicLists(committedQuery, 20)
       .then((rows) => {
         if (!cancelled) setListsRows(rows)
@@ -1394,6 +1413,11 @@ function Search() {
       cancelled = true
     }
   }, [activeTab, committedQuery, resumeKey])
+
+  // After the tab fetches above have read it.
+  useEffect(() => {
+    resumeQuietRef.current = false
+  }, [resumeKey])
 
   /**
    * Record a term the user has actually searched. Writes to the shared

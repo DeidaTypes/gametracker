@@ -39,7 +39,7 @@ import { openReviewComposer as openReviewBox } from '../components/composer/Comp
 import DmShareSheet from '../components/DmShareSheet'
 import Avatar from '../components/Avatar'
 import { showToast } from '../components/Toast'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
 import GameDetailQuestionsRow from '../components/GameDetailQuestionsRow'
@@ -461,11 +461,13 @@ function GameDetail() {
   // status and sessions are reloaded.
   useEffect(() => {
     if (!gameId) return undefined
-    const onResume = () => {
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
       refreshFromStore()
       refreshSocial().catch(() => {})
       refreshQaPreview().catch(() => {})
-      refreshSessions()
+      // A failed read must not replace the sessions already on screen.
+      getManualSessionsForGame(gameId).then((data) => setSessions(data)).catch(() => {})
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
@@ -474,7 +476,6 @@ function GameDetail() {
     refreshFromStore,
     refreshSocial,
     refreshQaPreview,
-    refreshSessions,
   ])
 
   const handlePullToRefresh = useCallback(async () => {

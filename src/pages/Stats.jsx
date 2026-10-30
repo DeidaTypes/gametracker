@@ -15,7 +15,7 @@ import {
   parseLocalDateKey,
 } from '../services/statsService'
 import SharedCover, { SharedCoverScope } from '../components/SharedCover'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { PRIVACY_URL, TERMS_URL } from '../config/site'
 import { PLUS_PURCHASES_AVAILABLE } from '../services/plusService'
 import { getGameNavStub } from '../utils/gameNavStub'
@@ -439,19 +439,23 @@ function Stats() {
       setLocalProfile(getProfile() || initializeProfile())
       setStats(getStatsLocalSync())
     }
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      refresh()
+    }
     window.addEventListener('storage', refresh)
     window.addEventListener('reviewAdded', refresh)
     window.addEventListener('profileUpdated', refresh)
     window.addEventListener('libraryUpdated', refresh)
     window.addEventListener('activityUpdated', refresh)
-    window.addEventListener(APP_RESUMED_EVENT, refresh)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('reviewAdded', refresh)
       window.removeEventListener('profileUpdated', refresh)
       window.removeEventListener('libraryUpdated', refresh)
       window.removeEventListener('activityUpdated', refresh)
-      window.removeEventListener(APP_RESUMED_EVENT, refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [])
 
@@ -468,9 +472,10 @@ function Stats() {
       return
     }
     let cancelled = false
-    const load = async ({ bustCache } = {}) => {
+    const load = async ({ bustCache, quiet = false } = {}) => {
       if (bustCache) invalidateActivityCache()
-      setCalendarLoading(true)
+      // A resume over a calendar already on screen must not raise the skeleton.
+      if (!quiet) setCalendarLoading(true)
       try {
         const map = await getCachedActivityCalendar(user.id, 400)
         if (!cancelled) {
@@ -482,18 +487,22 @@ function Stats() {
     }
     load()
     const onActivity = () => load({ bustCache: true })
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      load({ bustCache: true, quiet: true })
+    }
     window.addEventListener('activityUpdated', onActivity)
     window.addEventListener('reviewAdded', onActivity)
     window.addEventListener('libraryUpdated', onActivity)
     // Resume busts the cache as well: the 5-minute window it exists to serve
     // is about repeat navigation within one session, not across a suspension.
-    window.addEventListener(APP_RESUMED_EVENT, onActivity)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       cancelled = true
       window.removeEventListener('activityUpdated', onActivity)
       window.removeEventListener('reviewAdded', onActivity)
       window.removeEventListener('libraryUpdated', onActivity)
-      window.removeEventListener(APP_RESUMED_EVENT, onActivity)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [user?.id])
 

@@ -118,7 +118,7 @@ import BadgesRow from '../components/BadgesRow'
 import { getJournalEntriesForUser, getMoodMeta } from '../services/journalService'
 import OnThisDaySection from '../components/OnThisDaySection'
 import Skeleton from '../components/Skeleton'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { getSWR, mutateSWR, peekSWR } from '../services/swrCache'
 import { useCachedResource } from '../hooks/useCachedResource'
 import { qaBestKey, qaUserBestCount } from '../services/qaService'
@@ -929,7 +929,7 @@ function Profile() {
 
   /* ── Data loading ──────────────────────────────────────────────── */
 
-  const loadProfileData = useCallback(async ({ force = false } = {}) => {
+  const loadProfileData = useCallback(async ({ force = false, quiet = false } = {}) => {
     // Only show the loading skeleton on the FIRST fetch for this
     // targetUserId (initial mount, or switching to a different user's
     // profile). Background refreshes fired by reviewAdded/storage/etc.
@@ -1099,17 +1099,20 @@ function Profile() {
         setReviewCommentCounts(cCounts)
       } catch (err) {
         console.error('[profile] load failed:', err)
-        setAllReviews([])
-        setCustomLists([])
-        setActivities([])
-        setJournalEntries([])
-        setReviewLikeCounts(new Map())
-        setPinnedRows([])
-        setPinnedLists([])
-        setGoalProgress(null)
-        setRivalryData([])
-        setTrackedGamesCount(null)
-        setHoursPlayed(null)
+        // A failed resume keeps the profile already on screen.
+        if (!quiet) {
+          setAllReviews([])
+          setCustomLists([])
+          setActivities([])
+          setJournalEntries([])
+          setReviewLikeCounts(new Map())
+          setPinnedRows([])
+          setPinnedLists([])
+          setGoalProgress(null)
+          setRivalryData([])
+          setTrackedGamesCount(null)
+          setHoursPlayed(null)
+        }
       }
       loadedProfileForUserRef.current = targetUserId
       setProfileLoading(false)
@@ -1151,6 +1154,10 @@ function Profile() {
     // the app resumed after who-knows-how-long backgrounded, etc.), so
     // they all force a real refetch rather than risking a cache hit.
     const refresh = () => loadProfileData({ force: true })
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      loadProfileData({ force: true, quiet: true })
+    }
     window.addEventListener('storage', refresh)
     window.addEventListener('reviewAdded', refresh)
     window.addEventListener('profileUpdated', refresh)
@@ -1164,10 +1171,10 @@ function Profile() {
     window.addEventListener(PIN_CHANGED_EVENT, refresh)
     // List pin changes (pin/unpin from ListDetail or ListsTab).
     window.addEventListener(LIST_PIN_CHANGED_EVENT, refresh)
-    // The events above only cover changes this device made. On resume the
-    // whole profile could have moved on elsewhere — new reviews, new lists,
-    // new activity — and the mount call never re-runs by itself.
-    window.addEventListener(APP_RESUMED_EVENT, refresh)
+    // The events above only cover changes this device made. On a long
+    // absence the whole profile could have moved on elsewhere — new
+    // reviews, new lists, new activity — and the mount call never re-runs.
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('storage', refresh)
       window.removeEventListener('reviewAdded', refresh)
@@ -1177,7 +1184,7 @@ function Profile() {
       window.removeEventListener('journalEntryAdded', refresh)
       window.removeEventListener(PIN_CHANGED_EVENT, refresh)
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, refresh)
-      window.removeEventListener(APP_RESUMED_EVENT, refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [loadProfileData])
 
@@ -1191,7 +1198,8 @@ function Profile() {
     // Follow counts are the numerals most likely to have moved while the
     // app was backgrounded. The cache already painted the last values;
     // this refresh settles them if they changed.
-    const onResume = () => {
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
       refreshFollows().catch(() => {})
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)

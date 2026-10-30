@@ -79,7 +79,7 @@ import ListComments from '../components/ListComments'
 import { useHideNav } from '../hooks/useHideNav'
 import TrackerGameList from '../components/TrackerGameList'
 import { supabase } from '../services/supabase'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { getSWR, peekSWR } from '../services/swrCache'
 import ClearModeOverlay from '../components/ClearModeOverlay'
 
@@ -261,8 +261,8 @@ function ListDetail() {
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
-  const refresh = useCallback(async ({ force = true } = {}) => {
-    setLoadError(false)
+  const refresh = useCallback(async ({ force = true, quiet = false } = {}) => {
+    if (!quiet) setLoadError(false)
     if (isTracker) {
       const info = getListInfo(listId)
       setListInfo(info)
@@ -280,7 +280,7 @@ function ListDetail() {
         setCollaborators(data?.collaborators || [])
       } catch (err) {
         console.error('[list-detail] failed to load:', err)
-        setLoadError(true)
+        if (!quiet) setLoadError(true)
       } finally {
         setIsLoading(false)
       }
@@ -298,13 +298,17 @@ function ListDetail() {
     if (peekSWR(`list:${listId}`) === undefined) setIsLoading(true)
     refresh({ force: false })
     const handler = () => refresh({ force: true })
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      refresh({ force: true, quiet: true })
+    }
     window.addEventListener('libraryUpdated', handler)
     // A collaborative list can change while the app is backgrounded; refresh()
     // also re-derives the owner-ratings / save-state effects downstream.
-    window.addEventListener(APP_RESUMED_EVENT, handler)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('libraryUpdated', handler)
-      window.removeEventListener(APP_RESUMED_EVENT, handler)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [refresh, listId])
 

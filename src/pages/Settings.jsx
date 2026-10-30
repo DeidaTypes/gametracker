@@ -34,7 +34,7 @@ import { APP_VERSION, PRIVACY_URL, TERMS_URL } from '../config/site'
 import { PLUS_ENABLED, PLUS_PURCHASES_AVAILABLE } from '../services/plusService'
 import { hapticImpact } from '../utils/haptics'
 import { useFlagEnabled } from '../hooks/useFlagEnabled'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { MODERATION_CHANGED_EVENT, getOpenReportCount } from '../services/moderationService'
 import './Settings.css'
 
@@ -121,13 +121,17 @@ function Settings() {
         if (alive) setOpenReports(count)
       })
     }
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      refresh()
+    }
     refresh()
     window.addEventListener(MODERATION_CHANGED_EVENT, refresh)
-    window.addEventListener(APP_RESUMED_EVENT, refresh)
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       alive = false
       window.removeEventListener(MODERATION_CHANGED_EVENT, refresh)
-      window.removeEventListener(APP_RESUMED_EVENT, refresh)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [isAdmin])
 

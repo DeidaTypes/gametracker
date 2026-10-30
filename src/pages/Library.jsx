@@ -22,7 +22,7 @@ import {
   addGameToList,
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { STATUS_CELLS, LIBRARY_SORTS, LIBRARY_PAGE_SIZE, readLibraryView, writeLibraryView, writeLibraryUi, writeLibraryHistoryUi, resolveLibraryUiForMount } from '../components/library/libraryConstants'
 import LibraryAmbientWash from '../components/library/LibraryAmbientWash'
 import LibraryHeader from '../components/library/LibraryHeader'
@@ -188,15 +188,21 @@ function Library() {
       loadTrackerLists()
       refreshLists().catch(() => {})
     }
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      handleUpdate()
+    }
     window.addEventListener('libraryUpdated', handleUpdate)
     window.addEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
     // The WebView isn't remounted on resume, so the mount call above never
     // re-runs and custom lists edited on another device stay invisible.
-    window.addEventListener(APP_RESUMED_EVENT, handleUpdate)
+    // refreshLists swaps through the cache and does not raise a skeleton
+    // while lists are already on screen.
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('libraryUpdated', handleUpdate)
       window.removeEventListener(LIST_PIN_CHANGED_EVENT, handleUpdate)
-      window.removeEventListener(APP_RESUMED_EVENT, handleUpdate)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [loadTrackerLists, refreshLists])
 

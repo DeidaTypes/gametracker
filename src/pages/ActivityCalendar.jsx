@@ -12,7 +12,7 @@ import {
 } from '../services/statsService'
 import DayLogSheet from '../components/DayLogSheet'
 import EmptyState from '../components/EmptyState'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import './ActivityCalendar.css'
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -59,7 +59,7 @@ export default function ActivityCalendar() {
   const [isLoading, setIsLoading] = useState(true)
   const [dayLogDate, setDayLogDate] = useState(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async ({ quiet = false } = {}) => {
     if (!user?.id) {
       setDateCounts(new Map())
       setListAddDates(new Set())
@@ -76,8 +76,11 @@ export default function ActivityCalendar() {
       setListAddDates(listAdds)
     } catch (err) {
       console.error('[ActivityCalendar] fetch failed:', err)
-      setDateCounts(new Map())
-      setListAddDates(new Set())
+      // A failed resume must not wipe the month already on screen.
+      if (!quiet) {
+        setDateCounts(new Map())
+        setListAddDates(new Set())
+      }
     } finally {
       setIsLoading(false)
     }
@@ -94,17 +97,22 @@ export default function ActivityCalendar() {
       setIsLoading(true)
       fetchData()
     }
+    function onResume(e) {
+      if (!isLongAbsence(e)) return
+      invalidateActivityCache()
+      fetchData({ quiet: true })
+    }
     window.addEventListener('activityUpdated', onActivityChange)
     window.addEventListener('reviewAdded', onActivityChange)
     window.addEventListener('libraryUpdated', onActivityChange)
-    // Resume goes through the same handler so the cached calendar is busted
-    // too — a plain refetch would just re-read the stale cache.
-    window.addEventListener(APP_RESUMED_EVENT, onActivityChange)
+    // Resume busts the cache too — a plain refetch would re-read the stale
+    // one — but it does not raise the skeleton over a month already shown.
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
       window.removeEventListener('activityUpdated', onActivityChange)
       window.removeEventListener('reviewAdded', onActivityChange)
       window.removeEventListener('libraryUpdated', onActivityChange)
-      window.removeEventListener(APP_RESUMED_EVENT, onActivityChange)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
   }, [fetchData])
 

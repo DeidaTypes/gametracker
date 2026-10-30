@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
-import { runResumeSequence } from '../services/resumeSequence'
+import { markBackgrounded, runResumeSequence } from '../services/resumeSequence'
 
 /**
  * Global window event fired whenever the app returns to the foreground
@@ -17,6 +17,26 @@ import { runResumeSequence } from '../services/resumeSequence'
  * here because this is where the app has always imported it from.
  */
 export { APP_RESUMED_EVENT } from '../services/resumeSequence'
+
+/**
+ * Screen content reloads only after the app has been away at least this long.
+ * Anything shorter (another app, Control Center, a notification banner)
+ * leaves what is on screen alone. Realtime, badges, and messages do not use
+ * this — they run on every resume.
+ */
+export const RESUME_REFRESH_AFTER_MS = 5 * 60 * 1000
+
+/**
+ * True when this resume should reload screen content.
+ * `awayMs` null or missing means the background moment was never recorded
+ * (treat as a long absence). A number under RESUME_REFRESH_AFTER_MS is a
+ * short return and must not reload the screen.
+ */
+export function isLongAbsence(event) {
+  const awayMs = event?.detail?.awayMs
+  if (awayMs == null) return true
+  return awayMs >= RESUME_REFRESH_AFTER_MS
+}
 
 /**
  * Why this hook exists
@@ -52,12 +72,16 @@ export function useAppResume() {
     // would cause double session-refreshes and double realtime reconnects.
     if (Capacitor.isNativePlatform()) return
 
-    const onVisible = () => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        markBackgrounded()
+        return
+      }
       if (document.visibilityState === 'visible') runResumeSequence('visibilitychange')
     }
 
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 }
 

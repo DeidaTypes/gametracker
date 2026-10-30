@@ -58,7 +58,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useLikeState } from '../hooks/useLikeState'
 import { useReactions } from '../hooks/useReactions'
 import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { removePulseFeedItem } from '../hooks/useHomeFeed'
@@ -525,12 +525,19 @@ function ReviewComments() {
      posted in the meantime are only picked up by refetching here. The
      cache already painted the last thread; this refresh stays quiet. */
   useEffect(() => {
-    const onResume = () => {
-      setResumeKey((k) => k + 1)
+    // Realtime resubscribe on every return. The thread itself reloads only
+    // after a long absence; refreshThread swaps through the cache.
+    const onRealtime = () => setResumeKey((k) => k + 1)
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
       refreshThread().catch(() => {})
     }
+    window.addEventListener(APP_RESUMED_EVENT, onRealtime)
     window.addEventListener(APP_RESUMED_EVENT, onResume)
-    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    return () => {
+      window.removeEventListener(APP_RESUMED_EVENT, onRealtime)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    }
   }, [refreshThread])
 
   /* ── Realtime subscription ──────────────────────────────────────

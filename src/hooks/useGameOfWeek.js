@@ -11,14 +11,14 @@
 // Returns { featured, loading, error }
 //   featured: null when nothing resolves; otherwise the enriched game object.
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { igdbRequest } from '../services/igdb'
 import { coverUrl, rewriteCoverToken } from '../services/igdbImage'
 import { getReviewsForGame } from '../services/reviewService'
 import { getTimeToBeat } from '../services/timeToBeatService'
 import { computeDNAPortrait } from '../services/dnaService'
-import { APP_RESUMED_EVENT } from './useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -252,21 +252,6 @@ export default function useGameOfWeek(cadence = 'week') {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const run = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await loadFeaturedGame(cadence)
-      setFeatured(data)
-    } catch (err) {
-      console.error('[useGameOfWeek] error:', err)
-      setError(err?.message ?? 'Failed to load')
-      setFeatured(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [cadence])
-
   useEffect(() => {
     let cancelled = false
     loadFeaturedGame(cadence)
@@ -282,12 +267,27 @@ export default function useGameOfWeek(cadence = 'week') {
     return () => { cancelled = true }
   }, [cadence]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refetch on Capacitor foreground return
+  // Refetch on a long absence. Never flips `loading` over a game already shown.
   useEffect(() => {
-    const onResume = () => run().catch(() => {})
+    let cancelled = false
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
+      loadFeaturedGame(cadence)
+        .then((data) => {
+          if (cancelled || !data) return
+          setFeatured(data)
+          setLoading(false)
+        })
+        .catch((err) => {
+          console.error('[useGameOfWeek] error:', err)
+        })
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
-    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
-  }, [run])
+    return () => {
+      cancelled = true
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    }
+  }, [cadence])
 
   return { featured, loading, error }
 }

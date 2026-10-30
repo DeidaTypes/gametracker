@@ -272,9 +272,12 @@ function MessagesThread() {
     }
   }, [currentUserId, partnerId])
 
-  const loadThread = useCallback(async () => {
+  const loadThread = useCallback(async (opts) => {
     if (!partnerId) return
-    setLoading(true)
+    // Resume passes { silent: true }. A DOM event (messages-changed) does not,
+    // so the first open and an in-app send still show the loading state.
+    const silent = opts?.silent === true
+    if (!silent) setLoading(true)
     try {
       const rows = await getThread(partnerId)
       // Seed every bubble's reactions from one batched read. Without this
@@ -287,11 +290,12 @@ function MessagesThread() {
       // messages off screen for a round-trip they don't depend on.
       prefetchReactionsBatch('dm_message', rows.map((r) => r.id).filter(Boolean))
       setMessages(rows)
+      if (silent) setLoading(false)
     } catch (err) {
       console.error('[MessagesThread] load failed:', err)
-      setMessages([])
+      if (!silent) setMessages([])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [partnerId])
 
@@ -328,7 +332,7 @@ function MessagesThread() {
     // than left relying on a naive re-subscribe of the same instance.
     const onResume = () => {
       setResumeKey((k) => k + 1)
-      loadThread()
+      loadThread({ silent: true })
     }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     window.addEventListener(MESSAGES_CHANGED_EVENT, loadThread)

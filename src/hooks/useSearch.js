@@ -3,7 +3,7 @@ import { searchGames } from '../services/searchService'
 import { searchGamesWithFilters, fetchShortGameIds } from '../services/igdb'
 import { getCategoryDefinitions } from '../services/browseService'
 import { parseNaturalQuery } from '../utils/parseNaturalQuery'
-import { APP_RESUMED_EVENT } from './useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 
 const DEBOUNCE_MS = 250
 
@@ -43,13 +43,27 @@ export function useSearch(query) {
   // tore down — so without this the user comes back to a spinner that never
   // resolves, or to results for a query they've since changed.
   const [resumeKey, setResumeKey] = useState(0)
+  // Set by the resume listener, read once by the search effect below.
+  const resumeQuietRef = useRef(false)
+  const isLoadingRef = useRef(false)
+  isLoadingRef.current = isLoading
   useEffect(() => {
-    const onResume = () => setResumeKey((k) => k + 1)
+    const onResume = (e) => {
+      // A search still in flight when the OS tore the socket down would
+      // otherwise spin forever. Retry that one even on a short return, but
+      // never raise a fresh skeleton over results already on screen.
+      if (!isLongAbsence(e) && !isLoadingRef.current) return
+      resumeQuietRef.current = true
+      setResumeKey((k) => k + 1)
+    }
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
   }, [])
 
   useEffect(() => {
+    const quiet = resumeQuietRef.current
+    resumeQuietRef.current = false
+
     if (timerRef.current) clearTimeout(timerRef.current)
 
     const trimmed = (query || '').trim()
@@ -64,7 +78,7 @@ export function useSearch(query) {
       return
     }
 
-    setIsLoading(true)
+    if (!quiet) setIsLoading(true)
     setError(null)
 
     const callId = ++abortRef.current
@@ -157,8 +171,10 @@ export function useSearch(query) {
       } catch (err) {
         if (callId !== abortRef.current) return
         setError(err.message || 'Search failed')
-        setResults({ games: [], genres: [], developers: [] })
-        setParsedFilters([])
+        if (!quiet) {
+          setResults({ games: [], genres: [], developers: [] })
+          setParsedFilters([])
+        }
       } finally {
         if (callId === abortRef.current) setIsLoading(false)
       }

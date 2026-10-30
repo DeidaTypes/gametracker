@@ -34,7 +34,7 @@ import { useLikeState } from '../hooks/useLikeState'
 import { useLikedBy } from '../components/LikedBy'
 import { bumpCommentsCount, bumpSharesCount } from '../hooks/useUserStats'
 import DmShareSheet from '../components/DmShareSheet'
-import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
+import { APP_RESUMED_EVENT, isLongAbsence } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
 import { whenKeyboardSettled } from '../services/keyboardInset'
 import { useHideNav } from '../hooks/useHideNav'
@@ -613,10 +613,13 @@ function ReviewDetail() {
       getReviewById(reviewId)
         .then((row) => {
           if (isStale()) return
-          if (!row) { setReviewMissing(true); setReview(null) }
-          else setReview(row)
+          if (!row) {
+            if (!silent) { setReviewMissing(true); setReview(null) }
+            return
+          }
+          setReview(row)
         })
-        .catch(() => { if (!isStale()) setReviewMissing(true) })
+        .catch(() => { if (!isStale() && !silent) setReviewMissing(true) })
         .finally(() => { if (!isStale()) setReviewLoading(false) })
 
       if (!silent) setCommentsLoading(true)
@@ -631,7 +634,7 @@ function ReviewDetail() {
         })
         .catch((err) => {
           console.error('[ReviewDetail] load failed:', err)
-          if (!isStale()) setComments([])
+          if (!isStale() && !silent) setComments([])
         })
         .finally(() => { if (!isStale()) setCommentsLoading(false) })
     },
@@ -647,12 +650,19 @@ function ReviewDetail() {
      while the app was suspended anyway — so edits, deletes, and likes that
      happened in the meantime are only picked up by refetching here. */
   useEffect(() => {
-    const onResume = () => {
-      setResumeKey((k) => k + 1)
+    // Realtime resubscribe on every return. The thread itself reloads only
+    // after a long absence, and that reload stays silent.
+    const onRealtime = () => setResumeKey((k) => k + 1)
+    const onResume = (e) => {
+      if (!isLongAbsence(e)) return
       loadThread({ silent: true })
     }
+    window.addEventListener(APP_RESUMED_EVENT, onRealtime)
     window.addEventListener(APP_RESUMED_EVENT, onResume)
-    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    return () => {
+      window.removeEventListener(APP_RESUMED_EVENT, onRealtime)
+      window.removeEventListener(APP_RESUMED_EVENT, onResume)
+    }
   }, [loadThread])
 
   /* ── Realtime subscription ────────────────────────────────────
