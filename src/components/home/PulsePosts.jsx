@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HiOutlineHeart, HiOutlineFlag, HiOutlineCheck } from 'react-icons/hi'
-import { Gamepad2 } from 'lucide-react'
+import { Gamepad2, Layers } from 'lucide-react'
 import Avatar from '../Avatar'
 import StarRatingDisplay from '../StarRatingDisplay'
 import ListCoverCluster from '../ListCoverCluster'
@@ -548,9 +548,52 @@ function PulseListGate({ item, coverPriority, followsReview, navigate }) {
   )
 }
 
+function listBandSubline(gameCount, previewGames) {
+  if (gameCount == null || gameCount < 1) return null
+  const titles = (previewGames || []).map((g) => g?.title).filter(Boolean)
+  const countPart = `${gameCount} game${gameCount === 1 ? '' : 's'}`
+  if (titles.length === 0) return countPart
+  if (gameCount === 1 || titles.length === 1) {
+    return `${countPart} · ${titles[0]}`
+  }
+  if (gameCount === 2 && titles.length >= 2) {
+    return `${countPart} · ${titles[0]} and ${titles[1]}`
+  }
+  if (titles.length >= 2) {
+    const more = gameCount - 2
+    if (more > 0) {
+      return `${countPart} · ${titles[0]}, ${titles[1]} and ${more} more`
+    }
+    return `${countPart} · ${titles[0]} and ${titles[1]}`
+  }
+  const more = gameCount - 1
+  return `${countPart} · ${titles[0]} and ${more} more`
+}
+
 function ListPost({ item, preview, gameCount, coverPriority, followsReview, navigate }) {
   const listName = item.listName || preview?.name || null
   const games = preview?.previewGames || []
+  const coverImageUrl = preview?.coverImageUrl || null
+  const previewLoaded = preview != null
+  const hasBackdropArt =
+    previewLoaded &&
+    (coverImageUrl || games.some((g) => g?.image))
+  const lbClass = hasBackdropArt ? 'pulse-post__lb' : 'pulse-post__lb pulse-post__lb--noart'
+
+  const backdropCoverUrl = coverImageUrl
+    ? getSizedImageUrl(coverImageUrl, 200)
+    : null
+  const gridCovers = !coverImageUrl
+    ? games
+        .map((g) => (g?.image ? getSizedImageUrl(g.image, 200) : null))
+        .filter(Boolean)
+        .slice(0, 4)
+    : []
+
+  const subline =
+    previewLoaded && gameCount != null
+      ? listBandSubline(gameCount, games)
+      : null
 
   const when = formatActivityDate(item.createdAt, { pulse: true })
   const onComments = (e) => {
@@ -575,22 +618,51 @@ function ListPost({ item, preview, gameCount, coverPriority, followsReview, navi
         </p>
         <button
           type="button"
-          className="pulse-post__ls"
+          className={lbClass}
           onClick={(e) => {
             e.stopPropagation()
             if (item.listId) navigate(`/list/${item.listId}`)
           }}
         >
-          <span className="pulse-post__fan">
-            <ListCoverCluster games={games} name={listName || ''} size="md" variant="tile" />
+          {hasBackdropArt && (
+            <>
+              {backdropCoverUrl ? (
+                <span
+                  className="pulse-post__lb-bg pulse-post__lb-bg--single"
+                  style={{ '--pulse-lb-cover': `url("${backdropCoverUrl}")` }}
+                  aria-hidden="true"
+                />
+              ) : (
+                <span className="pulse-post__lb-bg pulse-post__lb-bg--grid" aria-hidden="true">
+                  {gridCovers.map((url, i) => (
+                    <span
+                      key={url || i}
+                      className="pulse-post__lb-bg-cell"
+                      style={{ '--pulse-lb-cover': `url("${url}")` }}
+                    />
+                  ))}
+                </span>
+              )}
+              <span className="pulse-post__lb-tint" aria-hidden="true" />
+            </>
+          )}
+          <span className="pulse-post__lb-fan">
+            <ListCoverCluster
+              variant="poster"
+              games={games}
+              coverImageUrl={coverImageUrl}
+              name={listName || ''}
+            />
           </span>
-          <span className="pulse-post__ls-meta">
-            <span className="pulse-post__ls-name">{listName || 'Untitled list'}</span>
-            {gameCount != null && (
-              <span className="pulse-post__ls-count">
-                {gameCount} game{gameCount === 1 ? '' : 's'}
-              </span>
-            )}
+          <span className="pulse-post__fin-text">
+            <span className="pulse-post__fin-badge">
+              <Layers size={13} aria-hidden="true" />
+              List
+            </span>
+            <span className="pulse-post__fin-title pulse-post__lb-title">
+              {listName || 'Untitled list'}
+            </span>
+            {subline && <span className="pulse-post__lb-sub">{subline}</span>}
           </span>
         </button>
         <PulseActions item={item} onComments={onComments} />
