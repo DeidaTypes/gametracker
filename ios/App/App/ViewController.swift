@@ -14,26 +14,47 @@ import Capacitor
 /// in web content; once it has painted, it posts "bootCover" and the cover
 /// is removed at once. Nothing on screen changes at that moment.
 ///
-/// Setting the root view, the web view, and its scroll view to the launch
-/// navy also keeps anything behind the web content from flashing white.
+/// The launch screen is in the saved theme, not always navy: the web app posts
+/// its theme to "cpTheme" on every launch and change, this saves it, and
+/// LaunchScreenCache repaints iOS's cached launch images in that base color.
+/// The cover, root view, web view, and scroll view use the same saved base, so
+/// the first frame the app draws equals the repainted launch image. Setting
+/// them also keeps anything behind the web content from flashing white.
 class ViewController: CAPBridgeViewController {
     private static let coverHandlerName = "bootCover"
+    private static let themeHandlerName = "cpTheme"
     /// If the page never reports in (offline, a hung load), the cover goes anyway.
     private static let coverFailsafe: TimeInterval = 5
 
-    private let launchBackgroundColor = UIColor(named: "LaunchBackground")
-        ?? UIColor(red: 0x0A / 255.0, green: 0x0F / 255.0, blue: 0x1F / 255.0, alpha: 1.0)
+    /// The saved theme's base, or LaunchBackground (navy) before one is saved.
+    /// Fixed for this launch: the cover must equal the launch image iOS showed.
+    private let launchBackgroundColor: UIColor = {
+        if let base = LaunchScreenCache.savedBase, let color = LaunchScreenCache.color(fromBase: base) {
+            return color
+        }
+        return UIColor(named: "LaunchBackground")
+            ?? UIColor(red: 0x0A / 255.0, green: 0x0F / 255.0, blue: 0x1F / 255.0, alpha: 1.0)
+    }()
 
     private var launchCover: UIView?
     private var coverHandlerRegistered = false
+    private var themeHandlerRegistered = false
 
     override func viewDidLoad() {
         // Reading `view` builds the web view (CAPBridgeViewController.loadView).
         view.backgroundColor = launchBackgroundColor
 
+        // First frame status bar text from the saved theme (dark text on the
+        // light themes). The StatusBar plugin sets the same value once the app
+        // runs, through the same property, so the two never fight.
+        if let id = LaunchScreenCache.savedThemeId {
+            setStatusBarStyle(LaunchScreenCache.lightThemeIds.contains(id) ? .darkContent : .lightContent)
+        }
+
         // Registered before super.viewDidLoad() starts the page load, so the
-        // page can never run its script ahead of the handler.
+        // page can never run its script ahead of a handler.
         registerCoverHandler()
+        registerThemeHandler()
 
         super.viewDidLoad()
 
@@ -92,6 +113,34 @@ class ViewController: CAPBridgeViewController {
         coverHandlerRegistered = false
     }
 
+    private func registerThemeHandler() {
+        guard !themeHandlerRegistered, let controller = webView?.configuration.userContentController else { return }
+        controller.add(ThemeMessageProxy(owner: self), name: Self.themeHandlerName)
+        themeHandlerRegistered = true
+    }
+
+    /// The web app's theme, posted on every launch and every change. Only a
+    /// known id with a #RRGGBB base is accepted; anything else is ignored.
+    fileprivate func receiveTheme(_ body: Any) {
+        guard let message = body as? [String: Any],
+              let id = message["id"] as? String, LaunchScreenCache.knownThemeIds.contains(id),
+              let base = LaunchScreenCache.normalizedBase(message["base"]),
+              let color = LaunchScreenCache.color(fromBase: base)
+        else { return }
+
+        UserDefaults.standard.set(id, forKey: LaunchScreenCache.themeIdKey)
+        UserDefaults.standard.set(base, forKey: LaunchScreenCache.themeBaseKey)
+
+        // Behind the web content (the scroll bounce area) follows the theme.
+        // The launch cover is left alone: it holds the picture iOS showed.
+        view.backgroundColor = color
+        webView?.backgroundColor = color
+        webView?.scrollView.backgroundColor = color
+
+        // Repaint the cached launch images. Files already in this base are skipped.
+        LaunchScreenCache.repaint(base: base)
+    }
+
     /// No animation: the web splash under the cover is identical to it.
     fileprivate func removeLaunchCover() {
         guard Thread.isMainThread else {
@@ -115,5 +164,18 @@ private final class BootCoverMessageProxy: NSObject, WKScriptMessageHandler {
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         owner?.removeLaunchCover()
+    }
+}
+
+/// Same as BootCoverMessageProxy, for the saved-theme messages.
+private final class ThemeMessageProxy: NSObject, WKScriptMessageHandler {
+    private weak var owner: ViewController?
+
+    init(owner: ViewController) {
+        self.owner = owner
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        owner?.receiveTheme(message.body)
     }
 }

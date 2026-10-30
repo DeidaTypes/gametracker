@@ -160,6 +160,19 @@ async function applyKeyboardStyle(mode) {
   }
 }
 
+/**
+ * Tell the iOS shell which theme is showing (ViewController.swift saves it and
+ * repaints the cached launch image in that base). index.html posts the same
+ * message on launch. A no-op in a browser; never throws.
+ */
+function postThemeToNative(theme) {
+  try {
+    window.webkit?.messageHandlers?.cpTheme?.postMessage({ id: theme.id, base: theme.base })
+  } catch {
+    // No native shell. Never surface this.
+  }
+}
+
 export function applyTheme(id) {
   if (typeof document === 'undefined') return DEFAULTS.theme
   const theme = getTheme(id)
@@ -170,6 +183,7 @@ export function applyTheme(id) {
   if (meta) meta.setAttribute('content', theme.base)
   applyStatusBar(theme.mode)
   applyKeyboardStyle(theme.mode)
+  postThemeToNative(theme)
   return theme.id
 }
 

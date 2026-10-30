@@ -21,9 +21,10 @@
 
       /* Opening splash. src/motion/bootSplash.js hands it off once the app
          has something to show. Covers everything and blocks taps until then.
-         It is transparent itself: the launch navy is the .boot-cover layer
-         inside it, so the same picture holds for every theme while the app
-         underneath (html, body, #root above) is already in the saved theme. */
+         It is transparent itself: the launch color is the .boot-cover layer
+         inside it, painted in the saved theme's base to match the repainted
+         iOS launch image, while the app underneath (html, body, #root above)
+         is already in that theme. */
       #boot-splash {
         position: fixed;
         inset: 0;
@@ -34,13 +35,17 @@
         overflow: hidden;
         background: transparent;
       }
-      /* The iOS launch image's navy. Never animated here: bootSplash.js fades
-         it only when the sign-in mascot glides into its page. */
+      /* The iOS launch image's color: the saved theme's base. Never animated
+         here: bootSplash.js fades it only when the sign-in mascot glides into
+         its page. */
       #boot-splash .boot-cover {
         position: absolute;
         inset: 0;
         opacity: 1;
-        background-color: #0a0f1f; /* = LaunchBackground in LaunchScreen.storyboard */
+        /* The saved theme's base: the same color the iOS launch image was repainted
+           in (LaunchScreenCache.swift). --boot-bg is dropped by applyTheme(), so
+           the cover falls back to --theme-base, which is that same base. */
+        background-color: var(--boot-bg, var(--theme-base));
       }
       /* Same size and place as LaunchLogo in the storyboard: 157x260,
          centered in the full screen (not the safe area). */
@@ -93,6 +98,12 @@
         root.setAttribute('data-boot', '')
         var meta = document.querySelector('meta[name="theme-color"]')
         if (meta) meta.setAttribute('content', BG[theme])
+        // Tell the iOS shell the saved theme on every launch, so its launch
+        // image is repainted in this base (ViewController.swift). No-op in a browser.
+        try {
+          var cp = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cpTheme
+          if (cp) cp.postMessage({ id: theme, base: BG[theme] })
+        } catch (e) {}
       })()
     </script>
 
