@@ -1,14 +1,14 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { UserPlus, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import useHomeFeed, { isQaPulseItem } from '../../hooks/useHomeFeed'
+import useHomeFeed from '../../hooks/useHomeFeed'
 import { coverLoadingProps } from '../../services/imageUtils'
 import HomeReviewCard from './HomeReviewCard'
-import FeedRow, { FeedGroupRow, QaFeedRow } from './FeedRow'
+import PulsePost from './PulsePosts'
 import EmptyState from '../EmptyState'
 import FindFriendsModal from '../FindFriendsModal'
 import WindowedListItem from '../WindowedListItem'
-import { groupPulseFeedItems } from '../../services/communityService'
+import { shapePulseFeedEntries } from '../../services/communityService'
 import { coarseRelativeBucket } from '../../utils/formatActivityDate'
 import { Arrive } from '../motion/ContentSwap'
 import './HomePulseFeed.css'
@@ -105,8 +105,8 @@ function FeedSkeleton() {
  * communityService.groupPulseFeedItems, which also collapses runs of
  * same-actor/same-verb non-opinion items within 24h into one grouped
  * row. Opinion-bearing items render through <HomeReviewCard/> (the FULL
- * card); everything else renders through <FeedRow/> or, for a grouped
- * run, <FeedGroupRow/> (both in ./FeedRow.jsx). This is purely a
+ * card); everything else renders through <PulsePost/> (./PulsePosts.jsx)
+ * after shapePulseFeedEntries re-packages the feed. This is purely a
  * rendering decision — it doesn't change which rows getHomeFeed
  * selected or reorder them.
  *
@@ -165,7 +165,7 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
   // of the already-fetched, already-ordered `items`; does not change
   // what getHomeFeed returned or touch stored data. See
   // communityService.groupPulseFeedItems.
-  const displayList = useMemo(() => groupPulseFeedItems(items), [items])
+  const displayList = useMemo(() => shapePulseFeedEntries(items), [items])
 
   useEffect(() => {
     const node = sentinelRef.current
@@ -229,30 +229,28 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
             <div className="pulse-feed__list">
               {displayList.map((entry, index) => {
                 const coverPriority = coverLoadingProps(index, 3)
-                if (entry.kind === 'full') {
+                const followsReview =
+                  index > 0 && displayList[index - 1].kind === 'review'
+                if (entry.kind === 'review') {
                   return (
                     <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--full">
                       <HomeReviewCard item={entry.item} coverPriority={coverPriority} />
                     </WindowedListItem>
                   )
                 }
-                if (entry.kind === 'group') {
-                  return (
-                    <WindowedListItem key={`group-${entry.items[0].id}`} className="pulse-feed__item pulse-feed__item--compact">
-                      <FeedGroupRow items={entry.items} coverPriority={coverPriority} />
-                    </WindowedListItem>
-                  )
-                }
-                if (isQaPulseItem(entry.item)) {
-                  return (
-                    <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--compact">
-                      <QaFeedRow item={entry.item} coverPriority={coverPriority} />
-                    </WindowedListItem>
-                  )
-                }
+                const postKey =
+                  entry.kind === 'cluster'
+                    ? `cluster-${entry.item.id}`
+                    : entry.kind === 'sessions'
+                      ? `sessions-${entry.items[0].id}`
+                      : entry.item.id
                 return (
-                  <WindowedListItem key={entry.item.id} className="pulse-feed__item pulse-feed__item--compact">
-                    <FeedRow item={entry.item} coverPriority={coverPriority} />
+                  <WindowedListItem key={postKey} className="pulse-feed__item pulse-feed__item--post">
+                    <PulsePost
+                      entry={entry}
+                      coverPriority={coverPriority}
+                      followsReview={followsReview}
+                    />
                   </WindowedListItem>
                 )
               })}

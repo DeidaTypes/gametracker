@@ -66,19 +66,15 @@
   padding: 0 var(--container-padding);
 }
 
-/* 10px gap between a compact row and a card (either direction). */
+/* 10px gap between a pulse post and a review card (either direction). */
 .pulse-feed__item--full + .pulse-feed__item,
 .pulse-feed__item + .pulse-feed__item--full {
-  margin-top: 10px;
+  margin-top: var(--space-8);
 }
 
-/* Hairline between consecutive compact rows, inset 14px. */
-.pulse-feed__item--compact + .pulse-feed__item--compact::before {
-  content: '';
-  display: block;
-  height: 1px;
-  background: var(--color-border);
-  margin: 0 14px;
+/* Pulse posts carry their own inset hairline (see PulsePosts.css). */
+.pulse-feed__item--post:empty {
+  display: none;
 }
 
 /* ── Find people nudge (secondary CTA) ── */

@@ -2212,5 +2212,124 @@ export function groupPulseFeedItems(items) {
   return result
 }
 
+const QA_PULSE_TYPES = new Set(['qa_asked', 'qa_best'])
+
+function _pulseLocalDayKey(iso) {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return ''
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+function _pulseWrittenReview(item) {
+  return item?.type === 'reviewed' && Boolean((item?.body || '').trim())
+}
+
+/**
+ * shapePulseFeedEntries — Home Pulse display packaging (Oct 30). Walks
+ * the ordered feed and returns typed entries for PulsePosts.jsx:
+ * review | finished | cluster | sessions | list | started | own | qa |
+ * rated | compact. Does not reorder or fetch; never groups across
+ * pulsePage. Clusters and session rolls consume their members so they
+ * only appear once.
+ */
+export function shapePulseFeedEntries(items) {
+  const list = items || []
+
+  const sessionByLead = new Map()
+  const sessionMemberToLead = new Map()
+  const sessionBuckets = new Map()
+  for (const item of list) {
+    if (item.type !== 'played' || !item.author?.id || item.game?.id == null) continue
+    const page = item.pulsePage || 'first'
+    const key = `${page}|${item.author.id}|${item.game.id}|${_pulseLocalDayKey(item.createdAt)}`
+    if (!sessionBuckets.has(key)) sessionBuckets.set(key, [])
+    sessionBuckets.get(key).push(item)
+  }
+  for (const group of sessionBuckets.values()) {
+    group.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const lead = group[0]
+    sessionByLead.set(lead.id, { items: group })
+    for (const it of group) sessionMemberToLead.set(it.id, lead.id)
+  }
+
+  const clusterByLead = new Map()
+  const clusterMemberToLead = new Map()
+  const finishedBuckets = new Map()
+  for (const item of list) {
+    if (item.type !== 'finished' || item.isOwn || item.game?.id == null) continue
+    const page = item.pulsePage || 'first'
+    const key = `${page}|${item.game.id}`
+    if (!finishedBuckets.has(key)) finishedBuckets.set(key, [])
+    finishedBuckets.get(key).push(item)
+  }
+  for (const group of finishedBuckets.values()) {
+    group.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const authors = new Set(group.map((g) => g.author?.id).filter(Boolean))
+    if (authors.size < 2) continue
+
+    const anchor = group[0]
+    const anchorMs = new Date(anchor.createdAt).getTime()
+    const members = group.filter((it) => {
+      const ms = new Date(it.createdAt).getTime()
+      if (!Number.isFinite(ms) || !Number.isFinite(anchorMs)) return false
+      return anchorMs - ms <= WEEK_MS
+    })
+    const memberAuthors = new Set(members.map((m) => m.author?.id).filter(Boolean))
+    if (memberAuthors.size < 2) continue
+
+    clusterByLead.set(anchor.id, { members, lead: anchor })
+    for (const m of members) clusterMemberToLead.set(m.id, anchor.id)
+  }
+
+  const result = []
+  for (const item of list) {
+    const sessionLead = sessionMemberToLead.get(item.id)
+    if (sessionLead && sessionLead !== item.id) continue
+    if (sessionLead === item.id) {
+      result.push({ kind: 'sessions', items: sessionByLead.get(item.id).items })
+      continue
+    }
+
+    const clusterLead = clusterMemberToLead.get(item.id)
+    if (clusterLead && clusterLead !== item.id) continue
+    if (clusterLead === item.id) {
+      const { members } = clusterByLead.get(item.id)
+      result.push({ kind: 'cluster', members, item: members[0] })
+      continue
+    }
+
+    if (_pulseWrittenReview(item)) {
+      result.push({ kind: 'review', item })
+      continue
+    }
+    if (QA_PULSE_TYPES.has(item.type)) {
+      result.push({ kind: 'qa', item })
+      continue
+    }
+    if (item.isOwn && item.type === 'finished') {
+      result.push({ kind: 'own', item })
+      continue
+    }
+    if (item.type === 'finished' && !item.isOwn) {
+      result.push({ kind: 'finished', item })
+      continue
+    }
+    if (item.type === 'listed' && item.listKind === 'created') {
+      result.push({ kind: 'list', item })
+      continue
+    }
+    if (item.type === 'started') {
+      result.push({ kind: 'started', item })
+      continue
+    }
+    if (item.type === 'rated') {
+      result.push({ kind: 'rated', item })
+      continue
+    }
+    result.push({ kind: 'compact', item })
+  }
+  return result
+}
+
 export { WEEK_MS }
 

@@ -1,6 +1,6 @@
 /* ============================================================
    FEED ROW — "The pulse"'s COMPACT row for every non-opinion-bearing
-   event (see communityService.pulseItemHasOpinion / FeedRow.jsx).
+   event (legacy V4-01 compact row — Home pulse uses PulsePosts.jsx now).
    Namespace: feed-row__*, feed-group-row__*
    Tokens only — no hardcoded hex.
 
