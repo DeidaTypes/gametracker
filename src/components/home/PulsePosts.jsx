@@ -51,6 +51,32 @@ function goProfile(navigate, author) {
   else if (author.id) navigate(`/user/id/${encodeURIComponent(author.id)}`)
 }
 
+function goUserActivity(navigate, author) {
+  if (!author) return
+  if (author.username) navigate(`/user/${encodeURIComponent(author.username)}/activity`)
+  else if (author.id) navigate(`/user/id/${encodeURIComponent(author.id)}/activity`)
+}
+
+function isLocalToday(iso) {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return false
+  const now = new Date()
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  )
+}
+
+function startedRunTitleLine(items) {
+  const titles = items.map((it) => it.game?.title).filter(Boolean)
+  if (titles.length === 0) return ''
+  if (titles.length === 1) return titles[0]
+  if (titles.length === 2) return `${titles[0]} and ${titles[1]}`
+  const more = titles.length - 2
+  return `${titles[0]}, ${titles[1]} and ${more} more`
+}
+
 function goGame(navigate, game, e) {
   e?.stopPropagation?.()
   if (!game) return
@@ -481,14 +507,16 @@ function SessionsPost({ entry, coverPriority, followsReview, navigate }) {
   }, 0)
   const duration = formatDuration(totalSeconds)
   const when = formatActivityDate(item.createdAt, { pulse: true })
-  const sessionLabel =
+  const today = isLocalToday(item.createdAt)
+  const sessionCore =
     count === 1
-      ? duration
-        ? `1 session today \u00b7 ${duration}`
-        : '1 session today'
-      : duration
-        ? `${count} sessions today \u00b7 ${duration}`
-        : `${count} sessions today`
+      ? today
+        ? '1 session today'
+        : '1 session'
+      : today
+        ? `${count} sessions today`
+        : `${count} sessions`
+  const sessionLabel = duration ? `${sessionCore} \u00b7 ${duration}` : sessionCore
 
   return (
     <PulseShell followsReview={followsReview} compact>
@@ -511,6 +539,7 @@ function SessionsPost({ entry, coverPriority, followsReview, navigate }) {
           >
             {item.game?.title || ''}
           </button>
+          <PulseTime when={when} />
         </p>
         <p className="pulse-post__sub">
           <Gamepad2 size={13} strokeWidth={1.8} aria-hidden="true" />
@@ -596,6 +625,63 @@ function ListPost({ item, preview, gameCount, coverPriority, followsReview, navi
           </span>
         </button>
         <PulseActions item={item} onComments={onComments} />
+      </div>
+    </PulseShell>
+  )
+}
+
+function StartedRunPost({ entry, coverPriority, followsReview, navigate }) {
+  const items = entry.items
+  const item = items[0]
+  const when = formatActivityDate(item.createdAt, { pulse: true })
+  const gameCount = items.length
+  const titleLine = startedRunTitleLine(items)
+  const covers = items.slice(0, 3)
+
+  return (
+    <PulseShell followsReview={followsReview} compact>
+      <PulseAvatar
+        user={item.author}
+        compact
+        onClick={(e) => {
+          e.stopPropagation()
+          goProfile(navigate, item.author)
+        }}
+      />
+      <button
+        type="button"
+        className="pulse-post__body pulse-post__body--tap"
+        onClick={() => goUserActivity(navigate, item.author)}
+      >
+        <p className="pulse-post__head">
+          <b>{actorLabel(item)}</b>
+          <span className="pulse-post__verb pulse-post__verb--status">started</span>
+          <span>
+            {gameCount} game{gameCount === 1 ? '' : 's'}
+          </span>
+          <PulseTime when={when} />
+        </p>
+        <p className="pulse-post__sub pulse-post__sub--ellipsis">{titleLine}</p>
+      </button>
+      <div className="pulse-post__end">
+        <span className="pulse-post__cover-stack" aria-hidden="true">
+          {covers
+            .slice()
+            .reverse()
+            .map((it, idx) => (
+              <img
+                key={it.id}
+                className="pulse-post__cover-stack-img"
+                src={coverSrc(it, 12)}
+                alt=""
+                width={24}
+                height={32}
+                style={{ zIndex: idx + 1 }}
+                onError={handleImgError}
+                {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
+              />
+            ))}
+        </span>
       </div>
     </PulseShell>
   )
@@ -821,6 +907,15 @@ export default function PulsePost({ entry, coverPriority, followsReview = false 
       return (
         <StartedPost
           item={entry.item}
+          coverPriority={coverPriority}
+          followsReview={followsReview}
+          navigate={navigate}
+        />
+      )
+    case 'startedRun':
+      return (
+        <StartedRunPost
+          entry={entry}
           coverPriority={coverPriority}
           followsReview={followsReview}
           navigate={navigate}

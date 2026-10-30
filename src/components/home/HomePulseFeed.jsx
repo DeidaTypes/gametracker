@@ -246,7 +246,9 @@ const HomePulseFeed = forwardRef(function HomePulseFeed(_props, ref) {
                     ? `cluster-${entry.item.id}`
                     : entry.kind === 'sessions'
                       ? `sessions-${entry.items[0].id}`
-                      : entry.item.id
+                      : entry.kind === 'startedRun'
+                        ? `startedrun-${entry.items[0].id}`
+                        : entry.item.id
                 return (
                   <WindowedListItem key={postKey} className="pulse-feed__item pulse-feed__item--post">
                     <PulsePost

@@ -2262,10 +2262,11 @@ function _pulseWrittenReview(item) {
 /**
  * shapePulseFeedEntries — Home Pulse display packaging (Oct 30). Walks
  * the ordered feed and returns typed entries for PulsePosts.jsx:
- * review | finished | cluster | sessions | list | started | own | qa |
- * rated | compact. Does not reorder or fetch; never groups across
- * pulsePage. Clusters and session rolls consume their members so they
- * only appear once.
+ * review | finished | cluster | sessions | list | started | startedRun |
+ * own | qa | rated | compact. Does not reorder or fetch; never groups
+ * across pulsePage. Clusters and session rolls consume their members so
+ * they only appear once. Consecutive started rows by the same author
+ * within 24h collapse into startedRun.
  */
 export function shapePulseFeedEntries(items) {
   const list = items || []
@@ -2363,7 +2364,51 @@ export function shapePulseFeedEntries(items) {
     }
     result.push({ kind: 'compact', item })
   }
-  return result
+  return _groupStartedRuns(result)
+}
+
+/**
+ * Collapse consecutive `started` entries (same author, same pulsePage,
+ * each within 24h of the previous) into `startedRun`. Never throws.
+ */
+function _groupStartedRuns(entries) {
+  const list = entries || []
+  const out = []
+  let i = 0
+  while (i < list.length) {
+    const entry = list[i]
+    if (entry.kind !== 'started') {
+      out.push(entry)
+      i += 1
+      continue
+    }
+    const first = entry.item
+    const page = first.pulsePage || 'first'
+    const authorId = first.author?.id
+    const run = [first]
+    let j = i + 1
+    while (j < list.length) {
+      const next = list[j]
+      if (next.kind !== 'started') break
+      const item = next.item
+      if ((item.pulsePage || 'first') !== page) break
+      if (!authorId || item.author?.id !== authorId) break
+      const prevMs = new Date(run[run.length - 1].createdAt).getTime()
+      const nextMs = new Date(item.createdAt).getTime()
+      if (!Number.isFinite(prevMs) || !Number.isFinite(nextMs)) break
+      if (Math.abs(nextMs - prevMs) > PULSE_GROUP_WINDOW_MS) break
+      run.push(item)
+      j += 1
+    }
+    if (run.length > 1) {
+      run.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      out.push({ kind: 'startedRun', items: run })
+    } else {
+      out.push({ kind: 'started', item: first })
+    }
+    i = j
+  }
+  return out
 }
 
 export { WEEK_MS }

@@ -66,6 +66,26 @@
   min-width: 0;
 }
 
+.pulse-post__body--tap {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pulse-post__sub--ellipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pulse-post__head {
   display: flex;
   flex-wrap: wrap;
@@ -154,6 +174,24 @@
   border-radius: 5px;
   object-fit: cover;
   display: block;
+}
+
+.pulse-post__cover-stack {
+  display: flex;
+  flex: none;
+}
+
+.pulse-post__cover-stack-img {
+  width: 24px;
+  height: 32px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 0 0 2px var(--bg-base);
+}
+
+.pulse-post__cover-stack-img + .pulse-post__cover-stack-img {
+  margin-left: calc(-1 * var(--space-8));
 }
 
 /* Finished band */
