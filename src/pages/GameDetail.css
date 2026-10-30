@@ -122,7 +122,7 @@
 }
 
 /* Navy (no attribute or data-app-theme="navy"), Black, Dark Green, Purple. */
-html:not([data-app-theme="light"]):not([data-app-theme="sky"]):not([data-app-theme="pink"]):not([data-app-theme="cream"]) .gd-hero-overlay {
+html:not([data-app-theme="light"]):not([data-app-theme="sky"]):not([data-app-theme="pink"]):not([data-app-theme="cream"]):not([data-app-theme="lavender"]):not([data-app-theme="sage"]):not([data-app-theme="lemonade"]):not([data-app-theme="paper"]) .gd-hero-overlay {
   background: rgba(0, 0, 0, 0.42);
 }
 
@@ -132,7 +132,11 @@ html:not([data-app-theme="light"]):not([data-app-theme="sky"]):not([data-app-the
 html[data-app-theme="light"] .gd-hero-overlay,
 html[data-app-theme="sky"] .gd-hero-overlay,
 html[data-app-theme="pink"] .gd-hero-overlay,
-html[data-app-theme="cream"] .gd-hero-overlay {
+html[data-app-theme="cream"] .gd-hero-overlay,
+html[data-app-theme="lavender"] .gd-hero-overlay,
+html[data-app-theme="sage"] .gd-hero-overlay,
+html[data-app-theme="lemonade"] .gd-hero-overlay,
+html[data-app-theme="paper"] .gd-hero-overlay {
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--theme-base) 55%, transparent) 0%,
@@ -148,7 +152,11 @@ html[data-app-theme="cream"] .gd-hero-overlay {
 html[data-app-theme="light"] .gd-hero::after,
 html[data-app-theme="sky"] .gd-hero::after,
 html[data-app-theme="pink"] .gd-hero::after,
-html[data-app-theme="cream"] .gd-hero::after {
+html[data-app-theme="cream"] .gd-hero::after,
+html[data-app-theme="lavender"] .gd-hero::after,
+html[data-app-theme="sage"] .gd-hero::after,
+html[data-app-theme="lemonade"] .gd-hero::after,
+html[data-app-theme="paper"] .gd-hero::after {
   background: none;
 }
 
@@ -1620,21 +1628,33 @@ html[data-app-theme="cream"] .gd-hero::after {
 html[data-app-theme="light"] .gd-subtitle,
 html[data-app-theme="sky"] .gd-subtitle,
 html[data-app-theme="pink"] .gd-subtitle,
-html[data-app-theme="cream"] .gd-subtitle {
+html[data-app-theme="cream"] .gd-subtitle,
+html[data-app-theme="lavender"] .gd-subtitle,
+html[data-app-theme="sage"] .gd-subtitle,
+html[data-app-theme="lemonade"] .gd-subtitle,
+html[data-app-theme="paper"] .gd-subtitle {
   color: var(--color-text-secondary);
 }
 
 html[data-app-theme="light"] .gd-publisher,
 html[data-app-theme="sky"] .gd-publisher,
 html[data-app-theme="pink"] .gd-publisher,
-html[data-app-theme="cream"] .gd-publisher {
+html[data-app-theme="cream"] .gd-publisher,
+html[data-app-theme="lavender"] .gd-publisher,
+html[data-app-theme="sage"] .gd-publisher,
+html[data-app-theme="lemonade"] .gd-publisher,
+html[data-app-theme="paper"] .gd-publisher {
   color: var(--color-text-tertiary);
 }
 
 html[data-app-theme="light"] .gd-glass-btn,
 html[data-app-theme="sky"] .gd-glass-btn,
 html[data-app-theme="pink"] .gd-glass-btn,
-html[data-app-theme="cream"] .gd-glass-btn {
+html[data-app-theme="cream"] .gd-glass-btn,
+html[data-app-theme="lavender"] .gd-glass-btn,
+html[data-app-theme="sage"] .gd-glass-btn,
+html[data-app-theme="lemonade"] .gd-glass-btn,
+html[data-app-theme="paper"] .gd-glass-btn {
   background-color: color-mix(in srgb, var(--theme-surface) 80%, transparent);
   color: var(--theme-text);
 }
@@ -1642,7 +1662,11 @@ html[data-app-theme="cream"] .gd-glass-btn {
 html[data-app-theme="light"] .gd-glass-btn:hover,
 html[data-app-theme="sky"] .gd-glass-btn:hover,
 html[data-app-theme="pink"] .gd-glass-btn:hover,
-html[data-app-theme="cream"] .gd-glass-btn:hover {
+html[data-app-theme="cream"] .gd-glass-btn:hover,
+html[data-app-theme="lavender"] .gd-glass-btn:hover,
+html[data-app-theme="sage"] .gd-glass-btn:hover,
+html[data-app-theme="lemonade"] .gd-glass-btn:hover,
+html[data-app-theme="paper"] .gd-glass-btn:hover {
   background-color: color-mix(in srgb, var(--theme-surface) 92%, transparent);
 }
 
@@ -1650,17 +1674,29 @@ html[data-app-theme="light"] .gd-pulse-label,
 html[data-app-theme="sky"] .gd-pulse-label,
 html[data-app-theme="pink"] .gd-pulse-label,
 html[data-app-theme="cream"] .gd-pulse-label,
+html[data-app-theme="lavender"] .gd-pulse-label,
+html[data-app-theme="sage"] .gd-pulse-label,
+html[data-app-theme="lemonade"] .gd-pulse-label,
+html[data-app-theme="paper"] .gd-pulse-label,
 html[data-app-theme="light"] .gd-pulse-rank-num,
 html[data-app-theme="sky"] .gd-pulse-rank-num,
 html[data-app-theme="pink"] .gd-pulse-rank-num,
-html[data-app-theme="cream"] .gd-pulse-rank-num {
+html[data-app-theme="cream"] .gd-pulse-rank-num,
+html[data-app-theme="lavender"] .gd-pulse-rank-num,
+html[data-app-theme="sage"] .gd-pulse-rank-num,
+html[data-app-theme="lemonade"] .gd-pulse-rank-num,
+html[data-app-theme="paper"] .gd-pulse-rank-num {
   color: var(--color-text-primary);
 }
 
 html[data-app-theme="light"] .gd-pulse-sub,
 html[data-app-theme="sky"] .gd-pulse-sub,
 html[data-app-theme="pink"] .gd-pulse-sub,
-html[data-app-theme="cream"] .gd-pulse-sub {
+html[data-app-theme="cream"] .gd-pulse-sub,
+html[data-app-theme="lavender"] .gd-pulse-sub,
+html[data-app-theme="sage"] .gd-pulse-sub,
+html[data-app-theme="lemonade"] .gd-pulse-sub,
+html[data-app-theme="paper"] .gd-pulse-sub {
   color: var(--color-text-secondary);
 }
 
@@ -1668,7 +1704,11 @@ html[data-app-theme="cream"] .gd-pulse-sub {
   html[data-app-theme="light"] .gd-glass-btn:active,
   html[data-app-theme="sky"] .gd-glass-btn:active,
   html[data-app-theme="pink"] .gd-glass-btn:active,
-  html[data-app-theme="cream"] .gd-glass-btn:active {
+  html[data-app-theme="cream"] .gd-glass-btn:active,
+  html[data-app-theme="lavender"] .gd-glass-btn:active,
+  html[data-app-theme="sage"] .gd-glass-btn:active,
+  html[data-app-theme="lemonade"] .gd-glass-btn:active,
+  html[data-app-theme="paper"] .gd-glass-btn:active {
     background-color: color-mix(in srgb, var(--theme-primary) 35%, transparent);
   }
 }

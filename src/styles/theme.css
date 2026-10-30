@@ -994,12 +994,256 @@ html[data-app-theme="cream"] {
   --auth-on-accent: var(--theme-on-primary);
 }
 
+html[data-app-theme="ocean"] {
+  --theme-base: #061619;
+  --theme-surface: #0c2328;
+  --theme-surface-2: #133139;
+  --theme-line: rgba(140, 210, 220, 0.13);
+  --theme-text: #e8f6f7;
+  --theme-muted: #94bcc1;
+  --theme-dim: #64888e;
+  --theme-review-text: #c6f6da;
+  --theme-journal-text: #dcdbff;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
+  --theme-primary: #1fb5c7;
+  --theme-review: #4cc489;
+  --theme-journal: #8a86f0;
+  --theme-primary-ink: #5dd5e3;
+  --theme-review-ink: #73dba3;
+  --theme-journal-ink: #aeabf6;
+  --theme-on-primary: #031418;
+  --theme-on-grad: #031418;
+  --theme-gold: #f2c94c;
+  --theme-g4: #f28cb8;
+  --theme-glow: rgba(31, 181, 199, 0.18);
+  --theme-glow-2: rgba(138, 134, 240, 0.08);
+  --theme-nav-bg: rgba(12, 35, 40, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="arcade"] {
+  --theme-base: #05060f;
+  --theme-surface: #0e1022;
+  --theme-surface-2: #171a33;
+  --theme-line: rgba(120, 200, 255, 0.16);
+  --theme-text: #f4f7ff;
+  --theme-muted: #a7b4d6;
+  --theme-dim: #7482a8;
+  --theme-review-text: #b8fff0;
+  --theme-journal-text: #ffd6f0;
+  --theme-success: #34d399;
+  --theme-danger: #ff6b8a;
+  --theme-primary: #ff2d95;
+  --theme-review: #19f0c9;
+  --theme-journal: #4fc3ff;
+  --theme-primary-ink: #ff6fb7;
+  --theme-review-ink: #4ff5d8;
+  --theme-journal-ink: #7fd4ff;
+  --theme-on-primary: #1a0414;
+  --theme-on-grad: #1a0414;
+  --theme-gold: #ffe14d;
+  --theme-g4: #b388ff;
+  --theme-glow: rgba(255, 45, 149, 0.20);
+  --theme-glow-2: rgba(25, 240, 201, 0.10);
+  --theme-nav-bg: rgba(14, 16, 34, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="volt"] {
+  --theme-base: #0b0c0a;
+  --theme-surface: #15170f;
+  --theme-surface-2: #1f2217;
+  --theme-line: rgba(210, 255, 120, 0.12);
+  --theme-text: #f4f7ec;
+  --theme-muted: #b3bba0;
+  --theme-dim: #848d74;
+  --theme-review-text: #d6e9ff;
+  --theme-journal-text: #ecdcff;
+  --theme-success: #34d399;
+  --theme-danger: #ff6b6b;
+  --theme-primary: #c6ff2e;
+  --theme-review: #4d9dff;
+  --theme-journal: #b07cff;
+  --theme-primary-ink: #d6ff6b;
+  --theme-review-ink: #7db8ff;
+  --theme-journal-ink: #c7a2ff;
+  --theme-on-primary: #121800;
+  --theme-on-grad: #121800;
+  --theme-gold: #ffd84d;
+  --theme-g4: #ff7fbf;
+  --theme-glow: rgba(198, 255, 46, 0.12);
+  --theme-glow-2: rgba(77, 157, 255, 0.08);
+  --theme-nav-bg: rgba(21, 23, 15, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="cherry"] {
+  --theme-base: #15070d;
+  --theme-surface: #231018;
+  --theme-surface-2: #2f1722;
+  --theme-line: rgba(255, 170, 200, 0.14);
+  --theme-text: #fdf1f5;
+  --theme-muted: #d4a9b9;
+  --theme-dim: #9c7284;
+  --theme-review-text: #c8f7dc;
+  --theme-journal-text: #e9d6ff;
+  --theme-success: #34d399;
+  --theme-danger: #ff8585;
+  --theme-primary: #ff5c8a;
+  --theme-review: #39d98a;
+  --theme-journal: #b48cff;
+  --theme-primary-ink: #ff8fae;
+  --theme-review-ink: #6ee7a8;
+  --theme-journal-ink: #c9aaff;
+  --theme-on-primary: #2a0712;
+  --theme-on-grad: #2a0712;
+  --theme-gold: #ffcf5c;
+  --theme-g4: #5cc8ff;
+  --theme-glow: rgba(255, 92, 138, 0.18);
+  --theme-glow-2: rgba(180, 140, 255, 0.08);
+  --theme-nav-bg: rgba(35, 16, 24, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="lavender"] {
+  --theme-base: #e7e1f5;
+  --theme-surface: #f6f3fc;
+  --theme-surface-2: #d9d1ee;
+  --theme-line: rgba(60, 30, 110, 0.14);
+  --theme-text: #1e1433;
+  --theme-muted: #574a73;
+  --theme-dim: #665a82;
+  --theme-review-text: #0b6b57;
+  --theme-journal-text: #9c2a6c;
+  --theme-success: #0b6b57;
+  --theme-danger: #b4323f;
+  --theme-primary: #6a45d1;
+  --theme-review: #0f7a64;
+  --theme-journal: #b0327a;
+  --theme-primary-ink: #5a37bf;
+  --theme-review-ink: #0b6b57;
+  --theme-journal-ink: #9c2a6c;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #b98309;
+  --theme-g4: #3b8fd9;
+  --theme-glow: rgba(106, 69, 209, 0.14);
+  --theme-glow-2: rgba(176, 50, 122, 0.08);
+  --theme-nav-bg: rgba(246, 243, 252, 0.95);
+  --theme-shadow: 0 1px 2px rgba(40, 20, 80, 0.06), 0 6px 16px rgba(40, 20, 80, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="sage"] {
+  --theme-base: #dde6d8;
+  --theme-surface: #f1f6ee;
+  --theme-surface-2: #cbd8c4;
+  --theme-line: rgba(30, 60, 30, 0.15);
+  --theme-text: #16241a;
+  --theme-muted: #465a4a;
+  --theme-dim: #5a6e5e;
+  --theme-review-text: #1d5f8a;
+  --theme-journal-text: #7a3a7e;
+  --theme-success: #2f6b45;
+  --theme-danger: #a33434;
+  --theme-primary: #2f6b45;
+  --theme-review: #246f9e;
+  --theme-journal: #8a4390;
+  --theme-primary-ink: #285c3b;
+  --theme-review-ink: #1d5f8a;
+  --theme-journal-ink: #7a3a7e;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #9c7308;
+  --theme-g4: #c04a7a;
+  --theme-glow: rgba(47, 107, 69, 0.14);
+  --theme-glow-2: rgba(138, 67, 144, 0.07);
+  --theme-nav-bg: rgba(241, 246, 238, 0.95);
+  --theme-shadow: 0 1px 2px rgba(20, 40, 20, 0.07), 0 6px 16px rgba(20, 40, 20, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="lemonade"] {
+  --theme-base: #faf1a2;
+  --theme-surface: #fffae0;
+  --theme-surface-2: #efe384;
+  --theme-line: rgba(70, 60, 0, 0.16);
+  --theme-text: #1c1a0b;
+  --theme-muted: #4f4a26;
+  --theme-dim: #5e5830;
+  --theme-review-text: #0c6648;
+  --theme-journal-text: #9c2668;
+  --theme-success: #0c6648;
+  --theme-danger: #a82828;
+  --theme-primary: #3a33b8;
+  --theme-review: #0f7a55;
+  --theme-journal: #b02e78;
+  --theme-primary-ink: #2f29a0;
+  --theme-review-ink: #0c6648;
+  --theme-journal-ink: #9c2668;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #8a6a00;
+  --theme-g4: #2a86c9;
+  --theme-glow: rgba(58, 51, 184, 0.12);
+  --theme-glow-2: rgba(176, 46, 120, 0.07);
+  --theme-nav-bg: rgba(255, 250, 224, 0.95);
+  --theme-shadow: 0 1px 2px rgba(60, 50, 0, 0.07), 0 6px 16px rgba(60, 50, 0, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme="paper"] {
+  --theme-base: #f3f1ec;
+  --theme-surface: #ffffff;
+  --theme-surface-2: #e6e2da;
+  --theme-line: rgba(20, 20, 20, 0.12);
+  --theme-text: #161616;
+  --theme-muted: #555555;
+  --theme-dim: #6c6c6c;
+  --theme-review-text: #1d6b45;
+  --theme-journal-text: #7c3aa6;
+  --theme-success: #1d6b45;
+  --theme-danger: #b22d2d;
+  --theme-primary: #1a1a1a;
+  --theme-review: #1d6b45;
+  --theme-journal: #7c3aa6;
+  --theme-primary-ink: #1a1a1a;
+  --theme-review-ink: #1d6b45;
+  --theme-journal-ink: #7c3aa6;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #a67c00;
+  --theme-g4: #2d7fc4;
+  --theme-glow: rgba(26, 26, 26, 0.06);
+  --theme-glow-2: rgba(124, 58, 166, 0.06);
+  --theme-nav-bg: rgba(255, 255, 255, 0.95);
+  --theme-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
 /* Light themes: readable ink needs a lighter tint, and the phone's
    own controls (fields, scrollbars) switch to light. */
 html[data-app-theme="light"],
 html[data-app-theme="sky"],
 html[data-app-theme="pink"],
-html[data-app-theme="cream"] {
+html[data-app-theme="cream"],
+html[data-app-theme="lavender"],
+html[data-app-theme="sage"],
+html[data-app-theme="lemonade"],
+html[data-app-theme="paper"] {
   color-scheme: light;
   --theme-tint: 12%;
   --theme-fill-mix: 5%;
@@ -1021,17 +1265,33 @@ html[data-app-theme="cream"] {
 html[data-app-theme="black"] body,
 html[data-app-theme="forest"] body,
 html[data-app-theme="purple"] body,
+html[data-app-theme="ocean"] body,
+html[data-app-theme="arcade"] body,
+html[data-app-theme="volt"] body,
+html[data-app-theme="cherry"] body,
 html[data-app-theme="light"] body,
 html[data-app-theme="sky"] body,
 html[data-app-theme="pink"] body,
 html[data-app-theme="cream"] body,
+html[data-app-theme="lavender"] body,
+html[data-app-theme="sage"] body,
+html[data-app-theme="lemonade"] body,
+html[data-app-theme="paper"] body,
 html[data-app-theme="black"] .back-reveal,
 html[data-app-theme="forest"] .back-reveal,
 html[data-app-theme="purple"] .back-reveal,
+html[data-app-theme="ocean"] .back-reveal,
+html[data-app-theme="arcade"] .back-reveal,
+html[data-app-theme="volt"] .back-reveal,
+html[data-app-theme="cherry"] .back-reveal,
 html[data-app-theme="light"] .back-reveal,
 html[data-app-theme="sky"] .back-reveal,
 html[data-app-theme="pink"] .back-reveal,
-html[data-app-theme="cream"] .back-reveal {
+html[data-app-theme="cream"] .back-reveal,
+html[data-app-theme="lavender"] .back-reveal,
+html[data-app-theme="sage"] .back-reveal,
+html[data-app-theme="lemonade"] .back-reveal,
+html[data-app-theme="paper"] .back-reveal {
   background-image: none;
 }
 

@@ -186,14 +186,22 @@
 html[data-app-theme="navy"] .lib-seg,
 html[data-app-theme="black"] .lib-seg,
 html[data-app-theme="forest"] .lib-seg,
-html[data-app-theme="purple"] .lib-seg {
+html[data-app-theme="purple"] .lib-seg,
+html[data-app-theme="ocean"] .lib-seg,
+html[data-app-theme="arcade"] .lib-seg,
+html[data-app-theme="volt"] .lib-seg,
+html[data-app-theme="cherry"] .lib-seg {
   background: rgba(19, 26, 53, 0.7);
 }
 
 html[data-app-theme="light"] .lib-seg,
 html[data-app-theme="sky"] .lib-seg,
 html[data-app-theme="pink"] .lib-seg,
-html[data-app-theme="cream"] .lib-seg {
+html[data-app-theme="cream"] .lib-seg,
+html[data-app-theme="lavender"] .lib-seg,
+html[data-app-theme="sage"] .lib-seg,
+html[data-app-theme="lemonade"] .lib-seg,
+html[data-app-theme="paper"] .lib-seg {
   background: color-mix(in srgb, var(--theme-text) 8%, var(--theme-base));
   border-color: var(--theme-line);
 }
@@ -230,7 +238,11 @@ html[data-app-theme="cream"] .lib-seg {
 html[data-app-theme="light"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
 html[data-app-theme="sky"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
 html[data-app-theme="pink"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
-html[data-app-theme="cream"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n {
+html[data-app-theme="cream"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
+html[data-app-theme="lavender"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
+html[data-app-theme="sage"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
+html[data-app-theme="lemonade"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n,
+html[data-app-theme="paper"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--lists-on) .lib-seg-n {
   color: var(--text-secondary);
   opacity: 1;
 }
@@ -606,7 +618,11 @@ html[data-app-theme="cream"] .lib-segb:not(.lib-segb--games-on):not(.lib-segb--l
 html[data-app-theme="light"] .lib-gamecard-title,
 html[data-app-theme="sky"] .lib-gamecard-title,
 html[data-app-theme="pink"] .lib-gamecard-title,
-html[data-app-theme="cream"] .lib-gamecard-title {
+html[data-app-theme="cream"] .lib-gamecard-title,
+html[data-app-theme="lavender"] .lib-gamecard-title,
+html[data-app-theme="sage"] .lib-gamecard-title,
+html[data-app-theme="lemonade"] .lib-gamecard-title,
+html[data-app-theme="paper"] .lib-gamecard-title {
   color: var(--theme-muted);
 }
 

@@ -175,7 +175,11 @@
 html[data-app-theme="light"] .gd-stat-strip__label,
 html[data-app-theme="sky"] .gd-stat-strip__label,
 html[data-app-theme="pink"] .gd-stat-strip__label,
-html[data-app-theme="cream"] .gd-stat-strip__label {
+html[data-app-theme="cream"] .gd-stat-strip__label,
+html[data-app-theme="lavender"] .gd-stat-strip__label,
+html[data-app-theme="sage"] .gd-stat-strip__label,
+html[data-app-theme="lemonade"] .gd-stat-strip__label,
+html[data-app-theme="paper"] .gd-stat-strip__label {
   color: var(--color-text-secondary);
 }
 
@@ -183,10 +187,18 @@ html[data-app-theme="light"] .gd-stat-strip__value,
 html[data-app-theme="sky"] .gd-stat-strip__value,
 html[data-app-theme="pink"] .gd-stat-strip__value,
 html[data-app-theme="cream"] .gd-stat-strip__value,
+html[data-app-theme="lavender"] .gd-stat-strip__value,
+html[data-app-theme="sage"] .gd-stat-strip__value,
+html[data-app-theme="lemonade"] .gd-stat-strip__value,
+html[data-app-theme="paper"] .gd-stat-strip__value,
 html[data-app-theme="light"] .gd-stat-strip__value--muted,
 html[data-app-theme="sky"] .gd-stat-strip__value--muted,
 html[data-app-theme="pink"] .gd-stat-strip__value--muted,
-html[data-app-theme="cream"] .gd-stat-strip__value--muted {
+html[data-app-theme="cream"] .gd-stat-strip__value--muted,
+html[data-app-theme="lavender"] .gd-stat-strip__value--muted,
+html[data-app-theme="sage"] .gd-stat-strip__value--muted,
+html[data-app-theme="lemonade"] .gd-stat-strip__value--muted,
+html[data-app-theme="paper"] .gd-stat-strip__value--muted {
   color: var(--color-text-primary);
 }
 

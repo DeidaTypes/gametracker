@@ -22,10 +22,13 @@ enum LaunchScreenCache {
 
     /// Theme ids and bases the app can save. Mirrors src/styles/themePreview.js.
     static let knownThemeIds: Set<String> = [
-        "navy", "black", "forest", "purple", "light", "sky", "pink", "cream",
+        "navy", "black", "forest", "purple", "ocean", "arcade", "volt", "cherry",
+        "light", "sky", "pink", "cream", "lavender", "sage", "lemonade", "paper",
     ]
     /// Themes whose status bar text is dark.
-    static let lightThemeIds: Set<String> = ["light", "sky", "pink", "cream"]
+    static let lightThemeIds: Set<String> = [
+        "light", "sky", "pink", "cream", "lavender", "sage", "lemonade", "paper",
+    ]
 
     /// The mark left on each repainted file: the base it was repainted with.
     private static let markName = "cp.launch.base"

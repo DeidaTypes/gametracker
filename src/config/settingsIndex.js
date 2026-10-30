@@ -75,7 +75,7 @@ const ALL_SETTINGS_ENTRIES = [
     label: 'Appearance',
     section: 'Settings',
     route: '/settings/appearance',
-    keywords: ['theme', 'dark', 'light', 'color', 'cream', 'navy', 'pink'],
+    keywords: ['theme', 'dark', 'light', 'color', 'cream', 'navy', 'pink', 'ocean', 'arcade', 'volt', 'cherry', 'lavender', 'sage', 'lemonade', 'paper'],
   },
   {
     id: 'accessibility',
