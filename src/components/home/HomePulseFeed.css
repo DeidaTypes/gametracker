@@ -63,6 +63,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  padding: 0;
+}
+
+.pulse-feed__item--full {
   padding: 0 var(--container-padding);
 }
 

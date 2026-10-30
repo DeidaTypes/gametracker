@@ -226,8 +226,9 @@ function PulseActions({
 function FinishedBand({ item, onGameClick, coverPriority, showFinishedBadge = true }) {
   const src = coverSrc(item, 44)
   const coverVar = item.game?.image ? getSizedImageUrl(item.game.image, 200) : null
+  const finClass = item.game?.image ? 'pulse-post__fin' : 'pulse-post__fin pulse-post__fin--nocover'
   return (
-    <button type="button" className="pulse-post__fin" onClick={onGameClick}>
+    <button type="button" className={finClass} onClick={onGameClick}>
       {coverVar && (
         <span
           className="pulse-post__fin-bg"
