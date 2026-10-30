@@ -5,12 +5,14 @@ import React, {
   useEffect,
   useMemo,
 } from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useIsPresent } from 'motion/react'
 import { useAuth } from '../contexts/AuthContext'
 import { updateProfile } from '../services/profileService'
 import { updateUserProfile } from '../services/userService'
 import { completeOnboarding } from '../services/onboardingService'
+import { getOnboardingPeople } from '../services/onboardingPeopleService'
 import { setOnboarded } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
 import { showToast } from '../components/Toast'
@@ -18,6 +20,7 @@ import ThemeStep from '../components/onboarding/ThemeStep'
 import PlatformStep from '../components/onboarding/PlatformStep'
 import FavoritesStep from '../components/onboarding/FavoritesStep'
 import PlayingStep from '../components/onboarding/PlayingStep'
+import PeopleStep from '../components/onboarding/PeopleStep'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { hapticImpact } from '../utils/haptics'
 import { MOTION, EASE } from '../motion/xMotion'
@@ -27,14 +30,18 @@ import './Onboarding.css'
  * The flow, in order. One list drives the dots, the announcer, the slides and
  * the "last step" rule (Skip and Continue both call finish() on the last one),
  * so a new step is one more id here plus one more case in the slide switch.
+ * "people" is appended only when getOnboardingPeople actually returns
+ * someone. An empty result leaves the flow at four steps.
  */
-const STEPS = ['theme', 'platforms', 'favorites', 'playing']
+const BASE_STEPS = ['theme', 'platforms', 'favorites', 'playing']
+const STEPS_WITH_PEOPLE = [...BASE_STEPS, 'people']
 
 const STEP_TITLES = {
   theme: 'Make it yours',
   platforms: 'Where do you play?',
   favorites: 'Your 4 favorites',
   playing: 'What are you playing right now?',
+  people: 'Find your people',
 }
 
 // The profile shows four favorites; the picker offers exactly four.
@@ -77,8 +84,15 @@ export default function Onboarding() {
   const { reduced } = useMotionPreference()
 
   const [step, setStep] = useState(0)
-  const stepId = STEPS[step]
-  const isLastStep = step === STEPS.length - 1
+  // null until the lookup settles. [] means step 5 is left out.
+  const [people, setPeople] = useState(null)
+  const steps = people && people.length > 0 ? STEPS_WITH_PEOPLE : BASE_STEPS
+  const stepId = steps[step]
+  // Playing stays "not last" until we know nobody qualified, so Skip does
+  // not claim the flow is over while the lookup is still in flight.
+  const isLastStep =
+    stepId === 'people' ||
+    (stepId === 'playing' && Array.isArray(people) && people.length === 0)
 
   // Step 2 — platforms + since when. Held here (not in the step) because
   // Continue, which lives in the frame, is what saves them.
@@ -92,6 +106,42 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false)
 
   const announceRef = useRef(null)
+
+  // Started when they leave favorites, so step 5 is usually waiting by
+  // the time they finish "what are you playing". null until it settles.
+  const peoplePromiseRef = useRef(null)
+  const peopleRef = useRef(null)
+  const leavingPlayingRef = useRef(false)
+  const picksRef = useRef({ viewerId: null, favorites: [], platforms: [] })
+  picksRef.current = {
+    viewerId: user?.id ?? null,
+    favorites: selectedGames,
+    platforms,
+  }
+
+  const beginPeople = useCallback(() => {
+    if (peoplePromiseRef.current) return peoplePromiseRef.current
+    const { viewerId, favorites, platforms: plats } = picksRef.current
+    const promise = getOnboardingPeople({
+      viewerId,
+      favorites: favorites.slice(0, FAVORITES_MAX),
+      platforms: plats,
+    })
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        peopleRef.current = list
+        setPeople(list)
+        return list
+      })
+      .catch((err) => {
+        console.error('[Onboarding] people lookup failed:', err)
+        peopleRef.current = []
+        setPeople([])
+        return []
+      })
+    peoplePromiseRef.current = promise
+    return promise
+  }, [])
 
   // What was really written, for the closing toast. A ref, not state: finish()
   // can run in the same tick as the save that sets it, and must see it. The
@@ -167,15 +217,89 @@ export default function Onboarding() {
     const now = Date.now()
     if (now - lastAdvanceRef.current < MOTION.slide) return
     lastAdvanceRef.current = now
-    if (step >= STEPS.length - 1) {
+    if (stepId === 'favorites') beginPeople()
+    if (step >= steps.length - 1) {
       finish()
     } else {
       setStep(step + 1)
     }
-  }, [step, finish])
+  }, [step, stepId, steps.length, finish, beginPeople])
 
-  // Skip never saves the step it leaves.
-  const handleSkip = advance
+  // Playing is not always last: if anyone qualified, Continue and Skip
+  // both land on Find your people. The lookup starts when favorites is
+  // left; if it is still in flight, wait for it before deciding.
+  const resolvePlayingExit = useCallback(async () => {
+    if (finishedRef.current || leavingPlayingRef.current) return
+    const now = Date.now()
+    if (now - lastAdvanceRef.current < MOTION.slide) return
+    lastAdvanceRef.current = now
+    leavingPlayingRef.current = true
+    setSubmitting(true)
+    try {
+      const list = await beginPeople()
+      if (finishedRef.current) return
+      const peopleList = Array.isArray(list) ? list : []
+      peopleRef.current = peopleList
+      flushSync(() => setPeople(peopleList))
+      if (peopleList.length > 0) {
+        setSubmitting(false)
+        setStep((current) =>
+          current === BASE_STEPS.length - 1 ? BASE_STEPS.length : current
+        )
+      } else {
+        finish()
+      }
+    } finally {
+      leavingPlayingRef.current = false
+    }
+  }, [beginPeople, finish])
+
+  const leavePlaying = useCallback(
+    (save) => {
+      if (finishedRef.current || leavingPlayingRef.current) return
+      const now = Date.now()
+      if (now - lastAdvanceRef.current < MOTION.slide) return
+      if (save && playingGame && getGameStatus(playingGame.id) !== 'currently') {
+        try {
+          const ok = setGameStatus(playingGame.id, 'currently', playingGame)
+          if (ok) savedRef.current.playing = true
+          else console.error('[Onboarding] playing save failed')
+        } catch (err) {
+          console.error('[Onboarding] playing save failed:', err)
+        }
+      }
+      const known = peopleRef.current
+      if (known !== null) {
+        // Empty: playing is the last step, so the shared advance finishes.
+        // Non-empty: step forward directly. advance() closes over steps,
+        // which can still be the 4-step list for a tap that lands in the
+        // same turn the lookup resolves.
+        if (known.length === 0) {
+          advance()
+          return
+        }
+        lastAdvanceRef.current = now
+        flushSync(() => setPeople(known))
+        setStep((current) =>
+          current === BASE_STEPS.length - 1 ? BASE_STEPS.length : current
+        )
+        return
+      }
+      void resolvePlayingExit()
+    },
+    [playingGame, advance, resolvePlayingExit]
+  )
+
+  // Skip never saves the step it leaves. On the people step it finishes,
+  // same as Let's play. On playing it still moves on, without saving the
+  // game, once we know whether anyone qualified.
+  const handleSkip = useCallback(() => {
+    if (stepId === 'playing') {
+      leavePlaying(false)
+      return
+    }
+    advance()
+  }, [stepId, leavePlaying, advance])
 
   // Step 2 Continue — saves platforms + gaming_since through the same
   // updateUserProfile every profile write uses. Nothing picked means nothing
@@ -238,20 +362,12 @@ export default function Onboarding() {
   }, [submitting, selectedGames, user, advance])
 
   // Playing Continue — one game, Currently Playing. Already there means
-  // do nothing. Nothing picked means nothing written. This is the last step.
+  // do nothing. Nothing picked means nothing written. If anyone qualified
+  // for Find your people, that step is next; otherwise this finishes.
   const handlePlayingContinue = useCallback(() => {
     if (submitting || finishedRef.current) return
-    if (playingGame && getGameStatus(playingGame.id) !== 'currently') {
-      try {
-        const ok = setGameStatus(playingGame.id, 'currently', playingGame)
-        if (ok) savedRef.current.playing = true
-        else console.error('[Onboarding] playing save failed')
-      } catch (err) {
-        console.error('[Onboarding] playing save failed:', err)
-      }
-    }
-    advance()
-  }, [submitting, playingGame, advance])
+    leavePlaying(true)
+  }, [submitting, leavePlaying])
 
   const handleContinue = useCallback(() => {
     if (stepId === 'platforms') handlePlatformsContinue()
@@ -296,7 +412,7 @@ export default function Onboarding() {
       {/* ── Header: one dot per step + Skip ── */}
       <div className="ob-header">
         <div className="ob-dots" aria-hidden="true">
-          {STEPS.map((id, i) => {
+          {steps.map((id, i) => {
             const state = i < step ? 'done' : i === step ? 'active' : 'inactive'
             return <span key={id} className={`ob-dot ob-dot--${state}`} />
           })}
@@ -332,6 +448,9 @@ export default function Onboarding() {
               {stepId === 'playing' && (
                 <PlayingStep game={playingGame} onChange={setPlayingGame} />
               )}
+              {stepId === 'people' && people?.length > 0 && (
+                <PeopleStep people={people} />
+              )}
             </div>
             <div className="ob-foot">
               <button
@@ -340,7 +459,7 @@ export default function Onboarding() {
                 onClick={handleContinue}
                 disabled={submitting}
               >
-                Continue
+                {stepId === 'people' ? "Let's play" : 'Continue'}
               </button>
             </div>
           </StepSlide>

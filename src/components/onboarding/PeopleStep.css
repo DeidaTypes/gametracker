@@ -1,0 +1,86 @@
+/* Step 5 — "Find your people".
+   Mockup: docs/design/checkpoint_onboarding.html (.group .prow).
+   One inset group. Hairline starts past the avatar, the way Settings
+   rows start past the icon. */
+
+.ob-people__group {
+  list-style: none;
+  margin: var(--space-20) 0 0;
+  padding: 0;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ob-people__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+}
+
+.ob-people__row + .ob-people__row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-subtle);
+  /* 16px row inset + 40px avatar + 12px gap. */
+  left: calc(var(--space-16) + var(--space-40) + var(--space-12));
+}
+
+.ob-people__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.ob-people__name.text-body {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ob-people__reason {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Follow is a solid accent pill. Following is the outline. */
+.ob-people__follow {
+  flex: none;
+  height: var(--space-32);
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--color-on-accent);
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ob-people__follow--on {
+  background: transparent;
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.ob-people__follow:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ob-people__follow:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
