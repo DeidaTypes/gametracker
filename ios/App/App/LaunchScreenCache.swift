@@ -1,6 +1,7 @@
 import UIKit
 import ImageIO
 import Darwin
+import Compression
 
 /// Keeps the launch image iOS shows on a cold start in the app's saved theme.
 ///
@@ -154,11 +155,11 @@ enum LaunchScreenCache {
         for file in imageFiles(in: folder) {
             // Skip what is already painted in this base; repaint anything iOS
             // added or redrew (no mark, or another base).
-            if readMark(file) == base { continue }
+            if readMark(file) == markValue(base) { continue }
             guard let size = pixelSize(of: file) else { continue }
             guard let drawn = draw(size: size, color: color, logo: logo, scale: scale, screen: screen) else { continue }
             guard encodeAndWrite(drawn, over: file) != nil else { continue }
-            writeMark(file, base)
+            writeMark(file, markValue(base))
         }
     }
 
@@ -244,8 +245,15 @@ enum LaunchScreenCache {
         for type in candidates where !tried.contains(type) {
             tried.insert(type)
             guard type != "public.png", encodable.contains(type) else { continue }
-            if let data = encode(cgImage, as: type), decodes(data, width: cgImage.width, height: cgImage.height),
-               write(data, to: file) {
+            guard var data = encode(cgImage, as: type) else { continue }
+            // iOS's own launch files are ATX with an LZFSE-compressed pixel chunk;
+            // ImageIO writes the same pixels uncompressed, in a header iOS never
+            // wrote. Make ours the same file iOS would have written.
+            if type == "com.apple.atx", let old = try? Data(contentsOf: file),
+               let rewrapped = rewrapAsLZFSE(data, matching: old) {
+                data = rewrapped
+            }
+            if decodes(data, width: cgImage.width, height: cgImage.height), write(data, to: file) {
                 return type
             }
         }
@@ -254,6 +262,84 @@ enum LaunchScreenCache {
             return "public.png"
         }
         return nil
+    }
+
+    // MARK: - ATX container
+
+    // An ATX file is an 8-byte signature ("AAPL\r\n\x1a\n") then chunks of
+    // [uint32 length][4-byte tag][body], little-endian: HEAD, FILL, the pixels,
+    // END. iOS writes the pixels as "LZFS": [uint32 n][n bytes of LZFSE-packed
+    // ASTC 4x4 blocks]. ImageIO writes "ASTC": [uint32 n][n bytes of the same
+    // blocks, raw], with two HEAD fields different.
+
+    private static func atxChunks(_ data: Data) -> [(tag: String, body: Data)]? {
+        let bytes = [UInt8](data)
+        guard bytes.count > 8, Array(bytes[0..<8]) == [0x41, 0x41, 0x50, 0x4C, 0x0D, 0x0A, 0x1A, 0x0A] else { return nil }
+        var chunks: [(tag: String, body: Data)] = []
+        var offset = 8
+        while offset + 8 <= bytes.count {
+            let length = Int(bytes[offset]) | Int(bytes[offset + 1]) << 8 | Int(bytes[offset + 2]) << 16 | Int(bytes[offset + 3]) << 24
+            guard length >= 0, offset + 8 + length <= bytes.count,
+                  let tag = String(bytes: bytes[(offset + 4)..<(offset + 8)], encoding: .ascii) else { return nil }
+            chunks.append((tag, Data(bytes[(offset + 8)..<(offset + 8 + length)])))
+            offset += 8 + length
+        }
+        return chunks
+    }
+
+    private static func littleEndian(_ value: Int) -> [UInt8] {
+        [UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF), UInt8((value >> 16) & 0xFF), UInt8((value >> 24) & 0xFF)]
+    }
+
+    private static func atxChunk(_ tag: String, _ body: [UInt8]) -> [UInt8] {
+        littleEndian(body.count) + Array(tag.utf8) + body
+    }
+
+    /// `imageIO`'s ATX with its raw ASTC chunk packed the way iOS packs it.
+    /// HEAD and FILL come from `old`, the file being replaced, when that is a
+    /// file iOS wrote (it has an LZFS chunk). Otherwise HEAD is ImageIO's with
+    /// the two fields that differ set to iOS's values. Any surprise returns nil
+    /// and the caller keeps ImageIO's own file.
+    private static func rewrapAsLZFSE(_ imageIO: Data, matching old: Data) -> Data? {
+        guard let mine = atxChunks(imageIO),
+              var head = mine.first(where: { $0.tag == "HEAD" })?.body,
+              let astc = mine.first(where: { $0.tag == "ASTC" })?.body,
+              head.count == 84, astc.count > 4
+        else { return nil }
+        var fill = mine.first(where: { $0.tag == "FILL" })?.body ?? Data(count: 136)
+
+        let raw = [UInt8](astc.dropFirst(4))
+        // ASTC 4x4 (0x93B0): 16 bytes per 4x4 pixels, at the size in HEAD.
+        func field(_ data: Data, _ index: Int) -> Int {
+            let b = [UInt8](data)
+            return Int(b[index * 4]) | Int(b[index * 4 + 1]) << 8 | Int(b[index * 4 + 2]) << 16 | Int(b[index * 4 + 3]) << 24
+        }
+        guard field(head, 4) == 0x93B0 else { return nil }
+        let blocks = ((field(head, 6) + 3) / 4) * ((field(head, 7) + 3) / 4)
+        guard raw.count == blocks * 16 else { return nil }
+
+        if let theirs = atxChunks(old), theirs.contains(where: { $0.tag == "LZFS" }),
+           let oldHead = theirs.first(where: { $0.tag == "HEAD" })?.body, oldHead.count == 84,
+           field(oldHead, 6) == field(head, 6), field(oldHead, 7) == field(head, 7) {
+            head = oldHead
+            if let oldFill = theirs.first(where: { $0.tag == "FILL" })?.body { fill = oldFill }
+        } else {
+            var bytes = [UInt8](head)
+            bytes.replaceSubrange((13 * 4)..<(14 * 4), with: littleEndian(1))
+            bytes.replaceSubrange((19 * 4)..<(20 * 4), with: littleEndian(1))
+            head = Data(bytes)
+        }
+
+        var packed = [UInt8](repeating: 0, count: raw.count + 64 * 1024)
+        let packedCount = compression_encode_buffer(&packed, packed.count, raw, raw.count, nil, COMPRESSION_LZFSE)
+        guard packedCount > 0 else { return nil }
+
+        var out: [UInt8] = [0x41, 0x41, 0x50, 0x4C, 0x0D, 0x0A, 0x1A, 0x0A]
+        out += atxChunk("HEAD", [UInt8](head))
+        out += atxChunk("FILL", [UInt8](fill))
+        out += atxChunk("LZFS", littleEndian(packedCount) + packed[0..<packedCount])
+        out += atxChunk("END ", [])
+        return Data(out)
     }
 
     private static func encode(_ image: CGImage, as type: String) -> Data? {
@@ -297,8 +383,14 @@ enum LaunchScreenCache {
         return String(bytes: buffer, encoding: .utf8)
     }
 
-    private static func writeMark(_ file: URL, _ base: String) {
-        let bytes = Array(base.utf8)
+    /// The base, plus the writer's format version: files written by an earlier
+    /// version of this code carry a different mark and are repainted.
+    private static func markValue(_ base: String) -> String {
+        "\(base);v2"
+    }
+
+    private static func writeMark(_ file: URL, _ value: String) {
+        let bytes = Array(value.utf8)
         _ = setxattr(file.path, markName, bytes, bytes.count, 0, 0)
     }
 }
