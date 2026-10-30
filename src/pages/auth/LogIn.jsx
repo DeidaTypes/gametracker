@@ -174,7 +174,9 @@ function LogIn() {
               />
             </AuthFieldGroup>
 
-            <AuthFieldStatus tone={statusTone} message={statusMessage} />
+            {statusMessage ? (
+              <AuthFieldStatus tone={statusTone} message={statusMessage} />
+            ) : null}
 
             <AuthForgotLink
               to={forgotPath}
