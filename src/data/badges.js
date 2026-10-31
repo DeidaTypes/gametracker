@@ -763,7 +763,7 @@ export const BADGES = [
   ...singleBadge({
     id: 'hot-month',
     name: 'Hot Month',
-    description: 'Finish 5 games in one calendar month.',
+    description: 'Finish 5 games you were playing, all in one calendar month.',
     flavor: 'A month you\u2019ll remember.',
     icon: Flame,
     accent: 'app',
