@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Checkpoint Search Clear</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  body.navy{--base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);--text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;--primary:#3b82f6;--review:#0a9e6a;--rtext:#34c08c;--journal:#8b32d1;--on:#fff;--fill:rgba(240,243,250,.06);--shadow:0 2px 6px rgba(0,0,0,.3),0 12px 28px rgba(0,0,0,.45)}
+  body.pink{--base:#f5d3de;--surface:#fcecf1;--surface2:#eec3d1;--line:rgba(120,30,60,.16);--text:#35121f;--muted:#7c4655;--dim:#885c6b;--primary:#c92a62;--review:#0d8069;--rtext:#0d8069;--journal:#7446cf;--on:#fff;--fill:rgba(53,18,31,.06);--shadow:0 2px 6px rgba(60,10,30,.08),0 12px 28px rgba(60,10,30,.14)}
+  :root{--move:cubic-bezier(.32,.72,0,1);--fade:cubic-bezier(.25,.1,.25,1);--leave:cubic-bezier(.4,0,1,1)}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--base);color:var(--text);font:15px/1.45 'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit}
+  .page{max-width:1100px;margin:0 auto;padding:28px 16px 64px}
+  h1.doc{font-size:22px;margin:0 0 6px} .lede{color:var(--muted);font-size:14px;margin:0 0 16px;max-width:760px}
+  .ctrl{display:flex;gap:8px;margin-bottom:22px} .ctrl button{border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:13px;border-radius:999px;padding:9px 14px;cursor:pointer} .ctrl button.on{background:var(--text);border-color:var(--text);color:var(--base)}
+  .row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start} .col{width:min(390px,100%);display:flex;flex-direction:column;gap:10px} .cap{font-size:13px;color:var(--muted);margin:0} .cap b{color:var(--text)}
+  .phone{position:relative;width:100%;height:844px;border-radius:44px;overflow:hidden;background:var(--base);border:1px solid var(--line)}
+  .island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:30}
+  .dim{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+  .kb{position:absolute;left:0;right:0;bottom:0;height:290px;background:color-mix(in srgb,var(--surface2) 80%,#000 20%);border-top:1px solid var(--line)}
+  body.pink .kb{background:#d9d4dc}
+  .kb .keys{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;padding:14px 6px}
+  .kb .keys i{height:42px;border-radius:6px;background:rgba(255,255,255,.1)} body.pink .kb .keys i{background:#fff}
+  .modal{position:absolute;left:16px;right:16px;top:92px;bottom:306px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+  .mh{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px}
+  .mh h2{margin:0;font-size:18px;font-weight:700} .mh .done{border:0;background:none;color:var(--primary);font-weight:600;font-size:15px}
+  .sr{position:relative;margin:4px 16px 10px;height:44px}
+  .sr input{width:100%;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--base);color:var(--text);font:400 16px 'DM Sans',sans-serif;padding:0 44px 0 40px;outline:0}
+  .sr input:focus{border-color:var(--primary)}
+  .sr .ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none}
+  .sr .x{position:absolute;right:6px;top:50%;transform:translateY(-50%) scale(.6);width:32px;height:32px;border-radius:50%;border:0;background:none;color:var(--dim);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity 180ms var(--fade),transform 220ms var(--move)}
+  .sr .x span{width:20px;height:20px;border-radius:50%;background:var(--fill);display:grid;place-items:center}
+  .sr.has .x{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}
+  .list{flex:1;overflow:auto;padding:0 8px 8px}
+  .g{display:flex;align-items:center;gap:12px;padding:8px;border-radius:12px;cursor:pointer}
+  .g:active{background:var(--fill)}
+  .g .cv{width:40px;height:54px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);background:linear-gradient(160deg,#3b4a7a,#1a2240)}
+  .g .t{flex:1;min-width:0} .g .t b{display:block;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .g .t span{font-size:12.5px;color:var(--dim)}
+  .add{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--primary);display:grid;place-items:center;flex:none;transition:background 200ms var(--fade),color 200ms var(--fade)}
+  .add.on{background:var(--rtext);border-color:transparent;color:var(--base)}
+  .hint{padding:28px 16px;text-align:center;color:var(--dim);font-size:13.5px}
+  .empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:36px 16px;color:var(--dim);font-size:13.5px}
+  .empty b{color:var(--muted);font-weight:600}
+  .inlist{margin:0 16px 8px;font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.02em}
+  .toast{position:absolute;left:50%;top:60px;white-space:nowrap;transform:translate(-50%,-8px);opacity:0;z-index:40;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 14px 6px 6px;border-radius:24px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);transition:opacity 220ms var(--leave),transform 220ms var(--leave);pointer-events:none}
+  .toast.show{opacity:1;transform:translate(-50%,0);transition:opacity 260ms var(--fade),transform 260ms var(--move)}
+  .toast .cv{width:24px;height:32px;border-radius:6px;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff;background:linear-gradient(160deg,#3b4a7a,#1a2240)}
+  .toast b{display:block;font-size:14.5px;font-weight:600;line-height:1.2} .toast span{display:block;font-size:12.5px;color:var(--muted)}
+  .notes{margin-top:30px;max-width:860px} .notes ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px} .notes li{margin:5px 0} .notes li b{color:var(--text)}
+  svg{display:block}
+</style></head>
+<body class="navy">
+<div class="page">
+  <h1 class="doc">Search bars that clear</h1>
+  <p class="lede">Adding a game from a search clears the words at once and keeps the cursor in the field, so the next search starts right away. While there's text, a small clear button sits in the bar. The same behavior goes everywhere a search adds something: Add games to a list, the + button's game search, the onboarding pickers. Type in the field, then tap + on a result.</p>
+  <div class="ctrl"><button data-t="navy" class="on">Navy</button><button data-t="pink">Light Pink</button></div>
+
+  <div class="row">
+    <div class="col">
+      <p class="cap"><b>Add games to a list</b> · type, then add one</p>
+      <div class="phone">
+        <div class="island"></div>
+        <div class="dim"></div>
+        <div class="toast" id="toast"><div class="cv" id="tcv">HK</div><div><b>Added to Best of 2026</b><span id="tsub">Hollow Knight</span></div></div>
+        <div class="modal">
+          <div class="mh"><h2>Add games</h2><button class="done">Done</button></div>
+          <div class="sr" id="sr">
+            <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input id="q" placeholder="Search games…" autocomplete="off" value="hollow">
+            <button class="x" id="x" aria-label="Clear search"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span></button>
+          </div>
+          <div class="list" id="list"></div>
+        </div>
+        <div class="kb"><div class="keys">${'<i></i>'.repeat(0)}</div></div>
+      </div>
+    </div>
+    <div class="col notes">
+      <ul>
+        <li><b>Add, then it's gone.</b> Tapping + on a result adds the game, shows the capsule with its cover, and empties the field in the same tap. Focus stays in the field, the keyboard stays up, the list goes back to "In this list" below. No reaching for a backspace.</li>
+        <li><b>Clear button.</b> A small ⨯ in a soft circle appears inside the bar as soon as there's text (it scales in, 220 ms) and disappears when the field is empty. Tapping it clears and keeps focus. It's the same control iOS uses, drawn in the app's tokens.</li>
+        <li><b>Everywhere, the same.</b> One shared search field (icon left, clear right, 44 pt pill, theme surface) used by Add games to a list, the + button's game search, the favorites and playing-now pickers in onboarding, and the Search page's bar. Today each of these draws its own.</li>
+        <li><b>Mid-search feedback.</b> "Searching…" and "No games named ‘x’" keep their current wording, inside the same field family.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const GAMES=[['Hollow Knight','2017 · Team Cherry','HK'],['Hollow Knight: Silksong','2025 · Team Cherry','S'],['Hollow','2017 · Forever Entertainment','H']];
+const INLIST=[['Hades','2020 · Supergiant','H'],['Elden Ring','2022 · FromSoftware','ER'],['Celeste','2018 · Maddy Makes Games','C']];
+let added=[];
+const q=$('#q'), sr=$('#sr'), list=$('#list'), x=$('#x');
+const plus='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>';
+const chk='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+function row(g,on){return `<div class="g" data-n="${g[0]}" data-c="${g[2]}"><div class="cv">${g[2]}</div><div class="t"><b>${g[0]}</b><span>${g[1]}</span></div><button class="add${on?' on':''}" aria-label="${on?'In list':'Add'}">${on?chk:plus}</button></div>`}
+function render(){
+  const v=q.value.trim(); sr.classList.toggle('has',v.length>0);
+  if(!v){ list.innerHTML='<div class="inlist">IN THIS LIST · '+(INLIST.length+added.length)+'</div>'+[...added,...INLIST].map(g=>row(g,true)).join(''); return }
+  const hits=GAMES.filter(g=>g[0].toLowerCase().includes(v.toLowerCase()));
+  list.innerHTML=hits.length?hits.map(g=>row(g,added.some(a=>a[0]===g[0]))).join(''):`<div class="empty"><b>No games named ‘${v}’</b>Check the spelling or try another name.</div>`;
+}
+q.addEventListener('input',render);
+x.onclick=()=>{q.value='';render();q.focus()};
+let tt;
+list.addEventListener('click',e=>{
+  const b=e.target.closest('.add'); if(!b||b.classList.contains('on'))return;
+  const r=b.closest('.g'); const g=GAMES.find(x=>x[0]===r.dataset.n); if(!g)return;
+  b.classList.add('on'); b.innerHTML=chk; added.unshift(g);
+  $('#tcv').textContent=g[2]; $('#tsub').textContent=g[0];
+  const t=$('#toast'); t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),2200);
+  setTimeout(()=>{q.value='';render();q.focus()},120);
+});
+document.querySelectorAll('.ctrl [data-t]').forEach(b=>b.onclick=()=>{document.body.className=b.dataset.t;document.querySelectorAll('.ctrl [data-t]').forEach(z=>z.classList.toggle('on',z===b))});
+document.querySelector('.kb .keys').innerHTML='<i></i>'.repeat(30);
+render(); q.focus();
+</script>
+</body></html>

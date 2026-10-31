@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkpoint New Themes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{--pbg:#0a0f1f;--psurf:#131a35;--pline:rgba(148,168,212,.12);--ptext:#f0f3fa;--pmuted:#94a8d4;--pdim:#6b7995}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--pbg);color:var(--ptext);font:15px/1.45 'DM Sans',-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1640px;margin:0 auto;padding:28px 16px 64px}
+  h1.doc{font-size:22px;line-height:28px;margin:0 0 6px;letter-spacing:-.01em}
+  h2.sec{font-size:16px;margin:34px 0 12px}
+  .lede{color:var(--pmuted);font-size:14px;margin:0 0 20px;max-width:820px}
+  .phones{display:flex;flex-wrap:wrap;gap:22px}
+  .tcol{width:290px;display:flex;flex-direction:column;gap:6px}
+  .thead{display:flex;align-items:baseline;gap:8px}
+  .thead b{font-size:16px}
+  .mode{font-size:12px;color:var(--pdim)}
+  .blurb{margin:0 0 4px;font-size:13px;color:var(--pmuted);min-height:38px}
+
+  .mini{position:relative;height:640px;border-radius:38px;overflow:hidden;background:var(--base);color:var(--text);border:1px solid var(--line);font-size:13px}
+  .mini .island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:28px;border-radius:16px;background:#000;z-index:5}
+  .mini .sb{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:4px 24px 0 30px;font-weight:600;font-size:13px;z-index:4}
+  .mini .sb .r{display:flex;gap:4px;align-items:center;transform:scale(.8);transform-origin:right center}
+  .mini .wash{position:absolute;top:0;left:0;right:0;height:320px;pointer-events:none;background:radial-gradient(circle at 18% 8%,color-mix(in srgb,var(--primary) 16%,transparent) 0%,transparent 55%),radial-gradient(circle at 82% 12%,color-mix(in srgb,var(--journal) 12%,transparent) 0%,transparent 55%),radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--review) 11%,transparent) 0%,transparent 60%)}
+  .mini .in{position:relative;padding-top:44px}
+  .hh{display:flex;align-items:center;justify-content:space-between;padding:6px 14px 10px}
+  .hh .wm{font-size:16px;font-weight:700}
+  .hh .ics{display:flex;gap:10px;color:var(--primary)}
+  .np{margin:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .np .top{display:flex;gap:10px;padding:10px;background:linear-gradient(100deg,color-mix(in srgb,var(--review) 20%,transparent),transparent 70%)}
+  .np img,.np .fb{width:52px;height:52px;border-radius:9px;object-fit:cover}
+  .np .lab{font-size:9px;letter-spacing:.08em;font-weight:600;color:var(--primary);margin-top:3px}
+  .np .t{font-size:14.5px;font-weight:600}
+  .np .s{font-size:11px;color:var(--dim)}
+  .np .btns{display:flex;gap:6px;padding:9px 10px 10px;border-top:1px solid var(--line)}
+  .np .b{height:30px;border-radius:9px;border:1px solid var(--line);display:flex;align-items:center;gap:5px;padding:0 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .np .b.g{border:0;background:linear-gradient(90deg,var(--primary),var(--review));color:var(--on)}
+  .ps{margin:8px 12px 0;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  .ps>div{padding:8px 10px}
+  .ps>div+div{border-left:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .ps .n{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700}
+  .ps .n svg{color:var(--journal)}
+  .ps .s{font-size:10.5px;color:var(--dim)}
+  .ring{width:34px;height:34px;border-radius:50%;background:conic-gradient(var(--review) 0 240deg,color-mix(in srgb,var(--text) 8%,transparent) 240deg);display:grid;place-items:center;flex:none}
+  .ring span{width:27px;height:27px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:10px;font-weight:700}
+  .ph{padding:14px 14px 4px}
+  .ph h2{margin:0;font-size:16px;color:var(--primary)}
+  .ph p{margin:0;font-size:11px;color:var(--dim)}
+  .post{position:relative;display:grid;grid-template-columns:28px 1fr;gap:9px;padding:10px 14px}
+  .post::before{content:"";position:absolute;top:0;left:14px;right:14px;height:1px;background:var(--line)}
+  .av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:700}
+  .hd{font-size:12.5px}
+  .vr{color:var(--rtext)} .vl{color:var(--jtext)} .tm{color:var(--dim);font-size:11px}
+  .gs{display:flex;gap:9px;align-items:center;margin-top:7px;padding:6px;border-radius:10px;background:var(--surface)}
+  .gs img,.gs .fb{width:32px;height:43px;border-radius:5px;object-fit:cover}
+  .gt{font-size:13px;font-weight:600}
+  .stars{display:inline-flex;gap:1px;color:var(--gold)}
+  .stars svg{width:11px;height:11px}
+  .tx{margin:6px 0 0;font-size:12.5px;line-height:1.45}
+  .act{display:flex;align-items:center;gap:12px;margin-top:6px;color:var(--dim);font-size:11.5px}
+  .ab{display:inline-flex;align-items:center;gap:4px}
+  .ab.on{color:var(--jtext)} .ab.on svg path{fill:currentColor}
+  .bl{margin-left:auto;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;border:1px solid var(--line);font-weight:600;color:var(--muted)}
+  .post.cmp{grid-template-columns:28px 1fr}
+  .danger{display:flex;align-items:center;gap:6px;margin:6px 14px 0;padding:7px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);font-size:11.5px;color:var(--danger)}
+  .nav{position:absolute;left:12px;right:62px;bottom:18px;height:46px;border-radius:23px;background:color-mix(in srgb,var(--surface) 94%,transparent);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-around;color:var(--dim);box-shadow:var(--shadow)}
+  .nav span{width:40px;height:32px;border-radius:16px;display:grid;place-items:center}
+  .nav span.on{background:linear-gradient(90deg,var(--primary),var(--review));color:var(--on)}
+  .fab{position:absolute;right:12px;bottom:20px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--review));color:var(--on)}
+  .fb{display:grid;place-items:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);background:linear-gradient(160deg,#3b4a7a,#1a2240)}
+
+  /* picker */
+  .picker{max-width:440px;background:var(--psurf);border:1px solid var(--pline);border-radius:20px;padding:16px}
+  .picker .lb{font-size:12px;font-weight:600;color:var(--pdim);margin:6px 0 8px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .tile{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .sw{position:relative;width:100%;aspect-ratio:1/1.08;border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--pline)}
+  .sw .card{position:absolute;left:14%;right:14%;bottom:14%;height:38%;border-radius:8px}
+  .sw .ac{position:absolute;left:14%;top:16%;display:flex;gap:4px}
+  .sw .ac i{width:10px;height:10px;border-radius:50%}
+  .nb{position:absolute;right:5px;bottom:5px;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:999px;background:#fff;color:#111;letter-spacing:.02em}
+  .tile .nm{font-size:12.5px;font-weight:600;color:var(--pmuted)}
+  .tile.new .nm{color:var(--ptext)}
+
+  table{border-collapse:collapse;font-size:13px;margin-top:4px}
+  th,td{padding:7px 10px;border-bottom:1px solid var(--pline);text-align:left}
+  th{color:var(--pdim);font-weight:600;font-size:12px}
+  td{color:var(--pmuted)}
+  td b{color:var(--ptext)}
+  .notes ul{margin:0;padding-left:18px;color:var(--pmuted);font-size:14px;max-width:880px}
+  .notes li{margin:5px 0}
+  .notes li b{color:var(--ptext)}
+  pre{background:var(--psurf);border:1px solid var(--pline);border-radius:12px;padding:12px 14px;font-size:11.5px;line-height:1.5;color:var(--pmuted);overflow:auto;max-height:340px}
+  .two{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 class="doc">Eight new themes: 8 dark, 8 light</h1>
+  <p class="lede">Four dark and four light, so the picker ends up with eight of each. Arcade is rebuilt so it reads nothing like Purple; Graphite and Pocket are gone. Each new one owns a color no other theme uses: teal, neon pink, chartreuse, black cherry, lilac, eucalyptus, lemon and ink-on-paper. Each is a full palette, the same 25 colors every theme sets, so buttons, accents, stars, notices and the nav all fit the background instead of only the background changing. Every text color passes contrast checks (the table below). There's no orange, amber or copper anywhere. Each phone shows the real Home pieces: Now Playing, streak and challenge, a review, a list post and an error notice.</p>
+
+  <div class="phones">
+<div class="tcol">
+  <div class="thead"><b>Ocean</b><span class="mode">Dark</span></div>
+  <p class="blurb">Deep sea teal with a cyan glow. Calm, a little mysterious.</p>
+  <div class="mini" style="--base:#061619;--surface:#0c2328;--surface2:#133139;--line:rgba(140, 210, 220, 0.13);--text:#e8f6f7;--muted:#94bcc1;--dim:#64888e;--primary:#1fb5c7;--review:#4cc489;--journal:#8a86f0;--rtext:#73dba3;--jtext:#aeabf6;--pink:#5dd5e3;--on:#031418;--gold:#f2c94c;--danger:#f87171;--shadow:none">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Arcade</b><span class="mode">Dark</span></div>
+  <p class="blurb">Blue-black like a dark cabinet, with hot pink, electric aqua and ice blue. Nothing purple about it.</p>
+  <div class="mini" style="--base:#05060f;--surface:#0e1022;--surface2:#171a33;--line:rgba(120, 200, 255, 0.16);--text:#f4f7ff;--muted:#a7b4d6;--dim:#7482a8;--primary:#ff2d95;--review:#19f0c9;--journal:#4fc3ff;--rtext:#4ff5d8;--jtext:#7fd4ff;--pink:#ff6fb7;--on:#1a0414;--gold:#ffe14d;--danger:#ff6b8a;--shadow:none">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Volt</b><span class="mode">Dark</span></div>
+  <p class="blurb">Black with an electric chartreuse charge. Loud in the best way, like a fresh controller out of the box.</p>
+  <div class="mini" style="--base:#0b0c0a;--surface:#15170f;--surface2:#1f2217;--line:rgba(210, 255, 120, 0.12);--text:#f4f7ec;--muted:#b3bba0;--dim:#848d74;--primary:#c6ff2e;--review:#4d9dff;--journal:#b07cff;--rtext:#7db8ff;--jtext:#c7a2ff;--pink:#d6ff6b;--on:#121800;--gold:#ffd84d;--danger:#ff6b6b;--shadow:none">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Cherry</b><span class="mode">Dark</span></div>
+  <p class="blurb">Black cherry with a rose accent. Warm and dark, no purple.</p>
+  <div class="mini" style="--base:#15070d;--surface:#231018;--surface2:#2f1722;--line:rgba(255, 170, 200, 0.14);--text:#fdf1f5;--muted:#d4a9b9;--dim:#9c7284;--primary:#ff5c8a;--review:#39d98a;--journal:#b48cff;--rtext:#6ee7a8;--jtext:#c9aaff;--pink:#ff8fae;--on:#2a0712;--gold:#ffcf5c;--danger:#ff8585;--shadow:none">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Lavender</b><span class="mode">Light</span></div>
+  <p class="blurb">Soft lilac paper with violet ink. The light partner to Purple.</p>
+  <div class="mini" style="--base:#e7e1f5;--surface:#f6f3fc;--surface2:#d9d1ee;--line:rgba(60, 30, 110, 0.14);--text:#1e1433;--muted:#574a73;--dim:#665a82;--primary:#6a45d1;--review:#0f7a64;--journal:#b0327a;--rtext:#0b6b57;--jtext:#9c2a6c;--pink:#5a37bf;--on:#ffffff;--gold:#b98309;--danger:#b4323f;--shadow:0 1px 2px rgba(40, 20, 80, 0.06), 0 6px 16px rgba(40, 20, 80, 0.07)">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Sage</b><span class="mode">Light</span></div>
+  <p class="blurb">Eucalyptus and moss. The light partner to Dark Green.</p>
+  <div class="mini" style="--base:#dde6d8;--surface:#f1f6ee;--surface2:#cbd8c4;--line:rgba(30, 60, 30, 0.15);--text:#16241a;--muted:#465a4a;--dim:#5a6e5e;--primary:#2f6b45;--review:#246f9e;--journal:#8a4390;--rtext:#1d5f8a;--jtext:#7a3a7e;--pink:#285c3b;--on:#ffffff;--gold:#9c7308;--danger:#a33434;--shadow:0 1px 2px rgba(20, 40, 20, 0.07), 0 6px 16px rgba(20, 40, 20, 0.07)">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Lemonade</b><span class="mode">Light</span></div>
+  <p class="blurb">Bright lemon with deep indigo ink. Summer-break energy, the only yellow in the set.</p>
+  <div class="mini" style="--base:#faf1a2;--surface:#fffae0;--surface2:#efe384;--line:rgba(70, 60, 0, 0.16);--text:#1c1a0b;--muted:#4f4a26;--dim:#5e5830;--primary:#3a33b8;--review:#0f7a55;--journal:#b02e78;--rtext:#0c6648;--jtext:#9c2668;--pink:#2f29a0;--on:#ffffff;--gold:#8a6a00;--danger:#a82828;--shadow:0 1px 2px rgba(60, 50, 0, 0.07), 0 6px 16px rgba(60, 50, 0, 0.07)">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div>
+<div class="tcol">
+  <div class="thead"><b>Paper</b><span class="mode">Light</span></div>
+  <p class="blurb">Warm white with black ink, like a printed magazine. Color comes only from the game covers.</p>
+  <div class="mini" style="--base:#f3f1ec;--surface:#ffffff;--surface2:#e6e2da;--line:rgba(20, 20, 20, 0.12);--text:#161616;--muted:#555555;--dim:#6c6c6c;--primary:#1a1a1a;--review:#1d6b45;--journal:#7c3aa6;--rtext:#1d6b45;--jtext:#7c3aa6;--pink:#1a1a1a;--on:#ffffff;--gold:#a67c00;--danger:#b22d2d;--shadow:0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.07)">
+    <div class="island"></div><div class="sb"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.1-1.2C13.4 1.6 10.8.5 8 .5S2.6 1.6.7 3.5l1.1 1.2C3.4 3.1 5.6 2.2 8 2.2zm0 3.4c1.5 0 2.8.5 3.8 1.5l1.1-1.2C11.6 4.6 9.9 3.9 8 3.9S4.4 4.6 3.1 5.9l1.1 1.2c1-1 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8 11.3 6.5 9.6c.4-.4.9-.6 1.5-.6z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="23" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="currentColor" opacity=".45"/></svg></span></div>
+    <div class="wash"></div>
+    <div class="in">
+      <div class="hh"><span class="wm">Checkpoint</span><span class="ics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span></div>
+      <div class="np"><div class="top"><img data-app="1145360" data-name="Hades" alt=""><div><div class="lab">NOW PLAYING</div><div class="t">Hades</div><div class="s">Last played yesterday · 38h</div></div></div>
+        <div class="btns"><span class="b g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Log a session</span><span class="b"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Finish</span></div></div>
+      <div class="ps"><div><div class="n"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>12</div><div class="s">Blaze · 2 days to Inferno</div></div><div><div class="ring"><span>8</span></div><div><b>8/12</b><div class="s">#1 in circle</div></div></div></div>
+      <div class="ph"><h2>The pulse</h2><p>3 new from everyone</p></div>
+      <div class="post"><div class="av" style="background:linear-gradient(135deg,var(--review),var(--primary))">JE</div><div class="bd">
+        <div class="hd"><b>jemig19</b> <span class="vr">reviewed</span> <span class="tm">· 2h</span></div>
+        <div class="gs"><img data-app="1245620" data-name="Elden Ring" alt=""><div><div class="gt">Elden Ring</div><span class="stars"><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg><svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></span></div></div>
+        <p class="tx">Took me 120 hours and I'd do it again tomorrow. Every corner hides something.</p>
+        <div class="act"><span class="ab on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>9</span><span class="ab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>2</span><span class="bl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/></svg>Backlog</span></div></div></div>
+      <div class="post cmp"><div class="av" style="background:linear-gradient(135deg,var(--journal),var(--primary))">RN</div><div class="bd"><div class="hd"><b>Ramen Noodles</b> <span class="vl">made a list</span></div><div class="tm">Cozy games for winter · 8 games</div></div></div>
+      <div class="danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Couldn't save · Try again</div>
+    </div>
+    <div class="nav"><span class="on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/></svg></span><span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span></div>
+    <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+  </div>
+</div></div>
+
+  <h2 class="sec">How they sit in the picker</h2>
+  <div class="two">
+    <div class="picker">
+      <div class="lb">DARK</div><div class="grid"><div class="tile"><div class="sw" style="background:#0a0f1f"><div class="ac"><i style="background:#3b82f6"></i><i style="background:#0a9e6a"></i><i style="background:#8b32d1"></i></div><div class="card" style="background:#131a35"></div></div><span class="nm">Navy</span></div><div class="tile"><div class="sw" style="background:#000000"><div class="ac"><i style="background:#4a78ff"></i><i style="background:#0f9d6b"></i><i style="background:#9a45e8"></i></div><div class="card" style="background:#0f0f11"></div></div><span class="nm">Black</span></div><div class="tile"><div class="sw" style="background:#08140f"><div class="ac"><i style="background:#22b07d"></i><i style="background:#c2d856"></i><i style="background:#a98bf0"></i></div><div class="card" style="background:#0f2119"></div></div><span class="nm">Dark Green</span></div><div class="tile"><div class="sw" style="background:#110a1d"><div class="ac"><i style="background:#7a55f5"></i><i style="background:#0f9985"></i><i style="background:#d4478f"></i></div><div class="card" style="background:#1c1230"></div></div><span class="nm">Purple</span></div><div class="tile new"><div class="sw" style="background:#061619"><div class="ac"><i style="background:#1fb5c7"></i><i style="background:#4cc489"></i><i style="background:#8a86f0"></i></div><div class="card" style="background:#0c2328"></div><span class=nb>New</span></div><span class="nm">Ocean</span></div><div class="tile new"><div class="sw" style="background:#05060f"><div class="ac"><i style="background:#ff2d95"></i><i style="background:#19f0c9"></i><i style="background:#4fc3ff"></i></div><div class="card" style="background:#0e1022"></div><span class=nb>New</span></div><span class="nm">Arcade</span></div><div class="tile new"><div class="sw" style="background:#0b0c0a"><div class="ac"><i style="background:#c6ff2e"></i><i style="background:#4d9dff"></i><i style="background:#b07cff"></i></div><div class="card" style="background:#15170f"></div><span class=nb>New</span></div><span class="nm">Volt</span></div><div class="tile new"><div class="sw" style="background:#15070d"><div class="ac"><i style="background:#ff5c8a"></i><i style="background:#39d98a"></i><i style="background:#b48cff"></i></div><div class="card" style="background:#231018"></div><span class=nb>New</span></div><span class="nm">Cherry</span></div></div>
+      <div class="lb" style="margin-top:14px">LIGHT</div><div class="grid"><div class="tile"><div class="sw" style="background:#f4f6fa"><div class="ac"><i style="background:#2563eb"></i><i style="background:#067a55"></i><i style="background:#7c3aed"></i></div><div class="card" style="background:#ffffff"></div></div><span class="nm">Light</span></div><div class="tile"><div class="sw" style="background:#cfe2f6"><div class="ac"><i style="background:#1a64cc"></i><i style="background:#0b8066"></i><i style="background:#5b47d6"></i></div><div class="card" style="background:#eaf3fd"></div></div><span class="nm">Light Blue</span></div><div class="tile"><div class="sw" style="background:#f5d3de"><div class="ac"><i style="background:#c92a62"></i><i style="background:#0d8069"></i><i style="background:#7446cf"></i></div><div class="card" style="background:#fcecf1"></div></div><span class="nm">Light Pink</span></div><div class="tile"><div class="sw" style="background:#e8dcc2"><div class="ac"><i style="background:#2c5b8a"></i><i style="background:#3a7648"></i><i style="background:#86427f"></i></div><div class="card" style="background:#f7efdf"></div></div><span class="nm">Cream</span></div><div class="tile new"><div class="sw" style="background:#e7e1f5"><div class="ac"><i style="background:#6a45d1"></i><i style="background:#0f7a64"></i><i style="background:#b0327a"></i></div><div class="card" style="background:#f6f3fc"></div><span class=nb>New</span></div><span class="nm">Lavender</span></div><div class="tile new"><div class="sw" style="background:#dde6d8"><div class="ac"><i style="background:#2f6b45"></i><i style="background:#246f9e"></i><i style="background:#8a4390"></i></div><div class="card" style="background:#f1f6ee"></div><span class=nb>New</span></div><span class="nm">Sage</span></div><div class="tile new"><div class="sw" style="background:#faf1a2"><div class="ac"><i style="background:#3a33b8"></i><i style="background:#0f7a55"></i><i style="background:#b02e78"></i></div><div class="card" style="background:#fffae0"></div><span class=nb>New</span></div><span class="nm">Lemonade</span></div><div class="tile new"><div class="sw" style="background:#f3f1ec"><div class="ac"><i style="background:#1a1a1a"></i><i style="background:#1d6b45"></i><i style="background:#7c3aa6"></i></div><div class="card" style="background:#ffffff"></div><span class=nb>New</span></div><span class="nm">Paper</span></div></div>
+    </div>
+    <div class="notes" style="flex:1;min-width:300px">
+      <ul>
+        <li><b>Ocean</b> (approved). Deep teal with cyan.</li>
+        <li><b>Arcade</b> (rebuilt). Blue-black base instead of indigo, hot pink, electric aqua, ice blue. Side by side with Purple it's a different animal. Button text is dark so it reads on the pink.</li>
+        <li><b>Volt</b> (new, replaces Mint). Black with electric chartreuse, blue and violet. No other theme, dark or light, uses yellow-green as its main color, so it can't be mistaken for Dark Green or Ocean: their color lives in the background, Volt's lives in the buttons and highlights.</li>
+        <li><b>Cherry</b> (new). Black cherry base with rose. Warm and dark, the only dark theme with no blue or purple in its base.</li>
+        <li><b>Lavender.</b> Light partner to Purple.</li>
+        <li><b>Sage</b> (new). Eucalyptus and moss, light partner to Dark Green.</li>
+        <li><b>Lemonade</b> (new, replaces Arctic). Bright lemon with deep indigo buttons and ink. The only yellow in the app, and nowhere near Light Blue: yellow and indigo sit on opposite sides of the color wheel. Cream is a soft beige; Lemonade is unmistakably yellow.</li>
+        <li><b>Paper</b> (new, replaces Pocket). Warm white with black ink, like a magazine. Game covers carry the color.</li>
+        <li>Picker: two rows of four in Dark, two rows of four in Light. Same in onboarding's first step.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">Contrast (WCAG ratio against the page background)</h2>
+  <table>
+    <tr><th>Theme</th><th>Text ≥7</th><th>Muted ≥4.5</th><th>Dim ≥4</th><th>Button text ≥4.5</th><th>Accent text ≥4.5</th><th>Review text</th><th>List text</th><th>Error ≥4.5</th></tr>
+    <tr><td><b>Ocean</b></td><td>16.7</td><td>9.0</td><td>4.8</td><td>7.6</td><td>10.6</td><td>10.9</td><td>8.8</td><td>6.7</td></tr><tr><td><b>Arcade</b></td><td>18.9</td><td>9.8</td><td>5.3</td><td>5.7</td><td>7.9</td><td>14.8</td><td>12.3</td><td>7.4</td></tr><tr><td><b>Volt</b></td><td>18.1</td><td>9.8</td><td>5.6</td><td>15.3</td><td>17.2</td><td>9.5</td><td>9.4</td><td>7.1</td></tr><tr><td><b>Cherry</b></td><td>17.9</td><td>9.5</td><td>4.8</td><td>6.3</td><td>9.2</td><td>12.8</td><td>10.0</td><td>8.4</td></tr><tr><td><b>Lavender</b></td><td>13.7</td><td>6.3</td><td>4.9</td><td>6.2</td><td>6.0</td><td>5.1</td><td>5.6</td><td>4.8</td></tr><tr><td><b>Sage</b></td><td>12.6</td><td>5.8</td><td>4.3</td><td>6.3</td><td>6.1</td><td>5.4</td><td>6.0</td><td>5.3</td></tr><tr><td><b>Lemonade</b></td><td>15.1</td><td>7.8</td><td>6.2</td><td>9.0</td><td>9.3</td><td>6.0</td><td>6.3</td><td>6.1</td></tr><tr><td><b>Paper</b></td><td>16.0</td><td>6.6</td><td>4.7</td><td>17.4</td><td>15.4</td><td>5.7</td><td>6.2</td><td>5.6</td></tr>
+  </table>
+
+  <h2 class="sec">What shipping them touches</h2>
+  <div class="notes"><ul>
+    <li><b>theme.css:</b> one block per theme (below, ready to paste); Lavender, Sage, Lemonade and Paper join the light-theme rules.</li>
+    <li><b>themePreview.js:</b> the eight entries and their place in THEME_ORDER (the picker tiles).</li>
+    <li><b>index.html:</b> the eight background colors in the startup color list, so they never flash on launch.</li>
+    <li><b>LaunchScreenCache.swift:</b> the eight ids in the known-theme list, the four lights in the light-status-bar list, so the launch picture opens in them too.</li>
+    <li>Everything else in the app already reads these tokens.</li>
+  </ul></div>
+  <pre>html[data-app-theme=&quot;ocean&quot;] {
+  --theme-base: #061619;
+  --theme-surface: #0c2328;
+  --theme-surface-2: #133139;
+  --theme-line: rgba(140, 210, 220, 0.13);
+  --theme-text: #e8f6f7;
+  --theme-muted: #94bcc1;
+  --theme-dim: #64888e;
+  --theme-review-text: #c6f6da;
+  --theme-journal-text: #dcdbff;
+  --theme-success: #34d399;
+  --theme-danger: #f87171;
+  --theme-primary: #1fb5c7;
+  --theme-review: #4cc489;
+  --theme-journal: #8a86f0;
+  --theme-primary-ink: #5dd5e3;
+  --theme-review-ink: #73dba3;
+  --theme-journal-ink: #aeabf6;
+  --theme-on-primary: #031418;
+  --theme-on-grad: #031418;
+  --theme-gold: #f2c94c;
+  --theme-g4: #f28cb8;
+  --theme-glow: rgba(31, 181, 199, 0.18);
+  --theme-glow-2: rgba(138, 134, 240, 0.08);
+  --theme-nav-bg: rgba(12, 35, 40, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;arcade&quot;] {
+  --theme-base: #05060f;
+  --theme-surface: #0e1022;
+  --theme-surface-2: #171a33;
+  --theme-line: rgba(120, 200, 255, 0.16);
+  --theme-text: #f4f7ff;
+  --theme-muted: #a7b4d6;
+  --theme-dim: #7482a8;
+  --theme-review-text: #b8fff0;
+  --theme-journal-text: #ffd6f0;
+  --theme-success: #34d399;
+  --theme-danger: #ff6b8a;
+  --theme-primary: #ff2d95;
+  --theme-review: #19f0c9;
+  --theme-journal: #4fc3ff;
+  --theme-primary-ink: #ff6fb7;
+  --theme-review-ink: #4ff5d8;
+  --theme-journal-ink: #7fd4ff;
+  --theme-on-primary: #1a0414;
+  --theme-on-grad: #1a0414;
+  --theme-gold: #ffe14d;
+  --theme-g4: #b388ff;
+  --theme-glow: rgba(255, 45, 149, 0.20);
+  --theme-glow-2: rgba(25, 240, 201, 0.10);
+  --theme-nav-bg: rgba(14, 16, 34, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;volt&quot;] {
+  --theme-base: #0b0c0a;
+  --theme-surface: #15170f;
+  --theme-surface-2: #1f2217;
+  --theme-line: rgba(210, 255, 120, 0.12);
+  --theme-text: #f4f7ec;
+  --theme-muted: #b3bba0;
+  --theme-dim: #848d74;
+  --theme-review-text: #d6e9ff;
+  --theme-journal-text: #ecdcff;
+  --theme-success: #34d399;
+  --theme-danger: #ff6b6b;
+  --theme-primary: #c6ff2e;
+  --theme-review: #4d9dff;
+  --theme-journal: #b07cff;
+  --theme-primary-ink: #d6ff6b;
+  --theme-review-ink: #7db8ff;
+  --theme-journal-ink: #c7a2ff;
+  --theme-on-primary: #121800;
+  --theme-on-grad: #121800;
+  --theme-gold: #ffd84d;
+  --theme-g4: #ff7fbf;
+  --theme-glow: rgba(198, 255, 46, 0.12);
+  --theme-glow-2: rgba(77, 157, 255, 0.08);
+  --theme-nav-bg: rgba(21, 23, 15, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;cherry&quot;] {
+  --theme-base: #15070d;
+  --theme-surface: #231018;
+  --theme-surface-2: #2f1722;
+  --theme-line: rgba(255, 170, 200, 0.14);
+  --theme-text: #fdf1f5;
+  --theme-muted: #d4a9b9;
+  --theme-dim: #9c7284;
+  --theme-review-text: #c8f7dc;
+  --theme-journal-text: #e9d6ff;
+  --theme-success: #34d399;
+  --theme-danger: #ff8585;
+  --theme-primary: #ff5c8a;
+  --theme-review: #39d98a;
+  --theme-journal: #b48cff;
+  --theme-primary-ink: #ff8fae;
+  --theme-review-ink: #6ee7a8;
+  --theme-journal-ink: #c9aaff;
+  --theme-on-primary: #2a0712;
+  --theme-on-grad: #2a0712;
+  --theme-gold: #ffcf5c;
+  --theme-g4: #5cc8ff;
+  --theme-glow: rgba(255, 92, 138, 0.18);
+  --theme-glow-2: rgba(180, 140, 255, 0.08);
+  --theme-nav-bg: rgba(35, 16, 24, 0.94);
+  --theme-shadow: none;
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;lavender&quot;] {
+  --theme-base: #e7e1f5;
+  --theme-surface: #f6f3fc;
+  --theme-surface-2: #d9d1ee;
+  --theme-line: rgba(60, 30, 110, 0.14);
+  --theme-text: #1e1433;
+  --theme-muted: #574a73;
+  --theme-dim: #665a82;
+  --theme-review-text: #0b6b57;
+  --theme-journal-text: #9c2a6c;
+  --theme-success: #0b6b57;
+  --theme-danger: #b4323f;
+  --theme-primary: #6a45d1;
+  --theme-review: #0f7a64;
+  --theme-journal: #b0327a;
+  --theme-primary-ink: #5a37bf;
+  --theme-review-ink: #0b6b57;
+  --theme-journal-ink: #9c2a6c;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #b98309;
+  --theme-g4: #3b8fd9;
+  --theme-glow: rgba(106, 69, 209, 0.14);
+  --theme-glow-2: rgba(176, 50, 122, 0.08);
+  --theme-nav-bg: rgba(246, 243, 252, 0.95);
+  --theme-shadow: 0 1px 2px rgba(40, 20, 80, 0.06), 0 6px 16px rgba(40, 20, 80, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;sage&quot;] {
+  --theme-base: #dde6d8;
+  --theme-surface: #f1f6ee;
+  --theme-surface-2: #cbd8c4;
+  --theme-line: rgba(30, 60, 30, 0.15);
+  --theme-text: #16241a;
+  --theme-muted: #465a4a;
+  --theme-dim: #5a6e5e;
+  --theme-review-text: #1d5f8a;
+  --theme-journal-text: #7a3a7e;
+  --theme-success: #2f6b45;
+  --theme-danger: #a33434;
+  --theme-primary: #2f6b45;
+  --theme-review: #246f9e;
+  --theme-journal: #8a4390;
+  --theme-primary-ink: #285c3b;
+  --theme-review-ink: #1d5f8a;
+  --theme-journal-ink: #7a3a7e;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #9c7308;
+  --theme-g4: #c04a7a;
+  --theme-glow: rgba(47, 107, 69, 0.14);
+  --theme-glow-2: rgba(138, 67, 144, 0.07);
+  --theme-nav-bg: rgba(241, 246, 238, 0.95);
+  --theme-shadow: 0 1px 2px rgba(20, 40, 20, 0.07), 0 6px 16px rgba(20, 40, 20, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;lemonade&quot;] {
+  --theme-base: #faf1a2;
+  --theme-surface: #fffae0;
+  --theme-surface-2: #efe384;
+  --theme-line: rgba(70, 60, 0, 0.16);
+  --theme-text: #1c1a0b;
+  --theme-muted: #4f4a26;
+  --theme-dim: #5e5830;
+  --theme-review-text: #0c6648;
+  --theme-journal-text: #9c2668;
+  --theme-success: #0c6648;
+  --theme-danger: #a82828;
+  --theme-primary: #3a33b8;
+  --theme-review: #0f7a55;
+  --theme-journal: #b02e78;
+  --theme-primary-ink: #2f29a0;
+  --theme-review-ink: #0c6648;
+  --theme-journal-ink: #9c2668;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #8a6a00;
+  --theme-g4: #2a86c9;
+  --theme-glow: rgba(58, 51, 184, 0.12);
+  --theme-glow-2: rgba(176, 46, 120, 0.07);
+  --theme-nav-bg: rgba(255, 250, 224, 0.95);
+  --theme-shadow: 0 1px 2px rgba(60, 50, 0, 0.07), 0 6px 16px rgba(60, 50, 0, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}
+
+html[data-app-theme=&quot;paper&quot;] {
+  --theme-base: #f3f1ec;
+  --theme-surface: #ffffff;
+  --theme-surface-2: #e6e2da;
+  --theme-line: rgba(20, 20, 20, 0.12);
+  --theme-text: #161616;
+  --theme-muted: #555555;
+  --theme-dim: #6c6c6c;
+  --theme-review-text: #1d6b45;
+  --theme-journal-text: #7c3aa6;
+  --theme-success: #1d6b45;
+  --theme-danger: #b22d2d;
+  --theme-primary: #1a1a1a;
+  --theme-review: #1d6b45;
+  --theme-journal: #7c3aa6;
+  --theme-primary-ink: #1a1a1a;
+  --theme-review-ink: #1d6b45;
+  --theme-journal-ink: #7c3aa6;
+  --theme-on-primary: #ffffff;
+  --theme-on-grad: #ffffff;
+  --theme-gold: #a67c00;
+  --theme-g4: #2d7fc4;
+  --theme-glow: rgba(26, 26, 26, 0.06);
+  --theme-glow-2: rgba(124, 58, 166, 0.06);
+  --theme-nav-bg: rgba(255, 255, 255, 0.95);
+  --theme-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.07);
+  --auth-accent: var(--theme-primary);
+  --auth-on-accent: var(--theme-on-primary);
+}</pre>
+</div>
+<script>
+const art=id=>[`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900.jpg`,`https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_600x900.jpg`];
+document.querySelectorAll('img[data-app]').forEach(img=>{const u=art(img.dataset.app);let k=0;img.onerror=()=>{k++;if(k<u.length)img.src=u[k];else{const d=document.createElement('div');d.className='fb';d.textContent=(img.dataset.name||'').split(/\s+/).map(w=>w[0]).join('').slice(0,2);img.replaceWith(d)}};img.src=u[0]});
+</script>
+</body>
+</html>

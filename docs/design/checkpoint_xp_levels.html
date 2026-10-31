@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint Player Level</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);
+    --text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;
+    --cobalt:#3b82f6;--cobalt-ink:#93c5fd;--green:#0a9e6a;--green-ink:#b6fde0;--purple:#8b32d1;--purple-ink:#e4c2ff;--gold:#f5c542;
+    --move:cubic-bezier(.32,.72,0,1);--fade:cubic-bezier(.25,.1,.25,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--base);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.5}
+  .page{max-width:1180px;margin:0 auto;padding:40px 16px 80px}
+  h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:14px 0 10px}
+  h2{font-size:24px;letter-spacing:-.01em;margin:0 0 6px}
+  h3{font-size:16px;margin:0 0 6px}
+  p{margin:0}
+  .lede{max-width:780px;color:var(--muted);font-size:16px}
+  .muted{color:var(--muted)}.dim{color:var(--dim)}
+  section{margin-top:60px}
+  .eyebrow{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:4px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted)}
+  .sub{max-width:780px;color:var(--muted);margin-top:4px}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .stat{flex:1;min-width:160px;padding:14px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+  .stat b{display:block;font-size:22px;letter-spacing:-.02em}
+  .stat span{font-size:13px;color:var(--muted)}
+
+  /* Map */
+  .map{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:20px}
+  .spot{padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+  .spot .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--cobalt);color:#fff;font-size:12px;font-weight:700;margin-right:8px}
+  .spot h3{display:flex;align-items:center}
+  .spot p{font-size:14px;color:var(--muted)}
+
+  /* Phones */
+  .phones{display:flex;flex-wrap:wrap;gap:30px;justify-content:center;margin-top:24px}
+  .pcol{width:340px;max-width:100%;display:flex;flex-direction:column;gap:10px}
+  .pcol .cap{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .pcol .cap .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--cobalt);color:#fff;font-size:11px;margin-right:6px}
+  .pcol > p{font-size:14px;color:var(--muted)}
+  .phone{position:relative;width:340px;max-width:100%;height:680px;border-radius:40px;background:var(--base);overflow:hidden;box-shadow:0 0 0 9px #05070d,0 0 0 10px #232a40,0 30px 60px rgba(0,0,0,.45)}
+  .scr{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding:54px 16px 30px}
+  .scr::-webkit-scrollbar{display:none}
+  .sb{position:absolute;top:0;left:0;right:0;height:46px;display:flex;justify-content:space-between;align-items:center;padding:4px 28px 0;font-size:14px;font-weight:600;z-index:4}
+  .dimmer{position:absolute;inset:0;background:rgba(3,6,14,.62);z-index:2}
+  .ghost{opacity:.5}
+  .card{border-radius:14px;background:var(--surface);padding:14px}
+  .group{border-radius:12px;background:var(--surface);overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+  .row + .row{border-top:1px solid var(--line)}
+  .row .t{flex:1;min-width:0;font-size:14px}
+  .row .t span{display:block;font-size:12px;color:var(--dim)}
+  .label{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:18px 2px 8px}
+  .apphead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .back{width:32px;height:32px;border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--muted)}
+  .apphead b{font-size:20px}
+
+  /* Avatar + ring */
+  .av{--ring:var(--cobalt);position:relative;width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-size:20px;background:linear-gradient(135deg,#4a6fc9,#7a3fb8)}
+  .av::after{content:"";position:absolute;inset:-5px;border-radius:50%;box-shadow:0 0 0 2.5px var(--ring)}
+  .av.glow::after{box-shadow:0 0 0 2.5px var(--ring),0 0 16px color-mix(in srgb,var(--ring) 60%,transparent)}
+  .av.prism::after{box-shadow:none;background:conic-gradient(var(--cobalt),var(--green),var(--purple),var(--cobalt));-webkit-mask:radial-gradient(circle,transparent 61%,#000 62%);mask:radial-gradient(circle,transparent 61%,#000 62%)}
+  .av.sm{width:34px;height:34px;font-size:12px}.av.sm::after{inset:-3px;box-shadow:0 0 0 2px var(--ring)}
+  .av.sm.glow::after{box-shadow:0 0 0 2px var(--ring),0 0 10px color-mix(in srgb,var(--ring) 60%,transparent)}
+  .lv{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:4px;background:color-mix(in srgb,var(--cobalt) 18%,transparent);color:var(--cobalt-ink);font-size:11.5px;font-weight:700}
+  .ttl{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;background:var(--surface2);color:var(--muted);font-size:11.5px;font-weight:600}
+
+  /* Level ring */
+  .lring{position:relative;width:60px;height:60px;flex:none}
+  .lring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .lring b{position:absolute;inset:0;display:grid;place-items:center;font-size:20px}
+  .lring.big{width:110px;height:110px}.lring.big b{font-size:34px;line-height:1;flex-direction:column}
+  .lring.big b small{display:block;font-size:11px;letter-spacing:.08em;color:var(--dim);margin-top:4px}
+  .xpbar{height:6px;border-radius:999px;background:var(--surface2);overflow:hidden}
+  .xpbar i{display:block;height:100%;background:var(--cobalt);border-radius:999px}
+
+  /* Popup */
+  .pop{position:absolute;left:14px;right:14px;top:70px;bottom:70px;z-index:3;border-radius:20px;background:var(--surface);box-shadow:0 20px 50px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column}
+  .pop .ph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px;font-weight:700}
+  .pop .ph span{color:var(--cobalt-ink);font-weight:600;font-size:14px}
+  .pop .pb{flex:1;overflow-y:auto;scrollbar-width:none;padding:6px 14px 16px}
+  .pop .pb::-webkit-scrollbar{display:none}
+  .inner{border-radius:12px;background:var(--surface2);overflow:hidden}
+  .inner .row + .row{border-top:1px solid var(--line)}
+  .qk{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);display:grid;place-items:center;flex:none}
+  .qk.done{background:var(--cobalt);box-shadow:none;color:#fff}
+  .xp{font-size:12px;font-weight:700;color:var(--cobalt-ink);white-space:nowrap}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;border:0;border-radius:12px;background:var(--cobalt);color:#fff;font:600 15px 'DM Sans',sans-serif}
+  .btn.sec{background:var(--surface2);color:var(--text)}
+
+  /* Locker */
+  .swgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 8px;padding:14px}
+  .sw{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--muted);text-align:center;position:relative}
+  .sw .dot{--ring:var(--cobalt);position:relative;width:46px;height:46px;border-radius:50%;background:var(--surface2);box-shadow:inset 0 0 0 3px var(--ring)}
+  .sw .dot.glow{box-shadow:inset 0 0 0 3px var(--ring),0 0 14px color-mix(in srgb,var(--ring) 60%,transparent)}
+  .sw .dot.prism{box-shadow:none;background:conic-gradient(var(--cobalt),var(--green),var(--purple),var(--cobalt));-webkit-mask:radial-gradient(circle,transparent 64%,#000 65%);mask:radial-gradient(circle,transparent 64%,#000 65%)}
+  .sw.on .dot::after{content:"";position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--cobalt);box-shadow:0 0 0 2px var(--surface)}
+  .sw.locked{opacity:.4}
+  .sw .lk{font-size:10px;font-weight:700;color:var(--dim)}
+  .frames{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px}
+  .fr{border-radius:10px;background:var(--surface2);padding:10px;text-align:center;font-size:12px;color:var(--muted)}
+  .fr .cv{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+  .fr .cv i{width:24px;height:34px;border-radius:4px;background:linear-gradient(160deg,#3a4466,#232a44)}
+  .fr.gold .cv i{box-shadow:0 0 0 1.5px var(--gold)}
+  .fr.glow .cv i{box-shadow:0 0 0 1.5px var(--cobalt),0 0 8px color-mix(in srgb,var(--cobalt) 60%,transparent)}
+  .fr.holo .cv i{box-shadow:0 0 0 1.5px var(--purple-ink);background:linear-gradient(160deg,#3a4466,#232a44),linear-gradient(90deg,var(--cobalt),var(--purple))}
+  .fr.on{box-shadow:inset 0 0 0 2px var(--cobalt);color:var(--text)}
+  .fr.locked{opacity:.4}
+  .icons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px}
+  .ic{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .ic i{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;font-style:normal}
+  .ic.locked{opacity:.4}
+  .ic.on i{box-shadow:0 0 0 2px var(--base),0 0 0 4px var(--cobalt)}
+  .fz{display:flex;gap:10px;padding:14px}
+  .fz div{flex:1;height:64px;border-radius:12px;background:var(--surface2);display:grid;place-items:center;color:var(--cobalt-ink);font-size:12px;font-weight:600}
+  .fz div.empty{color:var(--dim);box-shadow:inset 0 0 0 1.5px var(--line);background:none}
+
+  /* Pulse sample */
+  .post{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 4px}
+  .post + .post{border-top:1px solid var(--line)}
+  .post .h{font-size:14px}.post .h b{font-weight:600}
+  .post .vs{color:var(--cobalt-ink)}
+  .tag{font-size:11px;font-weight:700;color:var(--dim);margin-left:2px}
+
+  /* Capsule */
+  .capsule{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 16px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 28px rgba(0,0,0,.35)}
+  .capsule .ci{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--cobalt) 22%,var(--surface2));color:var(--cobalt-ink)}
+  .capsule b{display:block;font-size:14px;line-height:1.2}
+  .capsule span{display:block;font-size:12px;color:var(--muted)}
+
+  /* Celebration */
+  .cele{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 22px;text-align:center;background:radial-gradient(70% 45% at 50% 38%,color-mix(in srgb,var(--cobalt) 26%,transparent),transparent 70%),var(--base)}
+  .cele .eb{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--cobalt-ink)}
+  .cele h4{font-size:30px;margin:8px 0 2px;letter-spacing:-.02em}
+  .cele .unl{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 18px;padding:12px;border-radius:14px;background:var(--surface);text-align:left}
+
+  /* Tables */
+  .tbl{border-radius:16px;background:var(--surface);border:1px solid var(--line);overflow:hidden;margin-top:16px}
+  .tbl table{width:100%;border-collapse:collapse;font-size:14px}
+  .tbl th,.tbl td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:700;background:color-mix(in srgb,var(--surface2) 50%,transparent)}
+  .tbl td.num{text-align:right;font-weight:700;color:var(--cobalt-ink);white-space:nowrap}
+  .tbl td.cap{text-align:right;color:var(--muted);white-space:nowrap}
+  .tbl .grp td{background:color-mix(in srgb,var(--surface2) 40%,transparent);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  .tblwrap{overflow-x:auto}
+  .rank{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:18px}
+  .rules div{padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+  .rules div p{font-size:14px;color:var(--muted)}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <span class="eyebrow">Player Level · Mockup · Oct 30</span>
+  <h1>Player Level: XP, levels and the Locker</h1>
+  <p class="lede">Everything you already do in Checkpoint earns XP: logging, finishing, reviewing, helping in Q&amp;A, earning badges. XP fills your level. Every level unlocks something for your Locker, and what's in your Locker changes how you look to everyone else: your avatar ring, the title under your name, the frame on your 4 favorites, your app icon. There's nothing to buy. You can only earn it.</p>
+  <div class="stats">
+    <div class="stat"><b>Level 3–4</b><span>where a new player ends day one</span></div>
+    <div class="stat"><b>~1 month</b><span>to Level 10 for a regular player</span></div>
+    <div class="stat"><b>50 levels</b><span>with 6 ranks, Rookie to Legend</span></div>
+    <div class="stat"><b>22 rewards</b><span>all cosmetic, plus 2 Streak Freezes</span></div>
+  </div>
+
+  <section>
+    <h2>Where it lives</h2>
+    <p class="sub">No new tab and no change to the Home header. It lives on your Profile, rides inside notices you already get, and shows up on you wherever other people see you.</p>
+    <div class="map">
+      <div class="spot"><h3><span class="n">1</span>Profile: level card</h3><p>Takes the place of the "Next Milestone" card in your Profile bento, so nothing is added to the page. Level ring, XP bar, and the next reward. Visitors see your level too.</p></div>
+      <div class="spot"><h3><span class="n">2</span>Level popup</h3><p>Tap the card: a centered popup (like Streak and Challenge details) with this week's quests, today's XP, recent XP and the reward track.</p></div>
+      <div class="spot"><h3><span class="n">3</span>The Locker</h3><p>Where every reward goes. Rings, titles, favorites frames, app icons and Streak Freezes. Tap to equip. Opened from the popup or from Edit Profile.</p></div>
+      <div class="spot"><h3><span class="n">4</span>Everywhere you appear</h3><p>Your equipped ring shows on your avatar on Pulse posts, comments, Q&amp;A, Find people and your profile. Your title and level show on your profile.</p></div>
+      <div class="spot"><h3><span class="n">5</span>Inside notices</h3><p>No extra pop-ups for XP. The capsule you already get ("Session logged") gains a quiet second line: "+10 XP".</p></div>
+      <div class="spot"><h3><span class="n">6</span>Level up</h3><p>The one big moment: the same full-screen celebration as badges, showing your new level and what it just unlocked, with "Equip now".</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The screens</h2>
+    <div class="phones">
+
+      <div class="pcol"><div class="cap"><span class="n">1</span>Profile</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div><div class="scr">
+          <div style="display:flex;align-items:center;gap:14px;margin:8px 4px 14px">
+            <div class="av glow" style="--ring:var(--cobalt)">TA</div>
+            <div><div style="font-size:19px;font-weight:700">theantifail</div><div class="dim" style="font-size:13px">@theantifail</div>
+              <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><span class="lv">Lv 14 · Pro</span><span class="ttl">Backlog Slayer</span></div></div>
+          </div>
+          <div class="dim" style="font-size:13px;margin:0 4px 14px">212 games · 48 reviews · 31 following</div>
+          <div class="card" style="display:flex;align-items:center;gap:14px">
+            <div class="lring"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="none" stroke="var(--surface2)" stroke-width="5"/><circle cx="30" cy="30" r="26" fill="none" stroke="var(--cobalt)" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="113"/></svg><b>14</b></div>
+            <div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:15px">Level 14</b><span class="dim" style="font-size:12px">Pro</span></div>
+              <div class="xpbar" style="margin:7px 0 6px"><i style="width:31%"></i></div>
+              <div class="dim" style="font-size:12px">520 XP to Level 15 · unlocks App icons</div></div>
+            <span class="dim">›</span>
+          </div>
+          <div class="card ghost" style="margin-top:10px;height:150px"><div class="dim" style="font-size:12px;font-weight:700;letter-spacing:.06em">FAVORITE GAMES</div><div style="display:flex;gap:8px;margin-top:10px" id="fav"></div></div>
+          <div class="card ghost" style="margin-top:10px;height:110px"><div class="dim" style="font-size:12px;font-weight:700;letter-spacing:.06em">2026 CHALLENGE</div></div>
+        </div></div>
+        <p>The level card replaces "Next Milestone" in the bento. Under your name: your level and rank, and the title you picked. Your 4 favorites wear the frame you equipped (Gold edge here).</p>
+      </div>
+
+      <div class="pcol"><div class="cap"><span class="n">2</span>Level popup</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div><div class="scr ghost"><div class="card" style="height:120px"></div><div class="card" style="height:80px;margin-top:10px"></div></div>
+          <div class="dimmer"></div>
+          <div class="pop"><div class="ph">Level 14<span>Done</span></div><div class="pb">
+            <div style="display:flex;flex-direction:column;align-items:center;margin:8px 0 12px">
+              <div class="lring big"><svg viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--surface2)" stroke-width="8"/><circle cx="55" cy="55" r="48" fill="none" stroke="var(--cobalt)" stroke-width="8" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="208"/></svg><b>14<small>PRO</small></b></div>
+              <div style="font-size:13px;color:var(--muted);margin-top:8px">230 / 750 XP this level</div>
+              <div style="font-size:12.5px;color:var(--dim)">Today +185 XP · 5,430 XP total</div>
+            </div>
+            <div class="label" style="margin-top:6px">This week · resets Monday</div>
+            <div class="inner" id="quests"></div>
+            <div class="label">Next rewards</div>
+            <div class="inner" id="next"></div>
+            <div class="label">Recent XP</div>
+            <div class="inner" id="recent"></div>
+            <div style="height:12px"></div>
+            <button class="btn">Open Locker</button>
+          </div></div>
+        </div>
+        <p>A centered popup, like Streak and Challenge details: scroll it, tap Done. Three weekly quests, the next rewards, and exactly where today's XP came from.</p>
+      </div>
+
+      <div class="pcol"><div class="cap"><span class="n">3</span>The Locker</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div><div class="scr">
+          <div class="apphead"><span class="back">‹</span><div><b>Locker</b><div class="dim" style="font-size:12.5px">9 of 22 unlocked</div></div></div>
+          <div class="label">Avatar ring</div>
+          <div class="group"><div class="swgrid" id="rings"></div></div>
+          <div class="label">Title under your name</div>
+          <div class="group" id="titles"></div>
+          <div class="label">Favorites frame</div>
+          <div class="group"><div class="frames" id="frames"></div></div>
+          <div class="label">App icon</div>
+          <div class="group"><div class="icons" id="icons"></div></div>
+          <div class="label">Streak Freezes</div>
+          <div class="group"><div class="fz"><div>Ready</div><div class="empty">Level 12 ✓ · used Oct 22</div></div><div class="dim" style="font-size:12px;padding:0 14px 12px">A freeze is used for you automatically on a day you miss. One refills every week.</div></div>
+        </div></div>
+        <p>Every reward lands here the moment you unlock it. Tap to equip; it changes right away everywhere you appear. Locked items show the level that unlocks them.</p>
+      </div>
+
+      <div class="pcol"><div class="cap"><span class="n">4</span>How others see you</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div><div class="scr">
+          <div style="font-size:20px;font-weight:700;color:var(--cobalt-ink);margin:4px 4px 8px">The pulse</div>
+          <div class="post"><div class="av sm glow" style="--ring:var(--cobalt)">TA</div><div><div class="h"><b>theantifail</b> <span class="vs">finished</span> <span class="dim">· 2h</span></div><div class="card" style="margin-top:8px;height:84px;background:linear-gradient(120deg,#2a2140,#1a2240)"></div></div></div>
+          <div class="post"><div class="av sm prism">JE</div><div><div class="h"><b>jemig19</b> <span class="vs">started</span> Hades <span class="dim">· 4h</span></div></div></div>
+          <div class="post"><div class="av sm" style="--ring:var(--green)">RN</div><div><div class="h"><b>Ramen Noodles</b> <span style="color:var(--purple-ink)">made a list</span> <span class="dim">· 1d</span></div></div></div>
+          <div class="label" style="margin-top:22px">Find your people</div>
+          <div class="group">
+            <div class="row"><div class="av sm glow" style="--ring:var(--purple)">FI</div><div class="t">FINISHER <span class="tag">Lv 22</span><span>Also loves Elden Ring</span></div><span class="lv" style="background:var(--cobalt);color:#fff;height:28px;padding:0 12px;border-radius:999px">Follow</span></div>
+            <div class="row"><div class="av sm" style="--ring:var(--green)">AJ</div><div class="t">alex.jorge0916 <span class="tag">Lv 9</span><span>Plays on PC, like you</span></div><span class="lv" style="background:var(--cobalt);color:#fff;height:28px;padding:0 12px;border-radius:999px">Follow</span></div>
+          </div>
+        </div></div>
+        <p>Rings follow you across the app: posts, comments, Q&amp;A, Find people. The level number appears only on profiles and Find people, so the feed stays clean.</p>
+      </div>
+
+      <div class="pcol"><div class="cap"><span class="n">5</span>Earning XP</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div><div class="scr" style="padding-top:60px">
+          <div class="capsule"><span class="ci"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><div><b>Session logged · Elden Ring</b><span>1h 40m · +10 XP</span></div></div>
+          <div style="height:14px"></div>
+          <div class="capsule"><span class="ci" style="background:color-mix(in srgb,var(--green) 22%,var(--surface2));color:var(--green-ink)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Review posted</b><span>Hades · +25 XP</span></div></div>
+          <div style="margin-top:26px" class="ghost"><div class="card" style="height:140px"></div><div class="card" style="height:200px;margin-top:10px"></div></div>
+        </div></div>
+        <p>No extra pop-ups. The notice you already get carries the XP on its second line. When a daily cap is reached, the line just stops showing XP.</p>
+      </div>
+
+      <div class="pcol"><div class="cap"><span class="n">6</span>Level up</div>
+        <div class="phone"><div class="sb"><span>9:41</span><span>5G</span></div>
+          <div class="cele">
+            <div class="eb">LEVEL UP</div>
+            <div class="lring big" style="margin-top:14px"><svg viewBox="0 0 110 110"><circle cx="55" cy="55" r="48" fill="none" stroke="var(--cobalt)" stroke-width="8"/></svg><b>15<small>PRO</small></b></div>
+            <h4>Level 15</h4>
+            <p class="muted" style="font-size:14px">5,950 XP total</p>
+            <div class="unl"><span style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--cobalt),var(--purple));display:grid;place-items:center;flex:none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></span><div><b style="font-size:15px">App icons unlocked</b><div class="dim" style="font-size:12.5px">3 new home-screen icons in your Locker</div></div></div>
+            <button class="btn">Equip now</button>
+            <div style="height:10px"></div>
+            <button class="btn sec">Later</button>
+          </div>
+        </div>
+        <p>Uses the same full-screen celebration as badges. It only fires on a level up, never for ordinary XP. Reduce Motion: fades only.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>XP per action</h2>
+    <p class="sub">Real playing and writing earn the most. Quick taps earn a little, and each action has a daily cap so nobody can farm a level. Every amount is awarded once per thing (finishing the same game twice doesn't pay twice).</p>
+    <div class="cols">
+      <div class="tbl tblwrap"><table id="xpA"></table></div>
+      <div class="tbl tblwrap"><table id="xpB"></table></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Levels and how long they take</h2>
+    <p class="sub">Each level costs 50 XP more than the one before it (100 XP for Level 2, 150 for Level 3, and so on). A regular player earns about 100 XP a day. Six ranks give the number a name.</p>
+    <div class="cols">
+      <div class="tbl tblwrap"><table id="curve"></table></div>
+      <div class="tbl tblwrap"><table id="ranks"></table></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What every level unlocks</h2>
+    <p class="sub">Something every few levels, all of it going to the Locker. Cosmetic only: nothing changes how the app works for anyone else, and nothing can be bought.</p>
+    <div class="tbl tblwrap"><table id="rewards"></table></div>
+  </section>
+
+  <section>
+    <h2>The rules that keep it fair</h2>
+    <div class="rules">
+      <div><h3>Earned, never bought</h3><p>No XP for sale, no paid boosts. A level means you actually played. Plus can add extra ring styles later, but never XP.</p></div>
+      <div><h3>Never taken away</h3><p>Deleting a review or a game doesn't remove XP, and a break never lowers your level. Quests just wait for you.</p></div>
+      <div><h3>Can't be farmed</h3><p>Daily caps on quick actions, once-per-thing awards, and XP is added on the server from the same events the badges read, so it can't be faked from the phone.</p></div>
+      <div><h3>Fair to people who were here first</h3><p>On launch day your XP is counted from your whole history (same daily caps). You get one card: "You're Level 14", with everything you unlocked. No pile of popups.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const XP_A=[
+ ['Playing',null],['Log a session','10','5 a day'],['Set a game to Currently Playing','5','3 a day'],['Finish a game (mark it Played)','50','5 a day'],['Add to Backlog','2','10 a day'],
+ ['Writing',null],['Rate a game','5','10 a day'],['Write a review with words','25','3 a day'],['Journal entry with a note','15','3 a day'],['Make a list (3+ games)','20','2 a day'],
+ ['Helping',null],['Answer a question in Q&A','20','5 a day'],['Your answer is picked as the best','50','—'],['Ask a question','10','3 a day']
+];
+const XP_B=[
+ ['Social',null],['Heart someone\'s post','1','10 a day'],['Comment on someone\'s post','3','10 a day'],['Someone hearts your post','2','20 a day'],['Follow someone','2','5 a day'],
+ ['Milestones',null],['Easy badge','50','—'],['Medium badge','150','—'],['Hard badge','400','—'],['Bronze / Silver / Gold tier','100 / 250 / 600','—'],['Streak: Spark / Ember / Kindled','25 / 50 / 100','—'],['Streak: Blaze / Wildfire','200 / 500','—'],['Finish your yearly Challenge','1,000','—'],
+ ['Quests',null],['Each weekly quest','50–100','3 a week'],['All 3 quests in one week','+250','—']
+];
+function xpTable(id,rows){document.getElementById(id).innerHTML='<tr><th>Action</th><th style="text-align:right">XP</th><th style="text-align:right">Cap</th></tr>'+rows.map(r=>r[1]===null?`<tr class="grp"><td colspan="3">${r[0]}</td></tr>`:`<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="cap">${r[2]}</td></tr>`).join('')}
+xpTable('xpA',XP_A);xpTable('xpB',XP_B);
+
+const cum=n=>{let s=0;for(let k=1;k<n;k++)s+=100+50*(k-1);return s};
+const time=xp=>{const d=xp/100; if(d<1.5) return 'day one'; if(d<14) return Math.round(d)+' days'; if(d<60) return Math.round(d/7)+' weeks'; if(d<365) return Math.round(d/30)+' months'; return (d/365).toFixed(1).replace('.0','')+' years'};
+const RANKS=[[1,4,'Rookie','var(--dim)'],[5,9,'Player','var(--muted)'],[10,19,'Pro','var(--cobalt)'],[20,29,'Elite','var(--green)'],[30,49,'Master','var(--purple)'],[50,50,'Legend','var(--gold)']];
+const rankOf=l=>RANKS.find(r=>l>=r[0]&&l<=r[1]);
+document.getElementById('curve').innerHTML='<tr><th>Level</th><th style="text-align:right">Total XP</th><th style="text-align:right">At ~100 XP a day</th></tr>'+[2,3,4,5,10,15,20,25,30,40,50].map(l=>`<tr><td>${l} <span class="dim">· ${rankOf(l)[2]}</span></td><td class="num">${cum(l).toLocaleString()}</td><td class="cap">${l<=4?'day one':time(cum(l))}</td></tr>`).join('');
+document.getElementById('ranks').innerHTML='<tr><th>Rank</th><th>Levels</th><th>What it says</th></tr>'+[
+ ['Rookie','1–4','Just started. Day one lands here.'],['Player','5–9','Uses the app most days.'],['Pro','10–19','A real regular. About a month in.'],['Elite','20–29','Months of playing, writing and helping.'],['Master','30–49','Most of a year, or more.'],['Legend','50','The long haul. Very few will get here.']
+].map(([n,l,d],i)=>`<tr><td><span class="rank" style="background:${RANKS[i][3]}"></span><b>${n}</b></td><td>${l}</td><td class="dim">${d}</td></tr>`).join('');
+
+const RW=[
+ [2,'Avatar ring','Cobalt, Mint and Violet rings','Locker → Avatar ring. Shows around your avatar everywhere.'],
+ [3,'Title slot','Show one earned badge under your name','Locker → Title. Shows on your profile.'],
+ [5,'Streak Freeze','Miss a day without losing your streak (holds 1)','Used automatically. One refills each week.'],
+ [7,'Glow ring','A soft glow behind your ring','Locker → Avatar ring.'],
+ [10,'Favorites frames','Gold edge and Glow frames for your 4 favorites','Locker → Favorites frame. Shows on your profile.'],
+ [12,'Second Streak Freeze','Hold 2 at once','Used automatically.'],
+ [15,'App icons','3 alternate Checkpoint icons for your home screen','Locker → App icon. Changes the icon on your phone.'],
+ [18,'Gold ring','The star gold, around your avatar','Locker → Avatar ring.'],
+ [20,'Elite rank + Holo frame','A shimmering frame for your favorites','Locker → Favorites frame.'],
+ [25,'Custom title','Write your own title (20 characters, checked like any other text)','Locker → Title.'],
+ [30,'Prism ring','A ring in all three accent colors','Locker → Avatar ring.'],
+ [35,'App icons, set 2','3 more icons','Locker → App icon.'],
+ [40,'Animated ring','Your ring slowly turns (still under Reduce Motion)','Locker → Avatar ring.'],
+ [50,'Legend','Legend rank, a Legend ring and the Legend title','Locker. Shown on your profile.']
+];
+document.getElementById('rewards').innerHTML='<tr><th>Level</th><th>Unlock</th><th>What it is</th><th>Where it goes / what you do with it</th></tr>'+RW.map(([l,n,w,g])=>`<tr><td class="num" style="text-align:left">Lv ${l}</td><td><b>${n}</b></td><td class="dim">${w}</td><td class="dim">${g}</td></tr>`).join('')+'<tr><td class="num" style="text-align:left">Every level</td><td><b>A new number</b></td><td class="dim">Your level and rank on your profile</td><td class="dim">Visitors see it too.</td></tr>';
+
+// Popup contents
+const chk='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+document.getElementById('quests').innerHTML=[[1,'Log 3 sessions','3 of 3','+100'],[1,'Heart 5 posts from other players','5 of 5','+50'],[0,'Rate or review a game','0 of 1','+100'],[0,'All three this week','2 of 3','+250']].map(([d,t,s,x],i)=>`<div class="row"><span class="qk ${d?'done':''}">${d?chk:''}</span><div class="t">${t}<span>${s}</span></div><span class="xp">${x}</span></div>`).join('');
+document.getElementById('next').innerHTML=[['Lv 15','App icons','520 XP away, about 5 days'],['Lv 18','Gold ring','about a month'],['Lv 20','Elite rank + Holo frame','about 7 weeks']].map(([l,t,s])=>`<div class="row"><span class="xp" style="width:38px">${l}</span><div class="t">${t}<span>${s}</span></div></div>`).join('');
+document.getElementById('recent').innerHTML=[['Session logged · Elden Ring','Today','+10'],['Review posted · Hades','Today','+25'],['Badge · Hat Trick','Today','+150'],['5 hearts on your posts','Yesterday','+10']].map(([t,s,x])=>`<div class="row"><div class="t">${t}<span>${s}</span></div><span class="xp">${x}</span></div>`).join('');
+
+// Locker
+document.getElementById('rings').innerHTML=[['Cobalt','var(--cobalt)','',1,0],['Mint','var(--green)','',1,0],['Violet','var(--purple)','',1,0],['Glow','var(--cobalt)','glow',0,1],['Gold','var(--gold)','',0,0,'Lv 18'],['Prism','','prism',0,0,'Lv 30'],['Animated','var(--purple-ink)','',0,0,'Lv 40'],['Legend','var(--gold)','glow',0,0,'Lv 50']].map(([n,c,cl,un,on,lk],i)=>`<div class="sw ${on?'on':''} ${(!un&&!on)?'locked':''}"><span class="dot ${cl}" style="${c?`--ring:${c}`:''}"></span>${n}${lk?`<span class="lk">${lk}</span>`:''}</div>`).join('').replace('Glow</div>','Glow<span class="lk" style="color:var(--cobalt-ink)">Equipped</span></div>');
+document.getElementById('titles').innerHTML=[['Backlog Slayer','Badge you earned',1],['Kindred Spirit','Badge you earned',0],['Pro','Your rank',0],['Write your own','Unlocks at Level 25',-1]].map(([t,s,on])=>`<div class="row" style="${on<0?'opacity:.45':''}"><div class="t">${t}<span>${s}</span></div>${on>0?`<span style="width:20px;height:20px;border-radius:50%;background:var(--cobalt);display:grid;place-items:center;color:#fff">${chk}</span>`:on<0?'<span class="lk dim" style="font-size:11px;font-weight:700">Lv 25</span>':'<span style="width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line)"></span>'}</div>`).join('');
+document.getElementById('frames').innerHTML=[['Clean','',0,1],['Gold edge','gold',1,1],['Glow','glow',0,1],['Holo','holo',0,0]].map(([n,c,on,un])=>`<div class="fr ${c} ${on?'on':''} ${un?'':'locked'}"><div class="cv"><i></i><i></i><i></i><i></i></div>${n}${un?'':' · Lv 20'}</div>`).join('');
+document.getElementById('icons').innerHTML=[['Classic','linear-gradient(135deg,#0a0f1f,#1a2240)',1,1],['Cobalt','linear-gradient(135deg,var(--cobalt),#1e40af)',0,0],['Mint','linear-gradient(135deg,var(--green),#065f46)',0,0],['Violet','linear-gradient(135deg,var(--purple),#4c1d95)',0,0]].map(([n,bg,on,un])=>`<div class="ic ${on?'on':''} ${un?'':'locked'}"><i style="background:${bg}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></i>${n}${un?'':'<span class="lk dim" style="font-size:10px;font-weight:700">Lv 15</span>'}</div>`).join('');
+
+// Favorites with gold frame
+const art=id=>`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900.jpg`;
+document.getElementById('fav').innerHTML=['1145360','1245620','367520','1086940'].map(id=>`<img src="${art(id)}" alt="" style="width:62px;height:88px;border-radius:6px;object-fit:cover;background:#232a44;box-shadow:0 0 0 1.5px var(--gold)" onerror="this.removeAttribute('src')">`).join('');
+</script>
+</body>
+</html>

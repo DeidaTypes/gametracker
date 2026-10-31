@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home List Post</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  /* Theme tokens copied from src/styles/theme.css (Ocean, Navy, Light Pink) */
+  :root{--move:cubic-bezier(.32,.72,0,1);--fade:cubic-bezier(.25,.1,.25,1);--on-cover:#ffffff;--cover-chip:rgba(255,255,255,.16)}
+  .t-ocean{--base:#061619;--surface:#0c2328;--surface2:#133139;--line:rgba(140,210,220,.13);--text:#e8f6f7;--muted:#94bcc1;--dim:#64888e;--primary:#1fb5c7;--review:#4cc489;--review-text:#c6f6da;--journal:#8a86f0;--journal-text:#dcdbff;--on:#031418}
+  .t-navy{--base:#0a0f1f;--surface:#131a35;--surface2:#1a2240;--line:rgba(148,168,212,.12);--text:#f0f3fa;--muted:#94a8d4;--dim:#6b7995;--primary:#3b82f6;--review:#0a9e6a;--review-text:#b6fde0;--journal:#8b32d1;--journal-text:#e4c2ff;--on:#ffffff}
+  .t-pink{--base:#f5d3de;--surface:#fcecf1;--surface2:#eec3d1;--line:rgba(120,30,60,.16);--text:#35121f;--muted:#7c4655;--dim:#885c6b;--primary:#c92a62;--review:#0d8069;--review-text:#055f4d;--journal:#7446cf;--journal-text:#6538c0;--on:#ffffff}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:#e9e6df;color:#1c1c1c;-webkit-font-smoothing:antialiased}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) body{background:#111214;color:#e8e8e8}}
+  :root[data-theme="dark"] body{background:#111214;color:#e8e8e8}
+  .page{max-width:1240px;margin:0 auto;padding:32px 16px 64px}
+  h1{font-size:28px;line-height:1.2;margin:0 0 8px;letter-spacing:-.02em}
+  .lede{max-width:760px;font-size:15.5px;line-height:1.55;margin:0 0 20px;opacity:.82}
+  .ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:24px}
+  .ctrl span{font-size:13px;font-weight:600;opacity:.7;margin-right:4px}
+  .ctrl button{height:34px;padding:0 14px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:600 13px 'DM Sans',sans-serif;cursor:pointer}
+  .ctrl button.on{background:#1c1c1c;color:#fff;border-color:#1c1c1c}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ctrl button.on{background:#e8e8e8;color:#111;border-color:#e8e8e8}}
+  .row{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .cap{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.6}
+
+  /* Phone */
+  .phone{width:390px;max-width:calc(100vw - 32px);height:760px;border-radius:44px;background:var(--base);color:var(--text);overflow:hidden;position:relative;box-shadow:0 0 0 10px #0b0b0c,0 24px 60px rgba(0,0,0,.35)}
+  .scroll{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding:58px 0 40px}
+  .scroll::-webkit-scrollbar{display:none}
+  .sb{position:absolute;top:0;left:0;right:0;height:50px;display:flex;justify-content:space-between;align-items:center;padding:6px 30px 0;font-size:15px;font-weight:600;z-index:5;background:linear-gradient(var(--base),color-mix(in srgb,var(--base) 0%,transparent))}
+  .ph{padding:0 20px 6px}
+  .ph h2{margin:0;font-size:20px;font-weight:700;color:var(--primary)}
+  .ph p{margin:2px 0 0;font-size:12.5px;color:var(--dim)}
+
+  /* Posts (values from PulsePosts.css after HF-2 / HF-5) */
+  .post{position:relative;display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px 20px}
+  .post::before{content:"";position:absolute;top:0;left:20px;right:20px;height:1px;background:var(--line)}
+  .post.first::before{display:none}
+  .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+  .body{min-width:0}
+  .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px;font-size:14.5px;line-height:1.35}
+  .head b{font-weight:600}
+  .vs{color:var(--primary);font-weight:500}
+  .vl{color:var(--journal-text);font-weight:500}
+  .t-pink .vl{color:var(--journal-text)}
+  .tm{color:var(--dim)}
+  .acts{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .pill{display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 13px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font:600 11.5px 'DM Sans',sans-serif;cursor:pointer}
+  .pill svg{width:14px;height:14px}
+  .pill.bl{margin-left:auto}
+
+  /* Finished band (today, for comparison) */
+  .fin{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:12px;height:112px;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--base) 88%,transparent);color:var(--on-cover);text-align:left}
+  .blur{position:absolute;inset:-30px;background-size:cover;background-position:center;filter:blur(22px) brightness(.55) saturate(1.2);transform:scale(1.15)}
+  .scrim{position:absolute;inset:0;background:color-mix(in srgb,var(--base) 35%,transparent)}
+  .fin .cv{position:relative;width:66px;height:88px;border-radius:8px;object-fit:cover;flex:none;box-shadow:0 6px 18px color-mix(in srgb,var(--base) 65%,transparent);background:#222}
+  .ft{position:relative;min-width:0}
+  .chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;background:var(--cover-chip);font-size:12px;font-weight:600;backdrop-filter:blur(6px)}
+  .chip svg{width:13px;height:13px}
+  .ttl{display:block;margin-top:8px;font-size:17px;font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stars{display:flex;gap:2px;margin-top:5px;color:#f5c542}
+  .stars svg{width:13px;height:13px}
+
+  /* TODAY: flat list box */
+  .ls{display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:8px;border-radius:12px;background:var(--surface)}
+  .mosaic{width:60px;height:60px;border-radius:8px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;flex:none;margin-right:14px}
+  .mosaic img{width:100%;height:100%;object-fit:cover}
+  .ls .n{font-size:15px;font-weight:600}
+  .ls .c{font-size:12.5px;color:var(--dim);margin-top:4px}
+
+  /* NEW: list band */
+  .lb{position:relative;display:flex;align-items:center;gap:14px;width:100%;margin-top:8px;padding:12px 14px 12px 12px;height:112px;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--base) 88%,transparent);color:var(--on-cover);text-align:left;cursor:pointer;border:0;font:inherit}
+  .lb .wash{position:absolute;inset:-30px;display:grid;grid-template-columns:repeat(4,1fr);filter:blur(24px) brightness(.55) saturate(1.25);transform:scale(1.15)}
+  .lb .wash span{background-size:cover;background-position:center}
+  .lb .tint{position:absolute;inset:0;background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--journal) 26%,transparent) 0%,transparent 60%),color-mix(in srgb,var(--base) 30%,transparent)}
+  .fanx{position:relative;width:84px;height:84px;flex:none}
+  .fanx img,.fanx .ph0{position:absolute;bottom:0;border-radius:6px;object-fit:cover;box-shadow:0 6px 16px rgba(0,0,0,.35);background:#2a2a2a}
+  .fanx .c{left:17px;width:50px;height:75px;z-index:3;bottom:4px}
+  .fanx .l{left:0;width:40px;height:60px;transform:rotate(-9deg);transform-origin:bottom right;z-index:1;opacity:.92}
+  .fanx .r{right:0;width:40px;height:60px;transform:rotate(9deg);transform-origin:bottom left;z-index:2;opacity:.92}
+  .lb .ft{flex:1}
+  .lb .ttl{margin-top:6px}
+  .lb .sub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin-top:4px;font-size:12.5px;line-height:1.3;opacity:.8;overflow:hidden}
+  .lb.noart{background:var(--surface2);color:var(--text)}
+  .lb.noart .chip{background:color-mix(in srgb,var(--text) 8%,transparent)}
+  .lb.noart .fanx .ph0{background:color-mix(in srgb,var(--text) 10%,var(--surface));box-shadow:none;display:grid;place-items:center;color:var(--dim)}
+  .lb:active{transform:scale(.985)}
+  @media (prefers-reduced-motion: reduce){.lb:active{transform:none}}
+
+  .notes{max-width:860px;margin:36px auto 0;font-size:15px;line-height:1.6}
+  .notes h2{font-size:18px;margin:24px 0 8px}
+  .notes ul{padding-left:20px;margin:0}
+  .notes li{margin:6px 0}
+  .notes b{font-weight:700}
+  @media (max-width:860px){.phone{height:680px}}
+</style>
+</head>
+<body class="t-ocean">
+<div class="page">
+  <h1>Home: the list post</h1>
+  <p class="lede">The list post gets the same treatment as a finish: a 112&nbsp;pt band with the list's own covers blurred behind it, a hint of the list purple in the corner, three posters fanned like Library's list cards, a "List" chip, the name large, and what's inside ("5 games · DOOM Eternal, Hades and 3 more"). Same height, radius and type as the Finished band, so they read as a family. Switch themes to check each one.</p>
+  <div class="ctrl"><span>Theme</span>
+    <button data-t="t-ocean" class="on">Ocean</button>
+    <button data-t="t-navy">Navy</button>
+    <button data-t="t-pink">Light Pink</button>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <div class="cap">Today</div>
+      <div class="phone"><div class="sb"><span>4:39</span><span>100</span></div><div class="scroll">
+        <div class="ph"><h2>The pulse</h2><p>What everyone's up to</p></div>
+        <article class="post first"><div class="av" style="background:#5b8def">J</div><div class="body">
+          <div class="head"><b>jemig19</b><span class="vl">made a list</span><span class="tm">· 5h</span></div>
+          <div class="ls"><div class="mosaic"><img data-app="782330" alt=""><img data-app="1145360" alt=""><img data-app="504230" alt=""><img data-app="1245620" alt=""></div><div><div class="n">Favorite games</div><div class="c">5 games</div></div></div>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#8a4fb0">R</div><div class="body">
+          <div class="head"><b>Ramen Noodles</b><span class="vs">finished</span><span class="tm">· 1d</span></div>
+          <div class="fin"><div class="blur" data-bg="1145360"></div><div class="scrim"></div><img class="cv" data-app="1145360" alt=""><div class="ft"><span class="chip" data-i="flag">Finished</span><span class="ttl">Hades</span><span class="stars" data-stars="5"></span></div></div>
+          <div class="acts"><span class="pill" data-i="heart">1</span><span class="pill" data-i="msg">Reply</span><span class="pill bl" data-i="bplus">Backlog</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#c0587d">T</div><div class="body">
+          <div class="head"><b>theantifail</b><span class="vl">made a list</span><span class="tm">· Sep 23</span></div>
+          <div class="ls"><div class="mosaic"><img data-app="1086940" alt=""><img data-app="1903340" alt=""><img data-app="632470" alt=""><img data-app="374320" alt=""></div><div><div class="n">Games that shaped me</div><div class="c">8 games</div></div></div>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+      </div></div>
+    </div>
+
+    <div class="col">
+      <div class="cap">New</div>
+      <div class="phone"><div class="sb"><span>4:39</span><span>100</span></div><div class="scroll">
+        <div class="ph"><h2>The pulse</h2><p>What everyone's up to</p></div>
+        <article class="post first"><div class="av" style="background:#5b8def">J</div><div class="body">
+          <div class="head"><b>jemig19</b><span class="vl">made a list</span><span class="tm">· 5h</span></div>
+          <button class="lb"><div class="wash"><span data-bg="782330"></span><span data-bg="1145360"></span><span data-bg="504230"></span><span data-bg="1245620"></span></div><div class="tint"></div>
+            <div class="fanx"><img class="l" data-app="1145360" alt=""><img class="r" data-app="504230" alt=""><img class="c" data-app="782330" alt=""></div>
+            <div class="ft"><span class="chip" data-i="layers">List</span><span class="ttl">Favorite games</span><span class="sub">5 games · DOOM Eternal, Hades and 3 more</span></div></button>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#8a4fb0">R</div><div class="body">
+          <div class="head"><b>Ramen Noodles</b><span class="vs">finished</span><span class="tm">· 1d</span></div>
+          <div class="fin"><div class="blur" data-bg="1145360"></div><div class="scrim"></div><img class="cv" data-app="1145360" alt=""><div class="ft"><span class="chip" data-i="flag">Finished</span><span class="ttl">Hades</span><span class="stars" data-stars="5"></span></div></div>
+          <div class="acts"><span class="pill" data-i="heart">1</span><span class="pill" data-i="msg">Reply</span><span class="pill bl" data-i="bplus">Backlog</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#c0587d">T</div><div class="body">
+          <div class="head"><b>theantifail</b><span class="vl">made a list</span><span class="tm">· Sep 23</span></div>
+          <button class="lb"><div class="wash"><span data-bg="1086940"></span><span data-bg="1903340"></span><span data-bg="632470"></span><span data-bg="374320"></span></div><div class="tint"></div>
+            <div class="fanx"><img class="l" data-app="1903340" alt=""><img class="r" data-app="632470" alt=""><img class="c" data-app="1086940" alt=""></div>
+            <div class="ft"><span class="chip" data-i="layers">List</span><span class="ttl">Games that shaped me</span><span class="sub">8 games · Baldur's Gate 3, Clair Obscur and 6 more</span></div></button>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#3f9e83">O</div><div class="body">
+          <div class="head"><b>obcheck1030x</b><span class="vl">made a list</span><span class="tm">· 2d</span></div>
+          <button class="lb"><div class="wash"><span data-bg="1030300"></span><span data-bg="367520"></span><span data-bg="1030300"></span><span data-bg="367520"></span></div><div class="tint"></div>
+            <div class="fanx"><img class="l" data-app="367520" alt=""><img class="c" data-app="1030300" alt=""></div>
+            <div class="ft"><span class="chip" data-i="layers">List</span><span class="ttl">Bug games</span><span class="sub">2 games · Hollow Knight: Silksong and Hollow Knight</span></div></button>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+        <article class="post"><div class="av" style="background:#d08a3c">A</div><div class="body">
+          <div class="head"><b>alex.jorge0916</b><span class="vl">made a list</span><span class="tm">· Jun 7</span></div>
+          <button class="lb noart">
+            <div class="fanx"><span class="ph0 c" data-i="layers"></span></div>
+            <div class="ft"><span class="chip" data-i="layers">List</span><span class="ttl">Retro picks</span><span class="sub">3 games · Aegis Wing, Pokémon White Version and 1 more</span></div></button>
+          <div class="acts"><span class="pill" data-i="heart">Like</span><span class="pill" data-i="msg">Reply</span></div>
+        </div></article>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2>What changes</h2>
+    <ul>
+      <li><b>A band, like a finish.</b> 112&nbsp;pt tall, 14 radius, the same scrim and light text as the Finished band, so lists and finishes read as one family instead of a flat grey box.</li>
+      <li><b>The list's own art behind it.</b> Up to four of its covers sit side by side, blurred and darkened, so every list gets its own color. A soft wash of the list purple in the top-right corner ties it to the purple "made a list".</li>
+      <li><b>Posters, fanned.</b> The same three-poster fan as Library's list cards (center on top, the two behind tilted 9°). A two-game list shows two posters, never an empty plate. A list with a custom cover uses that one picture.</li>
+      <li><b>What's inside.</b> A "List" chip with the layers icon, the name at 17&nbsp;pt on one line, and up to two lines of "5 games · DOOM Eternal, Hades and 3 more", taken from the list's real first titles.</li>
+      <li><b>No art yet.</b> Covers missing: a solid band in the second surface color with one placeholder plate, text in the theme's text color.</li>
+      <li><b>Unchanged.</b> The head line, Like and Reply, tapping opens the list, empty lists still don't post.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const I={heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+bplus:'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><line x1="12" x2="12" y1="7" y2="13"/><line x1="15" x2="9" y1="10" y2="10"/>',
+flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+layers:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'};
+$$('[data-i]').forEach(el=>{el.insertAdjacentHTML('afterbegin',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="${el.classList.contains('ph0')?22:14}" height="${el.classList.contains('ph0')?22:14}">${I[el.dataset.i]}</svg>`)});
+const STAR='M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z';
+$$('[data-stars]').forEach(el=>{let h='';for(let i=0;i<5;i++)h+=`<svg viewBox="0 0 24 24"><path d="${STAR}" fill="currentColor"/></svg>`;el.innerHTML=h});
+const art=id=>[`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/library_600x900.jpg`,`https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_600x900.jpg`];
+$$('img[data-app]').forEach(img=>{const u=art(img.dataset.app);let k=0;img.onerror=()=>{k++;if(k<u.length)img.src=u[k];else{img.removeAttribute('src');img.style.background='linear-gradient(135deg,#3a3f55,#1d2030)'}};img.src=u[0]});
+$$('[data-bg]').forEach(el=>{const u=art(el.dataset.bg);const p=new Image();let k=0;p.onload=()=>{el.style.backgroundImage=`url(${p.src})`};p.onerror=()=>{k++;if(k<u.length)p.src=u[k];else el.style.background='linear-gradient(135deg,#3a3f55,#1d2030)'};p.src=u[0]});
+$$('.ctrl [data-t]').forEach(b=>b.onclick=()=>{document.body.className=b.dataset.t;$$('.ctrl [data-t]').forEach(x=>x.classList.toggle('on',x===b))});
+</script>
+</body>
+</html>
