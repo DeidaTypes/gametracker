@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { BADGES, TIER_RANK } from '../data/badges'
 import { supabase } from '../services/supabase'
+import { shapeBadgeStats } from '../services/badgeService'
 import { useCachedResource } from './useCachedResource'
 
 /**
@@ -19,9 +20,10 @@ import { useCachedResource } from './useCachedResource'
  * never on mount. See the chat report for the measured cost of that one
  * query vs. the old per-mount computation.
  *
- * Reshapes the query result into the `stats` shape src/data/badges.js's
- * tieredBadge() reads: `{ [familyId]: current_value, [familyId +
- * '__tier']: tier }`. Refetches on the same `badgesUpdated` event
+ * Reshapes the query result via shapeBadgeStats() in badgeService.js
+ * into the `stats` shape src/data/badges.js's tieredBadge() reads:
+ * `{ [familyId]: current_value, [familyId + '__tier']: tier }`.
+ * Refetches on the same `badgesUpdated` event
  * badgeService.recomputeBadges() dispatches after a successful RPC call,
  * plus `storage` for cross-tab consistency (matching the old hook's
  * refresh convention).
@@ -30,16 +32,6 @@ import { useCachedResource } from './useCachedResource'
  * stats, loading } — so BadgesRow / UserBadgesPage / BadgeShowcase /
  * BadgeDetailModal (all out of scope here, S16-5) need no changes.
  */
-function shapeBadgeStats(rows) {
-  const next = {}
-  for (const row of rows || []) {
-    next[row.badge_id] = Number(row.current_value) || 0
-    next[`${row.badge_id}__tier`] = row.tier || null
-    next[`${row.badge_id}__celebrated`] = !!row.celebrated_at
-  }
-  return next
-}
-
 export function useBadges(userId) {
   const key = userId ? `profile:badges:${userId}` : null
 

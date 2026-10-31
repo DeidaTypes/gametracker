@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { ChevronDown } from 'lucide-react'
 import {
@@ -24,12 +24,14 @@ import './UserBadgesPage.css'
  */
 function UserBadgesPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { userId: targetUserId, resolving } = useProfileRouteUser()
 
   const { stats, loading } = useBadges(targetUserId)
   const rarityMap = useBadgeRarity()
   const [selectedBadge, setSelectedBadge] = useState(null)
   const [expanded, setExpanded] = useState(() => new Set())
+  const openedFromStateRef = useRef(false)
 
   const categories = useMemo(() => {
     return BADGE_SHELF_CATEGORIES.map((cat) => {
@@ -49,6 +51,27 @@ function UserBadgesPage() {
     }).filter((cat) => cat.badges.length > 0)
   }, [stats])
 
+  const isLoading = resolving || loading
+
+  // A capsule tap lands here with location.state.openBadge. Expand that
+  // family's row and open its detail. Once per mount, in-page only.
+  useEffect(() => {
+    if (openedFromStateRef.current || isLoading) return
+    openedFromStateRef.current = true
+    const family = location.state?.openBadge
+    if (typeof family !== 'string' || !family) return
+    const category = categories.find((cat) => cat.families.includes(family))
+    if (!category) return
+    setExpanded((prev) => {
+      if (prev.has(category.id)) return prev
+      const next = new Set(prev)
+      next.add(category.id)
+      return next
+    })
+    const detail = getHighestEarnedTierBadge(family, stats) || getRepresentativeBadge(family)
+    if (detail) setSelectedBadge(detail)
+  }, [isLoading, categories, stats, location.state])
+
   const toggleCategory = useCallback((categoryId) => {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -57,8 +80,6 @@ function UserBadgesPage() {
       return next
     })
   }, [])
-
-  const isLoading = resolving || loading
 
   return (
     <div className="badges-page">

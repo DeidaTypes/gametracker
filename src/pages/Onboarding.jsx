@@ -3,6 +3,7 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
 } from 'react'
 import { flushSync } from 'react-dom'
@@ -12,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { updateProfile } from '../services/profileService'
 import { updateUserProfile } from '../services/userService'
 import { completeOnboarding } from '../services/onboardingService'
+import { recomputeBadges, getPendingSingleBadges } from '../services/badgeService'
+import { claimBadgeMoments, holdBadgeMoments, showBadgeMoments } from '../services/badgeMoments'
 import { getOnboardingPeople } from '../services/onboardingPeopleService'
 import { setOnboarded } from '../services/userPreferences'
 import { getGameStatus, setGameStatus } from '../services/libraryService'
@@ -153,6 +156,14 @@ export default function Onboarding() {
     playing: false,
   })
 
+  // Hold unlock moments for the whole flow, before the watcher's effect
+  // can show them. Released on unmount, after Let's play has claimed
+  // whatever this flow earned.
+  useLayoutEffect(() => {
+    const release = holdBadgeMoments()
+    return () => release()
+  }, [])
+
   // Announce current screen title to screen readers whenever step changes.
   useEffect(() => {
     const title = STEP_TITLES[stepId]
@@ -186,19 +197,44 @@ export default function Onboarding() {
         await completeOnboarding(user.id)
       }
 
+      let moments = []
+      let momentStats = {}
+      if (user?.id) {
+        try {
+          await Promise.race([
+            recomputeBadges(),
+            new Promise((resolve) => setTimeout(resolve, 2500)),
+          ])
+          const { pending, stats } = await getPendingSingleBadges(user.id)
+          moments = claimBadgeMoments(pending)
+          momentStats = stats
+        } catch {
+          /* never blocks finishing */
+        }
+      }
+
       navigate('/', { replace: true })
 
-      const saved = savedRef.current
-      const parts = []
-      if (saved.platforms) parts.push('platforms')
-      if (saved.gamingSince) parts.push('gaming start')
-      if (saved.favorites > 0) parts.push('favorites')
-      if (saved.playing) parts.push('now playing')
-      if (parts.length > 0) {
-        showToast('Welcome to Checkpoint', 'success', 5000, null, null, {
-          sub: `Saved your ${joinList(parts)}`,
-          tone: 'saved',
+      if (moments.length) {
+        showBadgeMoments(moments, {
+          context: 'onboarding',
+          stats: momentStats,
+          userId: user.id,
+          navigate,
         })
+      } else {
+        const saved = savedRef.current
+        const parts = []
+        if (saved.platforms) parts.push('platforms')
+        if (saved.gamingSince) parts.push('gaming start')
+        if (saved.favorites > 0) parts.push('favorites')
+        if (saved.playing) parts.push('now playing')
+        if (parts.length > 0) {
+          showToast('Welcome to Checkpoint', 'success', 5000, null, null, {
+            sub: `Saved your ${joinList(parts)}`,
+            tone: 'saved',
+          })
+        }
       }
     } catch (err) {
       console.error('[Onboarding] finish failed:', err)

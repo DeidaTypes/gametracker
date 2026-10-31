@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useBadgeBackfill } from '../hooks/useBadgeBackfill'
@@ -13,37 +13,83 @@ import './BadgeBackfillSummary.css'
  * the first time backfill_my_badges() returns a non-empty grant list.
  * Brand-new users (zero earned tiers) never see this.
  *
- * Reuses BadgeReveal's overlay / card / halo / dismiss language, but
- * renders a compact grid instead of a queued one-at-a-time reveal.
+ * Also the card for a `badgeSummary` event (onboarding, or two or more
+ * unlocks at once). Same shell. One card at a time: if the backfill
+ * card is open, the event card waits until it is dismissed.
  */
 export default function BadgeBackfillSummary() {
   const { reduced } = useMotionPreference()
   const { settled, grants } = useBadgeBackfill()
   const [dismissed, setDismissed] = useState(false)
+  const [queue, setQueue] = useState([])
+  const summaryKey = useRef(0)
 
-  const visible = settled && grants.length > 0 && !dismissed
-  const count = grants.length
+  const backfillVisible = settled && grants.length > 0 && !dismissed
 
   useEffect(() => {
-    if (visible) hapticSuccess()
-  }, [visible])
+    const onSummary = (event) => {
+      const detail = event?.detail
+      if (!detail?.badges?.length) return
+      summaryKey.current += 1
+      const key = `badge-summary-${summaryKey.current}`
+      setQueue((prev) => [
+        ...prev,
+        {
+          key,
+          eyebrow: detail.eyebrow,
+          title: detail.title,
+          lede: detail.lede,
+          cta: detail.cta,
+          badges: detail.badges,
+        },
+      ])
+    }
+    window.addEventListener('badgeSummary', onSummary)
+    return () => window.removeEventListener('badgeSummary', onSummary)
+  }, [])
+
+  const summary = !backfillVisible && queue.length > 0 ? queue[0] : null
+  const backfillCount = grants.length
+  const active = backfillVisible
+    ? {
+        key: 'badge-backfill-summary',
+        eyebrow: 'Already earned',
+        title: `You've already earned ${backfillCount} ${backfillCount === 1 ? 'badge' : 'badges'}`,
+        lede: 'These were waiting for you from your existing play history.',
+        cta: 'Got it',
+        badges: grants,
+        ariaLabel: `You've already earned ${backfillCount} ${backfillCount === 1 ? 'badge' : 'badges'}`,
+      }
+    : summary
+      ? { ...summary, ariaLabel: summary.title }
+      : null
+
+  const activeKey = active?.key ?? null
+
+  useEffect(() => {
+    if (activeKey) hapticSuccess()
+  }, [activeKey])
 
   const dismiss = useCallback(() => {
-    setDismissed(true)
-  }, [])
+    if (backfillVisible) {
+      setDismissed(true)
+      return
+    }
+    setQueue((prev) => prev.slice(1))
+  }, [backfillVisible])
 
   const overlayMotion = popDim(reduced)
   const cardMotion = popCard(reduced)
 
   const content = (
     <AnimatePresence>
-      {visible && (
+      {active && (
         <motion.div
-          key="badge-backfill-summary"
+          key={active.key}
           className="bbs-overlay"
           role="alertdialog"
           aria-live="polite"
-          aria-label={`You've already earned ${count} ${count === 1 ? 'badge' : 'badges'}`}
+          aria-label={active.ariaLabel}
           onClick={dismiss}
           {...overlayMotion}
         >
@@ -54,16 +100,12 @@ export default function BadgeBackfillSummary() {
           >
             <div className="bbs-halo" aria-hidden="true" />
 
-            <p className="bbs-eyebrow">Already earned</p>
-            <h2 className="bbs-title text-heading">
-              {`You've already earned ${count} ${count === 1 ? 'badge' : 'badges'}`}
-            </h2>
-            <p className="bbs-lede text-body">
-              These were waiting for you from your existing play history.
-            </p>
+            <p className="bbs-eyebrow">{active.eyebrow}</p>
+            <h2 className="bbs-title text-heading">{active.title}</h2>
+            <p className="bbs-lede text-body">{active.lede}</p>
 
             <ul className="bbs-grid">
-              {grants.map((badge) => {
+              {active.badges.map((badge) => {
                 const Icon = badge.icon
                 const isSingle = badge.kind === 'single'
                 return (
@@ -92,7 +134,7 @@ export default function BadgeBackfillSummary() {
               onClick={dismiss}
               aria-label="Dismiss badge summary"
             >
-              Got it
+              {active.cta}
             </button>
           </motion.div>
         </motion.div>

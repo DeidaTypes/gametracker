@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { BADGES } from '../data/badges'
 import { useBadges } from './useBadges'
 import { useBadgeBackfill } from './useBadgeBackfill'
 import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 import { dispatchBadgeEarned } from '../components/BadgeReveal'
 import { syncEarnedBadge, syncAllEarnedBadges, acknowledgeBadgeCelebration, recomputeBadgesSoon } from '../services/badgeService'
+import { claimBadgeMoments, isBadgeMomentsHeld, showBadgeMoments } from '../services/badgeMoments'
 
 const STORAGE_PREFIX = 'gt:earnedBadges:v1'
 
@@ -65,8 +68,11 @@ function persistEarnedIds(userId, set) {
  *   - A brief userId=null (relaunch / auth flicker) of the SAME user
  *     keeps the in-memory set; a different user re-reads that user's key.
  *   - Empty → N in a single tick is hydration, not N unlocks.
+ *     That rule applies to tiered badges only. One-step badges
+ *     (kind === 'single') never enter the seen-set; they celebrate
+ *     from celebrated_at through badgeMoments.
  *
- * A genuine single unlock still dispatches exactly once.
+ * A genuine single tiered unlock still dispatches exactly once.
  *
  * Backfill coordination (this prompt — not the loading/replay fix):
  *   wait until useBadgeBackfill has settled, absorb any historical
@@ -75,6 +81,7 @@ function persistEarnedIds(userId, set) {
  *   untouched.
  */
 export function useBadgeUnlockWatcher() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const userId = user?.id || null
   const { earned, stats, loading } = useBadges(userId)
@@ -84,6 +91,15 @@ export function useBadgeUnlockWatcher() {
   const previousIdsRef = useRef(null)
   const lastUserIdRef = useRef(null)
   const absorbedBackfillRef = useRef(false)
+  // Bumped when a badgeMoments hold clears, so singles earned during
+  // the hold (onboarding) get a chance to show.
+  const [momentsEpoch, setMomentsEpoch] = useState(0)
+
+  useEffect(() => {
+    const onRelease = () => setMomentsEpoch((n) => n + 1)
+    window.addEventListener('badgeMomentsReleased', onRelease)
+    return () => window.removeEventListener('badgeMomentsReleased', onRelease)
+  }, [])
 
   useEffect(() => {
     if (!userId) {
@@ -107,10 +123,14 @@ export function useBadgeUnlockWatcher() {
 
     if (!absorbedBackfillRef.current) {
       absorbedBackfillRef.current = true
-      if (backfill.grants.length > 0) {
+      // One-step badges never enter the seen-set. Tiered grants still do.
+      const grantIds = backfill.grants
+        .filter((b) => b.kind !== 'single')
+        .map((b) => b.id)
+      if (grantIds.length > 0) {
         const next = new Set([
           ...(previousIdsRef.current || []),
-          ...backfill.grants.map((b) => b.id),
+          ...grantIds,
         ])
         previousIdsRef.current = next
         persistEarnedIds(userId, next)
@@ -120,7 +140,28 @@ export function useBadgeUnlockWatcher() {
     // Empty snapshot during hydration is not a baseline.
     if (loading) return
 
-    const currentIds = new Set(earned.map((b) => b.id))
+    // One-step badges. Families this launch's backfill just stamped
+    // belong to the Already earned card; stats can lag that stamp by
+    // one read, so those families are not moments.
+    if (!isBadgeMomentsHeld()) {
+      const grantedFamilies = new Set(
+        backfill.grants.map((badge) => badge.family).filter(Boolean)
+      )
+      const pending = BADGES.filter((badge) => (
+        badge.kind === 'single'
+        && badge.isEarned(stats)
+        && !stats?.[`${badge.family}__celebrated`]
+        && !grantedFamilies.has(badge.family)
+      ))
+      const claimed = claimBadgeMoments(pending)
+      if (claimed.length) {
+        showBadgeMoments(claimed, { context: 'app', stats, userId, navigate })
+      }
+    }
+
+    // Everything below is the tiered path, unchanged, on non-single badges.
+    const tiered = earned.filter((b) => b.kind !== 'single')
+    const currentIds = new Set(tiered.map((b) => b.id))
     // S16-4: Sprint 16 badges (badge.category === 'sprint16') are already
     // persisted server-side by recompute_my_badges() under their FAMILY
     // id (e.g. 'finisher'), with real tier/current_value columns — not
@@ -134,7 +175,7 @@ export function useBadgeUnlockWatcher() {
     // call below. This is additive filtering only — it does not touch
     // the separately-diagnosed `loading`/replay bug in this effect.
     const legacyEarnedIds = () =>
-      earned.filter((b) => b.category !== 'sprint16').map((b) => b.id)
+      tiered.filter((b) => b.category !== 'sprint16').map((b) => b.id)
 
     if (previousIdsRef.current === null) {
       previousIdsRef.current = currentIds
@@ -143,7 +184,7 @@ export function useBadgeUnlockWatcher() {
       return
     }
 
-    const newlyEarned = earned.filter((b) => !previousIdsRef.current.has(b.id))
+    const newlyEarned = tiered.filter((b) => !previousIdsRef.current.has(b.id))
     if (newlyEarned.length === 0) return
 
     // Hydration, not N simultaneous unlocks. A single first-ever badge
@@ -178,7 +219,7 @@ export function useBadgeUnlockWatcher() {
     const next = new Set([...previousIdsRef.current, ...currentIds])
     previousIdsRef.current = next
     persistEarnedIds(userId, next)
-  }, [earned, stats, userId, loading, backfill.settled, backfill.failed, backfill.grants])
+  }, [earned, stats, userId, loading, backfill.settled, backfill.failed, backfill.grants, navigate, momentsEpoch])
 
   // Hearts and follows that arrived while the app was away move Fan Mail,
   // Fan Favorite and Squad Goals only when this user recomputes. A long

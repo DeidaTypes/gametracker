@@ -16,6 +16,21 @@ import { BADGES, TIER_RANK } from '../data/badges'
  */
 export const BADGE_BACKFILL_VERSION = 4
 
+/**
+ * Reshape one user_badges read into the stats object badges.js reads:
+ * `{ [familyId]: current_value, [familyId + '__tier']: tier,
+ * [familyId + '__celebrated']: boolean }`.
+ */
+export function shapeBadgeStats(rows) {
+  const next = {}
+  for (const row of rows || []) {
+    next[row.badge_id] = Number(row.current_value) || 0
+    next[`${row.badge_id}__tier`] = row.tier || null
+    next[`${row.badge_id}__celebrated`] = !!row.celebrated_at
+  }
+  return next
+}
+
 const backfillInflight = new Map()
 
 /**
@@ -228,6 +243,30 @@ export async function acknowledgeBadgeCelebration(badgeFamilyId) {
   })
   if (error) {
     console.error('[badges] acknowledgeBadgeCelebration failed:', error.message)
+  }
+}
+
+/**
+ * One-step badges the current user has earned and not yet been shown.
+ * Catalogue order. One read of user_badges; errors come back empty.
+ */
+export async function getPendingSingleBadges(userId) {
+  if (!userId) return { pending: [], stats: {} }
+  try {
+    const { data, error } = await supabase
+      .from('user_badges')
+      .select('badge_id, tier, current_value, celebrated_at')
+      .eq('user_id', userId)
+    if (error) return { pending: [], stats: {} }
+    const stats = shapeBadgeStats(data)
+    const pending = BADGES.filter((badge) => (
+      badge.kind === 'single'
+      && badge.isEarned(stats)
+      && !stats[`${badge.family}__celebrated`]
+    ))
+    return { pending, stats }
+  } catch {
+    return { pending: [], stats: {} }
   }
 }
 

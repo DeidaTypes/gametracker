@@ -97,11 +97,13 @@ const LONG_MS = 4000
  *   sub?: string,
  *   image?: string,
  *   tone?: 'saved' | 'list' | 'neutral' | 'error' | 'badge',
+ *   onTap?: () => void,
  * }} [options]
  *   `offsetTop` pushes this toast down from its default spot (a number is px, a string is any
  *   CSS length). `sub` is the quieter second line. `image` is a cover URL; it replaces the
  *   icon circle. `tone` picks the circle's color: saved = review green, list = list purple,
- *   neutral, error, badge. Defaults come from `type`.
+ *   neutral, error, badge. Defaults come from `type`. `onTap`, when set, runs after a tap
+ *   dismisses the notice.
  */
 export function showToast(message, type = 'error', duration = null, action = null, icon = null, options = null) {
   const defaults = TYPE_DEFAULTS[type] || TYPE_DEFAULTS.error
@@ -119,6 +121,7 @@ export function showToast(message, type = 'error', duration = null, action = nul
     action,
     icon: customIcon || defaults.icon,
     offsetTop: options?.offsetTop ?? null,
+    onTap: typeof options?.onTap === 'function' ? options.onTap : null,
     id: Date.now() + Math.random(),
   })
 }
@@ -152,12 +155,17 @@ function ToastItem({ toast, onDone, reduced }) {
     ? undefined
     : { '--toast-offset-top': typeof offset === 'number' ? `${offset}px` : offset }
 
+  const handleTap = () => {
+    dismiss()
+    toast.onTap?.()
+  }
+
   return (
     <motion.div
       className={`toast${isPresent ? '' : ' is-leaving'}`}
       style={style}
       role={toast.isError ? 'alert' : 'status'}
-      onClick={dismiss}
+      onClick={handleTap}
       {...toastMotion(reduced)}
     >
       {showCover ? (

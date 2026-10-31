@@ -15,6 +15,18 @@ const TIER_LABEL = {
   gold: 'Gold',
 }
 
+const SINGLE_RING_COLOR = {
+  app: 'var(--accent)',
+  review: 'var(--accent-review)',
+  social: 'var(--accent-journal)',
+}
+
+const SINGLE_TIER_LABEL = {
+  1: 'Easy',
+  2: 'Medium',
+  3: 'Hard',
+}
+
 /**
  * Celebration copy with the earned tier's real threshold substituted in.
  * Keys match badge `family` ids from src/data/badges.js.
@@ -65,6 +77,22 @@ export function buildBadgeCelebrationDescription(badge) {
  * Props bundle for UnlockCelebration when a badge tier unlock fires.
  */
 export function buildBadgeCelebrationProps(badge) {
+  if (badge.kind === 'single') {
+    const level = badge.level
+    return {
+      Icon: badge.icon,
+      ringColor: SINGLE_RING_COLOR[badge.accent] || 'var(--accent)',
+      tierLabel: SINGLE_TIER_LABEL[level] || null,
+      eyebrow: 'Badge unlocked',
+      title: badge.name,
+      category: getBadgeShelfCategoryLabel(badge.family),
+      description: badge.description,
+      progressDots: { total: 3, filled: level },
+      shareTitle: `${badge.name} badge on Checkpoint`,
+      shareText: `I just earned ${badge.name} on Checkpoint!`,
+    }
+  }
+
   const tierRank = TIER_RANK[badge.tier] ?? 0
   const tierName = TIER_LABEL[badge.tier] || badge.tier
 
