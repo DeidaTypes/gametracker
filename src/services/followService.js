@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { applyBlockFilter } from './blockService'
 import { dedupeInFlight, mutateSWR } from './swrCache'
 import { offerPushExplainer } from './pushService'
+import { recomputeBadgesSoon } from './badgeService'
 
 /**
  * Follow Service — Supabase-backed.
@@ -141,6 +142,9 @@ export async function followUser(followeeId) {
 
   patchFollowCache(followeeId, userId, true)
   emitFollowChanged(followeeId, true)
+  // Party Up / Kindred Spirit. A 23505 (already following) returns above
+  // and does not change the count.
+  recomputeBadgesSoon()
   void offerPushExplainer('follow')
 }
 

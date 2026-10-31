@@ -6,6 +6,7 @@ import {
 } from './activityEventsService'
 import { AUTH_ERRORS, AuthError } from './auth'
 import { normalizeUsername, validateUsername } from './usernameRules'
+import { recomputeBadgesSoon } from './badgeService'
 
 /**
  * Lightweight user lookups used by the Search screen's Users tab and
@@ -187,6 +188,9 @@ export async function updateUserProfile(userId, { displayName, username, bio, av
     }
     throw new AuthError(AUTH_ERRORS.UNKNOWN, error.message, error)
   }
+
+  // Top Four / Defend Your Picks read users.favorite_games.
+  if (favoriteGames !== undefined) recomputeBadgesSoon()
 
   // Pulse — one 'favorited' event per *newly added* favorite. Diffing
   // by id means re-saving the same favorites (e.g. user reorders or

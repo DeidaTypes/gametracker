@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Lock } from 'lucide-react'
 import {
-  BADGE_CATALOG_FAMILY_COUNT,
+  getShelfVisibleFamilies,
   TIER_RANK,
   countEarnedBadgeFamilies,
 } from '../data/badges'
@@ -60,7 +60,7 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
           className="badges-row-section__count"
           onClick={onSeeMore}
         >
-          {earnedFamilyCount} of {BADGE_CATALOG_FAMILY_COUNT}
+          {earnedFamilyCount} of {getShelfVisibleFamilies().length}
         </button>
       </div>
 

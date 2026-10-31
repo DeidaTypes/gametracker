@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { dedupeInFlight } from './swrCache'
+import { recomputeBadgesSoon } from './badgeService'
 
 /**
  * Like Service — Supabase-backed.
@@ -89,6 +90,10 @@ export async function likeReview(reviewId) {
     }
     throw new Error(error.message)
   }
+
+  // Good Vibes counts hearts this user gives. A 23505 (already liked)
+  // returns above and does not change the count.
+  recomputeBadgesSoon()
 }
 
 /**

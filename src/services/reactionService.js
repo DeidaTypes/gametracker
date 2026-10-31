@@ -1,4 +1,8 @@
 import { supabase } from './supabase'
+import { recomputeBadgesSoon } from './badgeService'
+
+// Pulse heart. Same glyph activity and list hearts are stored as.
+const PULSE_HEART = '\u2764\uFE0F'
 
 /**
  * Reaction Service — cross-surface emoji reactions backed by Supabase.
@@ -51,6 +55,12 @@ export async function addReaction(targetType, targetId, emoji) {
     if (error.code === '23505') return
     console.error('[reactions] addReaction failed:', error.message)
     throw new Error(error.message)
+  }
+
+  // Good Vibes counts the Pulse heart on activity and list posts.
+  // Review hearts go through likeReview. A 23505 returns above.
+  if ((targetType === 'activity' || targetType === 'list') && emoji === PULSE_HEART) {
+    recomputeBadgesSoon()
   }
 }
 

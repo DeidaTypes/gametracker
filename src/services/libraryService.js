@@ -10,7 +10,7 @@ import { getTracker } from './hoursService'
 import { queueCelebration, updateCelebrationStats } from './celebrationService'
 import { countFinishedThisYear } from './goalService'
 import { supabase } from './supabase'
-import { recomputeBadges } from './badgeService'
+import { recomputeBadges, recomputeBadgesSoon } from './badgeService'
 import { showToast } from '../components/Toast'
 import { STATUS_META } from '../components/StatusChip'
 import { claimStorageFullAnnouncement, setLocalStorageItem } from '../utils/storageQuota'
@@ -212,8 +212,8 @@ const LOCAL_STATUS = Object.freeze(
  */
 function syncStatusToServer(gameId, localStatus, game) {
   const remoteStatus = TRACKER_STATUS[localStatus]
-  if (!remoteStatus) return
-  ;(async () => {
+  if (!remoteStatus) return Promise.resolve()
+  return (async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.id) return
@@ -669,6 +669,9 @@ export async function addGameToBacklog(game) {
       )
       if (error) {
         console.error('[library] addGameToBacklog tracker sync failed:', error.message)
+      } else if (added) {
+        // Press Start / Starter Pack / Century Club count game_trackers rows.
+        recomputeBadgesSoon()
       }
     }
   } catch (err) {
@@ -950,7 +953,10 @@ export function setGameStatus(gameId, newStatus, game = null) {
     // GameDetail now toasts on false, which made a post-save throw look
     // like every tile was broken.
     try {
-      syncStatusToServer(id, newStatus, gameObj)
+      // game_trackers upsert starts here and is not awaited by the
+      // status_changed insert below. It awaits getUser() first, so the
+      // row can commit after that insert. Recompute waits for both.
+      const trackerSyncPromise = syncStatusToServer(id, newStatus, gameObj)
 
     if (newStatus === 'currently') {
       updateGameProgress(id, { lastPlayedAt: new Date().toISOString() })
@@ -1005,7 +1011,9 @@ export function setGameStatus(gameId, newStatus, game = null) {
     // countFinishedThisYear below waits on, for the same reason: recompute
     // must run AFTER the row above has actually committed, or it
     // undercounts this game by one.
-    activityLogPromise.then(() => recomputeBadges()).catch(() => {})
+    Promise.allSettled([activityLogPromise, trackerSyncPromise])
+      .then(() => recomputeBadges())
+      .catch(() => {})
 
     // "Your #Nth finished game of {year}" for the completion splash's stat
     // chips. This MUST run after the status_changed row above has actually

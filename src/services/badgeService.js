@@ -12,8 +12,9 @@ import { BADGES, TIER_RANK } from '../data/badges'
  * cache (Time Traveler, Early Adopter, Short Stack, The Long Haul,
  * Platform Nomad) — see backfill_my_badges() in
  * supabase/migrations/20260915170000_five_badges_widened_cache.sql.
+ * 4 = the thirty one-step badges (20261030200000_thirty_new_badges.sql).
  */
-export const BADGE_BACKFILL_VERSION = 3
+export const BADGE_BACKFILL_VERSION = 4
 
 const backfillInflight = new Map()
 
@@ -116,6 +117,27 @@ export async function recomputeBadges(options = {}) {
   }
 }
 
+let recomputeSoonTimer = null
+
+/**
+ * Trailing debounce for bursts (hearts, swipes). A call while the timer
+ * is pending restarts it; when it fires, recomputeBadges() runs.
+ * Fire-and-forget — never throws, never blocks the write that triggered it.
+ */
+export function recomputeBadgesSoon() {
+  try {
+    if (recomputeSoonTimer != null) clearTimeout(recomputeSoonTimer)
+    recomputeSoonTimer = setTimeout(() => {
+      recomputeSoonTimer = null
+      Promise.resolve()
+        .then(() => recomputeBadges())
+        .catch(() => {})
+    }, 3000)
+  } catch {
+    // Timers unavailable — skip.
+  }
+}
+
 function notifyBadgesUpdated() {
   try {
     window.dispatchEvent(new Event('badgesUpdated'))
@@ -155,7 +177,8 @@ export function refreshBadges() {
  *   2 -> 2: no-op, RPC returns immediately.
  *
  * Deduped per user for the life of the tab — subsequent launches hit
- * the RPC's version short-circuit (returns empty, no recompute).
+ * the RPC's version short-circuit (returns empty). An empty success
+ * then schedules one catch-up recomputeBadgesSoon().
  *
  * Returns { grants, alreadyDone, failed }. grants is empty when the
  * user has zero earned tiers (brand-new account) OR when the marker
@@ -182,6 +205,10 @@ export function backfillMyBadges(userId) {
       .filter((row) => row.badge_id && row.tier)
     const grants = expandGrantedBadgeTiers(rows)
     notifyBadgesUpdated()
+    // Already at the current catalogue version: the RPC returns no rows
+    // and does not recompute. One catch-up recompute per launch, so
+    // hearts and follows that arrived while we were away still land.
+    if (!data || data.length === 0) recomputeBadgesSoon()
     return { grants, alreadyDone: grants.length === 0, failed: false }
   })()
 

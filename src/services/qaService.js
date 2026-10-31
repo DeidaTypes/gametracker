@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { isFlagEnabled } from './flagService'
 import { offerPushExplainer } from './pushService'
+import { recomputeBadgesSoon } from './badgeService'
 import {
   markSWRStale,
   markSWRStaleByPrefix,
@@ -375,6 +376,8 @@ export async function postAnswer({ questionId, body, isSpoiler = false, replyToU
   if (classified) return classified
 
   staleAfterWrite({ questionId, igdbGameId })
+  // Lifeline counts qa_answers.
+  recomputeBadgesSoon()
   return { data }
 }
 

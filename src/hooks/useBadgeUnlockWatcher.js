@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useBadges } from './useBadges'
 import { useBadgeBackfill } from './useBadgeBackfill'
+import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
 import { dispatchBadgeEarned } from '../components/BadgeReveal'
-import { syncEarnedBadge, syncAllEarnedBadges, acknowledgeBadgeCelebration } from '../services/badgeService'
+import { syncEarnedBadge, syncAllEarnedBadges, acknowledgeBadgeCelebration, recomputeBadgesSoon } from '../services/badgeService'
 
 const STORAGE_PREFIX = 'gt:earnedBadges:v1'
 
@@ -178,4 +179,16 @@ export function useBadgeUnlockWatcher() {
     previousIdsRef.current = next
     persistEarnedIds(userId, next)
   }, [earned, stats, userId, loading, backfill.settled, backfill.failed, backfill.grants])
+
+  // Hearts and follows that arrived while the app was away move Fan Mail,
+  // Fan Favorite and Squad Goals only when this user recomputes. A long
+  // absence is the catch-up; a short return leaves the rows alone.
+  useEffect(() => {
+    function onResume(e) {
+      if (!isLongAbsence(e)) return
+      recomputeBadgesSoon()
+    }
+    window.addEventListener(APP_RESUMED_EVENT, onResume)
+    return () => window.removeEventListener(APP_RESUMED_EVENT, onResume)
+  }, [])
 }

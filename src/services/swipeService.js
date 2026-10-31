@@ -40,6 +40,7 @@
 
 import { getGamesFromList } from './libraryService'
 import { supabase } from './supabase'
+import { recomputeBadgesSoon } from './badgeService'
 import { showToast } from '../components/Toast'
 import { claimStorageFullAnnouncement, setLocalStorageItem } from '../utils/storageQuota'
 
@@ -231,7 +232,7 @@ async function mirrorSwipe(igdbGameId, action, genres, themeNames) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.id) return
 
-    await supabase.from('user_swipe_signals').upsert(
+    const { error } = await supabase.from('user_swipe_signals').upsert(
       {
         user_id: user.id,
         igdb_game_id: Number(igdbGameId),
@@ -242,6 +243,8 @@ async function mirrorSwipe(igdbGameId, action, genres, themeNames) {
       },
       { onConflict: 'user_id,igdb_game_id' },
     )
+    // Window Shopper counts user_swipe_signals. A burst of swipes is one RPC.
+    if (!error) recomputeBadgesSoon()
   } catch {
     // Non-fatal: localStorage already holds the authoritative swipe.
   }
@@ -287,6 +290,7 @@ export async function syncSwipesToServer() {
 
     if (rows.length === 0) return 0
     const { error: insErr } = await supabase.from('user_swipe_signals').insert(rows)
+    if (!insErr) recomputeBadgesSoon()
     return insErr ? 0 : rows.length
   } catch {
     return 0

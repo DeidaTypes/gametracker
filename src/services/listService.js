@@ -6,6 +6,7 @@ import {
 } from './activityEventsService'
 import { applyBlockFilter, filterBlockedRows } from './blockService'
 import { dedupeInFlight, mutateSWR, mutateSWRByPrefix, peekSWR } from './swrCache'
+import { recomputeBadgesSoon } from './badgeService'
 
 /**
  * List Service — Supabase-backed custom lists.
@@ -620,6 +621,8 @@ export async function addGameToList(
     console.error('[lists] addGameToList failed:', error.message)
     throw new Error(error.message)
   }
+  // Mixtape / List Cleared read list_games.
+  recomputeBadgesSoon()
   // Touch the list's updated_at so getListsForUser ordering stays fresh.
   await supabase
     .from('lists')
@@ -1006,7 +1009,8 @@ export async function migrateLocalListsIfNeeded(userId) {
           game_image: g.image || null,
           added_at: g.addedAt || new Date().toISOString(),
         }))
-        await supabase.from('list_games').insert(gameRows)
+        const { error: gamesErr } = await supabase.from('list_games').insert(gameRows)
+        if (!gamesErr) recomputeBadgesSoon()
       }
       migrated++
     }

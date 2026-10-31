@@ -916,6 +916,11 @@ export async function migrateLocalReviewsIfNeeded(userId) {
       return { migrated: 0, skipped: false, error }
     }
 
+    // Quick Judge / Hot Take / Second Opinion / Defend Your Picks /
+    // Report Card read reviews.rating and reviews.body. postReview and
+    // updateReview already recompute; this bulk insert did not.
+    recomputeBadges()
+
     // The blob is what filled the quota, so a marker write can fail while it
     // is still there. Drop caches first; if that isn't enough, drop the blob
     // and write the marker second.

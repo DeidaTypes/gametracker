@@ -16,7 +16,7 @@ import {
 } from '../services/notificationService'
 import { APP_RESUMED_EVENT } from '../hooks/useAppResume'
 import { subscribeWithRecovery } from '../services/realtimeRecovery'
-import { refreshBadges } from '../services/badgeService'
+import { refreshBadges, recomputeBadgesSoon } from '../services/badgeService'
 
 const NotificationsContext = createContext({
   notifications: [],
@@ -70,6 +70,21 @@ export function NotificationsProvider({ children }) {
       const known = knownIdsRef.current
       if (known && rows.some((n) => n.type === 'qa_best' && !known.has(n.id))) {
         refreshBadges()
+      }
+      // Someone else's follow or heart moves Squad Goals, Fan Mail and
+      // Fan Favorite, and only this user's recompute writes the row.
+      // 'reaction' is the review-reaction type in notification_type
+      // (20260626161400 / 20261022171000). Activity and list hearts have
+      // no notification type; those catch up on the launch recompute.
+      if (
+        known &&
+        rows.some(
+          (n) =>
+            (n.type === 'follow' || n.type === 'review_like' || n.type === 'reaction') &&
+            !known.has(n.id)
+        )
+      ) {
+        recomputeBadgesSoon()
       }
       knownIdsRef.current = new Set(rows.map((n) => n.id))
       setNotifications(rows)
