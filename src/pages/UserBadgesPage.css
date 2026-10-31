@@ -40,10 +40,24 @@
   background: var(--color-surface);
 }
 
+.badges-page__header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
 .badges-page__title {
   text-align: center;
   margin: 0;
   color: var(--color-text-primary);
+}
+
+.badges-page__subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .badges-page__spacer {
@@ -196,6 +210,14 @@
 .badge-shelf-tile__ring--locked {
   border-color: var(--border-subtle);
   color: var(--text-tertiary);
+}
+
+.badge-shelf-tile__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 96px;
 }
 
 .badge-shelf-tile__name {

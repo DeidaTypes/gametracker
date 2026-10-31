@@ -247,6 +247,14 @@
   gap: 2px;
 }
 
+.badge-picker-item__difficulty {
+  font-family: var(--font-body);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
 .badge-picker-item__name {
   font-family: var(--font-body);
   font-size: var(--font-size-body);

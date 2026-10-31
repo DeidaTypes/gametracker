@@ -8,6 +8,7 @@ import {
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import BadgeDetailModal from './BadgeDetailModal'
+import BadgeMedallion, { badgeLevelLabel } from './BadgeMedallion'
 import Skeleton from './Skeleton'
 import { Arrive } from './motion/ContentSwap'
 import './BadgesRow.css'
@@ -67,6 +68,10 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
       <div className="badges-row" role="list" aria-label="Recent badges">
         {teaserBadges.map((badge) => {
           const Icon = badge.icon
+          const isSingle = badge.kind === 'single'
+          const ariaLabel = isSingle
+            ? `${badge.name}, ${badgeLevelLabel(badge.level)}, earned`
+            : `${badge.name}, ${badge.tier} earned`
           return (
             <button
               key={badge.id}
@@ -74,11 +79,15 @@ function BadgesRow({ userId, onSeeMore, embedded = false }) {
               role="listitem"
               className="badges-row__item badges-row__item--earned"
               onClick={() => setSelectedBadge(badge)}
-              aria-label={`${badge.name}, ${badge.tier} earned`}
+              aria-label={ariaLabel}
             >
-              <span className="badges-row__ring badges-row__ring--earned" aria-hidden="true">
-                <Icon size={22} strokeWidth={1.75} />
-              </span>
+              {isSingle ? (
+                <BadgeMedallion badge={badge} earned size={46} />
+              ) : (
+                <span className="badges-row__ring badges-row__ring--earned" aria-hidden="true">
+                  <Icon size={22} strokeWidth={1.75} />
+                </span>
+              )}
             </button>
           )
         })}

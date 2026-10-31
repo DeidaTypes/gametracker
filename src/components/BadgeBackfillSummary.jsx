@@ -5,6 +5,7 @@ import { useBadgeBackfill } from '../hooks/useBadgeBackfill'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { popCard, popDim } from '../motion/xMotion'
 import { hapticSuccess } from '../utils/haptics'
+import BadgeMedallion, { badgeLevelLabel } from './BadgeMedallion'
 import './BadgeBackfillSummary.css'
 
 /**
@@ -64,13 +65,22 @@ export default function BadgeBackfillSummary() {
             <ul className="bbs-grid">
               {grants.map((badge) => {
                 const Icon = badge.icon
+                const isSingle = badge.kind === 'single'
                 return (
                   <li key={badge.id} className={`bbs-tile bbs-tile--${badge.tier}`}>
-                    <span className={`bbs-icon bbs-icon--${badge.tier}`} aria-hidden="true">
-                      <Icon size={22} strokeWidth={1.6} />
-                    </span>
+                    {isSingle ? (
+                      <BadgeMedallion badge={badge} earned size={48} />
+                    ) : (
+                      <span className={`bbs-icon bbs-icon--${badge.tier}`} aria-hidden="true">
+                        <Icon size={22} strokeWidth={1.6} />
+                      </span>
+                    )}
                     <span className="bbs-name text-label">{badge.name}</span>
-                    <span className={`bbs-tier bbs-tier--${badge.tier}`}>{badge.tier}</span>
+                    {isSingle ? (
+                      <span className="bbs-difficulty">{badgeLevelLabel(badge.level)}</span>
+                    ) : (
+                      <span className={`bbs-tier bbs-tier--${badge.tier}`}>{badge.tier}</span>
+                    )}
                   </li>
                 )
               })}

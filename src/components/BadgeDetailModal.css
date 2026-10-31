@@ -24,6 +24,12 @@
   right: var(--spacing-md);
 }
 
+.badge-detail-modal__medallion-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto var(--spacing-lg);
+}
+
 .badge-detail-modal__icon-wrap {
   width: 88px;
   height: 88px;
@@ -86,6 +92,28 @@
   color: transparent;
 }
 
+.badge-detail-modal__level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.badge-detail-modal__flavor {
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-xl);
+}
+
 .badge-detail-modal__desc {
   font-family: var(--font-body);
   font-size: var(--font-size-body);
@@ -117,6 +145,18 @@
 .badge-detail-modal__progress-fill--gold     { background: var(--tier-gold); }
 .badge-detail-modal__progress-fill--platinum {
   background: linear-gradient(135deg, #E5E4E2, #B7C4CF, #E5E4E2);
+}
+
+.badge-detail-modal__progress-fill--accent-app {
+  background: var(--accent);
+}
+
+.badge-detail-modal__progress-fill--accent-review {
+  background: var(--accent-review);
+}
+
+.badge-detail-modal__progress-fill--accent-social {
+  background: var(--accent-journal);
 }
 
 .badge-detail-modal__progress-text {

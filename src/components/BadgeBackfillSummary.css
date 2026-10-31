@@ -129,6 +129,16 @@
   text-transform: uppercase;
 }
 
+.bbs-difficulty {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
 .bbs-tier--bronze { color: var(--tier-bronze); }
 .bbs-tier--silver { color: var(--tier-silver); }
 .bbs-tier--gold { color: var(--tier-gold); }

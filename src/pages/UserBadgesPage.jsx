@@ -5,13 +5,16 @@ import { ChevronDown } from 'lucide-react'
 import {
   BADGE_SHELF_CATEGORIES,
   BADGE_SHELF_HIDDEN_FAMILIES,
+  countEarnedBadgeFamilies,
   getHighestEarnedTierBadge,
   getRepresentativeBadge,
+  getShelfVisibleFamilies,
 } from '../data/badges'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { useProfileRouteUser } from '../hooks/useProfileRouteUser'
 import BadgeDetailModal from '../components/BadgeDetailModal'
+import BadgeMedallion, { BadgePips, badgeLevelLabel } from '../components/BadgeMedallion'
 import Skeleton from '../components/Skeleton'
 import './UserBadgesPage.css'
 
@@ -68,7 +71,14 @@ function UserBadgesPage() {
         >
           <LuChevronLeft size={22} aria-hidden="true" />
         </button>
-        <h1 className="badges-page__title text-title">Badges</h1>
+        <div className="badges-page__header-center">
+          <h1 className="badges-page__title text-title">Badges</h1>
+          {!isLoading && (
+            <p className="badges-page__subtitle text-caption">
+              {countEarnedBadgeFamilies(stats)} of {getShelfVisibleFamilies().length} earned
+            </p>
+          )}
+        </div>
         <span className="badges-page__spacer" aria-hidden="true" />
       </header>
 
@@ -115,6 +125,7 @@ function UserBadgesPage() {
                             key={familyId}
                             badge={display}
                             locked={locked}
+                            stats={stats}
                             onClick={() => setSelectedBadge(display)}
                           />
                         ))}
@@ -139,31 +150,53 @@ function UserBadgesPage() {
   )
 }
 
-function BadgeShelfTile({ badge, locked, onClick }) {
+function BadgeShelfTile({ badge, locked, stats, onClick }) {
   const Icon = badge.icon
   const tier = locked ? null : badge.tier
+  const isSingle = badge.kind === 'single'
+  const progressRaw = isSingle ? badge.progress(stats) : 0
+  const progressRatio = badge.target ? progressRaw / badge.target : 0
+
+  let ariaLabel
+  if (isSingle) {
+    ariaLabel = locked
+      ? `${badge.name}, locked, ${Math.floor(progressRaw)} of ${badge.target}`
+      : `${badge.name}, ${badgeLevelLabel(badge.level)}, earned`
+  } else {
+    ariaLabel = locked
+      ? `${badge.name} — locked. ${badge.description}`
+      : `${badge.name} — ${badge.tier} earned`
+  }
 
   return (
     <button
       type="button"
       className={`badge-shelf-tile${locked ? ' badge-shelf-tile--locked' : ''}`}
       onClick={onClick}
-      aria-label={
-        locked
-          ? `${badge.name} — locked. ${badge.description}`
-          : `${badge.name} — ${badge.tier} earned`
-      }
+      aria-label={ariaLabel}
     >
-      <span
-        className={[
-          'badge-shelf-tile__ring',
-          tier ? `badge-shelf-tile__ring--${tier}` : 'badge-shelf-tile__ring--locked',
-        ].join(' ')}
-        aria-hidden="true"
-      >
-        <Icon size={28} strokeWidth={1.6} />
-      </span>
-      <span className="badge-shelf-tile__name text-caption">{badge.name}</span>
+      {isSingle ? (
+        <BadgeMedallion
+          badge={badge}
+          earned={!locked}
+          progress={locked ? progressRatio : null}
+          size={64}
+        />
+      ) : (
+        <span
+          className={[
+            'badge-shelf-tile__ring',
+            tier ? `badge-shelf-tile__ring--${tier}` : 'badge-shelf-tile__ring--locked',
+          ].join(' ')}
+          aria-hidden="true"
+        >
+          <Icon size={28} strokeWidth={1.6} />
+        </span>
+      )}
+      <div className="badge-shelf-tile__label">
+        <span className="badge-shelf-tile__name text-caption">{badge.name}</span>
+        {isSingle && <BadgePips level={badge.level} size={4} />}
+      </div>
     </button>
   )
 }

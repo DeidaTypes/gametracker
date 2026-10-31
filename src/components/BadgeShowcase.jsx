@@ -5,6 +5,7 @@ import { useShowcaseBadges } from '../hooks/useShowcaseBadges'
 import { useBadges } from '../hooks/useBadges'
 import { useBadgeRarity } from '../hooks/useBadgeRarity'
 import { BADGES, TIER_STYLES } from '../data/badges'
+import BadgeMedallion, { badgeLevelLabel } from './BadgeMedallion'
 import EmptyState from './EmptyState'
 import './BadgeShowcase.css'
 
@@ -111,6 +112,7 @@ function BadgeShowcase({ user, isOwnProfile }) {
    ────────────────────────────────────────────────────────────── */
 function BadgeSlot({ badge, rarityPct }) {
   const Icon = badge.icon
+  const isSingle = badge.kind === 'single'
   const tierStyle = TIER_STYLES[badge.tier] || TIER_STYLES.bronze
   const isPlatinum = badge.tier === 'platinum' && tierStyle.gradient
   const borderStyle = isPlatinum
@@ -123,13 +125,17 @@ function BadgeSlot({ badge, rarityPct }) {
       className="badge-showcase__slot"
       aria-label={badge.name}
     >
-      <div
-        className={`badge-showcase__icon badge-showcase__icon--${badge.tier}`}
-        style={borderStyle}
-        aria-hidden="true"
-      >
-        <Icon size={30} strokeWidth={1.6} />
-      </div>
+      {isSingle ? (
+        <BadgeMedallion badge={badge} earned size={56} />
+      ) : (
+        <div
+          className={`badge-showcase__icon badge-showcase__icon--${badge.tier}`}
+          style={borderStyle}
+          aria-hidden="true"
+        >
+          <Icon size={30} strokeWidth={1.6} />
+        </div>
+      )}
       <span className="badge-showcase__name">{badge.name}</span>
       {rarityPct != null && (
         <span className="badge-showcase__rarity" aria-label={`${rarityPct}% of players`}>
@@ -209,6 +215,7 @@ function ShowcasePicker({ earned, currentIds, onSave, onClose }) {
           <ul className="badge-picker-modal__list" role="listbox" aria-multiselectable="true">
             {earned.map((badge) => {
               const Icon = badge.icon
+              const isSingle = badge.kind === 'single'
               const tierStyle = TIER_STYLES[badge.tier] || TIER_STYLES.bronze
               const isPlatinum = badge.tier === 'platinum' && tierStyle.gradient
               const borderStyle = isPlatinum
@@ -227,18 +234,28 @@ function ShowcasePicker({ earned, currentIds, onSave, onClose }) {
                     className={`badge-picker-item${isSelected ? ' badge-picker-item--selected' : ''}${isDisabled ? ' badge-picker-item--disabled' : ''}`}
                     onClick={() => toggle(badge.id)}
                   >
-                    <div
-                      className={`badge-picker-item__icon badge-picker-item__icon--${badge.tier}`}
-                      style={borderStyle}
-                      aria-hidden="true"
-                    >
-                      <Icon size={22} strokeWidth={1.6} />
-                    </div>
+                    {isSingle ? (
+                      <BadgeMedallion badge={badge} earned size={44} />
+                    ) : (
+                      <div
+                        className={`badge-picker-item__icon badge-picker-item__icon--${badge.tier}`}
+                        style={borderStyle}
+                        aria-hidden="true"
+                      >
+                        <Icon size={22} strokeWidth={1.6} />
+                      </div>
+                    )}
                     <div className="badge-picker-item__body">
                       <span className="badge-picker-item__name">{badge.name}</span>
-                      <span className={`badge-picker-item__tier badge-picker-item__tier--${badge.tier}`}>
-                        {badge.tier}
-                      </span>
+                      {isSingle ? (
+                        <span className="badge-picker-item__difficulty">
+                          {badgeLevelLabel(badge.level)}
+                        </span>
+                      ) : (
+                        <span className={`badge-picker-item__tier badge-picker-item__tier--${badge.tier}`}>
+                          {badge.tier}
+                        </span>
+                      )}
                     </div>
                     {isSelected && (
                       <span className="badge-picker-item__check" aria-hidden="true">
