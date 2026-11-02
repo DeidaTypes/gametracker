@@ -5,7 +5,16 @@ import Skeleton from './Skeleton'
 import { Arrive } from './motion/ContentSwap'
 import Avatar from './Avatar'
 import PlusBadge from './PlusBadge'
+import LevelRing from './level/LevelRing'
 import './ProfilePlayerCard.css'
+
+function levelAriaSuffix(level, progress) {
+  if (level == null) return ''
+  if (level >= 50) return `, Level ${level}`
+  if (!progress || progress.isMax) return `, Level ${level}`
+  const next = level + 1
+  return `, Level ${level}, ${progress.intoLevel} of ${progress.levelCost} XP to Level ${next}`
+}
 
 /**
  * Formats the hours numeral for the Played stat. Whole hours below 1000,
@@ -109,9 +118,10 @@ export default function ProfilePlayerCard({
   onFollowingClick,
   onGamesClick,
   level,
-  onLevelClick,
+  progress,
 }) {
   const hasRatings = avgRating != null && avgRating > 0
+  const levelSuffix = levelAriaSuffix(level, progress)
 
   return (
     <section className="ppc" aria-label="Profile summary">
@@ -134,8 +144,8 @@ export default function ProfilePlayerCard({
             onClick={onAvatarClick}
             aria-label={
               isOwnProfile
-                ? 'Edit profile photo'
-                : `${displayName || 'User'} profile photo`
+                ? `Edit profile photo${levelSuffix}`
+                : `${displayName || 'User'} profile photo${levelSuffix}`
             }
           >
             <Avatar
@@ -146,18 +156,13 @@ export default function ProfilePlayerCard({
               alt={`${displayName || 'User'} profile photo`}
             />
           </button>
-          {level != null && onLevelClick && (
-            <button
-              type="button"
-              className="ppc__lv"
-              onClick={(e) => {
-                e.stopPropagation()
-                onLevelClick()
-              }}
-              aria-label={`Level ${level}, open level details`}
-            >
-              Lv {level}
-            </button>
+          {level != null && progress != null && (
+            <LevelRing
+              level={level}
+              progress={progress.fraction}
+              photoSize={64}
+              glint
+            />
           )}
         </div>
 

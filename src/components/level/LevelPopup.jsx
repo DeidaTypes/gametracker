@@ -112,7 +112,7 @@ export default function LevelPopup({
   isOwnProfile = false,
   level = 1,
   progress,
-  rank,
+  tier,
   xpTotal = 0,
 }) {
   const [todayXp, setTodayXp] = useState(0)
@@ -220,7 +220,7 @@ export default function LevelPopup({
               fraction={progress?.fraction ?? 0}
               className="level-ring--popup"
             />
-            <p className="lp-summary__rank text-label">{rank?.name}</p>
+            <p className="lp-summary__tier text-label">{tier?.name}</p>
             <p className="lp-summary__level-xp text-caption">{levelProgressLine}</p>
             <p className="lp-summary__totals text-caption">{totalLine}</p>
           </section>

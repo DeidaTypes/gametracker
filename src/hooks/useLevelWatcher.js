@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { rankFor, rewardsBetween } from '../data/levels'
+import { tierFor, rewardsBetween } from '../data/levels'
 import { acknowledgeLevel, getMyLevelState } from '../services/xpService'
 import { isBadgeMomentsHeld } from '../services/badgeMoments'
 import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
@@ -16,11 +16,11 @@ import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
  */
 
 function historyLede(level, xpTotal) {
-  const rank = rankFor(level).name
+  const tierName = tierFor(level).name
   const xp = `${(Number(xpTotal) || 0).toLocaleString()} XP`
   const names = rewardsBetween(1, level).map((reward) => reward.name).filter(Boolean)
-  if (names.length === 0) return `${rank} \u00b7 ${xp}.`
-  return `${rank} \u00b7 ${xp}. Unlocked so far: ${names.join(', ')}.`
+  if (names.length === 0) return `${tierName} \u00b7 ${xp}.`
+  return `${tierName} \u00b7 ${xp}. Unlocked so far: ${names.join(', ')}.`
 }
 
 function dispatchSummary(detail) {

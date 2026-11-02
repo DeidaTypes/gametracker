@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import UnlockCelebration from './celebration/UnlockCelebration'
 import { buildBadgeCelebrationProps } from '../services/badgeCelebrationState'
 import { beginMoment, endMoment, isMomentShowing } from '../services/badgeMoments'
-import { rankFor, rewardsBetween } from '../data/levels'
+import { tierFor, rewardsBetween } from '../data/levels'
 import { acknowledgeLevel } from '../services/xpService'
 
 /**
@@ -13,17 +13,25 @@ import { acknowledgeLevel } from '../services/xpService'
  * a time, and only while no other moment (summary card included) is up.
  */
 function levelDescription(fromLevel, toLevel) {
+  const fromTier = tierFor(fromLevel)
+  const toTier = tierFor(toLevel)
+  const tierPrefix =
+    fromTier.key !== toTier.key ? `${toTier.name} ring unlocked. ` : ''
+
   const rewards = rewardsBetween(fromLevel, toLevel)
-  if (rewards.length === 0) return null
+  if (rewards.length === 0) {
+    return tierPrefix ? tierPrefix.trim() : null
+  }
   if (rewards.length === 1) {
     const reward = rewards[0]
     const detail = String(reward.detail || '').trim().replace(/\.$/, '')
-    return detail
+    const rewardLine = detail
       ? `${reward.name} unlocked. ${detail}.`
       : `${reward.name} unlocked.`
+    return `${tierPrefix}${rewardLine}`
   }
   const names = rewards.map((reward) => reward.name).filter(Boolean)
-  return `Unlocked: ${names.join(', ')}.`
+  return `${tierPrefix}Unlocked: ${names.join(', ')}.`
 }
 
 function LevelNumber({ level }) {
@@ -43,10 +51,11 @@ function LevelNumber({ level }) {
 }
 
 function levelView(item) {
+  const tier = tierFor(item.level)
   return {
     icon: <LevelNumber level={item.level} />,
-    ringColor: 'var(--accent)',
-    tierLabel: rankFor(item.level).name,
+    ringColor: `var(--ring-${tier.key}-2)`,
+    tierLabel: tier.name,
     eyebrow: 'Level up',
     title: `Level ${item.level}`,
     category: `${(Number(item.xpTotal) || 0).toLocaleString()} XP total`,

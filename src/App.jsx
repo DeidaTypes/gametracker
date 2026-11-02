@@ -121,6 +121,7 @@ import CompletionCelebration from './components/celebration/CompletionCelebratio
 import RateItHost from './components/RateItHost'
 import MilestoneCelebration from './components/MilestoneCelebration'
 import BadgeReveal from './components/BadgeReveal'
+import LevelRingDefs from './components/level/LevelRingDefs'
 import BadgeBackfillSummary from './components/BadgeBackfillSummary'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { GameColorProvider } from './contexts/GameColorContext'
@@ -2175,6 +2176,7 @@ function App() {
               {/* Mounted once at root — listens to 'badgeEarned' events
                   dispatched by useBadgeUnlockWatcher and shows a full-screen
                   reveal overlay for each newly-earned achievement badge. */}
+              <LevelRingDefs />
               <BadgeReveal />
               {/* One-time historical-grants summary — first launch after
                   badges went live, never again. Genuine single unlocks

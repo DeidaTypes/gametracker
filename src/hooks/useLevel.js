@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import { levelProgress, rankFor } from '../data/levels'
+import { levelProgress, tierFor } from '../data/levels'
 import { getUserLevel } from '../services/xpService'
 import { useCachedResource } from './useCachedResource'
 import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
@@ -19,7 +19,7 @@ import { APP_RESUMED_EVENT, isLongAbsence } from './useAppResume'
  *     intoLevel: number, levelCost: number, toNext: number,
  *     fraction: number, isMax: boolean,
  *   },
- *   rank: { name: string, min: number, max: number },
+ *   tier: { key: string, name: string, min: number, max: number },
  *   loading: boolean,
  * }}
  */
@@ -58,7 +58,7 @@ export function useLevel(userId) {
     const xpTotal = data?.xpTotal ?? 0
     const progress = levelProgress(xpTotal)
     const level = data?.level ?? progress.level
-    return { xpTotal, level, progress, rank: rankFor(level) }
+    return { xpTotal, level, progress, tier: tierFor(level) }
   }, [data])
 
   return { ...view, loading }

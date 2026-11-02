@@ -56,19 +56,18 @@ export function levelProgress(xp) {
   }
 }
 
-export const RANKS = Object.freeze([
-  { name: 'Rookie', min: 1, max: 4 },
-  { name: 'Player', min: 5, max: 9 },
-  { name: 'Pro', min: 10, max: 19 },
-  { name: 'Elite', min: 20, max: 29 },
-  { name: 'Master', min: 30, max: 49 },
-  { name: 'Legend', min: 50, max: 50 },
+export const TIERS = Object.freeze([
+  { key: 'bronze', name: 'Bronze', min: 1, max: 9 },
+  { key: 'silver', name: 'Silver', min: 10, max: 19 },
+  { key: 'gold', name: 'Gold', min: 20, max: 29 },
+  { key: 'platinum', name: 'Platinum', min: 30, max: 39 },
+  { key: 'diamond', name: 'Diamond', min: 40, max: 50 },
 ])
 
-/** Rank covering this level. Out-of-range levels clamp into 1–50. */
-export function rankFor(level) {
+/** Tier covering this level. Out-of-range levels clamp into 1–50. */
+export function tierFor(level) {
   const n = Math.min(MAX_LEVEL, Math.max(1, Math.floor(Number(level) || 1)))
-  return RANKS.find((rank) => n >= rank.min && n <= rank.max) || RANKS[0]
+  return TIERS.find((tier) => n >= tier.min && n <= tier.max) || TIERS[0]
 }
 
 export const LEVEL_REWARDS = Object.freeze([

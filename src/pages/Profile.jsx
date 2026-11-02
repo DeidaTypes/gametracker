@@ -644,7 +644,7 @@ function Profile() {
     xpTotal: levelXpTotal,
     level: playerLevel,
     progress: levelProgress,
-    rank: levelRank,
+    tier: levelTier,
     loading: levelLoading,
   } = useLevel(targetUserId)
 
@@ -1903,7 +1903,7 @@ function Profile() {
                 })
           }
           level={levelLoading ? null : playerLevel}
-          onLevelClick={levelLoading ? undefined : openLevelPopup}
+          progress={levelLoading ? null : levelProgress}
         />
 
         {/* ═════════════════════════════════════════════════════════
@@ -2165,7 +2165,7 @@ function Profile() {
                   levelLoading={levelLoading}
                   playerLevel={playerLevel}
                   levelProgress={levelProgress}
-                  levelRank={levelRank}
+                  levelTier={levelTier}
                   levelXpTotal={levelXpTotal}
                   onOpenLevelPopup={openLevelPopup}
                 />
@@ -2217,7 +2217,7 @@ function Profile() {
           isOwnProfile={isOwnProfile}
           level={playerLevel}
           progress={levelProgress}
-          rank={levelRank}
+          tier={levelTier}
           xpTotal={levelXpTotal}
         />
 
@@ -2379,7 +2379,7 @@ function ProfileChallengeSection({
   levelLoading = false,
   playerLevel = 1,
   levelProgress = null,
-  levelRank = null,
+  levelTier = null,
   levelXpTotal = 0,
   onOpenLevelPopup,
 }) {
@@ -2400,7 +2400,7 @@ function ProfileChallengeSection({
             loading={levelLoading}
             level={playerLevel}
             progress={levelProgress}
-            rank={levelRank}
+            tier={levelTier}
             xpTotal={levelXpTotal}
             onOpen={onOpenLevelPopup}
           />
@@ -2584,7 +2584,7 @@ function HomeTab({
   levelLoading,
   playerLevel,
   levelProgress,
-  levelRank,
+  levelTier,
   levelXpTotal,
   onOpenLevelPopup,
 }) {
@@ -2640,7 +2640,7 @@ function HomeTab({
           levelLoading={levelLoading}
           playerLevel={playerLevel}
           levelProgress={levelProgress}
-          levelRank={levelRank}
+          levelTier={levelTier}
           levelXpTotal={levelXpTotal}
           onOpenLevelPopup={onOpenLevelPopup}
         />

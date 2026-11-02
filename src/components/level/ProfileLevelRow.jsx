@@ -1,6 +1,6 @@
 import React from 'react'
 import { LuChevronRight } from 'react-icons/lu'
-import { rewardAt } from '../../data/levels'
+import { rewardAt, tierFor } from '../../data/levels'
 import Skeleton from '../Skeleton'
 import { Arrive } from '../motion/ContentSwap'
 import './ProfileLevelRow.css'
@@ -18,6 +18,8 @@ export function LevelProgressRing({
   fraction,
   className = '',
 }) {
+  const tier = tierFor(level)
+  const gradId = `cp-ring-${tier.key}`
   const cx = size / 2
   const cy = size / 2
   const r = size === 54 ? 23 : (23 * size) / 54
@@ -38,15 +40,16 @@ export function LevelProgressRing({
           cy={cy}
           r={r}
           fill="none"
-          stroke="var(--bg-surface-2)"
+          stroke={`url(#${gradId})`}
           strokeWidth={stroke}
+          style={{ strokeOpacity: 'var(--ring-track-opacity)' }}
         />
         <circle
           cx={cx}
           cy={cy}
           r={r}
           fill="none"
-          stroke="var(--accent)"
+          stroke={`url(#${gradId})`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${gap}`}
@@ -78,7 +81,7 @@ export default function ProfileLevelRow({
   loading = false,
   level = 1,
   progress,
-  rank,
+  tier,
   xpTotal = 0,
   onOpen,
 }) {
@@ -100,18 +103,23 @@ export default function ProfileLevelRow({
       type="button"
       className="profile-level-row"
       onClick={onOpen}
-      aria-label={`Level ${level}, ${rank?.name || ''}. Open level details.`}
+      aria-label={`Level ${level}, ${tier?.name || ''}. Open level details.`}
     >
       <LevelProgressRing size={54} stroke={5} level={level} fraction={progress.fraction} />
       <span className="profile-level-row__text">
         <span className="profile-level-row__line1">
           <span className="profile-level-row__title">Level {level}</span>
-          <span className="profile-level-row__rank">{rank?.name}</span>
+          <span className="profile-level-row__tier">{tier?.name}</span>
         </span>
         <span className="profile-level-row__bar" aria-hidden="true">
           <span
             className="profile-level-row__bar-fill"
-            style={{ width: `${Math.round((progress.fraction || 0) * 100)}%` }}
+            style={{
+              width: `${Math.round((progress.fraction || 0) * 100)}%`,
+              background: tier?.key
+                ? `linear-gradient(90deg, var(--ring-${tier.key}-2), var(--ring-${tier.key}-3))`
+                : undefined,
+            }}
           />
         </span>
         <span className="profile-level-row__sub">{subline}</span>

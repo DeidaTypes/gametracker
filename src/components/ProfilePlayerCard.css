@@ -114,7 +114,7 @@
   height: 64px;
   padding: 0;
   border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--accent-journal) 55%, transparent);
+  border: none;
   background: var(--bg-surface-2);
   overflow: hidden;
   cursor: default;
@@ -125,43 +125,9 @@
   cursor: pointer;
 }
 
-.ppc__lv {
-  position: absolute;
-  left: 50%;
-  bottom: -9px;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-  padding: 0 7px;
-  border: none;
-  border-radius: var(--radius-full);
-  background: var(--bg-base);
-  box-shadow: 0 0 0 1.5px var(--accent);
-  color: color-mix(in srgb, var(--accent) 55%, var(--text-primary));
-  font-family: var(--font-body);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  z-index: 1;
-}
-
-.ppc__lv::before {
-  content: '';
-  position: absolute;
-  inset: -12px -8px;
-}
-
-.ppc__lv:active {
-  opacity: 0.75;
-}
-
 /* Avatar sizing/fallback color is owned by the shared Avatar component
-   (src/components/Avatar.jsx / Avatar.css) — this wrapper button just
-   supplies the accent ring + click target. */
+   (src/components/Avatar.jsx / Avatar.css) — this wrapper button is the
+   click target; the tier ring sits in .ppc__avatar-wrap via LevelRing. */
 
 /* ── Identity block ───────────────────────────────────────── */
 

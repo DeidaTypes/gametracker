@@ -69,7 +69,7 @@
   font-weight: var(--font-weight-bold);
 }
 
-.lp-summary__rank {
+.lp-summary__tier {
   margin: var(--space-8) 0 0;
   text-transform: uppercase;
   color: var(--text-tertiary);

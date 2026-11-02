@@ -68,7 +68,7 @@
   line-height: var(--line-height-title);
 }
 
-.profile-level-row__rank {
+.profile-level-row__tier {
   flex: none;
   font-family: var(--font-body);
   font-size: var(--font-size-caption);
@@ -89,7 +89,6 @@
   display: block;
   height: 100%;
   border-radius: var(--radius-full);
-  background: var(--accent);
 }
 
 .profile-level-row__sub {
