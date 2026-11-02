@@ -2265,8 +2265,10 @@ function _pulseWrittenReview(item) {
  * review | finished | cluster | sessions | list | started | startedRun |
  * own | qa | rated | compact. Does not reorder or fetch; never groups
  * across pulsePage. Clusters and session rolls consume their members so
- * they only appear once. Consecutive started rows by the same author
- * within 24h collapse into startedRun.
+ * they only appear once. A start within 24h of a session roll (same
+ * page, author and game, either order) is attached to that roll — the
+ * closest start only — and is not also emitted as started. Consecutive
+ * started rows by the same author within 24h collapse into startedRun.
  */
 export function shapePulseFeedEntries(items) {
   const list = items || []
@@ -2317,12 +2319,19 @@ export function shapePulseFeedEntries(items) {
     for (const m of members) clusterMemberToLead.set(m.id, anchor.id)
   }
 
+  const consumedStarts = _attachStartsToSessionGroups(list, sessionByLead)
+
   const result = []
   for (const item of list) {
     const sessionLead = sessionMemberToLead.get(item.id)
     if (sessionLead && sessionLead !== item.id) continue
     if (sessionLead === item.id) {
-      result.push({ kind: 'sessions', items: sessionByLead.get(item.id).items })
+      const sessionGroup = sessionByLead.get(item.id)
+      result.push({
+        kind: 'sessions',
+        items: sessionGroup.items,
+        started: sessionGroup.started,
+      })
       continue
     }
 
@@ -2355,6 +2364,7 @@ export function shapePulseFeedEntries(items) {
       continue
     }
     if (item.type === 'started') {
+      if (consumedStarts.has(item)) continue
       result.push({ kind: 'started', item })
       continue
     }
@@ -2365,6 +2375,74 @@ export function shapePulseFeedEntries(items) {
     result.push({ kind: 'compact', item })
   }
   return _groupStartedRuns(result)
+}
+
+/**
+ * Milliseconds for a feed timestamp. Anything that is not a finite
+ * date string or number (including null and garbage) is NaN, so callers
+ * can refuse the merge instead of throwing.
+ */
+function _pulseInstantMs(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') return NaN
+  const ms = new Date(value).getTime()
+  return Number.isFinite(ms) ? ms : NaN
+}
+
+/**
+ * Attach at most one `started` row to each session roll when it shares
+ * pulsePage, author and game and falls within 24h of that roll's newest
+ * session, either order. The closest start wins; it is consumed so the
+ * final loop never emits it as `started` (and it therefore never joins
+ * a startedRun). Does not mutate feed items. Never throws.
+ */
+function _attachStartsToSessionGroups(list, sessionByLead) {
+  const consumed = new Set()
+  const slots = []
+  for (const group of sessionByLead.values()) {
+    const lead = group.items?.[0]
+    const authorId = lead?.author?.id
+    const gameId = lead?.game?.id
+    const newestMs = _pulseInstantMs(lead?.createdAt)
+    if (!authorId || gameId == null || !Number.isFinite(newestMs)) continue
+    slots.push({
+      group,
+      newestMs,
+      key: `${lead.pulsePage || 'first'}|${authorId}|${gameId}`,
+    })
+  }
+
+  const starts = []
+  for (const item of list) {
+    if (item?.type !== 'started') continue
+    const authorId = item.author?.id
+    const gameId = item.game?.id
+    const startMs = _pulseInstantMs(item.createdAt)
+    if (!authorId || gameId == null || !Number.isFinite(startMs)) continue
+    starts.push({
+      item,
+      startMs,
+      key: `${item.pulsePage || 'first'}|${authorId}|${gameId}`,
+    })
+  }
+
+  const usedSlots = new Set()
+  for (;;) {
+    let best = null
+    for (const start of starts) {
+      if (consumed.has(start.item)) continue
+      for (const slot of slots) {
+        if (usedSlots.has(slot) || slot.key !== start.key) continue
+        const delta = Math.abs(start.startMs - slot.newestMs)
+        if (delta > PULSE_GROUP_WINDOW_MS) continue
+        if (!best || delta < best.delta) best = { start, slot, delta }
+      }
+    }
+    if (!best) break
+    best.slot.group.started = best.start.item
+    consumed.add(best.start.item)
+    usedSlots.add(best.slot)
+  }
+  return consumed
 }
 
 /**

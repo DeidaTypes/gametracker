@@ -547,6 +547,7 @@ function SessionsPost({ entry, coverPriority, followsReview, navigate }) {
   }, 0)
   const when = formatActivityDate(item.createdAt, { pulse: true })
   const detail = sessionMomentDetail(items, totalSeconds)
+  const verb = entry.started ? 'started and played' : 'played'
   const onComments = (e) => {
     e?.stopPropagation?.()
     navigate(`/activity/${item.id}/comments`)
@@ -564,7 +565,7 @@ function SessionsPost({ entry, coverPriority, followsReview, navigate }) {
       <div className="pulse-post__body">
         <p className="pulse-post__head pulse-post__head--oneline">
           <b>{actorLabel(item)}</b>
-          <span className="pulse-post__verb pulse-post__verb--status">played</span>
+          <span className="pulse-post__verb pulse-post__verb--status">{verb}</span>
           <PulseTime when={when} />
         </p>
         <MomentCard
