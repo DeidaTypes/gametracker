@@ -67,7 +67,7 @@ function readTrackerLists() {
   return snap
 }
 
-function Library() {
+function Library({ onBack = null }) {
   const navigate = useNavigate()
   const { user } = useAuth()
 
@@ -828,6 +828,7 @@ function Library() {
 
         <LibraryHeader
           title="Library"
+          onBack={onBack}
           actions={
             <LibrarySearchToggle open={searchOpen} onToggle={toggleSearch} />
           }

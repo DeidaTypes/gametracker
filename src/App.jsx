@@ -1587,6 +1587,20 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            {/* Own library, pushed on top of Profile. The Library tab stays
+                /library with no back control. Back and swipe-back return here. */}
+            <Route
+              path="/profile/games"
+              element={
+                <RequireAuth>
+                  <ErrorBoundary>
+                    <PageTransition swipeBack>
+                      <Library onBack={() => navigate(-1)} />
+                    </PageTransition>
+                  </ErrorBoundary>
+                </RequireAuth>
+              }
+            />
             {/* Other-user profiles — /user/:username resolves username→UUID
                 then renders the shared Profile component which branch-switches
                 on isOwnProfile to fetch data from Supabase vs localStorage. */}
@@ -1753,7 +1767,7 @@ function AppContent() {
             />
             {/* Another user's tracked-games grid — the tap destination
                 behind the Games stat on a visitor profile. Own profile
-                routes to /library instead (see ProfilePlayerCard's
+                routes to /profile/games instead (see ProfilePlayerCard's
                 onGamesClick in Profile.jsx); UserLibrary itself also
                 redirects there as a safety net for a direct/deep link. */}
             <Route

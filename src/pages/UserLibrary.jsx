@@ -54,9 +54,9 @@ const PAGE_SIZE = LIBRARY_PAGE_SIZE
  * `lists_select_public_or_own` means a visitor sees only PUBLIC lists.
  *
  * Own profile never lands here in normal use (ProfilePlayerCard routes the
- * Games stat to `/library` instead), but a direct/deep link to this route
- * for yourself is still possible, so it redirects to `/library` rather
- * than rendering a read-only copy of your own data.
+ * Games stat to `/profile/games` instead), but a direct/deep link to this
+ * route for yourself is still possible, so it redirects to `/profile/games`
+ * rather than rendering a read-only copy of your own data.
  *
  * Search is a client-side title substring over THIS user's already-loaded
  * trackers. It never queries IGDB and never reads the viewer's library.
@@ -113,11 +113,12 @@ function UserLibrary() {
   const attemptedFallbackRef = useRef(new Set())
 
   // Never render this screen for the signed-in user's own profile — send
-  // them to the real Library page instead. Gates the fetch below too, so
-  // no game_trackers query for `userId === currentUserId` ever runs here.
+  // them to the pushed library on Profile instead. Gates the fetch below
+  // too, so no game_trackers query for `userId === currentUserId` ever
+  // runs here.
   useEffect(() => {
     if (!resolving && isOwnProfile) {
-      navigate('/library', { replace: true })
+      navigate('/profile/games', { replace: true })
     }
   }, [resolving, isOwnProfile, navigate])
 

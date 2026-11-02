@@ -1897,7 +1897,7 @@ function Profile() {
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}
           onGamesClick={
             isOwnProfile
-              ? () => navigate('/library')
+              ? () => navigate('/profile/games')
               : () => navigate(`/user/${profilePathSegment}/library`, {
                   state: { gamesCountHint: gamesCount },
                 })
