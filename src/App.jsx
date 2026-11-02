@@ -134,6 +134,7 @@ import QaComposerHost from './pages/qa/QaComposerHost'
 import ComposerHost from './components/composer/ComposerHost'
 import TermsGate from './components/TermsGate'
 import { useBadgeUnlockWatcher } from './hooks/useBadgeUnlockWatcher'
+import { useLevelWatcher } from './hooks/useLevelWatcher'
 import { useAppResume, APP_RESUMED_EVENT } from './hooks/useAppResume'
 import ErrorBoundary from './components/ErrorBoundary'
 import './styles/tokens.css'
@@ -860,6 +861,9 @@ function AppContent() {
   // The hook is a no-op while `user` is null and self-handles first-mount
   // semantics so we don't toast for already-earned badges on page load.
   useBadgeUnlockWatcher()
+  // Level-up celebration, and one "You're Level N" card for players who
+  // were here before levels. Same moment lock as the badge moments.
+  useLevelWatcher()
 
   // Recover after the app is backgrounded and resumed: refresh the Supabase
   // session, reconnect dropped realtime sockets, and trigger every

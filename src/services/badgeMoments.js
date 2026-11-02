@@ -34,6 +34,34 @@ export function isBadgeMomentsHeld() {
   return holdCount > 0
 }
 
+let activeMomentKey = null
+
+/**
+ * One full-screen moment at a time: a badge celebration, a summary card,
+ * a level-up, or the one-time level card. beginMoment refuses while one
+ * is already up. endMoment releases it and tells the queues to look again.
+ */
+export function beginMoment(key) {
+  if (key == null || activeMomentKey != null) return false
+  activeMomentKey = key
+  return true
+}
+
+export function endMoment(key) {
+  if (activeMomentKey == null || activeMomentKey !== key) return false
+  activeMomentKey = null
+  try {
+    window.dispatchEvent(new Event('momentEnded'))
+  } catch {
+    // no window
+  }
+  return true
+}
+
+export function isMomentShowing() {
+  return activeMomentKey != null
+}
+
 /**
  * Badges whose family has not already been shown this session.
  * Claiming them up front stops a second surface from showing the

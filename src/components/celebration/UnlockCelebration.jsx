@@ -13,10 +13,12 @@ import './UnlockCelebration.css'
  *
  * Parameterized overlay: icon, ring color, tier chip, eyebrow, title,
  * category, description, progress dots (3 or 5), Share + dismiss CTAs.
+ * progressDots={null} hides the dots row. Omitting it keeps the default.
  */
 export default function UnlockCelebration({
   open = false,
   onDismiss,
+  onExitComplete,
   icon,
   ringColor = 'var(--accent)',
   tierLabel,
@@ -62,8 +64,11 @@ export default function UnlockCelebration({
     })
   }
 
-  const totalDots = Math.max(1, progressDots?.total ?? 5)
-  const filledDots = Math.min(totalDots, Math.max(0, progressDots?.filled ?? 0))
+  const showDots = progressDots != null
+  const totalDots = showDots ? Math.max(1, progressDots.total ?? 5) : 0
+  const filledDots = showDots
+    ? Math.min(totalDots, Math.max(0, progressDots.filled ?? 0))
+    : 0
 
   const overlayMotion = reducedMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } }
@@ -95,7 +100,7 @@ export default function UnlockCelebration({
   }
 
   const content = (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {open && (
         <motion.div
           className="uc-overlay"
@@ -142,25 +147,27 @@ export default function UnlockCelebration({
               <p className="uc-desc text-body">{description}</p>
             )}
 
-            <div
-              className="uc-dots"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={totalDots}
-              aria-valuenow={filledDots}
-              aria-label={`${filledDots} of ${totalDots} milestones`}
-            >
-              {Array.from({ length: totalDots }, (_, i) => (
-                <span
-                  key={i}
-                  className={[
-                    'uc-dot',
-                    i < filledDots ? 'uc-dot--filled' : '',
-                  ].filter(Boolean).join(' ')}
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
+            {showDots && (
+              <div
+                className="uc-dots"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={totalDots}
+                aria-valuenow={filledDots}
+                aria-label={`${filledDots} of ${totalDots} milestones`}
+              >
+                {Array.from({ length: totalDots }, (_, i) => (
+                  <span
+                    key={i}
+                    className={[
+                      'uc-dot',
+                      i < filledDots ? 'uc-dot--filled' : '',
+                    ].filter(Boolean).join(' ')}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="uc-actions">
               <button
