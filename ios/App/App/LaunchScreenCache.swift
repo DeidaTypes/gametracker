@@ -10,8 +10,10 @@ import Compression
 /// per scene and size). Every cold start shows that cached picture before any
 /// app code runs, so it is navy for every theme unless the files themselves
 /// are repainted. This walks that folder and redraws each image in the saved
-/// theme's base color with the LaunchLogo mascot where the storyboard puts it:
-/// 157x260 pt, centered on the full image.
+/// theme's base color with the mascot and wordmark where the storyboard puts
+/// them, centered on the full image: mascot 51x84 pt with its center 24 pt
+/// above the image center, wordmark 159x32 pt with its center 50 pt below.
+/// Light themes get the dark-ink wordmark.
 ///
 /// The folder is undocumented. Every step fails silently (the launch simply
 /// stays as iOS made it), nothing is ever deleted, and all of the work runs on
@@ -32,8 +34,13 @@ enum LaunchScreenCache {
 
     /// The mark left on each repainted file: the base it was repainted with.
     private static let markName = "cp.launch.base"
-    /// LaunchScreen.storyboard: LaunchLogo is 157x260 pt.
-    private static let logoPoints = CGSize(width: 157, height: 260)
+    /// LaunchScreen.storyboard, in points, on the full image (not the safe area).
+    /// Mascot box 51x84, center 24 pt above the image center. Wordmark 159x32,
+    /// center 50 pt below. 16 pt between the boxes; the group is 132 pt tall.
+    private static let mascotPoints = CGSize(width: 51, height: 84)
+    private static let wordmarkPoints = CGSize(width: 159, height: 32)
+    private static let mascotCenterOffset: CGFloat = -24
+    private static let wordmarkCenterOffset: CGFloat = 50
 
     private static let queue = DispatchQueue(label: "app.checkpoint.launch-cache", qos: .utility)
 
@@ -121,11 +128,13 @@ enum LaunchScreenCache {
         let scale = UIScreen.main.scale
         let screen = UIScreen.main.bounds.size
         let logo = UIImage(named: "LaunchLogo")
+        let isLight = lightThemeIds.contains(savedThemeId ?? "")
+        let wordmark = UIImage(named: isLight ? "LaunchWordmarkLight" : "LaunchWordmark")
         for delay in delays {
             queue.asyncAfter(deadline: .now() + delay) {
                 // A newer theme was saved while this waited: that call repaints.
                 guard savedBase == base else { return }
-                repaintAll(base: base, scale: scale, screen: screen, logo: logo)
+                repaintAll(base: base, isLight: isLight, scale: scale, screen: screen, logo: logo, wordmark: wordmark)
             }
         }
     }
@@ -153,16 +162,16 @@ enum LaunchScreenCache {
         return files
     }
 
-    private static func repaintAll(base: String, scale: CGFloat, screen: CGSize, logo: UIImage?) {
+    private static func repaintAll(base: String, isLight: Bool, scale: CGFloat, screen: CGSize, logo: UIImage?, wordmark: UIImage?) {
         guard let folder = snapshotsURL(), let color = color(fromBase: base) else { return }
         for file in imageFiles(in: folder) {
-            // Skip what is already painted in this base; repaint anything iOS
-            // added or redrew (no mark, or another base).
-            if readMark(file) == markValue(base) { continue }
+            // Skip what is already painted in this base and scheme; repaint
+            // anything iOS added or redrew (no mark, or another base or scheme).
+            if readMark(file) == markValue(base, isLight: isLight) { continue }
             guard let size = pixelSize(of: file) else { continue }
-            guard let drawn = draw(size: size, color: color, logo: logo, scale: scale, screen: screen) else { continue }
+            guard let drawn = draw(size: size, color: color, logo: logo, wordmark: wordmark, scale: scale, screen: screen) else { continue }
             guard encodeAndWrite(drawn, over: file) != nil else { continue }
-            writeMark(file, markValue(base))
+            writeMark(file, markValue(base, isLight: isLight))
         }
     }
 
@@ -179,14 +188,16 @@ enum LaunchScreenCache {
         return CGSize(width: width, height: height)
     }
 
-    /// An image of exactly `size` pixels: the base color, then the mascot at
-    /// 157x260 pt x the screen scale, centered on the full image. An image
-    /// whose short side is not the screen's (a downscaled copy) gets the
-    /// mascot scaled by the same ratio, so it is the same picture, smaller.
+    /// An image of exactly `size` pixels: the base color, then the mascot
+    /// aspect-fit in a 51x84 pt box and the wordmark in a 159x32 pt box. The
+    /// mascot's center is 24 pt above the image center and the wordmark's is
+    /// 50 pt below, times the screen scale. An image whose short side is not
+    /// the screen's (a downscaled copy) gets both scaled by the same ratio,
+    /// so it is the same picture, smaller.
     ///
     /// iOS's own cached images are Display P3, so this draws in Display P3 and
     /// converts the sRGB base into it, the way the storyboard's color would be.
-    private static func draw(size: CGSize, color: UIColor, logo: UIImage?, scale: CGFloat, screen: CGSize) -> CGImage? {
+    private static func draw(size: CGSize, color: UIColor, logo: UIImage?, wordmark: UIImage?, scale: CGFloat, screen: CGSize) -> CGImage? {
         let width = Int(size.width)
         let height = Int(size.height)
         guard width > 0, height > 0, width <= 16_384, height <= 16_384 else { return nil }
@@ -197,14 +208,9 @@ enum LaunchScreenCache {
             let ratio = min(size.width, size.height) / screenShortPixels
             if abs(ratio - 1) > 0.01 { factor = ratio }
         }
-        let logoWidth = (logoPoints.width * scale * factor).rounded()
-        let logoHeight = (logoPoints.height * scale * factor).rounded()
-        let logoRect = CGRect(
-            x: ((size.width - logoWidth) / 2).rounded(),
-            y: ((size.height - logoHeight) / 2).rounded(),
-            width: logoWidth,
-            height: logoHeight
-        )
+        let pixels = scale * factor
+        let mascotBox = topLeftBox(canvas: size, points: mascotPoints, centerOffset: mascotCenterOffset, pixels: pixels)
+        let wordmarkBox = topLeftBox(canvas: size, points: wordmarkPoints, centerOffset: wordmarkCenterOffset, pixels: pixels)
 
         let space = CGColorSpace(name: CGColorSpace.displayP3) ?? CGColorSpaceCreateDeviceRGB()
         guard let context = CGContext(
@@ -222,9 +228,52 @@ enum LaunchScreenCache {
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         context.interpolationQuality = .high
         if let logoImage = logo?.cgImage {
-            context.draw(logoImage, in: logoRect)
+            let fitted = aspectFit(logoImage, in: mascotBox)
+            context.draw(logoImage, in: cgRect(fromTopLeft: fitted, canvasHeight: size.height))
+        }
+        if let wordmarkImage = wordmark?.cgImage {
+            let fitted = aspectFit(wordmarkImage, in: wordmarkBox)
+            context.draw(wordmarkImage, in: cgRect(fromTopLeft: fitted, canvasHeight: size.height))
         }
         return context.makeImage()
+    }
+
+    /// A box in top-left coordinates (y grows down). `centerOffset` is the
+    /// box center's distance below the canvas center, in points; negative is
+    /// above. Width, height, and the offset are rounded to whole pixels.
+    private static func topLeftBox(canvas: CGSize, points: CGSize, centerOffset: CGFloat, pixels: CGFloat) -> CGRect {
+        let boxWidth = (points.width * pixels).rounded()
+        let boxHeight = (points.height * pixels).rounded()
+        let offset = (centerOffset * pixels).rounded()
+        return CGRect(
+            x: ((canvas.width - boxWidth) / 2).rounded(),
+            y: (canvas.height / 2 + offset - boxHeight / 2).rounded(),
+            width: boxWidth,
+            height: boxHeight
+        )
+    }
+
+    /// The image aspect-fit inside `box`, centered. `box` is in pixels.
+    private static func aspectFit(_ image: CGImage, in box: CGRect) -> CGRect {
+        let imageWidth = CGFloat(image.width)
+        let imageHeight = CGFloat(image.height)
+        guard imageWidth > 0, imageHeight > 0, box.width > 0, box.height > 0 else { return box }
+        let fit = min(box.width / imageWidth, box.height / imageHeight)
+        let fittedWidth = (imageWidth * fit).rounded()
+        let fittedHeight = (imageHeight * fit).rounded()
+        return CGRect(
+            x: (box.midX - fittedWidth / 2).rounded(),
+            y: (box.midY - fittedHeight / 2).rounded(),
+            width: fittedWidth,
+            height: fittedHeight
+        )
+    }
+
+    /// Top-left origin (y grows down) to CGContext (origin bottom-left, y grows
+    /// up). The mascot is above the wordmark on screen, so its rect has the
+    /// larger y after this conversion.
+    private static func cgRect(fromTopLeft rect: CGRect, canvasHeight: CGFloat) -> CGRect {
+        CGRect(x: rect.minX, y: canvasHeight - rect.maxY, width: rect.width, height: rect.height)
     }
 
     // MARK: - Writing
@@ -386,10 +435,11 @@ enum LaunchScreenCache {
         return String(bytes: buffer, encoding: .utf8)
     }
 
-    /// The base, plus the writer's format version: files written by an earlier
-    /// version of this code carry a different mark and are repainted.
-    private static func markValue(_ base: String) -> String {
-        "\(base);v2"
+    /// The base, the wordmark scheme, and the writer's format version. Files
+    /// written by an earlier version, or for the other scheme, carry a
+    /// different mark and are repainted.
+    private static func markValue(_ base: String, isLight: Bool) -> String {
+        "\(base);\(isLight ? "light" : "dark");v3"
     }
 
     private static func writeMark(_ file: URL, _ value: String) {

@@ -65,9 +65,11 @@ class ViewController: CAPBridgeViewController {
         installLaunchCover()
     }
 
-    /// A view that looks exactly like LaunchScreen.storyboard: LaunchBackground
-    /// over the full view, LaunchLogo 157x260 aspect fit at the view's center
-    /// (the storyboard centers on the view, not the safe area).
+    /// A view that looks exactly like LaunchScreen.storyboard: the launch base
+    /// over the full view, LaunchLogo 51x84 aspect fit with its center 24 pt
+    /// above the view's center, and the wordmark 159x32 aspect fit with its
+    /// center 50 pt below (the storyboard centers on the view, not the safe
+    /// area). Light themes use the dark-ink wordmark.
     private func installLaunchCover() {
         guard launchCover == nil else { return }
 
@@ -83,16 +85,28 @@ class ViewController: CAPBridgeViewController {
         logo.isUserInteractionEnabled = false
         cover.addSubview(logo)
 
+        let lightTheme = LaunchScreenCache.lightThemeIds.contains(LaunchScreenCache.savedThemeId ?? "")
+        let wordmark = UIImageView(image: UIImage(named: lightTheme ? "LaunchWordmarkLight" : "LaunchWordmark"))
+        wordmark.translatesAutoresizingMaskIntoConstraints = false
+        wordmark.contentMode = .scaleAspectFit
+        wordmark.clipsToBounds = true
+        wordmark.isUserInteractionEnabled = false
+        cover.addSubview(wordmark)
+
         view.addSubview(cover)
         NSLayoutConstraint.activate([
             cover.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             cover.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             cover.topAnchor.constraint(equalTo: view.topAnchor),
             cover.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            logo.widthAnchor.constraint(equalToConstant: 157),
-            logo.heightAnchor.constraint(equalToConstant: 260),
+            logo.widthAnchor.constraint(equalToConstant: 51),
+            logo.heightAnchor.constraint(equalToConstant: 84),
             logo.centerXAnchor.constraint(equalTo: cover.centerXAnchor),
-            logo.centerYAnchor.constraint(equalTo: cover.centerYAnchor),
+            logo.centerYAnchor.constraint(equalTo: cover.centerYAnchor, constant: -24),
+            wordmark.widthAnchor.constraint(equalToConstant: 159),
+            wordmark.heightAnchor.constraint(equalToConstant: 32),
+            wordmark.centerXAnchor.constraint(equalTo: cover.centerXAnchor),
+            wordmark.centerYAnchor.constraint(equalTo: cover.centerYAnchor, constant: 50),
         ])
         launchCover = cover
 
