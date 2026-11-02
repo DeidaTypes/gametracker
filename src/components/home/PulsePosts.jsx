@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HiOutlineHeart, HiOutlineFlag, HiOutlineCheck } from 'react-icons/hi'
-import { Gamepad2, Layers } from 'lucide-react'
+import { HiOutlineFlag, HiOutlineCheck } from 'react-icons/hi'
+import { Gamepad2, Layers, Play } from 'lucide-react'
 import Avatar from '../Avatar'
 import StarRatingDisplay from '../StarRatingDisplay'
 import ListCoverCluster from '../ListCoverCluster'
@@ -16,7 +16,6 @@ import { formatActivityDate } from '../../utils/formatActivityDate'
 import { useMotionPreference } from '../../hooks/useMotionPreference'
 import { useListPreview } from '../../hooks/useListPreview'
 import { getGameStatus } from '../../services/libraryService'
-import BacklogPill from './BacklogPill'
 import { warmQaQuestion } from '../../pages/qa/qaCache'
 import { showToast } from '../Toast'
 import { hapticImpact } from '../../utils/haptics'
@@ -30,6 +29,42 @@ function formatDuration(seconds) {
   if (h === 0) return `${m}m`
   if (m === 0) return `${h}h`
   return `${h}h ${m}m`
+}
+
+function formatDurationWords(seconds) {
+  const s = Number(seconds)
+  if (!Number.isFinite(s) || s < 60) return null
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} hr`
+  return `${h} hr ${m} min`
+}
+
+function sessionMomentDetail(items, totalSeconds) {
+  const count = items.length
+  const today = isLocalToday(items[0].createdAt)
+  const durationWords = formatDurationWords(totalSeconds)
+  const sessionPart = count === 1 ? '1 session' : `${count} sessions`
+  if (!durationWords) {
+    if (today && count === 1) return '1 session today'
+    if (today) return `${count} sessions today`
+    return sessionPart
+  }
+  const durationPart = today ? `${durationWords} today` : durationWords
+  return `${durationPart} \u00b7 ${sessionPart}`
+}
+
+function compactMomentDetail(item) {
+  if (item.type === 'backlogged') return 'Added to Backlog'
+  if (item.type === 'listed' && item.listKind === 'added') {
+    return item.listName ? `Added to ${item.listName}` : 'Added to a list'
+  }
+  if (item.type === 'played') {
+    const words = formatDurationWords(item.durationSeconds)
+    if (words) return words
+  }
+  return null
 }
 
 function actorLabel(item) {
@@ -89,27 +124,23 @@ function joinNames(members) {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-function PulseShell({ followsReview, compact, children }) {
+function PulseShell({ followsReview, children }) {
   return (
-    <article
-      className={`pulse-post${compact ? ' pulse-post--cmp' : ''}${
-        followsReview ? ' pulse-post--after-review' : ''
-      }`}
-    >
+    <article className={`pulse-post${followsReview ? ' pulse-post--after-review' : ''}`}>
       {children}
     </article>
   )
 }
 
-function PulseAvatar({ user, onClick, compact }) {
+function PulseAvatar({ user, onClick }) {
   return (
     <button
       type="button"
-      className={`pulse-post__avatar${compact ? ' pulse-post__avatar--cmp' : ''}`}
+      className="pulse-post__avatar"
       onClick={onClick}
       aria-label={user?.displayName ? `View ${user.displayName}'s profile` : 'View profile'}
     >
-      <Avatar user={user} size={compact ? 'xs' : 'sm'} />
+      <Avatar user={user} size="sm" />
     </button>
   )
 }
@@ -215,6 +246,47 @@ function PulseActions({
       onComment={onComments}
       backlogGame={showBacklog ? item.game : null}
     />
+  )
+}
+
+function MomentCard({ game, title, icon: Icon, detail, onClick, coverPriority }) {
+  const displayTitle = title || game?.title || ''
+  const src = game?.image ? getSizedImageUrl(game.image, 36) : COVER_FALLBACK
+  const coverVar = game?.image ? getSizedImageUrl(game.image, 200) : null
+  const hasCover = Boolean(game?.image)
+  const cardClass = hasCover ? 'pulse-post__mom' : 'pulse-post__mom pulse-post__mom--nocover'
+
+  return (
+    <button type="button" className={cardClass} onClick={onClick}>
+      {coverVar && (
+        <span
+          className="pulse-post__mom-bg"
+          style={{ '--pulse-mom-cover': `url("${coverVar}")` }}
+          aria-hidden="true"
+        />
+      )}
+      {hasCover && <span className="pulse-post__mom-scrim" aria-hidden="true" />}
+      {game && (
+        <img
+          className="pulse-post__mom-cover"
+          src={src}
+          alt=""
+          width={36}
+          height={48}
+          onError={handleImgError}
+          {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
+        />
+      )}
+      <span className="pulse-post__mom-text">
+        <span className="pulse-post__mom-title">{displayTitle}</span>
+        {detail && (
+          <span className="pulse-post__mom-detail">
+            {Icon && <Icon size={13} strokeWidth={1.8} aria-hidden="true" />}
+            {detail}
+          </span>
+        )}
+      </span>
+    </button>
   )
 }
 
@@ -469,64 +541,40 @@ function QaPost({ item, followsReview, navigate }) {
 function SessionsPost({ entry, coverPriority, followsReview, navigate }) {
   const items = entry.items
   const item = items[0]
-  const count = items.length
   const totalSeconds = items.reduce((sum, it) => {
     const s = Number(it.durationSeconds)
     return Number.isFinite(s) && s > 0 ? sum + s : sum
   }, 0)
-  const duration = formatDuration(totalSeconds)
   const when = formatActivityDate(item.createdAt, { pulse: true })
-  const today = isLocalToday(item.createdAt)
-  const sessionCore =
-    count === 1
-      ? today
-        ? '1 session today'
-        : '1 session'
-      : today
-        ? `${count} sessions today`
-        : `${count} sessions`
-  const sessionLabel = duration ? `${sessionCore} \u00b7 ${duration}` : sessionCore
+  const detail = sessionMomentDetail(items, totalSeconds)
+  const onComments = (e) => {
+    e?.stopPropagation?.()
+    navigate(`/activity/${item.id}/comments`)
+  }
 
   return (
-    <PulseShell followsReview={followsReview} compact>
+    <PulseShell followsReview={followsReview}>
       <PulseAvatar
         user={item.author}
-        compact
         onClick={(e) => {
           e.stopPropagation()
           goProfile(navigate, item.author)
         }}
       />
       <div className="pulse-post__body">
-        <p className="pulse-post__head">
+        <p className="pulse-post__head pulse-post__head--oneline">
           <b>{actorLabel(item)}</b>
           <span className="pulse-post__verb pulse-post__verb--status">played</span>
-          <button
-            type="button"
-            className="pulse-post__game-link"
-            onClick={(e) => goGame(navigate, item.game, e)}
-          >
-            {item.game?.title || ''}
-          </button>
           <PulseTime when={when} />
         </p>
-        <p className="pulse-post__sub">
-          <Gamepad2 size={13} strokeWidth={1.8} aria-hidden="true" />
-          {sessionLabel}
-        </p>
-      </div>
-      <div className="pulse-post__end">
-        <button type="button" onClick={(e) => goGame(navigate, item.game, e)} aria-label={item.game?.title}>
-          <img
-            className="pulse-post__end-cover"
-            src={coverSrc(item, 15)}
-            alt=""
-            width={30}
-            height={40}
-            onError={handleImgError}
-            {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
-          />
-        </button>
+        <MomentCard
+          game={item.game}
+          icon={Gamepad2}
+          detail={detail}
+          coverPriority={coverPriority}
+          onClick={(e) => goGame(navigate, item.game, e)}
+        />
+        <PulseActions item={item} onComments={onComments} showBacklog />
       </div>
     </PulseShell>
   )
@@ -677,52 +725,40 @@ function StartedRunPost({ entry, coverPriority, followsReview, navigate }) {
   const when = formatActivityDate(item.createdAt, { pulse: true })
   const gameCount = items.length
   const titleLine = startedRunTitleLine(items)
-  const covers = items.slice(0, 3)
+  const onComments = (e) => {
+    e?.stopPropagation?.()
+    navigate(`/activity/${item.id}/comments`)
+  }
 
   return (
-    <PulseShell followsReview={followsReview} compact>
+    <PulseShell followsReview={followsReview}>
       <PulseAvatar
         user={item.author}
-        compact
         onClick={(e) => {
           e.stopPropagation()
           goProfile(navigate, item.author)
         }}
       />
-      <button
-        type="button"
-        className="pulse-post__body pulse-post__body--tap"
-        onClick={() => goUserActivity(navigate, item.author)}
-      >
-        <p className="pulse-post__head">
+      <div className="pulse-post__body">
+        <p className="pulse-post__head pulse-post__head--oneline">
           <b>{actorLabel(item)}</b>
-          <span className="pulse-post__verb pulse-post__verb--status">started</span>
-          <span>
-            {gameCount} game{gameCount === 1 ? '' : 's'}
+          <span className="pulse-post__verb pulse-post__verb--status">
+            started {gameCount} game{gameCount === 1 ? '' : 's'}
           </span>
           <PulseTime when={when} />
         </p>
-        <p className="pulse-post__sub pulse-post__sub--ellipsis">{titleLine}</p>
-      </button>
-      <div className="pulse-post__end">
-        <span className="pulse-post__cover-stack" aria-hidden="true">
-          {covers
-            .slice()
-            .reverse()
-            .map((it, idx) => (
-              <img
-                key={it.id}
-                className="pulse-post__cover-stack-img"
-                src={coverSrc(it, 12)}
-                alt=""
-                width={24}
-                height={32}
-                style={{ zIndex: idx + 1 }}
-                onError={handleImgError}
-                {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
-              />
-            ))}
-        </span>
+        <MomentCard
+          game={item.game}
+          title={titleLine}
+          icon={Play}
+          detail="Started playing"
+          coverPriority={coverPriority}
+          onClick={(e) => {
+            e.stopPropagation()
+            goUserActivity(navigate, item.author)
+          }}
+        />
+        <PulseActions item={item} onComments={onComments} />
       </div>
     </PulseShell>
   )
@@ -730,93 +766,67 @@ function StartedRunPost({ entry, coverPriority, followsReview, navigate }) {
 
 function StartedPost({ item, coverPriority, followsReview, navigate }) {
   const when = formatActivityDate(item.createdAt, { pulse: true })
+  const onComments = (e) => {
+    e?.stopPropagation?.()
+    navigate(`/activity/${item.id}/comments`)
+  }
   return (
-    <PulseShell followsReview={followsReview} compact>
+    <PulseShell followsReview={followsReview}>
       <PulseAvatar
         user={item.author}
-        compact
         onClick={(e) => {
           e.stopPropagation()
           goProfile(navigate, item.author)
         }}
       />
       <div className="pulse-post__body">
-        <p className="pulse-post__head">
+        <p className="pulse-post__head pulse-post__head--oneline">
           <b>{actorLabel(item)}</b>
           <span className="pulse-post__verb pulse-post__verb--status">started</span>
-          <button
-            type="button"
-            className="pulse-post__game-link"
-            onClick={(e) => goGame(navigate, item.game, e)}
-          >
-            {item.game?.title || ''}
-          </button>
+          <PulseTime when={when} />
         </p>
-        <p className="pulse-post__sub">{when}</p>
-      </div>
-      <div className="pulse-post__end">
-        <BacklogPill game={item.game} isOwn={item.isOwn} className="backlog-pill--started" />
-        <button type="button" onClick={(e) => goGame(navigate, item.game, e)} aria-label={item.game?.title}>
-          <img
-            className="pulse-post__end-cover"
-            src={coverSrc(item, 15)}
-            alt=""
-            width={30}
-            height={40}
-            onError={handleImgError}
-            {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
-          />
-        </button>
+        <MomentCard
+          game={item.game}
+          icon={Play}
+          detail="Started playing"
+          coverPriority={coverPriority}
+          onClick={(e) => goGame(navigate, item.game, e)}
+        />
+        <PulseActions item={item} onComments={onComments} showBacklog />
       </div>
     </PulseShell>
   )
 }
 
 function OwnPost({ item, coverPriority, followsReview, navigate }) {
-  const activity = useActivityHeart(item)
+  const when = formatActivityDate(item.createdAt, { pulse: true })
+  const onComments = (e) => {
+    e?.stopPropagation?.()
+    navigate(`/activity/${item.id}/comments`)
+  }
   return (
-    <PulseShell followsReview={followsReview} compact>
+    <PulseShell followsReview={followsReview}>
       <PulseAvatar
         user={item.author}
-        compact
         onClick={(e) => {
           e.stopPropagation()
           goProfile(navigate, item.author)
         }}
       />
       <div className="pulse-post__body">
-        <p className="pulse-post__head">
+        <p className="pulse-post__head pulse-post__head--oneline">
           <b>You</b>
           <span className="pulse-post__verb pulse-post__verb--status">finished</span>
-          <button
-            type="button"
-            className="pulse-post__game-link"
-            onClick={(e) => goGame(navigate, item.game, e)}
-          >
-            {item.game?.title || ''}
-          </button>
+          <PulseTime when={when} />
         </p>
-        <p className="pulse-post__sub pulse-post__sub--own">
-          {activity.count > 0 && (
-            <>
-              <HiOutlineHeart aria-hidden="true" />
-              <span>{activity.count}</span>
-            </>
-          )}
-        </p>
-      </div>
-      <div className="pulse-post__end">
-        <button type="button" onClick={(e) => goGame(navigate, item.game, e)} aria-label={item.game?.title}>
-          <img
-            className="pulse-post__end-cover"
-            src={coverSrc(item, 15)}
-            alt=""
-            width={30}
-            height={40}
-            onError={handleImgError}
-            {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
-          />
-        </button>
+        <MomentCard
+          game={item.game}
+          icon={HiOutlineFlag}
+          detail="Finished"
+          coverPriority={coverPriority}
+          onClick={(e) => goGame(navigate, item.game, e)}
+        />
+        <PulseActions item={item} onComments={onComments} heartReadOnly />
       </div>
     </PulseShell>
   )
@@ -839,19 +849,40 @@ function CompactPost({ item, coverPriority, followsReview, navigate }) {
         : item.type === 'backlogged'
           ? 'wants to play'
           : item.type || 'updated'
+  const detail = compactMomentDetail(item)
+  const cardTitle =
+    item.type === 'listed' && item.listKind === 'added'
+      ? item.listName || item.game?.title || ''
+      : item.game?.title || ''
+  const cardGame = item.game
+  const cardIcon =
+    item.type === 'listed'
+      ? Layers
+      : item.type === 'played'
+        ? Gamepad2
+        : item.type === 'backlogged'
+          ? Layers
+          : null
+  const onCardClick = (e) => {
+    if (item.type === 'listed' && item.listId) {
+      e.stopPropagation()
+      navigate(`/list/${item.listId}`)
+      return
+    }
+    goGame(navigate, item.game, e)
+  }
 
   return (
-    <PulseShell followsReview={followsReview} compact>
+    <PulseShell followsReview={followsReview}>
       <PulseAvatar
         user={item.author}
-        compact
         onClick={(e) => {
           e.stopPropagation()
           goProfile(navigate, item.author)
         }}
       />
       <div className="pulse-post__body">
-        <p className="pulse-post__head">
+        <p className="pulse-post__head pulse-post__head--oneline">
           <b>{actorLabel(item)}</b>
           <span
             className={`pulse-post__verb ${
@@ -860,33 +891,24 @@ function CompactPost({ item, coverPriority, followsReview, navigate }) {
           >
             {verb}
           </span>
-          {item.game?.title && (
-            <button
-              type="button"
-              className="pulse-post__game-link"
-              onClick={(e) => goGame(navigate, item.game, e)}
-            >
-              {item.game.title}
-            </button>
-          )}
+          <PulseTime when={when} />
         </p>
-        <p className="pulse-post__sub">{when}</p>
+        {(cardGame || cardTitle) && (
+          <MomentCard
+            game={cardGame}
+            title={cardTitle}
+            icon={cardIcon}
+            detail={detail}
+            coverPriority={coverPriority}
+            onClick={onCardClick}
+          />
+        )}
+        <PulseActions
+          item={item}
+          onComments={onComments}
+          showBacklog={Boolean(item.game) && item.type !== 'listed'}
+        />
       </div>
-      {item.game && (
-        <div className="pulse-post__end">
-          <button type="button" onClick={(e) => goGame(navigate, item.game, e)} aria-label={item.game.title}>
-            <img
-              className="pulse-post__end-cover"
-              src={coverSrc(item, 15)}
-              alt=""
-              width={30}
-              height={40}
-              onError={handleImgError}
-              {...(coverPriority || { loading: 'lazy', decoding: 'async' })}
-            />
-          </button>
-        </div>
-      )}
     </PulseShell>
   )
 }

@@ -28,12 +28,6 @@
   display: none;
 }
 
-.pulse-post--cmp {
-  grid-template-columns: var(--space-32) 1fr auto;
-  align-items: center;
-  padding: var(--space-8) var(--space-20);
-}
-
 .pulse-post__avatar {
   display: flex;
   align-items: flex-start;
@@ -52,42 +46,8 @@
   height: var(--space-32);
 }
 
-.pulse-post__avatar--cmp {
-  align-self: center;
-}
-
-.pulse-post__avatar--cmp > .avatar,
-.pulse-post__avatar--cmp > .avatar-ringed {
-  margin-left: var(--space-4);
-}
-
-.pulse-post__avatar--cmp .avatar {
-  width: var(--space-24);
-  height: var(--space-24);
-}
-
 .pulse-post__body {
   min-width: 0;
-}
-
-.pulse-post__body--tap {
-  padding: 0;
-  margin: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.pulse-post__sub--ellipsis {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pulse-post__head {
@@ -103,6 +63,13 @@
 
 .pulse-post__head b {
   font-weight: var(--font-weight-semibold);
+}
+
+.pulse-post__head--oneline {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pulse-post__verb {
@@ -139,63 +106,115 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.pulse-post__sub {
+/* Slim moment card */
+.pulse-post__mom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  height: var(--space-64);
+  margin-top: var(--space-8);
+  padding: 0 var(--space-12) 0 var(--space-8);
+  border: 0;
+  border-radius: var(--space-12);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  background: var(--bg-surface-2);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pulse-post__mom:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-post__mom:active {
+    transform: none;
+  }
+}
+
+.pulse-post__mom-bg {
+  position: absolute;
+  inset: calc(-1 * var(--space-24));
+  background-image: var(--pulse-mom-cover, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px) brightness(0.5) saturate(1.25);
+  transform: scale(1.2);
+  pointer-events: none;
+}
+
+.pulse-post__mom-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-base) 35%, transparent),
+    color-mix(in srgb, var(--bg-base) 60%, transparent)
+  );
+  pointer-events: none;
+}
+
+.pulse-post__mom-cover {
+  position: relative;
+  width: 36px;
+  height: var(--space-48);
+  border-radius: 6px;
+  object-fit: cover;
+  flex: none;
+  box-shadow: 0 var(--space-4) var(--space-12) color-mix(in srgb, var(--bg-base) 60%, transparent);
+}
+
+.pulse-post__mom-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.pulse-post__mom-title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pulse-on-cover);
+}
+
+.pulse-post__mom-detail {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin: var(--space-2) 0 0;
   font-size: 12.5px;
-  color: var(--text-tertiary);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--pulse-on-cover) 78%, transparent);
 }
 
-.pulse-post__sub svg {
+.pulse-post__mom-detail svg {
   width: 13px;
   height: 13px;
   flex: none;
 }
 
-.pulse-post__sub--own {
-  gap: var(--space-4);
+.pulse-post__mom--nocover {
+  background: var(--bg-surface-2);
 }
 
-.pulse-post__end {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
+.pulse-post__mom--nocover .pulse-post__mom-title {
+  color: var(--text-primary);
 }
 
-.pulse-post__end > button {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.pulse-post__end-cover {
-  width: 30px;
-  height: 40px;
-  border-radius: 5px;
-  object-fit: cover;
-  display: block;
-}
-
-.pulse-post__cover-stack {
-  display: flex;
-  flex: none;
-}
-
-.pulse-post__cover-stack-img {
-  width: 24px;
-  height: 32px;
-  border-radius: 5px;
-  object-fit: cover;
-  flex: none;
-  box-shadow: 0 0 0 2px var(--bg-base);
-}
-
-.pulse-post__cover-stack-img + .pulse-post__cover-stack-img {
-  margin-left: calc(-1 * var(--space-8));
+.pulse-post__mom--nocover .pulse-post__mom-detail {
+  color: var(--text-secondary);
 }
 
 /* Finished band */
