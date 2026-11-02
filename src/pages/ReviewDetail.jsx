@@ -330,7 +330,8 @@ function CommentRow({
         <Avatar
           avatarUrl={avatarUrl}
           name={username}
-          seed={comment.users?.id}
+          seed={comment.users?.id || authorUserId}
+          userId={authorUserId || comment.users?.id}
           size="sm"
           className="rd-comment__avatar"
         />

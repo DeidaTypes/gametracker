@@ -51,7 +51,7 @@ function CommentRow({ comment, canDelete, onDelete }) {
 
   return (
     <div className={`lc-comment${deleting ? ' lc-comment--deleting' : ''}`}>
-      <Avatar user={user} size="sm" className="lc-avatar" />
+      <Avatar user={user} userId={comment.user_id} size="sm" className="lc-avatar" />
       <div className="lc-comment-content">
         <div className="lc-comment-header">
           <span className="lc-comment-author">{displayName}</span>

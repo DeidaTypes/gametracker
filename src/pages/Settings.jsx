@@ -336,6 +336,7 @@ function Settings() {
                   avatarUrl={profileAvatarUrl(profile)}
                   name={displayName}
                   seed={user?.id || displayName}
+                  userId={user?.id}
                   size="md"
                 />
                 <span className="settings-me__text">

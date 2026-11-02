@@ -154,6 +154,7 @@ export default function ProfilePlayerCard({
               seed={avatarSeed}
               size="xl"
               alt={`${displayName || 'User'} profile photo`}
+              ring={false}
             />
           </button>
           {level != null && progress != null && (

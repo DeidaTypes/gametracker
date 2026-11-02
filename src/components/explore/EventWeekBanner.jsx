@@ -78,6 +78,7 @@ function LeaderboardRow({ entry, rank }) {
           avatarUrl={entry.avatarUrl}
           name={entry.displayName}
           seed={entry.userId}
+          userId={entry.userId}
           size="sm"
           className="ewb-lb-row__avatar"
         />

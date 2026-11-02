@@ -502,6 +502,7 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
                   seed={user?.id}
                   size="xl"
                   className="ep-avatar"
+                  ring={false}
                 />
                 <button
                   type="button"

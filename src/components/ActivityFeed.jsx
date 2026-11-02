@@ -40,6 +40,7 @@ function ActorAvatar({ avatarUrl, avatarData, displayName, userId }) {
       avatarUrl={avatarData || avatarUrl || null}
       name={displayName}
       seed={userId}
+      userId={userId}
       size="sm"
       className="activity-feed-avatar"
     />

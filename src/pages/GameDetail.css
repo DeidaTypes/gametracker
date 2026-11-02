@@ -547,7 +547,12 @@ html[data-app-theme="paper"] .gd-hero::after {
    (src/components/Avatar.jsx / Avatar.css) — this just adds the
    stacked-circle border + overlap. */
 .gd-follow-avatar {
-  border: 2px solid var(--color-bg-primary, #0c1322);
+  flex-shrink: 0;
+}
+
+.gd-follow-avatar.avatar,
+.gd-follow-avatar .avatar {
+  border: 2px solid var(--color-bg-primary);
   flex-shrink: 0;
 }
 
@@ -1502,8 +1507,14 @@ html[data-app-theme="paper"] .gd-hero::after {
    (src/components/Avatar.jsx / Avatar.css) — this just adds the
    stacked-circle border + overlap. */
 .gd-pulse-avatar {
-  border: 2px solid var(--color-bg-primary, #0c1322);
+  flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   margin-left: -8px;
+}
+
+.gd-pulse-avatar.avatar,
+.gd-pulse-avatar .avatar {
+  border: 2px solid var(--color-bg-primary);
   flex-shrink: 0;
 }
 

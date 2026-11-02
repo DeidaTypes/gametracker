@@ -56,10 +56,14 @@
   align-self: center;
 }
 
+.pulse-post__avatar--cmp > .avatar,
+.pulse-post__avatar--cmp > .avatar-ringed {
+  margin-left: var(--space-4);
+}
+
 .pulse-post__avatar--cmp .avatar {
   width: var(--space-24);
   height: var(--space-24);
-  margin-left: var(--space-4);
 }
 
 .pulse-post__body {

@@ -190,6 +190,7 @@ export async function searchPublicLists(query, limit = 20) {
     coverImageUrl: row.cover_image_url || null,
     author: row.users
       ? {
+          id: row.user_id,
           username: row.users.username || '',
           displayName: row.users.display_name || '',
           avatarUrl: row.users.avatar_url || null,

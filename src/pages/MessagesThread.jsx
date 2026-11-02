@@ -650,6 +650,7 @@ function MessagesThread() {
               avatarUrl={partnerAvatar}
               name={headerLabel}
               seed={partner?.id}
+              userId={partner?.id}
               size="sm"
               className="dm-thread__avatar"
             />
@@ -719,6 +720,7 @@ function MessagesThread() {
               avatarUrl={partnerAvatar}
               name={headerLabel}
               seed={partner?.id}
+              userId={partner?.id}
               size="xl"
               className="dm-empty__avatar"
             />

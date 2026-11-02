@@ -86,7 +86,8 @@
 /* Sizing + fallback color owned by the shared Avatar component
    (src/components/Avatar.jsx / Avatar.css) — this just adds the
    header's contrast border. */
-.dm-thread__avatar {
+.dm-thread__avatar.avatar,
+.dm-thread__avatar .avatar {
   border: 1px solid var(--color-border);
 }
 
@@ -95,6 +96,7 @@
   position: absolute;
   bottom: 0;
   right: 0;
+  z-index: 2;
   width: 10px;
   height: 10px;
   border-radius: var(--radius-full);
@@ -255,8 +257,12 @@
    state's border + drop shadow. Was a bespoke 88px; now the "xl" (64px)
    step of the shared scale. */
 .dm-empty__avatar {
-  border: 1px solid var(--color-border);
   margin-bottom: var(--spacing-sm);
+}
+
+.dm-empty__avatar.avatar,
+.dm-empty__avatar .avatar {
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
 }
 

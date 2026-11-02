@@ -131,6 +131,7 @@ export default function PlayingNowStrip() {
                 <span className="playing-now-strip__avatar-wrap">
                   <Avatar
                     user={profile}
+                    userId={entry.userId}
                     size="lg"
                     className="playing-now-strip__avatar"
                   />

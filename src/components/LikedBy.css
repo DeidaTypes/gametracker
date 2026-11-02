@@ -21,11 +21,17 @@
 .liked-by__stack .liked-by__avatar {
   width: 18px;
   height: 18px;
-  font-size: 8px;
-  box-shadow: 0 0 0 2px var(--color-bg-tertiary);
   /* Mockup: 6px overlap on 18px faces. */
   /* stylelint-disable-next-line declaration-property-value-disallowed-list */
   margin-left: -6px;
+}
+
+.liked-by__stack .liked-by__avatar.avatar,
+.liked-by__stack .liked-by__avatar .avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  box-shadow: 0 0 0 2px var(--color-bg-tertiary);
 }
 
 .liked-by__stack .liked-by__avatar:first-child {

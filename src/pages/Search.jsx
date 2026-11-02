@@ -284,6 +284,7 @@ function UserResultRow({ user, onTapUser, currentUserId }) {
         onClick={() =>
           onTapUser({
             id: username || user.id,
+            userId: user.id,
             username,
             displayName,
             avatarUrl: user.avatar_url || null,
@@ -294,6 +295,7 @@ function UserResultRow({ user, onTapUser, currentUserId }) {
           avatarUrl={user.avatar_url}
           name={displayName || username}
           seed={user.id}
+          userId={user.id}
           size="md"
           className="sp-user-avatar"
         />
@@ -326,6 +328,7 @@ function reviewRowToCard(row) {
     commentCount: 0,
     createdAt: row.created_at,
     author: {
+      userId: row.user_id,
       username: row.users?.username || row.users?.display_name || 'someone',
       displayName: row.users?.display_name || 'Someone',
       // No avatar_url? Leave it null — ReviewCard already renders its own
@@ -964,6 +967,7 @@ function UsersTabEmpty({ recents, onClearAll, onTapUser, onRemoveUser }) {
                 avatarUrl={item.avatarUrl}
                 name={item.displayName || item.username}
                 seed={item.id}
+                userId={item.userId}
                 size="md"
                 className="sp-user-avatar"
               />
@@ -1033,6 +1037,7 @@ function ListRow({ list, onTap, onRemove, removeLabel }) {
               avatarUrl={list.author?.avatarUrl}
               name={list.author?.displayName || list.author?.username}
               seed={list.author?.id}
+              userId={list.author?.id}
               size="xs"
             />
             <span className="sp-list-row__author-name">
@@ -1609,6 +1614,7 @@ function Search() {
     (item) => {
       addRecent('users', {
         id: item.username || item.id,
+        userId: item.userId || null,
         username: item.username,
         displayName: item.displayName,
         avatarUrl: item.avatarUrl || null,

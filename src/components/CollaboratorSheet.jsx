@@ -113,6 +113,7 @@ function CollaboratorSheet({
                     avatarUrl={u.avatarUrl}
                     name={u.displayName || u.username}
                     seed={u.userId}
+                    userId={u.userId}
                     size="md"
                     className="collab-sheet__avatar"
                   />
@@ -165,6 +166,7 @@ function CollaboratorSheet({
                       avatarUrl={u.avatarUrl}
                       name={u.displayName || u.username}
                       seed={u.userId}
+                      userId={u.userId}
                       size="md"
                       className="collab-sheet__avatar"
                     />

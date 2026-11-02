@@ -38,6 +38,7 @@ function BlockedUserRow({ row, onUnblock }) {
         seed={row.blocked_id}
         size="md"
         className="blocked-row__avatar"
+        ring={false}
       />
       <span className="blocked-row__meta">
         <span className="blocked-row__name">{display}</span>

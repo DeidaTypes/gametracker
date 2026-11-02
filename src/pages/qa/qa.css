@@ -980,6 +980,7 @@ body[data-reduce-motion='true'] .qa-swap-in {
 }
 
 .qa-person--q .qa-person__av,
+.qa-person--q .qa-person__av .avatar,
 .qa-person--q .qa-person__av--ghost .avatar {
   width: 36px;
   height: 36px;

@@ -17,10 +17,10 @@ function PersonRow({ user, userId, deleted, timeLabel, credibility, you = false,
     <div className={`qa-person${large ? ' qa-person--q' : ''}`}>
       {deleted ? (
         <span className="qa-person__av qa-person__av--ghost" aria-hidden="true">
-          <Avatar size="sm" name="?" seed={userId || 'deleted'} />
+          <Avatar size="sm" name="?" seed={userId || 'deleted'} ring={false} />
         </span>
       ) : (
-        <Avatar user={user} seed={userId} size="sm" className="qa-person__av" />
+        <Avatar user={user} seed={userId} userId={userId} size="sm" className="qa-person__av" />
       )}
       <span className="qa-person__col">
         <span className={`qa-person__name${deleted ? ' qa-person__name--dim' : ''}`}>

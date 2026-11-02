@@ -126,7 +126,8 @@
 /* Sizing + fallback color owned by the shared Avatar component
    (src/components/Avatar.jsx / Avatar.css) — this just adds the row's
    contrast border. */
-.dm-inbox-row__avatar {
+.dm-inbox-row__avatar.avatar,
+.dm-inbox-row__avatar .avatar {
   border: 1px solid var(--color-border);
 }
 
@@ -358,7 +359,8 @@
 /* Sizing + fallback color owned by the shared Avatar component
    (src/components/Avatar.jsx / Avatar.css) — this just adds the row's
    contrast border. */
-.dm-compose-row__avatar {
+.dm-compose-row__avatar.avatar,
+.dm-compose-row__avatar .avatar {
   border: 1px solid var(--color-border);
 }
 

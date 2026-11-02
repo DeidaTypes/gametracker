@@ -27,3 +27,13 @@
 .avatar--md { width: 40px; height: 40px; font-size: 16px; }
 .avatar--lg { width: 56px; height: 56px; font-size: 22px; }
 .avatar--xl { width: 64px; height: 64px; font-size: 26px; }
+
+/* Layout box for a photo that has its tier ring. Same size as the photo
+   itself — the ring is absolutely centered and paints outside. */
+.avatar-ringed {
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+  vertical-align: middle;
+}

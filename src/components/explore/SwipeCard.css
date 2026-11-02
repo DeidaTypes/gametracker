@@ -160,7 +160,12 @@
   flex-shrink: 0;
 }
 
-.swipe-card__social-avatar.avatar {
+.swipe-card__social-avatar {
+  flex-shrink: 0;
+}
+
+.swipe-card__social-avatar.avatar,
+.swipe-card__social-avatar .avatar {
   width: 20px;
   height: 20px;
   min-width: 20px;
