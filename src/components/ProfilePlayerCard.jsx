@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useSyncExternalStore } from 'react'
 import { HiDotsVertical } from 'react-icons/hi'
 import { LuChevronLeft, LuMessageCircle } from 'react-icons/lu'
 import Skeleton from './Skeleton'
@@ -14,6 +14,22 @@ function levelAriaSuffix(level, progress) {
   if (!progress || progress.isMax) return `, Level ${level}`
   const next = level + 1
   return `, Level ${level}, ${progress.intoLevel} of ${progress.levelCost} XP to Level ${next}`
+}
+
+const COMPACT_AVATAR_QUERY = '(max-width: 359px)'
+
+function subscribeCompactAvatar(onChange) {
+  const mq = window.matchMedia(COMPACT_AVATAR_QUERY)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+
+function useCompactAvatarLayout() {
+  return useSyncExternalStore(
+    subscribeCompactAvatar,
+    () => window.matchMedia(COMPACT_AVATAR_QUERY).matches,
+    () => false,
+  )
 }
 
 /**
@@ -122,6 +138,8 @@ export default function ProfilePlayerCard({
 }) {
   const hasRatings = avgRating != null && avgRating > 0
   const levelSuffix = levelAriaSuffix(level, progress)
+  const compactAvatar = useCompactAvatarLayout()
+  const avatarPhotoSize = compactAvatar ? 56 : 64
 
   return (
     <section className="ppc" aria-label="Profile summary">
@@ -161,7 +179,7 @@ export default function ProfilePlayerCard({
             <LevelRing
               level={level}
               progress={progress.fraction}
-              photoSize={64}
+              photoSize={avatarPhotoSize}
               glint
             />
           )}

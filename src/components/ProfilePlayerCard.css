@@ -106,9 +106,15 @@
 .ppc__avatar-wrap {
   position: relative;
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  line-height: 0;
 }
 
 .ppc__avatar {
+  display: block;
   flex: none;
   width: 64px;
   height: 64px;
@@ -314,6 +320,11 @@
 }
 
 @media (max-width: 359px) {
+  .ppc__avatar-wrap {
+    width: 56px;
+    height: 56px;
+  }
+
   .ppc__avatar {
     width: 56px;
     height: 56px;

@@ -1,8 +1,5 @@
 .level-photo-ring {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 1;
 }
@@ -13,9 +10,8 @@
 
 .level-photo-ring__glow {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
   border-radius: var(--radius-full);
   pointer-events: none;
 }

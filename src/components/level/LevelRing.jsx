@@ -25,7 +25,9 @@ function ringGeometry(photoSize) {
   const edgeExtra = photoSize < 40 ? 1 : 1.5
   const edgeStroke = stroke + edgeExtra
   const r = photoSize / 2 + gap + stroke / 2
-  const size = 2 * (r + edgeStroke / 2)
+  const rawSize = 2 * (r + edgeStroke / 2)
+  const ceiled = Math.ceil(rawSize)
+  const size = ceiled % 2 === 0 ? ceiled : ceiled + 1
   return { size, stroke, edgeStroke, r, cx: size / 2, cy: size / 2 }
 }
 
@@ -63,11 +65,17 @@ export default function LevelRing({
 
   const showGlow = tier.key === 'platinum' || tier.key === 'diamond'
   const showGlint = glint && tier.key === 'diamond' && !reduced
+  const ringInset = -(size - photoSize) / 2
 
   return (
     <span
       className="level-photo-ring"
-      style={{ width: size, height: size }}
+      style={{
+        width: size,
+        height: size,
+        left: ringInset,
+        top: ringInset,
+      }}
       aria-hidden="true"
     >
       {showGlow && (
