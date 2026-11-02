@@ -111,6 +111,9 @@ import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCove
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
+import ProfileLevelRow from '../components/level/ProfileLevelRow'
+import LevelPopup from '../components/level/LevelPopup'
+import { useLevel } from '../hooks/useLevel'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
 import ContentSwap from '../components/motion/ContentSwap'
@@ -637,6 +640,14 @@ function Profile() {
   // in the background — see getSWR's stale-while-revalidate semantics).
   const cachedProfileBundle = targetUserId ? peekSWR(`profile:${targetUserId}`) : undefined
 
+  const {
+    xpTotal: levelXpTotal,
+    level: playerLevel,
+    progress: levelProgress,
+    rank: levelRank,
+    loading: levelLoading,
+  } = useLevel(targetUserId)
+
   // Local profile blob (display name / avatar / bio / socials / favorites).
   // Lives in localStorage for the signed-in user; for "another user"
   // viewing we'd fetch from Supabase but Sprint 5 only wires the own-
@@ -762,6 +773,8 @@ function Profile() {
 
   // Modals / sheets
   const [showEditModal, setShowEditModal] = useState(false)
+  const [levelPopupOpen, setLevelPopupOpen] = useState(false)
+  const openLevelPopup = useCallback(() => setLevelPopupOpen(true), [])
   const [showBioSheet, setShowBioSheet] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [showCreateListModal, setShowCreateListModal] = useState(false)
@@ -1835,6 +1848,7 @@ function Profile() {
   )
 
   const favoriteGames = profile.favoriteGames || []
+
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <PullToRefresh onRefresh={handlePullToRefresh}>
@@ -1888,6 +1902,8 @@ function Profile() {
                   state: { gamesCountHint: gamesCount },
                 })
           }
+          level={levelLoading ? null : playerLevel}
+          onLevelClick={levelLoading ? undefined : openLevelPopup}
         />
 
         {/* ═════════════════════════════════════════════════════════
@@ -2146,6 +2162,12 @@ function Profile() {
                   goalProgress={goalProgress}
                   rivalryData={rivalryData}
                   onSetGoal={() => setGoalSheetOpen(true)}
+                  levelLoading={levelLoading}
+                  playerLevel={playerLevel}
+                  levelProgress={levelProgress}
+                  levelRank={levelRank}
+                  levelXpTotal={levelXpTotal}
+                  onOpenLevelPopup={openLevelPopup}
                 />
               )}
 
@@ -2189,6 +2211,16 @@ function Profile() {
         {/* ═════════════════════════════════════════════════════════
             MODALS
             ═════════════════════════════════════════════════════════ */}
+        <LevelPopup
+          isOpen={levelPopupOpen}
+          onClose={() => setLevelPopupOpen(false)}
+          isOwnProfile={isOwnProfile}
+          level={playerLevel}
+          progress={levelProgress}
+          rank={levelRank}
+          xpTotal={levelXpTotal}
+        />
+
         <EditProfileModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
@@ -2344,16 +2376,39 @@ function ProfileChallengeSection({
   showChallengeRow = true,
   badgesUserId = null,
   onSeeMoreBadges,
+  levelLoading = false,
+  playerLevel = 1,
+  levelProgress = null,
+  levelRank = null,
+  levelXpTotal = 0,
+  onOpenLevelPopup,
 }) {
   const showBadges = !!badgesUserId
+  const showLevel = !!userId
+  const hasBelowLevel = showChallengeRow || showBadges
 
-  if (!showChallengeRow && !showBadges) return null
+  if (!showLevel && !showChallengeRow && !showBadges) return null
 
   return (
     <section
       className="profile-home__section profile-home__section--card profile-challenge-cell"
       aria-label={showChallengeRow ? `${currentYear} challenge` : 'Badges'}
     >
+      {showLevel && (
+        <>
+          <ProfileLevelRow
+            loading={levelLoading}
+            level={playerLevel}
+            progress={levelProgress}
+            rank={levelRank}
+            xpTotal={levelXpTotal}
+            onOpen={onOpenLevelPopup}
+          />
+          {hasBelowLevel && (
+            <hr className="profile-home__hairline" aria-hidden="true" />
+          )}
+        </>
+      )}
       {showChallengeRow && (
         goalProgress === null ? (
           <div className="profile-challenge" aria-busy="true">
@@ -2526,6 +2581,12 @@ function HomeTab({
   goalProgress,
   rivalryData,
   onSetGoal,
+  levelLoading,
+  playerLevel,
+  levelProgress,
+  levelRank,
+  levelXpTotal,
+  onOpenLevelPopup,
 }) {
   const [tasteVisible, setTasteVisible] = useState(false)
   const [tasteLoading, setTasteLoading] = useState(true)
@@ -2576,6 +2637,12 @@ function HomeTab({
           showChallengeRow={showChallengeRow}
           badgesUserId={targetUserId}
           onSeeMoreBadges={onSeeMoreBadges}
+          levelLoading={levelLoading}
+          playerLevel={playerLevel}
+          levelProgress={levelProgress}
+          levelRank={levelRank}
+          levelXpTotal={levelXpTotal}
+          onOpenLevelPopup={onOpenLevelPopup}
         />
       )}
 

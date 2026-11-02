@@ -103,6 +103,11 @@
 
 /* ── Avatar ───────────────────────────────────────────────── */
 
+.ppc__avatar-wrap {
+  position: relative;
+  flex: none;
+}
+
 .ppc__avatar {
   flex: none;
   width: 64px;
@@ -118,6 +123,40 @@
 
 .ppc__avatar--editable {
   cursor: pointer;
+}
+
+.ppc__lv {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--bg-base);
+  box-shadow: 0 0 0 1.5px var(--accent);
+  color: color-mix(in srgb, var(--accent) 55%, var(--text-primary));
+  font-family: var(--font-body);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1;
+}
+
+.ppc__lv::before {
+  content: '';
+  position: absolute;
+  inset: -12px -8px;
+}
+
+.ppc__lv:active {
+  opacity: 0.75;
 }
 
 /* Avatar sizing/fallback color is owned by the shared Avatar component

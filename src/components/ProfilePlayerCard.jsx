@@ -108,6 +108,8 @@ export default function ProfilePlayerCard({
   onFollowersClick,
   onFollowingClick,
   onGamesClick,
+  level,
+  onLevelClick,
 }) {
   const hasRatings = avgRating != null && avgRating > 0
 
@@ -125,24 +127,39 @@ export default function ProfilePlayerCard({
           </button>
         )}
 
-        <button
-          type="button"
-          className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}`}
-          onClick={onAvatarClick}
-          aria-label={
-            isOwnProfile
-              ? 'Edit profile photo'
-              : `${displayName || 'User'} profile photo`
-          }
-        >
-          <Avatar
-            avatarUrl={avatarUrl}
-            name={displayName || 'User'}
-            seed={avatarSeed}
-            size="xl"
-            alt={`${displayName || 'User'} profile photo`}
-          />
-        </button>
+        <div className="ppc__avatar-wrap">
+          <button
+            type="button"
+            className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}`}
+            onClick={onAvatarClick}
+            aria-label={
+              isOwnProfile
+                ? 'Edit profile photo'
+                : `${displayName || 'User'} profile photo`
+            }
+          >
+            <Avatar
+              avatarUrl={avatarUrl}
+              name={displayName || 'User'}
+              seed={avatarSeed}
+              size="xl"
+              alt={`${displayName || 'User'} profile photo`}
+            />
+          </button>
+          {level != null && onLevelClick && (
+            <button
+              type="button"
+              className="ppc__lv"
+              onClick={(e) => {
+                e.stopPropagation()
+                onLevelClick()
+              }}
+              aria-label={`Level ${level}, open level details`}
+            >
+              Lv {level}
+            </button>
+          )}
+        </div>
 
         <div className="ppc__identity">
           <h1 className="ppc__name">
