@@ -165,6 +165,12 @@ export default function GameSessions() {
           image: targetGame.image || null,
           sub: targetGame.title,
           tone: 'saved',
+          xp: [
+            { source: 'session', ref: String(result.sessionRow.id) },
+            ...(result.journalEntry?.id
+              ? [{ source: 'journal', ref: String(result.journalEntry.id) }]
+              : []),
+          ],
         })
       } else {
         showToast("Couldn't log your session", 'error', 5000, {

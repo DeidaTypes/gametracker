@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { useMotionPreference } from '../hooks/useMotionPreference'
 import { toastMotion, TOAST_SWAP } from '../motion/xMotion'
+import { getXpAwarded } from '../services/xpService'
 import './Toast.css'
 
 let _addToast = () => {}
@@ -98,12 +99,19 @@ const LONG_MS = 4000
  *   image?: string,
  *   tone?: 'saved' | 'list' | 'neutral' | 'error' | 'badge',
  *   onTap?: () => void,
+ *   xp?: { source: string, ref: string }[],
  * }} [options]
  *   `offsetTop` pushes this toast down from its default spot (a number is px, a string is any
  *   CSS length). `sub` is the quieter second line. `image` is a cover URL; it replaces the
  *   icon circle. `tone` picks the circle's color: saved = review green, list = list purple,
  *   neutral, error, badge. Defaults come from `type`. `onTap`, when set, runs after a tap
  *   dismisses the notice.
+ *   `xp` is a list of { source, ref } keys for awards the database may have just written.
+ *   The notice still shows immediately. ToastItem asks once, and only if that read returns
+ *   within 1.5s with a total above 0 does the second line become `sub · +N XP` (or `+N XP`
+ *   when there was no second line), swapped in place. It then fires `xpUpdated`. Zero, a
+ *   slow reply, or a failed read leaves the notice as it was. Duration and motion do not
+ *   change.
  */
 export function showToast(message, type = 'error', duration = null, action = null, icon = null, options = null) {
   const defaults = TYPE_DEFAULTS[type] || TYPE_DEFAULTS.error
@@ -122,8 +130,16 @@ export function showToast(message, type = 'error', duration = null, action = nul
     icon: customIcon || defaults.icon,
     offsetTop: options?.offsetTop ?? null,
     onTap: typeof options?.onTap === 'function' ? options.onTap : null,
+    xp: Array.isArray(options?.xp) && options.xp.length > 0 ? options.xp : null,
     id: Date.now() + Math.random(),
   })
+}
+
+const XP_WAIT_MS = 1500
+
+function lineWithXp(sub, amount) {
+  const earned = `+${amount} XP`
+  return sub ? `${sub} \u00b7 ${earned}` : earned
 }
 
 function ToastItem({ toast, onDone, reduced }) {
@@ -131,6 +147,29 @@ function ToastItem({ toast, onDone, reduced }) {
   const isPresent = useIsPresent()
   const [coverLoaded, setCoverLoaded] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
+  const [sub, setSub] = useState(toast.sub)
+
+  // The notice is already on screen. If the matching award is readable
+  // inside the wait, fold it into the second line. Otherwise leave it.
+  useEffect(() => {
+    const keys = toast.xp
+    if (!Array.isArray(keys) || keys.length === 0) return undefined
+    let ignore = false
+    const started = Date.now()
+    const wait = setTimeout(() => { ignore = true }, XP_WAIT_MS)
+    getXpAwarded(keys).then((amount) => {
+      if (ignore || Date.now() - started > XP_WAIT_MS) return
+      if (!(Number(amount) > 0)) return
+      ignore = true
+      clearTimeout(wait)
+      setSub(lineWithXp(toast.sub, amount))
+      try { window.dispatchEvent(new Event('xpUpdated')) } catch { /* no window */ }
+    }).catch(() => {})
+    return () => {
+      ignore = true
+      clearTimeout(wait)
+    }
+  }, [toast.xp, toast.sub])
 
   const dismiss = useCallback(() => {
     clearTimeout(timerRef.current)
@@ -185,7 +224,7 @@ function ToastItem({ toast, onDone, reduced }) {
       )}
       <span className="toast-text">
         <span className="toast-title">{toast.message}</span>
-        {toast.sub && <span className="toast-sub">{toast.sub}</span>}
+        {sub && <span className="toast-sub">{sub}</span>}
       </span>
       {toast.action && (
         <button type="button" className="toast-action" onClick={handleAction}>

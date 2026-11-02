@@ -93,10 +93,14 @@ function JournalEntryModal({
           hoursPlayed: parsedHours,
         })
         hapticSuccess()
-        showToast('Entry updated', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
+        showToast('Entry updated', 'success', null, null, null, {
+          sub: game?.title || null,
+          tone: 'saved',
+          ...(entryId ? { xp: [{ source: 'journal', ref: String(entryId) }] } : {}),
+        })
       } else {
         if (!game) return
-        await saveJournalEntry({
+        const saved = await saveJournalEntry({
           igdbGameId: game.id,
           title: title.trim(),
           body: body.trim(),
@@ -107,7 +111,11 @@ function JournalEntryModal({
           hoursPlayed: parsedHours,
         })
         hapticSuccess()
-        showToast('Entry saved', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
+        showToast('Entry saved', 'success', null, null, null, {
+          sub: game?.title || null,
+          tone: 'saved',
+          ...(saved?.id ? { xp: [{ source: 'journal', ref: String(saved.id) }] } : {}),
+        })
       }
       onClose()
     } catch (err) {

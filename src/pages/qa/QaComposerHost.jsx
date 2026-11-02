@@ -332,7 +332,10 @@ export default function QaComposerHost() {
       markJustAsked()
       closeQaComposer()
       hapticSuccess()
-      showToast('Question posted', 'success', undefined, null, null, POSTED_TOAST)
+      showToast('Question posted', 'success', undefined, null, null, {
+        ...POSTED_TOAST,
+        xp: [{ source: 'qa_ask', ref: String(id) }],
+      })
       navigate(`/qa/q/${id}`)
     })
   }
@@ -381,7 +384,10 @@ export default function QaComposerHost() {
       appendAnswer(current.questionId, answer)
       closeQaComposer()
       hapticSuccess()
-      showToast('Answer posted', 'success', undefined, null, null, POSTED_TOAST)
+      showToast('Answer posted', 'success', undefined, null, null, {
+        ...POSTED_TOAST,
+        xp: [{ source: 'qa_answer', ref: String(id) }],
+      })
     })
   }
 

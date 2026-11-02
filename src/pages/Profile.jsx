@@ -1740,7 +1740,11 @@ function Profile() {
       const g = initialGames[i]
       await addGameToList(listId, g.id, i, { title: g.title, image: g.image })
     }
-    showToast('List created', 'success', null, null, null, { sub: listName, tone: 'list' })
+    showToast('List created', 'success', null, null, null, {
+      sub: listName,
+      tone: 'list',
+      xp: [{ source: 'list', ref: String(listId) }],
+    })
     navigate(`/list/${listId}`)
   }
 

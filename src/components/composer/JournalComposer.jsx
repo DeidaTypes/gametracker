@@ -108,7 +108,11 @@ function JournalComposer({ game: gameProp = null, gameId = null, onSaved, onClos
         deadline,
       ])
       hapticSuccess()
-      showToast('Entry saved', 'success', null, null, null, { sub: game?.title || null, tone: 'saved' })
+      showToast('Entry saved', 'success', null, null, null, {
+        sub: game?.title || null,
+        tone: 'saved',
+        ...(result?.id ? { xp: [{ source: 'journal', ref: String(result.id) }] } : {}),
+      })
       onSaved?.(result)
       closeBox()
     } catch (err) {

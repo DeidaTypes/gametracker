@@ -238,9 +238,18 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
 
       hapticSuccess()
       window.dispatchEvent(new Event('reviewAdded'))
+      const igdbGameId = game?.id ?? gameId ?? editReview?.game?.id
       showToast(isEditMode ? 'Review updated' : 'Review saved', 'success', null, null, null, {
         sub: game?.title || null,
         tone: 'saved',
+        ...(igdbGameId != null && igdbGameId !== ''
+          ? {
+              xp: [
+                { source: 'rate', ref: String(igdbGameId) },
+                { source: 'review', ref: String(igdbGameId) },
+              ],
+            }
+          : {}),
       })
       onSaved?.(result)
       closeBox()
@@ -252,7 +261,7 @@ function ReviewComposer({ game: gameProp = null, gameId = null, editReview = nul
       setSubmitting(false)
     }
   }, [
-    canSave, isEditMode, editReview, game,
+    canSave, isEditMode, editReview, game, gameId,
     text, rating, loved, containsSpoilers, hoursRaw, markCompleted,
     vibeStamp, lifeContext,
     onSaved, closeBox,

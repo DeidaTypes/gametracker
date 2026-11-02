@@ -165,6 +165,12 @@ function HomeFAB() {
           image: game.image || null,
           sub: game.title,
           tone: 'saved',
+          xp: [
+            { source: 'session', ref: String(result.sessionRow.id) },
+            ...(result.journalEntry?.id
+              ? [{ source: 'journal', ref: String(result.journalEntry.id) }]
+              : []),
+          ],
         })
       } else {
         showToast("Couldn't log your session", 'error', 5000, {
@@ -200,7 +206,11 @@ function HomeFAB() {
       const g = initialGames[i]
       await addGameToList(listId, g.id, i, { title: g.title, image: g.image })
     }
-    showToast('List created', 'success', null, null, null, { sub: listName, tone: 'list' })
+    showToast('List created', 'success', null, null, null, {
+      sub: listName,
+      tone: 'list',
+      xp: [{ source: 'list', ref: String(listId) }],
+    })
     navigate(`/list/${listId}`)
   }
 
