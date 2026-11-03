@@ -1,9 +1,8 @@
 /* =============================================================
-   ProfileTasteMatchBanner — visitor-only taste-match readout, shown
-   above the primary action button in the profile identity area.
-   Brand-accent tinted strip (Cobalt); shared-genre dots use the
-   --genre-* data-viz tokens, same as the Discover taste-match strip
-   (src/components/explore/RecentActivityCard.css).
+   ProfileTasteMatchBanner — visitor-only taste-match readout in
+   the profile identity area. Plain one-line text (no tinted strip).
+   Shared-genre dots use the --genre-* data-viz tokens, same as the
+   Discover taste-match strip (RecentActivityCard.css).
    ============================================================= */
 
 .ptmb {
@@ -15,22 +14,19 @@
      content at the box edges, so the gap between items must come from
      `gap`, never from a trailing/leading space character in the JSX. */
   gap: 6px;
-  margin-top: 16px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-brand-primary) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-brand-primary) 26%, transparent);
+  margin-top: 10px;
   font-family: var(--font-body);
-  font-size: var(--font-size-caption);
+  font-size: 13.5px;
+  line-height: 1.35;
 }
 
 .ptmb__score {
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .ptmb__readout {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -39,12 +35,20 @@
   gap: 6px;
 }
 
+.ptmb__genres {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .ptmb__genre {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .ptmb__dot {

@@ -51,15 +51,21 @@ export default function ProfileTasteMatchBanner({ viewerId, ownerId }) {
       {topGenres.length > 0 && (
         <span className="ptmb__readout">
           <span aria-hidden="true">· you both lean into</span>
-          {topGenres.map((g, i) => (
-            <React.Fragment key={g.genre}>
-              {i > 0 && <span aria-hidden="true">&amp;</span>}
-              <span className="ptmb__genre">
-                <span className="ptmb__dot" style={{ background: genreColorVar(g.genre) }} aria-hidden="true" />
-                {genreShortLabel(g.genre)}
-              </span>
-            </React.Fragment>
-          ))}
+          <span className="ptmb__genres">
+            {topGenres.map((g, i) => (
+              <React.Fragment key={g.genre}>
+                {i > 0 && <span aria-hidden="true">&amp;</span>}
+                <span className="ptmb__genre">
+                  <span
+                    className="ptmb__dot"
+                    style={{ background: genreColorVar(g.genre) }}
+                    aria-hidden="true"
+                  />
+                  {genreShortLabel(g.genre)}
+                </span>
+              </React.Fragment>
+            ))}
+          </span>
         </span>
       )}
     </div>

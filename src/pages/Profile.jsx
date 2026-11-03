@@ -30,7 +30,7 @@ import {
   HiDotsVertical,
   HiOutlinePencil,
 } from 'react-icons/hi'
-import { PenLine, List, Plus } from 'lucide-react'
+import { MessageCircleQuestion, PenLine, List, Plus } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -1960,20 +1960,23 @@ function Profile() {
             )
           )}
 
-          {bestAnswersCount > 0 && (
-            <button
-              type="button"
-              className="profile-ig-hero__best"
-              onClick={() => navigate(`/user/${profilePathSegment}/best-answers`)}
-              aria-label={`${bestAnswersCount} best ${bestAnswersCount === 1 ? 'answer' : 'answers'}, view list`}
-            >
-              {bestAnswersCount} best {bestAnswersCount === 1 ? 'answer' : 'answers'}
-              <LuChevronRight size={14} aria-hidden="true" />
-            </button>
-          )}
-
-          {setSocials.length > 0 && (
-            <div className="profile-ig-hero__socials">
+          {(bestAnswersCount > 0 || setSocials.length > 0) && (
+            <div className="profile-ig-hero__extras">
+              {bestAnswersCount > 0 && (
+                <button
+                  type="button"
+                  className="profile-ig-hero__extra"
+                  onClick={() => navigate(`/user/${profilePathSegment}/best-answers`)}
+                  aria-label={`${bestAnswersCount} best ${bestAnswersCount === 1 ? 'answer' : 'answers'}, view list`}
+                >
+                  <MessageCircleQuestion size={15} aria-hidden="true" />
+                  <span className="profile-ig-hero__extra-label">
+                    <span className="profile-ig-hero__extra-strong">{bestAnswersCount}</span>
+                    {' '}
+                    best {bestAnswersCount === 1 ? 'answer' : 'answers'}
+                  </span>
+                </button>
+              )}
               {setSocials.map((p) => {
                 const handle = (profile[p.profileField] || '').trim()
                 const Icon = p.Icon
@@ -1981,12 +1984,12 @@ function Profile() {
                   <button
                     type="button"
                     key={p.key}
-                    className="profile-ig-hero__social"
+                    className="profile-ig-hero__extra"
                     onClick={() => openExternalLink(p.url(handle))}
                     aria-label={`Open ${p.key} profile @${handle}`}
                   >
                     <Icon size={14} aria-hidden="true" />
-                    <span className="profile-ig-hero__social-handle">
+                    <span className="profile-ig-hero__extra-label profile-ig-hero__extra-label--handle">
                       @{handle}
                     </span>
                   </button>
@@ -2003,20 +2006,23 @@ function Profile() {
             <div className="profile-ig-hero__actions">
               <button
                 type="button"
-                className={`profile-ig-btn profile-ig-btn--secondary${
-                  following ? ' profile-ig-btn--following' : ''
+                className={`profile-ig-btn${
+                  following
+                    ? ' profile-ig-btn--secondary profile-ig-btn--following'
+                    : ' profile-ig-btn--follow'
                 }`}
                 onClick={handleFollowToggle}
                 disabled={followPending}
                 aria-pressed={following ? 'true' : 'false'}
                 aria-label={following ? 'Unfollow' : 'Follow'}
               >
-                {following && <LuCheck size={14} aria-hidden="true" />} {following ? 'Following' : 'Follow'}
+                {following && <LuCheck size={16} aria-hidden="true" />}{' '}
+                {following ? 'Following' : 'Follow'}
               </button>
               {showMessageAction && (
                 <button
                   type="button"
-                  className="profile-ig-btn profile-ig-btn--primary"
+                  className="profile-ig-btn profile-ig-btn--secondary"
                   onClick={handleMessageUser}
                   aria-label="Send message"
                 >
