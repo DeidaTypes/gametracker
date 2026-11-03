@@ -1974,6 +1974,8 @@ function Profile() {
   )
 
   const favoriteGames = profile.favoriteGames || []
+  const profileArtUrl =
+    nowPlaying?.image || favoriteGames[0]?.image || null
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
@@ -1987,6 +1989,7 @@ function Profile() {
           isOwnProfile={isOwnProfile}
           plusActive={isOwnProfile ? ownPlusActive : profile.plusActive === true}
           bannerUrl={shownBannerUrl}
+          artUrl={profileArtUrl}
           avatarPending={isOwnProfile && headerPreview.avatarDimmed}
           bannerPending={isOwnProfile && headerPreview.bannerDimmed}
           followersCount={followersCount}

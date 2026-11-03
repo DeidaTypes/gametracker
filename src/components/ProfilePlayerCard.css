@@ -78,6 +78,59 @@
   opacity: 0.6;
 }
 
+.ppc__backdrop-art {
+  position: relative;
+  height: calc(var(--safe-area-inset-top) + 208px);
+  overflow: hidden;
+  will-change: transform, opacity;
+  -webkit-mask-image: linear-gradient(
+    #000 38%,
+    rgba(0, 0, 0, 0.55) 66%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    #000 38%,
+    rgba(0, 0, 0, 0.55) 66%,
+    transparent 100%
+  );
+}
+
+.ppc__art-img {
+  position: absolute;
+  left: -12%;
+  top: -30%;
+  width: 124%;
+  height: 150%;
+  object-fit: cover;
+  filter: blur(26px) saturate(1.6);
+  transform: scale(1.1);
+  display: block;
+}
+
+.ppc__backdrop-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    var(--profile-banner-shade) 0%,
+    color-mix(in srgb, var(--profile-banner-shade) 22%, transparent) 40%,
+    transparent 58%
+  );
+  pointer-events: none;
+}
+
+.ppc__backdrop-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--bg-base);
+  opacity: var(--profile-art-veil);
+  pointer-events: none;
+}
+
 .ppc__foreground {
   position: relative;
   z-index: 1;
@@ -119,7 +172,9 @@
 }
 
 .ppc--banner .ppc__bar-handle,
-.ppc--banner .ppc__icon-btn {
+.ppc--banner .ppc__icon-btn,
+.ppc--art .ppc__bar-handle,
+.ppc--art .ppc__icon-btn {
   color: var(--profile-on-banner);
 }
 
@@ -202,7 +257,8 @@
   outline-offset: -2px;
 }
 
-.ppc--banner .ppc__identity-row {
+.ppc--banner .ppc__identity-row,
+.ppc--art .ppc__identity-row {
   align-items: flex-end;
   padding-top: 56px;
 }
@@ -213,16 +269,16 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 84px;
+  height: 84px;
   line-height: 0;
 }
 
 .ppc__avatar {
   display: block;
   flex: none;
-  width: 72px;
-  height: 72px;
+  width: 84px;
+  height: 84px;
   padding: 0;
   border-radius: var(--radius-full);
   border: none;
@@ -230,6 +286,7 @@
   overflow: hidden;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--profile-photo-shadow);
 }
 
 .ppc__avatar--editable {
@@ -249,9 +306,9 @@
 }
 
 .ppc__avatar .avatar.avatar--xl {
-  width: 72px;
-  height: 72px;
-  font-size: 26px;
+  width: 84px;
+  height: 84px;
+  font-size: 30px;
 }
 
 .ppc__counts {
@@ -265,8 +322,9 @@
   text-align: center;
 }
 
-.ppc--banner .ppc__counts {
-  padding-bottom: 8px;
+.ppc--banner .ppc__counts,
+.ppc--art .ppc__counts {
+  padding-bottom: 10px;
 }
 
 .ppc__stat {
@@ -309,7 +367,7 @@
   justify-content: center;
   height: 24px;
   font-family: var(--font-body);
-  font-size: 19px;
+  font-size: 20px;
   font-weight: var(--font-weight-bold);
   line-height: 24px;
   font-variant-numeric: tabular-nums;
@@ -337,46 +395,42 @@
   margin: 14px 0 0;
   padding: 0 var(--page-padding);
   font-family: var(--font-body);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: var(--font-weight-bold);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   overflow-wrap: anywhere;
   word-break: normal;
 }
 
 .ppc__name--long {
-  font-size: 19px;
+  font-size: 20px;
 }
 
 @media (max-width: 359px) {
   .ppc__avatar-wrap {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
   }
 
   .ppc__avatar {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
   }
 
   .ppc__avatar .avatar.avatar--xl {
-    width: 64px;
-    height: 64px;
-    font-size: 22px;
+    width: 72px;
+    height: 72px;
+    font-size: 26px;
   }
 
   .ppc__name {
-    font-size: 20px;
+    font-size: 22px;
   }
 
   .ppc__name--long {
     font-size: 18px;
-  }
-
-  .ppc__stat-value {
-    font-size: 17px;
   }
 }
 

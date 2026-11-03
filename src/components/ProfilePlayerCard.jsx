@@ -91,7 +91,7 @@ function StatCell({ value, label, loading, onClick, ariaLabel, disabled }) {
 /**
  * ProfilePlayerCard — open profile header: top bar, photo with tier ring,
  * four counts beside the photo, and a full-width display name.
- * Backdrop is a banner image or a soft accent wash behind the header.
+ * Backdrop is an uploaded banner, game-art color field, or accent wash.
  */
 export default function ProfilePlayerCard({
   displayName,
@@ -101,6 +101,7 @@ export default function ProfilePlayerCard({
   isOwnProfile,
   plusActive = false,
   bannerUrl,
+  artUrl,
   followersCount,
   followingCount,
   followLoading,
@@ -152,8 +153,9 @@ export default function ProfilePlayerCard({
     avatarWasPending.current = avatarPending
     bannerWasPending.current = bannerPending
   }, [avatarPending, bannerPending, reduced])
-  const avatarPhotoSize = compactAvatar ? 64 : 72
+  const avatarPhotoSize = compactAvatar ? 72 : 84
   const hasBanner = Boolean((bannerUrl || '').trim())
+  const hasArt = !hasBanner && Boolean((artUrl || '').trim())
   const handle = (username || '').trim()
   const nameText = displayName || 'You'
   const nameIsLong = Array.from(nameText).length > 24
@@ -164,7 +166,7 @@ export default function ProfilePlayerCard({
   return (
     <section
       ref={rootRef}
-      className={`ppc${hasBanner ? ' ppc--banner' : ''}`}
+      className={`ppc${hasBanner ? ' ppc--banner' : ''}${hasArt ? ' ppc--art' : ''}`}
       aria-label="Profile summary"
     >
       <div className="ppc__backdrop" aria-hidden="true">
@@ -176,6 +178,10 @@ export default function ProfilePlayerCard({
               className={`ppc__banner-img${bannerPending ? ' ppc__banner-img--pending' : ''}`}
               loading="lazy"
             />
+          </div>
+        ) : hasArt ? (
+          <div className="ppc__backdrop-art">
+            <img src={artUrl} alt="" className="ppc__art-img" loading="lazy" />
           </div>
         ) : (
           <div className="ppc__backdrop-wash" />
