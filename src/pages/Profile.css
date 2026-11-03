@@ -7,6 +7,8 @@
 
 .profile-page {
   position: relative;
+  /* 44px profile bar. The card and the sticky tabs both measure from it. */
+  --ppc-bar-height: 44px;
   padding: 0;
   min-height: 100vh;
   min-height: 100dvh;
@@ -460,7 +462,7 @@ p.profile-ig-hero__bio {
 
 .profile-tabs {
   position: sticky;
-  top: calc(var(--safe-area-inset-top) + 40px);
+  top: calc(var(--safe-area-inset-top) + var(--ppc-bar-height));
   z-index: 5;
   display: flex;
   align-items: flex-end;

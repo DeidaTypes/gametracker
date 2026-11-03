@@ -818,6 +818,7 @@ function Profile() {
   // Blob URLs shown in the header while a photo or banner upload is in flight.
   // Revoke after the next paint so Strict Mode's simulated effect replay
   // doesn't blank the image that's still on screen.
+  const headerPullRef = useRef(null)
   const headerBlobs = useRef({ avatar: null, banner: null })
   const headerAlive = useRef(true)
 
@@ -1979,9 +1980,13 @@ function Profile() {
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
-      <PullToRefresh onRefresh={handlePullToRefresh}>
+      <PullToRefresh
+        onRefresh={handlePullToRefresh}
+        onPull={(px) => headerPullRef.current?.(px)}
+      >
       <div className="profile-page">
         <ProfilePlayerCard
+          pullRef={headerPullRef}
           displayName={profile.displayName}
           username={profile.username}
           avatarUrl={shownAvatarUrl}

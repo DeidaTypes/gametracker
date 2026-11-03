@@ -7,6 +7,7 @@ import Avatar from './Avatar'
 import PlusBadge from './PlusBadge'
 import LevelRing from './level/LevelRing'
 import { useMotionPreference } from '../hooks/useMotionPreference'
+import { useProfileHeaderScroll } from '../hooks/useProfileHeaderScroll'
 import { EASE_CSS, MOTION } from '../motion/xMotion'
 import './ProfilePlayerCard.css'
 
@@ -121,11 +122,16 @@ export default function ProfilePlayerCard({
   onGamesClick,
   level,
   progress,
+  pullRef,
 }) {
   const levelSuffix = levelAriaSuffix(level, progress)
   const compactAvatar = useCompactAvatarLayout()
   const { reduced } = useMotionPreference()
   const rootRef = useRef(null)
+  const barRef = useRef(null)
+  const frostRef = useRef(null)
+  const mediaRef = useRef(null)
+  const nameRef = useRef(null)
   const avatarWasPending = useRef(false)
   const bannerWasPending = useRef(false)
   const fades = useRef({ avatar: null, banner: null })
@@ -156,6 +162,15 @@ export default function ProfilePlayerCard({
   const avatarPhotoSize = compactAvatar ? 72 : 84
   const hasBanner = Boolean((bannerUrl || '').trim())
   const hasArt = !hasBanner && Boolean((artUrl || '').trim())
+  const { solid, named } = useProfileHeaderScroll({
+    barRef,
+    frostRef,
+    mediaRef,
+    nameRef,
+    pullRef,
+    hasMedia: hasBanner || hasArt,
+    reduced,
+  })
   const handle = (username || '').trim()
   const nameText = displayName || 'You'
   const nameIsLong = Array.from(nameText).length > 24
@@ -163,7 +178,62 @@ export default function ProfilePlayerCard({
   const hoursValue =
     hoursPlayed == null ? '—' : formatCompactCount(hoursPlayed)
 
+  const barClass = [
+    'ppc__bar',
+    hasBanner ? 'ppc__bar--banner' : '',
+    hasArt ? 'ppc__bar--art' : '',
+    solid ? 'ppc__bar--solid' : '',
+    named ? 'ppc__bar--named' : '',
+  ].filter(Boolean).join(' ')
+
   return (
+    <>
+      <header ref={barRef} className={barClass}>
+        <div ref={frostRef} className="ppc__bar-frost" aria-hidden="true" />
+        <div className="ppc__bar-side ppc__bar-side--left">
+          {!isOwnProfile && (
+            <button
+              type="button"
+              className="ppc__icon-btn ppc__icon-btn--back"
+              onClick={onBack}
+              aria-label="Go back"
+            >
+              <LuChevronLeft size={22} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <div className="ppc__bar-titles">
+          <p className="ppc__bar-handle">
+            {handle.length > 0 ? `@${handle}` : '\u00a0'}
+          </p>
+          <p className="ppc__bar-name" aria-hidden="true">
+            {nameText}
+          </p>
+        </div>
+        <div className="ppc__bar-side ppc__bar-side--right">
+          {isOwnProfile && (
+            <button
+              type="button"
+              className="ppc__icon-btn ppc__icon-btn--messages"
+              onClick={onMessages}
+              aria-label={hasUnreadMessages ? 'Messages, unread' : 'Messages'}
+            >
+              <LuMessageCircle size={20} aria-hidden="true" />
+              {hasUnreadMessages && (
+                <span className="ppc__messages-dot" aria-hidden="true" />
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            className="ppc__icon-btn ppc__icon-btn--overflow"
+            onClick={onOverflow}
+            aria-label="More options"
+          >
+            <HiDotsVertical size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
     <section
       ref={rootRef}
       className={`ppc${hasBanner ? ' ppc--banner' : ''}${hasArt ? ' ppc--art' : ''}`}
@@ -171,7 +241,7 @@ export default function ProfilePlayerCard({
     >
       <div className="ppc__backdrop" aria-hidden="true">
         {hasBanner ? (
-          <div className="ppc__backdrop-banner">
+          <div ref={mediaRef} className="ppc__backdrop-banner">
             <img
               src={bannerUrl}
               alt=""
@@ -180,7 +250,7 @@ export default function ProfilePlayerCard({
             />
           </div>
         ) : hasArt ? (
-          <div className="ppc__backdrop-art">
+          <div ref={mediaRef} className="ppc__backdrop-art">
             <img src={artUrl} alt="" className="ppc__art-img" loading="lazy" />
           </div>
         ) : (
@@ -189,47 +259,6 @@ export default function ProfilePlayerCard({
       </div>
 
       <div className="ppc__foreground">
-        <header className="ppc__bar">
-          <div className="ppc__bar-side ppc__bar-side--left">
-            {!isOwnProfile && (
-              <button
-                type="button"
-                className="ppc__icon-btn ppc__icon-btn--back"
-                onClick={onBack}
-                aria-label="Go back"
-              >
-                <LuChevronLeft size={22} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-          <p className="ppc__bar-handle">
-            {handle.length > 0 ? `@${handle}` : '\u00a0'}
-          </p>
-          <div className="ppc__bar-side ppc__bar-side--right">
-            {isOwnProfile && (
-              <button
-                type="button"
-                className="ppc__icon-btn ppc__icon-btn--messages"
-                onClick={onMessages}
-                aria-label={hasUnreadMessages ? 'Messages, unread' : 'Messages'}
-              >
-                <LuMessageCircle size={20} aria-hidden="true" />
-                {hasUnreadMessages && (
-                  <span className="ppc__messages-dot" aria-hidden="true" />
-                )}
-              </button>
-            )}
-            <button
-              type="button"
-              className="ppc__icon-btn ppc__icon-btn--overflow"
-              onClick={onOverflow}
-              aria-label="More options"
-            >
-              <HiDotsVertical size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </header>
-
         <div className="ppc__identity-row">
           {isOwnProfile && hasBanner && onBannerClick && (
             <button
@@ -315,6 +344,7 @@ export default function ProfilePlayerCard({
         </div>
 
         <h1
+          ref={nameRef}
           className={`ppc__name${nameIsLong ? ' ppc__name--long' : ''}`}
         >
           {nameText}
@@ -322,5 +352,6 @@ export default function ProfilePlayerCard({
         </h1>
       </div>
     </section>
+    </>
   )
 }

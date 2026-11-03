@@ -6,6 +6,7 @@
   position: relative;
   margin: 0;
   padding: 0;
+  --ppc-bar-height: 44px;
 }
 
 /* ── Backdrop (banner or wash), full width from page top ───── */
@@ -40,6 +41,8 @@
 .ppc__backdrop-banner {
   position: relative;
   height: calc(var(--safe-area-inset-top) + 136px);
+  transform-origin: bottom center;
+  will-change: transform, opacity;
   -webkit-mask-image: linear-gradient(
     #000 45%,
     rgba(0, 0, 0, 0.35) 75%,
@@ -82,6 +85,7 @@
   position: relative;
   height: calc(var(--safe-area-inset-top) + 208px);
   overflow: hidden;
+  transform-origin: bottom center;
   will-change: transform, opacity;
   -webkit-mask-image: linear-gradient(
     #000 38%,
@@ -134,48 +138,121 @@
 .ppc__foreground {
   position: relative;
   z-index: 1;
+  /* The bar is a sticky sibling pulled up over this section. Pad the
+     foreground by the same block so the photo row still starts below it. */
+  padding-top: calc(var(--safe-area-inset-top) + var(--ppc-bar-height));
 }
 
 /* ── Top bar ─────────────────────────────────────────────── */
 
 .ppc__bar {
+  --ppc-bar-height: 44px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: grid;
   grid-template-columns: 88px 1fr 88px;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--ppc-bar-height);
+  /* Pull the section up under the bar so the art still starts at the
+     top of the page. The bar's own block is the safe area plus 44px. */
+  margin-bottom: calc(-1 * (var(--safe-area-inset-top) + var(--ppc-bar-height)));
   padding: var(--safe-area-inset-top) 10px 0;
   box-sizing: content-box;
 }
 
+.ppc__bar-frost {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  box-sizing: border-box;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid var(--border-subtle);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .ppc__bar-side {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--ppc-bar-height);
 }
 
 .ppc__bar-side--right {
   justify-content: flex-end;
 }
 
-.ppc__bar-handle {
-  margin: 0;
+.ppc__bar-titles {
+  position: relative;
+  z-index: 1;
   min-width: 0;
+  height: var(--ppc-bar-height);
+}
+
+.ppc__bar-handle,
+.ppc__bar-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  margin: 0;
+  height: var(--ppc-bar-height);
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: var(--font-weight-semibold);
-  line-height: 44px;
+  line-height: var(--ppc-bar-height);
   text-align: center;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition:
+    opacity var(--motion-tab-out) var(--ease-fade),
+    transform var(--motion-arrive) var(--ease-move),
+    color var(--motion-reduced-fade) var(--ease-fade);
 }
 
-.ppc--banner .ppc__bar-handle,
-.ppc--banner .ppc__icon-btn,
-.ppc--art .ppc__bar-handle,
-.ppc--art .ppc__icon-btn {
+.ppc__bar-name {
+  opacity: 0;
+  transform: translateY(var(--motion-seg-rise));
+}
+
+.ppc__bar--named .ppc__bar-handle {
+  opacity: 0;
+  transform: translateY(calc(var(--motion-seg-rise) * -1));
+}
+
+.ppc__bar--named .ppc__bar-name {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Over art or a banner the bar reads in white until the frost crosses
+   halfway, then the theme colors. Wash keeps the theme colors always. */
+.ppc__bar--banner .ppc__bar-handle,
+.ppc__bar--banner .ppc__bar-name,
+.ppc__bar--banner .ppc__icon-btn,
+.ppc__bar--art .ppc__bar-handle,
+.ppc__bar--art .ppc__bar-name,
+.ppc__bar--art .ppc__icon-btn {
   color: var(--profile-on-banner);
+}
+
+.ppc__bar--solid .ppc__bar-handle,
+.ppc__bar--solid .ppc__bar-name {
+  color: var(--text-primary);
+}
+
+.ppc__bar--solid .ppc__icon-btn {
+  color: var(--text-secondary);
+}
+
+.ppc__bar--solid .ppc__icon-btn--back {
+  color: var(--text-primary);
 }
 
 /* ── Icon buttons ─────────────────────────────────────────── */
@@ -194,7 +271,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--motion-reduced-fade) var(--ease-fade);
 }
 
 .ppc__icon-btn--back {
@@ -434,9 +513,56 @@
   }
 }
 
+/* Reduce Motion: the art stays still (the hook skips parallax and
+   stretch). The frost and the name swap still fade, and nothing travels. */
 @media (prefers-reduced-motion: reduce) {
-  .ppc__icon-btn,
   .ppc__stat--tappable {
     transition: none;
   }
+
+  .ppc__backdrop-art,
+  .ppc__backdrop-banner {
+    will-change: auto;
+  }
+
+  .ppc__bar-frost {
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade) !important;
+  }
+
+  .ppc__bar-handle,
+  .ppc__bar-name {
+    transform: none !important;
+    transition:
+      opacity var(--motion-reduced-fade) var(--ease-fade),
+      color var(--motion-reduced-fade) var(--ease-fade) !important;
+  }
+
+  .ppc__icon-btn {
+    transition: color var(--motion-reduced-fade) var(--ease-fade) !important;
+  }
+}
+
+body[data-reduce-motion='true'] .ppc__backdrop-art,
+body[data-reduce-motion='true'] .ppc__backdrop-banner {
+  will-change: auto;
+}
+
+body[data-reduce-motion='true'] .ppc__bar-frost {
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade) !important;
+}
+
+body[data-reduce-motion='true'] .ppc__bar-handle,
+body[data-reduce-motion='true'] .ppc__bar-name {
+  transform: none !important;
+  transition:
+    opacity var(--motion-reduced-fade) var(--ease-fade),
+    color var(--motion-reduced-fade) var(--ease-fade) !important;
+}
+
+body[data-reduce-motion='true'] .ppc__icon-btn {
+  transition: color var(--motion-reduced-fade) var(--ease-fade) !important;
+}
+
+body[data-reduce-motion='true'] .ppc__stat--tappable {
+  transition: none;
 }

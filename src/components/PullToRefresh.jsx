@@ -43,14 +43,16 @@ const SETTLE = 'height 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
 // waiting for arm. detail: { active }.
 export const PULL_TO_REFRESH_YIELD_EVENT = 'gt:pullToRefreshYield'
 
-export default function PullToRefresh({ onRefresh, children, className = '' }) {
+export default function PullToRefresh({ onRefresh, onPull, children, className = '' }) {
   const { reduced } = useMotionPreference()
   const wrapRef = useRef(null)
   const indicatorRef = useRef(null)
   const spinnerRef = useRef(null)
   const onRefreshRef = useRef(onRefresh)
+  const onPullRef = useRef(onPull)
   const reducedRef = useRef(reduced)
   onRefreshRef.current = onRefresh
+  onPullRef.current = onPull
   reducedRef.current = reduced
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export default function PullToRefresh({ onRefresh, children, className = '' }) {
       if (!state.refreshing && !reducedRef.current) {
         spinner.style.transform = `rotate(${progress * 360}deg) scale(${0.6 + progress * 0.4})`
       }
+      onPullRef.current?.(px)
     }
 
     const settleTo = (px, instant) => {
