@@ -1793,11 +1793,20 @@ function Profile() {
   if (resolving || (!profile && !userNotFound)) {
     return (
       <div className="profile-page" aria-hidden="true">
-        <div className="profile-ig-hero profile-ig-hero--skeleton">
-          <div className="skeleton profile-ig-hero__avatar-sk" />
-          <span className="skeleton profile-ig-hero__name-sk" />
-          <span className="skeleton profile-ig-hero__handle-sk" />
-          <span className="skeleton profile-ig-hero__stats-line-sk" />
+        <div className="profile-header-sk">
+          <div className="profile-header-sk__bar" />
+          <div className="profile-header-sk__row">
+            <div className="skeleton profile-header-sk__avatar" />
+            <div className="profile-header-sk__counts">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="profile-header-sk__stat">
+                  <span className="skeleton profile-header-sk__num" />
+                  <span className="skeleton profile-header-sk__label" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <span className="skeleton profile-header-sk__name" />
         </div>
       </div>
     )
@@ -1839,7 +1848,6 @@ function Profile() {
     ? (profile.bannerUrl || null)
     : otherUserBannerUrl
 
-  const reviewCount = allReviews.length
   // Games stat — total tracked games across every status (Backlog /
   // Playing / Played / Dropped), counted from `game_trackers` for own and
   // visitor profiles alike so both views agree. The own-profile path used
@@ -1847,17 +1855,6 @@ function Profile() {
   // the server (it reported 1 game for an account with 13 played this
   // year) and reset to 0 on a fresh device.
   const gamesCount = trackedGamesCount
-
-  // Avg ★ on the player card — mean of this user's real ratings. Null
-  // when they haven't rated anything, so the card renders an em dash
-  // instead of a meaningless 0.0.
-  const avgRating = (() => {
-    const values = allReviews
-      .map((r) => Number(r.rating))
-      .filter((n) => Number.isFinite(n) && n > 0)
-    if (values.length === 0) return null
-    return values.reduce((sum, n) => sum + n, 0) / values.length
-  })()
 
   // Path segment for every profile-scoped push (followers, following,
   // badges, activity, challenge). Most accounts have no username set, so
@@ -1878,25 +1875,6 @@ function Profile() {
     <SharedCoverScope duplicateIds={duplicateIds}>
       <PullToRefresh onRefresh={handlePullToRefresh}>
       <div className="profile-page">
-        {/* Banner — full-bleed strip above the player card. Sprint 7
-            preserved; the card sits below it. */}
-        {displayBannerUrl && (
-          <div className="profile-banner" aria-hidden="true">
-            <img
-              src={displayBannerUrl}
-              alt=""
-              className="profile-banner__img"
-              loading="lazy"
-            />
-          </div>
-        )}
-
-        {/* ═════════════════════════════════════════════════════════
-            PLAYER CARD — avatar / name / @handle / clickable
-            Followers · Following / four-stat block, with the ⋯
-            overflow menu top-right and a back chevron on visitor
-            profiles.
-            ═════════════════════════════════════════════════════════ */}
         <ProfilePlayerCard
           displayName={profile.displayName}
           username={profile.username}
@@ -1904,14 +1882,13 @@ function Profile() {
           avatarSeed={profile.id || targetUserId}
           isOwnProfile={isOwnProfile}
           plusActive={isOwnProfile ? ownPlusActive : profile.plusActive === true}
-          liveStatusLabel={liveStatus ? `in ${liveStatus.gameTitle} now` : null}
+          bannerUrl={displayBannerUrl}
+          liveStatusLabel={liveStatus ? `Playing ${liveStatus.gameTitle} now` : null}
           followersCount={followersCount}
           followingCount={followingCount}
           followLoading={followLoading}
           gamesCount={gamesCount}
           hoursPlayed={hoursPlayed}
-          reviewsCount={reviewCount}
-          avgRating={avgRating}
           statsLoading={profileLoading}
           hasUnreadMessages={isOwnProfile && unreadCount > 0}
           onBack={() => navigate(-1)}

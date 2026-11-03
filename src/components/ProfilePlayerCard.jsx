@@ -32,82 +32,64 @@ function useCompactAvatarLayout() {
   )
 }
 
-/**
- * Formats the hours numeral for the Played stat. Whole hours below 1000,
- * then compacted so a four-digit total can't push the four-column stat
- * grid into a wrap.
- */
-function formatHours(hours) {
-  const n = Number(hours) || 0
-  if (n >= 1000) {
-    const k = n / 1000
+/** Compact numeral for profile header counts (Games, Hours, Followers, Following). */
+function formatCompactCount(n) {
+  const num = Number(n) || 0
+  if (num >= 10000) return `${Math.round(num / 1000)}k`
+  if (num >= 1000) {
+    const k = num / 1000
     return `${k >= 10 ? Math.round(k) : k.toFixed(1)}k`
   }
-  return String(Math.round(n))
+  return String(Math.round(num))
 }
 
-/**
- * One stat cell in the four-column block. Renders a fixed-height skeleton
- * in place of the numeral while its value is still resolving so the card
- * never changes height as data lands — the profile's long-standing "stats
- * flash empty on reload" symptom was this block rendering 0 and then
- * jumping.
- */
-function Stat({ value, label, suffix, loading, onClick, ariaLabel }) {
-  const content = (
+function countLabel(kind, count) {
+  if (kind === 'games') return count === 1 ? 'Game' : 'Games'
+  if (kind === 'hours') return count === 1 ? 'Hour' : 'Hours'
+  if (kind === 'followers') return count === 1 ? 'Follower' : 'Followers'
+  return 'Following'
+}
+
+function StatCell({ value, label, loading, onClick, ariaLabel, disabled }) {
+  const inner = (
     <>
       <span className="ppc__stat-value">
         <Arrive
           as="span"
           center
           ready={!loading}
-          placeholder={<Skeleton variant="text" width={28} height={22} className="ppc__stat-skeleton" />}
+          placeholder={
+            <Skeleton variant="text" width={28} height={16} className="ppc__stat-skeleton" />
+          }
         >
           {value}
-          {suffix && <span className="ppc__stat-suffix">{suffix}</span>}
         </Arrive>
       </span>
       <span className="ppc__stat-label">{label}</span>
     </>
   )
 
-  // Games is the only stat with a destination (its own/other's library
-  // grid) — everything else stays a plain, non-interactive cell. Visual
-  // design is unchanged; this only adds the tap affordance, a focus
-  // ring, and an accessible label.
   if (onClick) {
     return (
       <button
         type="button"
         className="ppc__stat ppc__stat--tappable"
         onClick={onClick}
-        disabled={loading}
+        disabled={disabled}
         aria-label={ariaLabel}
       >
-        {content}
+        {inner}
       </button>
     )
   }
 
-  return <div className="ppc__stat">{content}</div>
+  return <div className="ppc__stat">{inner}</div>
 }
 
 /**
- * ProfilePlayerCard — the contained header card at the top of every
- * profile: avatar, display name, @handle, a clickable
- * "N Followers · N Following" line, and a four-stat block
- * (Games / Played hours / Reviews / Avg ★). The ⋯ button opens the
- * profile's existing overflow sheet; visitor profiles get a back chevron.
- *
- * On your own profile, a message-bubble icon sits just left of the ⋯
- * button — this is the app's inbox entry point (there's no dedicated
- * Messages nav tab; see BottomNav.jsx). It carries the same unread-DM
- * dot as the Profile bottom-nav tab (one signal, one meaning) rather
- * than a numeric badge.
- *
- * Every numeral here is real. A stat whose source hasn't resolved shows a
- * skeleton; a stat with no data to show at all (e.g. avg rating with zero
- * ratings) shows an em dash rather than a fabricated 0.0.
+ * ProfilePlayerCard — open profile header: top bar, photo with tier ring,
+ * four counts beside the photo, full-width display name, and optional live line.
+ * Backdrop is a banner image or a soft accent wash behind the header.
  */
 export default function ProfilePlayerCard({
   displayName,
@@ -117,13 +99,12 @@ export default function ProfilePlayerCard({
   isOwnProfile,
   plusActive = false,
   liveStatusLabel,
+  bannerUrl,
   followersCount,
   followingCount,
   followLoading,
   gamesCount,
   hoursPlayed,
-  reviewsCount,
-  avgRating,
   statsLoading,
   hasUnreadMessages,
   onBack,
@@ -136,157 +117,167 @@ export default function ProfilePlayerCard({
   level,
   progress,
 }) {
-  const hasRatings = avgRating != null && avgRating > 0
   const levelSuffix = levelAriaSuffix(level, progress)
   const compactAvatar = useCompactAvatarLayout()
-  const avatarPhotoSize = compactAvatar ? 56 : 64
+  const avatarPhotoSize = compactAvatar ? 64 : 72
+  const hasBanner = Boolean((bannerUrl || '').trim())
+  const handle = (username || '').trim()
+  const nameText = displayName || 'You'
+  const nameIsLong = Array.from(nameText).length > 24
+
+  const hoursValue =
+    hoursPlayed == null ? '—' : formatCompactCount(hoursPlayed)
 
   return (
-    <section className="ppc" aria-label="Profile summary">
-      <div className="ppc__top">
-        {!isOwnProfile && (
-          <button
-            type="button"
-            className="ppc__icon-btn ppc__icon-btn--back"
-            onClick={onBack}
-            aria-label="Go back"
-          >
-            <LuChevronLeft size={22} aria-hidden="true" />
-          </button>
+    <section
+      className={`ppc${hasBanner ? ' ppc--banner' : ''}`}
+      aria-label="Profile summary"
+    >
+      <div className="ppc__backdrop" aria-hidden="true">
+        {hasBanner ? (
+          <div className="ppc__backdrop-banner">
+            <img
+              src={bannerUrl}
+              alt=""
+              className="ppc__banner-img"
+              loading="lazy"
+            />
+          </div>
+        ) : (
+          <div className="ppc__backdrop-wash" />
         )}
+      </div>
 
-        <div className="ppc__avatar-wrap">
-          <button
-            type="button"
-            className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}`}
-            onClick={onAvatarClick}
-            aria-label={
-              isOwnProfile
-                ? `Edit profile photo${levelSuffix}`
-                : `${displayName || 'User'} profile photo${levelSuffix}`
-            }
-          >
-            <Avatar
-              avatarUrl={avatarUrl}
-              name={displayName || 'User'}
-              seed={avatarSeed}
-              size="xl"
-              alt={`${displayName || 'User'} profile photo`}
-              ring={false}
-            />
-          </button>
-          {level != null && progress != null && (
-            <LevelRing
-              level={level}
-              progress={progress.fraction}
-              photoSize={avatarPhotoSize}
-              glint
-            />
-          )}
-        </div>
-
-        <div className="ppc__identity">
-          <h1 className="ppc__name">
-            {displayName || 'You'}
-            <PlusBadge active={plusActive} inline />
-          </h1>
-          {(username || '').trim().length > 0 && (
-            <p className="ppc__handle">@{username.trim()}</p>
-          )}
-
-          <p className="ppc__follows">
+      <div className="ppc__foreground">
+        <header className="ppc__bar">
+          <div className="ppc__bar-side ppc__bar-side--left">
+            {!isOwnProfile && (
+              <button
+                type="button"
+                className="ppc__icon-btn ppc__icon-btn--back"
+                onClick={onBack}
+                aria-label="Go back"
+              >
+                <LuChevronLeft size={22} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <p className="ppc__bar-handle">
+            {handle.length > 0 ? `@${handle}` : '\u00a0'}
+          </p>
+          <div className="ppc__bar-side ppc__bar-side--right">
+            {isOwnProfile && (
+              <button
+                type="button"
+                className="ppc__icon-btn ppc__icon-btn--messages"
+                onClick={onMessages}
+                aria-label={hasUnreadMessages ? 'Messages, unread' : 'Messages'}
+              >
+                <LuMessageCircle size={20} aria-hidden="true" />
+                {hasUnreadMessages && (
+                  <span className="ppc__messages-dot" aria-hidden="true" />
+                )}
+              </button>
+            )}
             <button
               type="button"
-              className="ppc__follow-link"
-              onClick={onFollowersClick}
+              className="ppc__icon-btn ppc__icon-btn--overflow"
+              onClick={onOverflow}
+              aria-label="More options"
+            >
+              <HiDotsVertical size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <div className="ppc__identity-row">
+          <div className="ppc__avatar-wrap">
+            <button
+              type="button"
+              className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}`}
+              onClick={onAvatarClick}
               aria-label={
+                isOwnProfile
+                  ? `Edit profile photo${levelSuffix}`
+                  : `${displayName || 'User'} profile photo${levelSuffix}`
+              }
+            >
+              <Avatar
+                avatarUrl={avatarUrl}
+                name={displayName || 'User'}
+                seed={avatarSeed}
+                size="xl"
+                alt={`${displayName || 'User'} profile photo`}
+                ring={false}
+              />
+            </button>
+            {level != null && progress != null && (
+              <LevelRing
+                level={level}
+                progress={progress.fraction}
+                photoSize={avatarPhotoSize}
+                glint
+              />
+            )}
+          </div>
+
+          <div className="ppc__counts" role="group" aria-label="Profile stats">
+            <StatCell
+              value={formatCompactCount(gamesCount ?? 0)}
+              label={countLabel('games', gamesCount ?? 0)}
+              loading={statsLoading || gamesCount == null}
+              onClick={onGamesClick}
+              disabled={statsLoading || gamesCount == null}
+              ariaLabel={
+                isOwnProfile
+                  ? `${gamesCount ?? 0} games, open your library`
+                  : `${gamesCount ?? 0} games, open ${displayName || 'this player'}'s library`
+              }
+            />
+            <StatCell
+              value={hoursValue}
+              label={countLabel('hours', hoursPlayed ?? 0)}
+              loading={statsLoading}
+            />
+            <StatCell
+              value={formatCompactCount(followersCount ?? 0)}
+              label={countLabel('followers', followersCount ?? 0)}
+              loading={followLoading}
+              onClick={onFollowersClick}
+              disabled={followLoading}
+              ariaLabel={
                 followLoading
                   ? 'Followers, loading'
                   : `${followersCount} ${followersCount === 1 ? 'follower' : 'followers'}, view list`
               }
-            >
-              <span className="ppc__follow-count">{followLoading ? '\u00a0' : followersCount}</span>
-              {' '}
-              {followLoading || followersCount !== 1 ? 'followers' : 'follower'}
-            </button>
-            <span className="ppc__follow-dot" aria-hidden="true">·</span>
-            <button
-              type="button"
-              className="ppc__follow-link"
+            />
+            <StatCell
+              value={formatCompactCount(followingCount ?? 0)}
+              label={countLabel('following', followingCount ?? 0)}
+              loading={followLoading}
               onClick={onFollowingClick}
-              aria-label={
+              disabled={followLoading}
+              ariaLabel={
                 followLoading
                   ? 'Following, loading'
-                  : `${followingCount} ${followingCount === 1 ? 'following' : 'following'}, view list`
+                  : `${followingCount} following, view list`
               }
-            >
-              <span className="ppc__follow-count">{followLoading ? '\u00a0' : followingCount}</span>
-              {' '}
-              following
-            </button>
-          </p>
-
-          {liveStatusLabel && (
-            <p className="ppc__live" aria-live="polite">
-              <span className="ppc__live-dot" aria-hidden="true" />
-              {liveStatusLabel}
-            </p>
-          )}
+            />
+          </div>
         </div>
 
-        {isOwnProfile && (
-          <button
-            type="button"
-            className="ppc__icon-btn ppc__icon-btn--messages"
-            onClick={onMessages}
-            aria-label={hasUnreadMessages ? 'Messages, unread' : 'Messages'}
-          >
-            <LuMessageCircle size={20} aria-hidden="true" />
-            {hasUnreadMessages && (
-              <span className="ppc__messages-dot" aria-hidden="true" />
-            )}
-          </button>
-        )}
-
-        <button
-          type="button"
-          className="ppc__icon-btn ppc__icon-btn--overflow"
-          onClick={onOverflow}
-          aria-label="More options"
+        <h1
+          className={`ppc__name${nameIsLong ? ' ppc__name--long' : ''}`}
         >
-          <HiDotsVertical size={18} aria-hidden="true" />
-        </button>
-      </div>
+          {nameText}
+          <PlusBadge active={plusActive} inline />
+        </h1>
 
-      <div className="ppc__stats" role="group" aria-label="Profile stats">
-        <Stat
-          value={gamesCount ?? 0}
-          label="Games"
-          loading={statsLoading || gamesCount == null}
-          onClick={onGamesClick}
-          ariaLabel={
-            isOwnProfile
-              ? `${gamesCount ?? 0} games, open your library`
-              : `${gamesCount ?? 0} games, open ${displayName || 'this player'}'s library`
-          }
-        />
-        {/* An unresolved hours total is an em dash, not an endless
-            skeleton: getTotalHoursForUser returns 0 for a user with no
-            play_sessions/tracker rows, so null here means the query
-            failed or timed out, and the old `hoursPlayed == null`
-            skeleton had nothing left to wait for. */}
-        <Stat
-          value={hoursPlayed == null ? '—' : formatHours(hoursPlayed)}
-          suffix={hoursPlayed == null ? undefined : 'h'}
-          label="Played"
-          loading={statsLoading}
-        />
-        <Stat value={reviewsCount ?? 0} label="Reviews" loading={statsLoading} />
-        <Stat
-          value={hasRatings ? avgRating.toFixed(1) : '—'}
-          label="Avg ★"
-          loading={statsLoading}
-        />
+        {liveStatusLabel && (
+          <p className="ppc__live" aria-live="polite">
+            {liveStatusLabel}
+          </p>
+        )}
       </div>
     </section>
   )

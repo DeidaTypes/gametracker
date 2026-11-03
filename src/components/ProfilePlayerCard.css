@@ -1,40 +1,123 @@
 /* ============================================================
-   ProfilePlayerCard — contained profile header card.
-
-   The gradient is a cobalt→purple wash over the standard card
-   surface, mixed through color-mix so it inherits any accent
-   override (colour-blind modes, themes) instead of pinning hex.
+   ProfilePlayerCard — open profile header (no card box).
    ============================================================ */
 
 .ppc {
-  margin: 12px var(--page-padding) 0;
-  margin-top: calc(var(--safe-area-inset-top) + 12px);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border-subtle);
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Backdrop (banner or wash), full width from page top ───── */
+
+.ppc__backdrop {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  top: 0;
+  pointer-events: none;
+}
+
+.ppc__backdrop-wash {
+  height: calc(var(--safe-area-inset-top) + 246px);
   background:
     radial-gradient(
-      120% 140% at 100% 0%,
-      color-mix(in srgb, var(--accent-journal) 26%, transparent) 0%,
-      transparent 62%
+      80% 100% at 88% 0%,
+      color-mix(in srgb, var(--accent-journal) 14%, transparent) 0%,
+      transparent 70%
     ),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--accent) 20%, transparent) 0%,
-      color-mix(in srgb, var(--accent) 4%, transparent) 55%,
-      transparent 100%
-    ),
-    var(--bg-surface);
-  box-shadow: var(--surface-1-shadow);
+    radial-gradient(
+      90% 90% at 8% 0%,
+      color-mix(in srgb, var(--accent) 15%, transparent) 0%,
+      transparent 72%
+    );
+  -webkit-mask-image: linear-gradient(#000 35%, transparent);
+  mask-image: linear-gradient(#000 35%, transparent);
 }
 
-.ppc__top {
+.ppc__backdrop-banner {
+  position: relative;
+  height: calc(var(--safe-area-inset-top) + 136px);
+  -webkit-mask-image: linear-gradient(
+    #000 45%,
+    rgba(0, 0, 0, 0.35) 75%,
+    transparent 96%
+  );
+  mask-image: linear-gradient(
+    #000 45%,
+    rgba(0, 0, 0, 0.35) 75%,
+    transparent 96%
+  );
+}
+
+.ppc__backdrop-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--profile-banner-shade) 0%,
+    transparent 62%
+  );
+  pointer-events: none;
+}
+
+.ppc__banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.ppc__foreground {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+
+.ppc__bar {
+  display: grid;
+  grid-template-columns: 88px 1fr 88px;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--safe-area-inset-top) 10px 0;
+  box-sizing: content-box;
+}
+
+.ppc__bar-side {
   display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
+  align-items: center;
+  min-height: 44px;
 }
 
-/* ── Icon buttons (back / overflow) ───────────────────────── */
+.ppc__bar-side--right {
+  justify-content: flex-end;
+}
+
+.ppc__bar-handle {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 44px;
+  text-align: center;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ppc--banner .ppc__bar-handle,
+.ppc--banner .ppc__icon-btn {
+  color: var(--profile-on-banner);
+}
+
+/* ── Icon buttons ─────────────────────────────────────────── */
 
 .ppc__icon-btn {
   display: inline-flex;
@@ -43,23 +126,18 @@
   flex: none;
   width: 44px;
   height: 44px;
-  margin: -10px -8px -10px 0;
+  padding: 0;
   border: none;
   border-radius: var(--radius-full);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background var(--transition-fast);
 }
 
 .ppc__icon-btn--back {
-  margin: -10px 0 -10px -10px;
-}
-
-.ppc__icon-btn--overflow {
-  margin-left: auto;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .ppc__icon-btn:hover {
@@ -70,54 +148,51 @@
   background: var(--color-surface-active);
 }
 
-/* ── Messages entry point (own profile only) ─────────────────
-   Sits left of ⋯. `margin-left: auto` moves here instead of onto
-   .ppc__icon-btn--overflow when this button is present, so the pair
-   sits flush right together; overflow keeps its own auto margin for
-   the (much more common) case where this button isn't rendered. */
 .ppc__icon-btn--messages {
   position: relative;
-  margin-left: auto;
-  color: var(--text-secondary);
 }
 
-.ppc__icon-btn--messages + .ppc__icon-btn--overflow {
-  margin-left: 0;
-}
-
-/* Same token + treatment as .bottom-nav-unread (BottomNav.css) — one
-   unread-DM signal across the app, not a numeric badge. */
 .ppc__messages-dot {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
   background: var(--status-warning);
-  box-shadow:
-    0 0 0 2px var(--bg-surface),
-    0 0 6px color-mix(in srgb, var(--status-warning) 55%, transparent);
+  box-shadow: 0 0 0 2px var(--bg-base);
   pointer-events: none;
 }
 
-/* ── Avatar ───────────────────────────────────────────────── */
+/* ── Identity row: photo + counts ────────────────────────── */
+
+.ppc__identity-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 6px var(--page-padding) 0;
+}
+
+.ppc--banner .ppc__identity-row {
+  align-items: flex-end;
+  padding-top: 56px;
+}
 
 .ppc__avatar-wrap {
   position: relative;
   flex: none;
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   line-height: 0;
 }
 
 .ppc__avatar {
   display: block;
   flex: none;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   padding: 0;
   border-radius: var(--radius-full);
   border: none;
@@ -131,134 +206,33 @@
   cursor: pointer;
 }
 
-/* Avatar sizing/fallback color is owned by the shared Avatar component
-   (src/components/Avatar.jsx / Avatar.css) — this wrapper button is the
-   click target; the tier ring sits in .ppc__avatar-wrap via LevelRing. */
+.ppc__avatar .avatar.avatar--xl {
+  width: 72px;
+  height: 72px;
+  font-size: 26px;
+}
 
-/* ── Identity block ───────────────────────────────────────── */
-
-.ppc__identity {
+.ppc__counts {
   flex: 1;
   min-width: 0;
-  padding-top: 2px;
-}
-
-/* The display name is never cut off — long names wrap onto a second
-   line (the card simply grows) instead of ellipsizing, so the full
-   name is always readable. overflow-wrap/word-break guard against a
-   single unbroken token (no spaces) still overflowing the card. */
-.ppc__name {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 22px;
-  font-weight: var(--font-weight-bold);
-  line-height: 1.2;
-  color: var(--text-primary);
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.ppc__handle {
-  margin: 2px 0 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── Followers · Following ────────────────────────────────── */
-
-.ppc__follows {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 0;
-  /* Negative block margin keeps the 44px tap targets from inflating the
-     card's height while still giving each link a real touch area. */
-  margin-block: calc(6px - 11px) -11px;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: center;
 }
 
-.ppc__follow-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--text-secondary);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--transition-fast);
-}
-
-.ppc__follow-link:hover {
-  color: var(--text-primary);
-}
-
-.ppc__follow-count {
-  display: inline-block;
-  min-width: 3ch;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-weight-semibold);
-  text-align: right;
-  color: var(--text-primary);
-}
-
-.ppc__follow-skeleton {
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.ppc__follow-dot {
-  color: var(--text-tertiary);
-}
-
-/* ── Live status ──────────────────────────────────────────── */
-
-.ppc__live {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  font-family: var(--font-body);
-  font-size: var(--font-size-caption);
-  color: var(--accent-review-text);
-}
-
-.ppc__live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background: var(--accent-review);
-}
-
-/* ── Four-stat block ─────────────────────────────────────── */
-
-.ppc__stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--border-subtle);
+.ppc--banner .ppc__counts {
+  padding-bottom: 8px;
 }
 
 .ppc__stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 
-/* Games is the only stat that's tappable — a plain <button> reset to
-   look identical to the sibling <div> stats, plus a press/focus
-   affordance so it doesn't look inert. */
 .ppc__stat--tappable {
   border: none;
   background: none;
@@ -287,67 +261,107 @@
 
 .ppc__stat-value {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  /* Fixed line box so swapping a skeleton for a numeral can't shift the
-     baseline of the row. */
   height: 24px;
   font-family: var(--font-body);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: var(--font-weight-bold);
   line-height: 24px;
+  font-variant-numeric: tabular-nums;
   color: var(--text-primary);
-}
-
-.ppc__stat-suffix {
-  font-size: 12px;
-  font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
 }
 
 .ppc__stat-skeleton {
   align-self: center;
+  border-radius: 6px;
 }
 
 .ppc__stat-label {
+  margin-top: 2px;
   font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* ── Display name ──────────────────────────────────────────── */
+
+.ppc__name {
+  margin: 14px 0 0;
+  padding: 0 var(--page-padding);
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ppc__name--long {
+  font-size: 19px;
+}
+
+/* ── Live status ──────────────────────────────────────────── */
+
+.ppc__live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 5px 0 0;
+  padding: 0 var(--page-padding);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 18px;
+  color: var(--accent-review-text);
+}
+
+.ppc__live::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--accent-review);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-review) 22%, transparent);
 }
 
 @media (max-width: 359px) {
   .ppc__avatar-wrap {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
   }
 
   .ppc__avatar {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
   }
-  /* Avatar defaults to size="xl" (64px); step it down to the "lg" (56px)
-     rung of the same scale to match the shrunk wrapper above, rather
-     than introducing an off-scale size. */
+
   .ppc__avatar .avatar.avatar--xl {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     font-size: 22px;
   }
+
   .ppc__name {
     font-size: 20px;
   }
-  .ppc__stat-value {
+
+  .ppc__name--long {
     font-size: 18px;
+  }
+
+  .ppc__stat-value {
+    font-size: 17px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ppc__icon-btn,
-  .ppc__follow-link,
   .ppc__stat--tappable {
     transition: none;
   }
