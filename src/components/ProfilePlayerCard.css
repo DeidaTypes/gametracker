@@ -72,6 +72,12 @@
   display: block;
 }
 
+/* In-flight pick: the local image is shown at once, dimmed. The return to
+   full opacity is animated from the card when this class drops. */
+.ppc__banner-img--pending {
+  opacity: 0.6;
+}
+
 .ppc__foreground {
   position: relative;
   z-index: 1;
@@ -167,10 +173,33 @@
 /* ── Identity row: photo + counts ────────────────────────── */
 
 .ppc__identity-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 6px var(--page-padding) 0;
+}
+
+/* The 56px band is the banner padding above the photo row. It sits under
+   the top bar and stops before the photo and the counts. */
+.ppc__banner-hit {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 56px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ppc__banner-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .ppc--banner .ppc__identity-row {
@@ -180,6 +209,7 @@
 
 .ppc__avatar-wrap {
   position: relative;
+  z-index: 1;
   flex: none;
   display: grid;
   place-items: center;
@@ -206,6 +236,18 @@
   cursor: pointer;
 }
 
+.ppc__avatar--pending .avatar--img {
+  opacity: 0.6;
+}
+
+/* The shared image fade holds a loading img at 0. A local preview is
+   already the picture to show, so keep it visible and dimmed. */
+.ppc__avatar--pending .avatar--img[data-img-fade],
+.ppc__banner-img--pending[data-img-fade] {
+  animation: none !important;
+  opacity: 0.6 !important;
+}
+
 .ppc__avatar .avatar.avatar--xl {
   width: 72px;
   height: 72px;
@@ -213,6 +255,8 @@
 }
 
 .ppc__counts {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   display: flex;

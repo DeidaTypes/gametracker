@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from 'react'
+import React, { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { HiDotsVertical } from 'react-icons/hi'
 import { LuChevronLeft, LuMessageCircle } from 'react-icons/lu'
 import Skeleton from './Skeleton'
@@ -6,6 +6,8 @@ import { Arrive } from './motion/ContentSwap'
 import Avatar from './Avatar'
 import PlusBadge from './PlusBadge'
 import LevelRing from './level/LevelRing'
+import { useMotionPreference } from '../hooks/useMotionPreference'
+import { EASE_CSS, MOTION } from '../motion/xMotion'
 import './ProfilePlayerCard.css'
 
 function levelAriaSuffix(level, progress) {
@@ -111,6 +113,9 @@ export default function ProfilePlayerCard({
   onOverflow,
   onMessages,
   onAvatarClick,
+  onBannerClick,
+  avatarPending = false,
+  bannerPending = false,
   onFollowersClick,
   onFollowingClick,
   onGamesClick,
@@ -119,6 +124,35 @@ export default function ProfilePlayerCard({
 }) {
   const levelSuffix = levelAriaSuffix(level, progress)
   const compactAvatar = useCompactAvatarLayout()
+  const { reduced } = useMotionPreference()
+  const rootRef = useRef(null)
+  const avatarWasPending = useRef(false)
+  const bannerWasPending = useRef(false)
+  const fades = useRef({ avatar: null, banner: null })
+
+  // Pending drops from 60% to the saved image. Same curve as the image
+  // fade. Reduce Motion swaps, with no fade.
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const settle = (slot, wasPending, pending, selector) => {
+      const img = root?.querySelector(selector)
+      if (pending) {
+        fades.current[slot]?.cancel()
+        fades.current[slot] = null
+        return
+      }
+      if (!wasPending || reduced || !img || !img.complete) return
+      fades.current[slot]?.cancel()
+      fades.current[slot] = img.animate(
+        [{ opacity: 0.6 }, { opacity: 1 }],
+        { duration: MOTION.image, easing: EASE_CSS.fade, fill: 'backwards' },
+      )
+    }
+    settle('avatar', avatarWasPending.current, avatarPending, '.ppc__avatar .avatar--img')
+    settle('banner', bannerWasPending.current, bannerPending, '.ppc__banner-img')
+    avatarWasPending.current = avatarPending
+    bannerWasPending.current = bannerPending
+  }, [avatarPending, bannerPending, reduced])
   const avatarPhotoSize = compactAvatar ? 64 : 72
   const hasBanner = Boolean((bannerUrl || '').trim())
   const handle = (username || '').trim()
@@ -130,6 +164,7 @@ export default function ProfilePlayerCard({
 
   return (
     <section
+      ref={rootRef}
       className={`ppc${hasBanner ? ' ppc--banner' : ''}`}
       aria-label="Profile summary"
     >
@@ -139,7 +174,7 @@ export default function ProfilePlayerCard({
             <img
               src={bannerUrl}
               alt=""
-              className="ppc__banner-img"
+              className={`ppc__banner-img${bannerPending ? ' ppc__banner-img--pending' : ''}`}
               loading="lazy"
             />
           </div>
@@ -191,14 +226,22 @@ export default function ProfilePlayerCard({
         </header>
 
         <div className="ppc__identity-row">
+          {isOwnProfile && hasBanner && onBannerClick && (
+            <button
+              type="button"
+              className="ppc__banner-hit"
+              onClick={onBannerClick}
+              aria-label="Change banner"
+            />
+          )}
           <div className="ppc__avatar-wrap">
             <button
               type="button"
-              className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}`}
+              className={`ppc__avatar${isOwnProfile ? ' ppc__avatar--editable' : ''}${avatarPending ? ' ppc__avatar--pending' : ''}`}
               onClick={onAvatarClick}
               aria-label={
                 isOwnProfile
-                  ? `Edit profile photo${levelSuffix}`
+                  ? `Change profile photo${levelSuffix}`
                   : `${displayName || 'User'} profile photo${levelSuffix}`
               }
             >

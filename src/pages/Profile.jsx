@@ -111,6 +111,7 @@ import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCove
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
+import ProfilePhotoMenus, { EMPTY_PROFILE_HEADER_PREVIEW } from '../components/ProfilePhotoMenus'
 import ProfileLevelRow from '../components/level/ProfileLevelRow'
 import LevelPopup from '../components/level/LevelPopup'
 import { useLevel } from '../hooks/useLevel'
@@ -810,6 +811,48 @@ function Profile() {
 
   // Header overflow (⋯) bottom sheet — replaces the old inline kebab dropdown
   const [overflowSheetOpen, setOverflowSheetOpen] = useState(false)
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false)
+  const [bannerMenuOpen, setBannerMenuOpen] = useState(false)
+  const [headerPreview, setHeaderPreview] = useState(EMPTY_PROFILE_HEADER_PREVIEW)
+  // Blob URLs shown in the header while a photo or banner upload is in flight.
+  // Revoke after the next paint so Strict Mode's simulated effect replay
+  // doesn't blank the image that's still on screen.
+  const headerBlobs = useRef({ avatar: null, banner: null })
+  const headerAlive = useRef(true)
+
+  useEffect(() => {
+    headerAlive.current = true
+    return () => {
+      headerAlive.current = false
+      const urls = [headerBlobs.current.avatar, headerBlobs.current.banner].filter(Boolean)
+      setTimeout(() => {
+        if (headerAlive.current) return
+        urls.forEach((url) => URL.revokeObjectURL(url))
+      }, 0)
+    }
+  }, [])
+
+  useEffect(() => {
+    const nextAvatar = headerPreview.avatarOverride
+      && typeof headerPreview.avatarUrl === 'string'
+      && headerPreview.avatarUrl.startsWith('blob:')
+      ? headerPreview.avatarUrl
+      : null
+    const nextBanner = headerPreview.bannerOverride
+      && typeof headerPreview.bannerUrl === 'string'
+      && headerPreview.bannerUrl.startsWith('blob:')
+      ? headerPreview.bannerUrl
+      : null
+    const prev = headerBlobs.current
+    headerBlobs.current = { avatar: nextAvatar, banner: nextBanner }
+    const stale = [prev.avatar, prev.banner].filter((url) => url && url !== nextAvatar && url !== nextBanner)
+    stale.forEach((url) => {
+      setTimeout(() => {
+        if (headerBlobs.current.avatar === url || headerBlobs.current.banner === url) return
+        URL.revokeObjectURL(url)
+      }, 0)
+    })
+  }, [headerPreview])
 
   // Wrapped share — 'idle' | 'generating' | 'done'
   const [wrappedSharing, setWrappedSharing] = useState('idle')
@@ -1848,6 +1891,13 @@ function Profile() {
     ? (profile.bannerUrl || null)
     : otherUserBannerUrl
 
+  const shownAvatarUrl = isOwnProfile && headerPreview.avatarOverride
+    ? headerPreview.avatarUrl
+    : avatarDisplay
+  const shownBannerUrl = isOwnProfile && headerPreview.bannerOverride
+    ? headerPreview.bannerUrl
+    : displayBannerUrl
+
   // Games stat — total tracked games across every status (Backlog /
   // Playing / Played / Dropped), counted from `game_trackers` for own and
   // visitor profiles alike so both views agree. The own-profile path used
@@ -1878,11 +1928,13 @@ function Profile() {
         <ProfilePlayerCard
           displayName={profile.displayName}
           username={profile.username}
-          avatarUrl={avatarDisplay}
+          avatarUrl={shownAvatarUrl}
           avatarSeed={profile.id || targetUserId}
           isOwnProfile={isOwnProfile}
           plusActive={isOwnProfile ? ownPlusActive : profile.plusActive === true}
-          bannerUrl={displayBannerUrl}
+          bannerUrl={shownBannerUrl}
+          avatarPending={isOwnProfile && headerPreview.avatarDimmed}
+          bannerPending={isOwnProfile && headerPreview.bannerDimmed}
           liveStatusLabel={liveStatus ? `Playing ${liveStatus.gameTitle} now` : null}
           followersCount={followersCount}
           followingCount={followingCount}
@@ -1894,7 +1946,12 @@ function Profile() {
           onBack={() => navigate(-1)}
           onOverflow={() => setOverflowSheetOpen(true)}
           onMessages={() => navigate('/messages')}
-          onAvatarClick={() => isOwnProfile && setShowEditModal(true)}
+          onAvatarClick={isOwnProfile ? () => setPhotoMenuOpen(true) : undefined}
+          onBannerClick={
+            isOwnProfile && displayBannerUrl
+              ? () => setBannerMenuOpen(true)
+              : undefined
+          }
           onFollowersClick={() => navigate(`/user/${profilePathSegment}/followers`)}
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}
           onGamesClick={
@@ -2229,6 +2286,19 @@ function Profile() {
           tier={levelTier}
           xpTotal={levelXpTotal}
         />
+
+        {isOwnProfile && (
+          <ProfilePhotoMenus
+            user={user}
+            avatarUrl={avatarDisplay}
+            bannerUrl={displayBannerUrl}
+            photoOpen={photoMenuOpen}
+            bannerOpen={bannerMenuOpen}
+            onPhotoClose={() => setPhotoMenuOpen(false)}
+            onBannerClose={() => setBannerMenuOpen(false)}
+            onPreviewChange={setHeaderPreview}
+          />
+        )}
 
         <EditProfileModal
           isOpen={showEditModal}
