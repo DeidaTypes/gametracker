@@ -74,10 +74,6 @@
   align-items: stretch;
 }
 
-.profile-ig-hero:not(:empty) {
-  padding-top: var(--spacing-sm);
-}
-
 /* ── Row 1: Avatar ── */
 
 /* Avatar — 84px circle with 2px cobalt ring */
@@ -191,8 +187,15 @@
   gap: 4px;
 }
 
-.profile-ig-hero__bio {
+/* `p` raises specificity above the phone touch-target rule in index.css
+   (`[role=button] { min-height: 44px }` under 768px). Own-profile bios
+   are that role, and the 44px floor stretched a short bio into a gap
+   above the tabs. `auto` is the flex-item content size, so the box
+   hugs the text instead of collapsing. */
+p.profile-ig-hero__bio {
   margin: 0;
+  min-height: auto;
+  min-width: auto;
   font-family: var(--font-body);
   font-size: 15px;
   font-weight: var(--font-weight-normal);

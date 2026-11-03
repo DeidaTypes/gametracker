@@ -631,6 +631,9 @@ body[data-larger-text='true'] {
   --toast-surface: var(--theme-surface-2);
   --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.18), 0 0 48px rgba(59, 130, 246, 0.08);
   --shadow-cover: 4px 8px 24px rgba(0, 0, 0, 0.65);
+  /* Soft lift for a small cover on a frosted row (profile now-playing).
+     Lighter than --shadow-cover so a 30×40 thumb stays on the row. */
+  --shadow-cover-soft: 0 2px 8px rgba(0, 0, 0, 0.2);
   /* Leading-edge depth for a page sliding off during a back transition, so
      the outgoing screen reads as a layer lifting off the one behind it
      (matching native iOS push depth). Named rather than inlined because two

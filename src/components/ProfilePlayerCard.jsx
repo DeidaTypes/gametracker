@@ -90,7 +90,7 @@ function StatCell({ value, label, loading, onClick, ariaLabel, disabled }) {
 
 /**
  * ProfilePlayerCard — open profile header: top bar, photo with tier ring,
- * four counts beside the photo, full-width display name, and optional live line.
+ * four counts beside the photo, and a full-width display name.
  * Backdrop is a banner image or a soft accent wash behind the header.
  */
 export default function ProfilePlayerCard({
@@ -100,7 +100,6 @@ export default function ProfilePlayerCard({
   avatarSeed,
   isOwnProfile,
   plusActive = false,
-  liveStatusLabel,
   bannerUrl,
   followersCount,
   followingCount,
@@ -315,12 +314,6 @@ export default function ProfilePlayerCard({
           {nameText}
           <PlusBadge active={plusActive} inline />
         </h1>
-
-        {liveStatusLabel && (
-          <p className="ppc__live" aria-live="polite">
-            {liveStatusLabel}
-          </p>
-        )}
       </div>
     </section>
   )

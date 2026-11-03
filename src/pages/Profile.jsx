@@ -51,7 +51,7 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { getProfile, initializeProfile, updateProfile } from '../services/profileService'
-import { getTrackedGamesCountForUser } from '../services/statsService'
+import { getTrackedGamesCountForUser, getNowPlayingForUser } from '../services/statsService'
 import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
 import { getTotalHoursForUser } from '../services/hoursService'
 import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
@@ -111,6 +111,7 @@ import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCove
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
+import ProfileNowPlaying from '../components/ProfileNowPlaying'
 import ProfilePhotoMenus, { EMPTY_PROFILE_HEADER_PREVIEW } from '../components/ProfilePhotoMenus'
 import ProfileLevelRow from '../components/level/ProfileLevelRow'
 import LevelPopup from '../components/level/LevelPopup'
@@ -887,6 +888,12 @@ function Profile() {
   const [hoursPlayed, setHoursPlayed] = useState(() =>
     cachedProfileBundle ? cachedProfileBundle.hours : null
   )
+  // Most recently updated Currently Playing tracker, or null. Same
+  // source for own and visitor profiles. `nowPlaying` below folds a
+  // live session on top of this row.
+  const [nowPlayingRow, setNowPlayingRow] = useState(() =>
+    cachedProfileBundle ? (cachedProfileBundle.np ?? null) : null
+  )
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
@@ -1093,7 +1100,7 @@ function Profile() {
             return { rows, pins, counts, cCounts }
           })()
 
-          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours] = await Promise.all([
+          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours, np] = await Promise.all([
             reviewsWithSocial,
             safeWithTimeout(getListsForUser(targetUserId), []),
             safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
@@ -1118,6 +1125,9 @@ function Profile() {
             // game_trackers.hours_played for every profile, so own and
             // visitor views read the same number from the same source.
             safeWithTimeout(getTotalHoursForUser(targetUserId), null),
+            // Currently Playing — one tracker row, newest update first.
+            // Own and visitor profiles read the same public table.
+            safeWithTimeout(getNowPlayingForUser(targetUserId), null),
           ])
 
           return {
@@ -1133,10 +1143,11 @@ function Profile() {
             rd,
             trackedGames,
             hours,
+            np,
           }
         }
 
-        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, counts, cCounts } =
+        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, np, counts, cCounts } =
           await getSWR(`profile:${targetUserId}`, fetchProfileBundle, {
             ttlMs: PROFILE_CACHE_TTL_MS,
             force,
@@ -1153,6 +1164,7 @@ function Profile() {
         if (rd) setRivalryData(rd)
         setTrackedGamesCount(trackedGames ?? 0)
         setHoursPlayed(hours)
+        setNowPlayingRow(np ?? null)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
@@ -1193,6 +1205,7 @@ function Profile() {
           setRivalryData([])
           setTrackedGamesCount(null)
           setHoursPlayed(null)
+          setNowPlayingRow(null)
         }
       }
       loadedProfileForUserRef.current = targetUserId
@@ -1215,6 +1228,7 @@ function Profile() {
       setRivalryData([])
       setTrackedGamesCount(null)
       setHoursPlayed(null)
+      setNowPlayingRow(null)
       loadedProfileForUserRef.current = targetUserId
       // Only drop the loading skeleton once we're confident there's
       // nothing pending (own profile, or a fully-settled not-found) —
@@ -1326,19 +1340,59 @@ function Profile() {
     }
   }, [targetUserId, refreshFollows])
 
-  /* ── Live presence status for this profile ─────────────────────── */
+  /* ── Now playing ──────────────────────────────────────────────── */
 
-  // Own profile: show if the signed-in user opted in AND has an active session.
-  // Other profile: show if the viewed user appears in the followee presence list
-  // (which already enforces both opt-in and the follow relationship).
-  const liveStatus = useMemo(() => {
+  // Same visibility as the old live line. Own profile: presence is on
+  // and a session is running. Visitor: they appear in the followee
+  // presence list (opt-in and the follow are already enforced there).
+  // Otherwise the Currently Playing tracker. `image` is what the art
+  // header reads.
+  const nowPlaying = useMemo(() => {
+    let live = null
     if (isOwnProfile) {
-      if (!presenceEnabled || !activeSession?.game_title) return null
-      return { gameTitle: activeSession.game_title }
+      if (presenceEnabled && activeSession?.game_title) {
+        const gameId = activeSession.igdb_game_id != null ? Number(activeSession.igdb_game_id) : null
+        live = {
+          gameId: Number.isFinite(gameId) ? gameId : null,
+          title: activeSession.game_title,
+          image: activeSession.game_image || null,
+        }
+      }
+    } else {
+      const entry = playingNow.find((p) => p.userId === targetUserId)
+      if (entry?.gameTitle) {
+        const gameId = entry.gameId != null ? Number(entry.gameId) : null
+        live = {
+          gameId: Number.isFinite(gameId) ? gameId : null,
+          title: entry.gameTitle,
+          image: entry.gameImage || null,
+        }
+      }
     }
-    const entry = playingNow.find((p) => p.userId === targetUserId)
-    return entry?.gameTitle ? { gameTitle: entry.gameTitle } : null
-  }, [isOwnProfile, presenceEnabled, activeSession, playingNow, targetUserId])
+
+    if (live?.gameId != null) {
+      const matched = nowPlayingRow != null && Number(nowPlayingRow.igdbGameId) === live.gameId
+      return {
+        gameId: live.gameId,
+        title: live.title,
+        image: live.image || (matched ? nowPlayingRow.image : null) || null,
+        hours: matched ? nowPlayingRow.hours : null,
+        live: true,
+      }
+    }
+
+    if (nowPlayingRow?.igdbGameId != null && nowPlayingRow.title) {
+      return {
+        gameId: Number(nowPlayingRow.igdbGameId),
+        title: nowPlayingRow.title,
+        image: nowPlayingRow.image || null,
+        hours: nowPlayingRow.hours,
+        live: false,
+      }
+    }
+
+    return null
+  }, [isOwnProfile, presenceEnabled, activeSession, playingNow, targetUserId, nowPlayingRow])
 
   /* ── Derived data ─────────────────────────────────────────────── */
 
@@ -1935,7 +1989,6 @@ function Profile() {
           bannerUrl={shownBannerUrl}
           avatarPending={isOwnProfile && headerPreview.avatarDimmed}
           bannerPending={isOwnProfile && headerPreview.bannerDimmed}
-          liveStatusLabel={liveStatus ? `Playing ${liveStatus.gameTitle} now` : null}
           followersCount={followersCount}
           followingCount={followingCount}
           followLoading={followLoading}
@@ -2015,6 +2068,16 @@ function Profile() {
                 Tell people what you play →
               </button>
             )
+          )}
+
+          {nowPlaying && (
+            <ProfileNowPlaying
+              gameId={nowPlaying.gameId}
+              title={nowPlaying.title}
+              image={nowPlaying.image}
+              hours={nowPlaying.hours}
+              live={nowPlaying.live}
+            />
           )}
 
           {(bestAnswersCount > 0 || setSocials.length > 0) && (

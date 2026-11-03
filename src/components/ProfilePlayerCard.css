@@ -350,30 +350,6 @@
   font-size: 19px;
 }
 
-/* ── Live status ──────────────────────────────────────────── */
-
-.ppc__live {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 5px 0 0;
-  padding: 0 var(--page-padding);
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  line-height: 18px;
-  color: var(--accent-review-text);
-}
-
-.ppc__live::before {
-  content: '';
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-full);
-  background: var(--accent-review);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-review) 22%, transparent);
-}
-
 @media (max-width: 359px) {
   .ppc__avatar-wrap {
     width: 64px;

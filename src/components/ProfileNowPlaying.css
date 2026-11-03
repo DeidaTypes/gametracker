@@ -1,0 +1,112 @@
+/* Frosted now-playing row under the profile bio. Sits on the art
+   header, so the fill is a translucent surface with a blur. */
+
+.pnp {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  /* Approved header: 14px under the bio, not a grid step. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  margin-top: 14px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  padding: var(--space-8) 14px var(--space-8) var(--space-8);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-family: var(--font-body);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pnp:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pnp__cover {
+  flex: none;
+  width: 30px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: var(--shadow-cover-soft);
+  background: var(--bg-surface-2);
+}
+
+.pnp__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pnp__label {
+  display: flex;
+  align-items: center;
+  /* Mockup gap beside the 6px dot. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--accent-review-text);
+}
+
+.pnp__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-review);
+  animation: pnp-pulse 2.4s var(--ease-fade) infinite;
+}
+
+@keyframes pnp-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-review) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.pnp__title {
+  display: block;
+  /* Hairline between the label and the title, from the approved mockup. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list */
+  margin-top: 1px;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pnp__hours {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pnp__dot {
+    animation: none;
+  }
+}
+
+body[data-reduce-motion='true'] .pnp__dot {
+  animation: none;
+}
