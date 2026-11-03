@@ -114,6 +114,7 @@ import ProfilePlayerCard from '../components/ProfilePlayerCard'
 import ProfileLevelRow from '../components/level/ProfileLevelRow'
 import LevelPopup from '../components/level/LevelPopup'
 import { useLevel } from '../hooks/useLevel'
+import { loadMyXpExtras } from '../services/xpService'
 import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
 import ContentSwap from '../components/motion/ContentSwap'
@@ -647,6 +648,30 @@ function Profile() {
     tier: levelTier,
     loading: levelLoading,
   } = useLevel(targetUserId)
+
+  // Own profile only: once the level row can open, warm today + recent XP
+  // so the first level popup paints from memory. One shot per loaded level.
+  useEffect(() => {
+    if (!isOwnProfile || levelLoading || !user?.id) return undefined
+    const userId = user.id
+    let cancelled = false
+    const prefetch = () => {
+      if (cancelled) return
+      loadMyXpExtras(userId).catch(() => {})
+    }
+    if (typeof requestIdleCallback === 'function') {
+      const handle = requestIdleCallback(prefetch, { timeout: 1500 })
+      return () => {
+        cancelled = true
+        cancelIdleCallback(handle)
+      }
+    }
+    const handle = setTimeout(prefetch, 1)
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [isOwnProfile, levelLoading, user?.id])
 
   // Local profile blob (display name / avatar / bio / socials / favorites).
   // Lives in localStorage for the signed-in user; for "another user"
@@ -2215,6 +2240,7 @@ function Profile() {
           isOpen={levelPopupOpen}
           onClose={() => setLevelPopupOpen(false)}
           isOwnProfile={isOwnProfile}
+          userId={user?.id}
           level={playerLevel}
           progress={levelProgress}
           tier={levelTier}

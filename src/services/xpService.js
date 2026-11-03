@@ -146,6 +146,57 @@ export async function getMyRecentXp(limit = 30) {
 }
 
 /**
+ * Last extras read for the signed-in player's level popup.
+ * In memory only — so the popup can paint today + recent XP on the
+ * first frame, and a failed refresh leaves the previous read in place.
+ * @type {{ userId: string, todayXp: number, recent: Array, at: number } | null}
+ */
+let xpExtrasCache = null
+/** @type {{ userId: string, promise: Promise } | null} */
+let xpExtrasFlight = null
+
+/**
+ * Synchronous. `{ todayXp, recent }` when the cache belongs to userId,
+ * otherwise null.
+ */
+export function peekMyXpExtras(userId) {
+  if (!userId || !xpExtrasCache || xpExtrasCache.userId !== userId) return null
+  return { todayXp: xpExtrasCache.todayXp, recent: xpExtrasCache.recent }
+}
+
+/**
+ * Read today + the newest 30 rows and store them for peekMyXpExtras.
+ * Concurrent calls for the same user share one in-flight promise.
+ * On failure the previous cache is kept.
+ * @returns {Promise<{ userId: string, todayXp: number, recent: Array, at: number } | null>}
+ */
+export function loadMyXpExtras(userId) {
+  if (!userId) return Promise.resolve(null)
+  if (xpExtrasFlight && xpExtrasFlight.userId === userId) return xpExtrasFlight.promise
+
+  const promise = (async () => {
+    try {
+      const [todayXp, recent] = await Promise.all([
+        getMyXpToday(),
+        getMyRecentXp(30),
+      ])
+      const entry = { userId, todayXp, recent, at: Date.now() }
+      xpExtrasCache = entry
+      return entry
+    } catch (err) {
+      logXp('loadMyXpExtras', err)
+      if (xpExtrasCache && xpExtrasCache.userId === userId) return xpExtrasCache
+      return null
+    } finally {
+      if (xpExtrasFlight && xpExtrasFlight.promise === promise) xpExtrasFlight = null
+    }
+  })()
+
+  xpExtrasFlight = { userId, promise }
+  return promise
+}
+
+/**
  * Sum of the signed-in player's awards matching any { source, ref } key
  * and created in the last 2 minutes. An edit of something awarded earlier
  * sums to 0, so the notice stays quiet.

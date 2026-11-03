@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { nextRewards, xpForLevel, xpSourceLabel } from '../../data/levels'
 import { getLibrary, initializeLibrary } from '../../services/libraryService'
-import { getMyRecentXp, getMyXpToday } from '../../services/xpService'
+import { loadMyXpExtras, peekMyXpExtras } from '../../services/xpService'
 import { APP_RESUMED_EVENT, isLongAbsence } from '../../hooks/useAppResume'
 import CenteredModal from '../CenteredModal'
-import { Arrive } from '../motion/ContentSwap'
 import { LevelProgressRing, GAME_SOURCES } from './ProfileLevelRow'
 import './LevelPopup.css'
 
@@ -106,60 +105,70 @@ function buildRecentLines(rows) {
 /**
  * LevelPopup — centered level details (profile avatar tag + level row).
  */
+function extrasSnapshot(userId, isOwnProfile) {
+  if (!isOwnProfile || !userId) return null
+  const peeked = peekMyXpExtras(userId)
+  if (!peeked) return null
+  return { userId, todayXp: peeked.todayXp, recent: peeked.recent }
+}
+
 export default function LevelPopup({
   isOpen,
   onClose,
   isOwnProfile = false,
+  userId = null,
   level = 1,
   progress,
   tier,
   xpTotal = 0,
 }) {
-  const [todayXp, setTodayXp] = useState(0)
-  const [recentRows, setRecentRows] = useState([])
-  const [extrasReady, setExtrasReady] = useState(false)
-
-  const loadExtras = useCallback(async () => {
-    if (!isOwnProfile) {
-      setTodayXp(0)
-      setRecentRows([])
-      setExtrasReady(true)
-      return
-    }
-    setExtrasReady(false)
-    try {
-      const [today, recent] = await Promise.all([
-        getMyXpToday(),
-        getMyRecentXp(30),
-      ])
-      setTodayXp(today)
-      setRecentRows(recent)
-    } catch (err) {
-      console.error('[level] popup extras failed:', err)
-      setTodayXp(0)
-      setRecentRows([])
-    } finally {
-      setExtrasReady(true)
-    }
-  }, [isOwnProfile])
+  // Seed from the in-memory read so a warm cache is on the first frame.
+  // Later renders prefer peekMyXpExtras directly: a prefetch can fill the
+  // cache while this popup (kept mounted) is closed, and that open must
+  // not wait for the refresh below. A refresh never clears this.
+  const [extras, setExtras] = useState(() => extrasSnapshot(userId, isOwnProfile))
+  const peeked = extrasSnapshot(userId, isOwnProfile)
+  const shown = isOwnProfile
+    ? (peeked ?? (extras?.userId === userId ? extras : null))
+    : null
+  const todayXp = shown ? shown.todayXp : null
+  const recentRows = shown?.recent ?? null
 
   useEffect(() => {
-    if (!isOpen) return undefined
-    loadExtras()
-    const onXp = () => {
-      loadExtras().catch(() => {})
+    if (!isOpen || !isOwnProfile || !userId) return undefined
+    let active = true
+    const refresh = () => {
+      loadMyXpExtras(userId).then((result) => {
+        if (!active || !result || result.userId !== userId) return
+        setExtras((prev) => {
+          if (
+            prev
+            && prev.userId === result.userId
+            && prev.todayXp === result.todayXp
+            && prev.recent === result.recent
+          ) return prev
+          return {
+            userId: result.userId,
+            todayXp: result.todayXp,
+            recent: result.recent,
+          }
+        })
+      }).catch(() => {})
     }
+    refresh()
+    const onXp = () => refresh()
     const onResume = (event) => {
       if (!isLongAbsence(event)) return
-      loadExtras().catch(() => {})
+      refresh()
     }
     window.addEventListener('xpUpdated', onXp)
     window.addEventListener(APP_RESUMED_EVENT, onResume)
     return () => {
+      active = false
       window.removeEventListener('xpUpdated', onXp)
       window.removeEventListener(APP_RESUMED_EVENT, onResume)
     }
-  }, [isOpen, loadExtras])
+  }, [isOpen, isOwnProfile, userId])
 
   const isMax = progress?.isMax
   const rewards = useMemo(
@@ -168,7 +177,7 @@ export default function LevelPopup({
   )
 
   const recentLines = useMemo(
-    () => (isOwnProfile ? buildRecentLines(recentRows) : []),
+    () => (isOwnProfile && recentRows ? buildRecentLines(recentRows) : []),
     [isOwnProfile, recentRows]
   )
 
@@ -178,16 +187,10 @@ export default function LevelPopup({
       ? `${progress.intoLevel.toLocaleString()} / ${progress.levelCost.toLocaleString()} XP this level`
       : ''
 
-  const totalLine = isOwnProfile
-    ? [
-        todayXp > 0 ? `Today +${todayXp.toLocaleString()} XP` : null,
-        `${xpTotal.toLocaleString()} XP total`,
-      ]
-        .filter(Boolean)
-        .join(' \u00b7 ')
-    : `${xpTotal.toLocaleString()} XP total`
-
-  const ready = progress != null && (!isOwnProfile || extrasReady)
+  const totalCore = `${xpTotal.toLocaleString()} XP total`
+  const totalLine = isOwnProfile && todayXp != null && todayXp > 0
+    ? `Today +${todayXp.toLocaleString()} XP \u00b7 ${totalCore}`
+    : totalCore
 
   return (
     <CenteredModal
@@ -206,12 +209,7 @@ export default function LevelPopup({
       </header>
 
       <div className="cm-scroll lp-body">
-        <Arrive
-          ready={ready}
-          placeholder={
-            <div className="lp-summary lp-summary--placeholder" aria-hidden="true" />
-          }
-        >
+        {progress != null ? (
           <section className="lp-summary" aria-label="Level progress">
             <LevelProgressRing
               size={96}
@@ -224,7 +222,9 @@ export default function LevelPopup({
             <p className="lp-summary__level-xp text-caption">{levelProgressLine}</p>
             <p className="lp-summary__totals text-caption">{totalLine}</p>
           </section>
-        </Arrive>
+        ) : (
+          <div className="lp-summary lp-summary--placeholder" aria-hidden="true" />
+        )}
 
         {!isMax && rewards.length > 0 && (
           <>
