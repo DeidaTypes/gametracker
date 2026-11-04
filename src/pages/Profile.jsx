@@ -30,7 +30,7 @@ import {
   HiDotsVertical,
   HiOutlinePencil,
 } from 'react-icons/hi'
-import { MessageCircleQuestion, PenLine, List, Plus } from 'lucide-react'
+import { PenLine, List, Plus } from 'lucide-react'
 import {
   FaInstagram,
   FaXTwitter,
@@ -1999,23 +1999,8 @@ function Profile() {
             )
           )}
 
-          {(bestAnswersCount > 0 || setSocials.length > 0) && (
+          {setSocials.length > 0 && (
             <div className="profile-ig-hero__extras">
-              {bestAnswersCount > 0 && (
-                <button
-                  type="button"
-                  className="profile-ig-hero__extra"
-                  onClick={() => navigate(`/user/${profilePathSegment}/best-answers`)}
-                  aria-label={`${bestAnswersCount} best ${bestAnswersCount === 1 ? 'answer' : 'answers'}, view list`}
-                >
-                  <MessageCircleQuestion size={15} aria-hidden="true" />
-                  <span className="profile-ig-hero__extra-label">
-                    <span className="profile-ig-hero__extra-strong">{bestAnswersCount}</span>
-                    {' '}
-                    best {bestAnswersCount === 1 ? 'answer' : 'answers'}
-                  </span>
-                </button>
-              )}
               {setSocials.map((p) => {
                 const handle = (profile[p.profileField] || '').trim()
                 const Icon = p.Icon

@@ -584,6 +584,10 @@ body[data-larger-text='true'] {
   --qa-on-cover: #ffffff;
   --qa-on-cover-scrim: rgba(6, 8, 10, 0.62);
   --profile-photo-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  --pcard-shadow: 0 22px 44px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.04);
+  --pcard-sheen: 0.42;
+  --pcard-glare: rgba(255, 255, 255, 0.28);
+  --pcard-sweep: rgba(255, 255, 255, 0.35);
   /* Pulse finished band — light text and badge on blurred cover art */
   --pulse-on-cover: #ffffff;
   --pulse-cover-chip: rgba(255, 255, 255, 0.16);
@@ -679,6 +683,8 @@ body[data-larger-text='true'] {
   --motion-toast-out: 220ms;
   --motion-toast-rise: 8px;
   --motion-reduced-fade: 150ms;
+  --motion-card-flip: 640ms;
+  --motion-card-sweep: 1400ms;
   /* Aliases kept for existing callers (route stack, qa swap). */
   --motion-duration: var(--motion-slide);
   --motion-ease: var(--ease-move);
@@ -1331,6 +1337,8 @@ html[data-app-theme="paper"] {
   --ring-diamond-glow: transparent;
   --ring-edge: rgba(0, 0, 0, 0.18);
   --ring-track-opacity: 0.3;
+  --pcard-shadow: 0 18px 36px rgba(40, 30, 10, 0.14), 0 1px 2px rgba(40, 30, 10, 0.08);
+  --pcard-sheen: 0.28;
 }
 
 /* The Navy page wash is the existing ambient gradient. Every other

@@ -1,5 +1,5 @@
 /* ============================================================
-   ProfilePlayerCard — open profile header (no card box).
+   ProfilePlayerCard — sticky bar + foil player card.
    ============================================================ */
 
 .ppc {
@@ -7,13 +7,56 @@
   margin: 0;
   padding: 0;
   --ppc-bar-height: 44px;
+  --pcard-t1: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --pcard-t2: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --pcard-t3: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --pcard-t4: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --pcard-t5: color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+
+.ppc--tier-bronze {
+  --pcard-t1: var(--ring-bronze-1);
+  --pcard-t2: var(--ring-bronze-2);
+  --pcard-t3: var(--ring-bronze-3);
+  --pcard-t4: var(--ring-bronze-4);
+  --pcard-t5: var(--ring-bronze-5);
+}
+
+.ppc--tier-silver {
+  --pcard-t1: var(--ring-silver-1);
+  --pcard-t2: var(--ring-silver-2);
+  --pcard-t3: var(--ring-silver-3);
+  --pcard-t4: var(--ring-silver-4);
+  --pcard-t5: var(--ring-silver-5);
+}
+
+.ppc--tier-gold {
+  --pcard-t1: var(--ring-gold-1);
+  --pcard-t2: var(--ring-gold-2);
+  --pcard-t3: var(--ring-gold-3);
+  --pcard-t4: var(--ring-gold-4);
+  --pcard-t5: var(--ring-gold-5);
+}
+
+.ppc--tier-platinum {
+  --pcard-t1: var(--ring-platinum-1);
+  --pcard-t2: var(--ring-platinum-2);
+  --pcard-t3: var(--ring-platinum-3);
+  --pcard-t4: var(--ring-platinum-4);
+  --pcard-t5: var(--ring-platinum-5);
+}
+
+.ppc--tier-diamond {
+  --pcard-t1: var(--ring-diamond-1);
+  --pcard-t2: var(--ring-diamond-2);
+  --pcard-t3: var(--ring-diamond-3);
+  --pcard-t4: var(--ring-diamond-4);
+  --pcard-t5: var(--ring-diamond-5);
 }
 
 .ppc__foreground {
   position: relative;
   z-index: 1;
-  /* The bar is a sticky sibling pulled up over this section. Pad the
-     foreground by the same block so the photo row still starts below it. */
   padding-top: calc(var(--safe-area-inset-top) + var(--ppc-bar-height));
 }
 
@@ -28,8 +71,6 @@
   grid-template-columns: 88px 1fr 88px;
   align-items: center;
   min-height: var(--ppc-bar-height);
-  /* Pull the section up under the bar so the header still starts at the
-     top of the page. The bar's own block is the safe area plus 44px. */
   margin-bottom: calc(-1 * (var(--safe-area-inset-top) + var(--ppc-bar-height)));
   padding: var(--safe-area-inset-top) 10px 0;
   box-sizing: content-box;
@@ -67,7 +108,6 @@
   height: var(--ppc-bar-height);
 }
 
-.ppc__bar-handle,
 .ppc__bar-name {
   position: absolute;
   left: 0;
@@ -84,20 +124,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(var(--motion-seg-rise));
   transition:
     opacity var(--motion-tab-out) var(--ease-fade),
     transform var(--motion-arrive) var(--ease-move),
     color var(--motion-reduced-fade) var(--ease-fade);
-}
-
-.ppc__bar-name {
-  opacity: 0;
-  transform: translateY(var(--motion-seg-rise));
-}
-
-.ppc__bar--named .ppc__bar-handle {
-  opacity: 0;
-  transform: translateY(calc(var(--motion-seg-rise) * -1));
 }
 
 .ppc__bar--named .ppc__bar-name {
@@ -154,32 +186,256 @@
   pointer-events: none;
 }
 
-/* ── Identity row: photo + counts ────────────────────────── */
+/* ── Player card shell ───────────────────────────────────── */
 
-.ppc__identity-row {
+.ppc__card-wrap {
   position: relative;
+  padding: 4px var(--page-padding) 0;
+  perspective: 1100px;
+}
+
+.ppc__flip-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ppc__card {
+  position: relative;
+  display: grid;
+  min-height: 186px;
+  transform-style: preserve-3d;
+  transition: transform var(--motion-card-flip) var(--ease-move);
+  touch-action: pan-y;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ppc__card--flipped {
+  transform: rotateY(180deg);
+}
+
+.ppc__tilt {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  transform-style: preserve-3d;
+  transition: transform 420ms var(--ease-move);
+  --mx: 0.5;
+  --my: 0.5;
+}
+
+.ppc__tilt--live {
+  transition: none;
+}
+
+.ppc__face {
+  position: relative;
+  grid-area: 1 / 1;
+  display: grid;
+  border-radius: 22px;
+  overflow: hidden;
+  isolation: isolate;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 1.5px solid transparent;
+  box-shadow: var(--pcard-shadow);
+  background:
+    linear-gradient(
+      155deg,
+      var(--bg-surface) 0%,
+      color-mix(in srgb, var(--bg-surface) 88%, var(--pcard-t2)) 100%
+    )
+      padding-box,
+    conic-gradient(
+      from calc(210deg + (var(--mx, 0.5) - 0.5) * 140deg) at 50% 50%,
+      var(--pcard-t1),
+      var(--pcard-t3),
+      var(--pcard-t2),
+      var(--pcard-t5),
+      var(--pcard-t4),
+      var(--pcard-t1)
+    )
+      border-box;
+}
+
+.ppc__face--front {
+  transform: rotateY(0deg);
+}
+
+.ppc__face--back {
+  transform: rotateY(180deg);
+}
+
+.ppc__card--flipped .ppc__face--front {
+  visibility: hidden;
+  transition: visibility 0s linear calc(var(--motion-card-flip) / 2);
+}
+
+.ppc__card:not(.ppc__card--flipped) .ppc__face--back {
+  visibility: hidden;
+  transition: visibility 0s linear calc(var(--motion-card-flip) / 2);
+}
+
+.ppc__card--flipped .ppc__face--back,
+.ppc__card:not(.ppc__card--flipped) .ppc__face--front {
+  transition: visibility 0s linear 0s;
+}
+
+/* ── Card texture layers ───────────────────────────────────── */
+
+.ppc__layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ppc__layer--grain {
+  opacity: 0.5;
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--text-primary) 7%, transparent) 0.6px,
+    transparent 0.7px
+  );
+  background-size: 6px 6px;
+}
+
+.ppc__layer--holo {
+  inset: -40%;
+  opacity: var(--pcard-sheen);
+  mix-blend-mode: soft-light;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    var(--pcard-t1) 40%,
+    var(--pcard-t2) 45%,
+    var(--pcard-t4) 50%,
+    var(--pcard-t3) 55%,
+    transparent 66%
+  );
+  transform: translate(
+    calc((var(--mx, 0.5) - 0.5) * 60%),
+    calc((var(--my, 0.5) - 0.5) * 30%)
+  );
+  transition: transform 120ms linear;
+}
+
+.ppc__layer--lines {
+  inset: -20%;
+  opacity: calc(var(--pcard-sheen) * 0.55);
+  mix-blend-mode: overlay;
+  background: repeating-linear-gradient(
+    120deg,
+    transparent 0 7px,
+    color-mix(in srgb, var(--pcard-t1) 55%, transparent) 7px 8px,
+    transparent 8px 15px,
+    color-mix(in srgb, var(--pcard-t4) 45%, transparent) 15px 16px
+  );
+  transform: translateX(calc((var(--mx, 0.5) - 0.5) * -14%));
+  -webkit-mask-image: linear-gradient(
+    115deg,
+    transparent 15%,
+    #000 45%,
+    #000 60%,
+    transparent 90%
+  );
+  mask-image: linear-gradient(
+    115deg,
+    transparent 15%,
+    #000 45%,
+    #000 60%,
+    transparent 90%
+  );
+}
+
+.ppc__layer--glare {
+  opacity: 0;
+  transition: opacity 260ms var(--ease-fade);
+  mix-blend-mode: overlay;
+  background: radial-gradient(
+    circle at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+    var(--pcard-glare),
+    transparent 46%
+  );
+}
+
+.ppc__tilt--live .ppc__layer--glare {
+  opacity: 1;
+}
+
+.ppc__layer--sweep {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    var(--pcard-sweep) 48%,
+    transparent 60%
+  );
+  mix-blend-mode: overlay;
+  transform: translateX(-120%);
+}
+
+.ppc__face--sweep .ppc__layer--sweep {
+  animation: ppc-card-sweep var(--motion-card-sweep) var(--ease-fade) 400ms 1 forwards;
+}
+
+@keyframes ppc-card-sweep {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+/* ── Face content ──────────────────────────────────────────── */
+
+.ppc__face-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 18px 16px;
+  pointer-events: auto;
+}
+
+.ppc__mark {
+  font-family: var(--font-body);
+  font-size: 9.5px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.24em;
+  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
+}
+
+.ppc__mark--issuer {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+}
+
+.ppc__face-top {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 6px var(--page-padding) 0;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .ppc__avatar-wrap {
   position: relative;
-  z-index: 1;
   flex: none;
   display: grid;
   place-items: center;
-  width: 84px;
-  height: 84px;
+  width: 64px;
+  height: 64px;
   line-height: 0;
 }
 
 .ppc__avatar {
   display: block;
   flex: none;
-  width: 84px;
-  height: 84px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border-radius: var(--radius-full);
   border: none;
@@ -198,42 +454,84 @@
   opacity: 0.6;
 }
 
-/* The shared image fade holds a loading img at 0. A local preview is
-   already the picture to show, so keep it visible and dimmed. */
 .ppc__avatar--pending .avatar--img[data-img-fade] {
   animation: none !important;
   opacity: 0.6 !important;
 }
 
 .ppc__avatar .avatar.avatar--xl {
-  width: 84px;
-  height: 84px;
-  font-size: 30px;
+  width: 64px;
+  height: 64px;
+  font-size: 26px;
 }
 
-.ppc__counts {
-  position: relative;
-  z-index: 1;
-  flex: 1;
+.ppc__who {
   min-width: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  text-align: center;
+  flex: 1;
+  padding-right: 56px;
+}
+
+.ppc__name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 21px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ppc__name--long {
+  font-size: 17px;
+}
+
+.ppc__sub {
+  margin: 3px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ppc__tray {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 4px 0 3px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .ppc__stat {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 1px;
   min-width: 0;
-  flex: 1;
+  padding: 4px 2px;
+}
+
+.ppc__stat + .ppc__stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
 }
 
 .ppc__stat--tappable {
   border: none;
   background: none;
-  padding: 0;
   margin: 0;
   font: inherit;
   color: inherit;
@@ -260,13 +558,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
+  min-height: 23px;
   font-family: var(--font-body);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: var(--font-weight-bold);
-  line-height: 24px;
+  line-height: 23px;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  text-align: center;
   color: var(--text-primary);
+}
+
+.ppc__stat-value--rating {
+  gap: 3px;
+}
+
+.ppc__stat-star {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--star);
 }
 
 .ppc__stat-skeleton {
@@ -275,62 +585,140 @@
 }
 
 .ppc__stat-label {
-  margin-top: 2px;
   font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── Career back ───────────────────────────────────────────── */
+
+.ppc__face-body--back {
+  min-height: 186px;
+}
+
+.ppc__back-marks {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.ppc__back-mid {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: 10px;
+}
+
+.ppc__back-name {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ppc__back-since {
+  margin: 0;
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.2;
   font-weight: var(--font-weight-normal);
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-/* ── Display name ──────────────────────────────────────────── */
-
-.ppc__name {
-  margin: 14px 0 0;
-  padding: 0 var(--page-padding);
-  font-family: var(--font-body);
-  font-size: 24px;
-  font-weight: var(--font-weight-bold);
-  line-height: 1.15;
-  letter-spacing: -0.015em;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-  word-break: normal;
-}
-
-.ppc__name--long {
-  font-size: 20px;
-}
+/* ── Narrow screens ────────────────────────────────────────── */
 
 @media (max-width: 359px) {
   .ppc__avatar-wrap {
-    width: 72px;
-    height: 72px;
+    width: 56px;
+    height: 56px;
   }
 
   .ppc__avatar {
-    width: 72px;
-    height: 72px;
+    width: 56px;
+    height: 56px;
   }
 
   .ppc__avatar .avatar.avatar--xl {
-    width: 72px;
-    height: 72px;
-    font-size: 26px;
-  }
-
-  .ppc__name {
+    width: 56px;
+    height: 56px;
     font-size: 22px;
   }
 
+  .ppc__name {
+    font-size: 19px;
+  }
+
   .ppc__name--long {
-    font-size: 18px;
+    font-size: 16px;
+  }
+
+  .ppc__stat-label {
+    font-size: 10px;
+    line-height: 13px;
   }
 }
 
-/* Reduce Motion: the frost and the name swap still fade, and nothing travels. */
+/* ── Reduce motion ─────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: reduce) {
+  .ppc__card {
+    transition: none;
+    transform: none !important;
+  }
+
+  .ppc__card--flipped .ppc__face--front,
+  .ppc__card:not(.ppc__card--flipped) .ppc__face--back {
+    opacity: 0;
+    visibility: visible;
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+  }
+
+  .ppc__card--flipped .ppc__face--back,
+  .ppc__card:not(.ppc__card--flipped) .ppc__face--front {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+  }
+
+  .ppc__face--front,
+  .ppc__face--back {
+    transform: none !important;
+  }
+
+  .ppc__tilt {
+    transition: none;
+    transform: none !important;
+  }
+
+  .ppc__layer--holo,
+  .ppc__layer--lines {
+    transform: none !important;
+    transition: none;
+  }
+
+  .ppc__face--sweep .ppc__layer--sweep {
+    animation: none;
+    transform: translateX(-120%);
+  }
+
   .ppc__stat--tappable {
     transition: none;
   }
@@ -339,7 +727,6 @@
     transition: opacity var(--motion-reduced-fade) var(--ease-fade) !important;
   }
 
-  .ppc__bar-handle,
   .ppc__bar-name {
     transform: none !important;
     transition:
@@ -352,11 +739,54 @@
   }
 }
 
+body[data-reduce-motion='true'] .ppc__card {
+  transition: none;
+  transform: none !important;
+}
+
+body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--front,
+body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--back {
+  opacity: 0;
+  visibility: visible;
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+}
+
+body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--back,
+body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--front {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-reduced-fade) var(--ease-fade);
+}
+
+body[data-reduce-motion='true'] .ppc__face--front,
+body[data-reduce-motion='true'] .ppc__face--back {
+  transform: none !important;
+}
+
+body[data-reduce-motion='true'] .ppc__tilt {
+  transition: none;
+  transform: none !important;
+}
+
+body[data-reduce-motion='true'] .ppc__layer--holo,
+body[data-reduce-motion='true'] .ppc__layer--lines {
+  transform: none !important;
+  transition: none;
+}
+
+body[data-reduce-motion='true'] .ppc__face--sweep .ppc__layer--sweep {
+  animation: none;
+  transform: translateX(-120%);
+}
+
+body[data-reduce-motion='true'] .ppc__stat--tappable {
+  transition: none;
+}
+
 body[data-reduce-motion='true'] .ppc__bar-frost {
   transition: opacity var(--motion-reduced-fade) var(--ease-fade) !important;
 }
 
-body[data-reduce-motion='true'] .ppc__bar-handle,
 body[data-reduce-motion='true'] .ppc__bar-name {
   transform: none !important;
   transition:
@@ -366,8 +796,4 @@ body[data-reduce-motion='true'] .ppc__bar-name {
 
 body[data-reduce-motion='true'] .ppc__icon-btn {
   transition: color var(--motion-reduced-fade) var(--ease-fade) !important;
-}
-
-body[data-reduce-motion='true'] .ppc__stat--tappable {
-  transition: none;
 }

@@ -70,7 +70,7 @@
    present this collapses to zero height and the tabs sit directly under
    the card. */
 .profile-ig-hero {
-  padding: 0 var(--page-padding);
+  padding: 14px var(--page-padding) 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
