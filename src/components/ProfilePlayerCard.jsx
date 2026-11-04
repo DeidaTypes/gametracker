@@ -82,11 +82,6 @@ function profileSubline({ displayName, username, joinedYear }) {
   return null
 }
 
-function isCardInteractiveTarget(node) {
-  if (!node || !(node instanceof Element)) return false
-  return Boolean(node.closest('button, a, [role="button"]'))
-}
-
 function pointerPositionInCard(cardEl, clientX, clientY) {
   const rect = cardEl.getBoundingClientRect()
   if (rect.width <= 0 || rect.height <= 0) return { mx: 0.5, my: 0.5 }
@@ -226,7 +221,6 @@ export default function ProfilePlayerCard({
   const pointerState = useRef({
     down: false,
     dragged: false,
-    startedOnButton: false,
     startX: 0,
     startY: 0,
   })
@@ -342,12 +336,14 @@ export default function ProfilePlayerCard({
     pointerState.current = {
       down: true,
       dragged: false,
-      startedOnButton: isCardInteractiveTarget(e.target),
       startX: e.clientX,
       startY: e.clientY,
     }
+    // A tap must not move the card. Touch stays still until the finger
+    // drags past the threshold; mouse press keeps the immediate tilt.
+    if (e.pointerType === 'touch') return
     tiltRef.current?.classList.add('ppc__tilt--live')
-    schedulePointerFrame(e.clientX, e.clientY, pointerState.current.down)
+    schedulePointerFrame(e.clientX, e.clientY, true)
   }, [schedulePointerFrame])
 
   const onCardPointerMove = useCallback((e) => {
@@ -360,19 +356,31 @@ export default function ProfilePlayerCard({
       if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) state.dragged = true
     }
 
+    if (e.pointerType === 'touch') {
+      if (!state.dragged) return
+      tiltRef.current?.classList.add('ppc__tilt--live')
+      schedulePointerFrame(e.clientX, e.clientY, !reduced)
+      return
+    }
+
     const applyTilt = !reduced && (e.pointerType !== 'touch' || state.down)
     schedulePointerFrame(e.clientX, e.clientY, applyTilt)
   }, [reduced, schedulePointerFrame])
 
   const onCardPointerUp = useCallback(() => {
-    const state = pointerState.current
-    if (state.down && !state.dragged && !state.startedOnButton) {
-      hapticImpact('Light')
-      toggleFlip()
-    }
     pointerState.current.down = false
     resetTilt()
-  }, [resetTilt, toggleFlip])
+  }, [resetTilt])
+
+  const onCardClick = useCallback((e) => {
+    if (pointerState.current.dragged) return
+    const target = e.target
+    if (target instanceof Element && target.closest('button, a, .ppc__tray, .ppc__avatar-wrap')) {
+      return
+    }
+    hapticImpact('Light')
+    toggleFlip()
+  }, [toggleFlip])
 
   const onCardPointerCancel = useCallback(() => {
     pointerState.current.down = false
@@ -549,11 +557,12 @@ export default function ProfilePlayerCard({
               onPointerUp={onCardPointerUp}
               onPointerCancel={onCardPointerCancel}
               onPointerLeave={onCardPointerCancel}
+              onClick={onCardClick}
             >
               <div ref={tiltRef} className="ppc__tilt">
                 <div
                   className={`ppc__face ppc__face--front${runSweep ? ' ppc__face--sweep' : ''}`}
-                  inert={flipped ? true : undefined}
+                  {...(flipped ? { inert: '' } : {})}
                 >
                   <CardFaceLayers showSweep={runSweep} />
                   <div className="ppc__face-body">
@@ -589,7 +598,7 @@ export default function ProfilePlayerCard({
 
                 <div
                   className="ppc__face ppc__face--back"
-                  inert={!flipped ? true : undefined}
+                  {...(!flipped ? { inert: '' } : {})}
                 >
                   <CardFaceLayers showSweep={false} />
                   <div className="ppc__face-body ppc__face-body--back">

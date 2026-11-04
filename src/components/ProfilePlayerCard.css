@@ -266,11 +266,20 @@
 }
 
 .ppc__face--front {
-  transform: rotateY(0deg);
+  transform: rotateY(0deg) translateZ(1px);
 }
 
 .ppc__face--back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+/* The away face and everything in it. pointer-events is not inherited, and
+   .ppc__face-body sets auto, so none on the face alone would not cover it. */
+.ppc__card--flipped .ppc__face--front,
+.ppc__card:not(.ppc__card--flipped) .ppc__face--back,
+.ppc__card--flipped .ppc__face--front *,
+.ppc__card:not(.ppc__card--flipped) .ppc__face--back * {
+  pointer-events: none;
 }
 
 .ppc__card--flipped .ppc__face--front {
@@ -285,6 +294,7 @@
 
 .ppc__card--flipped .ppc__face--back,
 .ppc__card:not(.ppc__card--flipped) .ppc__face--front {
+  pointer-events: auto;
   transition: visibility 0s linear 0s;
 }
 
@@ -502,7 +512,8 @@
   margin-top: auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 4px 0 3px;
+  align-items: stretch;
+  padding: 0;
   border-radius: 14px;
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
@@ -513,10 +524,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  align-self: stretch;
   justify-content: center;
   gap: 1px;
   min-width: 0;
-  padding: 4px 2px;
+  height: 100%;
+  padding: 8px 2px 7px;
 }
 
 .ppc__stat + .ppc__stat::before {
@@ -685,9 +698,17 @@
   }
 
   .ppc__card--flipped .ppc__face--front,
+  .ppc__card:not(.ppc__card--flipped) .ppc__face--back,
+  .ppc__card--flipped .ppc__face--front *,
+  .ppc__card:not(.ppc__card--flipped) .ppc__face--back * {
+    pointer-events: none;
+  }
+
+  .ppc__card--flipped .ppc__face--front,
   .ppc__card:not(.ppc__card--flipped) .ppc__face--back {
     opacity: 0;
     visibility: visible;
+    pointer-events: none;
     transition: opacity var(--motion-reduced-fade) var(--ease-fade);
   }
 
@@ -695,6 +716,7 @@
   .ppc__card:not(.ppc__card--flipped) .ppc__face--front {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
     transition: opacity var(--motion-reduced-fade) var(--ease-fade);
   }
 
@@ -745,9 +767,17 @@ body[data-reduce-motion='true'] .ppc__card {
 }
 
 body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--front,
+body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--back,
+body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--front *,
+body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--back * {
+  pointer-events: none;
+}
+
+body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--front,
 body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--back {
   opacity: 0;
   visibility: visible;
+  pointer-events: none;
   transition: opacity var(--motion-reduced-fade) var(--ease-fade);
 }
 
@@ -755,6 +785,7 @@ body[data-reduce-motion='true'] .ppc__card--flipped .ppc__face--back,
 body[data-reduce-motion='true'] .ppc__card:not(.ppc__card--flipped) .ppc__face--front {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
   transition: opacity var(--motion-reduced-fade) var(--ease-fade);
 }
 
