@@ -18,8 +18,8 @@ function computeCircleRank(goalProgress, rivalryData) {
 }
 
 function ChallengeRing({ current, target }) {
-  const size = 44
-  const stroke = 4
+  const size = 20
+  const stroke = 3
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
   const cx = size / 2
@@ -52,7 +52,6 @@ function ChallengeRing({ current, target }) {
           strokeLinecap="round"
         />
       </svg>
-      <span className="ps-challenge-ring__num">{current}</span>
     </div>
   )
 }
@@ -69,11 +68,11 @@ function ProgressStripPlaceholder() {
         <div className="ps-streak__head">
           <span className="skeleton ps-streak__skel-flame" />
           <span className="skeleton ps-streak__skel-count" />
-        </div>
-        <div className="ps-streak__pips">
-          {Array.from({ length: 7 }, (_, i) => (
-            <span key={i} className="ps-streak__pip" />
-          ))}
+          <div className="ps-streak__pips">
+            {Array.from({ length: 7 }, (_, i) => (
+              <span key={i} className="ps-streak__pip" />
+            ))}
+          </div>
         </div>
         <p className="ps-streak__line2 text-caption">&nbsp;</p>
       </div>
@@ -100,17 +99,12 @@ function ProgressStripBody({ view, goalProgress, rivalryData }) {
     ? computeCircleRank(goalProgress, rivalryData)
     : null
 
-  const line2Parts = []
-  if (!hasStreak) {
-    line2Parts.push('Start a streak')
-  } else if (nextTier && daysToNextTier != null) {
-    line2Parts.push(
-      daysToNextTier === 1
+  const daysToNextLine =
+    nextTier && daysToNextTier != null
+      ? daysToNextTier === 1
         ? `1 day to ${nextTier.name}`
         : `${daysToNextTier} days to ${nextTier.name}`
-    )
-  }
-  const line2 = line2Parts.join(' · ')
+      : null
 
   return (
     <>
@@ -131,27 +125,38 @@ function ProgressStripBody({ view, goalProgress, rivalryData }) {
           }
         >
           <div className="ps-streak__head">
-            <Flame className="ps-streak__flame" size={20} strokeWidth={1.75} aria-hidden="true" />
+            <Flame className="ps-streak__flame" size={18} strokeWidth={1.75} aria-hidden="true" />
             <span className="ps-streak__count">{currentStreak}</span>
-            {hasStreak && currentTier && (
-              <span className="ps-streak__tier text-label">{currentTier.name}</span>
+            <div className="ps-streak__pips" aria-hidden="true">
+              {weekCells.map((cell) => (
+                <span
+                  key={cell.key}
+                  className={[
+                    'ps-streak__pip',
+                    hasStreak && cell.active ? 'ps-streak__pip--active' : '',
+                    cell.isToday ? 'ps-streak__pip--today' : '',
+                  ].filter(Boolean).join(' ')}
+                />
+              ))}
+            </div>
+          </div>
+          <p className="ps-streak__line2 text-caption">
+            {!hasStreak ? (
+              'Start a streak'
+            ) : (
+              <>
+                {currentTier && (
+                  <span className="ps-streak__tier-name">{currentTier.name}</span>
+                )}
+                {daysToNextLine && (
+                  <>
+                    {currentTier && ' · '}
+                    {daysToNextLine}
+                  </>
+                )}
+              </>
             )}
-          </div>
-          <div className="ps-streak__pips" aria-hidden="true">
-            {weekCells.map((cell) => (
-              <span
-                key={cell.key}
-                className={[
-                  'ps-streak__pip',
-                  hasStreak && cell.active ? 'ps-streak__pip--active' : '',
-                  cell.isToday ? 'ps-streak__pip--today' : '',
-                ].filter(Boolean).join(' ')}
-              />
-            ))}
-          </div>
-          {line2 && (
-            <p className="ps-streak__line2 text-caption">{line2}</p>
-          )}
+          </p>
         </button>
 
         {showChallenge && (
@@ -163,17 +168,18 @@ function ProgressStripBody({ view, goalProgress, rivalryData }) {
             userId={user?.id}
             isOwnProfile
           >
-            <ChallengeRing current={goalProgress.current} target={goalProgress.target} />
-            <div className="ps-challenge__info">
+            <div className="ps-challenge__row1">
+              <ChallengeRing current={goalProgress.current} target={goalProgress.target} />
               <span className="ps-challenge__ratio">
-                {goalProgress.current}/{goalProgress.target}
+                <span className="ps-challenge__current">{goalProgress.current}</span>
+                <span className="ps-challenge__target">/{goalProgress.target}</span>
               </span>
-              {circleRank != null && (
-                <span className="ps-challenge__rank text-caption">
-                  #{circleRank} in circle
-                </span>
-              )}
             </div>
+            {circleRank != null && (
+              <span className="ps-challenge__rank text-caption">
+                #{circleRank} in circle
+              </span>
+            )}
           </ChallengeCard>
         )}
       </div>
