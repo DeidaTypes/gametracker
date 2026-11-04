@@ -150,6 +150,19 @@ export function normalizeAccentColor(rgb) {
 // ── Public API ──────────────────────────────────────────────────────────────
 
 /**
+ * Dominant color already extracted for this cover in this session.
+ * Undefined when it hasn't been. Null when extraction ran and failed
+ * (that failure is cached). Sync — no image load.
+ *
+ * @param {string|null|undefined} imageUrl
+ * @returns {{ r: number, g: number, b: number } | null | undefined}
+ */
+export function peekDominantColor(imageUrl) {
+  if (!imageUrl) return undefined
+  return memCache.get(`dom:${imageUrl}`)
+}
+
+/**
  * Extract the visually dominant { r, g, b } swatch from a game cover using a
  * canvas histogram.
  *

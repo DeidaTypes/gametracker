@@ -31,6 +31,18 @@ const TABLE = 'game_colors'
 // back-to-back).
 const memCache = new Map()
 
+/**
+ * In-memory color for this game, if this session already resolved one.
+ * Undefined when it hasn't — no network, no extraction.
+ *
+ * @param {number|string} igdbGameId
+ * @returns {{ r: number, g: number, b: number } | undefined}
+ */
+export function peekGameColor(igdbGameId) {
+  if (igdbGameId == null) return undefined
+  return memCache.get(String(igdbGameId))
+}
+
 function parseRgbTriple(value) {
   if (!value) return null
   const parts = String(value).trim().split(/\s+/).map(Number)
@@ -89,12 +101,20 @@ export async function getOrExtractGameColor(igdbGameId, imageUrl) {
 
   memCache.set(key, extracted)
 
+  // The session cache is what the finish screen paints from. The shared
+  // write must not hold that paint — same errors logged as before.
   try {
-    const { error } = await supabase.rpc('upsert_game_color', {
-      p_igdb_game_id: Number(igdbGameId),
-      p_dominant_color: toRgbTriple(extracted),
-    })
-    if (error) console.error('[gameColor] write failed:', error.message)
+    void supabase
+      .rpc('upsert_game_color', {
+        p_igdb_game_id: Number(igdbGameId),
+        p_dominant_color: toRgbTriple(extracted),
+      })
+      .then(({ error }) => {
+        if (error) console.error('[gameColor] write failed:', error.message)
+      })
+      .catch((err) => {
+        console.error('[gameColor] write crashed:', err)
+      })
   } catch (err) {
     console.error('[gameColor] write crashed:', err)
   }

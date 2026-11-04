@@ -9,9 +9,9 @@ import {
   dismissCurrent,
 } from '../../services/celebrationService'
 import { maybeOpenRateItSheet } from '../../services/ratePrompt'
-import { getOrExtractGameColor } from '../../services/gameColorService'
+import { getOrExtractGameColor, peekGameColor } from '../../services/gameColorService'
 import { useComposerOpen } from '../composer/ComposerHost'
-import { normalizeAccentColor } from '../../services/colorExtract'
+import { normalizeAccentColor, peekDominantColor } from '../../services/colorExtract'
 import { getTracker } from '../../services/hoursService'
 import {
   getPlaythroughStartedAt,
@@ -20,6 +20,18 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 
 import './CompletionCelebration.css'
+
+// Hold an unknown finish color this long, then open on the gold fallback.
+const FINISH_COLOR_WAIT_MS = 600
+
+// accent: undefined = still resolving, null = no color, { r, g, b } = locked.
+const EMPTY_ACCENT = { id: null, accent: undefined }
+
+function accentFromPeek(igdbGameId, imageUrl) {
+  const raw = peekGameColor(igdbGameId) ?? peekDominantColor(imageUrl)
+  if (raw === undefined) return undefined
+  return raw ? normalizeAccentColor(raw) : null
+}
 
 /* ============================================================
    useCurrentCelebration — subscribes to the celebrationService queue
@@ -63,6 +75,14 @@ export default function CompletionCelebration() {
   const location = useLocation()
   const { user } = useAuth()
   const [confetti, setConfetti] = useState(null)
+  // Locked color for the head currently on screen. A later resolve must
+  // not repaint it — the cache still updates for the next finish.
+  const [shown, setShown] = useState(EMPTY_ACCENT)
+
+  // Real playthrough data only — see finishStatsService. Each field is
+  // null until resolved, and stays null (chip omitted) when the
+  // underlying data doesn't exist for this game/user.
+  const [stats, setStats] = useState({ hoursPlayed: null, spanLabel: null })
 
   // Pause while the review composer is open so a queued celebration
   // doesn't paint on top of the composer. See original comment above
@@ -71,10 +91,30 @@ export default function CompletionCelebration() {
   const composerOpen = useComposerOpen()
   const onReviewComposer = composerOpen || location.pathname.startsWith('/review/new')
 
+  const headId = head?.igdbGameId ?? null
+  const imageUrl = head?.game?.image
+  const peeked = headId != null ? accentFromPeek(headId, imageUrl) : undefined
+
+  // Known color: lock it before paint so the first frame is final.
+  // Dismiss: drop the lock so a later finish of this game can use the cache.
+  if (headId == null) {
+    if (shown !== EMPTY_ACCENT) setShown(EMPTY_ACCENT)
+  } else if (peeked !== undefined && shown.id !== headId) {
+    setShown({ id: headId, accent: peeked })
+  }
+
+  const accentRgb = headId == null
+    ? undefined
+    : shown.id === headId
+      ? shown.accent
+      : peeked
+
+  const showing = headId != null && !onReviewComposer && accentRgb !== undefined
+
   // lottie-web is large. Load it only when a celebration is actually
   // on screen and motion is allowed.
   useEffect(() => {
-    if (!head || reduced || onReviewComposer || confetti) return undefined
+    if (!showing || reduced || confetti) return undefined
     let cancelled = false
     Promise.all([
       import('lottie-react'),
@@ -93,57 +133,70 @@ export default function CompletionCelebration() {
     return () => {
       cancelled = true
     }
-  }, [head, reduced, onReviewComposer, confetti])
-
-  // The game's extracted accent — cached on game_colors after the first
-  // finish of this game (by anyone); read straight from the cache on
-  // every finish after that. Normalized for AA-safe contrast — see
-  // colorExtract.normalizeAccentColor.
-  const [accentRgb, setAccentRgb] = useState(null)
-
-  // Real playthrough data only — see finishStatsService. Each field is
-  // null until resolved, and stays null (chip omitted) when the
-  // underlying data doesn't exist for this game/user.
-  const [stats, setStats] = useState({ hoursPlayed: null, spanLabel: null })
+  }, [showing, reduced, confetti])
 
   // Reset transient state on head change.
   useEffect(() => {
-    if (head) {
-      setAccentRgb(null)
-      setStats({ hoursPlayed: null, spanLabel: null })
-    }
+    if (head) setStats({ hoursPlayed: null, spanLabel: null })
   }, [head?.igdbGameId])
 
   // Lock body scroll while celebration is open.
   useEffect(() => {
-    if (!head || onReviewComposer) return
+    if (!showing) return undefined
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
     }
-  }, [head, onReviewComposer])
+  }, [showing])
 
-  // Game-accent color — cache read/extract-and-persist, then clamp into
-  // a UI-safe lightness/saturation band for text + button-fill contrast.
+  // Resolve a color we don't already have. Whichever lands first — the
+  // extract, or the wait above — is the color this screen keeps.
   useEffect(() => {
-    if (!head?.igdbGameId) return
+    if (headId == null) return undefined
+
+    const known = accentFromPeek(headId, imageUrl)
+    let settled = known !== undefined
     let cancelled = false
-    getOrExtractGameColor(head.igdbGameId, head.game?.image).then((raw) => {
-      if (cancelled) return
-      setAccentRgb(raw ? normalizeAccentColor(raw) : null)
-    })
+
+    if (known !== undefined) {
+      setShown((prev) => (prev.id === headId ? prev : { id: headId, accent: known }))
+    }
+
+    const commit = (accent) => {
+      if (cancelled || settled) return
+      settled = true
+      setShown((prev) => (prev.id === headId ? prev : { id: headId, accent }))
+    }
+
+    const timer = settled
+      ? null
+      : setTimeout(() => commit(null), FINISH_COLOR_WAIT_MS)
+
+    getOrExtractGameColor(headId, imageUrl).then(
+      (raw) => {
+        if (timer) clearTimeout(timer)
+        commit(raw ? normalizeAccentColor(raw) : null)
+      },
+      () => {
+        if (timer) clearTimeout(timer)
+        commit(null)
+      },
+    )
+
     return () => {
       cancelled = true
+      settled = true
+      if (timer) clearTimeout(timer)
     }
-  }, [head?.igdbGameId, head?.game?.image])
+  }, [headId, imageUrl])
 
   // Stat chips — hours played (game_trackers) + started→finished span
   // (activities). "Your #Nth this year" arrives separately and later,
   // via celebrationService.updateCelebrationStats (see libraryService),
   // so it isn't fetched here — it's read directly off `head` below.
   useEffect(() => {
-    if (!head?.igdbGameId) return
+    if (!showing || !head?.igdbGameId) return undefined
     let cancelled = false
     ;(async () => {
       const [tracker, startedAt] = await Promise.all([
@@ -161,7 +214,7 @@ export default function CompletionCelebration() {
     return () => {
       cancelled = true
     }
-  }, [head?.igdbGameId, head?.completedAt, user?.id])
+  }, [showing, head?.igdbGameId, head?.completedAt, user?.id])
 
   const handleDone = () => {
     if (!head) return
@@ -174,15 +227,15 @@ export default function CompletionCelebration() {
 
   // ESC to dismiss — same path as Done so Rate it? still opens when unrated.
   useEffect(() => {
-    if (!head || onReviewComposer) return
+    if (!showing) return undefined
     const onKey = (e) => {
       if (e.key === 'Escape') handleDone()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [head?.igdbGameId, onReviewComposer])
+  }, [showing, head?.igdbGameId])
 
-  if (!head || onReviewComposer) return null
+  if (!showing) return null
 
   const coverInitial = reduced ? { scale: 1, opacity: 1 } : { scale: 0.6, opacity: 0 }
   const coverAnimate = { scale: 1, opacity: 1 }
@@ -198,9 +251,8 @@ export default function CompletionCelebration() {
   // Sole dynamic color for this whole screen: the game's extracted
   // accent, exposed as a CSS custom property so every element that
   // needs it (eyebrow, glow, backdrop, Done button) reads the same
-  // source of truth. Falls back to --finish-fallback (defined in the
-  // CSS, a neutral gold — never blue) when extraction hasn't resolved
-  // yet or failed.
+  // source of truth. null leaves --finish-fallback (a neutral gold,
+  // defined in the CSS) in place for the whole time this screen is up.
   const rootStyle = accentRgb
     ? { '--game-accent-rgb': `${accentRgb.r} ${accentRgb.g} ${accentRgb.b}` }
     : undefined
