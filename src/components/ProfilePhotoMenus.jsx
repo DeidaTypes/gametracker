@@ -5,8 +5,6 @@ import { showToast } from './Toast'
 import {
   uploadAvatar,
   removeAvatar,
-  uploadBanner,
-  removeBanner,
 } from '../services/storageService'
 import compressImage from '../utils/compressImage'
 
@@ -17,9 +15,6 @@ export const EMPTY_PROFILE_HEADER_PREVIEW = {
   avatarOverride: false,
   avatarUrl: null,
   avatarDimmed: false,
-  bannerOverride: false,
-  bannerUrl: null,
-  bannerDimmed: false,
 }
 
 // The public URL is usually cached by the time the header swaps to it.
@@ -57,17 +52,12 @@ function openPicker(input, capture) {
 function ProfilePhotoMenus({
   user,
   avatarUrl,
-  bannerUrl,
   photoOpen,
-  bannerOpen,
   onPhotoClose,
-  onBannerClose,
   onPreviewChange,
 }) {
   const avatarInputRef = useRef(null)
-  const bannerInputRef = useRef(null)
   const avatarGen = useRef(0)
-  const bannerGen = useRef(0)
   const mounted = useRef(true)
   const previewRef = useRef(EMPTY_PROFILE_HEADER_PREVIEW)
   const onPreviewChangeRef = useRef(onPreviewChange)
@@ -156,53 +146,6 @@ function ProfilePhotoMenus({
     }
   }
 
-  const handleBannerFile = async (file) => {
-    if (!file) return
-    if (!user?.id) {
-      showToast("Couldn't upload your banner", 'error', null, null, null, { sub: 'Try again' })
-      return
-    }
-
-    const gen = ++bannerGen.current
-    const objectUrl = URL.createObjectURL(file)
-    const previousUrl = bannerUrl
-    commitPreview({ bannerOverride: true, bannerUrl: objectUrl, bannerDimmed: true })
-
-    try {
-      const newUrl = await uploadBanner(file, user, previousUrl)
-      if (!mounted.current || gen !== bannerGen.current) return
-      showToast('Banner updated', 'success', null, null, null, { tone: 'saved' })
-      window.dispatchEvent(new Event('profileUpdated'))
-      await preloadImage(newUrl)
-      if (!mounted.current || gen !== bannerGen.current) return
-      commitPreview({ bannerOverride: false, bannerUrl: null, bannerDimmed: false })
-    } catch (err) {
-      if (!mounted.current || gen !== bannerGen.current) return
-      commitPreview({ bannerOverride: false, bannerUrl: null, bannerDimmed: false })
-      showToast("Couldn't upload your banner", 'error', null, null, null, {
-        sub: err?.message || 'Try again',
-      })
-    }
-  }
-
-  const handleRemoveBanner = async () => {
-    if (!bannerUrl || !user?.id) return
-    const gen = ++bannerGen.current
-    const previousUrl = bannerUrl
-    commitPreview({ bannerOverride: true, bannerUrl: null, bannerDimmed: false })
-    try {
-      await removeBanner(user, previousUrl)
-      if (!mounted.current || gen !== bannerGen.current) return
-      window.dispatchEvent(new Event('profileUpdated'))
-      commitPreview({ bannerOverride: false, bannerUrl: null, bannerDimmed: false })
-      showToast('Banner removed', 'success', null, null, null, { tone: 'neutral' })
-    } catch {
-      if (!mounted.current || gen !== bannerGen.current) return
-      commitPreview({ bannerOverride: false, bannerUrl: null, bannerDimmed: false })
-      showToast("Couldn't remove your banner", 'error', null, null, null, { sub: 'Try again' })
-    }
-  }
-
   const hasPhoto = Boolean(avatarUrl)
 
   return (
@@ -215,17 +158,6 @@ function ProfilePhotoMenus({
           const file = e.target.files?.[0]
           e.target.value = ''
           if (file) void handleAvatarFile(file)
-        }}
-        style={{ display: 'none' }}
-      />
-      <input
-        ref={bannerInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ''
-          if (file) void handleBannerFile(file)
         }}
         style={{ display: 'none' }}
       />
@@ -251,32 +183,6 @@ function ProfilePhotoMenus({
                 icon: <LuTrash2 size={18} aria-hidden="true" />,
                 destructive: true,
                 onClick: () => { void handleRemoveAvatar() },
-              }]
-            : []),
-        ]}
-      />
-
-      <ActionSheet
-        isOpen={bannerOpen}
-        onClose={onBannerClose}
-        title="Banner"
-        items={[
-          {
-            label: 'Take Photo',
-            icon: <LuCamera size={18} aria-hidden="true" />,
-            onClick: () => openPicker(bannerInputRef.current, 'environment'),
-          },
-          {
-            label: 'Photo Library',
-            icon: <LuImage size={18} aria-hidden="true" />,
-            onClick: () => openPicker(bannerInputRef.current, null),
-          },
-          ...(bannerUrl
-            ? [{
-                label: 'Remove Banner',
-                icon: <LuTrash2 size={18} aria-hidden="true" />,
-                destructive: true,
-                onClick: () => { void handleRemoveBanner() },
               }]
             : []),
         ]}

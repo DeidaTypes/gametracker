@@ -583,9 +583,6 @@ body[data-larger-text='true'] {
      Not a warm accent — a scrim so the numeral reads on any image. */
   --qa-on-cover: #ffffff;
   --qa-on-cover-scrim: rgba(6, 8, 10, 0.62);
-  --profile-on-banner: #ffffff;
-  --profile-art-veil: 0;
-  --profile-banner-shade: rgba(0, 0, 0, 0.45);
   --profile-photo-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
   /* Pulse finished band — light text and badge on blurred cover art */
   --pulse-on-cover: #ffffff;
@@ -1294,7 +1291,6 @@ html[data-app-theme="sage"],
 html[data-app-theme="lemonade"],
 html[data-app-theme="paper"] {
   color-scheme: light;
-  --profile-art-veil: 0.06;
   --theme-tint: 12%;
   --theme-fill-mix: 5%;
   --qa-seg-track: var(--bg-surface-2);

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { getLibrary, initializeLibrary, TRACKER_STATUS } from './libraryService'
+import { getLibrary, initializeLibrary } from './libraryService'
 import { getAllReviews } from './reviewService'
 
 /**
@@ -611,38 +611,6 @@ export async function getGameTrackersForUser(userId) {
     hoursPlayed: row.hours_played || 0,
     updatedAt: row.updated_at || null,
   }))
-}
-
-/**
- * The game this user most recently marked Currently Playing, if any.
- * `game_trackers` is publicly readable, so own and visitor profiles
- * share this read. Hours are the tracker's `hours_played` (not a
- * live session timer).
- *
- * @param {string} userId
- * @returns {Promise<{ igdbGameId: number|null, title: string|null, image: string|null, hours: number }|null>}
- */
-export async function getNowPlayingForUser(userId) {
-  if (!userId) return null
-  const { data, error } = await supabase
-    .from('game_trackers')
-    .select('igdb_game_id, game_title, game_image, hours_played')
-    .eq('user_id', userId)
-    .eq('status', TRACKER_STATUS.currently)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-  if (error) {
-    console.error('[stats] getNowPlayingForUser failed:', error.message)
-    return null
-  }
-  const row = data?.[0]
-  if (!row) return null
-  return {
-    igdbGameId: row.igdb_game_id != null ? Number(row.igdb_game_id) : null,
-    title: row.game_title || null,
-    image: row.game_image || null,
-    hours: Number(row.hours_played) || 0,
-  }
 }
 
 /**

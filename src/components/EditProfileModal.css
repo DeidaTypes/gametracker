@@ -91,19 +91,12 @@
   display: none;
 }
 
-/* ── Hero: banner + avatar ───────────────────────────────── */
+/* ── Hero: photo at the top of the form ─────────────────── */
 .ep-hero {
-  position: relative;
-  /* 180px banner + 52px overflow (half avatar + bottom breathing room) */
-  padding-bottom: 52px;
-}
-
-.ep-banner {
-  position: relative;
-  height: 180px;
-  background-color: var(--bg-surface-2);
-  background-size: cover;
-  background-position: center;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-20);
+  padding-bottom: var(--space-16);
 }
 
 .ep-change-btn {
@@ -145,24 +138,12 @@
   border-color: var(--border-strong);
 }
 
-.ep-change-btn--banner {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  margin-top: -8px;
-  margin-right: -8px;
-}
-
-/* Avatar wrap — positioned so avatar overlaps bottom of banner */
+/* Avatar wrap — in normal flow, centered by .ep-hero. The change
+   button stays pinned to the photo's corner. */
 .ep-avatar-wrap {
-  position: absolute;
-  /* avatar top = 180 - 32 = 148px (half overlap into banner, avatar
-     is the "xl" (64px) step of the shared Avatar size scale) */
-  top: 148px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
+  position: relative;
+  flex: none;
+  width: fit-content;
 }
 
 /* Sizing/fallback color owned by the shared Avatar component
@@ -182,36 +163,12 @@
   margin-right: -8px;
 }
 
-/* ── Upload spinner overlay ──────────────────────────────── */
-.ep-banner__spinner-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 15, 31, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-}
-
-.ep-banner__spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: ep-spin 0.7s linear infinite;
-}
-
-@keyframes ep-spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ── Form groups container ───────────────────────────────── */
 .ep-groups {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 24px 16px;
+  padding: 0 16px;
   padding-bottom: calc(var(--tab-bar-height, 58px) + env(safe-area-inset-bottom, 0px) + 24px);
 }
 
@@ -400,9 +357,6 @@
 
 /* ── Reduced motion ──────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .ep-banner__spinner {
-    animation: none;
-  }
   .ep-change-btn,
   .ep-change-btn::before,
   .ep-topbar__btn {

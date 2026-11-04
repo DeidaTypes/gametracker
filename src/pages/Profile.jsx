@@ -39,8 +39,6 @@ import {
 } from 'react-icons/fa6'
 import { useAuth } from '../contexts/AuthContext'
 import { useUnreadMessages } from '../contexts/UnreadMessagesContext'
-import { useSession } from '../contexts/SessionContext'
-import { usePresence } from '../hooks/usePresence'
 import { getSettings } from '../services/userSettingsService'
 import { getReviewsForUser } from '../services/reviewService'
 import {
@@ -51,7 +49,7 @@ import {
   LIST_PIN_CHANGED_EVENT,
 } from '../services/listService'
 import { getProfile, initializeProfile, updateProfile } from '../services/profileService'
-import { getTrackedGamesCountForUser, getNowPlayingForUser } from '../services/statsService'
+import { getTrackedGamesCountForUser } from '../services/statsService'
 import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
 import { getTotalHoursForUser } from '../services/hoursService'
 import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
@@ -82,7 +80,6 @@ import { shouldShowCount } from '../utils/formatSocialCount'
 import { formatActivityDate } from '../utils/formatActivityDate'
 import { shareCard } from '../services/share'
 import { compileWrappedSummary } from '../services/dnaService'
-import { fetchUserBannerUrl } from '../services/storageService'
 import { blockUser } from '../services/blockService'
 import ActionSheet from '../components/ActionSheet'
 import PullToRefresh from '../components/PullToRefresh'
@@ -111,7 +108,6 @@ import { SharedCoverScope, findDuplicateGameIds } from '../components/SharedCove
 import { createList, addGameToList } from '../services/listService'
 import { showToast } from '../components/Toast'
 import ProfilePlayerCard from '../components/ProfilePlayerCard'
-import ProfileNowPlaying from '../components/ProfileNowPlaying'
 import ProfilePhotoMenus, { EMPTY_PROFILE_HEADER_PREVIEW } from '../components/ProfilePhotoMenus'
 import ProfileLevelRow from '../components/level/ProfileLevelRow'
 import LevelPopup from '../components/level/LevelPopup'
@@ -448,7 +444,6 @@ function profileBlobFromPublicRow(row) {
     username: row.username || '',
     avatarUrl: row.avatar_url || null,
     bio: row.bio || '',
-    bannerUrl: null,
     socialLinks: {},
     favoriteGames: Array.isArray(row.favorite_games) ? row.favorite_games : [],
     currentObsessions: Array.isArray(row.current_obsessions) ? row.current_obsessions : [],
@@ -463,8 +458,6 @@ function Profile() {
   const { username: paramUsername, userId: paramUserId } = useParams()
   const { user, plusActive: ownPlusActive } = useAuth()
   const { unreadCount } = useUnreadMessages()
-  const { session: activeSession } = useSession()
-  const { enabled: presenceEnabled, playingNow } = usePresence()
   // Drives the unread dot on the profile-header Messages entry point —
   // same count/token as the Profile bottom-nav tab dot (BottomNav.jsx).
   // ── Username → userId resolution ───────────────────────────────────────
@@ -813,20 +806,18 @@ function Profile() {
   // Header overflow (⋯) bottom sheet — replaces the old inline kebab dropdown
   const [overflowSheetOpen, setOverflowSheetOpen] = useState(false)
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false)
-  const [bannerMenuOpen, setBannerMenuOpen] = useState(false)
   const [headerPreview, setHeaderPreview] = useState(EMPTY_PROFILE_HEADER_PREVIEW)
-  // Blob URLs shown in the header while a photo or banner upload is in flight.
+  // Blob URL shown in the header while a photo upload is in flight.
   // Revoke after the next paint so Strict Mode's simulated effect replay
   // doesn't blank the image that's still on screen.
-  const headerPullRef = useRef(null)
-  const headerBlobs = useRef({ avatar: null, banner: null })
+  const headerBlobs = useRef({ avatar: null })
   const headerAlive = useRef(true)
 
   useEffect(() => {
     headerAlive.current = true
     return () => {
       headerAlive.current = false
-      const urls = [headerBlobs.current.avatar, headerBlobs.current.banner].filter(Boolean)
+      const urls = [headerBlobs.current.avatar].filter(Boolean)
       setTimeout(() => {
         if (headerAlive.current) return
         urls.forEach((url) => URL.revokeObjectURL(url))
@@ -840,17 +831,12 @@ function Profile() {
       && headerPreview.avatarUrl.startsWith('blob:')
       ? headerPreview.avatarUrl
       : null
-    const nextBanner = headerPreview.bannerOverride
-      && typeof headerPreview.bannerUrl === 'string'
-      && headerPreview.bannerUrl.startsWith('blob:')
-      ? headerPreview.bannerUrl
-      : null
     const prev = headerBlobs.current
-    headerBlobs.current = { avatar: nextAvatar, banner: nextBanner }
-    const stale = [prev.avatar, prev.banner].filter((url) => url && url !== nextAvatar && url !== nextBanner)
+    headerBlobs.current = { avatar: nextAvatar }
+    const stale = [prev.avatar].filter((url) => url && url !== nextAvatar)
     stale.forEach((url) => {
       setTimeout(() => {
-        if (headerBlobs.current.avatar === url || headerBlobs.current.banner === url) return
+        if (headerBlobs.current.avatar === url) return
         URL.revokeObjectURL(url)
       }, 0)
     })
@@ -888,12 +874,6 @@ function Profile() {
   // yet, so the player card skeletons the numeral rather than showing 0h.
   const [hoursPlayed, setHoursPlayed] = useState(() =>
     cachedProfileBundle ? cachedProfileBundle.hours : null
-  )
-  // Most recently updated Currently Playing tracker, or null. Same
-  // source for own and visitor profiles. `nowPlaying` below folds a
-  // live session on top of this row.
-  const [nowPlayingRow, setNowPlayingRow] = useState(() =>
-    cachedProfileBundle ? (cachedProfileBundle.np ?? null) : null
   )
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
@@ -1006,10 +986,6 @@ function Profile() {
   })
   const bestAnswersCount = Number(bestAnswersData) || 0
 
-  // Sprint 7 — banner URL for non-own profiles fetched from Supabase.
-  // Own profile reads bannerUrl directly from the localStorage profile blob.
-  const [otherUserBannerUrl, setOtherUserBannerUrl] = useState(null)
-
   // Reviews tab — infinite scroll. Keep all rows in memory (already
   // sorted above) and reveal them in pages of REVIEWS_PAGE_SIZE.
   const REVIEWS_PAGE_SIZE = 10
@@ -1048,7 +1024,6 @@ function Profile() {
         username: resolvedUser.username || '',
         avatarUrl: resolvedUser.avatar_url || null,
         bio: resolvedUser.bio || '',
-        bannerUrl: null, // fetched separately below via fetchUserBannerUrl
         socialLinks: {},
         // Sourced from the public `users` row (favorite_games/
         // current_obsessions are readable for any user — see
@@ -1101,7 +1076,7 @@ function Profile() {
             return { rows, pins, counts, cCounts }
           })()
 
-          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours, np] = await Promise.all([
+          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours] = await Promise.all([
             reviewsWithSocial,
             safeWithTimeout(getListsForUser(targetUserId), []),
             safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
@@ -1126,9 +1101,6 @@ function Profile() {
             // game_trackers.hours_played for every profile, so own and
             // visitor views read the same number from the same source.
             safeWithTimeout(getTotalHoursForUser(targetUserId), null),
-            // Currently Playing — one tracker row, newest update first.
-            // Own and visitor profiles read the same public table.
-            safeWithTimeout(getNowPlayingForUser(targetUserId), null),
           ])
 
           return {
@@ -1144,11 +1116,10 @@ function Profile() {
             rd,
             trackedGames,
             hours,
-            np,
           }
         }
 
-        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, np, counts, cCounts } =
+        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, counts, cCounts } =
           await getSWR(`profile:${targetUserId}`, fetchProfileBundle, {
             ttlMs: PROFILE_CACHE_TTL_MS,
             force,
@@ -1165,21 +1136,12 @@ function Profile() {
         if (rd) setRivalryData(rd)
         setTrackedGamesCount(trackedGames ?? 0)
         setHoursPlayed(hours)
-        setNowPlayingRow(np ?? null)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
         setCustomLists(mapProfileLists(lists))
         setActivities(acts)
         setJournalEntries(journalRows || [])
-
-        // Sprint 7 — fetch banner URL for other users' profiles.
-        // Own profile already has bannerUrl in the localStorage blob.
-        if (!isOwnProfile) {
-          fetchUserBannerUrl(targetUserId)
-            .then((url) => setOtherUserBannerUrl(url || null))
-            .catch(() => setOtherUserBannerUrl(null))
-        }
 
         // Like counts + this user's liked-set + comment counts for every
         // review on this profile — fetched as part of fetchProfileBundle
@@ -1206,7 +1168,6 @@ function Profile() {
           setRivalryData([])
           setTrackedGamesCount(null)
           setHoursPlayed(null)
-          setNowPlayingRow(null)
         }
       }
       loadedProfileForUserRef.current = targetUserId
@@ -1229,7 +1190,6 @@ function Profile() {
       setRivalryData([])
       setTrackedGamesCount(null)
       setHoursPlayed(null)
-      setNowPlayingRow(null)
       loadedProfileForUserRef.current = targetUserId
       // Only drop the loading skeleton once we're confident there's
       // nothing pending (own profile, or a fully-settled not-found) —
@@ -1340,60 +1300,6 @@ function Profile() {
       window.removeEventListener(FOLLOW_CHANGED_EVENT, handleFollowChanged)
     }
   }, [targetUserId, refreshFollows])
-
-  /* ── Now playing ──────────────────────────────────────────────── */
-
-  // Same visibility as the old live line. Own profile: presence is on
-  // and a session is running. Visitor: they appear in the followee
-  // presence list (opt-in and the follow are already enforced there).
-  // Otherwise the Currently Playing tracker. `image` is what the art
-  // header reads.
-  const nowPlaying = useMemo(() => {
-    let live = null
-    if (isOwnProfile) {
-      if (presenceEnabled && activeSession?.game_title) {
-        const gameId = activeSession.igdb_game_id != null ? Number(activeSession.igdb_game_id) : null
-        live = {
-          gameId: Number.isFinite(gameId) ? gameId : null,
-          title: activeSession.game_title,
-          image: activeSession.game_image || null,
-        }
-      }
-    } else {
-      const entry = playingNow.find((p) => p.userId === targetUserId)
-      if (entry?.gameTitle) {
-        const gameId = entry.gameId != null ? Number(entry.gameId) : null
-        live = {
-          gameId: Number.isFinite(gameId) ? gameId : null,
-          title: entry.gameTitle,
-          image: entry.gameImage || null,
-        }
-      }
-    }
-
-    if (live?.gameId != null) {
-      const matched = nowPlayingRow != null && Number(nowPlayingRow.igdbGameId) === live.gameId
-      return {
-        gameId: live.gameId,
-        title: live.title,
-        image: live.image || (matched ? nowPlayingRow.image : null) || null,
-        hours: matched ? nowPlayingRow.hours : null,
-        live: true,
-      }
-    }
-
-    if (nowPlayingRow?.igdbGameId != null && nowPlayingRow.title) {
-      return {
-        gameId: Number(nowPlayingRow.igdbGameId),
-        title: nowPlayingRow.title,
-        image: nowPlayingRow.image || null,
-        hours: nowPlayingRow.hours,
-        live: false,
-      }
-    }
-
-    return null
-  }, [isOwnProfile, presenceEnabled, activeSession, playingNow, targetUserId, nowPlayingRow])
 
   /* ── Derived data ─────────────────────────────────────────────── */
 
@@ -1940,18 +1846,9 @@ function Profile() {
       ? profile.avatar.data
       : profile.avatarUrl || null
 
-  // Sprint 7 — own profile reads from localStorage blob; other profiles
-  // use the Supabase-fetched value loaded in `loadProfileData`.
-  const displayBannerUrl = isOwnProfile
-    ? (profile.bannerUrl || null)
-    : otherUserBannerUrl
-
   const shownAvatarUrl = isOwnProfile && headerPreview.avatarOverride
     ? headerPreview.avatarUrl
     : avatarDisplay
-  const shownBannerUrl = isOwnProfile && headerPreview.bannerOverride
-    ? headerPreview.bannerUrl
-    : displayBannerUrl
 
   // Games stat — total tracked games across every status (Backlog /
   // Playing / Played / Dropped), counted from `game_trackers` for own and
@@ -1975,28 +1872,21 @@ function Profile() {
   )
 
   const favoriteGames = profile.favoriteGames || []
-  const profileArtUrl =
-    nowPlaying?.image || favoriteGames[0]?.image || null
 
   return (
     <SharedCoverScope duplicateIds={duplicateIds}>
       <PullToRefresh
         onRefresh={handlePullToRefresh}
-        onPull={(px) => headerPullRef.current?.(px)}
       >
       <div className="profile-page">
         <ProfilePlayerCard
-          pullRef={headerPullRef}
           displayName={profile.displayName}
           username={profile.username}
           avatarUrl={shownAvatarUrl}
           avatarSeed={profile.id || targetUserId}
           isOwnProfile={isOwnProfile}
           plusActive={isOwnProfile ? ownPlusActive : profile.plusActive === true}
-          bannerUrl={shownBannerUrl}
-          artUrl={profileArtUrl}
           avatarPending={isOwnProfile && headerPreview.avatarDimmed}
-          bannerPending={isOwnProfile && headerPreview.bannerDimmed}
           followersCount={followersCount}
           followingCount={followingCount}
           followLoading={followLoading}
@@ -2008,11 +1898,6 @@ function Profile() {
           onOverflow={() => setOverflowSheetOpen(true)}
           onMessages={() => navigate('/messages')}
           onAvatarClick={isOwnProfile ? () => setPhotoMenuOpen(true) : undefined}
-          onBannerClick={
-            isOwnProfile && displayBannerUrl
-              ? () => setBannerMenuOpen(true)
-              : undefined
-          }
           onFollowersClick={() => navigate(`/user/${profilePathSegment}/followers`)}
           onFollowingClick={() => navigate(`/user/${profilePathSegment}/following`)}
           onGamesClick={
@@ -2076,16 +1961,6 @@ function Profile() {
                 Tell people what you play →
               </button>
             )
-          )}
-
-          {nowPlaying && (
-            <ProfileNowPlaying
-              gameId={nowPlaying.gameId}
-              title={nowPlaying.title}
-              image={nowPlaying.image}
-              hours={nowPlaying.hours}
-              live={nowPlaying.live}
-            />
           )}
 
           {(bestAnswersCount > 0 || setSocials.length > 0) && (
@@ -2362,11 +2237,8 @@ function Profile() {
           <ProfilePhotoMenus
             user={user}
             avatarUrl={avatarDisplay}
-            bannerUrl={displayBannerUrl}
             photoOpen={photoMenuOpen}
-            bannerOpen={bannerMenuOpen}
             onPhotoClose={() => setPhotoMenuOpen(false)}
-            onBannerClose={() => setBannerMenuOpen(false)}
             onPreviewChange={setHeaderPreview}
           />
         )}

@@ -92,7 +92,6 @@ function StatCell({ value, label, loading, onClick, ariaLabel, disabled }) {
 /**
  * ProfilePlayerCard — open profile header: top bar, photo with tier ring,
  * four counts beside the photo, and a full-width display name.
- * Backdrop is an uploaded banner, game-art color field, or accent wash.
  */
 export default function ProfilePlayerCard({
   displayName,
@@ -101,8 +100,6 @@ export default function ProfilePlayerCard({
   avatarSeed,
   isOwnProfile,
   plusActive = false,
-  bannerUrl,
-  artUrl,
   followersCount,
   followingCount,
   followLoading,
@@ -114,15 +111,12 @@ export default function ProfilePlayerCard({
   onOverflow,
   onMessages,
   onAvatarClick,
-  onBannerClick,
   avatarPending = false,
-  bannerPending = false,
   onFollowersClick,
   onFollowingClick,
   onGamesClick,
   level,
   progress,
-  pullRef,
 }) {
   const levelSuffix = levelAriaSuffix(level, progress)
   const compactAvatar = useCompactAvatarLayout()
@@ -130,46 +124,31 @@ export default function ProfilePlayerCard({
   const rootRef = useRef(null)
   const barRef = useRef(null)
   const frostRef = useRef(null)
-  const mediaRef = useRef(null)
   const nameRef = useRef(null)
   const avatarWasPending = useRef(false)
-  const bannerWasPending = useRef(false)
-  const fades = useRef({ avatar: null, banner: null })
+  const fade = useRef(null)
 
   // Pending drops from 60% to the saved image. Same curve as the image
   // fade. Reduce Motion swaps, with no fade.
   useLayoutEffect(() => {
-    const root = rootRef.current
-    const settle = (slot, wasPending, pending, selector) => {
-      const img = root?.querySelector(selector)
-      if (pending) {
-        fades.current[slot]?.cancel()
-        fades.current[slot] = null
-        return
-      }
-      if (!wasPending || reduced || !img || !img.complete) return
-      fades.current[slot]?.cancel()
-      fades.current[slot] = img.animate(
+    const img = rootRef.current?.querySelector('.ppc__avatar .avatar--img')
+    if (avatarPending) {
+      fade.current?.cancel()
+      fade.current = null
+    } else if (avatarWasPending.current && !reduced && img && img.complete) {
+      fade.current?.cancel()
+      fade.current = img.animate(
         [{ opacity: 0.6 }, { opacity: 1 }],
         { duration: MOTION.image, easing: EASE_CSS.fade, fill: 'backwards' },
       )
     }
-    settle('avatar', avatarWasPending.current, avatarPending, '.ppc__avatar .avatar--img')
-    settle('banner', bannerWasPending.current, bannerPending, '.ppc__banner-img')
     avatarWasPending.current = avatarPending
-    bannerWasPending.current = bannerPending
-  }, [avatarPending, bannerPending, reduced])
+  }, [avatarPending, reduced])
   const avatarPhotoSize = compactAvatar ? 72 : 84
-  const hasBanner = Boolean((bannerUrl || '').trim())
-  const hasArt = !hasBanner && Boolean((artUrl || '').trim())
   const { solid, named } = useProfileHeaderScroll({
     barRef,
     frostRef,
-    mediaRef,
     nameRef,
-    pullRef,
-    hasMedia: hasBanner || hasArt,
-    reduced,
   })
   const handle = (username || '').trim()
   const nameText = displayName || 'You'
@@ -180,8 +159,6 @@ export default function ProfilePlayerCard({
 
   const barClass = [
     'ppc__bar',
-    hasBanner ? 'ppc__bar--banner' : '',
-    hasArt ? 'ppc__bar--art' : '',
     solid ? 'ppc__bar--solid' : '',
     named ? 'ppc__bar--named' : '',
   ].filter(Boolean).join(' ')
@@ -236,38 +213,11 @@ export default function ProfilePlayerCard({
       </header>
     <section
       ref={rootRef}
-      className={`ppc${hasBanner ? ' ppc--banner' : ''}${hasArt ? ' ppc--art' : ''}`}
+      className="ppc"
       aria-label="Profile summary"
     >
-      <div className="ppc__backdrop" aria-hidden="true">
-        {hasBanner ? (
-          <div ref={mediaRef} className="ppc__backdrop-banner">
-            <img
-              src={bannerUrl}
-              alt=""
-              className={`ppc__banner-img${bannerPending ? ' ppc__banner-img--pending' : ''}`}
-              loading="lazy"
-            />
-          </div>
-        ) : hasArt ? (
-          <div ref={mediaRef} className="ppc__backdrop-art">
-            <img src={artUrl} alt="" className="ppc__art-img" loading="lazy" />
-          </div>
-        ) : (
-          <div className="ppc__backdrop-wash" />
-        )}
-      </div>
-
       <div className="ppc__foreground">
         <div className="ppc__identity-row">
-          {isOwnProfile && hasBanner && onBannerClick && (
-            <button
-              type="button"
-              className="ppc__banner-hit"
-              onClick={onBannerClick}
-              aria-label="Change banner"
-            />
-          )}
           <div className="ppc__avatar-wrap">
             <button
               type="button"

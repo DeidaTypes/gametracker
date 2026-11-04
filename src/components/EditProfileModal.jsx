@@ -4,7 +4,7 @@ import { Pencil, ChevronRight } from 'lucide-react'
 import { FaInstagram, FaXTwitter, FaYoutube, FaTiktok } from 'react-icons/fa6'
 import { updateProfile } from '../services/profileService'
 import { updateUserProfile } from '../services/userService'
-import { uploadBanner, removeBanner, uploadAvatar, removeAvatar } from '../services/storageService'
+import { uploadAvatar, removeAvatar } from '../services/storageService'
 import { useAuth } from '../contexts/AuthContext'
 import { showToast } from './Toast'
 import { AUTH_ERRORS } from '../services/auth'
@@ -39,9 +39,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   const [bio, setBio] = useState(profile?.bio || '')
   const [avatar, setAvatar] = useState(profile?.avatar || null)
   const [avatarPreview, setAvatarPreview] = useState(null)
-  const [bannerUrl, setBannerUrl] = useState(profile?.bannerUrl || null)
-  const [bannerPreview, setBannerPreview] = useState(null)
-  const [bannerUploading, setBannerUploading] = useState(false)
   const [instagramHandle, setInstagramHandle] = useState(profile?.instagramHandle || '')
   const [xHandle, setXHandle] = useState(profile?.xHandle || '')
   const [youtubeHandle, setYoutubeHandle] = useState(profile?.youtubeHandle || '')
@@ -50,7 +47,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
 
   // Sheet / overlay states
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [bannerSheetOpen, setBannerSheetOpen] = useState(false)
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
   const [signOutSheetOpen, setSignOutSheetOpen] = useState(false)
   const [bioSheetOpen, setBioSheetOpen] = useState(false)
@@ -69,7 +65,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   const [pendingAvatarFile, setPendingAvatarFile] = useState(null)
 
   const fileInputRef = useRef(null)
-  const bannerFileInputRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -84,8 +79,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
           ? profile.avatar.data
           : null
       )
-      setBannerUrl(profile.bannerUrl || null)
-      setBannerPreview(null)
       setInstagramHandle(profile.instagramHandle || '')
       setXHandle(profile.xHandle || '')
       setYoutubeHandle(profile.youtubeHandle || '')
@@ -179,59 +172,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
   }
 
   const avatarSrc = avatarPreview || null
-
-  /* ── Banner ──────────────────────────────────────────────────── */
-
-  const handleBannerPhotoLibrary = () => {
-    if (bannerFileInputRef.current) {
-      bannerFileInputRef.current.removeAttribute('capture')
-      bannerFileInputRef.current.click()
-    }
-  }
-
-  const handleBannerTakePhoto = () => {
-    if (bannerFileInputRef.current) {
-      bannerFileInputRef.current.setAttribute('capture', 'environment')
-      bannerFileInputRef.current.click()
-    }
-  }
-
-  const handleBannerChange = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (bannerFileInputRef.current) bannerFileInputRef.current.value = ''
-
-    const reader = new FileReader()
-    reader.onloadend = () => setBannerPreview(reader.result)
-    reader.readAsDataURL(file)
-
-    const previousUrl = bannerUrl
-    setBannerUploading(true)
-    try {
-      const newUrl = await uploadBanner(file, user, previousUrl)
-      setBannerUrl(newUrl)
-      setBannerPreview(null)
-      window.dispatchEvent(new Event('profileUpdated'))
-    } catch (err) {
-      showToast("Couldn't upload your banner", 'error', null, null, null, { sub: err?.message || 'Try again' })
-      setBannerPreview(null)
-    } finally {
-      setBannerUploading(false)
-    }
-  }
-
-  const handleRemoveBanner = async () => {
-    const previousUrl = bannerUrl
-    setBannerUrl(null)
-    setBannerPreview(null)
-    try {
-      await removeBanner(user, previousUrl)
-      window.dispatchEvent(new Event('profileUpdated'))
-    } catch {
-      showToast("Couldn't remove your banner", 'error', null, null, null, { sub: 'Try again' })
-      setBannerUrl(previousUrl)
-    }
-  }
 
   /* ── Submit ──────────────────────────────────────────────────── */
 
@@ -339,7 +279,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
       bio: bio.trim(),
       avatar: resolvedAvatar,
       avatarUrl: resolvedAvatarUrl,
-      bannerUrl,
       instagramHandle: normalizeHandle(instagramHandle),
       xHandle: normalizeHandle(xHandle),
       youtubeHandle: normalizeHandle(youtubeHandle),
@@ -369,8 +308,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
           ? profile.avatar.data
           : null
       )
-      setBannerUrl(profile.bannerUrl || null)
-      setBannerPreview(null)
       setInstagramHandle(profile.instagramHandle || '')
       setXHandle(profile.xHandle || '')
       setYoutubeHandle(profile.youtubeHandle || '')
@@ -402,8 +339,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     }
   }
 
-  const bannerSrc = bannerPreview || bannerUrl
-
   if (!isOpen) return null
 
   return (
@@ -434,27 +369,8 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
           {/* ── Scrollable body ─────────────────────────────────── */}
           <KeyboardAwareView mode="scroll" className="ep-scroll-body">
 
-            {/* ── Banner + avatar hero ──────────────────────────── */}
+            {/* ── Avatar ────────────────────────────────────────── */}
             <div className="ep-hero">
-              <div
-                className="ep-banner"
-                style={bannerSrc ? { backgroundImage: `url(${bannerSrc})` } : undefined}
-              >
-                {bannerUploading && (
-                  <div className="ep-banner__spinner-overlay" aria-hidden="true">
-                    <div className="ep-banner__spinner" />
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="ep-change-btn ep-change-btn--banner"
-                  onClick={() => setBannerSheetOpen(true)}
-                  aria-label="Change banner"
-                >
-                  <Pencil size={14} strokeWidth={2} />
-                </button>
-              </div>
-
               <div className="ep-avatar-wrap">
                 <Avatar
                   avatarUrl={avatarSrc}
@@ -706,13 +622,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         onChange={handleAvatarChange}
         style={{ display: 'none' }}
       />
-      <input
-        ref={bannerFileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={handleBannerChange}
-        style={{ display: 'none' }}
-      />
 
       {/* ── Bio modal ──────────────────────────────────────────── */}
       <BioEditModal
@@ -720,20 +629,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         onClose={() => setBioSheetOpen(false)}
         currentBio={bio}
         onSave={(updatedProfile) => setBio(updatedProfile.bio || '')}
-      />
-
-      {/* ── Banner action sheet ────────────────────────────────── */}
-      <ActionSheet
-        isOpen={bannerSheetOpen}
-        onClose={() => setBannerSheetOpen(false)}
-        title="Change Banner"
-        items={[
-          { label: 'Photo Library', onClick: handleBannerPhotoLibrary },
-          { label: 'Take Photo', onClick: handleBannerTakePhoto },
-          ...(bannerUrl
-            ? [{ label: 'Remove Banner', onClick: handleRemoveBanner, destructive: true }]
-            : []),
-        ]}
       />
 
       {/* ── Avatar action sheet ────────────────────────────────── */}
