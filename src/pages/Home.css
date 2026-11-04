@@ -47,12 +47,32 @@
   margin-top: var(--space-24);
 }
 
-.home-section--hero + .home-section--progress-strip {
-  margin-top: var(--space-12);
+.home-section--now + .home-section--feed {
+  margin-top: 22px;
 }
 
-.home-section--progress-strip + .home-section--feed {
-  margin-top: 22px;
+.home-now {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--theme-shadow);
+}
+
+.home-now > * + * {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-now .nph,
+.home-now .nph-backlog,
+.home-now .ps {
+  border: none;
+  border-radius: 0;
+}
+
+.home-now .nph-backlog,
+.home-now .ps {
+  background: transparent;
 }
 
 /* Generic section — padded */
@@ -262,11 +282,7 @@
     margin-top: var(--space-32);
   }
 
-  .home-section--hero + .home-section--progress-strip {
-    margin-top: var(--space-12);
-  }
-
-  .home-section--progress-strip + .home-section--feed {
+  .home-section--now + .home-section--feed {
     margin-top: 22px;
   }
 }

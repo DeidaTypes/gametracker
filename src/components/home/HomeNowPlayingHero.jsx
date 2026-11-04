@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { LuClock, LuCheck } from 'react-icons/lu'
-import { Gamepad2, ChevronRight } from 'lucide-react'
+import { CircleHelp, Gamepad2, ChevronRight, MoreHorizontal } from 'lucide-react'
+import ActionSheet from '../ActionSheet'
 import { getDominantColor } from '../../services/colorExtract'
 import { getManualSessionsForGame } from '../../services/sessionService'
 import { getCachedTimeToBeatSync } from '../../services/timeToBeatService'
@@ -10,10 +11,6 @@ import { COVER_FALLBACK } from '../../utils/coverFallback'
 import { getGameNavStub } from '../../utils/gameNavStub'
 import { openQaAsk, qaGamePreset } from '../../pages/qa/qaComposer'
 import './HomeNowPlayingHero.css'
-
-// "Stuck? Ask" is the quiet third action: the ghost button at caption size, so
-// the row keeps its height and the primary action keeps its width.
-const STUCK_BTN_STYLE = { fontSize: 'var(--font-size-caption)' }
 
 function humanTimeAgo(dateStr) {
   if (!dateStr) return null
@@ -103,6 +100,7 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
   const [sessions, setSessions] = useState(null)
   const [mainStoryHours, setMainStoryHours] = useState(null)
   const [finishing, setFinishing] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   // No usable IGDB id (or title) means Ask could not name the game: no action.
   const canAsk = !!activeGame && qaGamePreset(activeGame) != null
 
@@ -153,6 +151,33 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
     }
   }, [activeGame?.id])
 
+  const moreItems = useMemo(() => {
+    if (!activeGame) return []
+    const items = [
+      {
+        icon: <LuCheck size={18} aria-hidden="true" />,
+        label: 'Finish',
+        detail: 'Marks it Played',
+        disabled: finishing,
+        onClick: () => {
+          if (finishing) return
+          setFinishing(true)
+          onFinish?.(activeGame)
+          setFinishing(false)
+        },
+      },
+    ]
+    if (canAsk) {
+      items.push({
+        icon: <CircleHelp size={18} aria-hidden="true" />,
+        label: 'Stuck? Ask',
+        detail: 'Ask the community about this game',
+        onClick: () => openQaAsk({ game: activeGame }),
+      })
+    }
+    return items
+  }, [activeGame, canAsk, finishing, onFinish])
+
   if (!activeGame) {
     if (!backlogGame) return null
     return (
@@ -163,7 +188,9 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
     )
   }
 
-  const dominantStyle = color ? { '--dominant-rgb': `${color.r} ${color.g} ${color.b}` } : undefined
+  const dominantStyle = color
+    ? { '--dominant-rgb': `${color.r} ${color.g} ${color.b}` }
+    : undefined
   const line = buildHeroSubline(sessions, mainStoryHours)
 
   const goToGame = () => {
@@ -175,76 +202,67 @@ function HomeNowPlayingHero({ activeGame, backlogGame, onLogSession, onFinish })
     onLogSession(activeGame)
   }
 
-  // Runs the whole open inside the tap: openQaAsk commits the popup and
-  // focuses the title in the same gesture, so the keyboard rises with it.
-  const handleStuck = (e) => {
+  const handleOpenMore = (e) => {
     e.stopPropagation()
-    openQaAsk({ game: activeGame })
-  }
-
-  const handleFinish = (e) => {
-    e.stopPropagation()
-    if (finishing) return
-    setFinishing(true)
-    onFinish?.(activeGame)
-    setFinishing(false)
+    setMoreOpen(true)
   }
 
   return (
-    <section className="nph" aria-label={`Now playing: ${activeGame.title}`}>
-      <button
-        type="button"
-        className="nph__upper"
+    <>
+      <section
+        className={`nph${color ? ' nph--tinted' : ''}`}
         style={dominantStyle}
-        onClick={goToGame}
-        aria-label={`View ${activeGame.title}`}
+        aria-label={`Now playing: ${activeGame.title}`}
       >
-        <img
-          src={activeGame.image || COVER_FALLBACK}
-          alt=""
-          className="nph__cover"
-          loading="eager"
-          onError={(e) => { e.target.src = COVER_FALLBACK }}
-        />
-        <div className="nph__meta">
-          <span className="nph__eyebrow">Now Playing</span>
-          <h2 className="nph__title">{activeGame.title}</h2>
-          <div className="nph__status">
-            {line ? (
-              <span className="nph__status-text">{line}</span>
-            ) : (
-              <span className="skeleton nph__status-skeleton" aria-hidden="true" />
-            )}
-          </div>
-        </div>
-      </button>
-
-      <div className="nph__lower">
-        <button type="button" className="nph__btn nph__btn--primary" onClick={handleLogSession}>
-          <LuClock size={16} aria-hidden="true" />
-          Log a session
-        </button>
         <button
           type="button"
-          className="nph__btn nph__btn--ghost"
-          onClick={handleFinish}
-          disabled={finishing}
+          className="nph__upper"
+          onClick={goToGame}
+          aria-label={`View ${activeGame.title}`}
         >
-          <LuCheck size={16} aria-hidden="true" />
-          Finish
+          <img
+            src={activeGame.image || COVER_FALLBACK}
+            alt=""
+            className="nph__cover"
+            loading="eager"
+            onError={(e) => { e.target.src = COVER_FALLBACK }}
+          />
+          <div className="nph__meta">
+            <span className="nph__eyebrow">Now Playing</span>
+            <h2 className="nph__title">{activeGame.title}</h2>
+            <div className="nph__status">
+              {line ? (
+                <span className="nph__status-text">{line}</span>
+              ) : (
+                <span className="skeleton nph__status-skeleton" aria-hidden="true" />
+              )}
+            </div>
+          </div>
         </button>
-        {canAsk && (
+
+        <div className="nph__lower">
+          <button type="button" className="nph__btn nph__btn--primary" onClick={handleLogSession}>
+            <LuClock size={18} aria-hidden="true" />
+            Log a session
+          </button>
           <button
             type="button"
-            className="nph__btn nph__btn--ghost"
-            style={STUCK_BTN_STYLE}
-            onClick={handleStuck}
+            className="nph__more"
+            onClick={handleOpenMore}
+            aria-label={`More for ${activeGame.title}`}
           >
-            Stuck? Ask
+            <MoreHorizontal size={22} aria-hidden="true" />
           </button>
-        )}
-      </div>
-    </section>
+        </div>
+      </section>
+
+      <ActionSheet
+        isOpen={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        title={activeGame.title}
+        items={moreItems}
+      />
+    </>
   )
 }
 

@@ -1,46 +1,49 @@
 /* =============================================
    HOME NOW PLAYING HERO
-   Single rounded card with two flush internal zones:
-   upper (tinted cover + meta) and lower (action buttons).
+   Game block inside the shared Home "now" card.
    Namespace: nph-*
    ============================================= */
 
 .nph {
-  --nph-cover-size: 96px;
+  --nph-cover-size: 68px;
+  --dominant-rgb: 40 50 80;
   display: flex;
   flex-direction: column;
   gap: 0;
   margin: 0;
+  padding: var(--space-16);
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--bg-surface);
 }
 
-/* ---------------- Upper zone — tinted cover header ---------------- */
+.nph--tinted {
+  background: radial-gradient(
+    150% 130% at 0% 0%,
+    rgb(var(--dominant-rgb) / var(--now-glow-alpha)) 0%,
+    transparent 60%
+  );
+}
+
+/* ---------------- Upper zone — cover + meta ---------------- */
 
 .nph__upper {
-  --dominant-rgb: 40 50 80;
   display: grid;
   grid-template-columns: var(--nph-cover-size) 1fr;
-  gap: var(--space-16);
+  gap: 14px;
   align-items: center;
   width: 100%;
-  min-height: var(--nph-cover-size);
   margin: 0;
-  padding: var(--space-16);
+  padding: 0;
   border: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
-  background: linear-gradient(
-    90deg,
-    rgba(var(--dominant-rgb) / 0.38) 0%,
-    rgba(var(--dominant-rgb) / 0.38) 28%,
-    var(--bg-surface-2) 100%
-  );
-  transition: background var(--transition-normal);
+  background: none;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.nph__upper:active {
+  opacity: 0.7;
 }
 
 .nph__cover {
@@ -50,13 +53,14 @@
   object-fit: cover;
   display: block;
   flex-shrink: 0;
+  box-shadow: var(--shadow-cover-soft);
 }
 
 .nph__meta {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 3px;
 }
 
 .nph__eyebrow {
@@ -101,30 +105,30 @@
   border-radius: var(--radius-sm);
 }
 
-/* ---------------- Lower zone — action buttons ---------------- */
+/* ---------------- Actions row ---------------- */
 
 .nph__lower {
   display: flex;
-  gap: var(--space-12);
-  margin: 0;
-  padding: var(--space-12) var(--space-16) var(--space-16);
-  background: var(--bg-surface);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0 0;
+  padding: 0;
+  background: none;
 }
 
 .nph__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
-  height: var(--space-40);
+  gap: var(--space-8);
+  height: 44px;
   border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease;
 }
 
 .nph__btn:disabled {
@@ -133,7 +137,7 @@
 }
 
 .nph__btn--primary {
-  flex: 3;
+  flex: 1;
   border: none;
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-review) 100%);
   color: var(--color-on-accent);
@@ -143,16 +147,27 @@
   opacity: 0.92;
 }
 
-.nph__btn--ghost {
-  flex: 2;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--color-text-primary);
+.nph__more {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 
-.nph__btn--ghost:not(:disabled):hover {
-  border-color: var(--color-border-hover);
-  background: var(--color-surface);
+.nph__more:active {
+  background: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  opacity: 0.85;
 }
 
 .nph__btn:not(:disabled):active {
@@ -161,7 +176,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .nph__upper,
-  .nph__btn {
+  .nph__btn,
+  .nph__more {
     transition: none;
   }
 
@@ -179,18 +195,16 @@
   align-items: center;
   gap: var(--space-12);
   width: 100%;
-  padding: var(--space-12) var(--space-16);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  padding: 14px var(--space-16);
+  border: none;
   cursor: pointer;
   text-align: left;
-  transition: background 150ms ease;
+  transition: opacity 150ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.nph-backlog:hover {
-  background: var(--bg-surface-2);
+.nph-backlog:active {
+  opacity: 0.7;
 }
 
 .nph-backlog:focus-visible {
@@ -199,17 +213,17 @@
 }
 
 .nph-backlog__cover {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .nph-backlog__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   flex-shrink: 0;
   display: flex;
   align-items: center;

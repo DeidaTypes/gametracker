@@ -361,29 +361,24 @@ function Home() {
             </section>
           )}
 
-          {/* ── b. Now Playing hero ───────────────────────────────────────
-              Active Playing game: cover, title, Just started / last-played,
-              Log a session / Finish. Falls back to a backlog nudge, then
-              hides — never an empty shell.
+          {/* ── b. Now card — playing hero + progress strip ───────────────
+              One quiet surface: game (or backlog nudge), hairline, streak /
+              challenge. Hides when neither block applies (new-user topper
+              replaces both).
           ──────────────────────────────────────────────────────────────── */}
-          {showNowPlayingHero && (
-            <section className="home-section home-section-padded home-section--hero">
-              <HomeNowPlayingHero
-                activeGame={continuePlaying[0] || null}
-                backlogGame={backlogGame}
-                onLogSession={openLogSheet}
-                onFinish={finishGame}
-              />
-            </section>
-          )}
-
-          {/* ── c. Progress strip ─────────────────────────────────────────
-              Streak + challenge merged into one card. Zero-streak reads
-              "Start a streak"; challenge cell hides when no goal is set.
-          ──────────────────────────────────────────────────────────────── */}
-          {showProgressStrip && (
-            <section className="home-section home-section-padded home-section--progress-strip">
-              <ProgressStrip />
+          {(showNowPlayingHero || showProgressStrip) && (
+            <section className="home-section home-section-padded home-section--now">
+              <div className="home-now">
+                {showNowPlayingHero && (
+                  <HomeNowPlayingHero
+                    activeGame={continuePlaying[0] || null}
+                    backlogGame={backlogGame}
+                    onLogSession={openLogSheet}
+                    onFinish={finishGame}
+                  />
+                )}
+                {showProgressStrip && <ProgressStrip />}
+              </div>
             </section>
           )}
 

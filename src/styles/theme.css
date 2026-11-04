@@ -315,6 +315,7 @@ body[data-larger-text='true'] {
   --theme-g4: #e879a6;
   --theme-glow: rgba(59, 130, 246, 0.20);
   --theme-glow-2: rgba(139, 50, 209, 0.16);
+  --now-glow-alpha: 0.24;
   --theme-nav-bg: rgba(19, 26, 53, 0.94);
   --theme-shadow: none;
 
@@ -1297,6 +1298,7 @@ html[data-app-theme="sage"],
 html[data-app-theme="lemonade"],
 html[data-app-theme="paper"] {
   color-scheme: light;
+  --now-glow-alpha: 0.12;
   --theme-tint: 12%;
   --theme-fill-mix: 5%;
   --qa-seg-track: var(--bg-surface-2);
