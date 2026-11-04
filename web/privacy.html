@@ -17,11 +17,11 @@
   </header>
 
   <main class="page">
-    <p class="draft-banner">Draft &mdash; review before publishing</p>
     <h1>Privacy Policy</h1>
-    <p class="caption">Last updated: October 22, 2026</p>
+    <p class="caption">Last updated: November 4, 2026</p>
 
     <p class="lede">Checkpoint is a game library and tracking app. This page explains what the app collects, who can see it, and how to delete it.</p>
+    <p>Checkpoint is run by Ryan Deida, an independent developer in New York, USA (&ldquo;we&rdquo; and &ldquo;us&rdquo; on this page).</p>
 
     <h2>The short version</h2>
     <ul>
@@ -45,8 +45,8 @@
         <p class="who"><span class="label">Who can see it</span><br>Public. Anyone who opens your profile, including people without an account who open a shared profile link.</p>
       </li>
       <li class="data-item">
-        <h3>Profile photo and banner</h3>
-        <p>Images you choose and upload. The app asks for photo access only when you pick one.</p>
+        <h3>Profile photo</h3>
+        <p>An image you choose and upload. The app asks for photo or camera access only when you pick one.</p>
         <p class="who"><span class="label">Who can see it</span><br>Public, with your profile.</p>
       </li>
       <li class="data-item">
@@ -95,9 +95,9 @@
         <p class="who"><span class="label">Who can see it</span><br>Shown on profiles, subject to blocks.</p>
       </li>
       <li class="data-item">
-        <h3>Badges, streaks and goals</h3>
-        <p>Progress the app tracks from your activity.</p>
-        <p class="who"><span class="label">Who can see it</span><br>Badges you showcase are public. Streaks and goals follow your activity setting.</p>
+        <h3>Levels, badges, streaks and goals</h3>
+        <p>Progress the app works out from your activity.</p>
+        <p class="who"><span class="label">Who can see it</span><br>Your level and the badges you showcase are public, with your profile. Streaks and goals follow your activity setting.</p>
       </li>
       <li class="data-item">
         <h3>Taste and recommendations</h3>
@@ -136,7 +136,8 @@
     <ul>
       <li><strong>Feedback emails.</strong> When you tap Send feedback, the email that opens is pre-filled with the app version and build, your iOS version, your device model and your account ID, so we can reproduce problems. You can read and edit it before sending, and nothing is sent unless you send it.</li>
       <li><strong>On your device.</strong> The app stores settings (such as theme and accessibility options) and cached copies of your library on your device so it works quickly. Signing out or deleting the app removes them.</li>
-      <li><strong>Crash reports.</strong> Checkpoint will send crash reports (what failed, app version, iOS version and device model) so we can fix bugs. They do not include your reviews, messages or library. <em>Draft note: crash reporting ships after Sprint 1. Delete this item if it does not ship.</em></li>
+      <li><strong>Push notifications.</strong> If you allow notifications, Apple gives your device a push token. We store it with your account so we can send the notifications you have turned on. Signing out removes it, and you can turn notifications off at any time in your iPhone's Settings.</li>
+      <li><strong>Crash reports.</strong> Checkpoint has no crash reporting of its own. If you have chosen to share analytics with app developers in your iPhone's settings, Apple may send us crash reports and usage statistics. Apple controls that setting, and those reports do not include your reviews, messages or library.</li>
     </ul>
 
     <h2>How we use it</h2>
@@ -150,11 +151,15 @@
 
     <h2>Where it is stored and who else is involved</h2>
     <ul>
-      <li><strong>Supabase</strong> hosts our database, sign-in, file storage (profile photos and banners) and server functions. All of the data above is stored there.</li>
+      <li><strong>Supabase</strong> hosts our database, sign-in, file storage (profile photos) and server functions. All of the data above is stored there.</li>
       <li><strong>IGDB</strong> (a Twitch service) supplies game information such as titles, covers and release dates. The app asks for it through our own server, which keeps our IGDB credentials private, so your account details are not sent. The text of a game search is passed on to IGDB, and cover images load from IGDB's image servers, which can see your IP address as any web server can.</li>
       <li><strong>Have I Been Pwned</strong> is used to check a new password against known breaches. Only the first five characters of a hash of the password are sent, never the password itself.</li>
-      <li><strong>Apple</strong> distributes the app through the App Store. The share sheet and the mail app you use for feedback are Apple's and run on your device.</li>
+      <li><strong>Apple</strong> distributes the app through the App Store and delivers push notifications through the Apple Push Notification service, which receives your push token and the text of each notification. The share sheet and the mail app you use for feedback are Apple's and run on your device.</li>
     </ul>
+    <p>We do not share your personal data with anyone else, except where the law requires it.</p>
+
+    <h2>How long we keep it and how we protect it</h2>
+    <p>We keep your data for as long as your account exists, and remove it as described in <a href="#delete">Deleting your account</a>. Data travels to and from our servers over encrypted connections, and database rules limit each account to the data it is allowed to see.</p>
 
     <h2>Your choices</h2>
     <ul>
@@ -162,6 +167,8 @@
       <li><strong>Privacy settings.</strong> Settings &rarr; Privacy &amp; safety lets you choose who can message you and who can see your activity.</li>
       <li><strong>Blocking.</strong> Settings &rarr; Privacy &amp; safety &rarr; Blocked users. Blocked people cannot see your profile, message you or find you in search.</li>
       <li><strong>Email and password.</strong> Settings &rarr; Account.</li>
+      <li><strong>Notifications.</strong> Turn them off at any time in your iPhone's Settings.</li>
+      <li><strong>A copy of your data.</strong> Email us and we will send you a copy of your data, or correct or delete it.</li>
     </ul>
 
     <h2 id="delete">Deleting your account</h2>
@@ -169,13 +176,13 @@
     <p><strong>What is removed right away:</strong></p>
     <ul>
       <li>Your library and play sessions, journal entries, taste and recommendation data, badges, streaks and goals.</li>
-      <li>Your messages, blocks, follows, likes, reactions, saves, pins and notifications.</li>
-      <li>Your name, username, bio, profile photo, banner, favorite games and showcase badges. Your profile becomes &ldquo;[deleted user]&rdquo;.</li>
+      <li>Your messages, blocks, follows, likes, reactions, saves, pins, list comments, notifications and push tokens.</li>
+      <li>Your name, username, bio, profile photo, favorite games and showcase badges. Your profile becomes &ldquo;[deleted user]&rdquo;.</li>
       <li>Your ability to sign in. The account is locked and cannot be used again.</li>
     </ul>
     <p><strong>What stays:</strong></p>
     <ul>
-      <li>Reviews, lists, comments and Q&amp;A you wrote remain so other people's conversations are not broken, but they are no longer linked to a name or profile. If you want any of them gone, delete them yourself before you delete your account.</li>
+      <li>Reviews, lists, review comments and Q&amp;A you wrote remain so other people's conversations are not broken, but they are no longer linked to a name or profile. If you want any of them gone, delete them yourself before you delete your account.</li>
       <li>Reports you filed and reports about you, which we keep for safety.</li>
       <li>Your email address stays in our sign-in provider's records in a locked state, so it can no longer be used to sign in. To have that record erased as well, email us at the address below.</li>
     </ul>
