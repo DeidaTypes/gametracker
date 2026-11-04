@@ -20,8 +20,6 @@ import { ugcErrorMessage } from '../services/moderationService'
 import './forms/forms.css'
 import './EditProfileModal.css'
 
-const AVATAR_MAX_FILE_MB = 10
-
 const DISPLAY_NAME_MAX = 50
 const USERNAME_MAX = 20
 const BIO_MAX = 160
@@ -135,14 +133,6 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
     const file = e.target.files?.[0]
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      showToast('Choose an image file', 'error')
-      return
-    }
-    if (file.size > AVATAR_MAX_FILE_MB * 1024 * 1024) {
-      showToast('That image is too large', 'error', null, null, null, { sub: `Choose one under ${AVATAR_MAX_FILE_MB}MB` })
-      return
-    }
     setAvatarUploading(true)
     try {
       const compressed = await compressImage(file)
@@ -154,8 +144,12 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
         return previewUrl
       })
       setAvatar({ type: 'pending' })
-    } catch {
-      showToast("Couldn't process that image", 'error', null, null, null, { sub: 'Try another file' })
+    } catch (err) {
+      if (err?.code === 'IMAGE_UNREADABLE') {
+        showToast("Couldn't read that photo", 'error', null, null, null, { sub: 'Try a different one' })
+      } else {
+        showToast("Couldn't upload your photo", 'error', null, null, null, { sub: 'Try again' })
+      }
     } finally {
       setAvatarUploading(false)
     }
@@ -226,9 +220,9 @@ function EditProfileModal({ isOpen, onClose, profile, onUpdate }) {
           URL.revokeObjectURL(avatarPreview)
           setAvatarPreview(newUrl)
         }
-      } catch (uploadErr) {
+      } catch {
         setSaving(false)
-        showToast("Couldn't upload your photo", 'error', null, null, null, { sub: uploadErr?.message || 'Try again' })
+        showToast("Couldn't upload your photo", 'error', null, null, null, { sub: 'Try again' })
         return
       }
     } else if (avatar === null && profile?.avatarUrl) {

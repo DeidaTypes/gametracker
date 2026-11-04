@@ -8,7 +8,6 @@ import {
 } from '../services/storageService'
 import compressImage from '../utils/compressImage'
 
-const AVATAR_MAX_FILE_MB = 10
 const PRELOAD_MS = 1600
 
 export const EMPTY_PROFILE_HEADER_PREVIEW = {
@@ -80,16 +79,6 @@ function ProfilePhotoMenus({
 
   const handleAvatarFile = async (file) => {
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      showToast('Choose an image file', 'error')
-      return
-    }
-    if (file.size > AVATAR_MAX_FILE_MB * 1024 * 1024) {
-      showToast('That image is too large', 'error', null, null, null, {
-        sub: `Choose one under ${AVATAR_MAX_FILE_MB}MB`,
-      })
-      return
-    }
     if (!user?.id) {
       showToast("Couldn't upload your photo", 'error', null, null, null, { sub: 'Try again' })
       return
@@ -103,10 +92,14 @@ function ProfilePhotoMenus({
     let compressed
     try {
       compressed = await compressImage(file)
-    } catch {
+    } catch (err) {
       if (!mounted.current || gen !== avatarGen.current) return
       commitPreview({ avatarOverride: false, avatarUrl: null, avatarDimmed: false })
-      showToast("Couldn't process that image", 'error', null, null, null, { sub: 'Try another file' })
+      if (err?.code === 'IMAGE_UNREADABLE') {
+        showToast("Couldn't read that photo", 'error', null, null, null, { sub: 'Try a different one' })
+      } else {
+        showToast("Couldn't upload your photo", 'error', null, null, null, { sub: 'Try again' })
+      }
       return
     }
     if (!mounted.current || gen !== avatarGen.current) return
@@ -119,11 +112,11 @@ function ProfilePhotoMenus({
       await preloadImage(newUrl)
       if (!mounted.current || gen !== avatarGen.current) return
       commitPreview({ avatarOverride: false, avatarUrl: null, avatarDimmed: false })
-    } catch (err) {
+    } catch {
       if (!mounted.current || gen !== avatarGen.current) return
       commitPreview({ avatarOverride: false, avatarUrl: null, avatarDimmed: false })
       showToast("Couldn't upload your photo", 'error', null, null, null, {
-        sub: err?.message || 'Try again',
+        sub: 'Try again',
       })
     }
   }
