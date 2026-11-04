@@ -39,7 +39,7 @@ function buildWholeStarBuckets(reviews) {
   return WHOLE_STAR_BUCKETS.map((b) => ({ rating: b, reviews: map.get(b) || [] }))
 }
 
-function meanRating(reviews) {
+export function meanRating(reviews) {
   const values = reviews
     .map((r) => Number(r.rating))
     .filter((n) => Number.isFinite(n) && n > 0)

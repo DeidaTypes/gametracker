@@ -52,7 +52,7 @@ import { getProfile, initializeProfile, updateProfile } from '../services/profil
 import { getTrackedGamesCountForUser } from '../services/statsService'
 import { getGoalProgress, setGoal, getRivalryData } from '../services/goalService'
 import { getTotalHoursForUser } from '../services/hoursService'
-import { getUserByUsername, getUserById, updateUserProfile } from '../services/userService'
+import { getUserByUsername, getUserById, getUserJoinedAt, updateUserProfile } from '../services/userService'
 import { getActivitiesForUser } from '../services/activityService'
 import {
   followUser,
@@ -113,7 +113,7 @@ import ProfileLevelRow from '../components/level/ProfileLevelRow'
 import LevelPopup from '../components/level/LevelPopup'
 import { useLevel } from '../hooks/useLevel'
 import { loadMyXpExtras } from '../services/xpService'
-import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART } from '../components/ProfileRatingsChart'
+import ProfileRatingsChart, { MIN_RATINGS_FOR_CHART, meanRating } from '../components/ProfileRatingsChart'
 import ProfileTasteDNA from '../components/ProfileTasteDNA'
 import ContentSwap from '../components/motion/ContentSwap'
 import BadgesRow from '../components/BadgesRow'
@@ -875,6 +875,10 @@ function Profile() {
   const [hoursPlayed, setHoursPlayed] = useState(() =>
     cachedProfileBundle ? cachedProfileBundle.hours : null
   )
+  // Account created_at for the player card's "Player since" year.
+  // `null` until the bundle resolves. An older cached bundle without
+  // `joined` stays null until it revalidates.
+  const [joinedAt, setJoinedAt] = useState(() => cachedProfileBundle?.joined ?? null)
 
   // Bio "more"/"less" expansion. We measure the collapsed paragraph's
   // overflow on layout to decide whether to render the toggle at all
@@ -1076,7 +1080,7 @@ function Profile() {
             return { rows, pins, counts, cCounts }
           })()
 
-          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours] = await Promise.all([
+          const [social, lists, acts, pinnedListData, gp, journalRows, rd, trackedGames, hours, joined] = await Promise.all([
             reviewsWithSocial,
             safeWithTimeout(getListsForUser(targetUserId), []),
             safeWithTimeout(getActivitiesForUser(targetUserId, { limit: 8 }), []),
@@ -1101,6 +1105,9 @@ function Profile() {
             // game_trackers.hours_played for every profile, so own and
             // visitor views read the same number from the same source.
             safeWithTimeout(getTotalHoursForUser(targetUserId), null),
+            // "Player since" year. Same read for own and visitor profiles.
+            // Null on timeout, a miss, or an error — never a fabricated year.
+            safeWithTimeout(getUserJoinedAt(targetUserId), null),
           ])
 
           return {
@@ -1116,10 +1123,11 @@ function Profile() {
             rd,
             trackedGames,
             hours,
+            joined,
           }
         }
 
-        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, counts, cCounts } =
+        const { rows, lists, acts, pins, pinnedListData, gp, journalRows, rd, trackedGames, hours, joined, counts, cCounts } =
           await getSWR(`profile:${targetUserId}`, fetchProfileBundle, {
             ttlMs: PROFILE_CACHE_TTL_MS,
             force,
@@ -1136,6 +1144,7 @@ function Profile() {
         if (rd) setRivalryData(rd)
         setTrackedGamesCount(trackedGames ?? 0)
         setHoursPlayed(hours)
+        setJoinedAt(joined ?? null)
         setAllReviews(rows)
         setPinnedRows(pins)
         setPinnedLists(pinnedListData)
@@ -1168,6 +1177,7 @@ function Profile() {
           setRivalryData([])
           setTrackedGamesCount(null)
           setHoursPlayed(null)
+          setJoinedAt(null)
         }
       }
       loadedProfileForUserRef.current = targetUserId
@@ -1190,6 +1200,7 @@ function Profile() {
       setRivalryData([])
       setTrackedGamesCount(null)
       setHoursPlayed(null)
+      setJoinedAt(null)
       loadedProfileForUserRef.current = targetUserId
       // Only drop the loading skeleton once we're confident there's
       // nothing pending (own profile, or a fully-settled not-found) —
@@ -1314,6 +1325,22 @@ function Profile() {
     () => dedupeReviewsByGame(allReviews),
     [allReviews]
   )
+
+  // Career line for the player card. Same numbers the tabs and the
+  // ratings chart already show, for own and visitor profiles.
+  const reviewsCount = dedupedReviews.length
+  const avgRating = useMemo(() => {
+    const rated = (allReviews || []).filter((r) => Number(r.rating) > 0)
+    return meanRating(rated)
+  }, [allReviews])
+  // Lists tab renders sortedLists, which is customLists reordered.
+  // The "Start a list" card on your own profile is a prompt, not a list.
+  const listsCount = customLists.length
+  const joinedYear = useMemo(
+    () => (joinedAt ? new Date(joinedAt).getFullYear() : null),
+    [joinedAt]
+  )
+  const careerLoading = profileLoading
 
   const sortedReviews = useMemo(
     () =>
@@ -1893,6 +1920,12 @@ function Profile() {
           gamesCount={gamesCount}
           hoursPlayed={hoursPlayed}
           statsLoading={profileLoading}
+          reviewsCount={reviewsCount}
+          avgRating={avgRating}
+          listsCount={listsCount}
+          bestAnswersCount={bestAnswersCount}
+          joinedYear={joinedYear}
+          careerLoading={careerLoading}
           hasUnreadMessages={isOwnProfile && unreadCount > 0}
           onBack={() => navigate(-1)}
           onOverflow={() => setOverflowSheetOpen(true)}
@@ -1907,6 +1940,9 @@ function Profile() {
                   state: { gamesCountHint: gamesCount },
                 })
           }
+          onReviewsClick={() => setActiveTab('reviews')}
+          onListsClick={() => setActiveTab('lists')}
+          onBestAnswersClick={() => navigate(`/user/${profilePathSegment}/best-answers`)}
           level={levelLoading ? null : playerLevel}
           progress={levelLoading ? null : levelProgress}
         />

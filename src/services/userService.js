@@ -86,6 +86,29 @@ export async function getUserById(userId) {
 }
 
 /**
+ * Account creation time for the player card's "Player since YYYY".
+ * `created_at` is a public column on `users` (anon and authenticated
+ * may select it). Returns the ISO string, or null on a miss or error.
+ *
+ * @param {string} userId
+ * @returns {Promise<string|null>}
+ */
+export async function getUserJoinedAt(userId) {
+  const trimmed = (userId || '').trim()
+  if (!trimmed) return null
+  const { data, error } = await supabase
+    .from('users')
+    .select('created_at')
+    .eq('id', trimmed)
+    .maybeSingle()
+  if (error) {
+    console.error('[users] getUserJoinedAt failed:', error.message)
+    return null
+  }
+  return data?.created_at || null
+}
+
+/**
  * Persist editable profile fields to the authoritative `users` row. Used by
  * Edit Profile so that display name / username / favoriteGames changed after
  * signup are written server-side and survive a reinstall or a different device.
