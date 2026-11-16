@@ -410,14 +410,16 @@
    owns the timing and sets the --boot-* durations from xMotion.js.
    Hold: until the splash hands off, the page is invisible and its
    mascot hidden (both keyed on html[data-boot], so a failed hand-off
-   can never leave them hidden). Enter: the page fades in around the
-   gliding mascot, in the order it is read.
+   can never leave them hidden). The wordmark title is hidden the same
+   way: it arrives with the glide, not the fade. Enter: the page fades
+   in around the gliding mascot, in the order it is read.
    ============================================================ */
 html[data-boot] .auth-page--hold {
   opacity: 0;
 }
 
-html[data-boot] .auth-mascot[data-boot-target] {
+html[data-boot] .auth-mascot[data-boot-target],
+html[data-boot] .auth-title[data-boot-title-target] {
   visibility: hidden;
 }
 
@@ -425,7 +427,7 @@ html[data-boot] .auth-mascot[data-boot-target] {
   animation: auth-boot-fade var(--boot-fade) var(--ease-fade) both;
 }
 
-.auth-page--boot-in .auth-title,
+.auth-page--boot-in .auth-title:not([data-boot-title-target]),
 .auth-page--boot-in .auth-subtitle,
 .auth-page--boot-in .auth-field-group,
 .auth-page--boot-in .auth-form > :not(.auth-field-group),
@@ -434,7 +436,7 @@ html[data-boot] .auth-mascot[data-boot-target] {
   animation: auth-boot-in var(--boot-fade) var(--ease-fade) both;
 }
 
-.auth-page--boot-in .auth-title,
+.auth-page--boot-in .auth-title:not([data-boot-title-target]),
 .auth-page--boot-in .auth-subtitle {
   animation-delay: var(--boot-delay-title);
 }

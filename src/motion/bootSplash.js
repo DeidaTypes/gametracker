@@ -1,19 +1,22 @@
 /**
  * Opening the app. From the moment iOS shows the launch screen until the app
  * appears, nothing on screen changes. index.html paints #boot-splash on the
- * first web frame: a transparent shell holding .boot-cover (the launch navy)
- * and the mascot at 157x260, exactly where the storyboard put them, for every
- * theme. The app underneath is already in the saved theme; the theme arrives
- * only when the splash leaves. This module takes the splash away once the app
- * has something to show, and only on a cold start (a module flag; signing out,
+ * first web frame: a transparent shell holding .boot-cover (the launch color)
+ * and .boot-brand — the mascot at 84pt with the wordmark 16pt below — centered
+ * on the full screen, exactly where the storyboard put them, for every theme.
+ * The app underneath is already in the saved theme; the theme arrives only
+ * when the splash leaves. This module takes the splash away once the app has
+ * something to show, and only on a cold start (a module flag; signing out,
  * signing in, resuming and deep links never come back here).
  *
- *   Signed out  The navy cover dissolves while the splash mascot glides into
- *               the sign-in screen's mascot and the page enters around it.
- *               (handOffBootSplash({ target }))
+ *   Signed out  The cover dissolves while the splash mascot glides into the
+ *               sign-in screen's mascot. When that screen's title is the
+ *               wordmark ("Checkpoint"), the wordmark glides onto it too;
+ *               any other title fades out with the cover and the page's own
+ *               title fades in. (handOffBootSplash({ target, titleTarget }))
  *   Signed in   The whole splash zooms toward you (scale + opacity, one
- *               compositor animation, the mascot growing a little more) while
- *               the app enters. (handOffBootSplash())
+ *               compositor animation) while the app enters. Logo and name
+ *               stay together. (handOffBootSplash())
  *   Reduce Motion  Nothing moves: the splash fades out while the page or app
  *               fades in.
  *
@@ -24,12 +27,12 @@
  * in App.css and Auth.css.
  */
 
-import { MOTION, EASE_CSS, BOOT_GROW, BOOT_ZOOM } from './xMotion'
+import { MOTION, EASE_CSS, BOOT_ZOOM } from './xMotion'
 
 const SPLASH_ID = 'boot-splash'
-// The splash mascot is 260 pt tall (LaunchLogo); the glide scales it to the
-// target's height.
-const LAUNCH_HEIGHT = 260
+// The splash mascot is 84 pt tall (the LaunchLogo box); the glide scales it
+// to the target's height.
+const LAUNCH_HEIGHT = 84
 
 const HOLD_CLASS = 'auth-page--hold'
 const PAGE_ENTER = 'auth-page--boot-in'
@@ -41,6 +44,7 @@ let scheduled = false // a hand-off is waiting for the splash to be ready, or ru
 let running = false // it has started: taps pass through
 let done = false // the splash is gone
 let pendingTarget = null // the sign-in mascot, if a page offered one
+let pendingTitleTarget = null // that page's title, when it is the wordmark
 let timers = []
 
 function splashEl() {
@@ -101,8 +105,9 @@ function finish() {
   running = true
   timers.forEach((id) => window.clearTimeout(id))
   timers = []
-  // Clearing data-boot reveals the page mascot in the same task that removes
-  // the splash, so there is no frame without a mascot.
+  // Clearing data-boot reveals the page mascot and, when the wordmark glided
+  // onto one, its title — in the same task that removes the splash, so there
+  // is no frame without them.
   document.documentElement.removeAttribute('data-boot')
   splashEl()?.remove()
   document.querySelectorAll(`.${HOLD_CLASS}`).forEach((el) => el.classList.remove(HOLD_CLASS))
@@ -116,7 +121,7 @@ function finish() {
 }
 
 /** Signed in: the whole splash zooms and dissolves; the app enters under it. */
-function leaveToApp(splash, mascot, reduced) {
+function leaveToApp(splash, reduced) {
   const app = document.querySelector('.app')
 
   if (reduced) {
@@ -129,18 +134,15 @@ function leaveToApp(splash, mascot, reduced) {
     return
   }
 
-  // One compositor animation on the whole splash: its navy goes with it, so
-  // nothing animates a background color.
+  // One compositor animation on the whole splash: the cover goes with it, and
+  // the mascot and wordmark scale together, so nothing animates a background
+  // color or pulls the name off the logo.
   const timing = { duration: MOTION.bootZoom, easing: EASE_CSS.leave, fill: 'forwards' }
   splash.animate(
     [
       { opacity: 1, transform: 'scale(1)' },
       { opacity: 0, transform: `scale(${BOOT_ZOOM})` },
     ],
-    timing,
-  )
-  mascot?.animate(
-    [{ transform: 'scale(1)' }, { transform: `scale(${BOOT_GROW})` }],
     timing,
   )
   app?.classList.add(APP_ENTER)
@@ -150,8 +152,26 @@ function leaveToApp(splash, mascot, reduced) {
   later(finish, total + 60)
 }
 
+/** The wordmark CSS is showing. The other one is display:none. */
+function visibleWordmark(splash) {
+  const marks = splash.querySelectorAll('.boot-wm')
+  for (const el of marks) {
+    if (getComputedStyle(el).display !== 'none') return el
+  }
+  return null
+}
+
+/** Top of the title's line box. Falls back to the border box if it has no text yet. */
+function lineBoxTop(el) {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  const rect = range.getBoundingClientRect()
+  if (rect.height > 0) return rect.top
+  return el.getBoundingClientRect().top
+}
+
 /** Signed out: the splash mascot glides into the sign-in mascot. */
-function glideToPage(splash, mascot, reduced) {
+function glideToPage(splash, mascot, wordmark, reduced) {
   const target = pendingTarget
   const page = target.closest('.auth-page')
 
@@ -174,21 +194,44 @@ function glideToPage(splash, mascot, reduced) {
   const dx = to.left + to.width / 2 - (from.left + from.width / 2)
   const dy = to.top + to.height / 2 - (from.top + from.height / 2)
 
-  // The navy cover dissolves into the page while the mascot travels.
-  splash.querySelector('.boot-cover')?.animate(
-    [{ opacity: 1 }, { opacity: 0 }],
-    { duration: MOTION.bootCoverFade, easing: EASE_CSS.fade, fill: 'forwards' },
-  )
+  const title = pendingTitleTarget
+  const glideWordmark = !!(wordmark && title && title.isConnected)
+  let wdx = 0
+  let wdy = 0
+  if (glideWordmark) {
+    const fromWm = wordmark.getBoundingClientRect()
+    const titleBox = title.getBoundingClientRect()
+    wdx = titleBox.left + titleBox.width / 2 - (fromWm.left + fromWm.width / 2)
+    wdy = lineBoxTop(title) - fromWm.top
+  }
+
+  // The cover dissolves into the page while the mascot travels. A wordmark
+  // with no title to land on fades out with the cover.
+  const coverTiming = { duration: MOTION.bootCoverFade, easing: EASE_CSS.fade, fill: 'forwards' }
+  splash.querySelector('.boot-cover')?.animate([{ opacity: 1 }, { opacity: 0 }], coverTiming)
+  if (wordmark && !glideWordmark) {
+    wordmark.animate([{ opacity: 1 }, { opacity: 0 }], coverTiming)
+  }
   page?.classList.remove(HOLD_CLASS)
   page?.classList.add(PAGE_ENTER)
 
+  const glideTiming = { duration: MOTION.bootGlide, easing: EASE_CSS.move, fill: 'forwards' }
   const glide = mascot.animate(
     [
       { transform: 'translate(0px, 0px) scale(1)' },
       { transform: `translate(${dx}px, ${dy}px) scale(${scale})` },
     ],
-    { duration: MOTION.bootGlide, easing: EASE_CSS.move, fill: 'forwards' },
+    glideTiming,
   )
+  if (glideWordmark) {
+    wordmark.animate(
+      [
+        { transform: 'translate(0px, 0px)' },
+        { transform: `translate(${wdx}px, ${wdy}px)` },
+      ],
+      glideTiming,
+    )
+  }
   glide.onfinish = finish
   later(finish, MOTION.bootGlide + 120)
 }
@@ -205,12 +248,13 @@ function run() {
   splash.style.pointerEvents = 'none'
   setVars()
 
-  const mascot = splash.querySelector('img')
+  const mascot = splash.querySelector('.boot-brand > img:first-child')
+  const wordmark = visibleWordmark(splash)
   const reduced = isReduced()
   const hasTarget = !!pendingTarget && pendingTarget.isConnected
 
-  if (hasTarget && mascot) glideToPage(splash, mascot, reduced)
-  else leaveToApp(splash, mascot, reduced)
+  if (hasTarget && mascot) glideToPage(splash, mascot, wordmark, reduced)
+  else leaveToApp(splash, reduced)
 }
 
 /**
@@ -240,11 +284,14 @@ function runWhenReady() {
  * from one case: a sign-in page that mounts before the hand-off starts becomes
  * the target.
  *
- * `target` is a sign-in screen's mascot <img>. Without one, the app fades in.
+ * `target` is a sign-in screen's mascot <img>. `titleTarget` is that screen's
+ * title when it is the wordmark ("Checkpoint"); the splash wordmark glides
+ * onto it. Without a target, the app fades in.
  */
-export function handOffBootSplash({ target } = {}) {
+export function handOffBootSplash({ target, titleTarget } = {}) {
   if (done) return
   if (target) pendingTarget = target
+  if (titleTarget) pendingTitleTarget = titleTarget
   if (scheduled) return
 
   const splash = splashEl()

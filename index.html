@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="Track your video games, write reviews, and discover new titles. Your personal game library." />
     <meta name="theme-color" content="#0a0f1f" />
-    <!-- The mascot, ready on frame one: the opening splash below uses it. -->
+    <!-- The mascot and both wordmarks, ready on frame one: the opening splash uses them. -->
     <link rel="preload" as="image" href="/brand/checkpoint-splash-1x.png"
           imagesrcset="/brand/checkpoint-splash-1x.png 1x, /brand/checkpoint-splash-2x.png 2x, /brand/checkpoint-splash-3x.png 3x" />
+    <link rel="preload" as="image" href="/brand/checkpoint-wordmark-dark-1x.png"
+          imagesrcset="/brand/checkpoint-wordmark-dark-1x.png 1x, /brand/checkpoint-wordmark-dark-2x.png 2x, /brand/checkpoint-wordmark-dark-3x.png 3x" />
+    <link rel="preload" as="image" href="/brand/checkpoint-wordmark-light-1x.png"
+          imagesrcset="/brand/checkpoint-wordmark-light-1x.png 1x, /brand/checkpoint-wordmark-light-2x.png 2x, /brand/checkpoint-wordmark-light-3x.png 3x" />
     <!-- First-frame theme and opening splash. This file is the one place that
          runs before theme.css, so it is the one exception to "no literal
          colors or curves". Every literal below says which token it equals. -->
@@ -28,7 +32,8 @@
          It is transparent itself: the launch color is the .boot-cover layer
          inside it, painted in the saved theme's base to match the repainted
          iOS launch image, while the app underneath (html, body, #root above)
-         is already in that theme. */
+         is already in that theme. .boot-brand is the mascot and wordmark,
+         centered on the full screen where the storyboard put them. */
       #boot-splash {
         position: fixed;
         inset: 0;
@@ -51,15 +56,46 @@
            the cover falls back to --theme-base, which is that same base. */
         background-color: var(--boot-bg, var(--theme-base));
       }
-      /* Same size and place as LaunchLogo in the storyboard: 157x260,
-         centered in the full screen (not the safe area). */
-      #boot-splash img {
+      /* LaunchLogo + wordmark, centered on the full screen (not the safe
+         area). Mascot is aspect-fit at 84pt (the 51x84 box), then 16px
+         (= --space-16), then the wordmark at 159x32. The group is 132pt,
+         so the mascot's center is 24pt above the screen center and the
+         wordmark's center is 50pt below — LaunchScreen.storyboard. */
+      #boot-splash .boot-brand {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #boot-splash .boot-brand > img:first-child {
         position: relative;
         display: block;
-        width: 157px;
-        height: 260px;
+        width: auto;
+        height: 84px;
+        margin-bottom: 16px; /* = --space-16 */
         max-width: none;
         will-change: transform, opacity;
+      }
+      #boot-splash .boot-wm {
+        position: relative;
+        display: block;
+        width: 159px;
+        height: 32px;
+        max-width: none;
+        will-change: transform, opacity;
+      }
+      /* checkpoint-wordmark-dark is light text for dark themes; -light is
+         dark ink. Only the one for data-boot-scheme is shown. Navy (no
+         scheme yet) keeps the light text. */
+      #boot-splash .boot-wm--light {
+        display: none;
+      }
+      html[data-boot-scheme="dark"] #boot-splash .boot-wm--light,
+      html[data-boot-scheme="light"] #boot-splash .boot-wm--dark {
+        display: none;
+      }
+      html[data-boot-scheme="light"] #boot-splash .boot-wm--light {
+        display: block;
       }
     </style>
     <script>
@@ -86,6 +122,18 @@
           lemonade: '#faf1a2',
           paper: '#f3f1ec'
         }
+        // The same eight ids as LaunchScreenCache.lightThemeIds. They get
+        // the dark-ink wordmark; every other theme gets the light one.
+        var LIGHT = {
+          light: 1,
+          sky: 1,
+          pink: 1,
+          cream: 1,
+          lavender: 1,
+          sage: 1,
+          lemonade: 1,
+          paper: 1
+        }
         var theme = 'navy'
         try {
           var stored = JSON.parse(localStorage.getItem(KEY) || 'null')
@@ -104,6 +152,7 @@
         } catch (e) {}
         var root = document.documentElement
         root.setAttribute('data-app-theme', theme)
+        root.setAttribute('data-boot-scheme', LIGHT[theme] ? 'light' : 'dark')
         root.style.setProperty('--boot-bg', BG[theme])
         // bootSplash.js clears this when the splash is gone; the CSS that holds
         // sign-in content back is keyed on it, so nothing can stay hidden.
@@ -156,28 +205,52 @@
   <body>
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-cover"></div>
-      <img
-        src="/brand/checkpoint-splash-1x.png"
-        srcset="/brand/checkpoint-splash-1x.png 1x, /brand/checkpoint-splash-2x.png 2x, /brand/checkpoint-splash-3x.png 3x"
-        width="157"
-        height="260"
-        alt=""
-        draggable="false"
-      />
+      <div class="boot-brand">
+        <img
+          src="/brand/checkpoint-splash-1x.png"
+          srcset="/brand/checkpoint-splash-1x.png 1x, /brand/checkpoint-splash-2x.png 2x, /brand/checkpoint-splash-3x.png 3x"
+          width="157"
+          height="260"
+          alt=""
+          draggable="false"
+        />
+        <img
+          class="boot-wm boot-wm--dark"
+          src="/brand/checkpoint-wordmark-dark-1x.png"
+          srcset="/brand/checkpoint-wordmark-dark-1x.png 1x, /brand/checkpoint-wordmark-dark-2x.png 2x, /brand/checkpoint-wordmark-dark-3x.png 3x"
+          width="159"
+          height="32"
+          alt=""
+          draggable="false"
+        />
+        <img
+          class="boot-wm boot-wm--light"
+          src="/brand/checkpoint-wordmark-light-1x.png"
+          srcset="/brand/checkpoint-wordmark-light-1x.png 1x, /brand/checkpoint-wordmark-light-2x.png 2x, /brand/checkpoint-wordmark-light-3x.png 3x"
+          width="159"
+          height="32"
+          alt=""
+          draggable="false"
+        />
+      </div>
     </div>
     <script>
-      // The mascot has decoded and two frames have painted: the splash is on
-      // screen, identical to the iOS launch screen. Tell the native launch
-      // cover it can go (ViewController.swift) and let bootSplash.js start its
-      // hand-off no sooner than a beat after this. In a desktop browser there
-      // is no native handler; only the timestamp is set.
+      // The mascot and the visible wordmark have decoded and two frames have
+      // painted: the splash is on screen, identical to the iOS launch screen.
+      // Tell the native launch cover it can go (ViewController.swift) and let
+      // bootSplash.js start its hand-off no sooner than a beat after this. In
+      // a desktop browser there is no native handler; only the timestamp is set.
       (function () {
         var splash = document.getElementById('boot-splash')
-        var img = splash && splash.querySelector('img')
-        if (!img) return
+        var mascot = splash && splash.querySelector('.boot-brand > img:first-child')
+        if (!mascot) return
+        var scheme = document.documentElement.getAttribute('data-boot-scheme')
+        var wordmark = splash.querySelector(scheme === 'light' ? '.boot-wm--light' : '.boot-wm--dark')
+        var pending = wordmark ? 2 : 1
         var sent = false
         function ready() {
-          if (sent) return
+          pending -= 1
+          if (pending > 0 || sent) return
           sent = true
           requestAnimationFrame(function () {
             requestAnimationFrame(function () {
@@ -189,12 +262,23 @@
             })
           })
         }
-        if (img.decode) img.decode().then(ready, ready)
-        else if (img.complete) ready()
-        else {
-          img.addEventListener('load', ready)
-          img.addEventListener('error', ready)
+        function watch(img) {
+          if (!img) return
+          var settled = false
+          function one() {
+            if (settled) return
+            settled = true
+            ready()
+          }
+          if (img.decode) img.decode().then(one, one)
+          else if (img.complete) one()
+          else {
+            img.addEventListener('load', one)
+            img.addEventListener('error', one)
+          }
         }
+        watch(mascot)
+        watch(wordmark)
       })()
     </script>
     <script>
