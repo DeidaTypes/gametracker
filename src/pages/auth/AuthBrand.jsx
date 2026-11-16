@@ -3,6 +3,8 @@ import { handOffBootSplash, isBootSplashActive } from '../../motion/bootSplash'
 
 const AuthBrand = forwardRef(function AuthBrand({ title, subtitle }, forwardedRef) {
   const imgRef = useRef(null)
+  const titleRef = useRef(null)
+  const isWordmark = title === 'Checkpoint'
 
   const setRef = useCallback(
     (el) => {
@@ -14,17 +16,21 @@ const AuthBrand = forwardRef(function AuthBrand({ title, subtitle }, forwardedRe
   )
 
   // Opening the app on a sign-in screen: the splash mascot glides into this
-  // one while the page fades in around it (src/motion/bootSplash.js). The page
-  // is held at opacity 0 until the glide starts, so nothing shows before it.
-  // After the first hand-off, or with no splash up, this does nothing.
+  // one while the page fades in around it (src/motion/bootSplash.js). When the
+  // title is the wordmark, that glides onto the title too. The page is held
+  // at opacity 0 until the glide starts, so nothing shows before it. After
+  // the first hand-off, or with no splash up, this does nothing.
   useLayoutEffect(() => {
     const img = imgRef.current
     if (!img) return
     if (isBootSplashActive()) {
       img.closest('.auth-page')?.classList.add('auth-page--hold')
     }
-    handOffBootSplash({ target: img })
-  }, [])
+    handOffBootSplash({
+      target: img,
+      titleTarget: isWordmark ? titleRef.current : null,
+    })
+  }, [isWordmark])
 
   return (
     <div className="auth-brand">
@@ -40,7 +46,13 @@ const AuthBrand = forwardRef(function AuthBrand({ title, subtitle }, forwardedRe
         aria-hidden="true"
         draggable={false}
       />
-      <h1 className="auth-title">{title}</h1>
+      <h1
+        ref={titleRef}
+        className="auth-title"
+        {...(isWordmark ? { 'data-boot-title-target': '' } : {})}
+      >
+        {title}
+      </h1>
       {subtitle ? <p className="auth-subtitle">{subtitle}</p> : null}
     </div>
   )
