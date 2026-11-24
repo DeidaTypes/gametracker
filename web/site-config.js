@@ -12,7 +12,7 @@
  *                APP_STORE_ID is set (must match testflight.apple.com/join/…).
  */
 window.CHECKPOINT_SITE = {
-  SUPPORT_EMAIL: '',
+  SUPPORT_EMAIL: 'support@getcheckpoint.app',
   APP_STORE_ID: '',
   TESTFLIGHT_URL: '',
 }
