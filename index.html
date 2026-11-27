@@ -167,7 +167,13 @@
         } catch (e) {}
         try {
           var capBridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge
-          if (!capBridge) root.setAttribute('data-platform', 'web')
+          if (!capBridge) {
+            root.setAttribute('data-platform', 'web')
+            var viewport = document.querySelector('meta[name="viewport"]')
+            if (viewport) {
+              viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover')
+            }
+          }
         } catch (e) {}
       })()
     </script>

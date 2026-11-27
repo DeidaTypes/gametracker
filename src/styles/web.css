@@ -44,6 +44,93 @@
   html[data-platform='web'] .wishlist-page {
     padding-bottom: var(--space-24);
   }
+
+  /* Pointer affordance on wide web (iOS keeps system default). */
+  html[data-platform='web'] button,
+  html[data-platform='web'] a[href],
+  html[data-platform='web'] [role='button'],
+  html[data-platform='web'] label[for],
+  html[data-platform='web'] summary {
+    cursor: pointer;
+  }
+
+  /* Toasts: centered over the content column, not the full viewport. */
+  html[data-platform='web'] .toast-container {
+    left: calc(50vw + var(--web-sidebar-w) / 2);
+    width: min(420px, calc(100vw - var(--web-sidebar-w) - var(--space-32)));
+    max-width: 420px;
+  }
+
+  /* Comment / DM composers: width of the page column. */
+  html[data-platform='web'] .kb-composer-bar {
+    left: var(--web-sidebar-w);
+    right: 0;
+    width: auto;
+    max-width: var(--web-col-max);
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+
+  html[data-platform='web'] .kb-composer-bar.composer-bar,
+  html[data-platform='web'] .kb-composer-bar.kb-composer-bar--seamless.composer-bar {
+    padding-inline: var(--web-col-pad);
+  }
+
+  /* Session timer pill: same horizontal center as the column. */
+  html[data-platform='web'] .session-pill {
+    left: calc(50vw + var(--web-sidebar-w) / 2);
+  }
+
+  /* Bottom menus & rating sheet: floating card, not edge-to-edge. */
+  html[data-platform='web'] .menu-sheet-root,
+  html[data-platform='web'] .rts-overlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: var(--space-24);
+  }
+
+  html[data-platform='web'] .bs-overlay {
+    align-items: center;
+    padding-bottom: var(--space-24);
+  }
+
+  html[data-platform='web'] .menu-sheet-root .menu-sheet-anchor.kb-sheet-lift {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: 420px;
+    max-width: calc(100vw - var(--web-sidebar-w) - var(--space-32));
+    margin: 0;
+  }
+
+  html[data-platform='web'] .menu-sheet-anchor {
+    max-width: 420px;
+  }
+
+  html[data-platform='web'] .menu-sheet {
+    border-radius: var(--radius-xl);
+    max-width: 420px;
+  }
+
+  html[data-platform='web'] .rts-slide {
+    width: 420px;
+    max-width: calc(100vw - var(--web-sidebar-w) - var(--space-32));
+  }
+
+  html[data-platform='web'] .rts-sheet {
+    border-radius: var(--radius-xl);
+    max-width: 420px;
+  }
+
+  html[data-platform='web'] .bs-slide {
+    width: 420px;
+    max-width: calc(100vw - var(--web-sidebar-w) - var(--space-32));
+  }
+
+  html[data-platform='web'] .bs-sheet {
+    border-radius: var(--radius-xl);
+  }
 }
 
 @media (min-width: 1280px) {

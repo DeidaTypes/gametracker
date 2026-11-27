@@ -86,15 +86,10 @@ runAfterFirstPaint(() => {
   migrateLibraryToSlimShape()
   pruneSwipeHistory()
 
-  // Web only. The native shell unregisters any stale worker before paint
-  // (above) so a cached bundle cannot own the first load.
+  // Wide web: do not register the dev-oriented worker; evict any prior install.
   if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration)
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError)
-      })
+    navigator.serviceWorker.getRegistrations()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {})
   }
 })
