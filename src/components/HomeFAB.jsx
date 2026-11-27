@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   LuPlus,
@@ -9,16 +8,10 @@ import {
   LuClock,
   LuMessageCircle,
 } from 'react-icons/lu'
-import CreateListModal from './CreateListModal'
-import GamePickerSheet from './GamePickerSheet'
-import LogSheet from './home/LogSheet'
 import Pressable from './Pressable'
-import { createList, addGameToList } from '../services/listService'
-import { logSession } from '../services/sessionService'
 import { useMotionPreference } from '../hooks/useMotionPreference'
-import { showToast } from './Toast'
-import { openReviewComposer as openReviewBox } from './composer/ComposerHost'
-import { hapticImpact, hapticSuccess } from '../utils/haptics'
+import { useQuickAddActions } from '../hooks/useQuickAddActions'
+import { hapticImpact } from '../utils/haptics'
 import './HomeFAB.css'
 
 // ── Radial item positions (from FAB center) ────────────────────────────────
@@ -27,7 +20,7 @@ import './HomeFAB.css'
 // Items are evenly spaced at 30° so chord ≈ 52px > 44px button — no overlap.
 // The icon CENTER lands at (tx, ty). Icon-only — no visible label pill; each
 // button still carries a descriptive aria-label for screen readers.
-const RADIAL_ITEMS = [
+export const RADIAL_ITEMS = [
   {
     id: 'log',
     Icon: LuClock,
@@ -93,15 +86,20 @@ function makeItemVariants(reduced) {
 
 function HomeFAB() {
   const [isOpen, setIsOpen] = useState(false)
-  const [logSheetOpen, setLogSheetOpen] = useState(false)
-  const [logSheetGame, setLogSheetGame] = useState(null)
-  const [logGamePickerOpen, setLogGamePickerOpen] = useState(false)
-  const [createListOpen, setCreateListOpen] = useState(false)
-  const [gamePickerOpen, setGamePickerOpen] = useState(false)
   const fabRef = useRef(null)
-  const navigate = useNavigate()
   const { reduced } = useMotionPreference()
   const itemVariants = makeItemVariants(reduced)
+
+  const closeRadial = (returnFocus = true) => {
+    setIsOpen(false)
+    if (returnFocus) {
+      setTimeout(() => fabRef.current?.focus(), 60)
+    }
+  }
+
+  const { runQuickAction, quickAddPortals } = useQuickAddActions({
+    onInvoke: () => closeRadial(false),
+  })
 
   // Close radial when Escape pressed
   useEffect(() => {
@@ -116,119 +114,14 @@ function HomeFAB() {
     setIsOpen(true)
   }
 
-  const closeRadial = (returnFocus = true) => {
-    setIsOpen(false)
-    if (returnFocus) {
-      // Small delay so the closing animation can start before focus shifts
-      setTimeout(() => fabRef.current?.focus(), 60)
-    }
+  const onRadialItem = (id) => {
+    runQuickAction(id)
   }
-
-  // ── Item handlers ────────────────────────────────────────────────────────
-
-  // Global FAB → "Log a session" must NEVER assume a game. The user hasn't
-  // indicated one yet, so this always opens the search step (GamePickerSheet)
-  // regardless of any active session or "currently playing" state — those are
-  // ambient/persisted signals, not an explicit choice, and pre-attaching from
-  // them is what caused the FAB to skip search on devices with that state
-  // (e.g. a lingering active session or a locally-cached "currently playing"
-  // game) while the browser — with no such local state — showed search as
-  // expected. Contrast with Home's Now Playing hero and Game Detail's own
-  // "Log a session", which pre-attach because the user tapped a control tied
-  // to a specific, visible game.
-  const handleLog = () => {
-    closeRadial(false)
-    setLogSheetGame(null)
-    setLogGamePickerOpen(true)
-  }
-
-  const handleLogGamePicked = (picked) => {
-    setLogGamePickerOpen(false)
-    setLogSheetGame(picked)
-    setLogSheetOpen(true)
-  }
-
-  // ── LogSheet write — same fire-and-forget / toast-with-retry shape
-  // as Home's submitLoggedSession. ─────────────────────────────────────────
-  function submitLoggedSession({ game, hours, notes, mood }) {
-    logSession({
-      gameId: game.id,
-      hours,
-      notes,
-      mood,
-      gameTitle: game.title,
-      gameImage: game.image,
-    }).then((result) => {
-      if (result) {
-        hapticSuccess()
-        showToast(`Logged ${hours}h`, 'success', null, null, null, {
-          image: game.image || null,
-          sub: game.title,
-          tone: 'saved',
-          xp: [
-            { source: 'session', ref: String(result.sessionRow.id) },
-            ...(result.journalEntry?.id
-              ? [{ source: 'journal', ref: String(result.journalEntry.id) }]
-              : []),
-          ],
-        })
-      } else {
-        showToast("Couldn't log your session", 'error', 5000, {
-          label: 'Retry',
-          onClick: () => submitLoggedSession({ game, hours, notes, mood }),
-        }, null, { sub: game.title })
-      }
-    })
-  }
-
-  const handleReview = () => {
-    closeRadial(false)
-    setGamePickerOpen(true)
-  }
-
-  const handleList = () => {
-    closeRadial(false)
-    setCreateListOpen(true)
-  }
-
-  const handleMessage = () => {
-    closeRadial(false)
-    navigate('/messages')
-  }
-
-  const ITEM_HANDLERS = { log: handleLog, review: handleReview, list: handleList, message: handleMessage }
-
-  // ── List creation ────────────────────────────────────────────────────────
-
-  const handleCreateList = async (listName, description, initialGames, isPublic = true) => {
-    const listId = await createList({ name: listName, description, isPublic })
-    for (let i = 0; i < initialGames.length; i++) {
-      const g = initialGames[i]
-      await addGameToList(listId, g.id, i, { title: g.title, image: g.image })
-    }
-    showToast('List created', 'success', null, null, null, {
-      sub: listName,
-      tone: 'list',
-      xp: [{ source: 'list', ref: String(listId) }],
-    })
-    navigate(`/list/${listId}`)
-  }
-
-  // ── Game picker (for Write Review) ──────────────────────────────────────
-
-  const handleGamePicked = (game) => {
-    setGamePickerOpen(false)
-    openReviewBox({ game })
-  }
-
-  // ── Render ───────────────────────────────────────────────────────────────
 
   return createPortal(
     <>
-      {/* ── Radial root — fixed at FAB position ── */}
       <div className="home-fab-root">
 
-        {/* Backdrop: full-screen tap-to-close */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -243,7 +136,6 @@ function HomeFAB() {
           )}
         </AnimatePresence>
 
-        {/* Radial items */}
         <motion.div
           className="home-fab-radial"
           animate={isOpen ? 'open' : 'closed'}
@@ -257,11 +149,10 @@ function HomeFAB() {
               variants={itemVariants}
               custom={{ tx, ty }}
             >
-              {/* Icon button */}
               <button
                 type="button"
                 className={`home-fab-item__btn home-fab-item__btn--${id}`}
-                onClick={ITEM_HANDLERS[id]}
+                onClick={() => onRadialItem(id)}
                 aria-label={ariaLabel}
                 tabIndex={isOpen ? 0 : -1}
               >
@@ -271,7 +162,6 @@ function HomeFAB() {
           ))}
         </motion.div>
 
-        {/* Main FAB button */}
         <Pressable
           ref={fabRef}
           className="home-fab"
@@ -290,45 +180,7 @@ function HomeFAB() {
         </Pressable>
       </div>
 
-      {/* ── Sheets & Modals (outside radial root so z-index is independent) ── */}
-
-      <LogSheet
-        isOpen={logSheetOpen}
-        onClose={() => {
-          setLogSheetOpen(false)
-          setLogSheetGame(null)
-          setTimeout(() => fabRef.current?.focus(), 60)
-        }}
-        game={logSheetGame}
-        onLogIt={submitLoggedSession}
-      />
-
-      <GamePickerSheet
-        isOpen={logGamePickerOpen}
-        onSelect={handleLogGamePicked}
-        onCancel={() => {
-          setLogGamePickerOpen(false)
-          fabRef.current?.focus()
-        }}
-      />
-
-      <CreateListModal
-        isOpen={createListOpen}
-        onClose={() => {
-          setCreateListOpen(false)
-          setTimeout(() => fabRef.current?.focus(), 60)
-        }}
-        onCreate={handleCreateList}
-      />
-
-      <GamePickerSheet
-        isOpen={gamePickerOpen}
-        onSelect={handleGamePicked}
-        onCancel={() => {
-          setGamePickerOpen(false)
-          fabRef.current?.focus()
-        }}
-      />
+      {quickAddPortals}
     </>,
     document.body,
   )

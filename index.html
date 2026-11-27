@@ -165,6 +165,10 @@
           var cp = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cpTheme
           if (cp) cp.postMessage({ id: theme, base: BG[theme] })
         } catch (e) {}
+        try {
+          var capBridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge
+          if (!capBridge) root.setAttribute('data-platform', 'web')
+        } catch (e) {}
       })()
     </script>
 

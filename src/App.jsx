@@ -29,7 +29,9 @@ import {
 import { beginContentHold, endContentHold, MOTION, MOTION_MS } from './motion/xMotion'
 import { useMotionPreference } from './hooks/useMotionPreference'
 import { markScrollJump, useNavHideOnScroll } from './hooks/useNavHideOnScroll'
+import { Capacitor } from '@capacitor/core'
 import TopNav from './components/TopNav'
+import WebSidebar from './components/web/WebSidebar'
 import MobileNav from './components/MobileNav'
 import BottomNav, { TAB_RESELECT_EVENT } from './components/BottomNav'
 import Home from './pages/Home'
@@ -1221,8 +1223,11 @@ function AppContent() {
     return <div className="app" aria-hidden="true" />
   }
 
+  const showWebSidebar = showNav && !Capacitor.isNativePlatform()
+
   return (
     <div className="app">
+      {showWebSidebar && <WebSidebar />}
       {showNav && <TopNav />}
       {showNav && <MobileNav />}
       {/* This element is also where backTransition.js appends the

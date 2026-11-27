@@ -56,22 +56,8 @@ export const TAB_RESELECT_EVENT = 'gt:tabReselect'
  */
 let tabOrigin = null
 
-const TAB_ROOT_ORIGIN = {
-  '/': 'home',
-  '/home': 'home',
-  '/discover': 'discover',
-  '/explore': 'discover',
-  '/library': 'library',
-  '/profile': 'profile',
-  '/qa': 'qa',
-}
-
 function rememberTabOrigin(pathname) {
-  const id = TAB_ROOT_ORIGIN[pathname]
-  if (id) tabOrigin = id
-  // /search lights Discover itself, so a browse tile tapped there came from
-  // Discover. It is not a tab root (tapping Discover there still navigates).
-  else if (pathname.startsWith('/search')) tabOrigin = 'discover'
+  syncTabOrigin(pathname)
 }
 
 if (typeof window !== 'undefined') {
@@ -135,7 +121,23 @@ const QA_ITEM = {
 }
 
 // Home, Discover, Q&A, Library, Profile. Fixed for every account.
-const FIVE_ITEMS = [NAV_ITEMS[0], NAV_ITEMS[1], QA_ITEM, NAV_ITEMS[2], NAV_ITEMS[3]]
+export const FIVE_ITEMS = [NAV_ITEMS[0], NAV_ITEMS[1], QA_ITEM, NAV_ITEMS[2], NAV_ITEMS[3]]
+
+export const TAB_ROOT_ORIGIN = {
+  '/': 'home',
+  '/home': 'home',
+  '/discover': 'discover',
+  '/explore': 'discover',
+  '/library': 'library',
+  '/profile': 'profile',
+  '/qa': 'qa',
+}
+
+export function syncTabOrigin(pathname) {
+  const id = TAB_ROOT_ORIGIN[pathname]
+  if (id) tabOrigin = id
+  else if (pathname.startsWith('/search')) tabOrigin = 'discover'
+}
 
 function inboxHasNew(data) {
   return data?.inbox_has_new === true

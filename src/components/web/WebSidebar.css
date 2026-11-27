@@ -1,0 +1,414 @@
+/* Desktop web sidebar — only shown when App mounts WebSidebar (non-native).
+   Width tokens are set in src/styles/web.css on html[data-platform='web']. */
+
+.web-sidebar {
+  display: none;
+}
+
+.web-sidebar__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 769px) {
+  html[data-platform='web'] .web-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 900;
+    width: var(--web-sidebar-w, 72px);
+    border-inline-end: 1px solid var(--border-subtle);
+    box-sizing: border-box;
+    padding-block: var(--space-16);
+    padding-inline: var(--space-12);
+  }
+
+  html[data-platform='web'] .web-sidebar__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  html[data-platform='web'] .web-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    text-decoration: none;
+    color: var(--text-primary);
+    padding: var(--space-4);
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-4);
+  }
+
+  html[data-platform='web'] .web-sidebar__brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: var(--space-2);
+  }
+
+  html[data-platform='web'] .web-sidebar__mascot {
+    display: block;
+    width: 26px;
+    height: auto;
+    flex-shrink: 0;
+  }
+
+  html[data-platform='web'] .web-sidebar__wordmark {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  html[data-platform='web'] .web-sidebar__wordmark,
+  html[data-platform='web'] .web-sidebar__tab-label,
+  html[data-platform='web'] .web-sidebar__secondary-label,
+  html[data-platform='web'] .web-sidebar__new-label,
+  html[data-platform='web'] .web-sidebar__account-text,
+  html[data-platform='web'] .web-sidebar__count--trail,
+  html[data-platform='web'] .web-sidebar__count--wide {
+    display: none;
+  }
+
+  html[data-platform='web'] .web-sidebar__tabs,
+  html[data-platform='web'] .web-sidebar__secondary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab,
+  html[data-platform='web'] .web-sidebar__secondary-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    min-height: 40px;
+    padding-inline: var(--space-12);
+    border-radius: var(--radius-full);
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition:
+      color var(--motion-duration) var(--motion-ease),
+      background-color var(--motion-duration) var(--motion-ease);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab:hover,
+  html[data-platform='web'] .web-sidebar__secondary-link:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab:focus-visible,
+  html[data-platform='web'] .web-sidebar__secondary-link:focus-visible,
+  html[data-platform='web'] .web-sidebar__new-btn:focus-visible,
+  html[data-platform='web'] .web-sidebar__new-item:focus-visible,
+  html[data-platform='web'] .web-sidebar__account-main:focus-visible,
+  html[data-platform='web'] .web-sidebar__settings:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: var(--space-2);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active {
+    color: var(--bg-base);
+    font-weight: 600;
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active[data-tab='home'] {
+    background: var(--grad-nav-home);
+    box-shadow: 0 4px 14px var(--glow-nav-home);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active[data-tab='discover'] {
+    background: var(--grad-nav-discover);
+    box-shadow: 0 4px 14px var(--glow-nav-discover);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active[data-tab='qa'] {
+    background: var(--grad-nav-qa);
+    box-shadow: 0 4px 14px var(--glow-nav-qa);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active[data-tab='library'] {
+    background: var(--grad-nav-library);
+    box-shadow: 0 4px 14px var(--glow-nav-library);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active[data-tab='profile'] {
+    background: var(--grad-nav-profile);
+    box-shadow: 0 4px 14px var(--glow-nav-profile);
+  }
+
+  html[data-platform='web'] .web-sidebar__tab--active:hover {
+    color: var(--bg-base);
+  }
+
+  html[data-platform='web'] .web-sidebar__secondary-link--active {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  html[data-platform='web'] .web-sidebar__rule {
+    border: none;
+    border-block-start: 1px solid var(--border-subtle);
+    margin-block: var(--space-8);
+  }
+
+  html[data-platform='web'] .web-sidebar__secondary-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+  }
+
+  html[data-platform='web'] .web-sidebar__dot {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg-base);
+  }
+
+  html[data-platform='web'] .web-sidebar__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding-inline: var(--space-4);
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    color: var(--bg-base);
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  html[data-platform='web'] .web-sidebar__new-wrap {
+    position: relative;
+    margin-block-start: var(--space-4);
+  }
+
+  html[data-platform='web'] .web-sidebar__new-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    width: 48px;
+    height: 48px;
+    margin-inline: auto;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--grad-brand);
+    color: var(--bg-base);
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: transform var(--motion-duration) var(--motion-ease);
+  }
+
+  html[data-platform='web'] .web-sidebar__new-btn:hover {
+    transform: scale(1.03);
+  }
+
+  html[data-platform='web'] .web-sidebar__new-menu {
+    position: absolute;
+    inset-inline-start: calc(100% + var(--space-8));
+    inset-block-start: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 200px;
+    padding: var(--space-8);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-lg);
+  }
+
+  html[data-platform='web'] .web-sidebar__new-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: 40px;
+    padding: var(--space-8) var(--space-12);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: start;
+    font: inherit;
+  }
+
+  html[data-platform='web'] .web-sidebar__new-item:hover {
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  html[data-platform='web'] .web-sidebar__account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-block-start: var(--space-12);
+    padding-block-start: var(--space-12);
+    border-block-start: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  html[data-platform='web'] .web-sidebar__account-main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    flex: 1 1 auto;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+
+  html[data-platform='web'] .web-sidebar__account-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  html[data-platform='web'] .web-sidebar__account-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html[data-platform='web'] .web-sidebar__account-level {
+    color: var(--text-secondary);
+  }
+
+  html[data-platform='web'] .web-sidebar__settings {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition:
+      color var(--motion-duration) var(--motion-ease),
+      background-color var(--motion-duration) var(--motion-ease);
+  }
+
+  html[data-platform='web'] .web-sidebar__settings:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  }
+
+  /* Icon rail: center icons, hide account text */
+  html[data-platform='web'] .web-sidebar__tab,
+  html[data-platform='web'] .web-sidebar__secondary-link {
+    justify-content: center;
+    padding-inline: var(--space-8);
+  }
+
+  html[data-platform='web'] .web-sidebar__brand {
+    justify-content: center;
+  }
+
+  html[data-platform='web'] .web-sidebar__account {
+    justify-content: center;
+  }
+
+  html[data-platform='web'] .web-sidebar__settings {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  html[data-platform='web'] .web-sidebar {
+    padding-inline: var(--space-16);
+  }
+
+  html[data-platform='web'] .web-sidebar__wordmark,
+  html[data-platform='web'] .web-sidebar__tab-label,
+  html[data-platform='web'] .web-sidebar__secondary-label,
+  html[data-platform='web'] .web-sidebar__new-label,
+  html[data-platform='web'] .web-sidebar__account-text,
+  html[data-platform='web'] .web-sidebar__count--trail {
+    display: block;
+  }
+
+  html[data-platform='web'] .web-sidebar__count--wide,
+  html[data-platform='web'] .web-sidebar__dot {
+    display: none;
+  }
+
+  html[data-platform='web'] .web-sidebar__brand {
+    justify-content: flex-start;
+  }
+
+  html[data-platform='web'] .web-sidebar__tab,
+  html[data-platform='web'] .web-sidebar__secondary-link {
+    justify-content: flex-start;
+  }
+
+  html[data-platform='web'] .web-sidebar__new-btn {
+    width: 100%;
+    height: 42px;
+    margin-inline: 0;
+    border-radius: var(--radius-full);
+  }
+
+  html[data-platform='web'] .web-sidebar__new-menu {
+    inset-inline-start: 0;
+    inset-block-start: calc(100% + var(--space-4));
+  }
+
+  html[data-platform='web'] .web-sidebar__account {
+    justify-content: flex-start;
+  }
+
+  html[data-platform='web'] .web-sidebar__settings {
+    display: inline-flex;
+  }
+
+  html[data-platform='web'] .web-sidebar__secondary-link {
+    justify-content: flex-start;
+  }
+
+  html[data-platform='web'] .web-sidebar__count--trail {
+    margin-inline-start: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-platform='web'] .web-sidebar__new-btn {
+    transition: none;
+  }
+
+  html[data-platform='web'] .web-sidebar__tab,
+  html[data-platform='web'] .web-sidebar__secondary-link {
+    transition: none;
+  }
+}

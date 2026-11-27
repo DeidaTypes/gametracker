@@ -1,0 +1,60 @@
+/* Wide web overrides — every rule scoped to data-platform="web" and ≥769px.
+   iPhone: no data-platform=web (Capacitor bridge present); these rules never apply. */
+
+@media (min-width: 769px) {
+  html[data-platform='web'] {
+    --web-sidebar-w: 72px;
+    --web-col-pad: var(--space-24);
+    --web-col-max: 680px;
+  }
+
+  html[data-platform='web'] .top-nav,
+  html[data-platform='web'] .bottom-nav,
+  html[data-platform='web'] .home-fab-root,
+  html[data-platform='web'] .mobile-nav-toggle,
+  html[data-platform='web'] .mobile-nav-overlay,
+  html[data-platform='web'] .mobile-nav {
+    display: none !important;
+  }
+
+  html[data-platform='web'] .main-content {
+    padding-top: 0;
+    margin-left: var(--web-sidebar-w);
+    padding-bottom: 0 !important;
+  }
+
+  html[data-platform='web'] .main-content > .route-stack {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--web-col-max);
+    margin-inline: auto;
+    padding-inline: var(--web-col-pad);
+  }
+
+  html[data-platform='web'] .home,
+  html[data-platform='web'] .search-page,
+  html[data-platform='web'] .list-detail-page,
+  html[data-platform='web'] .wishlist-page {
+    min-height: 0;
+  }
+
+  html[data-platform='web'] .home,
+  html[data-platform='web'] .search-page,
+  html[data-platform='web'] .list-detail-page,
+  html[data-platform='web'] .wishlist-page {
+    padding-bottom: var(--space-24);
+  }
+}
+
+@media (min-width: 1280px) {
+  html[data-platform='web'] {
+    --web-sidebar-w: 232px;
+    --web-col-pad: var(--space-32);
+  }
+}
+
+@media (min-width: 1600px) {
+  html[data-platform='web'] {
+    --web-sidebar-w: 256px;
+  }
+}
